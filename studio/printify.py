@@ -1,0 +1,309 @@
+"""Safe Printify API client.
+
+Allowed writes are exactly two: image upload and creation of a new
+(unpublished) product. Everything else is read-only; publish, orders
+creation, product updates and deletes are blocked by an allowlist.
+"""
+from __future__ import annotations
+
+import base64
+import logging
+import re
+import threading
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Any
+
+from . import core, httpc
+from .server import ApiError, Request, route
+from .vault import vault
+
+API = "https://api.printify.com/v1"
+
+_READ = [
+    re.compile(r"^shops\.json$"),
+    re.compile(r"^shops/\d+/products\.json$"),
+    re.compile(r"^shops/\d+/products/[0-9a-f]+\.json$"),
+    re.compile(r"^shops/\d+/orders\.json$"),
+    re.compile(r"^uploads/[0-9a-f]+\.json$"),
+    re.compile(r"^catalog/[\w/.-]+\.json$"),
+]
+_WRITE = [
+    re.compile(r"^uploads/images\.json$"),
+    re.compile(r"^shops/\d+/products\.json$"),
+]
+
+audit = logging.getLogger("studio.printify")
+_audit_ready = threading.Lock()
+
+
+def _audit_log() -> logging.Logger:
+    with _audit_ready:
+        if not audit.handlers:
+            core.data_path("logs").mkdir(parents=True, exist_ok=True)
+            h = RotatingFileHandler(core.data_path("logs", "printify.log"), maxBytes=2_000_000, backupCount=3,
+                                    encoding="utf-8")
+            h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
+            audit.addHandler(h)
+    return audit
+
+
+class PrintifySecurityError(ApiError):
+    pass
+
+
+class PrintifyError(ApiError):
+    pass
+
+
+def token() -> str:
+    value = vault.get("printify_token")
+    if not value:
+        raise PrintifyError("Printify токен не налаштовано. Відкрийте Налаштування → Printify.", 400,
+                            {"code": "printify_token"})
+    return value
+
+
+def _check(method: str, path: str) -> None:
+    rules = _READ if method == "GET" else _WRITE if method == "POST" else []
+    lowered = path.lower()
+    forbidden = any(word in lowered for word in ("publish", "send_to_production", "unpublish", "cancel"))
+    if forbidden or not any(r.match(path) for r in rules) or (method == "POST" and "orders" in lowered):
+        _audit_log().error("BLOCKED %s /%s", method, path)
+        raise PrintifySecurityError(f"Заблоковано з міркувань безпеки: {method} /{path}", 403)
+
+
+def _human(err: httpc.HttpError, action: str) -> PrintifyError:
+    body = httpc.short_body(err.body)
+    if err.status == 401:
+        return PrintifyError(f"{action}: токен Printify недійсний або прострочений.", 400, {"code": "printify_token"})
+    if err.status == 403:
+        return PrintifyError(f"{action}: токен Printify не має потрібних прав.", 400, {"code": "printify_token"})
+    if err.status == 404:
+        return PrintifyError(f"{action}: Printify не знайшов об'єкт (404).", 404)
+    if err.status == 429:
+        return PrintifyError(f"{action}: перевищено ліміт запитів Printify, спробуйте пізніше.", 429)
+    if err.status is None:
+        return PrintifyError(f"{action}: немає з'єднання з Printify. Перевірте інтернет.", 502,
+                             {"ambiguous": err.ambiguous, "upstream": None})
+    return PrintifyError(f"{action}: Printify повернув помилку {err.status}. {body}", 502, {"upstream": err.status})
+
+
+def call(method: str, path: str, body: Any = None, action: str = "Запит до Printify", timeout: float = 60,
+         retries: int = 3, params: str = "") -> Any:
+    method = method.upper()
+    path = path.lstrip("/")
+    _check(method, path)
+    url = f"{API}/{path}{('?' + params) if params else ''}"
+    _audit_log().info("%s /%s%s", method, path, f"?{params}" if params else "")
+    try:
+        return httpc.request_json(method, url, headers={"Authorization": f"Bearer {token()}"},
+                                  json_body=body, timeout=timeout, retries=retries)
+    except httpc.HttpError as err:
+        _audit_log().warning("%s /%s -> %s %s", method, path, err.status, httpc.short_body(err.body, 300))
+        raise _human(err, action) from None
+
+
+# ---------------------------------------------------------------- read helpers
+
+def shops() -> list:
+    data = call("GET", "shops.json", action="Список магазинів Printify")
+    return data if isinstance(data, list) else []
+
+
+def products(shop_id: int, page: int = 1, limit: int = 50) -> dict:
+    return call("GET", f"shops/{shop_id}/products.json", action="Список продуктів Printify",
+                params=f"page={page}&limit={limit}")
+
+
+def product(shop_id: int, product_id: str) -> dict:
+    return call("GET", f"shops/{shop_id}/products/{product_id}.json", action="Читання продукту Printify")
+
+
+def upload_exists(image_id: str) -> bool:
+    try:
+        data = call("GET", f"uploads/{image_id}.json", action="Перевірка зображення", retries=2)
+        return bool(data.get("id"))
+    except PrintifyError as err:
+        if err.status == 404:
+            return False
+        raise
+
+
+def all_orders(shop_id: int, progress=None) -> list:
+    from concurrent.futures import ThreadPoolExecutor
+
+    first = call("GET", f"shops/{shop_id}/orders.json", action="Замовлення Printify", params="page=1&limit=50")
+    orders = list(first.get("data") or [])
+    last_page = int(first.get("last_page") or 1)
+    if progress:
+        progress(1, last_page)
+    if last_page > 1:
+        done = [1]
+
+        def fetch(page: int) -> list:
+            data = call("GET", f"shops/{shop_id}/orders.json", action="Замовлення Printify",
+                        params=f"page={page}&limit=50")
+            done[0] += 1
+            if progress:
+                progress(done[0], last_page)
+            return list(data.get("data") or [])
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            for batch in pool.map(fetch, range(2, min(last_page, 400) + 1)):
+                orders.extend(batch)
+    return orders
+
+
+def slim_order(p: dict) -> dict:
+    """Keeps only the fields used for reconciliation (smaller local snapshot)."""
+    addr = p.get("address_to") or {}
+    return {
+        "id": p.get("id"),
+        "app_order_id": p.get("app_order_id"),
+        "total_price": p.get("total_price"),
+        "total_shipping": p.get("total_shipping"),
+        "total_tax": p.get("total_tax"),
+        "created_at": p.get("created_at"),
+        "status": p.get("status"),
+        "metadata": {"shop_order_id": (p.get("metadata") or {}).get("shop_order_id")},
+        "address_to": {k: addr.get(k) for k in ("first_name", "last_name", "country", "region", "city", "zip", "address1")},
+        "line_items": [
+            {"title": li.get("title"), "quantity": li.get("quantity"), "cost": li.get("cost"),
+             "metadata": {"title": (li.get("metadata") or {}).get("title"), "sku": (li.get("metadata") or {}).get("sku")}}
+            for li in (p.get("line_items") or [])
+        ],
+    }
+
+
+# ---------------------------------------------------------------- write helpers
+
+def upload_image(path: Path, file_name: str) -> dict:
+    contents = base64.b64encode(Path(path).read_bytes()).decode("ascii")
+    return call("POST", "uploads/images.json", {"file_name": file_name, "contents": contents},
+                action=f"Завантаження {file_name}", timeout=240, retries=3)
+
+
+def create_product(shop_id: int, payload: dict) -> dict:
+    # No automatic retry: a repeated POST after an unclear failure could duplicate the book.
+    return call("POST", f"shops/{shop_id}/products.json", payload, action="Створення продукту", timeout=180, retries=1)
+
+
+# ---------------------------------------------------------------- master analysis
+
+def analyze_master(shop_id: int, product_id: str) -> dict:
+    p = product(shop_id, product_id)
+    areas = p.get("print_areas") or []
+    if not areas:
+        raise PrintifyError("У Master-продукту немає print areas.")
+    area = areas[0]
+    placements = {}
+    for ph in area.get("placeholders") or []:
+        imgs = ph.get("images") or []
+        if not imgs:
+            continue
+        img = imgs[0]
+        placements[ph.get("position")] = {k: img.get(k) for k in ("x", "y", "scale", "angle")}
+    page_positions = sorted((k for k in placements if re.fullmatch(r"page_\d+", k)), key=lambda k: int(k[5:]))
+    if "cover" not in placements or not page_positions:
+        raise PrintifyError("Не вдалося визначити позиції cover / page_N у Master-продукту.")
+    page_count = len(page_positions)
+    if page_positions != [f"page_{i}" for i in range(1, page_count + 1)]:
+        raise PrintifyError("Нумерація сторінок Master-продукту має пропуски — перевірте еталон.")
+    sizes = {}
+    for ph in area.get("placeholders") or []:
+        imgs = ph.get("images") or []
+        if imgs and imgs[0].get("width"):
+            sizes[ph.get("position")] = [imgs[0].get("width"), imgs[0].get("height")]
+    variants = [
+        {"id": v.get("id"), "price": v.get("price"), "is_enabled": bool(v.get("is_enabled")), "title": v.get("title")}
+        for v in (p.get("variants") or [])
+    ]
+    return {
+        "productId": p.get("id"),
+        "title": p.get("title"),
+        "blueprintId": p.get("blueprint_id"),
+        "printProviderId": p.get("print_provider_id"),
+        "description": p.get("description") or "<p></p>",
+        "background": area.get("background") or "#ffffff",
+        "variants": variants,
+        "printAreaVariantIds": area.get("variant_ids") or [v["id"] for v in variants],
+        "placements": placements,
+        "pageCount": page_count,
+        "coverSize": sizes.get("cover"),
+        "pageSize": sizes.get("page_1"),
+        "analyzedAt": core.now_iso(),
+        "updatedAt": p.get("updated_at"),
+        "visible": p.get("visible"),
+        "enabledVariants": [v["title"] for v in variants if v["is_enabled"]],
+    }
+
+
+# ---------------------------------------------------------------- routes
+
+@route("POST", "/api/printify/test")
+def _test(req: Request):
+    shop_list = shops()
+    if not shop_list:
+        raise PrintifyError("У вашому акаунті Printify немає жодного магазину.")
+    cfg = core.settings.section("printify")
+    shop = next((s for s in shop_list if s.get("id") == cfg.get("shopId")), shop_list[0])
+    orders = call("GET", f"shops/{shop['id']}/orders.json", action="Замовлення Printify", params="page=1&limit=1")
+    return {"shopId": shop.get("id"), "shopTitle": shop.get("title"), "ordersCount": orders.get("total"),
+            "shops": [{"id": s.get("id"), "title": s.get("title"), "channel": s.get("sales_channel")} for s in shop_list]}
+
+
+@route("GET", "/api/printify/shops")
+def _shops(req: Request):
+    return {"shops": [{"id": s.get("id"), "title": s.get("title"), "channel": s.get("sales_channel")} for s in shops()]}
+
+
+@route("GET", "/api/printify/products")
+def _products(req: Request):
+    shop_id = int(req.param("shop") or core.settings.section("printify").get("shopId") or 0)
+    page = int(req.param("page") or 1)
+    data = products(shop_id, page)
+    items = [{
+        "id": p.get("id"), "title": p.get("title"), "blueprintId": p.get("blueprint_id"),
+        "providerId": p.get("print_provider_id"), "createdAt": p.get("created_at"),
+        "image": next((i.get("src") for i in (p.get("images") or []) if i.get("is_default")), None)
+        or ((p.get("images") or [{}])[0].get("src")),
+    } for p in data.get("data") or []]
+    return {"products": items, "page": data.get("current_page"), "lastPage": data.get("last_page")}
+
+
+@route("POST", "/api/printify/master/analyze")
+def _analyze(req: Request):
+    body = req.json or {}
+    shop_id = int(body.get("shopId") or core.settings.section("printify").get("shopId"))
+    product_id = str(body.get("productId") or "").strip()
+    m = re.search(r"([0-9a-f]{24})", product_id)
+    if not m:
+        raise PrintifyError("Вкажіть ID продукту Printify або посилання на нього.")
+    analysis = analyze_master(shop_id, m.group(1))
+    return analysis
+
+
+@route("POST", "/api/printify/master/save")
+def _save_master(req: Request):
+    body = req.json or {}
+    analysis = body.get("analysis") or {}
+    shop_id = body.get("shopId")
+    shop_title = body.get("shopTitle")
+    if not analysis.get("productId") or not analysis.get("placements"):
+        raise PrintifyError("Спочатку проаналізуйте Master-продукт.")
+    master = {k: analysis.get(k) for k in (
+        "productId", "title", "blueprintId", "printProviderId", "description", "background",
+        "variants", "printAreaVariantIds", "placements", "analyzedAt")}
+    patch: dict = {"master": master, "pageCount": analysis.get("pageCount") or 24}
+    if analysis.get("coverSize"):
+        patch["coverSize"] = analysis["coverSize"]
+    if analysis.get("pageSize"):
+        patch["pageSize"] = analysis["pageSize"]
+    if shop_id:
+        patch["shopId"] = int(shop_id)
+        patch["shopTitle"] = shop_title
+    cfg = core.settings.section("printify")
+    cfg.update(patch)
+    core.settings.replace_section("printify", cfg)
+    return {"printify": cfg}

@@ -1,0 +1,6 @@
+# Personal data: encrypted keys, Etsy orders, logs, caches, app window profile — never commit
+data/
+# Downloaded helper binary (cloudflared)
+bin/
+__pycache__/
+*.pyc

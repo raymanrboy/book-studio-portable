@@ -1,0 +1,85 @@
+"""Entry point: start the local server, open the app window, stop when it closes."""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+import urllib.request
+
+from . import core
+
+
+def _running_instance(port: int) -> bool:
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/ping", timeout=1.5) as resp:
+            return json.loads(resp.read().decode("utf-8")).get("app") == core.APP_NAME
+    except Exception:
+        return False
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="book-studio")
+    parser.add_argument("--port", type=int, default=core.DEFAULT_PORT)
+    parser.add_argument("--no-window", action="store_true", help="only run the server (development)")
+    args = parser.parse_args(argv)
+
+    core.ensure_dirs()
+    core.setup_logging()
+
+    from . import desktop, server
+
+    if _running_instance(args.port):
+        core.log.info("Instance already running — opening another window")
+        if not args.no_window:
+            desktop.open_app_window(f"http://127.0.0.1:{args.port}/")
+        return 0
+
+    # Register all API routes.
+    from . import creator, etsy, gelato, library, printify, profit, settings_api, tunnel  # noqa: F401
+
+    tunnel.cleanup_stale()
+    httpd = server.start(args.port)
+    url = f"{server.base_url()}/"
+    if args.no_window:
+        print(f"Book Studio: {url}", flush=True)
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+        httpd.shutdown()
+        return 0
+
+    proc = desktop.open_app_window(url)
+    started = time.time()
+    from .jobs import jobs
+    try:
+        while True:
+            time.sleep(1.0)
+            now = time.time()
+            st = server.state
+            window_alive = proc is not None and proc.poll() is None
+            closed = False
+            # The page said goodbye (window closed) and did not come back (reload).
+            if st.bye_at and now - st.bye_at > 6 and st.last_heartbeat < st.bye_at:
+                closed = True
+            # Our window process ended and no page has pinged us recently.
+            if proc is not None and not window_alive and now - max(st.last_heartbeat, started) > 12:
+                closed = True
+            # Fallback browser without process tracking: stop after a long silence.
+            if proc is None and st.last_heartbeat and now - st.last_heartbeat > 600:
+                closed = True
+            # Finish background work first: uploads, drafts, and Gelato file links still in use.
+            if closed and not jobs.any_running() and not tunnel.registry.active():
+                break
+    except KeyboardInterrupt:
+        pass
+    core.log.info("Shutting down")
+    tunnel.registry.close_all()
+    httpd.shutdown()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
