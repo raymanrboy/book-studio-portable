@@ -23,8 +23,8 @@ code: []
 
 ## Інша довжина книги Gelato (крім 28 і 30)
 - [app/studio/core.py](../app/studio/core.py) — `DEFAULT_SETTINGS` `gelato.pageCounts`. Але `_merge()` не
-  змінює список, уже збережений у `settings.json` власника, — потрібна міграція, як для старого
-  `pageCount` у `Settings.__init__()`.
+  змінює список, уже збережений у `settings.json` власника, — потрібна міграція в `_upgrade()`.
+- Перевірити тестовою чернеткою з пронумерованими сторінками (Page 0 порожня, далі 1…N).
 - Решта рахується з цього списку: [app/studio/creator.py](../app/studio/creator.py) `gelato_page_options()`, `_gelato_page_count()`; [app/studio/orders.py](../app/studio/orders.py) `page_options()`.
 - Вікі: [integrations/gelato.md](integrations/gelato.md), [rules/printer-rule.md](rules/printer-rule.md), [rules/book-structure.md](rules/book-structure.md).
 
@@ -71,6 +71,10 @@ code: []
 - **Лише з прямого дозволу власника** і з оглядом безпеки.
 - [app/studio/printify.py](../app/studio/printify.py) `_check()` (списки `_READ`, `_WRITE`); [app/studio/gelato.py](../app/studio/gelato.py) `_allowed()`.
 - Тести `SafetyRails` у [app/tests/test_library_creator.py](../app/tests/test_library_creator.py); вікі [security.md](security.md).
+
+## Розібратися, чому книга в Printify/Gelato вийшла не такою
+- Відкрити запис у `app/data/logs/sends/` (піктограма «Журнал відправки» в Order Creator): кроки `files`, `catalog`, `pdf`, `link`, `readback`, тіло запиту й відповідь — [features/send-journal.md](features/send-journal.md).
+- Будову PDF для Gelato не міняти без тестової чернетки з пронумерованими сторінками ([integrations/gelato.md](integrations/gelato.md)).
 
 ## Змінити перевірку файлів Printify/Gelato
 - [app/studio/creator.py](../app/studio/creator.py) — `expected_files()`, `validate()`; розміри Printify — у налаштуваннях (`coverSize`, `pageSize`) з аналізу Master.

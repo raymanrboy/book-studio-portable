@@ -19,6 +19,12 @@ def png(path: Path, size, color):
     Image.new("RGB", size, color).save(path, "PNG")
 
 
+def journal(name: str) -> dict:
+    """One record of the send journal (data/logs/sends)."""
+    from studio import sendlog
+    return json.loads((sendlog.SENDS / name).read_text(encoding="utf-8"))
+
+
 class FakePrintify:
     """Minimal in-memory Printify: uploads, products, one read-only Master."""
 
@@ -114,6 +120,15 @@ class PrintifyDraftFlow(unittest.TestCase):
                                               "address2": "", "city": "Springfield", "region": "IL", "zip": "62701-0001",
                                               "country": "US"})
         self.assertFalse(any("send_to_production" in p for _, p in self.fake.calls))
+        # Everything that went to Printify is in the send journal, without the token.
+        record = journal(res["sendLog"])
+        self.assertEqual((record["provider"], record["kind"], record["ok"]), ("printify", "book+order", True))
+        self.assertEqual(record["request"]["title"], "4100000002 - Noah")
+        self.assertEqual(record["orderRequest"], sent)
+        self.assertEqual(record["orderResponse"], {"id": "order-on-hold-1"})
+        self.assertEqual([s["step"] for s in record["steps"]], ["files", "master", "uploads", "verify"])
+        self.assertEqual(len(record["steps"][0]["files"]), 25)
+        self.assertNotIn("fake-token-for-tests", json.dumps(record))
 
     def test_no_order_without_the_manual_approval_confirmation(self):
         core.settings.update({"printify": {"manualApprovalConfirmedAt": None}})
@@ -135,12 +150,20 @@ class PrintifyDraftFlow(unittest.TestCase):
                 printify._check("POST", path, order=True)
 
     def test_invalid_folder_uploads_nothing(self):
+        from studio import sendlog
         (self.root / "12.png").unlink()
+        before = set(sendlog.SENDS.glob("*.json"))
         with mock.patch.object(printify, "call", self.fake):
             with self.assertRaises(JobError):
-                creator.create_printify_draft(str(self.root), "X", Job("t"))
+                creator.create_printify_draft(str(self.root), "4100000003 - Failed", Job("t"))
         self.assertEqual(self.fake.uploads, {})
         self.assertEqual(self.fake.created, [])
+        new = sorted(set(sendlog.SENDS.glob("*.json")) - before)           # a failed attempt is journaled too
+        self.assertEqual(len(new), 1)
+        record = journal(new[0].name)
+        self.assertFalse(record["ok"])
+        self.assertIn("Відсутні файли", record["error"])
+        self.assertNotIn("request", record)                                  # nothing was sent
 
     def test_upload_failure_creates_no_product(self):
         def flaky(method, path, *a, **kw):
@@ -165,18 +188,19 @@ class PrintifyDraftFlow(unittest.TestCase):
 
 
 class GelatoDraftFlow(unittest.TestCase):
-    # Real catalog answers for photobooks-hardcover 8x8 with 30 inner pages (Gelato product API, 2026-09).
+    # Real catalog answers for the 20×20 cm hardcover with 30 inner pages (Gelato product API, 17.09.2026).
     PRODUCT = {"validPageCounts": list(range(28, 202, 2)),
-               "dimensions": {"Text block total width": {"value": "209.2", "measureUnit": "mm"},
-                              "Text block total height": {"value": "209.2", "measureUnit": "mm"}}}
+               "dimensions": {"Text block total width": {"value": "206", "measureUnit": "mm"},
+                              "Text block total height": {"value": "206", "measureUnit": "mm"}}}
     COVER = {"pagesCount": 34, "measureUnit": "mm",
-             "wraparoundInsideSize": {"width": 464.4, "height": 249.2, "left": 0, "top": 0},
-             "contentBackSize": {"width": 201.2, "height": 209.2, "left": 20, "top": 20},
-             "contentFrontSize": {"width": 201.2, "height": 209.2, "left": 243.2, "top": 20}}
+             "wraparoundInsideSize": {"width": 458.0, "height": 246.0, "left": 0, "top": 0},
+             "contentBackSize": {"width": 198.0, "height": 206.0, "left": 20, "top": 20},
+             "contentFrontSize": {"width": 198.0, "height": 206.0, "left": 240.0, "top": 20}}
 
     def test_one_pdf_with_cover_blank_pages_blank(self):
-        """Regression: the cover used to be sent as the only 'default' file (pages as 'inside', which
-        photo books ignore), so Gelato printed the cover on every page."""
+        """Regressions: without the blank endpapers Gelato put page 1 in the endpaper's place ("Page 0")
+        and left the last page empty (test draft, 17.09.2026); earlier the cover was the only 'default'
+        file and was printed on every page."""
         vault.set("gelato_api_key", "fake-gelato-key")
         gelato._geometry.clear()
         gelato._products.clear()
@@ -187,6 +211,11 @@ class GelatoDraftFlow(unittest.TestCase):
             if method == "GET" and "/cover-dimensions" in url:
                 self.assertIn("pageCount=30", url)
                 return self.COVER
+            if method == "GET" and url.endswith("/orders/gelato-order-1"):  # read back right after creating
+                session = sent["orderReferenceId"].removeprefix("draft-")
+                size = core.data_path("tmp", "gelato", session, "book.pdf").stat().st_size
+                return {"items": [{"productUid": "p", "pageCount": 30, "fulfillmentStatus": "draft",
+                                   "files": [{"type": "default", "mimeType": "application/pdf", "sizeBytes": size}]}]}
             if method == "GET":
                 return self.PRODUCT
             sent.update(body)
@@ -220,12 +249,29 @@ class GelatoDraftFlow(unittest.TestCase):
         widths = [int(w) for w in re.findall(r"/Width (\d+)", pdf)]
         self.assertEqual(len(boxes), 33)                                 # cover, blank, 30 pages, blank
         self.assertEqual(widths, [466, 16] + [100 + i for i in range(1, 31)] + [16])
+        self.assertEqual(res["pdfPages"], 33)
         pt = 72 / 25.4
-        self.assertAlmostEqual(boxes[0][0], 464.4 * pt, places=1)       # cover sheet at Gelato's size
-        self.assertAlmostEqual(boxes[0][1], 249.2 * pt, places=1)
+        self.assertAlmostEqual(boxes[0][0], 458 * pt, places=1)         # cover sheet at Gelato's size
+        self.assertAlmostEqual(boxes[0][1], 246 * pt, places=1)
         for w, h in boxes[1:]:
-            self.assertAlmostEqual(w, 209.2 * pt, places=1)             # inner pages with bleed
-            self.assertAlmostEqual(h, 209.2 * pt, places=1)
+            self.assertAlmostEqual(w, 206 * pt, places=1)               # inner pages with bleed
+            self.assertAlmostEqual(h, 206 * pt, places=1)
+
+        # The send journal keeps what was sent and what came back — never the key.
+        record = journal(res["sendLog"])
+        self.assertEqual((record["provider"], record["kind"], record["ok"], record["format"]), ("gelato", "draft", True, "hardcover_8x8"))
+        self.assertEqual(record["request"], sent)
+        self.assertEqual(record["response"]["id"], "gelato-order-1")
+        steps = {s["step"]: s for s in record["steps"]}
+        self.assertEqual(list(steps), ["files", "catalog", "pdf", "link", "readback"])
+        self.assertTrue(steps["readback"]["fileFetched"])                # Gelato already has our PDF
+        self.assertEqual(steps["readback"]["pageCount"], 30)
+        self.assertEqual(steps["files"]["pageCount"], 30)
+        self.assertEqual(steps["catalog"]["geometry"]["coverMm"], [458.0, 246.0])
+        self.assertEqual((steps["pdf"]["pdfPages"], steps["pdf"]["coverPx"]), (33, [466, 250]))
+        self.assertLess(steps["pdf"]["coverTrimMm"], 10)
+        self.assertEqual(steps["link"]["url"], "https://fake.trycloudflare.com/book.pdf")
+        self.assertNotIn("fake-gelato-key", json.dumps(record))
 
     ADDRESS = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Berlin",
                "postCode": "10115", "country": "DE"}
@@ -260,13 +306,15 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual((checked["ok"], checked["pageCount"], checked["expected"]), (True, 28, 29))
         self.assertEqual(sent["items"][0]["pageCount"], 28)
         self.assertTrue(any(u.endswith("cover-dimensions?pageCount=28") for u in asked))
-        self.assertEqual(res["pdfPages"], 31)
+        self.assertEqual((res["pdfPages"], res["pageCount"]), (31, 28))
         session = sent["orderReferenceId"].removeprefix("draft-")
         pdf = core.data_path("tmp", "gelato", session, "book.pdf").read_bytes().decode("latin-1")
         widths = [int(w) for w in re.findall(r"/Width (\d+)", pdf)]
         self.assertEqual(widths, [466, 16] + [100 + i for i in range(1, 29)] + [16])  # cover, blank, 28 pages, blank
 
     def test_length_gelato_does_not_print_stops_before_anything_is_made(self):
+        from studio import sendlog
+        before = set(sendlog.SENDS.glob("*.json"))
         vault.set("gelato_api_key", "fake-gelato-key")
         gelato._geometry.clear()
         gelato._products.clear()
@@ -290,6 +338,39 @@ class GelatoDraftFlow(unittest.TestCase):
         gelato._products.clear()
         self.assertIn("Gelato не друкує Softcover 8×8 на 28 сторінках (можна від 30)", str(ctx.exception))
         self.assertEqual(calls, ["GET"])  # only the catalog was read: no PDF link, no draft
+        new = sorted(set(sendlog.SENDS.glob("*.json")) - before)
+        record = journal(new[0].name)
+        self.assertEqual((len(new), record["ok"], record["format"]), (1, False, "softcover_8x8"))
+        self.assertIn("на 28 сторінках", record["error"])
+        self.assertEqual([s["step"] for s in record["steps"]], ["files"])
+
+    def test_link_confirmed_through_public_dns_when_the_router_does_not_know_it_yet(self):
+        link = tunnel.FileTunnel(Path("."), ("book.pdf",))
+        link.public_url = "https://brand-new.trycloudflare.com"
+        asked = []
+        with mock.patch.object(tunnel, "_head_ok", lambda url: asked.append(url) or False), \
+                mock.patch.object(tunnel, "_head_ok_public_dns", lambda url: len(asked) >= 3), \
+                mock.patch.object(tunnel.time, "sleep", lambda s: None):
+            link._wait_reachable()
+        self.assertTrue(link.reachable)
+        self.assertEqual(asked[0], "https://brand-new.trycloudflare.com/book.pdf")
+
+    def test_drafts_are_asked_for_in_the_order_search(self):
+        bodies = []
+        with mock.patch.object(gelato, "call", lambda method, url, body=None, **kw: bodies.append(body) or {"orders": []}):
+            gelato.all_orders()
+        self.assertEqual(bodies[0]["orderTypes"], ["order", "draft"])
+
+    def test_saved_inch_products_become_the_metric_ones(self):
+        old = {"gelato": {"formats": {
+            "hardcover_8x8": {"label": "Hardcover 8×8", "productUid": "photobooks-hardcover_pf_8x8-inch-200x200-mm_pt_170-gsm-65lb-coated-silk_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_130-gsm-65-lb-cover-coated-silk_ver"},
+            "softcover_5x5": {"label": "Softcover 5.5×5.5", "productUid": "photobooks-softcover_pf_5_5x5_5-inch-140x140-mm_pt_170-gsm-65lb-coated-silk_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_250-gsm-100-lb-cover-coated-silk_ver"},
+        }}}
+        with mock.patch.object(core, "read_json", lambda *a, **kw: old):
+            saved = core.Settings().section("gelato")["formats"]
+        self.assertEqual(saved, core.DEFAULT_SETTINGS["gelato"]["formats"])
+        self.assertIn("_pf_200x200-mm-8x8-inch_", saved["hardcover_8x8"]["productUid"])
+        self.assertIn("_pf_140x140-mm-5_5x5_5-inch_", saved["softcover_5x5"]["productUid"])
 
     def test_page_counts_of_every_format(self):
         gelato._products.clear()
@@ -333,15 +414,22 @@ class GelatoDraftFlow(unittest.TestCase):
             with Image.open(src) as a, Image.open(joined) as b:
                 self.assertEqual(a.tobytes(), b.tobytes())
 
-    def test_cover_with_wrong_proportions_is_flagged(self):
-        geo = {"coverMm": [415.28, 209.2], "pageMm": [209.2, 209.2], "marginMm": 3}  # softcover: only 3 mm bleed
+    def test_only_a_really_wrong_cover_is_flagged(self):
+        """The owner's Canva cover (4672×2464) always loses a few mm on Gelato — that is planned for and
+        only journaled; a picture of a different shape altogether is still pointed out."""
+        geo = {"coverMm": [408.72, 206.0], "pageMm": [206.0, 206.0], "marginMm": 3}  # 20×20 softcover, 28 pages
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            png(root / "Cover.png", (4672 // 20, 2464 // 20), (9, 9, 9))  # Printify-shaped cover (1.896:1)
+            png(root / "Cover.png", (4672 // 20, 2464 // 20), (9, 9, 9))  # the usual Canva cover (1.896:1)
+            png(root / "Square.png", (100, 100), (9, 9, 9))
             png(root / "1.png", (40, 40), (1, 1, 1))
-            warnings = creator.build_photobook_pdf(root / "Cover.png", [root / "1.png"], root / "book.pdf", geo)
-        self.assertEqual(len(warnings), 1)
-        self.assertIn("обріжуться", warnings[0])
+            usual = creator.build_photobook_pdf(root / "Cover.png", [root / "1.png"], root / "a.pdf", geo)
+            square = creator.build_photobook_pdf(root / "Square.png", [root / "1.png"], root / "b.pdf", geo)
+        self.assertEqual(usual["warnings"], [])
+        self.assertAlmostEqual(usual["coverTrimMm"], 4.8, delta=0.3)
+        self.assertEqual((usual["pdfPages"], usual["coverPx"]), (4, [233, 123]))   # cover, blank, page, blank
+        self.assertEqual(len(square["warnings"]), 1)
+        self.assertIn("обріжуться", square["warnings"][0])
 
 
 class CreatorStartsEmpty(unittest.TestCase):

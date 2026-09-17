@@ -12,6 +12,7 @@ code:
   - app/studio/etsy.py
   - app/studio/printify.py
   - app/studio/gelato.py
+  - app/studio/sendlog.py
 ---
 # Маршрути сервера
 
@@ -130,6 +131,12 @@ code:
 | POST | `/api/printify/master/analyze` | token | `_analyze` | settings.js `pickMaster` |
 | POST | `/api/printify/master/save` | token | `_save_master` | settings.js `pickMaster` |
 | POST | `/api/gelato/test` | token | `_test` | settings.js |
+
+## Журнал відправок — [sendlog.py](../../app/studio/sendlog.py)
+
+| Метод | Шаблон | Доступ | Функція | Хто викликає |
+|---|---|---|---|---|
+| POST | `/api/sends/open` | token | `_open` | creator.js `sendLogButton` (виділяє запис у Провіднику або відкриває папку) |
 
 ## Пов'язане
 

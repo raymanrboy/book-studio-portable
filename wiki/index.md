@@ -24,6 +24,7 @@ code: []
 - [Бібліотека книг](features/library.md) — галерея, нова книга, паспорт книги, модель `book.json`.
 - [Order Creator](features/order-creator.md) — книга/замовлення On hold у Printify, чернетка Gelato.
 - [Налаштування](features/settings.md) — ключі, Etsy, Master Printify, дані.
+- [Журнал відправок](features/send-journal.md) — що саме пішло в Printify і Gelato при кожній спробі.
 - [Прибуток](features/profit.md) — прихований до 1 жовтня.
 
 ## Правила предметної області
@@ -45,7 +46,7 @@ code: []
 
 - [Запуск і завершення](architecture/runtime.md)
 - [Сервер](architecture/server.md) — маршрути, фонові задачі, помилки, налаштування.
-- [Маршрути сервера](architecture/api-routes.md) — усі 76, з тим, хто їх викликає.
+- [Маршрути сервера](architecture/api-routes.md) — усі 77, з тим, хто їх викликає.
 - [Інтерфейс](architecture/frontend.md) — оболонка, контракт сторінки, помічники, візуальна система.
 - [Дані](architecture/data.md) — що лежить в `app/data`.
 

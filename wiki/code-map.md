@@ -38,7 +38,8 @@ code:
 | [etsy.py](../app/studio/etsy.py) | Etsy API v3: OAuth, сесія, лістинги, чеки | `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `fetch_listing()`, `fetch_all_receipts()`, `decode_session_key()` |
 | [printify.py](../app/studio/printify.py) | Безпечний клієнт Printify | `_check()`, `call()`, `all_orders()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `analyze_master()` |
 | [gelato.py](../app/studio/gelato.py) | Безпечний клієнт Gelato | `_allowed()`, `call()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
-| [tunnel.py](../app/studio/tunnel.py) | Тимчасове публічне посилання на PDF для Gelato | `FileTunnel`, `TunnelRegistry`, `cleanup_stale()` |
+| [tunnel.py](../app/studio/tunnel.py) | Тимчасове публічне посилання на PDF для Gelato | `FileTunnel`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()` |
+| [sendlog.py](../app/studio/sendlog.py) | Журнал відправок у Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
 | [images.py](../app/studio/images.py) | Прев'ю, перевірка PNG, склеювання розвороту | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `image_info()` |
 | [library.py](../app/studio/library.py) | Бібліотека книг: модель, імпорт, експорт, інструкція | `load()`, `save()`, `summary()`, `completeness()`, `scan_folder()`, `parse_text_json()`, `agent_guide()`, `export_book()` |
 | [creator.py](../app/studio/creator.py) | Order Creator: перевірка файлів, Printify, Gelato, перетягування | `validate()`, `gelato_page_options()`, `gelato_pages_problem()`, `create_printify_draft()`, `create_gelato_draft()`, `build_photobook_pdf()`, `extract_zip()`, `dropped_folder()`, `guess_child_name()` |

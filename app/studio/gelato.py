@@ -91,7 +91,9 @@ def call(method: str, url: str, body: Any = None, action: str = "Запит до
 
 
 def search_orders(offset: int = 0, limit: int = 100) -> list:
-    data = call("POST", f"{ORDER_API}/orders:search", {"limit": limit, "offset": offset}, action="Замовлення Gelato")
+    # Drafts are asked for by name: a draft made from Book Studio moves its receipt to "in work".
+    body = {"limit": limit, "offset": offset, "orderTypes": ["order", "draft"]}
+    data = call("POST", f"{ORDER_API}/orders:search", body, action="Замовлення Gelato")
     return list((data or {}).get("orders") or [])
 
 

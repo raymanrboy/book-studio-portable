@@ -98,6 +98,9 @@ const P = {
   monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
   motion: '<path d="M3 12c1.8-3.6 3.7-3.6 5.5 0s3.7 3.6 5.5 0 3.7-3.6 5.5 0"/><path d="M3 17h18" opacity=".45"/>',
 
+  // ---- send journal (what went to Printify / Gelato)
+  sendLog: '<circle cx="5" cy="7" r="1.1"/><circle cx="5" cy="12" r="1.1"/><circle cx="5" cy="17" r="1.1"/><path d="M9 7h11M9 12h11M9 17h7.5"/>',
+
   // ---- profit (page hidden for now)
   dollar: '<path d="M12 3v18M16.5 7.5c-.8-1.3-2.4-2-4.5-2-2.5 0-4 1.2-4 3s1.5 2.6 4 3.2 4.5 1.4 4.5 3.3-1.8 3.2-4.5 3.2c-2.3 0-4-.9-4.8-2.4"/>',
   bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',

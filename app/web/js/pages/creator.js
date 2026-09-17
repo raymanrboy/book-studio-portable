@@ -178,7 +178,7 @@ export async function mount(view) {
     const s = cur();
     return html`<section class="card card-pad stack">
       <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">Чернетка</h3></div>
-      <div id="cr-alert">${s.error ? html`<div class="notice notice-error">${ic('alertCircle')}<div style="white-space:pre-line">${s.error}</div></div>` : ''}</div>
+      <div id="cr-alert">${s.error ? html`<div class="notice notice-error">${ic('alertCircle')}<div class="grow" style="white-space:pre-line">${s.error}</div>${sendLogButton(null)}</div>` : ''}</div>
       <div class="row" style="justify-content:center;padding:4px 0">
         <button class="btn btn-xl create-btn btn-block" id="cr-create" ${s.running ? 'disabled' : ''}>
           ${s.running ? html`<span class="spinner" style="border-color:color-mix(in srgb, currentColor 35%, transparent);border-top-color:currentColor"></span>Створення…` : html`${ic('send', 'icon-l')}<span id="cr-create-label">${createLabel()}</span>`}</button>
@@ -191,6 +191,9 @@ export async function mount(view) {
       <div id="cr-result">${resultHtml()}</div>
     </section>`;
   }
+
+  // Every send is written to data/logs/sends — the icon opens this one's record (or the folder).
+  const sendLogButton = (r) => ib('sendLog', 'Журнал відправки', `data-act="open-sendlog" data-file="${r?.sendLog || ''}"`, { cls: 'sm' });
 
   function resultHtml() {
     const s = cur();
@@ -212,7 +215,7 @@ export async function mount(view) {
         ${(r.warnings || []).map((w) => html`<div class="notice notice-warn" style="margin-top:10px">${ic('alert')}<div>${w}</div></div>`)}
         <div class="row" style="margin-top:14px">${r.order
           ? html`<button class="btn btn-primary grow" data-act="open-orders">${ic('external', 'icon-s')}Замовлення в Printify</button>${ib('copy', 'Копіювати Order ID', 'data-act="copy-printify-order"')}`
-          : html`<button class="btn btn-primary grow" data-act="open-product">${ic('external', 'icon-s')}Відкрити в Printify</button>${ib('copy', 'Копіювати Product ID', 'data-act="copy-id"')}`}</div>
+          : html`<button class="btn btn-primary grow" data-act="open-product">${ic('external', 'icon-s')}Відкрити в Printify</button>${ib('copy', 'Копіювати Product ID', 'data-act="copy-id"')}`}${sendLogButton(r)}</div>
       </div>`;
     }
     return html`<div class="result-card">
@@ -230,7 +233,8 @@ export async function mount(view) {
         <b>Важливо:</b> Gelato завантажує файли лише коли ви відкриєте чернетку в Dashboard. Зробіть це зараз, поки тимчасове посилання працює — лишилось <b class="mono" id="cr-countdown">--:--</b>.
         <div class="row" style="margin-top:8px"><button class="btn btn-sm btn-primary" data-act="open-gelato">${ic('external', 'icon-s')}Gelato Dashboard</button>
           ${ib('copy', 'Копіювати Order ID', 'data-act="copy-order"', { cls: 'sm' })}
-          ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="close-tunnel"', { cls: 'sm' })}</div></div></div>
+          ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="close-tunnel"', { cls: 'sm' })}
+          ${sendLogButton(r)}</div></div></div>
     </div>`;
   }
 
@@ -620,6 +624,7 @@ export async function mount(view) {
       else if (a === 'copy-id') copyText(st.printify.result?.productId || '', 'Product ID скопійовано');
       else if (a === 'copy-order') copyText(st.gelato.result?.orderId || '', 'Order ID скопійовано');
       else if (a === 'open-gelato') openExternal('https://dashboard.gelato.com/');
+      else if (a === 'open-sendlog') api('/api/sends/open', { method: 'POST', body: { file: t.dataset.file || '' } }).catch((er) => toast(er.message, 'error'));
       else if (a === 'close-tunnel') {
         try { await api('/api/creator/gelato/close-tunnel', { method: 'POST', body: { orderId: st.gelato.result.orderId } }); } catch {}
         clearInterval(tunnelTimer);

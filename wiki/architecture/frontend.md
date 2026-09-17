@@ -47,7 +47,7 @@ code:
 ## Інші модулі
 
 - `icons.js` — піктограми 24×24, обведення 1,6. **Одна піктограма — одне значення.**
-  Є логотипи сервісів: `etsy`, `canva`, `printify`, `gelato`.
+  Є логотипи сервісів: `etsy`, `canva`, `printify`, `gelato`; `sendLog` — журнал відправок.
 - `handoff.js` — `give(to, data)` / `take(to)`: одноразова передача між сторінками лише в пам'яті
   (картка замовлення → Order Creator).
 - `order-bits.js` — спільне для Замовлень і Order Creator ([features/orders.md](../features/orders.md)).
