@@ -143,6 +143,22 @@ class GelatoValidation(unittest.TestCase):
             creator._validation_cache.clear()
             self.assertTrue(creator.validate("gelato", str(root))["ok"])
 
+    def test_gelato_book_is_as_long_as_the_folder(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            png(root / "Cover.png", (80, 40))
+            for i in range(1, 28):
+                png(root / f"{i}.png")
+            res = creator.validate("gelato", str(root))
+            self.assertEqual((res["ok"], res["pageCount"]), (False, 28))    # 1–27: page 28 is missing
+            self.assertIn("Відсутні файли (1 шт.): 28", res["errors"][0])
+            png(root / "28.png")
+            res = creator.validate("gelato", str(root))
+            self.assertEqual((res["ok"], res["pageCount"], res["found"]), (True, 28, 29))
+            png(root / "31.png")                                              # past the longest book: an extra file
+            res = creator.validate("gelato", str(root))
+            self.assertEqual((res["ok"], res["pageCount"]), (False, 30))
+
     def test_address(self):
         self.assertTrue(creator.validate_address({"country": "US"}))
         ok = {"firstName": "A", "lastName": "B", "addressLine1": "1 St", "city": "X", "postCode": "1", "country": "DE"}

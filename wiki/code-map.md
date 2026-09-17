@@ -37,12 +37,13 @@ code:
 | [settings_api.py](../app/studio/settings_api.py) | Налаштування, ключі, відкриття посилань, імпорт зі старих програм | `integrations()`, `_open_url()`, `_legacy_values()`, `legacy_sources()` |
 | [etsy.py](../app/studio/etsy.py) | Etsy API v3: OAuth, сесія, лістинги, чеки | `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `fetch_listing()`, `fetch_all_receipts()`, `decode_session_key()` |
 | [printify.py](../app/studio/printify.py) | Безпечний клієнт Printify | `_check()`, `call()`, `all_orders()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `analyze_master()` |
-| [gelato.py](../app/studio/gelato.py) | Безпечний клієнт Gelato | `_allowed()`, `call()`, `all_orders()`, `photobook_geometry()`, `create_draft_order()` |
-| [tunnel.py](../app/studio/tunnel.py) | Тимчасове публічне посилання на PDF для Gelato | `FileTunnel`, `TunnelRegistry`, `cleanup_stale()` |
+| [gelato.py](../app/studio/gelato.py) | Безпечний клієнт Gelato | `_allowed()`, `call()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
+| [tunnel.py](../app/studio/tunnel.py) | Тимчасове публічне посилання на PDF для Gelato | `FileTunnel`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()` |
+| [sendlog.py](../app/studio/sendlog.py) | Журнал відправок у Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
 | [images.py](../app/studio/images.py) | Прев'ю, перевірка PNG, склеювання розвороту | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `image_info()` |
 | [library.py](../app/studio/library.py) | Бібліотека книг: модель, імпорт, експорт, інструкція | `load()`, `save()`, `summary()`, `completeness()`, `scan_folder()`, `parse_text_json()`, `agent_guide()`, `export_book()` |
-| [creator.py](../app/studio/creator.py) | Order Creator: перевірка файлів, Printify, Gelato, перетягування | `validate()`, `create_printify_draft()`, `create_gelato_draft()`, `build_photobook_pdf()`, `extract_zip()`, `dropped_folder()`, `guess_child_name()` |
-| [orders.py](../app/studio/orders.py) | Конвеєр замовлень: друкарня, книга, розстановка сторінок | `plan_for()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()`, `page_number()` |
+| [creator.py](../app/studio/creator.py) | Order Creator: перевірка файлів, Printify, Gelato, перетягування | `validate()`, `gelato_page_options()`, `gelato_pages_problem()`, `create_printify_draft()`, `create_gelato_draft()`, `build_photobook_pdf()`, `extract_zip()`, `dropped_folder()`, `guess_child_name()` |
+| [orders.py](../app/studio/orders.py) | Конвеєр замовлень: друкарня, книга, розстановка сторінок | `plan_for()`, `page_options()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()`, `page_number()` |
 | [profit.py](../app/studio/profit.py) | Синхронізація, знімок, етапи, облік | `_sync()`, `startup_sync()`, `normalize_receipt()`, `build_view()`, `cached_view()`, `order_stage()`, `picker_orders()` |
 | [reconcile.py](../app/studio/reconcile.py) | Зіставлення чеків Etsy із замовленнями друку | `match()`, `cover_label()`, `is_name_match()`, `printify_only_rows()` |
 | [outcomes.py](../app/studio/outcomes.py) | Скасування, повернення, заміни | `apply()`, `auto_state()`, `pod_order_info()` |
@@ -59,7 +60,7 @@ code:
 | [js/icons.js](../app/web/js/icons.js) | Піктограми | `icon()` |
 | [js/lightbox.js](../app/web/js/lightbox.js) | Переглядач зображень | `openLightbox()` |
 | [js/handoff.js](../app/web/js/handoff.js) | Передача даних між сторінками в пам'яті | `give()`, `take()` |
-| [js/order-bits.js](../app/web/js/order-bits.js) | Спільне для Замовлень і Order Creator | `STAGES`, `planText()`, `addressFromEtsy()`, `syncOrders()`, `spreadsOf()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()` |
+| [js/order-bits.js](../app/web/js/order-bits.js) | Спільне для Замовлень і Order Creator | `STAGES`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `spreadsOf()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()` |
 | [js/pages/orders.js](../app/web/js/pages/orders.js) | Замовлення: черга і картка | `mountQueue()`, `mountCard()` |
 | [js/pages/library.js](../app/web/js/pages/library.js) | Галерея бібліотеки, нова книга, інструкція | `mount()`, `openAddBook()`, `saveGuide()` |
 | [js/pages/book.js](../app/web/js/pages/book.js) | Паспорт книги | `mount()` |
@@ -78,7 +79,7 @@ code:
 | [test_states.py](../app/tests/test_states.py) | Стани замовлень, етапи, інкрементна синхронізація, API станів |
 | [test_library_creator.py](../app/tests/test_library_creator.py) | Текст JSON, імпорт папки, перевірка файлів, запобіжники Printify/Gelato |
 | [test_flows.py](../app/tests/test_flows.py) | Створення в Printify/Gelato з імітаціями, перетягування, захист Etsy, OAuth |
-| [test_orders.py](../app/tests/test_orders.py) | Правило друкарні, розстановка сторінок, інструкція, частковий імпорт, правило синхронізації |
+| [test_orders.py](../app/tests/test_orders.py) | Правило друкарні, розстановка сторінок, довжина книги Gelato, інструкція, частковий імпорт, правило синхронізації |
 | [test_wiki.py](../app/tests/test_wiki.py) | Вікі відповідає коду |
 
 Детальніше — [dev/testing.md](dev/testing.md).

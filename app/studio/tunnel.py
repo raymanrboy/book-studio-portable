@@ -51,6 +51,7 @@ class FileTunnel:
         self.folder = Path(folder).resolve()
         self.files = files
         self.public_url: str | None = None
+        self.reachable: bool | None = None  # did the file answer from outside before the draft was made
         self._httpd: ThreadingHTTPServer | None = None
         self._proc: subprocess.Popen | None = None
 
@@ -85,18 +86,18 @@ class FileTunnel:
         return self.public_url
 
     def _wait_reachable(self) -> None:
-        import urllib.request
         deadline = time.time() + 25
         probe = f"{self.public_url}/{self.files[0]}"
+        tries = 0
         while time.time() < deadline:
-            try:
-                req = urllib.request.Request(probe, method="HEAD", headers={"User-Agent": "BookStudio"})
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    if resp.status == 200:
-                        return
-            except Exception:
-                pass
+            tries += 1
+            # The home router often has not heard of a brand-new trycloudflare name yet (while Gelato's
+            # resolvers have), so from the third try the address is also asked from public DNS.
+            if _head_ok(probe) or (tries >= 3 and _head_ok_public_dns(probe)):
+                self.reachable = True
+                return
             time.sleep(1.5)
+        self.reachable = False
         core.log.warning("Tunnel %s not confirmed reachable; continuing", self.public_url)
 
     def stop(self) -> None:
@@ -117,6 +118,46 @@ class FileTunnel:
             except Exception:
                 pass
             self._httpd = None
+
+
+def _head_ok(url: str) -> bool:
+    import urllib.request
+    try:
+        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "BookStudio"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def _head_ok_public_dns(url: str) -> bool:
+    """The same check with the address taken from Cloudflare's public DNS (1.1.1.1, DNS over HTTPS)."""
+    import http.client
+    import json
+    import socket
+    import ssl
+    import urllib.parse
+    import urllib.request
+    parts = urllib.parse.urlsplit(url)
+    host = parts.hostname or ""
+    try:
+        req = urllib.request.Request(f"https://1.1.1.1/dns-query?name={host}&type=A",
+                                     headers={"accept": "application/dns-json"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            addresses = [a["data"] for a in json.load(resp).get("Answer") or [] if a.get("type") == 1]
+        for ip in addresses[:2]:
+            raw = socket.create_connection((ip, 443), timeout=8)
+            conn = http.client.HTTPSConnection(host, timeout=8)
+            conn.sock = ssl.create_default_context().wrap_socket(raw, server_hostname=host)
+            try:
+                conn.request("HEAD", parts.path or "/", headers={"User-Agent": "BookStudio"})
+                if conn.getresponse().status == 200:
+                    return True
+            finally:
+                conn.close()
+    except Exception:
+        pass
+    return False
 
 
 class TunnelRegistry:

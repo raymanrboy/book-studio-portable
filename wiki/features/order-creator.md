@@ -20,9 +20,12 @@ code:
 - Ліва колонка — кроки:
   - **Printify**: 1 Папка з файлами → 2 Назва → 3 Адреса отримувача → 4 Чернетка.
   - **Gelato**: 1 Формат (Hardcover 8×8, Softcover 8×8, Softcover 5.5×5.5) → 2 Папка → 3 Назва →
-    4 Адреса → 5 Чернетка.
+    4 Адреса → 5 Чернетка. Кнопки форматів: підказка, скільки сторінок друкує Gelato («28–200 стор.»,
+    з каталогу — `loadPageCounts()`, лише коли є ключ); якщо папка має 28 сторінок, а формат їх не
+    приймає — кнопка жовта, під нею одне речення, «Створити» не пускає (`formatProblem()`).
 - Права колонка — **структура**: обкладинка і всі розвороти з мініатюрами; зелені/червоні назви файлів
-  за результатом перевірки; клік — переглядач.
+  за результатом перевірки; клік — переглядач. Для Gelato до вибору папки — «28 або 30 стор.»,
+  після перевірки — точне число з папки (`pageCount` у відповіді перевірки).
 - **Папка**: вибрати, вставити шлях або **перетягнути папку чи ZIP** на блок (поле підсвічується;
   показується власна назва папки, а шлях — копії в програмі). Перевірка запускається сама.
 - **Назва**: `номер чека - ім'я дитини` (кнопка-чек заповнює назву й адресу із замовлення Etsy).
@@ -30,7 +33,9 @@ code:
 - **Кнопка** змінює підпис: Gelato — «Створити чернетку»; Printify з адресою — «Створити чернетку
   замовлення», без адреси — «Створити книгу без замовлення».
 - **Результат**: картка з ID, перевірками, попередженнями; Printify — «Замовлення в Printify» або
-  «Відкрити в Printify»; Gelato — таймер тимчасового посилання і «Gelato Dashboard».
+  «Відкрити в Printify»; Gelato — будова PDF, таймер тимчасового посилання і
+  «Gelato Dashboard». В обох — піктограма «Журнал відправки» (`sendLogButton()`); у картці помилки
+  вона відкриває папку журналу ([send-journal.md](send-journal.md)).
 
 ## Вибір замовлення Etsy
 
@@ -65,22 +70,34 @@ code:
 ## Gelato: що відбувається на сервері
 
 `create_gelato_draft(folder, title, format_key, address, job)`:
-1. Адреса, легка перевірка файлів (`Cover.png` + `1…30.png`, без вимог до розміру).
-2. Розміри книги з каталогу Gelato (`photobook_geometry()`: 30 сторінок має бути дозволено).
-3. Один PDF (`build_photobook_pdf()`): обкладинка, порожній форзац, 30 сторінок, порожній нахзац;
-   зображення без перестиснення (PNG Canva склеюється в один IDAT — `_one_idat()`), підгонка з
-   обрізанням країв; попередження, якщо обкладинка іншої пропорції.
-4. Тимчасове посилання Cloudflare на цей PDF ([integrations/gelato.md](../integrations/gelato.md)).
+1. Адреса, легка перевірка файлів (`Cover.png` + `1…30.png` або `1…28.png`, без вимог до розміру).
+   Довжину книги визначає папка (`_gelato_page_count()`): найкоротша дозволена, що вміщає найбільший
+   номер сторінки — `1…27` → бракує `28`; `1…29` → бракує `30`.
+2. Чи друкує Gelato стільки сторінок у цьому форматі (`gelato_pages_problem()`, каталог) і розміри
+   книги (`photobook_geometry()` з тією ж кількістю). Не друкує → помилка, нічого не створено.
+3. Один PDF (`build_photobook_pdf()`): обкладинка, порожній форзац, 28 або 30 сторінок, порожній
+   нахзац — порожні обов'язкові ([integrations/gelato.md](../integrations/gelato.md)); зображення без
+   перестиснення (PNG Canva склеюється в один IDAT — `_one_idat()`), підгонка з обрізанням країв;
+   попередження лише коли обкладинка обрізається більш ніж на 10 мм.
+4. Тимчасове посилання Cloudflare на цей PDF (перевірка доступності — і через публічний DNS).
 5. `create_draft_order()`: `orderReferenceId` = `<чек>-<сеанс>` (щоб після синхронізації замовлення
-   перейшло в «В роботі»), `files: [{type: "default", url}]`, метадані.
-6. Посилання живе 15 хв (`tunnelKeepAliveSeconds`): Gelato забирає файл, коли відкрити чернетку в Dashboard.
+   перейшло в «В роботі»), `files: [{type: "default", url}]`, метадані; потім чернетка перечитується
+   для журналу (`_journal_readback()`).
+6. Посилання живе 15 хв (`tunnelKeepAliveSeconds`); Gelato забирає файл сам, приблизно за хвилину.
+
+Обидві відправки (Printify і Gelato) пишуть [журнал відправок](send-journal.md): обгортки
+`create_printify_draft()` / `create_gelato_draft()` кличуть `_printify_draft()` / `_gelato_draft()`
+усередині `sendlog.attempt()`.
 
 ## Де в коді
 
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `mount()`, `renderStatus()`, `folderCard()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `expected_files()`, `validate()`, `create_printify_draft()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `mount()`, `renderStatus()`, `folderCard()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `expected_files()`, `validate()`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_draft()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
 - [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `photobook_geometry()`, `create_draft_order()`
+- [app/studio/gelato.py](../../app/studio/gelato.py) — `page_counts()`, `photobook_geometry()`, `create_draft_order()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `pagesText()`
+- [app/studio/sendlog.py](../../app/studio/sendlog.py) — `attempt()`, `step()`
+- [app/web/css/app.css](../../app/web/css/app.css) — `.fmt-pill.bad`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `take()`
 - Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`PrintifyValidation`, `GelatoValidation`)
 

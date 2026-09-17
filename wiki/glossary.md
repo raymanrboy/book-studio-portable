@@ -18,6 +18,11 @@ code: []
 | Замовлення (сторінка), черга | Перший екран: список замовлень Etsy за етапами | [orders.js](../app/web/js/pages/orders.js) `mountQueue()` |
 | Картка замовлення | Один екран на одне замовлення | [orders.js](../app/web/js/pages/orders.js) `mountCard()` |
 | Нові / В роботі / Відправлені | Етапи замовлення (`new` / `work` / `shipped`) | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
+| Машинка (вкладка) | *План:* четверта вкладка між «В роботі» і «Відправлені» — друкарня вже відправила (є трек-номер або статус «відправлено»), а в Etsy ще не позначено | [plans/roadmap.md](plans/roadmap.md); вкладки — [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
+| Бокс, коробка (вкладка) | «Відправлені» — позначені відправленими в Etsy | [profit.py](../app/studio/profit.py) `order_stage()` |
+| Годинник (вкладка) | «В роботі» | [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
+| Квадратик справа (у рядку черги) | Голубий чип праворуч; зараз — ім'я дитини, за планом — статус друкарні англійською, як є | [orders.js](../app/web/js/pages/orders.js) `mountQueue()` (`rowHtml`) |
+| Трек-номер, перевізник (USPS…) | *План:* чип після чипа друкарні, клік копіює номер; зараз синхронізація його не зберігає | [plans/roadmap.md](plans/roadmap.md); [printify.py](../app/studio/printify.py) `slim_order()`, [gelato.py](../app/studio/gelato.py) `slim_order()` |
 | Оновити замовлення, синхронізація | Завантаження замовлень Etsy + Printify + Gelato | [profit.py](../app/studio/profit.py) `_sync()`, `startup_sync()`; [order-bits.js](../app/web/js/order-bits.js) `syncOrders()` |
 | Друкарня, постачальник | Printify або Gelato | [orders.py](../app/studio/orders.py) `plan_for()` |
 | Правило друкарні | Hardcover у США → Printify, решта → Gelato | [rules/printer-rule.md](rules/printer-rule.md) |
@@ -34,6 +39,9 @@ code: []
 | До друку | Передача замовлення в Order Creator | [orders.js](../app/web/js/pages/orders.js) `print()`; [handoff.js](../app/web/js/handoff.js) `give()` |
 | Order Creator | Сторінка створення книги/чернетки | [creator.js](../app/web/js/pages/creator.js) `mount()`; [creator.py](../app/studio/creator.py) |
 | Чернетка Gelato | Замовлення Gelato з `orderType: draft` | [creator.py](../app/studio/creator.py) `create_gelato_draft()` |
+| Логи відправки, журнал відправок | JSON про кожну відправку в Printify/Gelato (`data/logs/sends/`) | [sendlog.py](../app/studio/sendlog.py); [features/send-journal.md](features/send-journal.md) |
+| Page 0 (у чернетці Gelato) | Порожній форзац — так і має бути | [integrations/gelato.md](integrations/gelato.md) |
+| 28-сторінкова / 30-сторінкова книга (Gelato) | Скільки сторінок скачано з Canva (28 — без одного розвороту); окремого перемикача немає | [creator.py](../app/studio/creator.py) `gelato_page_options()`, `gelato_pages_problem()`; [integrations/gelato.md](integrations/gelato.md) |
 | Чернетка замовлення Printify, «On hold» | Книга + замовлення, що чекає «Submit order» | [creator.py](../app/studio/creator.py) `create_printify_draft()`; [printify.py](../app/studio/printify.py) `create_order_on_hold()` |
 | Книга без замовлення (Printify) | Лише неопублікований продукт, адреса порожня | [creator.py](../app/studio/creator.py) `create_printify_draft()` |
 | Master, шаблон Printify | Еталонний продукт, з якого копіюється конфігурація | [creator.py](../app/studio/creator.py) `build_printify_payload()`; [settings.js](../app/web/js/pages/settings.js) `pickMaster()` |

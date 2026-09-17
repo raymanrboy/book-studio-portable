@@ -152,30 +152,47 @@ DEFAULT_SETTINGS: dict = {
         },
     },
     "gelato": {
-        "pageCount": 30,
+        "pageCounts": [28, 30],  # a book is as long as the Canva export: 30 pages, or 28 without one spread
         "currency": "USD",
         "eurUsdRate": 1.085,
         "tunnelKeepAliveSeconds": 900,
         "defaultFormat": "hardcover_8x8",
         "formats": {
+            # The metric products the owner orders by hand in Gelato (20×20 cm, 14×14 cm), not the
+            # inch-sized ones (203.2 / 139.7 mm) — same books, slightly different sheet sizes.
             "hardcover_8x8": {
                 "label": "Hardcover 8×8",
-                "productUid": "photobooks-hardcover_pf_8x8-inch-200x200-mm_pt_170-gsm-65lb-coated-silk"
+                "productUid": "photobooks-hardcover_pf_200x200-mm-8x8-inch_pt_170-gsm-65lb-coated-silk"
                 "_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_130-gsm-65-lb-cover-coated-silk_ver",
             },
             "softcover_8x8": {
                 "label": "Softcover 8×8",
-                "productUid": "photobooks-softcover_pf_8x8-inch-200x200-mm_pt_170-gsm-65lb-coated-silk"
+                "productUid": "photobooks-softcover_pf_200x200-mm-8x8-inch_pt_170-gsm-65lb-coated-silk"
                 "_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_250-gsm-100-lb-cover-coated-silk_ver",
             },
             "softcover_5x5": {
                 "label": "Softcover 5.5×5.5",
-                "productUid": "photobooks-softcover_pf_5_5x5_5-inch-140x140-mm_pt_170-gsm-65lb-coated-silk"
+                "productUid": "photobooks-softcover_pf_140x140-mm-5_5x5_5-inch_pt_170-gsm-65lb-coated-silk"
                 "_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_250-gsm-100-lb-cover-coated-silk_ver",
             },
         },
     },
 }
+
+# Settings saved before 2026-09-17 still name the inch-sized Gelato products.
+_OLD_GELATO_SIZES = {"_pf_8x8-inch-200x200-mm_": "_pf_200x200-mm-8x8-inch_",
+                     "_pf_5_5x5_5-inch-140x140-mm_": "_pf_140x140-mm-5_5x5_5-inch_"}
+
+
+def _upgrade(data: dict) -> dict:
+    gelato = data["gelato"]
+    gelato.pop("pageCount", None)  # replaced by pageCounts (28 or 30)
+    for fmt in (gelato.get("formats") or {}).values():
+        uid = str(fmt.get("productUid") or "")
+        for old, new in _OLD_GELATO_SIZES.items():
+            uid = uid.replace(old, new)
+        fmt["productUid"] = uid
+    return data
 
 
 def _merge(base: dict, extra: dict) -> dict:
@@ -194,7 +211,7 @@ class Settings:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._path = data_path("settings.json")
-        self._data = _merge(DEFAULT_SETTINGS, read_json(self._path, {}) or {})
+        self._data = _upgrade(_merge(DEFAULT_SETTINGS, read_json(self._path, {}) or {}))
 
     def get(self) -> dict:
         with self._lock:

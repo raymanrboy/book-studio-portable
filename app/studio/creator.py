@@ -3,7 +3,7 @@
 Printify: folder with Cover.png + 1..N.png (N from the Master, 24) ->
   strict validation -> upload artwork (hash cache) -> new product built from the
   read-only Master configuration -> verification -> Master untouched check.
-Gelato: folder with Cover.png + 1..30.png -> light validation -> interior PDF ->
+Gelato: folder with Cover.png + 1..30.png (or 1..28.png) -> light validation -> interior PDF ->
   temporary public link -> draft order (orderType=draft) -> link kept 15 min.
 Nothing is ever published, ordered or sent to production.
 """
@@ -20,7 +20,7 @@ import zlib
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 
-from . import core, desktop, gelato, images, printify, profit, tunnel
+from . import core, desktop, gelato, images, printify, profit, sendlog, tunnel
 from .jobs import JobError, jobs
 from .server import ApiError, Request, file_response, route
 from .vault import vault
@@ -47,7 +47,19 @@ def _signature(folder: Path) -> tuple:
     return tuple(sorted((p.name, p.stat().st_size, p.stat().st_mtime_ns) for p in folder.iterdir() if p.is_file()))
 
 
-def expected_files(mode: str) -> list[dict]:
+def gelato_page_options() -> list[int]:
+    """How long a Gelato book may be: as long as the Canva export — 30 pages, or 28 without one spread."""
+    return sorted(int(n) for n in core.settings.section("gelato").get("pageCounts") or [28, 30])
+
+
+def _gelato_page_count(present: dict[str, Path]) -> int:
+    """The book length a Gelato folder is meant for: the shortest allowed one that holds its highest page."""
+    options = gelato_page_options()
+    top = max((int(m.group(1)) for name in present if (m := re.fullmatch(r"(\d+)\.png", name))), default=0)
+    return next((n for n in options if n >= top), options[-1])
+
+
+def expected_files(mode: str, count: int | None = None) -> list[dict]:
     if mode == "printify":
         cfg = core.settings.section("printify")
         count = int(cfg.get("pageCount") or 24)
@@ -55,7 +67,7 @@ def expected_files(mode: str) -> list[dict]:
         out = [{"file": "Cover.png", "position": "cover", "size": cover}]
         out += [{"file": f"{i}.png", "position": f"page_{i}", "size": page} for i in range(1, count + 1)]
         return out
-    count = int(core.settings.section("gelato").get("pageCount") or 30)
+    count = count or gelato_page_options()[-1]
     out = [{"file": "Cover.png", "position": "cover", "size": None}]
     out += [{"file": f"{i}.png", "position": f"page_{i}", "size": None} for i in range(1, count + 1)]
     return out
@@ -64,15 +76,16 @@ def expected_files(mode: str) -> list[dict]:
 def validate(mode: str, folder_raw: str, job=None) -> dict:
     folder = Path((folder_raw or "").strip().strip('"'))
     if not folder_raw or not folder.is_dir():
+        expected = expected_files(mode)
         return {"ok": False, "folder": str(folder), "errors": ["Папку не знайдено або шлях некоректний."],
-                "warnings": [], "files": [], "found": 0, "expected": len(expected_files(mode))}
-    expected = expected_files(mode)
+                "warnings": [], "files": [], "found": 0, "expected": len(expected), "pageCount": len(expected) - 1}
+    present = _files_by_lower(folder)
+    expected = expected_files(mode, _gelato_page_count(present) if mode == "gelato" else None)
     key = (mode, str(folder.resolve()), _signature(folder),
            tuple((e["file"], tuple(e["size"] or ())) for e in expected))
     if key in _validation_cache:
         return _validation_cache[key]
 
-    present = _files_by_lower(folder)
     errors: list[str] = []
     warnings: list[str] = []
     missing = [e["file"] for e in expected if e["file"].lower() not in present]
@@ -135,6 +148,7 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
         "files": rows,
         "found": len(rows),
         "expected": len(expected),
+        "pageCount": len(expected) - 1,
         "totalBytes": sum(r.get("bytes", 0) for r in rows),
     }
     if len(_validation_cache) > 40:
@@ -358,10 +372,20 @@ def printify_order_payload(title: str, product_id: str, variant_id: int, address
 
 
 def create_printify_draft(folder: str, title: str, job, address: dict | None = None) -> dict:
-    """An unpublished Printify book; with an address also an order for it that waits "On hold"."""
+    """An unpublished Printify book; with an address also an order for it that waits "On hold".
+    Every attempt is written to the send journal."""
     title = (title or "").strip()
+    with sendlog.attempt("printify", "book+order" if address else "book", title) as log:
+        result = _printify_draft(folder, title, job, address, log)
+        log["result"] = result
+    result["sendLog"] = log["file"]
+    return result
+
+
+def _printify_draft(folder: str, title: str, job, address: dict | None, log: dict) -> dict:
     if not title:
         raise JobError("Введіть назву книги.")
+    log["folder"] = str(folder)
     cfg = core.settings.section("printify")
     master = cfg.get("master") or {}
     shop_id = int(cfg.get("shopId") or 0)
@@ -381,11 +405,17 @@ def create_printify_draft(folder: str, title: str, job, address: dict | None = N
 
     job.progress("Перевірка файлів…", 2, "Повна перевірка всіх PNG")
     result = validate("printify", folder, None)
+    sendlog.step(log, "files", ok=result["ok"], pageCount=result.get("pageCount"), errors=result["errors"],
+                 warnings=result["warnings"], files=[{k: r.get(k) for k in ("file", "width", "height", "bytes", "sha256", "ok", "error")}
+                                                     for r in result["files"]])
     if not result["ok"]:
         raise JobError("Файли не пройшли перевірку:\n" + "\n".join(result["errors"]))
 
     job.progress("Читання Master-продукту…", 8, master.get("title") or master["productId"])
     before = printify.product(shop_id, master["productId"])
+    sendlog.step(log, "master", productId=master["productId"], title=before.get("title"),
+                 blueprintId=before.get("blueprint_id"), printProviderId=before.get("print_provider_id"),
+                 updatedAt=before.get("updated_at"))
     if before.get("blueprint_id") != master.get("blueprintId") or before.get("print_provider_id") != master.get("printProviderId"):
         raise JobError("Шаблон Printify (Master) змінився: інший тип книги або постачальник друку. "
                        "Книгу не створено — перевірте Master-продукт у Printify.")
@@ -440,6 +470,8 @@ def create_printify_draft(folder: str, title: str, job, address: dict | None = N
                     failures.append(f"{row['file']}: {err}")
                     for other in futures:
                         other.cancel()  # not-yet-started uploads are skipped; running ones finish
+    sendlog.step(log, "uploads", reused=reused, uploaded=len(image_ids) - reused, failures=failures,
+                 images={pos: image_ids[pos] for pos in sorted(image_ids)})
     if failures:
         raise JobError(f"Не вдалося завантажити {failures[0]}\n"
                        f"Уже завантажені файли збережено — повторний запуск продовжить з цього місця.")
@@ -451,8 +483,10 @@ def create_printify_draft(folder: str, title: str, job, address: dict | None = N
 
     job.progress("Створення книги в Printify…", 88, "Збирання структури за Master-продуктом")
     payload = build_printify_payload(title, image_ids, cfg)
+    log["request"] = payload
     try:
         created = printify.create_product(shop_id, payload)
+        log["response"] = created
     except ApiError as err:
         upstream = (err.extra or {}).get("upstream")
         if (err.extra or {}).get("ambiguous") or (upstream or 0) >= 500:
@@ -488,14 +522,20 @@ def create_printify_draft(folder: str, title: str, job, address: dict | None = N
     except ApiError as err:
         warnings.append(f"Не вдалося перевірити Master: {err}")
 
+    sendlog.step(log, "verify", verified=verified, masterSafe=master_safe, warnings=list(warnings))
+
     order = order_error = None
     if address:
         job.progress("Чернетка замовлення в Printify…", 98, "Замовлення на утриманні — без відправки у виробництво")
+        order_payload = printify_order_payload(title, product_id, variant_id, address)
+        log["orderRequest"] = order_payload
         try:
-            placed = printify.create_order_on_hold(shop_id, printify_order_payload(title, product_id, variant_id, address))
+            placed = printify.create_order_on_hold(shop_id, order_payload)
+            log["orderResponse"] = placed
             order = {"id": placed.get("id"), "variant": next((v.get("title") for v in master.get("variants") or []
                                                              if int(v.get("id") or 0) == variant_id), "Matte")}
         except ApiError as err:
+            log["orderError"] = str(err)
             # The book itself exists; the order is what failed — say which, so nothing is placed twice.
             if (err.extra or {}).get("ambiguous") or ((err.extra or {}).get("upstream") or 0) >= 500:
                 order_error = ("Зв'язок обірвався під час створення замовлення — результат невідомий. Спершу перевірте "
@@ -559,17 +599,24 @@ def _one_idat(src: Path, dst: Path) -> Path:
     return dst
 
 
-def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) -> list[str]:
+COVER_TRIM_WARN_MM = 10  # the Canva cover is always a few mm off Gelato's; only a wrong picture trims more
+
+
+def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) -> dict:
     """One PDF laid out the way Gelato prints a photo book (its only accepted file for books):
 
       page 1          — the cover sheet (back + spine + front);
-      page 2          — blank: inside of the front cover;
-      pages 3 … N+2   — the inner pages in order;
-      last page       — blank: inside of the back cover.
+      page 2          — blank: the front endpaper (Gelato's draft view calls it "Page 0");
+      pages 3 … N+2   — the inner pages in order ("Page 1" … "Page N");
+      last page       — blank: the back endpaper (not shown in the draft view).
+
+    The blanks are required: without them the book's page 1 took the endpaper's place ("Page 0")
+    and the last page was left empty (test draft, 17.09.2026).
 
     Every PDF page gets Gelato's physical size; pictures are embedded without recompression and
     scaled to fill their page (a slightly different aspect is trimmed evenly at the edges).
-    Returns warnings when that trim would reach the visible part of the cover.
+    Returns what was built, for the send journal, with a warning only when the cover loses much more
+    than the usual few millimetres.
     """
     import img2pdf
     from PIL import Image
@@ -595,26 +642,81 @@ def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) ->
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
-    warnings = []
     with Image.open(cover) as im:
         img_w, img_h = im.size
     want_w, want_h = geo["coverMm"]
     scale = max(want_w / img_w, want_h / img_h)
-    trim_side = max(img_w * scale - want_w, img_h * scale - want_h) / 2
-    if trim_side > geo.get("marginMm", 3) * 0.8:
-        need = f"{round(want_w)}×{round(want_h)} мм (≈ {want_w / want_h:.3f}:1)"
-        warnings.append(f"Пропорції Cover.png ({img_w}×{img_h}) відрізняються від обкладинки Gelato {need}: "
-                        f"краї обріжуться на {trim_side:.1f} мм і зачеплять видиму частину. "
-                        f"Експортуйте обкладинку з шаблону Gelato.")
-    return warnings
+    trim_side = round(max(img_w * scale - want_w, img_h * scale - want_h) / 2, 2)
+    warnings = []
+    if trim_side > COVER_TRIM_WARN_MM:
+        warnings.append(f"Cover.png ({img_w}×{img_h}) зовсім іншої форми, ніж обкладинка Gelato "
+                        f"{round(want_w)}×{round(want_h)} мм: краї обріжуться на {trim_side:.0f} мм. "
+                        f"Перевірте, що це справді обкладинка.")
+    return {"pdfPages": len(sequence), "pdfBytes": out.stat().st_size, "coverPx": [img_w, img_h],
+            "coverMm": geo["coverMm"], "pageMm": geo["pageMm"], "coverTrimMm": trim_side, "warnings": warnings}
+
+
+def gelato_page_counts() -> dict[str, list[int] | None]:
+    """For every Gelato format, the page counts its catalog accepts (read only). None where the catalog
+    could not be read (no key, no internet): the draft checks again before anything is made."""
+    formats = core.settings.section("gelato").get("formats") or {}
+
+    def one(fmt: dict) -> list[int] | None:
+        try:
+            return gelato.page_counts(fmt["productUid"]) or None
+        except ApiError:
+            return None
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        return dict(zip(formats, pool.map(one, formats.values())))
+
+
+def gelato_pages_problem(format_key: str, count: int) -> str | None:
+    """Why Gelato would refuse a book of `count` pages in this format; None when it is fine or unknown."""
+    fmt = (core.settings.section("gelato").get("formats") or {}).get(format_key)
+    if not fmt:
+        return None
+    try:
+        valid = gelato.page_counts(fmt["productUid"])
+    except ApiError:
+        return None
+    if not valid or count in valid:
+        return None
+    text = f"Gelato не друкує {fmt.get('label') or format_key} на {count} сторінках (можна від {valid[0]})."
+    other = next((n for n in gelato_page_options() if n in valid), None)
+    return text + (f" Скачайте з Canva {other} сторінок." if other else "")
+
+
+def _journal_readback(log: dict, order_id: str, pdf_bytes: int) -> None:
+    """What Gelato itself recorded for the new draft (read only): usually it has already fetched the PDF."""
+    try:
+        item = (gelato.get_order(order_id).get("items") or [{}])[0]
+    except ApiError as err:
+        sendlog.step(log, "readback", error=str(err))
+        return
+    files = [{k: f.get(k) for k in ("type", "mimeType", "sizeBytes")} for f in item.get("files") or []]
+    sendlog.step(log, "readback", productUid=item.get("productUid"), pageCount=item.get("pageCount"),
+                 status=item.get("fulfillmentStatus"), files=files,
+                 fileFetched=any(f.get("sizeBytes") == pdf_bytes for f in files),
+                 events=item.get("eventLog"), refusal=item.get("refusalReason"))
 
 
 def create_gelato_draft(folder: str, title: str, format_key: str, address: dict, job) -> dict:
+    """A Gelato draft order for one photo book; every attempt is written to the send journal."""
     title = (title or "").strip()
+    with sendlog.attempt("gelato", "draft", title) as log:
+        result = _gelato_draft(folder, title, format_key, address, job, log)
+        log["result"] = result
+    result["sendLog"] = log["file"]
+    return result
+
+
+def _gelato_draft(folder: str, title: str, format_key: str, address: dict, job, log: dict) -> dict:
     if not title:
         raise JobError("Введіть назву книги.")
     cfg = core.settings.section("gelato")
     fmt = (cfg.get("formats") or {}).get(format_key)
+    log.update({"format": format_key, "folder": str(folder)})
     if not fmt:
         raise JobError("Оберіть формат книги.")
     gelato.api_key()
@@ -627,25 +729,32 @@ def create_gelato_draft(folder: str, title: str, format_key: str, address: dict,
 
     job.progress("Перевірка файлів…", 4, "Наявність і цілісність PNG")
     result = validate("gelato", folder, None)
+    sendlog.step(log, "files", ok=result["ok"], pageCount=result.get("pageCount"), errors=result["errors"],
+                 files=[{k: r.get(k) for k in ("file", "width", "height", "bytes", "ok", "error")} for r in result["files"]])
     if not result["ok"]:
         raise JobError("Файли не пройшли перевірку:\n" + "\n".join(result["errors"]))
     pages = [Path(r["path"]) for r in result["files"] if r["position"] != "cover"]
     cover = next(Path(r["path"]) for r in result["files"] if r["position"] == "cover")
 
-    page_count = int(cfg.get("pageCount") or 30)
-    job.progress("Розміри книги в Gelato…", 8, fmt.get("label") or format_key)
+    page_count = len(pages)  # 28 or 30, as downloaded from Canva; the catalog below confirms Gelato prints it
+    job.progress("Розміри книги в Gelato…", 8, f"{fmt.get('label') or format_key} · {page_count} стор.")
+    problem = gelato_pages_problem(format_key, page_count)
+    if problem:
+        raise JobError(problem)
     try:
         geo = gelato.photobook_geometry(fmt["productUid"], page_count)
     except ApiError as err:
         raise JobError(str(err)) from None
+    sendlog.step(log, "catalog", productUid=fmt["productUid"], pageCount=page_count, geometry=geo)
 
     session = uuid.uuid4().hex[:12]
     session_dir = core.data_path("tmp", "gelato", session)
     session_dir.mkdir(parents=True, exist_ok=True)
     link: tunnel.FileTunnel | None = None
     try:
-        job.progress("Збирання книги в один PDF…", 15, f"обкладинка + {len(pages)} сторінок, без перестиснення")
-        warnings = build_photobook_pdf(cover, pages, session_dir / "book.pdf", geo)
+        job.progress("Збирання книги в один PDF…", 15, f"обкладинка + {page_count} сторінок, без перестиснення")
+        pdf = build_photobook_pdf(cover, pages, session_dir / "book.pdf", geo)
+        sendlog.step(log, "pdf", **pdf)
 
         job.progress("Відкриття тимчасового доступу до файлів…", 35, "Cloudflare Tunnel")
         link = tunnel.FileTunnel(session_dir, ("book.pdf",))
@@ -653,6 +762,7 @@ def create_gelato_draft(folder: str, title: str, format_key: str, address: dict,
             base = link.start()
         except tunnel.TunnelError as err:
             raise JobError(str(err)) from None
+        sendlog.step(log, "link", url=f"{base}/book.pdf", reachable=link.reachable)
 
         # The Etsy receipt number from the title ("4100000001 - Emma") goes into the reference, so the
         # order is matched to its receipt at the next sync and leaves the "new" queue.
@@ -665,7 +775,7 @@ def create_gelato_draft(folder: str, title: str, format_key: str, address: dict,
             "items": [{
                 "itemReferenceId": f"item-{session}",
                 "productUid": fmt["productUid"],
-                "pageCount": page_count,  # inner pages; Gelato adds the four cover sides itself
+                "pageCount": page_count,  # inner pages only, as in the owner's own orders; covers are extra
                 "quantity": 1,
                 # A photo book takes one multi-page PDF of type "default" (cover sheet, blank, pages, blank).
                 # ("inside" only exists for folded cards — Gelato then filled every page with the cover.)
@@ -678,21 +788,24 @@ def create_gelato_draft(folder: str, title: str, format_key: str, address: dict,
                 {"key": "source", "value": "book-studio"},
             ],
         }
+        log["request"] = payload
         job.progress("Створення чернетки в Gelato…", 70, "Очікування відповіді")
         try:
             created = gelato.create_draft_order(payload)
         except ApiError as err:
             raise JobError(f"Gelato відхилив створення чернетки: {err}") from None
+        log["response"] = created
         order_id = created.get("id")
         if not order_id:
             raise JobError("Gelato не повернув ID чернетки.")
+        _journal_readback(log, order_id, pdf["pdfBytes"])
         keep = int(cfg.get("tunnelKeepAliveSeconds") or 900)
         tunnel.registry.keep(order_id, link, session_dir, keep)
         link = None  # owned by the registry now
         return {"orderId": order_id, "orderReferenceId": payload["orderReferenceId"],
                 "fulfillmentStatus": created.get("fulfillmentStatus"), "orderType": created.get("orderType"),
-                "format": fmt.get("label"), "keepAliveSeconds": keep, "title": title, "warnings": warnings,
-                "pdfPages": len(pages) + 3}
+                "format": fmt.get("label"), "keepAliveSeconds": keep, "title": title, "warnings": pdf["warnings"],
+                "pdfPages": pdf["pdfPages"], "pageCount": page_count}
     finally:
         if link is not None:
             link.stop()
@@ -736,7 +849,7 @@ def _status(req: Request):
             "matteVariant": bool(matte_variant(p.get("master") or {})),
         },
         "gelato": {
-            "pageCount": g.get("pageCount"), "keyConfigured": bool(vault.get("gelato_api_key")),
+            "pageCounts": gelato_page_options(), "keyConfigured": bool(vault.get("gelato_api_key")),
             "formats": [{"key": k, "label": v.get("label")} for k, v in (g.get("formats") or {}).items()],
             "defaultFormat": g.get("defaultFormat"),
             "keepAliveSeconds": g.get("tunnelKeepAliveSeconds"),
@@ -779,6 +892,11 @@ def _create_gelato(req: Request):
     args = (body.get("folder") or "", body.get("title") or "", body.get("format") or "", body.get("address") or {})
     job = jobs.start("gelato-create", lambda j: create_gelato_draft(*args, j), exclusive="gelato-create")
     return {"jobId": job.id}
+
+
+@route("GET", "/api/creator/gelato/page-counts")
+def _gelato_page_counts(req: Request):
+    return {"formats": gelato_page_counts()}
 
 
 @route("POST", "/api/creator/gelato/close-tunnel")

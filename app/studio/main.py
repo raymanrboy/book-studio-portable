@@ -36,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Register all API routes.
-    from . import creator, etsy, gelato, library, orders, printify, profit, settings_api, tunnel  # noqa: F401
+    from . import creator, etsy, gelato, library, orders, printify, profit, sendlog, settings_api, tunnel  # noqa: F401
 
     tunnel.cleanup_stale()
     creator.forget_old_form()

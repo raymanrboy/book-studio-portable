@@ -6,7 +6,7 @@ import {
 import { openLightbox } from '../lightbox.js';
 import {
   COUNTRIES, STAGES, STAGE_EMPTY, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf, folderViewerItems, receiveDrop, dropLabel,
-  wireFolderDrop, matchesOrder, variationsOf, providerName,
+  wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText,
 } from '../order-bits.js';
 import { take } from '../handoff.js';
 
@@ -39,6 +39,28 @@ export async function mount(view) {
   const createLabel = () => (st.mode === 'gelato' ? 'Створити чернетку' : withOrder() ? 'Створити чернетку замовлення' : 'Створити книгу без замовлення');
   let tunnelTimer = null;
   const cur = () => st[st.mode];
+
+  // Pages: Printify takes exactly its template's 24; Gelato as many as the folder holds (28 or 30), and
+  // its catalog says which of those each format is printed with (asked once, when Gelato is shown).
+  const pageTotal = () => (st.mode === 'printify' ? status.printify.pageCount : cur().validation?.pageCount || 0);
+  let pageCounts = null;
+  let countsAsked = false;
+  function loadPageCounts() {
+    if (countsAsked || !status.gelato.keyConfigured) return;
+    countsAsked = true;
+    api('/api/creator/gelato/page-counts').then((r) => {
+      pageCounts = r.formats || null;
+      if (st.mode === 'gelato') renderLeft();
+    }).catch(() => {});
+  }
+  /** Why Gelato would not print the chosen folder in this format; '' when fine or not known. */
+  function formatProblem(key = st.gelato.format) {
+    const valid = pageCounts?.[key];
+    const n = st.gelato.validation?.pageCount;
+    if (!valid?.length || !n || valid.includes(n)) return '';
+    const label = status.gelato.formats.find((f) => f.key === key)?.label || key;
+    return `Gelato не друкує ${label} на ${n} сторінках (можна від ${valid[0]}).`;
+  }
 
   setHtml(view, html`<div class="creator" id="cr">
     <div class="page-head">
@@ -121,9 +143,17 @@ export async function mount(view) {
   }
 
   function formatCard(num) {
+    const pill = (f) => {
+      const valid = pageCounts?.[f.key];
+      const bad = formatProblem(f.key);
+      const tip = bad || (valid?.length ? `${valid[0]}–${valid.at(-1)} стор.` : '');
+      return html`<button class="fmt-pill ${st.gelato.format === f.key ? 'active' : ''} ${bad ? 'bad' : ''}" data-format="${f.key}" data-tip="${tip}">${f.label}</button>`;
+    };
+    const problem = formatProblem();
     return html`<section class="card card-pad stack">
       <div class="row"><span class="step-no">${num}</span><h3 class="card-title">Формат</h3></div>
-      <div class="fmt-pills">${status.gelato.formats.map((f) => html`<button class="fmt-pill ${st.gelato.format === f.key ? 'active' : ''}" data-format="${f.key}">${f.label}</button>`)}</div>
+      <div class="fmt-pills">${status.gelato.formats.map(pill)}</div>
+      ${problem ? html`<div class="notice notice-warn">${ic('alert')}<div>${problem}</div></div>` : ''}
     </section>`;
   }
 
@@ -148,7 +178,7 @@ export async function mount(view) {
     const s = cur();
     return html`<section class="card card-pad stack">
       <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">Чернетка</h3></div>
-      <div id="cr-alert">${s.error ? html`<div class="notice notice-error">${ic('alertCircle')}<div style="white-space:pre-line">${s.error}</div></div>` : ''}</div>
+      <div id="cr-alert">${s.error ? html`<div class="notice notice-error">${ic('alertCircle')}<div class="grow" style="white-space:pre-line">${s.error}</div>${sendLogButton(null)}</div>` : ''}</div>
       <div class="row" style="justify-content:center;padding:4px 0">
         <button class="btn btn-xl create-btn btn-block" id="cr-create" ${s.running ? 'disabled' : ''}>
           ${s.running ? html`<span class="spinner" style="border-color:color-mix(in srgb, currentColor 35%, transparent);border-top-color:currentColor"></span>Створення…` : html`${ic('send', 'icon-l')}<span id="cr-create-label">${createLabel()}</span>`}</button>
@@ -161,6 +191,9 @@ export async function mount(view) {
       <div id="cr-result">${resultHtml()}</div>
     </section>`;
   }
+
+  // Every send is written to data/logs/sends — the icon opens this one's record (or the folder).
+  const sendLogButton = (r) => ib('sendLog', 'Журнал відправки', `data-act="open-sendlog" data-file="${r?.sendLog || ''}"`, { cls: 'sm' });
 
   function resultHtml() {
     const s = cur();
@@ -182,7 +215,7 @@ export async function mount(view) {
         ${(r.warnings || []).map((w) => html`<div class="notice notice-warn" style="margin-top:10px">${ic('alert')}<div>${w}</div></div>`)}
         <div class="row" style="margin-top:14px">${r.order
           ? html`<button class="btn btn-primary grow" data-act="open-orders">${ic('external', 'icon-s')}Замовлення в Printify</button>${ib('copy', 'Копіювати Order ID', 'data-act="copy-printify-order"')}`
-          : html`<button class="btn btn-primary grow" data-act="open-product">${ic('external', 'icon-s')}Відкрити в Printify</button>${ib('copy', 'Копіювати Product ID', 'data-act="copy-id"')}`}</div>
+          : html`<button class="btn btn-primary grow" data-act="open-product">${ic('external', 'icon-s')}Відкрити в Printify</button>${ib('copy', 'Копіювати Product ID', 'data-act="copy-id"')}`}${sendLogButton(r)}</div>
       </div>`;
     }
     return html`<div class="result-card">
@@ -200,7 +233,8 @@ export async function mount(view) {
         <b>Важливо:</b> Gelato завантажує файли лише коли ви відкриєте чернетку в Dashboard. Зробіть це зараз, поки тимчасове посилання працює — лишилось <b class="mono" id="cr-countdown">--:--</b>.
         <div class="row" style="margin-top:8px"><button class="btn btn-sm btn-primary" data-act="open-gelato">${ic('external', 'icon-s')}Gelato Dashboard</button>
           ${ib('copy', 'Копіювати Order ID', 'data-act="copy-order"', { cls: 'sm' })}
-          ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="close-tunnel"', { cls: 'sm' })}</div></div></div>
+          ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="close-tunnel"', { cls: 'sm' })}
+          ${sendLogButton(r)}</div></div></div>
     </div>`;
   }
 
@@ -209,6 +243,7 @@ export async function mount(view) {
       ? [folderCard(1), titleCard(2), addressCard(3), createCard(4)]
       : [formatCard(1), folderCard(2), titleCard(3), addressCard(4), createCard(5)];
     keepFocus(() => setHtml($('#cr-left'), blocks));
+    if (st.mode === 'gelato') loadPageCounts();
     if (st.mode === 'gelato' && st.gelato.result) startCountdown();
   }
 
@@ -224,7 +259,8 @@ export async function mount(view) {
   function renderRight() {
     const s = cur();
     const pr = st.mode === 'printify';
-    const total = pr ? status.printify.pageCount : status.gelato.pageCount;
+    const known = pageTotal(); // a Gelato book's length is known once its folder is checked
+    const total = known || Math.max(...status.gelato.pageCounts);
     const v = s.validation;
     const has = (n) => v && v.files.some((r) => r.file.toLowerCase() === n.toLowerCase());
     const coverRow = v?.files.find((r) => r.position === 'cover');
@@ -254,7 +290,9 @@ export async function mount(view) {
         </div>
       </div>
       <div class="stack-s">
-        <div class="row"><span class="eyebrow grow">Розвороти</span><span class="faint" style="font-size:12px"><span class="num">${spreads.length}</span> · <span class="num">${total}</span> стор.</span></div>
+        <div class="row"><span class="eyebrow grow">Розвороти</span><span class="faint" style="font-size:12px">${known
+          ? html`<span class="num">${spreads.length}</span> · <span class="num">${total}</span> стор.`
+          : html`<span class="num">${pagesText(status.gelato.pageCounts)}</span> стор.`}</span></div>
         <div class="spread-grid">${spreads.map((sp, i) => {
           const lp = i === 0 ? 1 : sp.left + 1;
           const rp = i === 0 ? 2 : lp + 1;
@@ -272,8 +310,7 @@ export async function mount(view) {
   function openStructure(index) {
     const s = cur();
     if (!s.validation || !s.folder) { toast('Спершу оберіть папку з ілюстраціями', 'info'); return; }
-    const total = st.mode === 'printify' ? status.printify.pageCount : status.gelato.pageCount;
-    openLightbox(folderViewerItems(s.folder, total, s.label || s.folder), index);
+    openLightbox(folderViewerItems(s.folder, pageTotal(), s.label || s.folder), index);
   }
 
   function renderAll() {
@@ -320,6 +357,7 @@ export async function mount(view) {
     else if (s.validating) problems.push('Зачекайте завершення перевірки файлів.');
     else if (s.validation && !s.validation.ok) problems.push('Виправте помилки у файлах (див. крок «Папка з ілюстраціями»).');
     if (!s.title) problems.push('Введіть назву книги.');
+    if (mode === 'gelato' && formatProblem()) problems.push(formatProblem());
     const order = withOrder();
     if (order) {
       const a = s.address;
@@ -573,7 +611,7 @@ export async function mount(view) {
       const s = cur();
       if (a === 'browse') {
         try {
-          const { path } = await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з Cover.png та 1–${st.mode === 'printify' ? status.printify.pageCount : status.gelato.pageCount}.png`, initial: s.folder } });
+          const { path } = await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з Cover.png та ${(st.mode === 'printify' ? [status.printify.pageCount] : status.gelato.pageCounts).map((n) => `1–${n}.png`).join(' або ')}`, initial: s.folder } });
           if (path) { s.folder = path; s.label = null; s.validation = null; renderLeft(); validate(); }
         } catch (err) { toast(err.message, 'error'); }
       } else if (a === 'revalidate') validate();
@@ -586,6 +624,7 @@ export async function mount(view) {
       else if (a === 'copy-id') copyText(st.printify.result?.productId || '', 'Product ID скопійовано');
       else if (a === 'copy-order') copyText(st.gelato.result?.orderId || '', 'Order ID скопійовано');
       else if (a === 'open-gelato') openExternal('https://dashboard.gelato.com/');
+      else if (a === 'open-sendlog') api('/api/sends/open', { method: 'POST', body: { file: t.dataset.file || '' } }).catch((er) => toast(er.message, 'error'));
       else if (a === 'close-tunnel') {
         try { await api('/api/creator/gelato/close-tunnel', { method: 'POST', body: { orderId: st.gelato.result.orderId } }); } catch {}
         clearInterval(tunnelTimer);

@@ -12,6 +12,7 @@ code:
   - app/studio/etsy.py
   - app/studio/printify.py
   - app/studio/gelato.py
+  - app/studio/sendlog.py
 ---
 # Маршрути сервера
 
@@ -46,7 +47,7 @@ code:
 |---|---|---|---|---|
 | GET | `/api/orders` | token | `_list` | orders.js (черга) |
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (картка) |
-| POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (розстановка сторінок) |
+| POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (розстановка сторінок; для Gelato — ще й чи друкує він стільки сторінок у цьому форматі) |
 
 ## Бібліотека — [library.py](../../app/studio/library.py)
 
@@ -83,6 +84,7 @@ code:
 | POST | `/api/creator/pick-folder` | token | `_pick` | creator.js, orders.js |
 | POST | `/api/creator/printify/create` | token | `_create_printify` | creator.js (фонова задача) |
 | POST | `/api/creator/gelato/create` | token | `_create_gelato` | creator.js (фонова задача) |
+| GET | `/api/creator/gelato/page-counts` | token | `_gelato_page_counts` | creator.js `loadPageCounts` (скільки сторінок Gelato друкує в кожному форматі — з його каталогу) |
 | POST | `/api/creator/gelato/close-tunnel` | token | `_close_tunnel` | creator.js |
 | GET | `/api/creator/etsy-orders` | token | `_etsy_orders` | creator.js `fromEtsy` |
 | POST | `/api/creator/open-folder` | token | `_open_folder` | creator.js, book.js |
@@ -129,6 +131,12 @@ code:
 | POST | `/api/printify/master/analyze` | token | `_analyze` | settings.js `pickMaster` |
 | POST | `/api/printify/master/save` | token | `_save_master` | settings.js `pickMaster` |
 | POST | `/api/gelato/test` | token | `_test` | settings.js |
+
+## Журнал відправок — [sendlog.py](../../app/studio/sendlog.py)
+
+| Метод | Шаблон | Доступ | Функція | Хто викликає |
+|---|---|---|---|---|
+| POST | `/api/sends/open` | token | `_open` | creator.js `sendLogButton` (виділяє запис у Провіднику або відкриває папку) |
 
 ## Пов'язане
 

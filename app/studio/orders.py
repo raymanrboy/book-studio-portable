@@ -33,23 +33,29 @@ def binding_of(item: dict) -> str | None:
 
 def plan_for(item: dict, country_iso: str | None) -> dict:
     """Owner's rule: a hardcover going to the US is printed by Printify (24 pages, reliable there);
-    everything else by Gelato (30 pages; its US hardcovers are slow, the rest is on time)."""
+    everything else by Gelato (28 or 30 pages; its US hardcovers are slow, the rest is on time)."""
     binding = binding_of(item)
     country = (country_iso or "").upper()
     if binding is None:
         return {"provider": None, "binding": None, "country": country, "pages": None, "format": None}
     if binding == "hardcover" and country == "US":
-        return {"provider": "printify", "binding": binding, "country": country, "pages": PRINTIFY_PAGES, "format": None}
+        return {"provider": "printify", "binding": binding, "country": country, "pages": page_options("printify"),
+                "format": None}
     text = " ".join(f"{v.get('name')} {v.get('value')}" for v in item.get("variations") or []) + " " + (item.get("title") or "")
     fmt = "hardcover_8x8" if binding == "hardcover" else ("softcover_5x5" if _SMALL.search(text) else "softcover_8x8")
     gelato = core.settings.section("gelato")
     return {"provider": "gelato", "binding": binding, "country": country, "format": fmt,
             "formatLabel": ((gelato.get("formats") or {}).get(fmt) or {}).get("label"),
-            "pages": int(gelato.get("pageCount") or 30)}
+            "pages": page_options("gelato")}
 
 
-def pages_for(provider: str) -> int:
-    return PRINTIFY_PAGES if provider == "printify" else int(core.settings.section("gelato").get("pageCount") or 30)
+def page_options(provider: str) -> list[int]:
+    """How many pages a book may have: Printify exactly 24; Gelato as many as were downloaded, 28 or 30."""
+    return [PRINTIFY_PAGES] if provider == "printify" else creator.gelato_page_options()
+
+
+def pages_word(n: int) -> str:
+    return "сторінки" if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14) else "сторінок"
 
 
 # ---------------------------------------------------------------- which book
@@ -80,6 +86,7 @@ def enrich(order: dict, books: dict[str, dict]) -> dict:
     first = (order.get("items") or [{}])[0]
     order["book"], order["plan"] = first.get("book"), first.get("plan")
     order["childName"] = creator.guess_child_name(order.get("items") or [])
+    order["pageOptions"] = {p: page_options(p) for p in ("printify", "gelato")}  # for a printer picked by hand
     return order
 
 
@@ -108,13 +115,14 @@ def ranges(numbers: list[int]) -> str:
     return ", ".join(parts)
 
 
-def arrange_pages(folder: Path, count: int) -> dict:
-    """The cover plus exactly `count` pages, whatever Canva or Upscayl called them.
+def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
+    """The cover plus exactly one of `counts` pages, whatever Canva or Upscayl called them.
 
     The file with "cover" in its name is the cover (else the one wide picture among square pages);
-    the rest are ordered by the number in their names and become 1..count. Returns the folder to print
-    from (the original one when it is already named that way) and a note on what was renumbered.
+    the rest are ordered by the number in their names and become 1..N. Returns the folder to print
+    from (the original one when it is already named that way), N and a note on what was renumbered.
     """
+    counts = sorted([counts] if isinstance(counts, int) else counts)
     if not folder.is_dir():
         raise ApiError("Папку не знайдено.")
     pngs = sorted((p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == ".png"
@@ -148,14 +156,16 @@ def arrange_pages(folder: Path, count: int) -> dict:
     twice = sorted(n for n, c in Counter(source).items() if c > 1)
     if twice:
         raise ApiError(f"Сторінка {', '.join(map(str, twice))} є двічі.")
-    if len(numbered) != count:
-        raise ApiError(f"Потрібно {count} сторінок, а тут {len(numbered)}"
+    count = len(numbered)
+    if count not in counts:
+        need = " або ".join(map(str, counts))
+        raise ApiError(f"Потрібно {need} {pages_word(counts[-1])}, а тут {count}"
                        + (f" (сторінки {ranges(source)})." if source else "."))
 
     plan = [(covers[0], "Cover.png")] + [(p, f"{i}.png") for i, (_, p) in enumerate(numbered, 1)]
     renumbered = source != list(range(1, count + 1))
     if all(p.name == name for p, name in plan) and len(pngs) == count + 1:
-        return {"path": str(folder), "note": "", "renumbered": False}
+        return {"path": str(folder), "note": "", "renumbered": False, "pageCount": count}
 
     # A fresh folder, so the user's own files are never renamed: our dropped copies are moved,
     # anything else is linked (same disk) or copied.
@@ -174,7 +184,7 @@ def arrange_pages(folder: Path, count: int) -> dict:
     note = f"сторінки {ranges(source)} → 1–{count}" if renumbered else ""
     if covers[0].name != "Cover.png":
         note = (note + "; " if note else "") + f"обкладинка — {covers[0].name}"
-    return {"path": str(target), "note": note, "renumbered": renumbered}
+    return {"path": str(target), "note": note, "renumbered": renumbered, "pageCount": count}
 
 
 # ---------------------------------------------------------------- routes
@@ -203,4 +213,9 @@ def _files(req: Request):
     provider = body.get("provider")
     if provider not in ("printify", "gelato"):
         raise ApiError("Невідомий постачальник.")
-    return arrange_pages(Path(str(body.get("folder") or "").strip().strip('"')), pages_for(provider))
+    res = arrange_pages(Path(str(body.get("folder") or "").strip().strip('"')), page_options(provider))
+    # Told at once when Gelato does not print this length in the order's format (its catalog decides).
+    problem = creator.gelato_pages_problem(str(body.get("format") or ""), res["pageCount"]) if provider == "gelato" else None
+    if problem:
+        raise ApiError(problem)
+    return res

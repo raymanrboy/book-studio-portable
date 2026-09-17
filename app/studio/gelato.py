@@ -91,7 +91,9 @@ def call(method: str, url: str, body: Any = None, action: str = "Запит до
 
 
 def search_orders(offset: int = 0, limit: int = 100) -> list:
-    data = call("POST", f"{ORDER_API}/orders:search", {"limit": limit, "offset": offset}, action="Замовлення Gelato")
+    # Drafts are asked for by name: a draft made from Book Studio moves its receipt to "in work".
+    body = {"limit": limit, "offset": offset, "orderTypes": ["order", "draft"]}
+    data = call("POST", f"{ORDER_API}/orders:search", body, action="Замовлення Gelato")
     return list((data or {}).get("orders") or [])
 
 
@@ -115,7 +117,21 @@ def slim_order(g: dict) -> dict:
                                   "fulfillmentStatus", "financialStatus", "createdAt", "orderType")}
 
 
+_products: dict = {}
 _geometry: dict = {}
+
+
+def product(product_uid: str) -> dict:
+    """One product's catalog card (sizes, allowed page counts); read once per program run."""
+    if product_uid not in _products:
+        _products[product_uid] = call("GET", f"{PRODUCT_API}/products/{product_uid}",
+                                      action="Параметри продукту Gelato", timeout=20, retries=2) or {}
+    return _products[product_uid]
+
+
+def page_counts(product_uid: str) -> list[int]:
+    """Inner page counts Gelato prints this product with (its catalog's validPageCounts)."""
+    return sorted(int(n) for n in product(product_uid).get("validPageCounts") or [])
 
 
 def photobook_geometry(product_uid: str, page_count: int) -> dict:
@@ -128,12 +144,11 @@ def photobook_geometry(product_uid: str, page_count: int) -> dict:
     key = (product_uid, int(page_count))
     if key in _geometry:
         return _geometry[key]
-    product = call("GET", f"{PRODUCT_API}/products/{product_uid}", action="Параметри продукту Gelato") or {}
-    valid = product.get("validPageCounts") or []
+    valid = page_counts(product_uid)
     if valid and int(page_count) not in valid:
         raise GelatoError(f"Gelato не друкує цей формат на {page_count} сторінках "
                           f"(можна від {min(valid)} до {max(valid)}, парна кількість).", 400)
-    dims = product.get("dimensions") or {}
+    dims = product(product_uid).get("dimensions") or {}
 
     def mm(name: str) -> float | None:
         try:
