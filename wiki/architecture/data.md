@@ -16,7 +16,7 @@ code:
 
 | Шлях у `app/data/` | Що це | Хто пише |
 |---|---|---|
-| `settings.json` (+`.bak`) | Несекретні налаштування: тема, Etsy (магазин, адреса повернення), Printify (магазин, Master, розміри, `manualApprovalConfirmedAt`), Gelato (формати, курс EUR→USD, 30 сторінок) | `core.settings` |
+| `settings.json` (+`.bak`) | Несекретні налаштування: тема, Etsy (магазин, адреса повернення), Printify (магазин, Master, розміри, `manualApprovalConfirmedAt`), Gelato (формати, курс EUR→USD, `pageCounts` 28 і 30; старе `pageCount` прибирається при запуску) | `core.settings` |
 | `vault.json` (+`.bak`) | Ключі Etsy/Printify/Gelato і токени Etsy, зашифровані DPAPI. **Не читати й не друкувати** | `Vault` |
 | `library/books/<id>/book.json` | Модель книги ([features/library.md](../features/library.md)) | `library.save()` |
 | `library/books/<id>/assets/<uuid>.png` | Ілюстрації книги (оригінали) | `library._store_asset()` |

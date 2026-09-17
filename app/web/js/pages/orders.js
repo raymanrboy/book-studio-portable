@@ -3,11 +3,11 @@
 // every page, then the hand-over to the Order Creator. Nothing is remembered between visits.
 import {
   api, html, ic, ib, raw, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
-  openExternal, runJob, fadeImages,
+  openExternal, runJob, fadeImages, plural,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
-  STAGES, STAGE_EMPTY, matchesOrder, providerName, planText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
+  STAGES, STAGE_EMPTY, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
   folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
@@ -153,11 +153,13 @@ async function mountCard(view, rid) {
   let pick = 0;        // which book of the order this pass is for (most orders hold one)
   let chosen = null;   // printer picked by hand when the cover type could not be read
   let seq = 0;
-  const f = { folder: '', label: '', note: '', validation: null, busy: 0, error: '' };
+  const f = { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '' };
   const item = () => o.items[pick] || {};
   const plan = () => item().plan || {};
   const provider = () => plan().provider || chosen;
-  const pages = () => (provider() === 'printify' ? 24 : (plan().provider === 'gelato' ? plan().pages : 30));
+  // Printify takes 24 pages; Gelato as many as were downloaded (28 or 30) — known once the files are in (f.pages).
+  const pageOptions = () => (plan().provider ? plan().pages : (o.pageOptions || {})[provider()]) || [];
+  const pagesLabel = () => (f.pages ? String(f.pages) : pagesText(pageOptions()));
 
   setHtml(view, html`
     <div class="page-head">
@@ -181,10 +183,10 @@ async function mountCard(view, rid) {
   function renderPlan() {
     const p = provider();
     setHtml($('#oc-plan'), plan().provider
-      ? html`<span class="chip chip-lg svc-${p}" data-tip="${planText(plan())}">${ic(p, 'icon-s')}${providerName(p)} · <span class="num">${pages()}</span> стор.</span>`
+      ? html`<span class="chip chip-lg svc-${p}" data-tip="${planText(plan())}">${ic(p, 'icon-s')}${providerName(p)} · <span class="num">${pagesLabel()}</span> стор.</span>`
       : html`<div class="row" style="gap:10px"><span class="faint" style="font-size:12.5px">Друкарня</span>${segHtml([
-        { value: 'printify', icon: 'printify', tip: 'Printify · 24 стор.' },
-        { value: 'gelato', icon: 'gelato', tip: 'Gelato · 30 стор.' }], chosen, { name: 'provider' })}</div>`);
+        { value: 'printify', icon: 'printify', tip: `Printify · ${pagesText(o.pageOptions?.printify)} стор.` },
+        { value: 'gelato', icon: 'gelato', tip: `Gelato · ${pagesText(o.pageOptions?.gelato)} стор.` }], chosen, { name: 'provider' })}</div>`);
     requestAnimationFrame(() => syncSeg($('#oc-plan .seg')));
   }
 
@@ -238,7 +240,7 @@ async function mountCard(view, rid) {
       <div class="row"><span class="step-no">1</span><h3 class="card-title grow">Файли з Canva</h3>${badge}</div>
       <div class="input-group">
         <input class="input path-input" id="oc-folder" readonly value="${f.label}" title="${f.folder}" aria-label="Файли з Canva"
-          placeholder="${provider() ? `ZIP або папка · обкладинка і ${pages()} сторінок` : 'Спершу оберіть друкарню'}">
+          placeholder="${provider() ? `ZIP або папка · обкладинка і ${pagesText(pageOptions())} ${plural(pageOptions().at(-1) || 0, ['сторінка', 'сторінки', 'сторінок'])}` : 'Спершу оберіть друкарню'}">
         ${ib('folderPick', 'Обрати папку', `data-act="browse" ${provider() ? '' : 'disabled'}`)}
       </div>
       ${f.note && !f.busy ? html`<div class="row faint" style="font-size:12.5px">${ic('swap', 'icon-s')}<span>${f.note}</span></div>` : ''}
@@ -272,7 +274,7 @@ async function mountCard(view, rid) {
         <div class="strip-item" data-lb="0" style="width:${Math.round(110 * ratio)}px">
           <div class="structure-cover" style="height:110px"><img data-fade loading="lazy" decoding="async" src="${thumb('Cover.png', STRIP_THUMB)}" alt=""></div>
           <span class="strip-no">обкладинка</span></div>
-        ${spreadsOf(pages()).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}">
+        ${spreadsOf(f.pages).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}">
           <div class="spread-view">${half(sp.left)}${half(sp.right)}<div class="gutter-s"></div></div>
           <span class="strip-no num">${[sp.left, sp.right].filter(Boolean).join('–')}</span></div>`)}
       </div>
@@ -303,10 +305,10 @@ async function mountCard(view, rid) {
 
   // Put the export in page order (Cover.png + 1..N.png), then run the same full check as the Order Creator.
   async function arrange(path, my) {
-    const res = await api(`/api/orders/${o.receiptId}/files`, { method: 'POST', body: { folder: path, provider: provider() } });
+    const res = await api(`/api/orders/${o.receiptId}/files`, { method: 'POST', body: { folder: path, provider: provider(), format: plan().format || null } });
     if (my !== seq) return;
-    f.folder = res.path;
-    f.note = res.note;
+    Object.assign(f, { folder: res.path, note: res.note, pages: res.pageCount });
+    renderPlan();
     const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: provider(), folder: f.folder } }),
       (j) => { if (my === seq) setBusy(60 + (j.percent || 0) * 0.4); }, 300);
     if (my !== seq) return;
@@ -316,15 +318,15 @@ async function mountCard(view, rid) {
   }
   const failed = (my, err) => {
     if (my !== seq) return;
-    Object.assign(f, { busy: 0, error: err.message, validation: null });
-    renderRight();
+    Object.assign(f, { busy: 0, error: err.message, validation: null, pages: 0 });
+    renderPlan(); renderRight();
   };
 
   async function takeDrop(dropped) {
     if (!provider()) { toast('Спершу оберіть друкарню', 'info'); return; }
     const my = ++seq;
-    Object.assign(f, { folder: '', label: dropLabel(dropped), note: '', validation: null, busy: 1, error: '' });
-    renderRight();
+    Object.assign(f, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '' });
+    renderPlan(); renderRight();
     try {
       const path = await receiveDrop(dropped, (pct) => { if (my === seq) setBusy(pct * 0.6); });
       if (my === seq) await arrange(path, my);
@@ -333,18 +335,18 @@ async function mountCard(view, rid) {
 
   async function takeFolder() {
     let path;
-    try { path = (await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з обкладинкою і ${pages()} сторінками` } })).path; }
+    try { path = (await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з обкладинкою і ${pagesText(pageOptions())} сторінками` } })).path; }
     catch (err) { toast(err.message, 'error'); return; }
     if (!path) return;
     const my = ++seq;
-    Object.assign(f, { folder: '', label: path.split(/[\\/]/).pop(), note: '', validation: null, busy: 1, error: '' });
-    renderRight();
+    Object.assign(f, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '' });
+    renderPlan(); renderRight();
     try { await arrange(path, my); } catch (err) { failed(my, err); }
   }
 
   function resetFiles() {
     seq++;
-    Object.assign(f, { folder: '', label: '', note: '', validation: null, busy: 0, error: '' });
+    Object.assign(f, { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '' });
   }
 
   function print() {
@@ -367,7 +369,7 @@ async function mountCard(view, rid) {
       else if (a === 'print') print();
     }),
     on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
-    on(view, 'click', '[data-lb]', (e, c) => { if (f.folder) openLightbox(folderViewerItems(f.folder, pages(), f.label), +c.dataset.lb); }),
+    on(view, 'click', '[data-lb]', (e, c) => { if (f.folder && f.pages) openLightbox(folderViewerItems(f.folder, f.pages, f.label), +c.dataset.lb); }),
     on(view, 'click', '[data-seg="provider"] button', (e, b) => {
       chosen = b.dataset.value;
       setSeg(b.closest('.seg'), chosen);

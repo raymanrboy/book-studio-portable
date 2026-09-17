@@ -3,7 +3,7 @@
 Printify: folder with Cover.png + 1..N.png (N from the Master, 24) ->
   strict validation -> upload artwork (hash cache) -> new product built from the
   read-only Master configuration -> verification -> Master untouched check.
-Gelato: folder with Cover.png + 1..30.png -> light validation -> interior PDF ->
+Gelato: folder with Cover.png + 1..30.png (or 1..28.png) -> light validation -> interior PDF ->
   temporary public link -> draft order (orderType=draft) -> link kept 15 min.
 Nothing is ever published, ordered or sent to production.
 """
@@ -47,7 +47,19 @@ def _signature(folder: Path) -> tuple:
     return tuple(sorted((p.name, p.stat().st_size, p.stat().st_mtime_ns) for p in folder.iterdir() if p.is_file()))
 
 
-def expected_files(mode: str) -> list[dict]:
+def gelato_page_options() -> list[int]:
+    """How long a Gelato book may be: as long as the Canva export — 30 pages, or 28 without one spread."""
+    return sorted(int(n) for n in core.settings.section("gelato").get("pageCounts") or [28, 30])
+
+
+def _gelato_page_count(present: dict[str, Path]) -> int:
+    """The book length a Gelato folder is meant for: the shortest allowed one that holds its highest page."""
+    options = gelato_page_options()
+    top = max((int(m.group(1)) for name in present if (m := re.fullmatch(r"(\d+)\.png", name))), default=0)
+    return next((n for n in options if n >= top), options[-1])
+
+
+def expected_files(mode: str, count: int | None = None) -> list[dict]:
     if mode == "printify":
         cfg = core.settings.section("printify")
         count = int(cfg.get("pageCount") or 24)
@@ -55,7 +67,7 @@ def expected_files(mode: str) -> list[dict]:
         out = [{"file": "Cover.png", "position": "cover", "size": cover}]
         out += [{"file": f"{i}.png", "position": f"page_{i}", "size": page} for i in range(1, count + 1)]
         return out
-    count = int(core.settings.section("gelato").get("pageCount") or 30)
+    count = count or gelato_page_options()[-1]
     out = [{"file": "Cover.png", "position": "cover", "size": None}]
     out += [{"file": f"{i}.png", "position": f"page_{i}", "size": None} for i in range(1, count + 1)]
     return out
@@ -64,15 +76,16 @@ def expected_files(mode: str) -> list[dict]:
 def validate(mode: str, folder_raw: str, job=None) -> dict:
     folder = Path((folder_raw or "").strip().strip('"'))
     if not folder_raw or not folder.is_dir():
+        expected = expected_files(mode)
         return {"ok": False, "folder": str(folder), "errors": ["Папку не знайдено або шлях некоректний."],
-                "warnings": [], "files": [], "found": 0, "expected": len(expected_files(mode))}
-    expected = expected_files(mode)
+                "warnings": [], "files": [], "found": 0, "expected": len(expected), "pageCount": len(expected) - 1}
+    present = _files_by_lower(folder)
+    expected = expected_files(mode, _gelato_page_count(present) if mode == "gelato" else None)
     key = (mode, str(folder.resolve()), _signature(folder),
            tuple((e["file"], tuple(e["size"] or ())) for e in expected))
     if key in _validation_cache:
         return _validation_cache[key]
 
-    present = _files_by_lower(folder)
     errors: list[str] = []
     warnings: list[str] = []
     missing = [e["file"] for e in expected if e["file"].lower() not in present]
@@ -135,6 +148,7 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
         "files": rows,
         "found": len(rows),
         "expected": len(expected),
+        "pageCount": len(expected) - 1,
         "totalBytes": sum(r.get("bytes", 0) for r in rows),
     }
     if len(_validation_cache) > 40:
@@ -609,6 +623,37 @@ def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) ->
     return warnings
 
 
+def gelato_page_counts() -> dict[str, list[int] | None]:
+    """For every Gelato format, the page counts its catalog accepts (read only). None where the catalog
+    could not be read (no key, no internet): the draft checks again before anything is made."""
+    formats = core.settings.section("gelato").get("formats") or {}
+
+    def one(fmt: dict) -> list[int] | None:
+        try:
+            return gelato.page_counts(fmt["productUid"]) or None
+        except ApiError:
+            return None
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        return dict(zip(formats, pool.map(one, formats.values())))
+
+
+def gelato_pages_problem(format_key: str, count: int) -> str | None:
+    """Why Gelato would refuse a book of `count` pages in this format; None when it is fine or unknown."""
+    fmt = (core.settings.section("gelato").get("formats") or {}).get(format_key)
+    if not fmt:
+        return None
+    try:
+        valid = gelato.page_counts(fmt["productUid"])
+    except ApiError:
+        return None
+    if not valid or count in valid:
+        return None
+    text = f"Gelato не друкує {fmt.get('label') or format_key} на {count} сторінках (можна від {valid[0]})."
+    other = next((n for n in gelato_page_options() if n in valid), None)
+    return text + (f" Скачайте з Canva {other} сторінок." if other else "")
+
+
 def create_gelato_draft(folder: str, title: str, format_key: str, address: dict, job) -> dict:
     title = (title or "").strip()
     if not title:
@@ -632,8 +677,11 @@ def create_gelato_draft(folder: str, title: str, format_key: str, address: dict,
     pages = [Path(r["path"]) for r in result["files"] if r["position"] != "cover"]
     cover = next(Path(r["path"]) for r in result["files"] if r["position"] == "cover")
 
-    page_count = int(cfg.get("pageCount") or 30)
-    job.progress("Розміри книги в Gelato…", 8, fmt.get("label") or format_key)
+    page_count = len(pages)  # 28 or 30, as downloaded from Canva; the catalog below confirms Gelato prints it
+    job.progress("Розміри книги в Gelato…", 8, f"{fmt.get('label') or format_key} · {page_count} стор.")
+    problem = gelato_pages_problem(format_key, page_count)
+    if problem:
+        raise JobError(problem)
     try:
         geo = gelato.photobook_geometry(fmt["productUid"], page_count)
     except ApiError as err:
@@ -736,7 +784,7 @@ def _status(req: Request):
             "matteVariant": bool(matte_variant(p.get("master") or {})),
         },
         "gelato": {
-            "pageCount": g.get("pageCount"), "keyConfigured": bool(vault.get("gelato_api_key")),
+            "pageCounts": gelato_page_options(), "keyConfigured": bool(vault.get("gelato_api_key")),
             "formats": [{"key": k, "label": v.get("label")} for k, v in (g.get("formats") or {}).items()],
             "defaultFormat": g.get("defaultFormat"),
             "keepAliveSeconds": g.get("tunnelKeepAliveSeconds"),
@@ -779,6 +827,11 @@ def _create_gelato(req: Request):
     args = (body.get("folder") or "", body.get("title") or "", body.get("format") or "", body.get("address") or {})
     job = jobs.start("gelato-create", lambda j: create_gelato_draft(*args, j), exclusive="gelato-create")
     return {"jobId": job.id}
+
+
+@route("GET", "/api/creator/gelato/page-counts")
+def _gelato_page_counts(req: Request):
+    return {"formats": gelato_page_counts()}
 
 
 @route("POST", "/api/creator/gelato/close-tunnel")

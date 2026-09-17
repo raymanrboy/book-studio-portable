@@ -7,7 +7,7 @@ code:
 ---
 # Тести
 
-> 69 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
+> 76 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
 > дані — у тимчасовій папці, покупці — вигадані. Запускати після кожної зміни.
 
 ## Запуск
@@ -56,7 +56,7 @@ python -m unittest discover -s app/tests -t app
 | [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `IncrementalSync`, `StateApi` |
 | [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation`, `GelatoValidation`, `SafetyRails` |
 | [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`, `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
-| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand` |
+| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand` |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode` |
 
 ## Де в коді

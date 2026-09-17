@@ -20,7 +20,9 @@ code:
 3. Решта — за **останнім числом у назві** (`page_number()`: «12», «Madelynn - 12»,
    «12_upscayl_4x_ultrasharp» → 12). Немає числа → помилка з назвою файлу.
 4. Сортування за числом; однакові номери → «Сторінка N є двічі».
-5. Кількість має точно дорівнювати 24 або 30, інакше — «Потрібно 24 сторінок, а тут 23 (сторінки 1–23)».
+5. Кількість має точно дорівнювати дозволеній: Printify — 24, Gelato — 28 або 30 (`page_options()`),
+   інакше — «Потрібно 24 сторінки, а тут 23 (сторінки 1–23)» / «Потрібно 28 або 30 сторінок, а тут 29».
+   Відповідь містить `pageCount` — скільки сторінок вийшло.
 6. Вже правильно названа папка без зайвих файлів використовується як є.
 7. Інакше — **нова папка** `data/tmp/dropped/<uuid>/<назва>`: `Cover.png`, `1.png…N.png`. Оригінали
    користувача не перейменовуються: перетягнуті копії переносяться, інші файли — жорстке посилання
@@ -28,7 +30,8 @@ code:
 8. Примітка для картки: «сторінки 2–25 → 1–24; обкладинка — design.png».
 
 Далі — перевірка Order Creator (`validate()`): для Printify точні розміри, тож незаапскейлені сторінки
-одразу видно як помилку.
+одразу видно як помилку. Для Gelato перевірка сама визначає довжину книги за найбільшим номером файлу
+(`_gelato_page_count()`: є `29.png` чи `30.png` → 30, інакше 28).
 
 ## Імпорт у бібліотеку (`scan_folder()` і `mapFiles()` у паспорті)
 
@@ -57,11 +60,11 @@ code:
 
 ## Де в коді
 
-- [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()`, `page_number()`, `ranges()`, `_UPSCAYL`, `_LAST_NUMBER`
+- [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()`, `page_options()`, `pages_word()`, `page_number()`, `ranges()`, `_UPSCAYL`, `_LAST_NUMBER`
 - [app/studio/library.py](../../app/studio/library.py) — `scan_folder()`, `_UPSCAYL_TAIL`, `_NUM_RE`, `agent_guide()`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mapFiles()`, `IMG_RE`
-- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `expected_files()`, `_drop_rel()`, `DROPS`
-- Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`ArrangePages`, `PreparationGuide`, `PartialBookImport`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`FolderScan`)
+- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `expected_files()`, `_gelato_page_count()`, `_drop_rel()`, `DROPS`
+- Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`FolderScan`, `GelatoValidation`)
 
 ## Пов'язане
 

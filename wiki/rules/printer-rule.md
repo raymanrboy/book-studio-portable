@@ -8,21 +8,26 @@ code:
 ---
 # Правило друкарні
 
-> **Hardcover з доставкою в США → Printify, 24 сторінки. Усе інше → Gelato, 30 сторінок.**
+> **Hardcover з доставкою в США → Printify, 24 сторінки. Усе інше → Gelato, 28 або 30 сторінок.**
 
 | Замовлення | Друкарня | Сторінок | Формат Gelato |
 |---|---|---|---|
 | Hardcover, США | Printify | 24 | — |
-| Hardcover, будь-яка інша країна | Gelato | 30 | `hardcover_8x8` |
-| Softcover 5.5×5.5 (у полях є «5.5» або «5,5»), будь-куди | Gelato | 30 | `softcover_5x5` |
-| Softcover, будь-куди | Gelato | 30 | `softcover_8x8` |
-| Тип обкладинки не прочитався | вирішує власник (перемикач у картці) | 24 / 30 | — |
+| Hardcover, будь-яка інша країна | Gelato | 28 / 30 | `hardcover_8x8` |
+| Softcover 5.5×5.5 (у полях є «5.5» або «5,5»), будь-куди | Gelato | 28 / 30 | `softcover_5x5` |
+| Softcover, будь-куди | Gelato | 28 / 30 | `softcover_8x8` |
+| Тип обкладинки не прочитався | вирішує власник (перемикач у картці) | 24 / 28–30 | — |
+
+Для Gelato довжину визначають скачані файли (28 чи 30), а чи друкує Gelato 28 у цьому форматі —
+його каталог ([integrations/gelato.md](../integrations/gelato.md)). У відповіді сервера `plan.pages` —
+список: `[24]` або `[28, 30]` (`page_options()`).
 
 ## Чому так (слова власника)
 
 - Printify швидкий і надійний у США, у нього гарні хардкавери; софткавери в Printify погані.
 - Gelato чомусь із затримками робить хардкавери в США, а в інші країни і софткавери — вчасно й якісно.
-- Кількість сторінок — це просто тип товару: Printify робить лише 24, Gelato — від 30.
+- Кількість сторінок — це просто тип товару: Printify робить лише 24, Gelato — 30, а з 17.09.2026 і 28
+  (без одного розвороту), якщо формат це дозволяє.
 
 ## Як визначається тип обкладинки
 
@@ -39,9 +44,10 @@ code:
 
 ## Де в коді
 
-- [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `binding_of()`, `pages_for()`, `PRINTIFY_PAGES`, `_SMALL`
+- [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `binding_of()`, `page_options()`, `PRINTIFY_PAGES`, `_SMALL`
+- [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `cover_label()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `planText()` (пояснення «Hardcover · США → Printify · 24 стор.»)
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `planText()` (пояснення «Hardcover · США → Printify · 24 стор.», «… → Gelato · 28 або 30 стор.»), `pagesText()`
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `renderPlan()` (перемикач, коли тип невідомий)
 - Тест: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PrinterRule`)
 

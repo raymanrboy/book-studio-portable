@@ -179,6 +179,7 @@ class GelatoDraftFlow(unittest.TestCase):
         photo books ignore), so Gelato printed the cover on every page."""
         vault.set("gelato_api_key", "fake-gelato-key")
         gelato._geometry.clear()
+        gelato._products.clear()
         sent = {}
 
         def fake_call(method, url, body=None, **kw):
@@ -225,6 +226,84 @@ class GelatoDraftFlow(unittest.TestCase):
         for w, h in boxes[1:]:
             self.assertAlmostEqual(w, 209.2 * pt, places=1)             # inner pages with bleed
             self.assertAlmostEqual(h, 209.2 * pt, places=1)
+
+    ADDRESS = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Berlin",
+               "postCode": "10115", "country": "DE"}
+
+    def test_28_pages_when_28_were_downloaded(self):
+        """A book without one spread: Gelato is asked for 28 inner pages (and a cover sized for them)."""
+        vault.set("gelato_api_key", "fake-gelato-key")
+        gelato._geometry.clear()
+        gelato._products.clear()
+        sent, asked = {}, []
+
+        def fake_call(method, url, body=None, **kw):
+            self.assertTrue(gelato._allowed(method, url, body))
+            asked.append(url)
+            if method == "GET":
+                return self.COVER if "/cover-dimensions" in url else self.PRODUCT
+            sent.update(body)
+            return {"id": "gelato-order-28", "orderType": "draft", "fulfillmentStatus": "draft"}
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            png(root / "Cover.png", (466, 250), (1, 2, 3))
+            for i in range(1, 29):
+                png(root / f"{i}.png", (100 + i, 100 + i), (i, i, i))
+            creator._validation_cache.clear()
+            checked = creator.validate("gelato", str(root))
+            with mock.patch.object(gelato, "call", fake_call), \
+                    mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
+                    mock.patch.object(tunnel.registry, "keep", lambda *a, **kw: None):
+                res = creator.create_gelato_draft(str(root), "Book", "hardcover_8x8", self.ADDRESS, Job("t"))
+        vault.set("gelato_api_key", None)
+        self.assertEqual((checked["ok"], checked["pageCount"], checked["expected"]), (True, 28, 29))
+        self.assertEqual(sent["items"][0]["pageCount"], 28)
+        self.assertTrue(any(u.endswith("cover-dimensions?pageCount=28") for u in asked))
+        self.assertEqual(res["pdfPages"], 31)
+        session = sent["orderReferenceId"].removeprefix("draft-")
+        pdf = core.data_path("tmp", "gelato", session, "book.pdf").read_bytes().decode("latin-1")
+        widths = [int(w) for w in re.findall(r"/Width (\d+)", pdf)]
+        self.assertEqual(widths, [466, 16] + [100 + i for i in range(1, 29)] + [16])  # cover, blank, 28 pages, blank
+
+    def test_length_gelato_does_not_print_stops_before_anything_is_made(self):
+        vault.set("gelato_api_key", "fake-gelato-key")
+        gelato._geometry.clear()
+        gelato._products.clear()
+        calls = []
+
+        def fake_call(method, url, body=None, **kw):  # a made-up format that starts at 30 pages
+            calls.append(method)
+            return {**self.PRODUCT, "validPageCounts": list(range(30, 202, 2))}
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            png(root / "Cover.png", (466, 250), (1, 2, 3))
+            for i in range(1, 29):
+                png(root / f"{i}.png", (40, 40), (i, i, i))
+            creator._validation_cache.clear()
+            with mock.patch.object(gelato, "call", fake_call), \
+                    mock.patch.object(tunnel.FileTunnel, "start", side_effect=AssertionError("no link")):
+                with self.assertRaises(JobError) as ctx:
+                    creator.create_gelato_draft(str(root), "Book", "softcover_8x8", self.ADDRESS, Job("t"))
+        vault.set("gelato_api_key", None)
+        gelato._products.clear()
+        self.assertIn("Gelato не друкує Softcover 8×8 на 28 сторінках (можна від 30)", str(ctx.exception))
+        self.assertEqual(calls, ["GET"])  # only the catalog was read: no PDF link, no draft
+
+    def test_page_counts_of_every_format(self):
+        gelato._products.clear()
+
+        def fake_call(method, url, body=None, **kw):
+            self.assertEqual(method, "GET")
+            if "5_5x5_5" in url:
+                raise gelato.GelatoError("немає з'єднання з Gelato", 502)
+            return {"validPageCounts": [32, 28, 30]}
+
+        with mock.patch.object(gelato, "call", fake_call):
+            counts = creator.gelato_page_counts()
+        gelato._products.clear()
+        self.assertEqual(counts, {"hardcover_8x8": [28, 30, 32], "softcover_8x8": [28, 30, 32], "softcover_5x5": None})
 
     def test_canva_style_png_is_joined_without_touching_pixels(self):
         import struct

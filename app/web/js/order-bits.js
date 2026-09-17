@@ -30,11 +30,14 @@ export const providerName = (p) => (p === 'gelato' ? 'Gelato' : 'Printify');
 export const variationsOf = (o) => (o.items || []).flatMap((i) => i.variations || []);
 export const matchesOrder = (o, t) => !t || (o.name || '').toLowerCase().includes(t) || o.receiptId.includes(t);
 
+/** [28, 30] → "28 або 30": the book lengths a printer takes (Gelato: as many pages as were downloaded). */
+export const pagesText = (options) => [].concat(options || []).join(' або ');
+
 /** "Hardcover · США → Printify · 24 стор." — why this printer was chosen. */
 export function planText(plan) {
   if (!plan?.provider) return 'Тип обкладинки не вдалося визначити — оберіть друкарню';
   const binding = plan.binding === 'hardcover' ? 'Hardcover' : 'Softcover';
-  return `${binding} · ${countryName(plan.country)} → ${providerName(plan.provider)} · ${plan.pages} стор.`;
+  return `${binding} · ${countryName(plan.country)} → ${providerName(plan.provider)} · ${pagesText(plan.pages)} стор.`;
 }
 
 /** Etsy shipping address → the Order Creator's Gelato address fields. */

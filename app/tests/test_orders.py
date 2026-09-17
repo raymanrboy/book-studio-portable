@@ -22,9 +22,9 @@ def png(path: Path, size=(40, 40)):
 class PrinterRule(unittest.TestCase):
     def test_owner_rule(self):
         self.assertEqual(orders.plan_for(item(), "US")["provider"], "printify")            # hardcover to the US
-        self.assertEqual(orders.plan_for(item(), "US")["pages"], 24)
+        self.assertEqual(orders.plan_for(item(), "US")["pages"], [24])
         uk = orders.plan_for(item(), "GB")                                                 # hardcover elsewhere
-        self.assertEqual((uk["provider"], uk["format"], uk["pages"]), ("gelato", "hardcover_8x8", 30))
+        self.assertEqual((uk["provider"], uk["format"], uk["pages"]), ("gelato", "hardcover_8x8", [28, 30]))
         soft = orders.plan_for(item("8\" × 8\" Softcover"), "US")                           # softcover anywhere
         self.assertEqual((soft["provider"], soft["format"]), ("gelato", "softcover_8x8"))
         small = orders.plan_for(item("5.5\" × 5.5\" Softcover"), "CA")
@@ -88,7 +88,7 @@ class ArrangePages(unittest.TestCase):
         d = self.folder([f"{i}.png" for i in range(1, 23)], cover="Cover.png")
         with self.assertRaises(ApiError) as caught:
             orders.arrange_pages(d, 24)
-        self.assertIn("Потрібно 24 сторінок, а тут 22", str(caught.exception))
+        self.assertIn("Потрібно 24 сторінки, а тут 22", str(caught.exception))
 
     def test_no_cover_and_duplicates_are_reported(self):
         d = self.folder([f"{i}.png" for i in range(1, 25)])
@@ -112,6 +112,66 @@ class ArrangePages(unittest.TestCase):
             res = orders.arrange_pages(d, 24)
         self.assertFalse(any(d.iterdir()))
         self.assertEqual(len(list(Path(res["path"]).iterdir())), 25)
+
+
+class GelatoLength(unittest.TestCase):
+    """A Gelato book is as long as the Canva export: 30 pages, or 28 when one spread was left out."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def folder(self, numbers):
+        d = self.root / "Emma"
+        d.mkdir()
+        for n in numbers:
+            png(d / f"{n}.png")
+        png(d / "Cover.png", (96, 50))
+        return d
+
+    def test_28_or_30_pages_as_downloaded(self):
+        d = self.folder([n for n in range(1, 31) if n not in (8, 9)])       # spread 8–9 left out in Canva
+        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+            res = orders.arrange_pages(d, orders.page_options("gelato"))
+        self.assertEqual(res["pageCount"], 28)
+        self.assertIn("1–7, 10–30 → 1–28", res["note"])
+        self.assertEqual(len(list(Path(res["path"]).iterdir())), 29)
+        (d / "8.png").write_bytes((d / "7.png").read_bytes())               # one page too many: neither 28 nor 30
+        with self.assertRaises(ApiError) as caught:
+            orders.arrange_pages(d, [28, 30])
+        self.assertIn("Потрібно 28 або 30 сторінок, а тут 29", str(caught.exception))
+
+    def test_card_is_told_at_once_when_gelato_does_not_print_that_length(self):
+        from types import SimpleNamespace
+        from studio import gelato
+        d = self.folder(range(1, 29))
+
+        def catalog(uid):  # made-up answers: whatever Gelato really says, the program follows it
+            if "5_5x5_5" in uid:
+                raise gelato.GelatoError("немає з'єднання", 502)
+            return [30, 32] if "softcover" in uid else [28, 30, 32]
+
+        def files(provider, fmt):
+            return orders._files(SimpleNamespace(json={"folder": str(d), "provider": provider, "format": fmt}))
+
+        with mock.patch.object(gelato, "page_counts", catalog):
+            with self.assertRaises(ApiError) as caught:
+                files("gelato", "softcover_8x8")
+            self.assertIn("Gelato не друкує Softcover 8×8 на 28 сторінках (можна від 30)", str(caught.exception))
+            self.assertIn("Скачайте з Canva 30 сторінок", str(caught.exception))
+            self.assertEqual(files("gelato", "hardcover_8x8")["pageCount"], 28)
+            self.assertEqual(files("gelato", "softcover_5x5")["pageCount"], 28)  # catalog not reachable: checked again at the draft
+            self.assertEqual(files("gelato", None)["pageCount"], 28)             # printer picked by hand, format not known yet
+
+    def test_old_single_page_count_setting_is_dropped(self):
+        from studio import core
+        with mock.patch.object(core, "read_json", lambda *a, **kw: {"gelato": {"pageCount": 30}}):
+            saved = core.Settings()
+        self.assertNotIn("pageCount", saved.section("gelato"))
+        self.assertEqual(saved.section("gelato")["pageCounts"], [28, 30])
 
 
 class PreparationGuide(unittest.TestCase):

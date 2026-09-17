@@ -152,7 +152,7 @@ DEFAULT_SETTINGS: dict = {
         },
     },
     "gelato": {
-        "pageCount": 30,
+        "pageCounts": [28, 30],  # a book is as long as the Canva export: 30 pages, or 28 without one spread
         "currency": "USD",
         "eurUsdRate": 1.085,
         "tunnelKeepAliveSeconds": 900,
@@ -195,6 +195,7 @@ class Settings:
         self._lock = threading.RLock()
         self._path = data_path("settings.json")
         self._data = _merge(DEFAULT_SETTINGS, read_json(self._path, {}) or {})
+        self._data["gelato"].pop("pageCount", None)  # replaced by pageCounts (28 or 30) on 2026-09-17
 
     def get(self) -> dict:
         with self._lock:

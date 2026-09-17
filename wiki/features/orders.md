@@ -30,8 +30,9 @@ code:
 
 ## Картка (`#/orders/<номер чека>`)
 
-Шапка: ім'я покупця, номер чека, час, етап; праворуч чип «Printify/Gelato · N стор.» або, якщо тип
-обкладинки невідомий, перемикач друкарні. Для «В роботі»/«Відправлених» — попередження
+Шапка: ім'я покупця, номер чека, час, етап; праворуч чип «Printify · 24 стор.» / «Gelato · 28 або 30 стор.»
+(після розстановки файлів — точне число, напр. «Gelato · 28 стор.») або, якщо тип обкладинки невідомий,
+перемикач друкарні (варіанти сторінок — `pageOptions` замовлення). Для «В роботі»/«Відправлених» — попередження
 «друкуйте ще раз лише для передруку». Esc — назад до черги.
 
 **Розкладка** (з 16.09.2026, за проханням власника): ліворуч — робота, праворуч — дані; права колонка
@@ -50,8 +51,11 @@ code:
 
 ### Ліворуч — робота (`#oc-flow`, `renderRight()`)
 1. **Файли з Canva** (`filesCard()`): перетягнути ZIP/папку або обрати папку. Сервер розставляє сторінки
-   (`arrange_pages()`: обкладинка + 24 чи 30 сторінок, див. [rules/file-naming.md](../rules/file-naming.md)),
-   показує, що перейменував («сторінки 2–25 → 1–24»), далі — повна перевірка, як в Order Creator.
+   (`arrange_pages()`: обкладинка + 24 сторінки для Printify, 28 або 30 для Gelato — скільки скачано,
+   див. [rules/file-naming.md](../rules/file-naming.md)), показує, що перейменував («сторінки 2–25 → 1–24»),
+   далі — повна перевірка, як в Order Creator. Для Gelato сервер одразу питає каталог, чи друкує він
+   стільки сторінок у форматі замовлення; ні → помилка в цьому ж блоці
+   ([integrations/gelato.md](../integrations/gelato.md)).
 2. **Звірка** (`proofCard()`, з'являється після успішної перевірки; сторінка сама прокручується до неї):
    - обкладинка на всю ширину;
    - під нею перший розворот на всю ширину: ліва (у друці порожня) половина — **записка**: ім'я дитини
@@ -68,21 +72,22 @@ code:
 ## Що віддає сервер
 
 - `GET /api/orders` → `{orders, syncedAt}`; кожне замовлення з `picker_orders()`, доповнене
-  `enrich()`: для кожної книги `book` (з бібліотеки за номером лістингу), `plan` (правило друкарні),
-  `childName`.
+  `enrich()`: для кожної книги `book` (з бібліотеки за номером лістингу), `plan` (правило друкарні;
+  `plan.pages` — список дозволених довжин: `[24]` або `[28, 30]`), `childName`; для замовлення —
+  `pageOptions` (довжини для кожної друкарні, коли її обирають вручну).
 - `GET /api/orders/<чек>` → те саме для одного + `buyerMessage`.
-- `POST /api/orders/<чек>/files` `{folder, provider}` → `{path, note, renumbered}`.
+- `POST /api/orders/<чек>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount}`.
 
 ## Де в коді
 
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `print()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `STRIP_THUMB`
-- [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `pages_for()`, `_list()`, `_one()`, `_files()`
+- [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `planText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `guess_child_name()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `guess_child_name()`, `gelato_pages_problem()`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`
-- Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py), [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages`)
+- Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (у т. ч. `GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages`)
 
 ## Пов'язане
 

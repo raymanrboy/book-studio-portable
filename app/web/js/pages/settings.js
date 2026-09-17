@@ -158,7 +158,7 @@ export async function mount(view, [section]) {
       mark: stateMark(has, has ? 'Підключено' : 'Немає ключа'),
       body: html`<div class="stack">
         ${secretField('gelato_api_key')}
-        <div class="set-row">${ic('book')}<span class="grow">${formats.join(' · ')} <span class="faint">· <span class="num">${g.pageCount}</span> стор.</span></span>
+        <div class="set-row">${ic('book')}<span class="grow">${formats.join(' · ')} <span class="faint">· <span class="num">${(g.pageCounts || []).join(' або ')}</span> стор.</span></span>
           ${ib('pulse', 'Перевірити зв\'язок', `data-act="gelato-test" ${has ? '' : 'disabled'}`)}</div>
         <div id="gelato-test" class="faint" style="font-size:12.5px" hidden></div>
       </div>`,

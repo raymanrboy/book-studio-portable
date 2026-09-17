@@ -15,12 +15,18 @@ code: []
 - Пояснення в інтерфейсі — [app/web/js/order-bits.js](../app/web/js/order-bits.js) `planText()`.
 - Вікі: [rules/printer-rule.md](rules/printer-rule.md), [decisions.md](decisions.md).
 
-## Додати формат Gelato (наприклад, 28 сторінок чи новий розмір)
+## Додати формат Gelato (новий розмір)
 - [app/studio/core.py](../app/studio/core.py) — `DEFAULT_SETTINGS` (`gelato.formats`: `label`, `productUid`); збережені налаштування зливаються з типовими, тож новий ключ з'явиться сам.
 - [app/studio/orders.py](../app/studio/orders.py) — `plan_for()`: коли вибирати формат.
-- Кількість сторінок зараз одна на всі формати (`pageCount`) — інша кількість потребує змін у
-  [app/studio/creator.py](../app/studio/creator.py) `expected_files()`, `create_gelato_draft()` і [app/studio/orders.py](../app/studio/orders.py) `pages_for()`.
-- Order Creator показує формати зі статусу сам (`formatCard()`).
+- Order Creator показує формати зі статусу сам (`formatCard()`); скільки сторінок друкує новий формат,
+  програма спитає в каталогу Gelato сама.
+
+## Інша довжина книги Gelato (крім 28 і 30)
+- [app/studio/core.py](../app/studio/core.py) — `DEFAULT_SETTINGS` `gelato.pageCounts`. Але `_merge()` не
+  змінює список, уже збережений у `settings.json` власника, — потрібна міграція, як для старого
+  `pageCount` у `Settings.__init__()`.
+- Решта рахується з цього списку: [app/studio/creator.py](../app/studio/creator.py) `gelato_page_options()`, `_gelato_page_count()`; [app/studio/orders.py](../app/studio/orders.py) `page_options()`.
+- Вікі: [integrations/gelato.md](integrations/gelato.md), [rules/printer-rule.md](rules/printer-rule.md), [rules/book-structure.md](rules/book-structure.md).
 
 ## Показати сторінку «Прибуток»
 - [app/web/js/app.js](../app/web/js/app.js) — додати пункт у `NAV` (піктограма `chart`) і маршрут `#/profit` у `ROUTES`; зсунути гарячі клавіші.

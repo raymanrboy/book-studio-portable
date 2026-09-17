@@ -34,6 +34,7 @@ code: []
 | До друку | Передача замовлення в Order Creator | [orders.js](../app/web/js/pages/orders.js) `print()`; [handoff.js](../app/web/js/handoff.js) `give()` |
 | Order Creator | Сторінка створення книги/чернетки | [creator.js](../app/web/js/pages/creator.js) `mount()`; [creator.py](../app/studio/creator.py) |
 | Чернетка Gelato | Замовлення Gelato з `orderType: draft` | [creator.py](../app/studio/creator.py) `create_gelato_draft()` |
+| 28-сторінкова / 30-сторінкова книга (Gelato) | Скільки сторінок скачано з Canva (28 — без одного розвороту); окремого перемикача немає | [creator.py](../app/studio/creator.py) `gelato_page_options()`, `gelato_pages_problem()`; [integrations/gelato.md](integrations/gelato.md) |
 | Чернетка замовлення Printify, «On hold» | Книга + замовлення, що чекає «Submit order» | [creator.py](../app/studio/creator.py) `create_printify_draft()`; [printify.py](../app/studio/printify.py) `create_order_on_hold()` |
 | Книга без замовлення (Printify) | Лише неопублікований продукт, адреса порожня | [creator.py](../app/studio/creator.py) `create_printify_draft()` |
 | Master, шаблон Printify | Еталонний продукт, з якого копіюється конфігурація | [creator.py](../app/studio/creator.py) `build_printify_payload()`; [settings.js](../app/web/js/pages/settings.js) `pickMaster()` |
