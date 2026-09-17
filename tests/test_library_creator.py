@@ -114,7 +114,7 @@ class PrintifyValidation(unittest.TestCase):
     def test_payload_matches_master(self):
         cfg = core.settings.section("printify")
         ids = {e["position"]: f"img-{e['position']}" for e in creator.expected_files("printify")}
-        payload = creator.build_printify_payload("4174712220 - Caleb", ids, cfg)
+        payload = creator.build_printify_payload("4100000001 - Emma", ids, cfg)
         self.assertEqual(payload["blueprint_id"], 2737)
         self.assertEqual(payload["print_provider_id"], 28)
         self.assertEqual([v["id"] for v in payload["variants"]], [149190, 149191, 149192, 149193])

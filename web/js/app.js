@@ -1,5 +1,5 @@
-// App shell: sidebar, routing between pages (View Transitions), theme, heartbeat.
-import { api, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle } from './lib.js';
+// App shell: icon rail, routing between pages (View Transitions), theme, heartbeat.
+import { api, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, hideTip } from './lib.js';
 
 export const store = { info: null };
 const listeners = new Set();
@@ -40,42 +40,37 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
   if ((localStorage.getItem('bs-theme') || 'dark') === 'system') applyTheme('system');
 });
 
-// ------------------------------------------------------------------ sidebar (built once, then patched)
+// ------------------------------------------------------------------ rail (built once, then patched)
+// «Прибуток» is hidden until bookkeeping starts (the page itself is kept in pages/profit.js).
 const NAV = [
-  { hash: '#/library', label: 'Бібліотека книг', icon: 'book', match: /^#\/(library|book)/ },
-  { hash: '#/profit', label: 'Прибуток', icon: 'chart', match: /^#\/profit/ },
-  { hash: '#/creator', label: 'Order Creator', icon: 'package', match: /^#\/creator/ },
-  { hash: '#/settings', label: 'Налаштування', icon: 'sliders', match: /^#\/settings/ },
+  { hash: '#/orders', label: 'Замовлення', icon: 'inbox', kbd: 'Alt+1', match: /^#\/orders/ },
+  { hash: '#/library', label: 'Бібліотека книг', icon: 'shelf', kbd: 'Alt+2', match: /^#\/(library|book)/ },
+  { hash: '#/creator', label: 'Order Creator', icon: 'printer', kbd: 'Alt+3', match: /^#\/creator/ },
+  { hash: '#/settings', label: 'Налаштування', icon: 'sliders', kbd: 'Alt+4', match: /^#\/settings/ },
 ];
+const HOME = '#/orders';
+const THEMES = [
+  { value: 'dark', label: 'Темна', icon: 'moon' },
+  { value: 'light', label: 'Світла', icon: 'sun' },
+  { value: 'system', label: 'Як у Windows', icon: 'monitor' },
+];
+const currentTheme = () => localStorage.getItem('bs-theme') || 'dark';
 
 function buildSidebar() {
   setHtml(document.getElementById('sidebar'), html`
-    <div class="brand">
-      <div class="brand-mark">${ic('logo')}</div>
-      <div><div class="brand-name">Book Studio</div><div class="brand-sub">майстерня книг Etsy</div></div>
-    </div>
+    <div class="brand-mark" data-tip="Book Studio" data-tip-side="right">${ic('spread')}</div>
     <nav class="nav" id="nav">
-      <div class="nav-label">Робота</div>
       <span class="nav-pill" id="nav-pill" style="opacity:0"></span>
-      ${NAV.map((n) => html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}">
-        ${ic(n.icon)}<span>${n.label}</span>${n.hash === '#/library' ? html`<span class="nav-count" id="nav-count" hidden></span>` : ''}
-      </a>`)}
+      ${NAV.map((n) => html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}" aria-label="${n.label}" data-tip="${n.label}" data-kbd="${n.kbd}" data-tip-side="right">
+        ${ic(n.icon)}${n.hash === '#/settings' ? html`<span class="badge" id="nav-badge" hidden></span>` : ''}</a>`)}
     </nav>
     <div class="sidebar-foot">
-      <div class="conn-list">
-        ${[['etsy', 'Etsy', '#/settings/etsy'], ['printify', 'Printify', '#/settings/printify'], ['gelato', 'Gelato', '#/settings/gelato']]
-          .map(([k, label, go]) => html`<div class="conn" data-conn="${k}" data-go="${go}" title="${label}"><span class="dot"></span><b>${label}</b><span class="conn-val truncate"></span></div>`)}
-      </div>
-      <div class="theme-toggle" role="group" aria-label="Тема">
-        <button data-theme="dark" title="Темна">${ic('moon', 'icon-s')}</button>
-        <button data-theme="light" title="Світла">${ic('sun', 'icon-s')}</button>
-        <button data-theme="system" title="Як у Windows">${ic('monitor', 'icon-s')}</button>
-      </div>
+      <button class="ib lg" id="theme-btn" aria-label="Вигляд" data-tip="Вигляд" data-tip-side="right"></button>
     </div>`);
 }
 
 function placeNavPill() {
-  const hash = location.hash || '#/library';
+  const hash = location.hash || HOME;
   const pill = document.getElementById('nav-pill');
   let active = null;
   document.querySelectorAll('[data-nav]').forEach((a) => {
@@ -92,32 +87,38 @@ function placeNavPill() {
 function updateSidebar() {
   if (!document.getElementById('nav')) return;
   placeNavPill();
-  const info = store.info || {};
-  const integ = info.integrations || {};
-  const count = document.getElementById('nav-count');
-  if (count && info.library) { count.hidden = false; count.textContent = info.library.active; }
-  const set = (k, state, text) => {
-    const row = document.querySelector(`[data-conn="${k}"]`);
-    if (!row) return;
-    row.classList.toggle('on', state === 'on');
-    row.classList.toggle('warn', state === 'warn');
-    row.querySelector('.conn-val').textContent = text;
+  const integ = store.info?.integrations || {};
+  // One quiet signal instead of a status list: a dot on Settings when a service still needs a key or login.
+  const badge = document.getElementById('nav-badge');
+  if (badge && store.info) badge.hidden = !!(integ.etsy?.connected && integ.printify?.configured && integ.gelato?.configured);
+  const theme = THEMES.find((t) => t.value === currentTheme()) || THEMES[0];
+  setHtml(document.getElementById('theme-btn'), ic(theme.icon));
+}
+
+function openThemeMenu(anchor) {
+  const reduce = document.documentElement.dataset.motion === 'reduce';
+  const setTheme = async (value) => {
+    applyTheme(value);
+    try { await api('/api/settings/ui', { method: 'POST', body: { theme: value } }); } catch {}
   };
-  const etsy = integ.etsy || {};
-  set('etsy', etsy.connected ? 'on' : etsy.keysConfigured ? 'warn' : '', etsy.connected ? (etsy.shopName || 'підключено') : 'не підключено');
-  set('printify', integ.printify?.configured ? 'on' : '', integ.printify?.configured ? (integ.printify.shopTitle || 'підключено') : 'немає токена');
-  set('gelato', integ.gelato?.configured ? 'on' : '', integ.gelato?.configured ? 'підключено' : 'немає ключа');
-  const theme = localStorage.getItem('bs-theme') || 'dark';
-  document.querySelectorAll('.theme-toggle [data-theme]').forEach((b) => b.classList.toggle('active', b.dataset.theme === theme));
+  menu(anchor, [
+    ...THEMES.map((t) => ({ label: t.label, icon: t.icon, on: currentTheme() === t.value, onClick: () => setTheme(t.value) })),
+    '-',
+    { label: 'Мінімум анімацій', icon: 'motion', on: reduce, onClick: async () => {
+      applyMotion(!reduce);
+      try { await api('/api/settings/ui', { method: 'POST', body: { reduceMotion: !reduce } }); } catch {}
+    } },
+  ], { side: 'right' });
 }
 
 function wireSidebar() {
   const side = document.getElementById('sidebar');
-  on(side, 'click', '[data-theme]', async (e, b) => {
-    applyTheme(b.dataset.theme);
-    try { await api('/api/settings/ui', { method: 'POST', body: { theme: b.dataset.theme } }); } catch {}
+  on(side, 'click', '#theme-btn', (e, b) => { hideTip(); openThemeMenu(b); });
+  document.addEventListener('keydown', (e) => {
+    if (!e.altKey || e.ctrlKey || e.metaKey) return;
+    const n = NAV[Number(e.key) - 1];
+    if (n) { e.preventDefault(); location.hash = n.hash; }
   });
-  on(side, 'click', '[data-go]', (e, b) => { location.hash = b.dataset.go; });
 }
 
 // ------------------------------------------------------------------ top progress bar (only for slow page loads)
@@ -136,9 +137,9 @@ function topbarDone() {
 
 // ------------------------------------------------------------------ router
 const ROUTES = [
+  [/^#\/orders(?:\/(\d{5,20}))?\/?$/, () => import('./pages/orders.js')],
   [/^#\/library\/?$/, () => import('./pages/library.js')],
   [/^#\/book\/([0-9a-f]{32})$/, () => import('./pages/book.js')],
-  [/^#\/profit\/?$/, () => import('./pages/profit.js')],
   [/^#\/creator\/?$/, () => import('./pages/creator.js')],
   [/^#\/settings(?:\/(\w+))?$/, () => import('./pages/settings.js')],
 ];
@@ -150,9 +151,9 @@ let firstPage = true;
 // The new page is built off-screen while the old one stays visible, then both swap in one
 // View Transition (GPU cross-fade) — no blank frames and no half-rendered pages.
 async function navigate() {
-  const hash = location.hash || '#/library';
+  const hash = location.hash || HOME;
   const found = ROUTES.find(([re]) => re.test(hash));
-  if (!found) { location.hash = '#/library'; return; }
+  if (!found) { location.hash = HOME; return; }
   const my = ++navToken;
   const [re, loader] = found;
   const params = hash.match(re).slice(1);
@@ -176,7 +177,8 @@ async function navigate() {
   const swap = () => {
     try { current?.unmount?.(); } catch (err) { console.error(err); }
     document.getElementById('view').replaceWith(view);
-    document.getElementById('main').scrollTop = 0;
+    // Instant, not the smooth scroll-behavior of .main: a new page starts at its top in the same frame.
+    document.getElementById('main').scrollTo({ top: 0, behavior: 'instant' });
     current = ctrl;
     placeNavPill();
   };

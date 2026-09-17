@@ -1,0 +1,399 @@
+// Order pipeline: the queue of Etsy orders and one order's card — its book and Canva template, all
+// the buyer wrote, the Canva export dropped in and put in page order, a proof of the first spread and
+// every page, then the hand-over to the Order Creator. Nothing is remembered between visits.
+import {
+  api, html, ic, ib, raw, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
+  openExternal, runJob, fadeImages,
+} from '../lib.js';
+import { openLightbox } from '../lightbox.js';
+import {
+  STAGES, STAGE_EMPTY, matchesOrder, providerName, planText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
+  folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel,
+} from '../order-bits.js';
+import { give } from '../handoff.js';
+
+const STAGE_LABEL = { new: 'нове', work: 'в роботі', shipped: 'відправлено' };
+// Strip thumbnails: the server prepares this size ahead (creator.STRIP_PREVIEW), so scrolling never waits.
+const STRIP_THUMB = 360;
+
+const bookImage = (b, w) => media(`/media/book/${b.id}/${b.image}`, { w });
+const isCustomText = (v) => /dedicat|closing|присвят/i.test(v.name || '') && !/^\s*default\s*$/i.test(v.value || '');
+const isNameField = (v, item) => !!item.childName && (v.value || '').trim() === item.childName;
+// The cover format only decides the printer; it is never typed into Canva, so it gets no copy button.
+const isFormatField = (v) => /cover|size|format|binding|обкладинк|розмір/i.test(v.name || '')
+  || /hard\s?cover|soft\s?cover|hardback|paperback/i.test(v.value || '');
+
+export function mount(view, [rid]) {
+  return rid ? mountCard(view, rid) : mountQueue(view);
+}
+
+// ==================================================================== queue
+async function mountQueue(view) {
+  let data;
+  try { data = await api('/api/orders'); }
+  catch (err) { setHtml(view, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`); return null; }
+  let stage = 'new', term = '', syncing = false, shown = [], unfreeze = 0;
+
+  setHtml(view, html`
+    <div class="page-head"><div><h1 class="page-title">Замовлення</h1><div class="page-sub" id="or-sub"></div></div></div>
+    <div class="lib-toolbar">
+      <div class="input-group">${ic('search')}<input class="input" id="or-q" placeholder="Ім'я покупця або номер чека" aria-label="Пошук замовлення" autocomplete="off"></div>
+      ${segHtml(STAGES.map((s) => ({ ...s, count: 0 })), stage, { name: 'stage' })}
+      <div class="tools">${ib('sync', 'Оновити замовлення', 'data-act="sync"')}</div>
+    </div>
+    <div class="ord-list" id="or-list"></div>`);
+  const $ = (s) => view.querySelector(s);
+  const list = $('#or-list');
+  const seg = view.querySelector('[data-seg="stage"]');
+  const syncBtn = view.querySelector('[data-act="sync"]');
+  const syncedText = () => (data.syncedAt ? `Оновлено ${relTime(data.syncedAt)}` : 'Ще не завантажено');
+  const setSub = (text) => { $('#or-sub').textContent = text; };
+
+  const printerChip = (o) => {
+    const p = o.stage === 'work' ? o.provider : o.plan?.provider;
+    if (!p) return o.stage === 'new' ? html`<span class="chip chip-amber" data-tip="${planText(o.plan)}">${ic('alert', 'icon-s')}друкарня?</span>` : '';
+    const tip = o.stage === 'work' ? `Уже замовлено в ${providerName(p)}` : planText(o.plan);
+    return html`<span class="chip svc-${p}" data-tip="${tip}">${ic(p, 'icon-s')}${providerName(p)}</span>`;
+  };
+  const rowHtml = (o, entering) => html`<a class="ord-row ${entering ? 'enter' : ''}" href="#/orders/${o.receiptId}" data-rid="${o.receiptId}">
+      <span class="ord-thumb ${o.book?.lqip ? 'lqip' : ''}" ${o.book?.lqip ? raw(`style="background-image:url(${o.book.lqip})"`) : ''}>
+        ${o.book?.image ? html`<img data-fade loading="lazy" decoding="async" src="${bookImage(o.book, 160)}" alt="">` : ic('book')}</span>
+      <span class="ord-main">
+        <span class="row" style="gap:8px"><b class="truncate">${o.name}</b><span class="chip chip-mono">#${o.receiptId}</span>
+          ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}${printerChip(o)}</span>
+        <span class="ord-meta faint truncate"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> ·
+          ${o.book ? o.book.title : html`<span class="ord-miss">книги немає в бібліотеці</span>`} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</span>
+      </span>
+      ${o.childName ? html`<span class="chip chip-accent">${o.childName}</span>` : html`<span></span>`}
+      <span class="ord-go">${ic('chevRight')}</span>
+    </a>`;
+
+  const render = ({ fresh = false } = {}) => {
+    const t = term.trim().toLowerCase();
+    seg.querySelectorAll('button[data-value]').forEach((b) => {
+      b.querySelector('.seg-count').textContent = data.orders.filter((o) => o.stage === b.dataset.value && matchesOrder(o, t)).length;
+    });
+    syncSeg(seg);
+    const rows = data.orders.filter((o) => o.stage === stage && matchesOrder(o, t));
+    const before = shown;
+    shown = rows.map((o) => o.receiptId);
+    if (!rows.length) {
+      if (!data.orders.length && syncing) setHtml(list, html`<div class="empty"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
+      else if (t) setHtml(list, html`<div class="empty">Нічого не знайдено</div>`);
+      else {
+        const [icon, title, text] = STAGE_EMPTY[stage];
+        setHtml(list, html`<div class="empty"><div class="empty-icon">${ic(icon)}</div><h3>${title}</h3>${text ? html`<p>${text}</p>` : ''}</div>`);
+      }
+      return;
+    }
+    setHtml(list, rows.map((o) => rowHtml(o, !before.length || (fresh && !before.includes(o.receiptId)))));
+    fadeImages(list);
+    if (fresh && before.join() !== shown.join()) {
+      // The rows just moved: ignore clicks for a moment so a click aimed at one buyer never lands on another.
+      list.inert = true;
+      clearTimeout(unfreeze);
+      unfreeze = setTimeout(() => { list.inert = false; }, 450);
+    }
+  };
+
+  // pull: the refresh button starts a sync; on opening the page we only follow one already running
+  // (the one the program does at start-up) — pages never start a sync by themselves.
+  async function refresh(pull = () => syncOrders(setSub)) {
+    if (syncing) return;
+    syncing = true;
+    syncBtn.disabled = true; syncBtn.firstElementChild?.classList.add('spin');
+    setSub('Оновлення…');
+    if (!data.orders.length) render();
+    try {
+      await pull();
+      const next = await api('/api/orders');
+      if (!view.isConnected) return;
+      data = next;
+      setSub(syncedText());
+      render({ fresh: true });
+    } catch (err) {
+      if (view.isConnected) setSub(`${syncedText()} · не вдалося оновити: ${err.message}`);
+    } finally {
+      syncing = false;
+      syncBtn.disabled = false; syncBtn.firstElementChild?.classList.remove('spin');
+    }
+  }
+
+  const offs = [
+    on(view, 'click', '[data-act="sync"]', () => refresh()),
+    on(view, 'click', '[data-seg="stage"] button', (e, b) => {
+      if (b.dataset.value === stage) return;
+      stage = b.dataset.value;
+      setSeg(seg, stage);
+      render();
+    }),
+  ];
+  const q = $('#or-q');
+  q.addEventListener('input', () => { term = q.value; render(); });
+  q.addEventListener('keydown', (e) => { if (e.key === 'Enter' && shown.length) location.hash = `#/orders/${shown[0]}`; });
+
+  setSub(syncedText());
+  render();
+  runningSync().then((jobId) => { if (jobId && view.isConnected) refresh(() => watchSync(jobId, setSub)); });
+  return {
+    shown() { syncSeg(seg); },
+    unmount() { offs.forEach((f) => f()); clearTimeout(unfreeze); },
+  };
+}
+
+// ==================================================================== one order
+async function mountCard(view, rid) {
+  let o;
+  try { o = await api(`/api/orders/${rid}`); }
+  catch (err) {
+    setHtml(view, html`<button class="back-link" onclick="location.hash='#/orders'">${ic('arrowLeft', 'icon-s')}</button>
+      <div class="empty"><div class="empty-icon">${ic('receipt')}</div><h3>Замовлення не відкрилось</h3><p>${err.message}</p></div>`);
+    return null;
+  }
+  let pick = 0;        // which book of the order this pass is for (most orders hold one)
+  let chosen = null;   // printer picked by hand when the cover type could not be read
+  let seq = 0;
+  const f = { folder: '', label: '', note: '', validation: null, busy: 0, error: '' };
+  const item = () => o.items[pick] || {};
+  const plan = () => item().plan || {};
+  const provider = () => plan().provider || chosen;
+  const pages = () => (provider() === 'printify' ? 24 : (plan().provider === 'gelato' ? plan().pages : 30));
+
+  setHtml(view, html`
+    <div class="page-head">
+      <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
+      <div class="grow" style="min-width:0">
+        <h1 class="page-title truncate">${o.name}</h1>
+        <div class="page-sub"><span class="mono">#${o.receiptId}</span> · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}</div>
+      </div>
+      <div id="oc-plan"></div>
+    </div>
+    ${o.stage !== 'new' ? html`<div class="notice notice-warn" style="margin-bottom:18px">${ic('alert')}<div>${o.stage === 'work'
+      ? `Цю книгу вже замовлено в ${providerName(o.provider)}. Друкуйте ще раз лише для передруку.`
+      : 'Замовлення вже відправлено. Друкуйте ще раз лише для передруку.'}</div></div>` : ''}
+    <div class="ord-grid">
+      <div class="stack-l" id="oc-flow"></div>
+      <div class="stack-l ord-side" id="oc-data"></div>
+    </div>`);
+  const $ = (s) => view.querySelector(s);
+
+  // ---------------------------------------------------------------- header: where it is printed
+  function renderPlan() {
+    const p = provider();
+    setHtml($('#oc-plan'), plan().provider
+      ? html`<span class="chip chip-lg svc-${p}" data-tip="${planText(plan())}">${ic(p, 'icon-s')}${providerName(p)} · <span class="num">${pages()}</span> стор.</span>`
+      : html`<div class="row" style="gap:10px"><span class="faint" style="font-size:12.5px">Друкарня</span>${segHtml([
+        { value: 'printify', icon: 'printify', tip: 'Printify · 24 стор.' },
+        { value: 'gelato', icon: 'gelato', tip: 'Gelato · 30 стор.' }], chosen, { name: 'provider' })}</div>`);
+    requestAnimationFrame(() => syncSeg($('#oc-plan .seg')));
+  }
+
+  // ---------------------------------------------------------------- right (stays in view): book, personalization, delivery
+  function renderLeft() {
+    const it = item();
+    const b = it.book;
+    const vars = it.variations || [];
+    const a = o.address || {};
+    setHtml($('#oc-data'), html`
+      <section class="card card-pad ord-book">
+        <div class="ord-book-art ${b?.lqip ? 'lqip' : ''}" ${b?.lqip ? raw(`style="background-image:url(${b.lqip})"`) : ''}>
+          ${b?.image ? html`<img data-fade decoding="async" src="${bookImage(b, 360)}" alt="">` : ic('book')}</div>
+        <div class="stack-s grow" style="min-width:0">
+          ${b ? html`<a class="ord-book-title" href="#/book/${b.id}" data-tip="Паспорт книги">${b.title}</a>`
+            : html`<b>Книги немає в бібліотеці</b><span class="faint mono" style="font-size:12px">лістинг #${it.listingId || '—'}</span>`}
+          ${b?.canvaUrl ? html`<button class="btn btn-primary" data-act="canva">${ic('canva')}Відкрити шаблон у Canva</button>`
+            : b ? html`<a class="btn" href="#/book/${b.id}">${ic('link')}Додати посилання на Canva</a>`
+              : html`<a class="btn" href="#/library">${ic('shelf')}До бібліотеки</a>`}
+        </div>
+      </section>
+      <section class="card card-pad stack">
+        <div class="row"><h3 class="card-title grow">Персоналізація</h3>
+          ${o.items.length > 1 ? segHtml(o.items.map((x, i) => ({ value: String(i), label: `Книга ${i + 1}`, tip: x.title })), String(pick), { name: 'book' }) : ''}</div>
+        ${vars.length ? html`<dl class="ord-fields">${vars.map((v, i) => html`
+          <dt>${v.name}${isCustomText(v) ? html`<span class="chip chip-amber">свій текст</span>` : ''}</dt>
+          <dd class="${isCustomText(v) ? 'custom' : ''} ${isNameField(v, it) ? 'is-name' : ''}"><span>${v.value}</span>${isFormatField(v) ? '' : ib('copy', 'Копіювати', `data-copy="${i}"`, { cls: 'sm' })}</dd>`)}</dl>`
+          : html`<div class="faint">Покупець нічого не вказав.</div>`}
+        ${o.buyerMessage ? html`<div class="ord-message"><span class="eyebrow">Повідомлення покупця</span><div>${o.buyerMessage}</div></div>` : ''}
+      </section>
+      <section class="card card-pad stack-s">
+        <h3 class="card-title">Доставка</h3>
+        <div class="ord-address">${[a.name, a.first_line, a.second_line, [a.city, a.state, a.zip].filter(Boolean).join(', '), countryName(a.country_iso)]
+          .filter(Boolean).map((line) => html`<div>${line}</div>`)}</div>
+      </section>`);
+    fadeImages($('#oc-data'));
+    requestAnimationFrame(() => syncSeg($('#oc-data .seg')));
+  }
+
+  // ---------------------------------------------------------------- left: files → proof → print
+  const thumb = (name, w) => media('/media/folder', { path: f.folder, file: name, w });
+
+  function filesCard() {
+    const v = f.validation;
+    let badge = '';
+    if (f.busy) badge = html`<span class="v-badge run"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(f.busy)}%</span></span>`;
+    else if (v?.ok) badge = html`<span class="v-badge ok" data-tip="Усі PNG прочитано й перевірено">${ic('check')}<span class="num">${v.found}/${v.expected}</span></span>`;
+    else if (f.error || v) badge = html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
+    const errors = f.error ? [f.error] : (v?.errors || []);
+    return html`<section class="card card-pad stack" data-folder-drop>
+      <div class="row"><span class="step-no">1</span><h3 class="card-title grow">Файли з Canva</h3>${badge}</div>
+      <div class="input-group">
+        <input class="input path-input" id="oc-folder" readonly value="${f.label}" title="${f.folder}" aria-label="Файли з Canva"
+          placeholder="${provider() ? `ZIP або папка · обкладинка і ${pages()} сторінок` : 'Спершу оберіть друкарню'}">
+        ${ib('folderPick', 'Обрати папку', `data-act="browse" ${provider() ? '' : 'disabled'}`)}
+      </div>
+      ${f.note && !f.busy ? html`<div class="row faint" style="font-size:12.5px">${ic('swap', 'icon-s')}<span>${f.note}</span></div>` : ''}
+      ${errors.length && !f.busy ? html`<div class="notice notice-error">${ic('alertCircle')}<div><ul>${errors.slice(0, 10).map((e) => html`<li>${e}</li>`)}</ul>${errors.length > 10 ? html`<div>…та ще ${errors.length - 10}</div>` : ''}</div></div>` : ''}
+      ${v?.warnings?.length && !f.busy ? html`<div class="notice notice-warn">${ic('alert')}<div>${v.warnings.map((w) => html`<div>${w}</div>`)}</div></div>` : ''}
+    </section>`;
+  }
+
+  function proofCard() {
+    const it = item();
+    const cover = f.validation.files.find((r) => r.position === 'cover') || {};
+    const ratio = cover.width ? cover.width / cover.height : 1.9;
+    const half = (n) => (n === null ? html`<div class="half blank"></div>` : html`<div class="half"><img data-fade loading="lazy" decoding="async" src="${thumb(`${n}.png`, STRIP_THUMB)}" alt=""></div>`);
+    const notes = (it.variations || []).filter((v) => !isNameField(v, it) && !isFormatField(v)); // only what the page itself says
+    return html`<section class="card card-pad stack-l" id="oc-proof">
+      <div class="row"><span class="step-no">2</span><h3 class="card-title grow">Звірка</h3></div>
+      <div class="proof">
+        <div class="structure-cover" data-lb="0" style="aspect-ratio:${ratio}">
+          <img data-fade decoding="async" src="${thumb('Cover.png', 1400)}" alt="Обкладинка"><div class="gutter"></div><i class="crops"></i>
+        </div>
+        <div class="spread-view proof-spread" data-lb="1">
+          <div class="half proof-note">
+            ${it.childName ? html`<div class="proof-name">${it.childName}</div>` : ''}
+            <dl>${notes.map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>
+          </div>
+          <div class="half"><img data-fade decoding="async" src="${thumb('1.png', 1400)}" alt="Сторінка 1"></div>
+          <div class="gutter-s"></div><i class="crops"></i>
+        </div>
+      </div>
+      <div class="strip" id="oc-strip">
+        <div class="strip-item" data-lb="0" style="width:${Math.round(110 * ratio)}px">
+          <div class="structure-cover" style="height:110px"><img data-fade loading="lazy" decoding="async" src="${thumb('Cover.png', STRIP_THUMB)}" alt=""></div>
+          <span class="strip-no">обкладинка</span></div>
+        ${spreadsOf(pages()).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}">
+          <div class="spread-view">${half(sp.left)}${half(sp.right)}<div class="gutter-s"></div></div>
+          <span class="strip-no num">${[sp.left, sp.right].filter(Boolean).join('–')}</span></div>`)}
+      </div>
+    </section>`;
+  }
+
+  function printCard() {
+    const p = provider();
+    return html`<section class="card card-pad stack ${p === 'printify' ? 'tint-printify' : ''}">
+      <div class="row"><span class="step-no">3</span><h3 class="card-title grow">Друк</h3></div>
+      <button class="btn btn-xl btn-primary btn-block" data-act="print">${ic('send', 'icon-l')}До друку в ${providerName(p)}</button>
+    </section>`;
+  }
+
+  function renderRight() {
+    const ready = !!(f.folder && f.validation?.ok && !f.busy);
+    setHtml($('#oc-flow'), [filesCard(), ready ? proofCard() : '', ready ? printCard() : '']);
+    fadeImages($('#oc-flow'));
+    const strip = $('#oc-strip');
+    if (strip) smoothWheel(strip);
+  }
+
+  const setBusy = (pct) => {
+    f.busy = Math.max(1, Math.min(99, pct));
+    const num = view.querySelector('#oc-flow .v-badge.run .num');
+    if (num) num.textContent = `${Math.round(f.busy)}%`;
+  };
+
+  // Put the export in page order (Cover.png + 1..N.png), then run the same full check as the Order Creator.
+  async function arrange(path, my) {
+    const res = await api(`/api/orders/${o.receiptId}/files`, { method: 'POST', body: { folder: path, provider: provider() } });
+    if (my !== seq) return;
+    f.folder = res.path;
+    f.note = res.note;
+    const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: provider(), folder: f.folder } }),
+      (j) => { if (my === seq) setBusy(60 + (j.percent || 0) * 0.4); }, 300);
+    if (my !== seq) return;
+    Object.assign(f, { validation: v, busy: 0 });
+    renderRight();
+    if (v.ok) requestAnimationFrame(() => $('#oc-proof')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+  const failed = (my, err) => {
+    if (my !== seq) return;
+    Object.assign(f, { busy: 0, error: err.message, validation: null });
+    renderRight();
+  };
+
+  async function takeDrop(dropped) {
+    if (!provider()) { toast('Спершу оберіть друкарню', 'info'); return; }
+    const my = ++seq;
+    Object.assign(f, { folder: '', label: dropLabel(dropped), note: '', validation: null, busy: 1, error: '' });
+    renderRight();
+    try {
+      const path = await receiveDrop(dropped, (pct) => { if (my === seq) setBusy(pct * 0.6); });
+      if (my === seq) await arrange(path, my);
+    } catch (err) { failed(my, err); }
+  }
+
+  async function takeFolder() {
+    let path;
+    try { path = (await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з обкладинкою і ${pages()} сторінками` } })).path; }
+    catch (err) { toast(err.message, 'error'); return; }
+    if (!path) return;
+    const my = ++seq;
+    Object.assign(f, { folder: '', label: path.split(/[\\/]/).pop(), note: '', validation: null, busy: 1, error: '' });
+    renderRight();
+    try { await arrange(path, my); } catch (err) { failed(my, err); }
+  }
+
+  function resetFiles() {
+    seq++;
+    Object.assign(f, { folder: '', label: '', note: '', validation: null, busy: 0, error: '' });
+  }
+
+  function print() {
+    const it = item();
+    const name = it.childName || o.childName || '';
+    give('creator', {
+      mode: provider(), folder: f.folder, label: f.label, format: plan().format || null,
+      title: name ? `${o.receiptId} - ${name}` : String(o.receiptId), address: addressFromEtsy(o),
+    });
+    location.hash = '#/creator';
+  }
+
+  // ---------------------------------------------------------------- events
+  const offs = [
+    on(view, 'click', '[data-act]', (e, t) => {
+      const a = t.dataset.act;
+      if (a === 'back') location.hash = '#/orders';
+      else if (a === 'canva') openExternal(item().book?.canvaUrl);
+      else if (a === 'browse') takeFolder();
+      else if (a === 'print') print();
+    }),
+    on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
+    on(view, 'click', '[data-lb]', (e, c) => { if (f.folder) openLightbox(folderViewerItems(f.folder, pages(), f.label), +c.dataset.lb); }),
+    on(view, 'click', '[data-seg="provider"] button', (e, b) => {
+      chosen = b.dataset.value;
+      setSeg(b.closest('.seg'), chosen);
+      resetFiles();
+      renderPlan(); renderRight();
+    }),
+    on(view, 'click', '[data-seg="book"] button', (e, b) => {
+      if (+b.dataset.value === pick) return;
+      pick = +b.dataset.value;
+      chosen = null;
+      resetFiles();
+      renderPlan(); renderLeft(); renderRight();
+    }),
+  ];
+  wireFolderDrop(view, () => $('#oc-folder'), takeDrop);
+
+  // Esc steps back to the queue when nothing else (a dialog, the viewer, a menu) owns the key.
+  const onKey = (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    if (document.querySelector('.modal-root, .lightbox, .menu')) return;
+    location.hash = '#/orders';
+  };
+  document.addEventListener('keydown', onKey);
+
+  renderPlan(); renderLeft(); renderRight();
+  return {
+    unmount() { offs.forEach((fn) => fn()); seq++; document.removeEventListener('keydown', onKey); },
+  };
+}

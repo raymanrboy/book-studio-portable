@@ -1,9 +1,11 @@
-// Settings: keys (encrypted with Windows DPAPI), Etsy connection, Printify Master, Gelato, appearance.
+// Settings: keys (encrypted with Windows DPAPI), Etsy connection, Printify Master, Gelato, data folder.
+// Every block is collapsed to one line with its status; the rare technical values live one more
+// click away, behind the details toggle, so the page stays quiet. Theme lives only in the rail.
 import {
-  api, html, ic, setHtml, on, modal, toast, confirmBox, copyText, openExternal, segHtml, syncSeg, setSeg,
-  dateTime, sleep,
+  api, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, openExternal, syncSeg,
+  dateTime, sleep, slide,
 } from '../lib.js';
-import { refreshInfo, applyTheme, applyMotion } from '../app.js';
+import { refreshInfo } from '../app.js';
 
 const SECRET_LABELS = {
   etsy_keystring: ['Etsy Keystring', 'Etsy Developers → Your apps → Keystring'],
@@ -11,13 +13,51 @@ const SECRET_LABELS = {
   printify_token: ['Printify Personal Access Token', 'Printify → My account → Connections → API'],
   gelato_api_key: ['Gelato API-ключ', 'Gelato Dashboard → Developer → API keys'],
 };
+const OPEN_KEY = 'bs-settings-open';
 
 export async function mount(view, [section]) {
   let s;
   const editing = new Set();
+  const openCards = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]'));
+  const openDetails = new Set();
+  if (section) openCards.add(section);
+  const persistOpen = () => localStorage.setItem(OPEN_KEY, JSON.stringify([...openCards]));
 
   async function load() {
     s = await api('/api/settings');
+    // A block that needs the user's attention opens by itself.
+    if (!s.etsy.connected || s.etsy.portWarning) openCards.add('etsy');
+    if (!s.secrets.printify_token.configured) openCards.add('printify');
+    if (!s.secrets.gelato_api_key.configured) openCards.add('gelato');
+  }
+
+  // Connection state as a mark, not a word: green = works, amber = needs something.
+  const stateMark = (ok, tip) => html`<span class="state-mark ${ok ? 'ok' : 'warn'}" data-tip="${tip}" aria-label="${tip}">${ic(ok ? 'checkCircle' : 'alertCircle')}</span>`;
+
+  /** One collapsible block: header line with a status, body with the essentials. */
+  function card(id, { logo, logoClass, title, summary, mark = '', body }) {
+    const open = openCards.has(id);
+    return html`<section class="set-card ${open ? 'open' : ''}" id="set-${id}">
+      <button class="set-head" data-card="${id}" aria-expanded="${open ? 'true' : 'false'}">
+        <span class="int-logo ${logoClass}">${logo}</span>
+        <span class="grow" style="min-width:0">
+          <span class="set-title">${title}</span>
+          <span class="set-sum truncate">${summary}</span>
+        </span>
+        ${mark}
+        <span class="chev">${ic('chevDown', 'icon-s')}</span>
+      </button>
+      <div class="acc ${open ? 'open' : ''}" data-body="${id}"><div class="set-body">${body}</div></div>
+    </section>`;
+  }
+
+  /** Rarely needed values, hidden behind one more click inside a block. */
+  function details(id, content) {
+    const open = openDetails.has(id);
+    return html`<div class="set-details">
+      ${ib('chevDown', open ? 'Сховати подробиці' : 'Подробиці', `data-details="${id}" aria-expanded="${open}"`, { cls: `sm details-toggle ${open ? 'on' : ''}` })}
+      <div class="acc ${open ? 'open' : ''}" data-details-body="${id}"><div class="stack" style="padding-top:10px">${content}</div></div>
+    </div>`;
   }
 
   function secretField(name) {
@@ -26,12 +66,12 @@ export async function mount(view, [section]) {
     const edit = editing.has(name) || !st.configured;
     return html`<div class="field">
       <label class="field-label">${label}</label>
-      ${edit ? html`<div class="secret-row"><input class="input mono" type="password" data-secret-input="${name}" placeholder="Вставте значення…" autocomplete="off" spellcheck="false">
-          <button class="btn btn-primary" data-secret-save="${name}">Зберегти</button>
-          ${st.configured ? html`<button class="btn btn-ghost" data-secret-cancel="${name}">Скасувати</button>` : ''}</div>`
+      ${edit ? html`<div class="secret-row"><input class="input mono" type="password" data-secret-input="${name}" placeholder="Вставте значення" autocomplete="off" spellcheck="false" aria-label="${label}">
+          ${ib('check', 'Зберегти', `data-secret-save="${name}"`, { cls: 'primary', kbd: 'Enter' })}
+          ${st.configured ? ib('x', 'Скасувати', `data-secret-cancel="${name}"`) : ''}</div>`
         : html`<div class="secret-row"><div class="secret-state">${ic('lock', 'icon-s')}<span>Збережено</span><span class="mono">${st.hint}</span></div>
-          <button class="btn" data-secret-edit="${name}">Змінити</button>
-          <button class="btn btn-ghost btn-icon" data-secret-clear="${name}" title="Видалити">${ic('trash', 'icon-s')}</button></div>`}
+          ${ib('edit', 'Замінити ключ', `data-secret-edit="${name}"`)}
+          ${ib('trash', 'Видалити ключ', `data-secret-clear="${name}"`, { cls: 'danger' })}</div>`}
       <div class="field-hint">${hint}</div>
     </div>`;
   }
@@ -41,174 +81,134 @@ export async function mount(view, [section]) {
     const items = (s.legacy?.items || []).filter((i) => !i.alreadySet);
     const cache = s.legacy?.uploadCache || 0;
     if (!items.length) return '';
-    return html`<section class="card card-pad" style="grid-column:1/-1;border-color:var(--accent-line);background:linear-gradient(135deg,var(--accent-soft),transparent 60%),var(--surface)">
-      <div class="row" style="align-items:flex-start;gap:14px">
-        <div class="int-logo int-etsy">${ic('sparkle', 'icon-l')}</div>
-        <div class="grow">
-          <div class="card-title">Швидкий старт: знайдено ключі з ваших попередніх програм</div>
-          <div class="card-sub" style="margin-bottom:10px">Програма може одразу перенести їх у своє зашифроване сховище — вводити нічого не потрібно.</div>
-          <div class="row-wrap">${items.map((i) => html`<span class="chip chip-lg">${ic('key', 'icon-s')}${i.label}<span class="faint" style="font-weight:500">· ${i.source}</span></span>`)}
-            ${cache ? html`<span class="chip chip-lg">${ic('database', 'icon-s')}Кеш завантажень Printify · ${cache}</span>` : ''}</div>
-        </div>
-        <button class="btn btn-primary" data-act="legacy-import">${ic('download', 'icon-s')}Імпортувати</button>
+    return html`<section class="set-card set-hint">
+      <div class="set-head" style="cursor:default">
+        <span class="int-logo">${ic('key')}</span>
+        <span class="grow" style="min-width:0"><span class="set-title">Знайдено ключі з попередніх програм</span>
+          <span class="set-sum truncate">${items.map((i) => i.label).join(', ')}${cache ? ` · кеш Printify ${cache}` : ''}</span></span>
+        <button class="btn btn-primary btn-sm" data-act="legacy-import">${ic('download', 'icon-s')}Перенести</button>
       </div></section>`;
   }
 
   function etsyCard() {
     const e = s.etsy;
     const connected = e.connected;
-    return html`<section class="card card-pad" id="set-etsy" style="grid-column:1/-1">
-      <div class="int-head" style="margin-bottom:18px">
-        <div class="int-logo int-etsy">E</div>
-        <div class="grow"><div class="card-title">Etsy <span class="faint mono" style="font-size:11.5px;font-weight:500">OAuth 2.0 PKCE · лише читання</span></div>
-          <div class="card-sub">Замовлення, податки США та чистий виторг для сторінки «Прибуток», перевірка лістингів для бібліотеки</div></div>
-        ${connected ? html`<span class="chip chip-green chip-lg"><span class="dot"></span>Підключено</span>`
-          : html`<span class="chip chip-amber chip-lg"><span class="dot"></span>${e.keysConfigured ? 'Очікує входу' : 'Немає ключів'}</span>`}
-      </div>
-      <div class="settings-grid" style="gap:22px">
-        <div class="stack">
-          ${secretField('etsy_keystring')}
-          ${secretField('etsy_shared_secret')}
-        </div>
-        <div class="stack">
-          ${connected ? html`
-            <div class="card-soft row" style="padding:14px">
-              <span class="check-ico ok" style="width:34px;height:34px;border-radius:10px">${ic('shield')}</span>
-              <div class="grow"><div style="font-weight:650">${e.shopName || 'Магазин Etsy'} <span class="faint mono" style="font-weight:500">#${e.shopId || '—'}</span></div>
-                <div class="faint" style="font-size:12px">Токен оновлюється автоматично · доступ лише на читання${e.expiresAt ? ` · чинний до ${dateTime(new Date(e.expiresAt).toISOString())}` : ''}</div></div>
-              <button class="btn btn-ghost" data-act="etsy-disconnect" style="color:var(--red)">Відключити</button>
-            </div>
-            <div class="card-soft row" style="padding:14px">
-              <span class="check-ico" style="width:34px;height:34px;border-radius:10px;color:var(--accent)">${ic('laptop')}</span>
-              <div class="grow"><div style="font-weight:600">Перенести доступ на інший комп'ютер</div>
-                <div class="faint" style="font-size:12px">Ключ сесії підходить і для Book Studio на іншому ПК, і для Etsy Profit Calculator</div></div>
-              <button class="btn" data-act="etsy-export">${ic('copy', 'icon-s')}Скопіювати ключ сесії</button>
-            </div>`
-          : html`
-            <div class="card-soft stack-s" style="padding:14px">
-              <div style="font-weight:600" class="row">${ic('laptop', 'icon-s')}Вже авторизували Etsy в Profit Calculator?</div>
-              <div class="faint" style="font-size:12px">Відкрийте там Налаштування → «Скопіювати лінк доступу» і вставте посилання або ключ сюди.</div>
-              <div class="row" style="margin-top:4px"><input class="input mono" id="etsy-key" placeholder="https://…/?sync=… або ключ сесії" autocomplete="off" spellcheck="false">
-                <button class="btn btn-primary" data-act="etsy-import" ${e.keysConfigured ? '' : 'disabled'}>Активувати</button></div>
-              ${e.secretConfigured ? '' : html`<div class="field-hint" style="color:var(--amber)">Для розшифрування ключа потрібен той самий Shared Secret, що й у Profit Calculator.</div>`}
-            </div>
-            <div class="card-soft row" style="padding:14px">
-              <div class="grow"><div style="font-weight:600">Первинна авторизація через Etsy</div>
-                <div class="faint" style="font-size:12px">Вхід на сторінці Etsy виконується виключно з віддаленого комп'ютера в Києві</div></div>
-              <button class="btn btn-primary" data-act="etsy-oauth" ${e.keysConfigured ? '' : 'disabled'}>${ic('login', 'icon-s')}Авторизуватися в Etsy (Київ)</button>
-            </div>`}
-          <div class="info-box">
-            <div class="row" style="margin-bottom:4px"><b style="font-size:12.5px">Callback URL (Redirect URI)</b><span class="spacer"></span>
-              <button class="btn btn-ghost btn-xs" data-copy-text="${e.redirectUri}">${ic('copy', 'icon-s')}Скопіювати</button>
-              <button class="btn btn-ghost btn-xs" data-act="redirect-edit">${ic('edit', 'icon-s')}Змінити</button></div>
-            <code>${e.redirectUri}</code>
-            <div class="faint" style="margin-top:6px;font-size:11.5px">Цю адресу треба один раз додати в Etsy Developers → Your apps → Callback URLs.</div>
-          </div>
-          ${e.portWarning ? html`<div class="notice notice-warn">${ic('alert')}<div>${e.portWarning}</div></div>` : ''}
-        </div>
-      </div>
-    </section>`;
+    // Keys that are still missing are the first thing to fill in; saved ones move to the details.
+    const missing = ['etsy_keystring', 'etsy_shared_secret'].filter((n) => !s.secrets[n].configured);
+    const saved = ['etsy_keystring', 'etsy_shared_secret'].filter((n) => s.secrets[n].configured);
+    const main = connected
+      ? html`<div class="set-row">
+          <span class="grow">Магазин <b>${e.shopName || '—'}</b> <span class="faint">· лише читання · доступ оновлюється сам</span></span>
+          ${ib('unplug', 'Відключити Etsy', 'data-act="etsy-disconnect"', { cls: 'danger' })}
+        </div>`
+      : html`<div class="stack-s">
+          <div class="input-group">${ic('link')}<input class="input mono" id="etsy-key" placeholder="Лінк доступу з Etsy Profit Calculator (…/?sync=…)" autocomplete="off" spellcheck="false" aria-label="Лінк доступу Etsy" style="padding-right:40px">
+            ${ib('check', 'Підключити за лінком', `data-act="etsy-import" ${e.keysConfigured ? '' : 'disabled'}`, { cls: 'primary', kbd: 'Enter' })}</div>
+          <div class="set-row"><span class="grow faint">або вхід в Etsy з київського комп'ютера</span>
+            ${ib('login', 'Увійти в Etsy (лише з київського ПК)', `data-act="etsy-oauth" ${e.keysConfigured ? '' : 'disabled'}`)}</div>
+        </div>`;
+    return card('etsy', {
+      logo: ic('etsy'), logoClass: 'int-etsy', title: 'Etsy',
+      summary: connected ? `${e.shopName || 'Магазин'} · замовлення й лістинги` : (e.keysConfigured ? 'Потрібен вхід' : 'Немає ключів'),
+      mark: stateMark(connected, connected ? 'Підключено' : 'Не підключено'),
+      body: html`<div class="stack">
+        ${missing.map(secretField)}
+        ${main}
+        ${e.portWarning ? html`<div class="notice notice-warn">${ic('alert')}<div>${e.portWarning}</div></div>` : ''}
+        ${details('etsy', html`
+          ${saved.map(secretField)}
+          <div class="field"><label class="field-label">Адреса повернення (Callback URL)</label>
+            <div class="row"><code class="grow code-line">${e.redirectUri}</code>
+              ${ib('copy', 'Копіювати адресу', `data-copy-text="${e.redirectUri}"`)}
+              ${ib('edit', 'Змінити адресу', 'data-act="redirect-edit"')}</div>
+            <div class="field-hint">Має бути додана в Etsy Developers → Your apps → Callback URLs.</div></div>
+          ${connected ? html`<div class="set-row"><span class="grow">Ключ сесії для іншого комп'ютера${e.expiresAt ? html` <span class="faint">· токен до ${dateTime(new Date(e.expiresAt).toISOString())}</span>` : ''}</span>
+            ${ib('key', 'Копіювати ключ сесії', 'data-act="etsy-export"')}</div>` : ''}`)}
+      </div>`,
+    });
   }
 
+  // Printify and Gelato show only the key and the book templates in use; the technical values
+  // (Master placements, artwork sizes, product UIDs, link lifetime) stay fixed and out of sight.
   function printifyCard() {
     const p = s.printify;
     const m = p.master || {};
-    const enabled = (m.variants || []).filter((v) => v.is_enabled).map((v) => v.title || v.id);
-    const cover = (m.placements || {}).cover;
-    return html`<section class="card card-pad" id="set-printify">
-      <div class="int-head" style="margin-bottom:18px">
-        <div class="int-logo int-printify">P</div>
-        <div class="grow"><div class="card-title">Printify <span class="faint mono" style="font-size:11.5px;font-weight:500">Personal Access Token</span></div>
-          <div class="card-sub">Собівартість замовлень і створення неопублікованих чернеток книг</div></div>
-        ${s.secrets.printify_token.configured ? html`<span class="chip chip-green chip-lg"><span class="dot"></span>Токен є</span>` : html`<span class="chip chip-amber chip-lg">Немає токена</span>`}
-      </div>
-      <div class="stack">
+    const has = s.secrets.printify_token.configured;
+    return card('printify', {
+      logo: ic('printify'), logoClass: 'int-printify', title: 'Printify',
+      summary: has ? `${p.shopTitle || 'Магазин не обрано'} · ${m.title || 'шаблон не обрано'}` : 'Потрібен токен',
+      mark: stateMark(has, has ? 'Підключено' : 'Немає токена'),
+      body: html`<div class="stack">
         ${secretField('printify_token')}
-        <div class="row"><button class="btn" data-act="printify-test" ${s.secrets.printify_token.configured ? '' : 'disabled'}>${ic('refresh', 'icon-s')}Перевірити зв'язок</button><span id="printify-test" class="faint" style="font-size:12.5px"></span></div>
-        <hr class="divider" style="margin:6px 0">
-        <div class="row"><b class="grow">Магазин і Master-продукт</b>
-          <button class="btn btn-sm" data-act="master-pick" ${s.secrets.printify_token.configured ? '' : 'disabled'}>${ic('grid', 'icon-s')}Обрати Master…</button>
-          <button class="btn btn-sm" data-act="master-recheck" ${s.secrets.printify_token.configured ? '' : 'disabled'}>${ic('refresh', 'icon-s')}Перечитати</button></div>
-        <dl class="master-card card-soft" style="padding:12px 14px;margin:0">
-          <dt>Магазин</dt><dd>${p.shopTitle || '—'} <span class="faint mono">#${p.shopId || '—'}</span></dd>
-          <dt>Master</dt><dd>${m.title || '—'}</dd>
-          <dt>Product ID</dt><dd class="mono" style="font-size:11.5px">${m.productId || '—'}</dd>
-          <dt>Blueprint / постачальник</dt><dd>${m.blueprintId || '—'} / ${m.printProviderId || '—'}</dd>
-          <dt>Увімкнені варіанти</dt><dd>${enabled.join(', ') || '—'}</dd>
-          <dt>Позиції</dt><dd>cover + page_1…page_${p.pageCount}</dd>
-          <dt>Обкладинка x / y</dt><dd class="mono" style="font-size:11.5px">${cover ? `${cover.x} / ${cover.y}` : '—'}</dd>
-          <dt>Проаналізовано</dt><dd>${m.analyzedAt ? dateTime(m.analyzedAt) : 'еталонні значення'}</dd>
-        </dl>
-        <div class="row-wrap" style="gap:14px">
-          <div class="field"><label class="field-label">Розмір Cover.png, px</label><div class="row"><input class="input" style="width:90px" id="pz-cw" value="${p.coverSize[0]}">×<input class="input" style="width:90px" id="pz-ch" value="${p.coverSize[1]}"></div></div>
-          <div class="field"><label class="field-label">Розмір сторінок, px</label><div class="row"><input class="input" style="width:90px" id="pz-pw" value="${p.pageSize[0]}">×<input class="input" style="width:90px" id="pz-ph" value="${p.pageSize[1]}"></div></div>
-          <button class="btn" data-act="sizes-save" style="align-self:flex-end">Зберегти розміри</button>
-        </div>
-        <div class="field-hint">Master лише читається: програма ніколи не змінює, не публікує і не видаляє його.</div>
-      </div>
-    </section>`;
+        <div class="set-row">${ic('book')}<span class="grow">${m.title || 'Шаблон не обрано'} <span class="faint">· <span class="num">${p.pageCount}</span> стор.</span></span>
+          ${m.productId ? '' : ib('template', 'Обрати шаблон (Master)', `data-act="master-pick" ${has ? '' : 'disabled'}`)}
+          ${ib('pulse', 'Перевірити зв\'язок', `data-act="printify-test" ${has ? '' : 'disabled'}`)}</div>
+        <div id="printify-test" class="faint" style="font-size:12.5px" hidden></div>
+      </div>`,
+    });
   }
 
   function gelatoCard() {
     const g = s.gelato;
-    return html`<section class="card card-pad" id="set-gelato">
-      <div class="int-head" style="margin-bottom:18px">
-        <div class="int-logo int-gelato">G</div>
-        <div class="grow"><div class="card-title">Gelato <span class="faint mono" style="font-size:11.5px;font-weight:500">API v4 · X-API-KEY</span></div>
-          <div class="card-sub">Собівартість замовлень і створення чернеток замовлень (draft)</div></div>
-        ${s.secrets.gelato_api_key.configured ? html`<span class="chip chip-green chip-lg"><span class="dot"></span>Ключ є</span>` : html`<span class="chip chip-amber chip-lg">Немає ключа</span>`}
-      </div>
-      <div class="stack">
+    const has = s.secrets.gelato_api_key.configured;
+    const formats = Object.values(g.formats).map((f) => f.label);
+    return card('gelato', {
+      logo: ic('gelato'), logoClass: 'int-gelato', title: 'Gelato',
+      summary: has ? formats.join(' · ') : 'Потрібен ключ',
+      mark: stateMark(has, has ? 'Підключено' : 'Немає ключа'),
+      body: html`<div class="stack">
         ${secretField('gelato_api_key')}
-        <div class="row"><button class="btn" data-act="gelato-test" ${s.secrets.gelato_api_key.configured ? '' : 'disabled'}>${ic('refresh', 'icon-s')}Перевірити зв'язок</button><span id="gelato-test" class="faint" style="font-size:12.5px"></span></div>
-        <hr class="divider" style="margin:6px 0">
-        <b>Формати фотокниг</b>
-        <div class="card-soft" style="padding:4px 12px">${Object.entries(g.formats).map(([k, f]) => html`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
-          <div class="row"><b style="font-size:13px">${f.label}</b><span class="spacer"></span><span class="faint mono" style="font-size:11px">${k}</span></div>
-          <div class="faint mono" style="font-size:10.5px;word-break:break-all">${f.productUid}</div></div>`)}</div>
-        <div class="row-wrap" style="gap:14px">
-          <div class="field"><label class="field-label">Курс EUR → USD</label><input class="input" style="width:110px" id="gl-rate" value="${g.eurUsdRate}"></div>
-          <div class="field"><label class="field-label">Посилання на файли діє, хв</label><input class="input" style="width:110px" id="gl-keep" value="${Math.round(g.tunnelKeepAliveSeconds / 60)}"></div>
-          <button class="btn" data-act="gelato-save" style="align-self:flex-end">Зберегти</button>
-        </div>
-        <div class="field-hint">Курс використовується для собівартості Gelato у євро (як у Profit Calculator: 1.085). Внутрішній блок: ${g.pageCount} сторінок.</div>
-      </div>
-    </section>`;
-  }
-
-  function uiCard() {
-    const theme = localStorage.getItem('bs-theme') || s.ui.theme || 'dark';
-    return html`<section class="card card-pad">
-      <div class="int-head" style="margin-bottom:16px"><div class="int-logo int-ui">${ic('sun')}</div>
-        <div class="grow"><div class="card-title">Вигляд</div><div class="card-sub">Тема та анімації інтерфейсу</div></div></div>
-      <div class="stack">
-        <div class="row"><span class="grow">Тема</span>${segHtml([{ value: 'dark', label: 'Темна', icon: 'moon' }, { value: 'light', label: 'Світла', icon: 'sun' }, { value: 'system', label: 'Як у Windows', icon: 'monitor' }], theme, { name: 'theme' })}</div>
-        <label class="row" style="cursor:pointer"><span class="grow">Мінімум анімацій</span><span class="switch"><input type="checkbox" id="ui-motion" ${s.ui.reduceMotion ? 'checked' : ''}></span></label>
-      </div></section>`;
+        <div class="set-row">${ic('book')}<span class="grow">${formats.join(' · ')} <span class="faint">· <span class="num">${g.pageCount}</span> стор.</span></span>
+          ${ib('pulse', 'Перевірити зв\'язок', `data-act="gelato-test" ${has ? '' : 'disabled'}`)}</div>
+        <div id="gelato-test" class="faint" style="font-size:12.5px" hidden></div>
+      </div>`,
+    });
   }
 
   function dataCard() {
-    return html`<section class="card card-pad">
-      <div class="int-head" style="margin-bottom:16px"><div class="int-logo int-ui">${ic('database')}</div>
-        <div class="grow"><div class="card-title">Дані програми</div><div class="card-sub">Бібліотека, знімки замовлень, кеш і журнали зберігаються локально</div></div></div>
-      <div class="info-box"><code>${s.dataDir}</code></div>
-      <div class="row" style="margin-top:12px"><button class="btn" data-act="open-data">${ic('folder', 'icon-s')}Відкрити папку даних</button><span class="spacer"></span>
-        <span class="faint" style="font-size:12px">Ключі зашифровані Windows (DPAPI) — працюють лише для вашого користувача Windows</span></div>
-    </section>`;
+    return card('data', {
+      logo: ic('database'), logoClass: 'int-ui', title: 'Дані програми',
+      summary: 'Книги, замовлення й ключі — лише на цьому комп\'ютері',
+      body: html`<div class="set-row"><code class="grow code-line">${s.dataDir}</code>
+        ${ib('folderOpen', 'Відкрити папку даних', 'data-act="open-data"')}</div>`,
+    });
   }
 
   function render() {
     setHtml(view, html`
-      <div class="page-head"><div><h1 class="page-title">Налаштування</h1><div class="page-sub">Підключення до Etsy, Printify та Gelato, параметри книг і вигляд програми</div></div></div>
-      <div class="settings-grid">
+      <div class="page-head"><div><h1 class="page-title">Налаштування</h1><div class="page-sub">Підключення до сервісів і файли програми</div></div></div>
+      <div class="set-list">
         ${legacyCard()}
         ${etsyCard()}
         ${printifyCard()}
         ${gelatoCard()}
-        ${uiCard()}
         ${dataCard()}
       </div>`);
     requestAnimationFrame(() => view.querySelectorAll('.seg').forEach(syncSeg));
+  }
+
+  // Blocks open and close with real intermediate frames (measured height, Web Animations).
+  function toggleCard(id) {
+    const cardEl = view.querySelector(`#set-${id}`);
+    const body = view.querySelector(`[data-body="${id}"]`);
+    if (!cardEl || !body) return;
+    const open = !openCards.has(id);
+    if (open) openCards.add(id); else openCards.delete(id);
+    persistOpen();
+    cardEl.classList.toggle('open', open);
+    cardEl.querySelector('.set-head').setAttribute('aria-expanded', open ? 'true' : 'false');
+    slide(body, open);
+    if (open) requestAnimationFrame(() => body.querySelectorAll('.seg').forEach(syncSeg));
+  }
+  function toggleDetails(id, btn) {
+    const body = view.querySelector(`[data-details-body="${id}"]`);
+    if (!body) return;
+    const open = !openDetails.has(id);
+    if (open) openDetails.add(id); else openDetails.delete(id);
+    const tip = open ? 'Сховати подробиці' : 'Подробиці';
+    btn.classList.toggle('on', open);
+    btn.dataset.tip = tip; btn.setAttribute('aria-label', tip); btn.setAttribute('aria-expanded', String(open));
+    slide(body, open);
   }
 
   async function reload() {
@@ -379,26 +379,10 @@ export async function mount(view, [section]) {
     loadProducts();
   }
 
-  async function recheckMaster() {
-    const p = s.printify;
-    toast('Читаю Master із Printify…', 'info', 1500);
-    try {
-      const analysis = await api('/api/printify/master/analyze', { method: 'POST', body: { shopId: p.shopId, productId: p.master.productId } });
-      const cur = p.master;
-      const same = analysis.blueprintId === cur.blueprintId && analysis.printProviderId === cur.printProviderId
-        && JSON.stringify(analysis.placements) === JSON.stringify(cur.placements)
-        && JSON.stringify(analysis.variants.map((v) => [v.id, v.price, v.is_enabled])) === JSON.stringify((cur.variants || []).map((v) => [v.id, v.price, v.is_enabled]));
-      if (same) { toast('Master не змінився — конфігурація актуальна', 'success'); return; }
-      const ok = await confirmBox({ title: 'Master у Printify відрізняється', text: 'Конфігурація продукту в Printify не збігається зі збереженою. Оновити збережену конфігурацію?', confirm: 'Оновити' });
-      if (!ok) return;
-      await api('/api/printify/master/save', { method: 'POST', body: { analysis, shopId: p.shopId, shopTitle: p.shopTitle } });
-      toast('Конфігурацію Master оновлено', 'success');
-      reload();
-    } catch (err) { toast(err.message, 'error'); }
-  }
-
   // ---------------------------------------------------------------- events
   const offs = [
+    on(view, 'click', '[data-card]', (e, b) => toggleCard(b.dataset.card)),
+    on(view, 'click', '[data-details]', (e, b) => toggleDetails(b.dataset.details, b)),
     on(view, 'click', '[data-secret-edit]', (e, b) => { editing.add(b.dataset.secretEdit); render(); view.querySelector(`[data-secret-input="${b.dataset.secretEdit}"]`)?.focus(); }),
     on(view, 'click', '[data-secret-cancel]', (e, b) => { editing.delete(b.dataset.secretCancel); render(); }),
     on(view, 'click', '[data-secret-save]', async (e, b) => {
@@ -415,12 +399,6 @@ export async function mount(view, [section]) {
     }),
     on(view, 'keydown', '[data-secret-input]', (e, i) => { if (e.key === 'Enter') view.querySelector(`[data-secret-save="${i.dataset.secretInput}"]`).click(); }),
     on(view, 'click', '[data-copy-text]', (e, b) => copyText(b.dataset.copyText)),
-    on(view, 'click', '[data-seg="theme"] button', async (e, b) => {
-      setSeg(b.closest('.seg'), b.dataset.value);
-      applyTheme(b.dataset.value);
-      await api('/api/settings/ui', { method: 'POST', body: { theme: b.dataset.value } }).catch(() => {});
-      refreshInfo();
-    }),
     on(view, 'click', '[data-act]', async (e, b) => {
       const a = b.dataset.act;
       if (a === 'legacy-import') {
@@ -460,36 +438,21 @@ export async function mount(view, [section]) {
           if (v === s.etsy.defaultRedirectUri) v = '';
           try { await api('/api/settings/etsy', { method: 'POST', body: { redirectUri: v } }); m.close(); reload(); } catch (err) { toast(err.message, 'error'); }
         };
-      } else if (a === 'printify-test') {
-        const out = view.querySelector('#printify-test');
-        out.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle"></span> Перевірка…';
-        try { const r = await api('/api/printify/test', { method: 'POST', body: {} }); setHtml(out, html`<span style="color:var(--green)">${ic('checkCircle', 'icon-s')} З'єднання успішне! Магазин: <b>${r.shopTitle}</b> · замовлень: ${r.ordersCount ?? '—'}</span>`); }
-        catch (err) { setHtml(out, html`<span style="color:var(--red)">${err.message}</span>`); }
-      } else if (a === 'gelato-test') {
-        const out = view.querySelector('#gelato-test');
-        out.innerHTML = '<span class="spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle"></span> Перевірка…';
-        try { const r = await api('/api/gelato/test', { method: 'POST', body: {} }); setHtml(out, html`<span style="color:var(--green)">${ic('checkCircle', 'icon-s')} ${r.message}</span>`); }
-        catch (err) { setHtml(out, html`<span style="color:var(--red)">${err.message}</span>`); }
-      } else if (a === 'master-pick') pickMaster();
-      else if (a === 'master-recheck') recheckMaster();
-      else if (a === 'sizes-save') {
-        const n = (id) => parseInt(view.querySelector(id).value, 10);
-        try { await api('/api/settings/printify', { method: 'POST', body: { coverSize: [n('#pz-cw'), n('#pz-ch')], pageSize: [n('#pz-pw'), n('#pz-ph')] } }); toast('Розміри збережено', 'success'); reload(); }
-        catch (err) { toast(err.message, 'error'); }
-      } else if (a === 'gelato-save') {
+      } else if (a === 'printify-test' || a === 'gelato-test') {
+        const out = view.querySelector(`#${a}`);
+        out.hidden = false;
+        setHtml(out, html`<span class="row"><span class="spinner" style="width:14px;height:14px"></span>Перевірка зв'язку…</span>`);
+        b.disabled = true;
         try {
-          await api('/api/settings/gelato', { method: 'POST', body: { eurUsdRate: view.querySelector('#gl-rate').value.replace(',', '.'), tunnelKeepAliveSeconds: parseInt(view.querySelector('#gl-keep').value, 10) * 60 } });
-          toast('Збережено', 'success'); reload();
-        } catch (err) { toast(err.message, 'error'); }
-      } else if (a === 'open-data') api('/api/app/open-data', { method: 'POST', body: {} }).catch((er) => toast(er.message, 'error'));
+          const r = await api(a === 'printify-test' ? '/api/printify/test' : '/api/gelato/test', { method: 'POST', body: {} });
+          setHtml(out, html`<span class="row" style="color:var(--green)">${ic('checkCircle', 'icon-s')}${a === 'printify-test' ? html`Працює · <b>${r.shopTitle}</b> · замовлень: <span class="num">${r.ordersCount ?? '—'}</span>` : r.message}</span>`);
+        } catch (err) { setHtml(out, html`<span class="row" style="color:var(--red)">${ic('alertCircle', 'icon-s')}${err.message}</span>`); }
+        finally { b.disabled = false; }
+      } else if (a === 'master-pick') pickMaster();
+      else if (a === 'open-data') api('/api/app/open-data', { method: 'POST', body: {} }).catch((er) => toast(er.message, 'error'));
     }),
   ];
-  view.addEventListener('change', async (e) => {
-    if (e.target.id === 'ui-motion') {
-      applyMotion(e.target.checked);
-      await api('/api/settings/ui', { method: 'POST', body: { reduceMotion: e.target.checked } }).catch(() => {});
-    }
-  });
+  view.addEventListener('keydown', (e) => { if (e.target.id === 'etsy-key' && e.key === 'Enter') view.querySelector('[data-act="etsy-import"]')?.click(); });
 
   await load();
   render();

@@ -161,6 +161,50 @@ class ProviderCancellations(unittest.TestCase):
         self.assertEqual(row["profit"], 0.0)
 
 
+class PickerStages(unittest.TestCase):
+    """Order Creator picker: brand-new orders apart from ones already ordered from a print provider."""
+    AFTER = "2025-09-05 10:00:00+00:00"  # receipts below are from 2025-09-04 15:33 UTC
+
+    def orders(self):
+        printed = {**porder("a" * 24, "Zed", "Moss", status="in-production", created=self.AFTER),
+                   "line_items": [{"title": "1002 - Emma", "metadata": {"title": "1002 - Emma"}}]}
+        earlier = porder("b" * 24, "Mia", "Stone", created="2025-08-01 10:00:00+00:00")  # her previous book
+        cancelled = {**porder("c" * 24, "Kai", "Lund", status="canceled", created=self.AFTER),
+                     "line_items": [{"title": "1004 - Kai"}]}
+        draft = {"id": "g1", "orderReferenceId": "1005", "firstName": "Eve", "lastName": "Hart", "totalInclVat": 20,
+                 "currency": "USD", "fulfillmentStatus": "draft", "orderType": "draft", "createdAt": "2025-09-05T10:00:00Z"}
+        receipts = [receipt(1001, "Ann Lee", status="Paid"), receipt(1002, "Zed Moss", status="Paid"),
+                    receipt(1003, "Mia Stone", status="Paid"), receipt(1004, "Kai Lund", status="Paid"),
+                    receipt(1005, "Eve Hart", status="Paid"), receipt(1006, "Bo Ray"),
+                    receipt(1007, "Cy Fox", status="Canceled", refunds=[49.98])]
+        return receipts, [printed, earlier, cancelled], [draft]
+
+    def test_each_order_lands_in_its_stage(self):
+        receipts, p_orders, g_orders = self.orders()
+        placed = {f"printify:{p['id']}": (p["created_at"], p["status"]) for p in p_orders}
+        placed.update({f"gelato:{g['id']}": (g["createdAt"], g["fulfillmentStatus"]) for g in g_orders})
+        got = {rid: profit.order_stage(row, placed) for rid, row in view(receipts, p_orders, g_orders).items()}
+        self.assertEqual(got, {
+            "1001": ("new", None),            # nothing ordered yet
+            "1002": ("work", "printify"),     # Printify order carries the receipt number
+            "1003": ("new", None),            # only an older order of the same buyer
+            "1004": ("new", None),            # the print order was cancelled
+            "1005": ("work", "gelato"),       # Gelato draft made by the Order Creator
+            "1006": ("shipped", None),
+            "1007": ("closed", None),
+        })
+
+    def test_picker_leaves_out_cancelled_orders(self):
+        receipts, p_orders, g_orders = self.orders()
+        snap = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": p_orders, "gelato": g_orders}
+        rows = view(receipts, p_orders, g_orders)
+        with mock.patch.object(profit, "load_snapshot", lambda: snap), \
+                mock.patch.object(profit, "cached_view", lambda: {"full": rows}):
+            picked = {o["receiptId"]: o["stage"] for o in profit.picker_orders()}
+        self.assertNotIn("1007", picked)
+        self.assertEqual(sorted(picked.values()).count("new"), 3)
+
+
 class IncrementalSync(unittest.TestCase):
     def tearDown(self):
         vault.set("printify_token", None)

@@ -2,12 +2,18 @@
 // Cards are built once; search / filter / sort only hide, show and move them (FLIP animation),
 // so images are never reloaded and every change glides with intermediate frames.
 import {
-  api, html, ic, setHtml, on, media, modal, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
-  raw, flip, debounce,
+  api, html, ic, ib, setHtml, on, media, modal, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
+  raw, flip, debounce, menu, copyText,
 } from '../lib.js';
 import { store, refreshInfo } from '../app.js';
 
 const PREF = 'bs-lib-view';
+const SORTS = [
+  { value: 'recent', label: 'Нещодавно змінені', icon: 'clock' },
+  { value: 'created', label: 'Нещодавно додані', icon: 'plus' },
+  { value: 'title', label: 'За назвою', icon: 'sort' },
+  { value: 'incomplete', label: 'Спочатку незавершені', icon: 'alertCircle' },
+];
 
 export async function mount(view) {
   const saved = JSON.parse(localStorage.getItem(PREF) || '{}');
@@ -22,31 +28,27 @@ export async function mount(view) {
   setHtml(view, html`
     <div class="page-head">
       <div>
-        <h1 class="page-title">Бібліотека книг</h1>
+        <h1 class="page-title">Бібліотека</h1>
         <div class="page-sub" id="lib-sub"></div>
-      </div>
-      <div class="page-actions">
-        <button class="btn btn-primary" data-act="add">${ic('plus')}Додати книгу</button>
       </div>
     </div>
     <div class="lib-toolbar">
-      <div class="input-group">${ic('search')}<input class="input" id="lib-q" placeholder="Пошук за назвою, ID лістингу або нотатками…" autocomplete="off"></div>
+      <div class="input-group">${ic('search')}<input class="input" id="lib-q" placeholder="Назва або ID лістингу" aria-label="Пошук книг" autocomplete="off"></div>
       <div id="lib-seg"></div>
-      <select class="select" id="lib-sort" style="width:auto">
-        <option value="recent">Нещодавно змінені</option>
-        <option value="title">За назвою</option>
-        <option value="incomplete">Спочатку незавершені</option>
-        <option value="created">Нещодавно додані</option>
-      </select>
+      <div class="tools">${ib('sort', 'Сортування', 'data-act="sort" id="lib-sort"')}${ib('guide', 'Інструкція: як назвати файли й оформити текст', 'data-act="guide"')}</div>
+      ${ib('plus', 'Нова книга', 'data-act="add"', { cls: 'primary', kbd: 'N' })}
     </div>
     <div class="lib-grid" id="lib-grid"></div>
     <div id="lib-empty"></div>`);
 
   const grid = view.querySelector('#lib-grid');
   const q = view.querySelector('#lib-q');
-  const sortSel = view.querySelector('#lib-sort');
-  sortSel.value = state.sort;
   const persist = () => localStorage.setItem(PREF, JSON.stringify({ filter: state.filter, sort: state.sort }));
+  const sortTip = () => {
+    const b = view.querySelector('#lib-sort');
+    const label = `Сортування: ${SORTS.find((s) => s.value === state.sort)?.label.toLowerCase()}`;
+    b.dataset.tip = label; b.setAttribute('aria-label', label);
+  };
 
   const score = (b) => {
     const c = b.completeness;
@@ -55,7 +57,7 @@ export async function mount(view) {
   function filtered() {
     const needle = state.query.trim().toLowerCase();
     let list = state.books.filter((b) => (state.filter === 'archived') === !!b.archived);
-    if (needle) list = list.filter((b) => `${b.title} ${b.listingId || ''} ${b.notes || ''}`.toLowerCase().includes(needle));
+    if (needle) list = list.filter((b) => `${b.title} ${b.listingId || ''}`.toLowerCase().includes(needle));
     const by = {
       recent: (a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''),
       created: (a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''),
@@ -67,26 +69,24 @@ export async function mount(view) {
 
   function card(b, i) {
     const c = b.completeness;
-    const pct = (n, t) => Math.round((n / t) * 100);
-    const segs = [['Обкл.', c.cover ? 100 : 0], ['Ілюстр.', pct(c.illustrations, c.illustrationsTotal)],
-      ['Текст', pct(c.texts, c.textsTotal)], ['Canva', c.canva ? 100 : 0]];
-    const badge = c.complete
-      ? html`<span class="chip chip-green">${ic('check', 'icon-s')}Готова</span>`
-      : html`<span class="chip">${c.illustrations}/${c.illustrationsTotal}</span>`;
+    const parts = [['Обкладинка', c.cover ? 1 : 0], ['Ілюстрації', c.illustrations / c.illustrationsTotal],
+      ['Тексти', c.texts / c.textsTotal], ['Canva', c.canva ? 1 : 0]];
+    const state_ = parts.map(([l, v]) => `${l} ${v === 1 ? '✓' : `${Math.round(v * 100)}%`}`).join(' · ');
     const front = b.imageIsCover && b.imageW > b.imageH * 1.3;
     const bg = b.lqip ? raw(`style="background-image:url(${b.lqip});background-position:${front ? '100% 50%' : 'center'}"`) : '';
-    return html`<button class="book-card enter" data-key="${b.id}" data-open="${b.id}" style="animation-delay:${Math.min(i * 22, 400)}ms">
-      <div class="book-cover ${b.lqip ? 'lqip' : ''}" ${bg}>
-        ${b.image ? html`<img data-fade loading="lazy" decoding="async" alt="" class="${front ? 'front' : ''}" src="${media(`/media/book/${b.id}/${b.image}`, { w: 720 })}">`
-          : html`<div class="book-cover-ph"><span class="serif">${(b.title || '?').trim().charAt(0).toUpperCase()}</span></div>`}
-        <div class="book-badge">${badge}</div>
+    return html`<button class="book-card enter" data-key="${b.id}" data-open="${b.id}" aria-label="${b.title}" style="animation-delay:${Math.min(i * 22, 400)}ms">
+      <div class="book-frame">
+        <div class="book-cover ${b.lqip ? 'lqip' : ''}" ${bg}>
+          ${b.image ? html`<img data-fade loading="lazy" decoding="async" alt="" class="${front ? 'front' : ''}" src="${media(`/media/book/${b.id}/${b.image}`, { w: 720 })}">`
+            : html`<div class="book-cover-ph"><span class="serif">${(b.title || '?').trim().charAt(0).toUpperCase()}</span></div>`}
+          ${c.complete ? html`<span class="book-badge" data-tip="Книга готова">${ic('check')}</span>` : ''}
+        </div>
+        <i class="crops"></i>
       </div>
       <div class="book-meta">
         <div class="book-title">${b.title}</div>
-        <div class="book-id mono">${b.listingId ? `#${b.listingId}` : 'без лістингу'}${b.verified ? raw(' · ') : ''}${b.verified ? ic('shield', 'icon-s') : ''}</div>
-        <div class="book-dots" title="${segs.map(([l, v]) => `${l}: ${v}%`).join(' · ')}">
-          ${segs.map(([, v]) => html`<span><i style="transform:scaleX(${v / 100})"></i></span>`)}
-        </div>
+        <div class="book-id"><span class="mono">${b.listingId ? `#${b.listingId}` : '—'}</span>${b.verified ? ic('shield') : ''}
+          <span class="pips" data-tip="${state_}">${parts.map(([, v]) => html`<i><b style="transform:scaleX(${v})"></b></i>`)}</span></div>
       </div>
     </button>`;
   }
@@ -94,30 +94,30 @@ export async function mount(view) {
   function renderSeg() {
     const active = state.books.filter((b) => !b.archived).length;
     setHtml(view.querySelector('#lib-seg'), segHtml([
-      { value: 'active', label: `Активні · ${active}` },
-      { value: 'archived', label: `Архів · ${state.books.length - active}` },
+      { value: 'active', icon: 'stack', tip: 'У роботі', count: active },
+      { value: 'archived', icon: 'archive', tip: 'Архів', count: state.books.length - active },
     ], state.filter, { name: 'filter' }));
   }
 
   function renderSub() {
     const activeBooks = state.books.filter((b) => !b.archived);
     const incomplete = activeBooks.filter((b) => !b.completeness.complete).length;
-    view.querySelector('#lib-sub').textContent = activeBooks.length
-      ? `${activeBooks.length} ${plural(activeBooks.length, ['книга', 'книги', 'книг'])}${incomplete ? ` · ${incomplete} ще не заповнено повністю` : ' · усі заповнені'}`
-      : 'Еталонні книги для кожного лістингу Etsy';
+    setHtml(view.querySelector('#lib-sub'), activeBooks.length
+      ? html`<span class="num">${activeBooks.length}</span> ${plural(activeBooks.length, ['книга', 'книги', 'книг'])}${incomplete ? html` · <span class="num">${incomplete}</span> не заповнено` : ' · усі готові'}`
+      : 'Еталонні книги ваших лістингів Etsy');
   }
 
   function renderEmpty(list) {
     const box = view.querySelector('#lib-empty');
     if (!state.books.length) {
-      setHtml(box, html`<div class="empty card" style="padding:70px 20px">
-        <div class="empty-icon">${ic('book')}</div>
-        <h3>У бібліотеці ще немає книг</h3>
-        <p>Додайте книгу за посиланням на лістинг Etsy. Обкладинку, ілюстрації, текст і посилання на Canva можна додати одразу або пізніше.</p>
-        <button class="btn btn-primary" data-act="add">${ic('plus')}Додати першу книгу</button></div>`);
+      setHtml(box, html`<div class="empty" style="padding:80px 20px">
+        <div class="empty-icon">${ic('shelf')}</div>
+        <h3>Бібліотека порожня</h3>
+        <p>Додайте першу книгу за посиланням на лістинг Etsy — обкладинку, ілюстрації й тексти можна докласти пізніше.</p>
+        <button class="btn btn-primary" data-act="add">${ic('plus')}Нова книга</button></div>`);
     } else if (!list.length) {
       setHtml(box, html`<div class="empty"><div class="empty-icon">${ic(state.query ? 'search' : 'archive')}</div>
-        <h3>${state.query ? 'Нічого не знайдено' : state.filter === 'archived' ? 'Архів порожній' : 'Немає активних книг'}</h3>
+        <h3>${state.query ? 'Нічого не знайдено' : state.filter === 'archived' ? 'Архів порожній' : 'Немає книг у роботі'}</h3>
         <p>${state.query ? 'Спробуйте іншу назву або ID лістингу.' : state.filter === 'archived' ? 'Книги, які ви перенесете в архів, з’являться тут.' : ''}</p></div>`);
     } else box.innerHTML = '';
   }
@@ -141,20 +141,32 @@ export async function mount(view) {
   fadeImages(grid);
   renderSub();
   renderSeg();
+  sortTip();
   apply(false);
 
   const runSearch = debounce(() => apply(true), 90);
   const offs = [
     on(view, 'click', '[data-open]', (e, b) => { location.hash = `#/book/${b.dataset.open}`; }),
     on(view, 'click', '[data-act="add"]', () => openAddBook(state.books)),
+    on(view, 'click', '[data-act="sort"]', (e, b) => menu(b, SORTS.map((s) => ({
+      label: s.label, icon: s.icon, on: state.sort === s.value,
+      onClick: () => { state.sort = s.value; persist(); sortTip(); apply(true); },
+    })))),
     on(view, 'click', '[data-seg="filter"] button', (e, b) => {
       state.filter = b.dataset.value; setSeg(b.closest('.seg'), state.filter); persist(); apply(true);
     }),
+    // The instruction for whoever prepares a book (a person or an AI agent): file names for the batch
+    // import and the book-text JSON — saved as a file to hand over, or copied to paste into a chat.
+    on(view, 'click', '[data-act="guide"]', (e, b) => menu(b, [
+      { label: 'Зберегти інструкцію у файл…', icon: 'download', onClick: saveGuide },
+      { label: 'Скопіювати інструкцію', icon: 'copy', onClick: copyGuide },
+    ])),
   ];
   q.addEventListener('input', () => { state.query = q.value; runSearch(); });
-  sortSel.addEventListener('change', () => { state.sort = sortSel.value; persist(); apply(true); });
+  const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '') || document.querySelector('.modal-root');
   const onKey = (e) => {
-    if ((e.ctrlKey && e.key.toLowerCase() === 'f') || (e.key === '/' && document.activeElement === document.body)) { e.preventDefault(); q.focus(); q.select(); }
+    if ((e.ctrlKey && e.key.toLowerCase() === 'f') || (e.key === '/' && !typing())) { e.preventDefault(); q.focus(); q.select(); }
+    else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.altKey && !e.metaKey && !typing()) { e.preventDefault(); openAddBook(state.books); }
   };
   document.addEventListener('keydown', onKey);
 
@@ -162,6 +174,23 @@ export async function mount(view) {
     shown() { syncSeg(view.querySelector('#lib-seg .seg')); },
     unmount() { offs.forEach((f) => f()); runSearch.cancel(); document.removeEventListener('keydown', onKey); },
   };
+}
+
+// ------------------------------------------------------------------ preparation guide
+async function saveGuide() {
+  let folder;
+  try { folder = (await api('/api/app/pick-folder', { method: 'POST', body: { title: 'Куди зберегти інструкцію?' } })).path; }
+  catch (err) { toast(err.message, 'error'); return; }
+  if (!folder) return;
+  try {
+    await api('/api/library/guide/save', { method: 'POST', body: { folder } });
+    toast('Інструкцію збережено — файл виділено в Провіднику', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function copyGuide() {
+  try { copyText((await api('/api/library/guide')).text, 'Інструкцію скопійовано — вставте її агенту'); }
+  catch (err) { toast(err.message, 'error'); }
 }
 
 // ------------------------------------------------------------------ add book dialog
@@ -176,9 +205,9 @@ export function openAddBook(existing = []) {
     body: html`<div class="stack">
       <div class="field">
         <label class="field-label">Посилання на лістинг Etsy або його ID</label>
-        <div class="row">
-          <input class="input" id="nb-ref" placeholder="https://www.etsy.com/listing/4542179572/…" autofocus autocomplete="off">
-          <button class="btn" id="nb-verify" ${keysReady ? '' : 'hidden'}>${ic('search')}Перевірити</button>
+        <div class="input-group">
+          <input class="input" id="nb-ref" placeholder="https://www.etsy.com/listing/4542179572/…" autofocus autocomplete="off" style="padding-right:40px">
+          ${keysReady ? ib('search', 'Перевірити лістинг', 'id="nb-verify"', { kbd: 'Enter' }) : ''}
         </div>
       </div>
       <div id="nb-result"></div>
@@ -218,7 +247,7 @@ export function openAddBook(existing = []) {
     if (!id) { toast('Вставте посилання на лістинг або його числовий ID', 'error'); return; }
     if (existing.find((b) => String(b.listingId) === id)) { refresh(); return; }
     const btn = $('#nb-verify');
-    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Перевірка…';
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
     listing = null;
     try {
       listing = await api(`/api/etsy/listing?ref=${encodeURIComponent(ref.value)}`);
@@ -241,7 +270,7 @@ export function openAddBook(existing = []) {
       setHtml(result, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`);
       $('#nb-manual').hidden = false;
     } finally {
-      btn.disabled = false; btn.innerHTML = `${ic('search')}Перевірити`;
+      btn.disabled = false; btn.innerHTML = `${ic('search')}`;
       refresh();
     }
   }
@@ -249,7 +278,7 @@ export function openAddBook(existing = []) {
   ref.addEventListener('input', () => { listing = null; result.innerHTML = ''; $('#nb-photo-wrap').hidden = true; refresh(); });
   ref.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); keysReady ? verify() : $('#nb-title').focus(); } });
   ref.addEventListener('paste', () => setTimeout(() => { if (keysReady && listingIdOf(ref.value)) verify(); }, 30));
-  $('#nb-verify').onclick = verify;
+  if ($('#nb-verify')) $('#nb-verify').onclick = verify;
   $('#nb-title').addEventListener('input', refresh);
   m.el.addEventListener('click', (e) => {
     const d = e.target.closest('[data-open-dup]');

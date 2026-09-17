@@ -115,6 +115,53 @@ def slim_order(g: dict) -> dict:
                                   "fulfillmentStatus", "financialStatus", "createdAt", "orderType")}
 
 
+_geometry: dict = {}
+
+
+def photobook_geometry(product_uid: str, page_count: int) -> dict:
+    """Physical sizes (mm) Gelato prints a photo book at, straight from its product catalog.
+
+    coverMm   — the whole cover sheet (back + spine + front, with wrap or bleed);
+    pageMm    — one inner page including bleed;
+    marginMm  — how far the visible cover starts from the sheet edge (wrap for hardcover, bleed for softcover).
+    """
+    key = (product_uid, int(page_count))
+    if key in _geometry:
+        return _geometry[key]
+    product = call("GET", f"{PRODUCT_API}/products/{product_uid}", action="Параметри продукту Gelato") or {}
+    valid = product.get("validPageCounts") or []
+    if valid and int(page_count) not in valid:
+        raise GelatoError(f"Gelato не друкує цей формат на {page_count} сторінках "
+                          f"(можна від {min(valid)} до {max(valid)}, парна кількість).", 400)
+    dims = product.get("dimensions") or {}
+
+    def mm(name: str) -> float | None:
+        try:
+            return float((dims.get(name) or {}).get("value"))
+        except (TypeError, ValueError):
+            return None
+
+    def with_bleed(name: str) -> float | None:
+        value = mm(name)
+        return value + 6 if value else None  # Gelato adds 3 mm bleed on every side of an inner page
+
+    page_w = mm("Text block total width") or with_bleed("Width")
+    page_h = mm("Text block total height") or with_bleed("Height")
+    cover = call("GET", f"{PRODUCT_API}/products/{product_uid}/cover-dimensions?pageCount={int(page_count)}",
+                 action="Розміри обкладинки Gelato") or {}
+    areas = [v for v in cover.values() if isinstance(v, dict) and "width" in v and "height" in v]
+    if not areas or not page_w or not page_h:
+        raise GelatoError("Gelato не повернув розміри цього формату фотокниги.", 502)
+    cover_w = max(float(a.get("left") or 0) + float(a["width"]) for a in areas)
+    cover_h = max(float(a.get("top") or 0) + float(a["height"]) for a in areas)
+    content = [a for k, a in cover.items() if k.startswith("content") and isinstance(a, dict)]
+    margin = min((min(float(a.get("left") or 0), float(a.get("top") or 0)) for a in content), default=3.0)
+    geo = {"coverMm": [round(cover_w, 2), round(cover_h, 2)], "pageMm": [round(page_w, 2), round(page_h, 2)],
+           "marginMm": margin, "productPages": cover.get("pagesCount")}
+    _geometry[key] = geo
+    return geo
+
+
 def create_draft_order(payload: dict) -> dict:
     safe = dict(payload)
     safe["orderType"] = "draft"  # enforced here regardless of the caller

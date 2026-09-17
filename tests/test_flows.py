@@ -1,5 +1,6 @@
 """End-to-end flows with the external services replaced by fakes (no network, no real accounts)."""
 import json
+import re
 import tempfile
 import unittest
 import urllib.parse
@@ -31,9 +32,12 @@ class FakePrintify:
         }
         self.calls = []
 
-    def __call__(self, method, path, body=None, action="", timeout=60, retries=3, params=""):
-        printify._check(method, path)  # the real allowlist still applies
+    def __call__(self, method, path, body=None, action="", timeout=60, retries=3, params="", order=False):
+        printify._check(method, path, order)  # the real allowlist still applies
         self.calls.append((method, path))
+        if method == "POST" and path.endswith("/orders.json"):
+            self.orders = getattr(self, "orders", []) + [body]
+            return {"id": "order-on-hold-1"}
         if method == "POST" and path == "uploads/images.json":
             image_id = f"{len(self.uploads):024x}"
             self.uploads[image_id] = body["file_name"]
@@ -74,13 +78,13 @@ class PrintifyDraftFlow(unittest.TestCase):
 
     def test_create_then_retry_reuses_uploads(self):
         with mock.patch.object(printify, "call", self.fake):
-            res = creator.create_printify_draft(str(self.root), "4174712220 - Caleb", Job("t"))
+            res = creator.create_printify_draft(str(self.root), "4100000001 - Emma", Job("t"))
             self.assertEqual(res["total"], 25)
             self.assertEqual(res["uploaded"], 25)
             self.assertTrue(res["verified"])
             self.assertTrue(res["masterSafe"])
             payload = self.fake.created[0]
-            self.assertEqual(payload["title"], "4174712220 - Caleb")
+            self.assertEqual(payload["title"], "4100000001 - Emma")
             positions = [p["position"] for p in payload["print_areas"][0]["placeholders"]]
             self.assertEqual(positions, ["cover"] + [f"page_{i}" for i in range(1, 25)])
             # page_7 must carry exactly the image uploaded from 7.png
@@ -91,6 +95,44 @@ class PrintifyDraftFlow(unittest.TestCase):
             self.assertEqual(res2["uploaded"], 0)
             self.assertEqual(res2["reused"], 25)
         self.assertFalse(any(m == "POST" and "publish" in p for m, p in self.fake.calls))
+
+    ADDRESS = {"firstName": "Jane", "lastName": "Doe", "addressLine1": "12 Example St", "addressLine2": "",
+               "city": "Springfield", "state": "IL", "postCode": "62701-0001", "country": "us"}
+
+    def test_with_an_address_the_book_also_gets_an_order_on_hold(self):
+        core.settings.update({"printify": {"manualApprovalConfirmedAt": "2026-09-15T20:00:00Z"}})
+        with mock.patch.object(printify, "call", self.fake):
+            res = creator.create_printify_draft(str(self.root), "4100000002 - Noah", Job("t"), self.ADDRESS)
+        self.assertEqual(res["order"], {"id": "order-on-hold-1", "variant": "8x8 / Matte"})
+        self.assertIsNone(res["orderError"])
+        sent = self.fake.orders[0]
+        self.assertEqual(sent["line_items"], [{"product_id": res["productId"], "variant_id": 149191, "quantity": 1}])  # matte
+        self.assertFalse(sent["is_printify_express"])
+        self.assertFalse(sent["send_shipping_notification"])
+        self.assertTrue(sent["external_id"].startswith("4100000002-"))
+        self.assertEqual(sent["address_to"], {"first_name": "Jane", "last_name": "Doe", "address1": "12 Example St",
+                                              "address2": "", "city": "Springfield", "region": "IL", "zip": "62701-0001",
+                                              "country": "US"})
+        self.assertFalse(any("send_to_production" in p for _, p in self.fake.calls))
+
+    def test_no_order_without_the_manual_approval_confirmation(self):
+        core.settings.update({"printify": {"manualApprovalConfirmedAt": None}})
+        with mock.patch.object(printify, "call", self.fake):
+            with self.assertRaises(JobError) as ctx:
+                creator.create_printify_draft(str(self.root), "4100000002 - Noah", Job("t"), self.ADDRESS)
+        self.assertIn("ручне затвердження", str(ctx.exception))
+        self.assertEqual(self.fake.uploads, {})                       # stopped before anything was uploaded
+        with self.assertRaises(printify.PrintifySecurityError):
+            printify.create_order_on_hold(1, {"line_items": []})
+
+    def test_order_paths_stay_locked(self):
+        with self.assertRaises(printify.PrintifySecurityError):
+            printify._check("POST", "shops/1/orders.json")                        # only via create_order_on_hold
+        printify._check("POST", "shops/1/orders.json", order=True)
+        for path in ("shops/1/orders/abc/send_to_production.json", "shops/1/orders/abc/cancel.json",
+                     "shops/1/orders/express.json", "shops/1/products/abc/publish.json"):
+            with self.subTest(path=path), self.assertRaises(printify.PrintifySecurityError):
+                printify._check("POST", path, order=True)
 
     def test_invalid_folder_uploads_nothing(self):
         (self.root / "12.png").unlink()
@@ -123,20 +165,37 @@ class PrintifyDraftFlow(unittest.TestCase):
 
 
 class GelatoDraftFlow(unittest.TestCase):
-    def test_draft_payload(self):
+    # Real catalog answers for photobooks-hardcover 8x8 with 30 inner pages (Gelato product API, 2026-09).
+    PRODUCT = {"validPageCounts": list(range(28, 202, 2)),
+               "dimensions": {"Text block total width": {"value": "209.2", "measureUnit": "mm"},
+                              "Text block total height": {"value": "209.2", "measureUnit": "mm"}}}
+    COVER = {"pagesCount": 34, "measureUnit": "mm",
+             "wraparoundInsideSize": {"width": 464.4, "height": 249.2, "left": 0, "top": 0},
+             "contentBackSize": {"width": 201.2, "height": 209.2, "left": 20, "top": 20},
+             "contentFrontSize": {"width": 201.2, "height": 209.2, "left": 243.2, "top": 20}}
+
+    def test_one_pdf_with_cover_blank_pages_blank(self):
+        """Regression: the cover used to be sent as the only 'default' file (pages as 'inside', which
+        photo books ignore), so Gelato printed the cover on every page."""
         vault.set("gelato_api_key", "fake-gelato-key")
+        gelato._geometry.clear()
         sent = {}
 
         def fake_call(method, url, body=None, **kw):
             self.assertTrue(gelato._allowed(method, url, body))
+            if method == "GET" and "/cover-dimensions" in url:
+                self.assertIn("pageCount=30", url)
+                return self.COVER
+            if method == "GET":
+                return self.PRODUCT
             sent.update(body)
             return {"id": "gelato-order-1", "orderType": "draft", "fulfillmentStatus": "draft"}
 
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            png(root / "Cover.png", (80, 40), (1, 2, 3))
-            for i in range(1, 31):
-                png(root / f"{i}.png", (40, 40), (i, i, i))
+            png(root / "Cover.png", (466, 250), (1, 2, 3))
+            for i in range(1, 31):  # every page gets its own width, so the PDF order can be read back
+                png(root / f"{i}.png", (100 + i, 100 + i), (i, i, i))
             creator._validation_cache.clear()
             address = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Austin",
                        "postCode": "73301", "country": "us", "state": "TX"}
@@ -146,13 +205,136 @@ class GelatoDraftFlow(unittest.TestCase):
                 res = creator.create_gelato_draft(str(root), "Book", "hardcover_8x8", address, Job("t"))
         vault.set("gelato_api_key", None)
         self.assertEqual(res["orderId"], "gelato-order-1")
+        self.assertEqual(res["warnings"], [])
         self.assertEqual(sent["orderType"], "draft")
         item = sent["items"][0]
         self.assertEqual(item["pageCount"], 30)
-        self.assertEqual(item["files"], [{"type": "default", "url": "https://fake.trycloudflare.com/cover.png"},
-                                         {"type": "inside", "url": "https://fake.trycloudflare.com/interior.pdf"}])
+        self.assertEqual(item["files"], [{"type": "default", "url": "https://fake.trycloudflare.com/book.pdf"}])
         self.assertEqual(sent["shippingAddress"]["country"], "US")
         self.assertEqual(sent["metadata"][0], {"key": "title", "value": "Book"})
+
+        session = sent["orderReferenceId"].removeprefix("draft-")  # no receipt number in the title "Book"
+        pdf = core.data_path("tmp", "gelato", session, "book.pdf").read_bytes().decode("latin-1")
+        boxes = [(float(w), float(h)) for w, h in re.findall(r"/MediaBox \[ ?0 0 ([\d.]+) ([\d.]+) ?\]", pdf)]
+        widths = [int(w) for w in re.findall(r"/Width (\d+)", pdf)]
+        self.assertEqual(len(boxes), 33)                                 # cover, blank, 30 pages, blank
+        self.assertEqual(widths, [466, 16] + [100 + i for i in range(1, 31)] + [16])
+        pt = 72 / 25.4
+        self.assertAlmostEqual(boxes[0][0], 464.4 * pt, places=1)       # cover sheet at Gelato's size
+        self.assertAlmostEqual(boxes[0][1], 249.2 * pt, places=1)
+        for w, h in boxes[1:]:
+            self.assertAlmostEqual(w, 209.2 * pt, places=1)             # inner pages with bleed
+            self.assertAlmostEqual(h, 209.2 * pt, places=1)
+
+    def test_canva_style_png_is_joined_without_touching_pixels(self):
+        import struct
+        import zlib
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "page.png"
+            Image.new("RGB", (64, 48), (10, 120, 200)).save(src)
+            data = src.read_bytes()
+            # Re-chunk the pixel data into many tiny IDAT chunks, the way Canva writes (8 KB each there).
+            pos, head, idat, tail = 8, [], b"", []
+            while pos < len(data):
+                ln, kind = struct.unpack(">I4s", data[pos:pos + 8])
+                raw = data[pos:pos + 12 + ln]
+                if kind == b"IDAT":
+                    idat += data[pos + 8:pos + 8 + ln]
+                elif idat:
+                    tail.append(raw)
+                else:
+                    head.append(raw)
+                pos += 12 + ln
+            small = [idat[i:i + 7] for i in range(0, len(idat), 7)]
+            chunked = [struct.pack(">I", len(c)) + b"IDAT" + c + struct.pack(">I", zlib.crc32(b"IDAT" + c) & 0xFFFFFFFF) for c in small]
+            src.write_bytes(data[:8] + b"".join(head) + b"".join(chunked) + b"".join(tail))
+            joined = creator._one_idat(src, root / "joined.png")
+            self.assertEqual(joined.read_bytes().count(b"IDAT"), 1)
+            with Image.open(src) as a, Image.open(joined) as b:
+                self.assertEqual(a.tobytes(), b.tobytes())
+
+    def test_cover_with_wrong_proportions_is_flagged(self):
+        geo = {"coverMm": [415.28, 209.2], "pageMm": [209.2, 209.2], "marginMm": 3}  # softcover: only 3 mm bleed
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            png(root / "Cover.png", (4672 // 20, 2464 // 20), (9, 9, 9))  # Printify-shaped cover (1.896:1)
+            png(root / "1.png", (40, 40), (1, 1, 1))
+            warnings = creator.build_photobook_pdf(root / "Cover.png", [root / "1.png"], root / "book.pdf", geo)
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("обріжуться", warnings[0])
+
+
+class CreatorStartsEmpty(unittest.TestCase):
+    def test_old_folders_address_and_draft_list_are_forgotten(self):
+        core.settings.update({"creator": {"printifyFolder": "D:\\old", "gelatoAddress": {"firstName": "Ann"}}})
+        core.settings.update({"creator": {"gelatoFolder": "D:\\older"}})  # now the backup copy holds it too
+        history = core.data_path("creator", "history.json")
+        core.write_json(history, [{"title": "1 - Ann"}])
+        core.write_json(history, [{"title": "2 - Bo"}])
+        creator.forget_old_form()
+        self.assertNotIn("creator", core.settings.get())
+        self.assertNotIn("creator", core.read_json(core.data_path("settings.json"), {}))
+        self.assertNotIn("creator", core.read_json(core.data_path("settings.json.bak"), {}))
+        self.assertFalse(history.exists())
+        self.assertFalse(history.with_name("history.json.bak").exists())
+        status = creator._status(None)
+        self.assertNotIn("history", status)
+        self.assertNotIn("creator", status)
+        creator.forget_old_form()  # nothing left to do the second time
+
+
+class DroppedFolders(unittest.TestCase):
+    def test_zip_is_unpacked_to_the_folder_with_the_cover(self):
+        import zipfile
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            archive = root / "book.zip"
+            with zipfile.ZipFile(archive, "w") as zf:
+                zf.writestr("Madelynn/Cover.png", b"png")
+                zf.writestr("Madelynn/1.png", b"png")
+                zf.writestr("Madelynn/notes.txt", b"skip")        # not a picture
+                zf.writestr("__MACOSX/Madelynn/._Cover.png", b"x")  # macOS litter
+                zf.writestr("../evil.png", b"x")                    # must never leave the folder
+            target = root / "out" / "book"
+            self.assertEqual(creator.extract_zip(archive, target), 2)
+            self.assertEqual(creator.dropped_folder(root / "out"), target / "Madelynn")
+            self.assertFalse((root / "out" / "evil.png").exists())
+            self.assertFalse((root / "evil.png").exists())
+            self.assertEqual(sorted(p.name for p in (target / "Madelynn").iterdir()), ["1.png", "Cover.png"])
+
+    def test_only_pictures_inside_the_session_folder_are_accepted(self):
+        self.assertEqual(creator._drop_rel("Madelynn/Cover.png"), Path("Madelynn", "Cover.png"))
+        for bad in ("../x.png", "C:/Windows/x.png", "a/../../x.png", "book/run.exe", "", "._Cover.png"):
+            with self.subTest(name=bad):
+                self.assertIsNone(creator._drop_rel(bad))
+        with self.assertRaises(Exception):
+            creator._drop_root("../../etc")
+
+    def test_etsy_text_arrives_readable(self):
+        r = {"receipt_id": 1, "create_timestamp": 1757000000, "name": "Tom &amp; Ann", "transactions": [{
+            "title": "Book 8&quot; &amp; more", "variations": [
+                {"formatted_name": "Cover Type &amp; Size", "formatted_value": "8&quot; × 8&quot; Hardcover"}]}]}
+        n = profit.normalize_receipt(r)
+        self.assertEqual(n["customer_shipping_name"], "Tom & Ann")
+        self.assertEqual(n["items"][0]["title"], 'Book 8" & more')
+        self.assertEqual(n["items"][0]["variations"][0], {"name": "Cover Type & Size", "value": '8" × 8" Hardcover'})
+
+
+class OpenUrlGuard(unittest.TestCase):
+    def test_etsy_pages_never_open_on_this_computer(self):
+        from types import SimpleNamespace
+        from studio import settings_api
+        from studio.server import ApiError
+        open_url = lambda url: settings_api._open_url(SimpleNamespace(json={"url": url}))
+        with mock.patch("webbrowser.open") as opened:
+            for url in ("https://www.etsy.com/listing/4542179572", "https://ETSY.com/your/orders/sold",
+                        "https://www.etsy.com/oauth/connect/../listing/1"):
+                with self.subTest(url=url), self.assertRaises(ApiError):
+                    open_url(url)
+            open_url("https://www.canva.com/design/abc/edit")
+            open_url("https://www.etsy.com/oauth/connect?response_type=code")  # sign-in, after the Kyiv check
+        self.assertEqual(opened.call_count, 2)
 
 
 class ProfitSyncFlow(unittest.TestCase):

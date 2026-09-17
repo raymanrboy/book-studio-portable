@@ -25,20 +25,20 @@ export function openLightbox(items, start = 0) {
   const root = el(html`<div class="lightbox" role="dialog" aria-modal="true">
     <div class="lb-top">
       <div class="grow"><div class="lb-title"></div><div class="lb-sub"></div></div>
-      <button class="lb-btn" data-a="text" title="Показати/сховати текст (T)">${ic('text', 'icon-s')}Текст</button>
-      <button class="lb-btn" data-a="original" title="Відкрити оригінальний файл">${ic('external', 'icon-s')}Оригінал</button>
-      <button class="lb-btn" data-a="close" title="Закрити (Esc)">${ic('x')}</button>
+      <button class="lb-btn" data-a="text" aria-label="Текст сторінки" data-tip="Текст сторінки" data-kbd="T">${ic('captions')}</button>
+      <button class="lb-btn" data-a="original" aria-label="Відкрити файл-оригінал" data-tip="Відкрити файл-оригінал">${ic('fileOpen')}</button>
+      <button class="lb-btn" data-a="close" aria-label="Закрити" data-tip="Закрити" data-kbd="Esc">${ic('x')}</button>
     </div>
     <div class="lb-stage"><div class="spinner spinner-l lb-spinner" hidden></div><img alt="" draggable="false" decoding="async"><img alt="" draggable="false" decoding="async"><div class="lb-text" hidden></div></div>
     <div class="lb-bottom">
-      <button class="lb-btn" data-a="prev" title="Попереднє (←)">${ic('chevLeft')}</button>
+      <button class="lb-btn" data-a="prev" aria-label="Попереднє" data-tip="Попереднє" data-kbd="←">${ic('chevLeft')}</button>
       <span class="lb-counter"></span>
-      <button class="lb-btn" data-a="next" title="Наступне (→)">${ic('chevRight')}</button>
+      <button class="lb-btn" data-a="next" aria-label="Наступне" data-tip="Наступне" data-kbd="→">${ic('chevRight')}</button>
       <span style="width:18px"></span>
-      <button class="lb-btn" data-a="out" title="Зменшити (−)">${ic('zoomOut')}</button>
+      <button class="lb-btn" data-a="out" aria-label="Зменшити" data-tip="Зменшити" data-kbd="−">${ic('zoomOut')}</button>
       <span class="lb-zoom"></span>
-      <button class="lb-btn" data-a="in" title="Збільшити (+)">${ic('zoomIn')}</button>
-      <button class="lb-btn" data-a="fit" title="Вмістити (0)">${ic('fit')}</button>
+      <button class="lb-btn" data-a="in" aria-label="Збільшити" data-tip="Збільшити" data-kbd="+">${ic('zoomIn')}</button>
+      <button class="lb-btn" data-a="fit" aria-label="Вмістити" data-tip="Вмістити" data-kbd="0">${ic('fit')}</button>
     </div></div>`);
   const stage = root.querySelector('.lb-stage');
   const imgs = [...root.querySelectorAll('.lb-stage img')];
@@ -140,6 +140,7 @@ export function openLightbox(items, start = 0) {
     root.querySelector('[data-a="original"]').hidden = !it.onOriginal;
     root.querySelector('[data-a="text"]').hidden = !it.text;
     textBox.hidden = !(it.text && showText);
+    root.querySelector('[data-a="text"]').classList.toggle('on', !!(it.text && showText));
     textBox.innerHTML = it.text ? String(highlightTokens(it.text)) : '';
     const slow = setTimeout(() => { if (my === seq) spinner.hidden = false; }, 120);
     let im;
@@ -184,7 +185,7 @@ export function openLightbox(items, start = 0) {
     else if (k === '+' || k === '=') zoomAt(1.4, ...center());
     else if (k === '-') zoomAt(1 / 1.4, ...center());
     else if (k === '0') { fitTarget(); kick(); }
-    else if (k.toLowerCase() === 't' || k.toLowerCase() === 'е') { showText = !showText; textBox.hidden = !(items[index].text && showText); }
+    else if (k.toLowerCase() === 't' || k.toLowerCase() === 'е') { showText = !showText; textBox.hidden = !(items[index].text && showText); root.querySelector('[data-a="text"]').classList.toggle('on', !textBox.hidden); }
     else return;
     e.preventDefault();
   }
@@ -201,7 +202,7 @@ export function openLightbox(items, start = 0) {
     else if (a === 'in') zoomAt(1.5, ...center());
     else if (a === 'out') zoomAt(1 / 1.5, ...center());
     else if (a === 'fit') { fitTarget(); kick(); }
-    else if (a === 'text') { showText = !showText; textBox.hidden = !(items[index].text && showText); }
+    else if (a === 'text') { showText = !showText; textBox.hidden = !(items[index].text && showText); root.querySelector('[data-a="text"]').classList.toggle('on', !textBox.hidden); }
     else if (a === 'original') items[index].onOriginal?.();
   });
 

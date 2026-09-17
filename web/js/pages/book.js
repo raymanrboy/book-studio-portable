@@ -1,10 +1,11 @@
 // Book passport: cover, 16 page slots (dedication, 14 spreads, afterword), texts, files.
 import {
-  api, html, ic, raw, setHtml, on, media, modal, toast, menu, confirmBox, upload, runJob, copyText,
-  openExternal, fadeImages, highlightTokens, debounce, dateTime, bytes, segHtml, syncSeg, setSeg, naturalCompare, el,
+  api, html, ic, ib, raw, setHtml, on, media, modal, toast, menu, confirmBox, upload, runJob, copyText,
+  openExternal, fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { refreshInfo } from '../app.js';
+import { dropContents, isZipDrop, isFolderDrop, filesInDrop, receiveDrop } from '../order-bits.js';
 
 const SPREADS = Array.from({ length: 14 }, (_, i) => i + 2);
 const SLOT_KEYS = ['page1', ...SPREADS.map((n) => `spread${n}`), 'page30'];
@@ -20,20 +21,19 @@ export async function mount(view, [id]) {
       <div class="empty"><div class="empty-icon">${ic('book')}</div><h3>Книгу не знайдено</h3><p>${err.message}</p></div>`);
     return null;
   }
-  let filter = 'all';
   const busy = new Set();
 
   const assetUrl = (a, w) => media(`/media/book/${id}/${a.file}`, w ? { w } : {});
 
   // ---------------------------------------------------------------- skeleton
   setHtml(view, html`
-    <div class="row" style="margin-bottom:6px">
-      <button class="back-link" data-act="back" style="margin:0">${ic('arrowLeft', 'icon-s')}Бібліотека</button>
+    <div class="page-head" style="margin-bottom:14px">
+      <button class="back-link" data-act="back" aria-label="До бібліотеки" data-tip="До бібліотеки" data-kbd="Esc">${ic('arrowLeft')}</button>
       <span class="spacer"></span>
-      <div class="row-wrap" id="bk-actions"></div>
+      <div id="bk-actions"></div>
     </div>
     <div id="bk-hero"></div>
-    <div class="section-head"><div><div class="section-title">Обкладинка</div><div class="section-sub">Повний розворот обкладинки та її текст</div></div></div>
+    <div class="section-head" id="bk-cover-head"></div>
     <div id="bk-cover"></div>
     <div class="section-head" id="bk-pages-head"></div>
     <div class="slots" id="bk-slots"></div>
@@ -45,78 +45,82 @@ export async function mount(view, [id]) {
 
   // ---------------------------------------------------------------- render parts
   function renderActions() {
-    setHtml($('#bk-actions'), html`
-      <button class="btn btn-sm" data-act="import-folder">${ic('folder', 'icon-s')}Імпорт з папки</button>
-      <button class="btn btn-sm" data-act="add-files">${ic('upload', 'icon-s')}Додати файли</button>
-      <button class="btn btn-sm" data-act="text-menu">${ic('text', 'icon-s')}Текст JSON</button>
-      ${book.listing?.url ? html`<button class="btn btn-sm" data-act="open-etsy">${ic('external', 'icon-s')}Etsy</button>` : ''}
-      ${book.canvaUrl ? html`<button class="btn btn-sm btn-primary" data-act="open-canva">${ic('sparkle', 'icon-s')}Відкрити в Canva</button>` : ''}
-      <button class="btn btn-sm btn-icon" data-act="more" title="Ще">${ic('more')}</button>`);
+    setHtml($('#bk-actions'), html`<div class="tools">
+      ${ib('folderIn', 'Імпорт з папки', 'data-act="import-folder"')}
+      ${ib('filesPlus', 'Додати файли', 'data-act="add-files"')}
+      ${ib('braces', 'Текст книги', 'data-act="text-menu"')}
+      <span class="sep"></span>
+      ${ib('more', 'Ще', 'data-act="more"')}
+    </div>`);
+  }
+
+  // The parts of a finished book, lit when done; a thin ink line shows partial progress.
+  // (The Canva link has its own button in the same row, so it is not repeated here.)
+  function readiness() {
+    const c = book.completeness;
+    const part = (iconName, label, done, n, total) => {
+      const p = total ? n / total : done ? 1 : 0;
+      const tip = total ? `${label}: ${n} з ${total}` : `${label}: ${done ? 'є' : 'немає'}`;
+      return html`<i class="${p >= 1 ? 'ok' : p > 0 ? 'part' : ''}" style="--p:${Math.round(p * 100)}%" data-tip="${tip}" aria-label="${tip}">${ic(iconName)}</i>`;
+    };
+    return html`<div class="ready" role="list">
+      ${part('book', 'Обкладинка', c.cover)}
+      ${part('image', 'Заставка в галереї', c.thumbnail)}
+      ${part('images', 'Ілюстрації', null, c.illustrations, c.illustrationsTotal)}
+      ${part('text', 'Тексти', null, c.texts, c.textsTotal)}
+    </div>`;
   }
 
   function renderHero() {
-    const c = book.completeness;
     const l = book.listing || {};
     const thumb = book.thumbnail;
-    const checks = [
-      ['Обкладинка', c.cover],
-      ['Заставка в галереї', c.thumbnail],
-      ['Ілюстрації', c.illustrations === c.illustrationsTotal, `${c.illustrations}/${c.illustrationsTotal}`, c.illustrations / c.illustrationsTotal],
-      ['Тексти', c.texts === c.textsTotal, `${c.texts}/${c.textsTotal}`, c.texts / c.textsTotal],
-      ['Посилання на Canva', c.canva],
-    ];
-    setHtml($('#bk-hero'), html`<div class="card card-pad book-hero">
-      <div class="hero-thumb ${thumb?.lqip ? 'lqip' : ''}" ${thumb?.lqip ? raw(`style="background-image:url(${thumb.lqip})"`) : ''} data-drop="thumbnail" data-act="${thumb ? 'zoom-thumb' : 'pick'}" data-slot="thumbnail" title="Заставка книги в галереї">
-        ${thumb ? html`<img decoding="async" src="${assetUrl(thumb, 720)}" alt="">
-          <div class="thumb-actions"><button class="btn btn-xs" data-act="pick" data-slot="thumbnail">${ic('upload', 'icon-s')}Замінити</button>
-          <button class="btn btn-xs btn-icon" data-act="remove" data-slot="thumbnail" title="Прибрати">${ic('trash', 'icon-s')}</button></div>`
-          : html`<div class="drop-ph"><div class="drop-ico">${ic('image')}</div><b>Заставка</b><span>Перетягніть фото або натисніть</span>
-            ${l.id ? html`<button class="btn btn-xs" data-act="thumb-etsy">${ic('download', 'icon-s')}Фото з Etsy</button>` : ''}</div>`}
+    setHtml($('#bk-hero'), html`<div class="book-hero">
+      <div class="hero-thumb ${thumb?.lqip ? 'lqip' : ''}" ${thumb?.lqip ? raw(`style="background-image:url(${thumb.lqip})"`) : ''} data-drop="thumbnail" ${thumb ? raw('data-act="zoom-thumb"') : ''}>
+        ${thumb ? html`<img data-fade decoding="async" src="${assetUrl(thumb, 720)}" alt="Заставка книги">
+            <div class="img-actions">
+              ${ib('upload', 'Замінити заставку', 'data-act="pick" data-slot="thumbnail"', { cls: 'sm' })}
+              ${ib('trash', 'Прибрати заставку', 'data-act="remove" data-slot="thumbnail"', { cls: 'sm danger' })}
+            </div>
+            <i class="crops"></i>`
+          : html`<div class="drop-ph" data-act="pick" data-slot="thumbnail"><div class="drop-ico">${ic('image')}</div><b>Заставка</b>
+              ${l.id ? ib('imageDown', 'Взяти головне фото лістингу', 'data-act="thumb-etsy"', { cls: 'sm' }) : ''}</div>`}
         ${busy.has('thumbnail') ? html`<div class="busy-overlay"><div class="spinner spinner-l"></div></div>` : ''}
       </div>
-      <div class="stack" style="min-width:0">
-        <textarea class="hero-title-input" id="bk-title" rows="1" spellcheck="false">${book.title}</textarea>
+      <div class="hero-main">
+        <textarea class="hero-title-input" id="bk-title" rows="1" spellcheck="false" aria-label="Назва книги">${book.title}</textarea>
         <div class="hero-meta">
-          ${l.id ? html`<a href="#" data-act="open-etsy" class="chip chip-accent chip-mono">${ic('external', 'icon-s')}Etsy #${l.id}</a>` : html`<span class="chip chip-amber">без лістингу</span>`}
-          ${l.state ? html`<span class="chip ${l.state === 'active' ? 'chip-green' : 'chip-amber'}">${l.state}</span>` : ''}
-          ${l.verifiedAt ? html`<span class="faint">перевірено ${dateTime(l.verifiedAt)}</span>` : l.id ? html`<span class="chip chip-amber">${ic('alert', 'icon-s')}не перевірено</span>` : ''}
-          ${book.archived ? html`<span class="chip chip-purple">${ic('archive', 'icon-s')}в архіві</span>` : ''}
+          ${l.id ? html`<span class="chip chip-lg chip-mono" data-tip="Номер лістингу Etsy"><span class="svc-etsy" style="display:inline-grid">${ic('etsy', 'icon-s')}</span>#${l.id}</span>`
+            : html`<span class="chip chip-lg chip-amber">без лістингу</span>`}
+          ${book.canvaUrl ? html`<button type="button" class="chip chip-lg" data-act="open-canva" data-tip="Відкрити макет у Canva"><span class="svc-canva" style="display:inline-grid">${ic('canva', 'icon-s')}</span>Canva</button>`
+            : html`<button type="button" class="chip chip-lg chip-amber" data-act="canva-link" data-tip="Додати посилання на макет у Canva">${ic('canva', 'icon-s')}без Canva</button>`}
+          ${l.state && l.state !== 'active' ? html`<span class="chip chip-lg chip-amber">${l.state}</span>` : ''}
+          ${l.verifiedAt ? html`<span class="chip chip-lg" data-tip="Лістинг перевірено ${dateTime(l.verifiedAt)}">${ic('shield')}</span>`
+            : l.id ? html`<span class="chip chip-lg chip-amber" data-tip="Лістинг ще не перевірено в Etsy">${ic('alert')}</span>` : ''}
+          ${book.archived ? html`<span class="chip chip-lg chip-purple" data-tip="Книга в архіві">${ic('archive')}</span>` : ''}
+          <span class="spacer"></span>
+          ${readiness()}
         </div>
-        ${l.title && l.title !== book.title ? html`<div class="faint" style="font-size:12.5px">Назва на Etsy: ${l.title}</div>` : ''}
-        <div class="field" style="margin-top:4px">
-          <label class="field-label">${ic('sparkle', 'icon-s')}Макет у Canva</label>
-          <div class="row"><input class="input" id="bk-canva" placeholder="Вставте посилання на дизайн у Canva…" value="${book.canvaUrl || ''}" autocomplete="off">
-          <button class="btn" data-act="open-canva" ${book.canvaUrl ? '' : 'disabled'}>${ic('external', 'icon-s')}Відкрити</button></div>
-        </div>
-        <div class="field">
-          <label class="field-label">Нотатки</label>
-          <textarea class="textarea" id="bk-notes" rows="2" style="min-height:64px" placeholder="Особливості книги, шрифти, варіанти персоналізації…">${book.notes || ''}</textarea>
-        </div>
-      </div>
-      <div class="card-soft" style="padding:16px">
-        <div style="font-weight:650;margin-bottom:12px">Готовність книги</div>
-        <div class="check-list">${checks.map(([label, ok, num, frac]) => html`<div>
-          <div class="check-row"><span class="check-ico ${ok ? 'ok' : ''}">${ic(ok ? 'check' : 'x', 'icon-s')}</span>${label}${num ? html`<span class="num">${num}</span>` : ''}</div>
-          ${frac !== undefined ? html`<div class="bar-mini" style="margin:6px 0 0 32px"><i style="width:${Math.round(frac * 100)}%"></i></div>` : ''}
-        </div>`)}</div>
-        <div class="faint" style="font-size:11.5px;margin-top:14px">Додано ${dateTime(book.createdAt)}<br>Змінено ${dateTime(book.updatedAt)}</div>
+        ${l.title && l.title !== book.title ? html`<div class="faint" style="font-size:12.5px">На Etsy: ${l.title}</div>` : ''}
       </div>
     </div>`);
     autosize($('#bk-title'));
+    fadeImages($('#bk-hero'));
   }
 
   function renderCover() {
     const cover = book.cover;
+    setHtml($('#bk-cover-head'), html`<span class="section-title">Обкладинка</span>
+      ${cover ? html`<span class="num">${cover.width}×${cover.height}</span><span class="faint" style="font-size:12px">${bytes(cover.bytes)}</span>` : ''}`);
     setHtml($('#bk-cover'), html`<div class="stack">
       <div class="cover-box ${cover?.lqip ? 'lqip' : ''}" data-drop="cover" style="${cover ? `aspect-ratio:${cover.width} / ${cover.height}${cover.lqip ? `;background-image:url(${cover.lqip})` : ''}` : 'min-height:220px'}">
-        ${cover ? html`<img data-fade decoding="async" src="${assetUrl(cover, 1400)}" alt="" data-zoom="cover"><div class="gutter"></div>
+        ${cover ? html`<img data-fade decoding="async" src="${assetUrl(cover, 1400)}" alt="Обкладинка" data-zoom="cover"><div class="gutter"></div>
           <div class="img-actions">
-            <button class="btn btn-xs" data-act="zoom" data-key="cover">${ic('zoomIn', 'icon-s')}</button>
-            <button class="btn btn-xs" data-act="pick" data-slot="cover">${ic('upload', 'icon-s')}Замінити</button>
-            <button class="btn btn-xs btn-icon" data-act="remove" data-slot="cover" title="Видалити">${ic('trash', 'icon-s')}</button>
+            ${ib('expand', 'Переглянути', 'data-act="zoom" data-key="cover"', { cls: 'sm' })}
+            ${ib('upload', 'Замінити обкладинку', 'data-act="pick" data-slot="cover"', { cls: 'sm' })}
+            ${ib('trash', 'Видалити обкладинку', 'data-act="remove" data-slot="cover"', { cls: 'sm danger' })}
           </div>
-          <span class="page-tag">${cover.width}×${cover.height} · ${bytes(cover.bytes)}</span>`
-          : html`<div class="drop-ph" data-act="pick" data-slot="cover" style="min-height:220px"><div class="drop-ico">${ic('image')}</div><b>Обкладинка</b><span>Перетягніть файл обкладинки сюди або натисніть</span></div>`}
+          <i class="crops"></i>`
+          : html`<div class="drop-ph" data-act="pick" data-slot="cover" style="min-height:220px"><div class="drop-ico">${ic('upload')}</div><b>Обкладинка</b><span>Перетягніть сюди повний розворот обкладинки</span></div>`}
         ${busy.has('cover') ? html`<div class="busy-overlay"><div class="spinner spinner-l"></div></div>` : ''}
       </div>
       ${textBlock('cover', 'Текст обкладинки')}
@@ -127,9 +131,9 @@ export async function mount(view, [id]) {
   function textBlock(key, label) {
     const t = book.text[key] || '';
     return html`<div class="text-block" data-textblock="${key}">
-      <div class="row" style="margin-bottom:8px"><span style="font-weight:650;font-size:13px">${label}</span><span class="spacer"></span>
-        <button class="btn btn-ghost btn-xs" data-act="copy-text" data-key="${key}" ${t ? '' : 'disabled'}>${ic('copy', 'icon-s')}Копіювати</button>
-        <button class="btn btn-ghost btn-xs" data-act="edit-text" data-key="${key}">${ic('edit', 'icon-s')}Редагувати</button></div>
+      <div class="text-block-head"><span class="eyebrow">${label}</span><span class="spacer"></span>
+        ${ib('copy', 'Копіювати текст', `data-act="copy-text" data-key="${key}" ${t ? '' : 'disabled'}`, { cls: 'sm' })}
+        ${ib('edit', 'Редагувати', `data-act="edit-text" data-key="${key}"`, { cls: 'sm' })}</div>
       <div class="text-body ${t ? '' : 'empty-text'}" data-act="edit-text" data-key="${key}">${t ? highlightTokens(t) : 'Текст ще не додано — натисніть, щоб написати.'}</div>
     </div>`;
   }
@@ -137,62 +141,56 @@ export async function mount(view, [id]) {
   function renderPagesHead() {
     const c = book.completeness;
     setHtml($('#bk-pages-head'), html`
-      <div><div class="section-title">Сторінки й розвороти</div>
-        <div class="section-sub">Присвята, 14 розворотів, післяслово · ${c.illustrations}/16 з ілюстраціями · перетягніть файли прямо на потрібне місце</div></div>
-      <span class="spacer"></span>
-      ${segHtml([{ value: 'all', label: 'Усі' }, { value: 'noimg', label: 'Без ілюстрацій' }, { value: 'notext', label: 'Без тексту' }], filter, { name: 'filter' })}
-      <button class="btn btn-sm" data-act="copy-all">${ic('copy', 'icon-s')}Весь текст</button>`);
-    requestAnimationFrame(() => syncSeg($('#bk-pages-head .seg')));
-  }
-
-  function slotHasImage(key) {
-    const s = book.slots[key];
-    return !!(s.image || (s.left && s.right));
+      <span class="section-title">Сторінки</span>
+      <span class="num" data-tip="Сторінок з ілюстраціями">${c.illustrations}/16</span>`);
   }
 
   function rowHtml(key, i) {
     const s = book.slots[key];
-    const label = key === 'page1' ? 'Сторінка 1' : key === 'page30' ? 'Сторінка 30' : `Розворот ${key.slice(6)}`;
-    const pages = key === 'page1' ? 'присвята' : key === 'page30' ? 'післяслово' : `стор. ${pagesOf(+key.slice(6)).join('–')}`;
+    const label = key === 'page1' ? 'Присвята' : key === 'page30' ? 'Післяслово' : `Розворот ${key.slice(6)}`;
+    const pages = key === 'page1' ? '1' : key === 'page30' ? '30' : pagesOf(+key.slice(6)).join('–');
     const t = book.text[key] || '';
     const textCol = html`<div class="slot-text" data-textcol="${key}">
       <div class="slot-text-head"><span class="slot-label">${label}</span><span class="slot-pages">${pages}</span><span class="spacer"></span>
-        <button class="btn btn-ghost btn-xs btn-icon" data-act="copy-text" data-key="${key}" title="Копіювати текст" ${t ? '' : 'disabled'}>${ic('copy', 'icon-s')}</button>
-        <button class="btn btn-ghost btn-xs btn-icon" data-act="edit-text" data-key="${key}" title="Редагувати">${ic('edit', 'icon-s')}</button></div>
+        ${ib('copy', 'Копіювати текст', `data-act="copy-text" data-key="${key}" ${t ? '' : 'disabled'}`, { cls: 'sm' })}
+        ${ib('edit', 'Редагувати', `data-act="edit-text" data-key="${key}"`, { cls: 'sm' })}</div>
       <div class="slot-text-body ${t ? '' : 'empty-text'}" data-act="edit-text" data-key="${key}">${t ? highlightTokens(t) : 'Текст ще не додано'}</div>
     </div>`;
     const busyOv = (slot) => busy.has(slot) ? html`<div class="busy-overlay"><div class="spinner spinner-l"></div></div>` : '';
     const bg = (asset) => (asset?.lqip ? raw(`style="background-image:url(${asset.lqip})"`) : '');
-    const pageSq = (slot, asset, tag, hint) => html`<div class="page-sq ${asset?.lqip ? 'lqip' : ''}" data-drop="${slot}" ${slot.includes(':') ? 'data-auto="1"' : ''} ${bg(asset)}>
+    const pageSq = (slot, asset, tag, hint) => html`<div class="page-sq ${asset?.lqip ? 'lqip' : ''}" data-drop="${slot}" ${slot.includes(':') ? raw('data-auto="1"') : ''} ${bg(asset)}>
       ${asset ? html`<img data-fade decoding="async" src="${assetUrl(asset, 720)}" alt="" data-zoom="${slot}" loading="lazy">
-        <div class="img-actions"><button class="btn btn-xs btn-icon" data-act="zoom" data-key="${slot}" title="Збільшити">${ic('zoomIn', 'icon-s')}</button>
-        <button class="btn btn-xs btn-icon" data-act="pick" data-slot="${slot}" title="Замінити">${ic('upload', 'icon-s')}</button>
-        ${slot.includes(':') && s.left && s.right ? html`<button class="btn btn-xs btn-icon" data-act="swap" data-key="${key}" title="Поміняти сторінки місцями">${ic('swap', 'icon-s')}</button>` : ''}
-        <button class="btn btn-xs btn-icon" data-act="remove" data-slot="${slot}" title="Видалити">${ic('trash', 'icon-s')}</button></div>
+        <div class="img-actions">
+          ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${slot}"`, { cls: 'sm' })}
+          ${ib('upload', 'Замінити', `data-act="pick" data-slot="${slot}"`, { cls: 'sm' })}
+          ${slot.includes(':') && s.left && s.right ? ib('swap', 'Поміняти сторінки місцями', `data-act="swap" data-key="${key}"`, { cls: 'sm' }) : ''}
+          ${ib('trash', 'Видалити', `data-act="remove" data-slot="${slot}"`, { cls: 'sm danger' })}
+        </div>
         <span class="page-tag">${tag}</span>`
-        : html`<div class="drop-ph" data-act="pick" data-slot="${slot}"><div class="drop-ico">${ic('upload')}</div><b>${hint}</b><span>стор. ${tag}</span></div>`}
+        : html`<div class="drop-ph" data-act="pick" data-slot="${slot}"><div class="drop-ico">${ic('upload')}</div><b>${hint}</b><span class="num">${tag}</span></div>`}
       ${busyOv(slot)}</div>`;
     const blank = (text) => html`<div class="page-sq blank"><span>${text}</span></div>`;
 
     let images;
-    if (key === 'page1') images = html`${blank('Форзац')}${pageSq('page1', s.image, '1', 'Присвята')}`;
-    else if (key === 'page30') images = html`${pageSq('page30', s.image, '30', 'Післяслово')}${blank('Нахзац')}`;
+    if (key === 'page1') images = html`<div class="slot-pages-pair">${blank('Форзац')}${pageSq('page1', s.image, '1', 'Присвята')}<i class="crops"></i></div>`;
+    else if (key === 'page30') images = html`<div class="slot-pages-pair">${pageSq('page30', s.image, '30', 'Післяслово')}${blank('Нахзац')}<i class="crops"></i></div>`;
     else {
       const [lp, rp] = pagesOf(+key.slice(6));
       if (s.image) {
         images = html`<div class="spread-img ${s.image.lqip ? 'lqip' : ''}" data-drop="${key}" ${bg(s.image)}>
           <img data-fade decoding="async" src="${assetUrl(s.image, 1400)}" alt="" data-zoom="${key}" loading="lazy"><div class="gutter"></div>
-          <div class="img-actions"><button class="btn btn-xs btn-icon" data-act="zoom" data-key="${key}" title="Збільшити">${ic('zoomIn', 'icon-s')}</button>
-            <button class="btn btn-xs" data-act="pick" data-slot="${key}">${ic('upload', 'icon-s')}Замінити</button>
-            <button class="btn btn-xs btn-icon" data-act="remove" data-slot="${key}" title="Видалити">${ic('trash', 'icon-s')}</button></div>
-          <span class="page-tag">${lp}–${rp}</span>${busyOv(key)}</div>`;
+          <div class="img-actions">
+            ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${key}"`, { cls: 'sm' })}
+            ${ib('upload', 'Замінити розворот', `data-act="pick" data-slot="${key}"`, { cls: 'sm' })}
+            ${ib('trash', 'Видалити', `data-act="remove" data-slot="${key}"`, { cls: 'sm danger' })}
+          </div>
+          <span class="page-tag">${lp}–${rp}</span>${busyOv(key)}<i class="crops"></i></div>`;
       } else {
-        images = html`${pageSq(`${key}:left`, s.left, String(lp), 'Ліва сторінка')}${pageSq(`${key}:right`, s.right, String(rp), 'Права сторінка')}`;
+        images = html`<div class="slot-pages-pair">${pageSq(`${key}:left`, s.left, String(lp), 'Ліва')}${pageSq(`${key}:right`, s.right, String(rp), 'Права')}<i class="crops"></i></div>`;
       }
     }
-    const hidden = (filter === 'noimg' && slotHasImage(key)) || (filter === 'notext' && t.trim());
     // Entrance animation only on first paint (i >= 0); re-rendered rows just swap in place.
-    return html`<div class="slot-row ${i >= 0 ? 'enter' : ''}" data-row="${key}" ${hidden ? 'hidden' : ''} ${i >= 0 ? raw(`style="animation-delay:${Math.min(i * 30, 300)}ms"`) : ''}>${textCol}${images}</div>`;
+    return html`<div class="slot-row ${i >= 0 ? 'enter' : ''}" data-row="${key}" ${i >= 0 ? raw(`style="animation-delay:${Math.min(i * 30, 300)}ms"`) : ''}>${textCol}${images}</div>`;
   }
 
   function renderSlots() {
@@ -239,7 +237,6 @@ export async function mount(view, [id]) {
     renderPagesHead();
     if (focused) { const f = document.getElementById(focused); if (f) { f.focus(); try { f.setSelectionRange(...caret); } catch {} } }
   }
-  const saveNotes = debounce(async (value) => { await patch({ notes: value }, 'notes'); }, 700);
 
   function autosize(ta) {
     if (!ta || CSS.supports('field-sizing', 'content')) return; // CSS sizes the title itself
@@ -257,9 +254,9 @@ export async function mount(view, [id]) {
     ta.value = book.text[key] || '';
     ta.placeholder = 'Текст сторінки. {Name} та {Gifter} — місця для персоналізації.';
     bodyEl.replaceWith(ta);
-    const foot = el(html`<div class="slot-text-foot" ${key === 'cover' ? 'style="background:none;border:0;padding:8px 0 0"' : ''}>
-      <span class="faint" style="font-size:11.5px;align-self:center">Ctrl+Enter — зберегти, Esc — скасувати</span><span class="spacer"></span>
-      <button class="btn btn-ghost btn-xs" data-x="cancel">Скасувати</button><button class="btn btn-primary btn-xs" data-x="save">Зберегти</button></div>`);
+    const foot = el(html`<div class="slot-text-foot" ${key === 'cover' ? raw('style="background:none;border:0;padding:8px 0 0"') : ''}>
+      <span class="spacer"></span>
+      ${ib('x', 'Скасувати', 'data-x="cancel"', { cls: 'sm', kbd: 'Esc' })}${ib('check', 'Зберегти', 'data-x="save"', { cls: 'sm primary', kbd: 'Ctrl+Enter' })}</div>`);
     container.appendChild(foot);
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
@@ -320,12 +317,13 @@ export async function mount(view, [id]) {
   }
 
   // ---------------------------------------------------------------- smart multi-file mapping
+  // Any subset works: whatever is there goes to its place, the rest of the book stays as it is.
   function mapFiles(files) {
     const mapping = {}; const ignored = []; let text = null;
     const singles = {}, pairs = {};
     let cover = null, thumb = null;
     for (const f of files) {
-      const stem = f.name.replace(/\.[^.]+$/, '').trim().toLowerCase();
+      const stem = f.name.replace(/\.[^.]+$/, '').replace(/_upscayl.*$/i, '').trim().toLowerCase(); // Upscayl's name tail
       if (/\.json$/i.test(f.name)) { text = f; continue; }
       if (!IMG_RE.test(f.name)) { ignored.push(f.name); continue; }
       if (/cover|cober|обкладин/.test(stem)) { if (!cover || /\.png$/i.test(f.name)) cover = f; continue; }
@@ -425,11 +423,12 @@ export async function mount(view, [id]) {
     return part ? !!(s[part] || s.image) : !!(s.image || s.left || s.right);
   }
 
-  // ---------------------------------------------------------------- folder import (native dialog)
-  async function importFolder() {
-    let path;
-    try { path = (await api('/api/app/pick-folder', { method: 'POST', body: { title: 'Оберіть папку з файлами книги' } })).path; }
-    catch (err) { toast(err.message, 'error'); return; }
+  // ---------------------------------------------------------------- folder import (native dialog, or a dropped ZIP)
+  async function importFolder(path = null) {
+    if (!path) {
+      try { path = (await api('/api/app/pick-folder', { method: 'POST', body: { title: 'Оберіть папку з файлами книги' } })).path; }
+      catch (err) { toast(err.message, 'error'); return; }
+    }
     if (!path) return;
     let scan;
     try { scan = await api(`/api/library/books/${id}/folder-scan`, { method: 'POST', body: { path } }); }
@@ -441,9 +440,9 @@ export async function mount(view, [id]) {
       size: 'l',
       body: html`<div class="stack">
         <div class="row-wrap">
-          <span class="chip ${scan.mapping.cover ? 'chip-green' : ''}">${ic(scan.mapping.cover ? 'check' : 'x', 'icon-s')}Обкладинка</span>
-          <span class="chip ${scan.slotsFound === scan.slotsTotal ? 'chip-green' : scan.slotsFound ? 'chip-amber' : ''}">Сторінки ${scan.slotsFound}/${scan.slotsTotal}</span>
-          <span class="chip ${scan.text ? 'chip-green' : ''}">${ic(scan.text ? 'check' : 'x', 'icon-s')}Текст ${scan.text ? scan.text.name : ''}</span>
+          ${scan.mapping.cover ? html`<span class="chip chip-green">${ic('check', 'icon-s')}Обкладинка</span>` : html`<span class="chip">без обкладинки</span>`}
+          <span class="chip ${slots.length ? 'chip-green' : ''}"><span class="num">${slots.length}</span> ${slots.length === 1 ? 'зображення' : 'зображень'}</span>
+          ${scan.text ? html`<span class="chip chip-green">${ic('check', 'icon-s')}Текст ${scan.text.name}</span>` : html`<span class="chip">без тексту</span>`}
         </div>
         ${slots.length ? html`<div class="card-soft" style="max-height:300px;overflow:auto;padding:4px 12px">${slots.map((s) => html`<div class="row" style="padding:7px 0;border-bottom:1px solid var(--border)">
           <label class="check grow"><input type="checkbox" data-slot-cb="${s}" checked><span>${slotName(s)}</span></label><span class="mono faint">${scan.mapping[s].name}</span>${hasAsset(s) ? html`<span class="chip chip-amber">замінить</span>` : ''}</div>`)}</div>` : ''}
@@ -486,8 +485,8 @@ export async function mount(view, [id]) {
       const res = await api(`/api/library/books/${id}/text`, { method: 'POST', body: { json: raw } });
       book = res.book;
       renderAll();
-      if (res.problems.length) toast(`Імпортовано ${res.imported} текстів. Не вистачає: ${res.problems.length}`, 'info', 6000);
-      else toast('Текст книги імпортовано повністю', 'success');
+      // Missing texts are fine: those places simply stay empty.
+      toast(res.problems.length ? `Імпортовано ${res.imported} з ${res.imported + res.problems.length} текстів` : 'Текст книги імпортовано повністю', 'success');
     } catch (err) { toast(err.message, 'error', 8000); }
   }
   function pasteJsonDialog() {
@@ -500,6 +499,26 @@ export async function mount(view, [id]) {
     });
     m.foot.querySelector('[data-c]').onclick = () => m.close();
     m.foot.querySelector('[data-go]').onclick = async () => { const v = m.el.querySelector('#pj').value; m.close(); await importTextJson(v); };
+  }
+  function canvaDialog() {
+    const m = modal({
+      title: 'Макет у Canva',
+      sub: 'Canva → Поділитися → Копіювати посилання',
+      body: html`<input class="input" id="cv-url" placeholder="https://www.canva.com/design/…" value="${book.canvaUrl || ''}" autocomplete="off" spellcheck="false" aria-label="Посилання на макет у Canva" autofocus>`,
+      foot: html`${book.canvaUrl ? html`<button class="btn btn-ghost danger" data-rm>Прибрати</button><span class="spacer"></span>` : ''}
+        <button class="btn btn-ghost" data-c>Скасувати</button><button class="btn btn-primary" data-go>Зберегти</button>`,
+    });
+    const input = m.el.querySelector('#cv-url');
+    const save = async (v) => {
+      if (v && !/^https?:\/\//i.test(v)) { toast('Посилання має починатися з https://', 'error'); input.focus(); return; }
+      m.close();
+      if (v !== (book.canvaUrl || '') && await patch({ canvaUrl: v })) toast(v ? 'Посилання на Canva збережено' : 'Посилання на Canva прибрано', 'success', 1400);
+    };
+    m.foot.querySelector('[data-c]').onclick = () => m.close();
+    m.foot.querySelector('[data-go]').onclick = () => save(input.value.trim());
+    m.foot.querySelector('[data-rm]')?.addEventListener('click', () => save(''));
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(input.value.trim()); } });
+    input.select();
   }
   function allText() {
     const parts = [];
@@ -563,27 +582,28 @@ export async function mount(view, [id]) {
       if (act === 'copy-text') { copyText(book.text[t.dataset.key] || '', 'Текст скопійовано'); return; }
       if (act === 'edit-text') { editText(t.dataset.key); return; }
       if (act === 'copy-all') { const all = allText(); if (all) copyText(all, 'Увесь текст книги скопійовано'); else toast('У книзі ще немає тексту', 'info'); return; }
-      if (act === 'open-etsy') { e.preventDefault(); openExternal(book.listing?.url); return; }
       if (act === 'open-canva') { openExternal(book.canvaUrl); return; }
+      if (act === 'canva-link') { canvaDialog(); return; }
       if (act === 'import-folder') { importFolder(); return; }
       if (act === 'add-files') { $('#bk-many').click(); return; }
       if (act === 'thumb-etsy') { e.stopPropagation(); thumbFromEtsy(); return; }
       if (act === 'text-menu') {
         menu(t, [
           { label: 'Завантажити файл JSON…', icon: 'upload', onClick: () => $('#bk-json').click() },
-          { label: 'Вставити JSON вручну', icon: 'text', onClick: pasteJsonDialog },
+          { label: 'Вставити JSON вручну', icon: 'edit', onClick: pasteJsonDialog },
           '-',
-          { label: 'Скопіювати як JSON', icon: 'copy', onClick: async () => copyText(JSON.stringify(await api(`/api/library/books/${id}/text.json`), null, 2), 'JSON скопійовано') },
-          { label: 'Скопіювати весь текст', icon: 'copy', onClick: () => { const a = allText(); a ? copyText(a) : toast('У книзі ще немає тексту'); } },
+          { label: 'Скопіювати весь текст', icon: 'copy', onClick: () => { const a = allText(); a ? copyText(a, 'Увесь текст книги скопійовано') : toast('У книзі ще немає тексту'); } },
+          { label: 'Скопіювати як JSON', icon: 'braces', onClick: async () => copyText(JSON.stringify(await api(`/api/library/books/${id}/text.json`), null, 2), 'JSON скопійовано') },
         ]);
         return;
       }
       if (act === 'more') {
         menu(t, [
-          ...(book.listing?.id ? [{ label: 'Оновити дані з Etsy', icon: 'refresh', onClick: refreshListing },
-            { label: 'Фото лістингу як заставка', icon: 'image', onClick: thumbFromEtsy }] : []),
+          ...(book.listing?.id ? [{ label: 'Оновити дані з Etsy', icon: 'sync', onClick: refreshListing },
+            { label: 'Фото лістингу як заставка', icon: 'imageDown', onClick: thumbFromEtsy }] : []),
+          { label: book.canvaUrl ? 'Змінити посилання на Canva…' : 'Додати посилання на Canva…', icon: 'link', onClick: canvaDialog },
           { label: 'Експорт файлів у папку…', icon: 'download', onClick: exportBook },
-          { label: 'Відкрити папку книги', icon: 'folder', onClick: () => api(`/api/library/books/${id}/open-folder`, { method: 'POST', body: {} }).catch((er) => toast(er.message, 'error')) },
+          { label: 'Відкрити папку книги', icon: 'folderOpen', onClick: () => api(`/api/library/books/${id}/open-folder`, { method: 'POST', body: {} }).catch((er) => toast(er.message, 'error')) },
           '-',
           book.archived ? { label: 'Відновити з архіву', icon: 'restore', onClick: () => setArchived(false) } : { label: 'Перенести в архів', icon: 'archive', onClick: () => setArchived(true) },
           { label: 'Видалити книгу…', icon: 'trash', danger: true, onClick: deleteBook },
@@ -591,13 +611,6 @@ export async function mount(view, [id]) {
       }
     }),
     on(view, 'click', '[data-zoom]', (e, img) => zoom(img.dataset.zoom)),
-    on(view, 'click', '[data-seg="filter"] button', (e, b) => {
-      filter = b.dataset.value; setSeg(b.closest('.seg'), filter);
-      SLOT_KEYS.forEach((k) => {
-        const row = view.querySelector(`[data-row="${k}"]`);
-        if (row) row.hidden = (filter === 'noimg' && slotHasImage(k)) || (filter === 'notext' && (book.text[k] || '').trim());
-      });
-    }),
   ];
 
   async function thumbFromEtsy() {
@@ -643,10 +656,9 @@ export async function mount(view, [id]) {
   // Inputs
   view.addEventListener('input', (e) => {
     if (e.target.id === 'bk-title') autosize(e.target);
-    if (e.target.id === 'bk-notes') saveNotes(e.target.value);
   });
   view.addEventListener('keydown', (e) => {
-    if ((e.target.id === 'bk-title' || e.target.id === 'bk-canva') && e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+    if (e.target.id === 'bk-title' && e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
   });
   view.addEventListener('focusout', async (e) => {
     if (e.target.id === 'bk-title') {
@@ -654,11 +666,6 @@ export async function mount(view, [id]) {
       if (!v) { e.target.value = book.title; autosize(e.target); return; }
       if (v !== book.title && await patch({ title: v })) { toast('Назву збережено', 'success', 1400); refreshInfo(); }
     }
-    if (e.target.id === 'bk-canva') {
-      const v = e.target.value.trim();
-      if (v !== (book.canvaUrl || '')) { if (v && !/^https?:\/\//i.test(v)) { toast('Посилання має починатися з https://', 'error'); return; } if (await patch({ canvaUrl: v })) toast('Посилання на Canva збережено', 'success', 1400); }
-    }
-    if (e.target.id === 'bk-notes') saveNotes.flush(e.target.value);
   });
 
   // File inputs
@@ -689,6 +696,15 @@ export async function mount(view, [id]) {
     e.preventDefault();
     const target = e.target.closest('[data-drop]');
     setHot(null);
+    const dropped = dropContents(e); // must be read while the drop event runs
+    // A whole folder or a ZIP: whatever it holds goes to its place, missing parts stay empty.
+    if (isZipDrop(dropped)) {
+      toast('Розпаковую архів…', 'info', 2500);
+      try { importFolder(await receiveDrop(dropped, null, { withText: true })); }
+      catch (err) { toast(err.message, 'error', 6000); }
+      return;
+    }
+    if (isFolderDrop(dropped)) { importFiles(await filesInDrop(dropped)); return; }
     const files = [...e.dataTransfer.files];
     if (files.length === 1 && /\.json$/i.test(files[0].name)) { importTextJson(await files[0].text()); return; }
     if (target && files.length === 1) { uploadTo(target.dataset.drop, files[0], !!target.dataset.auto); return; }
@@ -704,11 +720,18 @@ export async function mount(view, [id]) {
   view.addEventListener('dragleave', onDragLeave);
   view.addEventListener('drop', onDrop);
 
-  // Keyboard: Ctrl+V with an image in clipboard is not supported by design (use files).
+  // Esc steps back to the library when nothing else (a dialog, the viewer, a text field) owns the key.
+  const onKey = (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    if (document.querySelector('.modal-root, .lightbox, .menu') || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
+    location.hash = '#/library';
+  };
+  document.addEventListener('keydown', onKey);
+
   return {
     unmount() {
       offs.forEach((f) => f());
-      saveNotes.cancel();
+      document.removeEventListener('keydown', onKey);
     },
   };
 }

@@ -1,0 +1,212 @@
+"""Order pipeline: which printer an order goes to, and turning a Canva export into Cover.png + 1..N.png."""
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from PIL import Image
+
+from tests import __init__  # noqa: F401  (sets a temporary data folder)
+from studio import creator, orders
+from studio.server import ApiError
+
+
+def item(cover="8\" × 8\" Hardcover", title="Personalized book"):
+    return {"title": title, "quantity": 1, "variations": [{"name": "Cover Type & Size", "value": cover}]}
+
+
+def png(path: Path, size=(40, 40)):
+    Image.new("RGB", size, (200, 180, 160)).save(path)
+
+
+class PrinterRule(unittest.TestCase):
+    def test_owner_rule(self):
+        self.assertEqual(orders.plan_for(item(), "US")["provider"], "printify")            # hardcover to the US
+        self.assertEqual(orders.plan_for(item(), "US")["pages"], 24)
+        uk = orders.plan_for(item(), "GB")                                                 # hardcover elsewhere
+        self.assertEqual((uk["provider"], uk["format"], uk["pages"]), ("gelato", "hardcover_8x8", 30))
+        soft = orders.plan_for(item("8\" × 8\" Softcover"), "US")                           # softcover anywhere
+        self.assertEqual((soft["provider"], soft["format"]), ("gelato", "softcover_8x8"))
+        small = orders.plan_for(item("5.5\" × 5.5\" Softcover"), "CA")
+        self.assertEqual(small["format"], "softcover_5x5")
+
+    def test_unknown_cover_leaves_the_choice_to_the_owner(self):
+        self.assertIsNone(orders.plan_for(item(cover="Blue", title="Book"), "US")["provider"])
+
+
+class ArrangePages(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def folder(self, names, cover=None):
+        d = self.root / "Madelynn"
+        d.mkdir()
+        for n in names:
+            png(d / n)
+        if cover:
+            png(d / cover, (96, 50))
+        return d
+
+    def test_page_numbers_and_ranges(self):
+        self.assertEqual(orders.page_number("12"), 12)
+        self.assertEqual(orders.page_number("Madelynn - 12"), 12)
+        self.assertEqual(orders.page_number("12_upscayl_4x_ultrasharp-4x"), 12)
+        self.assertIsNone(orders.page_number("cover"))
+        self.assertEqual(orders.ranges([1, 2, 3, 5, 7, 8]), "1–3, 5, 7–8")
+
+    def test_already_in_order_is_used_as_is(self):
+        d = self.folder([f"{i}.png" for i in range(1, 25)], cover="Cover.png")
+        res = orders.arrange_pages(d, 24)
+        self.assertEqual((res["path"], res["renumbered"]), (str(d), False))
+
+    def test_canva_numbers_are_put_in_order_without_touching_the_originals(self):
+        # Canva keeps the design's page numbers: 24 chosen pages out of 30, the cover recognised by its shape.
+        chosen = [1, 2, 3, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+        d = self.folder([f"{n}.png" for n in chosen], cover="31.png")
+        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+            res = orders.arrange_pages(d, 24)
+        out = Path(res["path"])
+        self.assertNotEqual(out, d)
+        self.assertEqual(sorted(p.name for p in out.iterdir()), sorted(["Cover.png"] + [f"{i}.png" for i in range(1, 25)]))
+        self.assertTrue((d / "6.png").exists())                                    # the user's own files stay put
+        with Image.open(out / "Cover.png") as cover:
+            self.assertEqual(cover.size, (96, 50))
+        self.assertIn("1–3, 6–11, 14–19, 22–30 → 1–24", res["note"])
+
+    def test_upscayl_names(self):
+        d = self.folder([f"{i}_upscayl_4x_ultrasharp-4x.png" for i in range(2, 26)], cover="Cover_upscayl_4x_ultrasharp-4x.png")
+        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+            res = orders.arrange_pages(d, 24)
+        self.assertTrue((Path(res["path"]) / "24.png").exists())
+        self.assertIn("2–25 → 1–24", res["note"])
+
+    def test_wrong_count_says_what_is_there(self):
+        d = self.folder([f"{i}.png" for i in range(1, 23)], cover="Cover.png")
+        with self.assertRaises(ApiError) as caught:
+            orders.arrange_pages(d, 24)
+        self.assertIn("Потрібно 24 сторінок, а тут 22", str(caught.exception))
+
+    def test_no_cover_and_duplicates_are_reported(self):
+        d = self.folder([f"{i}.png" for i in range(1, 25)])
+        with self.assertRaises(ApiError) as caught:
+            orders.arrange_pages(d, 24)
+        self.assertIn("обкладинку", str(caught.exception))
+        (d / "copy of 5.png").write_bytes((d / "5.png").read_bytes())
+        png(d / "Cover.png", (96, 50))
+        with self.assertRaises(ApiError) as caught:
+            orders.arrange_pages(d, 24)
+        self.assertIn("5 є двічі", str(caught.exception))
+
+    def test_dropped_copies_are_moved_not_copied(self):
+        drops = self.root / "drops"
+        d = drops / "abc" / "Madelynn"
+        d.mkdir(parents=True)
+        for i in range(3, 27):
+            png(d / f"{i}.png")
+        png(d / "Cover.png", (96, 50))
+        with mock.patch.object(creator, "DROPS", drops):
+            res = orders.arrange_pages(d, 24)
+        self.assertFalse(any(d.iterdir()))
+        self.assertEqual(len(list(Path(res["path"]).iterdir())), 25)
+
+
+class PreparationGuide(unittest.TestCase):
+    """The instruction handed to whoever prepares a book must match what the importer really accepts."""
+
+    def test_names_and_json_in_the_guide_are_what_the_importer_reads(self):
+        import json
+        import re
+        from studio import library
+        guide = library.agent_guide()
+        block = re.search(r"```json\n(\{.*?\n\})\n```", guide, re.S).group(1)
+        text, problems, _ = library.parse_text_json(block)     # the template itself imports without a problem
+        self.assertEqual(problems, [])
+        self.assertEqual(len(text), len(library.TEXT_KEYS))
+        self.assertEqual(sorted(json.loads(block)["spreads"]), sorted(str(n) for n in library.SPREAD_NUMBERS))
+        names = re.findall(r"`(\d+(?:-\d+)?\.png|Cover\.png|Thumbnail\.png)`", guide)
+        with tempfile.TemporaryDirectory() as d:
+            for name in set(names):
+                png(Path(d) / name)
+            scan = library.scan_folder(Path(d))
+        self.assertEqual(scan["slotsFound"], scan["slotsTotal"])  # every slot of the book is filled
+        self.assertIn("cover", scan["mapping"])
+        self.assertIn("thumbnail", scan["mapping"])
+        self.assertIn("{Name}", guide)
+        self.assertIn("{Gifter}", guide)
+
+    def test_saved_as_a_file_in_the_chosen_folder(self):
+        from types import SimpleNamespace
+        from studio import desktop, library
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(desktop, "open_in_explorer") as shown:
+            res = library._guide_save(SimpleNamespace(json={"folder": d}))
+            saved = Path(res["path"])
+            self.assertEqual(saved.parent, Path(d))
+            self.assertEqual(saved.read_text(encoding="utf-8"), library.agent_guide())
+            shown.assert_called_once_with(saved)
+
+
+class PartialBookImport(unittest.TestCase):
+    """The book passport takes any subset: what is there goes to its place, the rest stays empty."""
+
+    def test_only_some_pictures_without_text(self):
+        from studio import library
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for name in ("3_upscayl_4x_ultrasharp-4x.png", "4.png", "9.png", "30.png"):   # single illustration pages
+                png(root / name)
+            scan = library.scan_folder(root)
+        # spread N holds pages 2N−2 and 2N−1: page 3 → spread 2 right, 4 → spread 3 left, 9 → spread 5 right
+        self.assertEqual(sorted(scan["mapping"]), ["page30", "spread2:right", "spread3:left", "spread5:right"])
+        self.assertEqual(scan["issues"], [])           # a single page of a spread is not a problem
+        self.assertIsNone(scan["text"])
+        self.assertEqual(scan["ignored"], [])
+
+    def test_zip_for_the_library_keeps_the_text(self):
+        import zipfile
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            archive = root / "book.zip"
+            with zipfile.ZipFile(archive, "w") as zf:
+                zf.writestr("Book/5.png", b"png")
+                zf.writestr("Book/book-text.json", b'{"page1": "Dear {Name}"}')
+            self.assertEqual(creator.extract_zip(archive, root / "out", with_text=True), 2)
+            self.assertTrue((root / "out" / "Book" / "book-text.json").exists())
+            self.assertEqual(creator.extract_zip(archive, root / "out2"), 1)   # the Order Creator takes pictures only
+
+
+class SyncOnlyAtStartOrByHand(unittest.TestCase):
+    """Orders are pulled once when the program starts and afterwards only by the refresh button."""
+
+    def test_start_up_sync_runs_once_and_pages_can_follow_it(self):
+        import threading
+        import time
+        from studio import etsy, profit
+        from studio.jobs import jobs
+        gate = threading.Event()
+        with mock.patch.object(etsy, "tokens", lambda: {"access_token": "1.x"}), \
+                mock.patch.object(profit, "_sync", lambda job, full=False: gate.wait(5) and {}):
+            profit.startup_sync()
+            running = profit._sync_state(None)["jobId"]
+            self.assertIsNotNone(running)                            # a page opened now follows this one
+            profit.startup_sync()
+            self.assertEqual(profit._sync_state(None)["jobId"], running)  # never a second one alongside
+            gate.set()
+            for _ in range(500):  # the job ends at once; the long limit only keeps a busy machine from failing the test
+                if not jobs.running("profit-sync"):
+                    break
+                time.sleep(0.02)
+        self.assertIsNone(profit._sync_state(None)["jobId"])          # afterwards nothing runs by itself
+
+    def test_nothing_starts_without_connections(self):
+        from studio import etsy, profit
+        with mock.patch.object(etsy, "tokens", lambda: None):
+            profit.startup_sync()
+        self.assertIsNone(profit._sync_state(None)["jobId"])
+
+
+if __name__ == "__main__":
+    unittest.main()

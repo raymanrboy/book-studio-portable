@@ -42,19 +42,31 @@ def _lock_for(key: str) -> threading.Lock:
         return lock
 
 
-def preview(path: Path, max_side: int) -> Path:
-    """Returns a cached JPEG preview no larger than max_side (never upscales)."""
-    stat = path.stat()
+_LARGER = (1400, 2600, 4096)  # preview sizes the UI already asks for; a smaller one can be cut from these
+
+
+def _cached(path: Path, stat, max_side: int) -> tuple[str, Path]:
     key_src = f"{path.resolve()}|{stat.st_mtime_ns}|{stat.st_size}|{max_side}"
     key = hashlib.sha1(key_src.encode("utf-8")).hexdigest()
-    out = core.data_path("cache", "thumbs", key[:2], f"{key}.jpg")
+    return key, core.data_path("cache", "thumbs", key[:2], f"{key}.jpg")
+
+
+def preview(path: Path, max_side: int) -> Path:
+    """Returns a cached JPEG preview no larger than max_side (never upscales).
+
+    A small preview is made from an already cached larger one when there is one — a few milliseconds
+    instead of decoding the whole 4000-pixel PNG again (the page strips need dozens of them at once)."""
+    stat = path.stat()
+    key, out = _cached(path, stat, max_side)
     if out.exists():
         return out
     with _lock_for(key):
         if out.exists():
             return out
+        source = next((big for size in _LARGER if size > max_side
+                       for big in [_cached(path, stat, size)[1]] if big.exists()), path)
         with _gen_slots:
-            with Image.open(path) as im:
+            with Image.open(source) as im:
                 im.draft("RGB", (max_side, max_side))
                 im = ImageOps.exif_transpose(im)
                 im.thumbnail((max_side, max_side), Image.Resampling.LANCZOS, reducing_gap=3.0)

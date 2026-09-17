@@ -36,10 +36,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Register all API routes.
-    from . import creator, etsy, gelato, library, printify, profit, settings_api, tunnel  # noqa: F401
+    from . import creator, etsy, gelato, library, orders, printify, profit, settings_api, tunnel  # noqa: F401
 
     tunnel.cleanup_stale()
+    creator.forget_old_form()
+    creator.clear_drops()
     httpd = server.start(args.port)
+    profit.startup_sync()  # the one automatic refresh of orders; afterwards only the refresh button
     url = f"{server.base_url()}/"
     if args.no_window:
         print(f"Book Studio: {url}", flush=True)

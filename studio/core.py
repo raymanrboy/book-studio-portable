@@ -175,16 +175,6 @@ DEFAULT_SETTINGS: dict = {
             },
         },
     },
-    "creator": {
-        "mode": "printify",
-        "printifyFolder": "",
-        "gelatoFolder": "",
-        "gelatoFormat": "hardcover_8x8",
-        "gelatoAddress": {
-            "firstName": "", "lastName": "", "addressLine1": "", "addressLine2": "",
-            "city": "", "state": "", "postCode": "", "country": "US", "phone": "",
-        },
-    },
 }
 
 
@@ -224,6 +214,17 @@ class Settings:
         with self._lock:
             self._data[name] = copy.deepcopy(value)
             write_json(self._path, self._data)
+
+    def drop_section(self, name: str) -> None:
+        """Removes a section for good, from the backup copy too."""
+        with self._lock:
+            if self._data.pop(name, None) is None:
+                return
+            write_json(self._path, self._data, backup=False)
+            bak = self._path.with_name(self._path.name + ".bak")
+            old = read_json(bak, None) if bak.exists() else None
+            if isinstance(old, dict) and old.pop(name, None) is not None:
+                write_json(bak, old, backup=False)
 
 
 settings = Settings()

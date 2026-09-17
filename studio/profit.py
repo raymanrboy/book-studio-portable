@@ -1,6 +1,7 @@
 """Profit module: manual sync of Etsy + Printify + Gelato, local snapshot, manual links, order states."""
 from __future__ import annotations
 
+import html
 import threading
 import time
 from datetime import datetime, timezone
@@ -19,6 +20,11 @@ FULL_SYNC_EVERY = 7 * 86400   # a complete Etsy re-read once a week; otherwise o
 SYNC_OVERLAP = 3600           # re-read the last hour again so nothing slips between two syncs
 
 
+def plain(value) -> str:
+    """Etsy sends buyer-entered and listing text HTML-escaped (8&quot; × 8&quot;, Cover Type &amp; Size)."""
+    return html.unescape(value) if isinstance(value, str) else ("" if value is None else str(value))
+
+
 def normalize_receipt(r: dict) -> dict:
     fees = calculate_ukrainian_etsy_fees(r)
     items = []
@@ -27,12 +33,12 @@ def normalize_receipt(r: dict) -> dict:
         variations = None
         if isinstance(raw_vars, list):
             variations = [{
-                "name": v.get("formatted_name") or v.get("name") or v.get("property_name") or "",
-                "value": v.get("formatted_value") or v.get("value") or v.get("value_name") or "",
+                "name": plain(v.get("formatted_name") or v.get("name") or v.get("property_name") or ""),
+                "value": plain(v.get("formatted_value") or v.get("value") or v.get("value_name") or ""),
             } for v in raw_vars]
         items.append({
             "transaction_id": t.get("transaction_id"),
-            "title": t.get("title") or "Товар без назви",
+            "title": plain(t.get("title")) or "Товар без назви",
             "quantity": t.get("quantity") or 1,
             "price": money(t.get("price")),
             "variations": variations,
@@ -53,18 +59,18 @@ def normalize_receipt(r: dict) -> dict:
         "receipt_id": str(r.get("receipt_id")),
         "created_at": created,
         "create_timestamp": ts,
-        "customer_shipping_name": r.get("name") or "Анонімний замовник",
+        "customer_shipping_name": plain(r.get("name")) or "Анонімний замовник",
         "buyer_email": r.get("buyer_email") or "",
-        "message_from_buyer": r.get("message_from_buyer") or "",
+        "message_from_buyer": plain(r.get("message_from_buyer")),
         "shipping_address": {
-            "name": r.get("name") or "",
-            "first_line": r.get("first_line") or "",
-            "second_line": r.get("second_line") or "",
-            "city": r.get("city") or "",
-            "state": r.get("state") or "",
-            "zip": r.get("zip") or "",
+            "name": plain(r.get("name")),
+            "first_line": plain(r.get("first_line")),
+            "second_line": plain(r.get("second_line")),
+            "city": plain(r.get("city")),
+            "state": plain(r.get("state")),
+            "zip": plain(r.get("zip")),
             "country_iso": r.get("country_iso") or "",
-            "formatted_address": r.get("formatted_address") or "",
+            "formatted_address": plain(r.get("formatted_address")),
         },
         "items": items,
         "status": r.get("status") or ("Completed" if r.get("is_shipped") else "Paid"),
@@ -160,6 +166,13 @@ SLIM_FIELDS = (
 )
 _view_lock = threading.Lock()
 _view_cache: dict = {"key": None}
+_writes = [0]  # bumped on every save below: two saves within one file-clock tick keep the same mtime
+
+
+def _save(path, data) -> None:
+    core.write_json(path, data)
+    with _view_lock:
+        _writes[0] += 1
 
 
 def _mtime(path) -> int:
@@ -171,8 +184,8 @@ def _mtime(path) -> int:
 
 def cached_view() -> dict:
     """build_view() is recomputed only when the snapshot, links or settings change."""
-    key = (_mtime(SNAPSHOT), _mtime(LINKS), _mtime(STATES), core.settings.section("gelato").get("eurUsdRate"),
-           bool(etsy.tokens()))
+    key = (_writes[0], _mtime(SNAPSHOT), _mtime(LINKS), _mtime(STATES),
+           core.settings.section("gelato").get("eurUsdRate"), bool(etsy.tokens()))
     with _view_lock:
         if _view_cache.get("key") != key:
             view = build_view()
@@ -272,7 +285,7 @@ def _sync(job, full: bool = False) -> dict:
     job.progress("Зіставлення замовлень…", 94, "")
     snap["syncedAt"] = core.now_iso()
     snap["warnings"] = warnings
-    core.write_json(SNAPSHOT, snap)
+    _save(SNAPSHOT, snap)
 
     matched = sum(1 for r in cached_view()["full"].values()
                   if r.get("profit") is not None and r.get("match_type") not in (None, "unmatched"))
@@ -307,8 +320,28 @@ def _start_sync(req: Request):
         raise ApiError("Немає жодного підключення. Підключіть Etsy та Printify у Налаштуваннях.", 400,
                        {"code": "not_configured"})
     full = bool((req.json or {}).get("full"))
+    running = jobs.running("profit-sync")
+    if running and not full:
+        return {"jobId": running.id}  # already syncing (another window or the order picker) — wait for that one
     job = jobs.start("profit-sync", lambda j: _sync(j, full=full), exclusive="profit-sync")
     return {"jobId": job.id}
+
+
+@route("GET", "/api/profit/sync")
+def _sync_state(req: Request):
+    """The sync running right now (the one at start-up, or one started by the refresh button), if any."""
+    running = jobs.running("profit-sync")
+    return {"jobId": running.id if running else None}
+
+
+def startup_sync() -> None:
+    """Orders are pulled once when the program starts; after that only by the refresh button."""
+    if not etsy.tokens() and not vault.get("printify_token"):
+        return
+    try:
+        jobs.start("profit-sync", lambda j: _sync(j), exclusive="profit-sync")
+    except JobError:
+        pass
 
 
 @route("POST", "/api/profit/links")
@@ -328,7 +361,7 @@ def _set_link(req: Request):
     with _links_lock:
         links = load_links()
         links[receipt] = {"provider": provider, "orderId": order_id or None, "at": core.now_iso()}
-        core.write_json(LINKS, links)
+        _save(LINKS, links)
     return {"ok": True}
 
 
@@ -391,7 +424,7 @@ def _set_state(req: Request):
             states.pop(receipt_id, None)
         else:
             states[receipt_id] = entry
-        core.write_json(STATES, states)
+        _save(STATES, states)
     row = cached_view()["full"].get(receipt_id)
     return {"ok": True, "row": row}
 
@@ -402,23 +435,68 @@ def _delete_link(req: Request):
     with _links_lock:
         links = load_links()
         links.pop(receipt, None)
-        core.write_json(LINKS, links)
+        _save(LINKS, links)
     return {"ok": True}
 
 
-def recent_receipts(limit: int = 60) -> list:
-    """Recent Etsy orders for the Order Creator helpers (title / address prefill)."""
-    receipts = load_snapshot().get("receipts") or []
+HOUR_MS = 3_600_000
+
+
+def order_stage(row: dict, placed: dict) -> tuple[str, str | None]:
+    """Where an Etsy order stands for the Order Creator: ("new" | "work" | "shipped" | "closed", provider).
+
+    Etsy keeps the seller's own tabs such as "In Production" out of its API, so the signal is the
+    print order: once Printify or Gelato has an order carrying the receipt number, the book is in work.
+    placed maps "provider:id" to (created_at, status) of every print order.
+    """
+    if row.get("state") in ("canceled", "refund_full"):
+        return "closed", None
+    if row.get("is_shipped"):
+        return "shipped", None
+    provider = row.get("pod_provider")
+    order_id = row.get("printify_order_id") if provider == "printify" else row.get("gelato_order_id")
+    if not provider or not order_id:
+        return ("work", None) if row.get("link_blocked") else ("new", None)
+    created, status = placed.get(f"{provider}:{order_id}", (None, None))
+    if str(status or "").lower() in ("canceled", "cancelled"):
+        return "new", None  # the print order was cancelled, the book still has to be made
+    if row.get("match_type") != "manual":
+        t_order, t_receipt = reconcile.parse_time(created), reconcile.parse_time(row.get("created_at"))
+        if t_order is not None and t_receipt is not None and t_order < t_receipt - HOUR_MS:
+            return "new", None  # matched by name to an earlier order of a returning buyer
+    return "work", provider
+
+
+def picker_orders() -> list:
+    """Every Etsy order for the Order Creator picker, newest first, each with its stage.
+    Cancelled and fully refunded orders are left out."""
+    snap = load_snapshot()
+    placed = {f"printify:{p.get('id')}": (p.get("created_at"), p.get("status")) for p in snap.get("printify") or []}
+    placed.update({f"gelato:{g.get('id')}": (g.get("createdAt"), g.get("fulfillmentStatus"))
+                   for g in snap.get("gelato") or []})
+    rows = cached_view()["full"]
     out = []
-    for r in receipts[:limit]:
+    for r in snap.get("receipts") or []:
+        row = rows.get(str(r["receipt_id"]))
+        if not row:
+            continue
+        stage, provider = order_stage(row, placed)
+        if stage == "closed":
+            continue
+        # plain() again: receipts saved before the Etsy text was unescaped at sync time
         out.append({
             "receiptId": r["receipt_id"],
             "createdAt": r.get("created_at"),
-            "name": r.get("customer_shipping_name"),
-            "address": r.get("shipping_address") or {},
-            "isShipped": r.get("is_shipped"),
-            "items": [{"title": i.get("title"), "quantity": i.get("quantity"), "variations": i.get("variations") or []}
+            "name": plain(r.get("customer_shipping_name")),
+            "address": {k: plain(v) for k, v in (r.get("shipping_address") or {}).items()},
+            "stage": stage,
+            "provider": provider,
+            "books": sum(int(i.get("quantity") or 1) for i in r.get("items") or []),
+            "items": [{"title": plain(i.get("title")), "quantity": i.get("quantity"), "sku": i.get("sku") or "",
+                       "listingId": str(i.get("listing_id") or ""),
+                       "variations": [{"name": plain(v.get("name")), "value": plain(v.get("value"))}
+                                      for v in i.get("variations") or []]}
                       for i in r.get("items") or []],
-            "coverLabel": reconcile.cover_label(r.get("items") or []),
+            "coverLabel": row.get("cover_label") or reconcile.cover_label(r.get("items") or []),
         })
     return out

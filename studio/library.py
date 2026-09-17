@@ -329,6 +329,7 @@ def export_text_json(book: dict) -> dict:
 # ---------------------------------------------------------------- folder import
 
 _NUM_RE = re.compile(r"^(\d+)(?:\s*[-–_]\s*(\d+))?$")
+_UPSCAYL_TAIL = re.compile(r"_upscayl.*$", re.I)
 
 
 def scan_folder(folder: Path) -> dict:
@@ -362,9 +363,9 @@ def scan_folder(folder: Path) -> dict:
     singles: dict[int, Path] = {}
     pairs: dict[tuple[int, int], Path] = {}
     unknown: list[str] = []
-    # Later roots (generated/) win over the top folder.
+    # Later roots (generated/) win over the top folder. Upscayl's "_upscayl_4x_…" name tail is ignored.
     for p in imgs:
-        stem = p.stem.strip().lower()
+        stem = _UPSCAYL_TAIL.sub("", p.stem).strip().lower()
         if re.search(r"cover|cober|обкладин", stem):
             if cover is None or p.suffix.lower() == ".png":
                 cover = p
@@ -400,11 +401,9 @@ def scan_folder(folder: Path) -> dict:
         left, right = spread_pages(n)
         if (left, right) in pairs:
             put(f"spread{n}", pairs[(left, right)])
-        elif left in singles and right in singles:
-            put(f"spread{n}:left", singles[left])
-            put(f"spread{n}:right", singles[right])
-        elif left in singles or right in singles:
-            issues.append(f"Розворот {n}: знайдено лише одну сторінку з пари {left}–{right}")
+        else:
+            # Whatever is there goes to its place (often just the illustration page of a spread);
+            # what is missing simply stays empty.
             if left in singles:
                 put(f"spread{n}:left", singles[left])
             if right in singles:
@@ -459,6 +458,105 @@ def export_book(book: dict, target: Path, job) -> dict:
     return {"folder": str(target), "files": len(plan)}
 
 
+# ---------------------------------------------------------------- guide for whoever prepares a book
+
+GUIDE_NAME = "Book Studio — як підготувати книгу.md"
+
+
+def agent_guide() -> str:
+    """Instruction (Markdown) for a person or an AI agent preparing one book's files: the exact file names
+    the batch import understands and the book-text JSON. Built from the same rules the importer uses
+    (scan_folder / parse_text_json), so it cannot drift from them."""
+    rows = ["| Обкладинка (весь розворот обкладинки) | — | `Cover.png` |",
+            "| Заставка для галереї (необов'язково) | — | `Thumbnail.png` |",
+            "| Присвята | 1 | `1.png` |"]
+    for n in SPREAD_NUMBERS:
+        a, b = spread_pages(n)
+        rows.append(f"| Розворот {n} | {a}–{b} | `{a}-{b}.png` або `{a}.png` + `{b}.png` |")
+    rows.append("| Післяслово | 30 | `30.png` |")
+    template = json.dumps({
+        "cover": "Текст обкладинки",
+        "page1": "Текст присвяти (сторінка 1)",
+        "spreads": {str(n): "Текст розвороту {} (сторінки {}–{})".format(n, *spread_pages(n)) for n in SPREAD_NUMBERS},
+        "page30": "Текст післяслова (сторінка 30)",
+    }, ensure_ascii=False, indent=2)
+    table = "\n".join(rows)
+    return f"""# Як підготувати книгу для бібліотеки Book Studio
+
+Інструкція для помічника — людини або AI-агента, — який готує файли однієї книги: перейменовує
+ілюстрації й оформлює текст. Результат — папка, яку Book Studio завантажує одним рухом і сам розкладає
+все по місцях.
+
+## Що має бути в папці
+
+- ілюстрації з назвами за таблицею нижче (PNG — найкраще; також JPG або WEBP);
+- один файл тексту `book-text.json` (формат нижче).
+
+Можна дати лише частину файлів — решту додають пізніше.
+
+## Будова книги
+
+30 сторінок: обкладинка, сторінка 1 — присвята, розвороти 2–15 (це сторінки 2–29), сторінка 30 —
+післяслово. Розворот N — це сторінки 2N−2 і 2N−1.
+
+| Що | Сторінки | Назва файлу |
+|---|---|---|
+{table}
+
+## Правила назв файлів
+
+1. Назва — лише номер сторінки (`12.png`) або пара сторінок розвороту через дефіс (`12-13.png`).
+   Жодних інших слів, пробілів чи префіксів: `page 12.png` або `Book_12.png` буде пропущено.
+2. Розворот дають або однією широкою картинкою (`12-13.png`), або двома сторінками (`12.png` і `13.png`).
+3. У парі спершу менший номер — ліва сторінка: `12-13.png`, а не `13-12.png`.
+4. Обкладинка — назва зі словом `cover`; найкраще просто `Cover.png`.
+5. Заставка для галереї — назва зі словом `thumbnail`; найкраще `Thumbnail.png`.
+6. Хвіст назви, який додає Upscayl (`12_upscayl_4x_ultrasharp-4x.png`), можна не прибирати.
+7. Не обов'язково давати всі файли: наприклад, лише сторінки-ілюстрації без тексту. Що є — стане на
+   своє місце, чого немає — лишиться порожнім.
+8. Інших файлів у папку не клади — вони не потрібні й будуть пропущені.
+
+## Текст книги: `book-text.json`
+
+Точна структура — рівно ці ключі, латиницею:
+
+```json
+{template}
+```
+
+Правила:
+
+1. Верхній рівень — об'єкт із чотирма ключами: `cover`, `page1`, `spreads`, `page30`.
+2. `spreads` — об'єкт із ключами-рядками від `"2"` до `"15"`, по одному тексту на розворот.
+3. Кожне значення — один рядок JSON. Перенос рядка всередині тексту пиши як `\\n`,
+   порожній рядок між абзацами — як `\\n\\n`.
+4. Ім'я дитини всюди пиши як `{{Name}}`, а від кого книга — як `{{Gifter}}`: з фігурними дужками і
+   саме таким написанням. Book Studio підсвічує їх, а в Canva їх потім замінюють пошуком.
+5. Лапки всередині тексту — `\\"`. Без коментарів і без коми після останнього елемента.
+6. Кодування файлу — UTF-8.
+
+Приклад того, як виглядає значення з переносами (фрагмент, не весь файл):
+
+```json
+"page1": "Dear {{Name}},\\n\\nWishing you a lifetime filled with God's love.\\n\\nWith love,\\n{{Gifter}}"
+```
+
+## Як завантажити в Book Studio
+
+Відкрий паспорт книги в бібліотеці й перетягни у вікно всю папку, ZIP-архів або виділені файли —
+чи натисни «Імпорт з папки» (перша іконка вгорі праворуч). Програма покаже, що куди ляже, і
+попросить підтвердити.
+
+## Перевір себе перед здачею
+
+- [ ] обкладинка — `Cover.png`;
+- [ ] сторінки — `1.png`, розвороти `2-3.png` … `28-29.png` (або окремі сторінки), `30.png`;
+- [ ] у `book-text.json` є `cover`, `page1`, `spreads` з ключами "2"–"15" і `page30`;
+- [ ] ім'я дитини — `{{Name}}`, від кого — `{{Gifter}}`;
+- [ ] JSON без помилок (перевір будь-яким валідатором JSON).
+"""
+
+
 # ---------------------------------------------------------------- routes
 
 def _book_response(book: dict) -> dict:
@@ -473,6 +571,25 @@ def _list(req: Request):
     books = [summary(b) for b in all_books()]
     books.sort(key=lambda b: b.get("updatedAt") or "", reverse=True)
     return {"books": books}
+
+
+@route("GET", "/api/library/guide")
+def _guide(req: Request):
+    return {"name": GUIDE_NAME, "text": agent_guide()}
+
+
+@route("POST", "/api/library/guide/save")
+def _guide_save(req: Request):
+    folder = Path(str((req.json or {}).get("folder") or ""))
+    if not folder.is_dir():
+        raise ApiError("Папку не знайдено.")
+    target = folder / GUIDE_NAME
+    target.write_text(agent_guide(), encoding="utf-8")
+    try:
+        desktop.open_in_explorer(target)  # shows the file selected, ready to drag into a chat with an agent
+    except OSError:
+        pass
+    return {"path": str(target)}
 
 
 @route("POST", "/api/library/books")

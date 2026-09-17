@@ -20,6 +20,71 @@ export function html(strings, ...vals) {
   return new Html(out);
 }
 export const ic = (name, cls) => raw(icon(name, cls));
+
+/**
+ * Icon-only button. Its meaning travels in the tooltip and the screen-reader label.
+ * `attrs` is trusted markup written in this codebase (data-act etc.), never user text.
+ */
+export function ib(iconName, tip, attrs = '', { cls = '', kbd = '' } = {}) {
+  return raw(`<button type="button" class="ib ${cls}" aria-label="${esc(tip)}" data-tip="${esc(tip)}"${kbd ? ` data-kbd="${esc(kbd)}"` : ''} ${attrs}>${icon(iconName)}</button>`);
+}
+
+// ------------------------------------------------------------------ tooltips
+// One floating element for the whole app. Hover waits a moment (no flicker while the pointer
+// travels); once a tip is showing, neighbours in the same toolbar answer instantly. Keyboard
+// focus shows it at once, Escape hides it, and it is linked to its button with aria-describedby.
+const tipState = { el: null, target: null, timer: 0, hiddenAt: 0 };
+function tipNode() {
+  if (!tipState.el) {
+    tipState.el = document.createElement('div');
+    tipState.el.className = 'tip';
+    tipState.el.id = 'tip';
+    tipState.el.setAttribute('role', 'tooltip');
+    document.body.appendChild(tipState.el);
+  }
+  return tipState.el;
+}
+function showTip(t) {
+  if (!t.isConnected || !t.dataset.tip) return;
+  const node = tipNode();
+  node.innerHTML = `${esc(t.dataset.tip)}${t.dataset.kbd ? `<kbd>${esc(t.dataset.kbd)}</kbd>` : ''}`;
+  node.classList.remove('on');
+  const r = t.getBoundingClientRect();
+  const w = node.offsetWidth, h = node.offsetHeight;
+  const side = t.dataset.tipSide || (r.top > h + 14 ? 'top' : 'bottom');
+  let x = r.left + r.width / 2 - w / 2, y = side === 'top' ? r.top - h - 8 : r.bottom + 8;
+  if (side === 'right') { x = r.right + 10; y = r.top + r.height / 2 - h / 2; }
+  x = Math.max(8, Math.min(innerWidth - w - 8, x));
+  y = Math.max(8, Math.min(innerHeight - h - 8, y));
+  node.dataset.side = side;
+  node.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+  t.setAttribute('aria-describedby', 'tip');
+  tipState.target = t;
+  // Styles were already flushed by the measurement above, so adding the class now still fades in.
+  node.classList.add('on');
+}
+export function hideTip() {
+  clearTimeout(tipState.timer);
+  if (tipState.target) { tipState.target.removeAttribute('aria-describedby'); tipState.target = null; tipState.hiddenAt = performance.now(); }
+  tipState.el?.classList.remove('on');
+}
+document.addEventListener('pointerover', (e) => {
+  const t = e.target.closest?.('[data-tip]');
+  if (t === tipState.target) return;
+  const warm = !!tipState.target || performance.now() - tipState.hiddenAt < 500;
+  hideTip();
+  if (!t || e.pointerType === 'touch') return;
+  tipState.timer = setTimeout(() => showTip(t), warm ? 0 : 320);
+});
+document.addEventListener('focusin', (e) => {
+  const t = e.target.closest?.('[data-tip]');
+  if (t && t.matches(':focus-visible')) { hideTip(); showTip(t); }
+});
+document.addEventListener('focusout', () => hideTip());
+document.addEventListener('pointerdown', () => hideTip(), true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tipState.target) hideTip(); }, true);
+document.addEventListener('scroll', () => hideTip(), true);
+
 export function setHtml(el, content) { el.innerHTML = render(content); return el; }
 export function el(content) {
   const t = document.createElement('template');
@@ -161,7 +226,7 @@ export function modal({ title, sub = '', body = '', foot = null, size = '', dism
     <div class="modal ${size ? 'modal-' + size : ''}" role="dialog" aria-modal="true">
       <div class="modal-head">
         <div class="grow"><h3>${title}</h3>${sub ? html`<div class="modal-sub">${sub}</div>` : ''}</div>
-        ${dismissible ? html`<button class="btn btn-ghost btn-sm btn-icon" data-close title="Закрити">${ic('x')}</button>` : ''}
+        ${dismissible ? ib('x', 'Закрити', 'data-close', { kbd: 'Esc' }) : ''}
       </div>
       <div class="modal-body"></div>
       ${foot !== null ? html`<div class="modal-foot"></div>` : ''}
@@ -205,16 +270,17 @@ export function confirmBox({ title, text = '', confirm = 'Підтвердити
 }
 
 // ------------------------------------------------------------------ dropdown menu
-export function menu(anchor, items) {
+export function menu(anchor, items, { side = 'below' } = {}) {
   document.querySelectorAll('.menu').forEach((m) => m.remove());
-  const m = el(html`<div class="menu">${items.map((it, i) => it === '-' ? raw('<hr>') :
-    html`<button data-i="${i}" class="${it.danger ? 'danger' : ''}" ${it.disabled ? 'disabled' : ''}>${ic(it.icon || 'chevRight')}<span>${it.label}</span></button>`)}</div>`);
+  const m = el(html`<div class="menu" role="menu">${items.map((it, i) => it === '-' ? raw('<hr>') :
+    html`<button role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''} ${it.on ? 'on' : ''}" ${it.disabled ? 'disabled' : ''}>${ic(it.icon || 'chevRight')}<span class="grow">${it.label}</span>${it.on ? ic('check', 'icon-s') : ''}</button>`)}</div>`);
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect();
   const w = m.offsetWidth, h = m.offsetHeight;
   let left = Math.min(r.right - w, window.innerWidth - w - 10);
   let top = r.bottom + 6;
-  if (top + h > window.innerHeight - 10) top = Math.max(10, r.top - h - 6);
+  if (side === 'right') { left = r.right + 8; top = Math.min(r.top, window.innerHeight - h - 10); m.style.transformOrigin = 'bottom left'; }
+  else if (top + h > window.innerHeight - 10) top = Math.max(10, r.top - h - 6);
   m.style.left = `${Math.max(10, left)}px`;
   m.style.top = `${top}px`;
   const close = () => { m.remove(); document.removeEventListener('mousedown', outside, true); document.removeEventListener('keydown', key, true); };
@@ -233,7 +299,8 @@ export function menu(anchor, items) {
 export function segHtml(options, active, { accent = false, name = '' } = {}) {
   return html`<div class="seg ${accent ? 'seg-accent' : ''}" data-seg="${name}" role="tablist">
     <span class="seg-pill"></span>
-    ${options.map((o) => html`<button type="button" role="tab" data-value="${o.value}" class="${o.value === active ? 'active' : ''}">${o.icon ? ic(o.icon, 'icon-s') : ''}${o.label}</button>`)}
+    ${options.map((o) => html`<button type="button" role="tab" data-value="${o.value}" class="${o.value === active ? 'active' : ''} ${o.label ? '' : 'seg-ico'}"
+      ${o.tip ? raw(`data-tip="${esc(o.tip)}" aria-label="${esc(o.tip)}"`) : ''}>${o.icon ? ic(o.icon, o.label ? 'icon-s' : '') : ''}${o.label || ''}${o.count !== undefined ? html`<span class="seg-count">${o.count}</span>` : ''}</button>`)}
   </div>`;
 }
 export function syncSeg(seg) {
@@ -304,9 +371,10 @@ export function fadeImages(root) {
   root.querySelectorAll('img[data-fade]').forEach((img) => {
     img.removeAttribute('data-fade');
     img.decoding = 'async';
-    const show = () => img.classList.add('loaded');
-    if (img.complete && img.naturalWidth) { show(); return; }
-    img.addEventListener('load', () => { (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(show); }, { once: true });
+    // Even a cached picture is decoded off-thread before it becomes visible, so no frame waits for it.
+    const reveal = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => img.classList.add('loaded'));
+    if (img.complete && img.naturalWidth) reveal();
+    else img.addEventListener('load', reveal, { once: true });
   });
 }
 

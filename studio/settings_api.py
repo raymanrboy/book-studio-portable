@@ -132,10 +132,17 @@ def _open_data(req: Request):
 @route("POST", "/api/app/open-url")
 def _open_url(req: Request):
     """External links open in the normal browser (where the user is logged in), not in the app window."""
+    import urllib.parse
     import webbrowser
     url = str((req.json or {}).get("url") or "").strip()
     if not re.match(r"^https?://[^\s]+$", url):
         raise ApiError("Некоректне посилання.")
+    # Etsy may only ever be opened on the Kyiv computer. The one exception is the Etsy sign-in page,
+    # which Settings opens only after the user confirms they are working on that computer.
+    parts = urllib.parse.urlsplit(url)
+    host = (parts.hostname or "").lower()
+    if (host == "etsy.com" or host.endswith(".etsy.com")) and parts.path.rstrip("/") != "/oauth/connect":
+        raise ApiError("Etsy не відкривається з цього комп'ютера — лише з київського.", 403)
     webbrowser.open(url)
     return {"ok": True}
 

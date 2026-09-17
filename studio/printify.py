@@ -1,8 +1,10 @@
 """Safe Printify API client.
 
-Allowed writes are exactly two: image upload and creation of a new
-(unpublished) product. Everything else is read-only; publish, orders
-creation, product updates and deletes are blocked by an allowlist.
+Allowed writes are exactly three: image upload, a new (unpublished) product, and — only through
+create_order_on_hold() — an order that Printify keeps "On hold": it is produced and charged only when
+"Submit order" is pressed in Printify (the store's order approval must be Manual, which the user
+confirms once in the app). Sending to production, cancelling, Express orders, publishing, product
+updates and deletes are blocked by an allowlist.
 """
 from __future__ import annotations
 
@@ -64,11 +66,17 @@ def token() -> str:
     return value
 
 
-def _check(method: str, path: str) -> None:
+_ORDER = re.compile(r"^shops/\d+/orders\.json$")
+
+
+def _check(method: str, path: str, order: bool = False) -> None:
+    """order=True is passed only by create_order_on_hold(): the one way an order can be created."""
     rules = _READ if method == "GET" else _WRITE if method == "POST" else []
     lowered = path.lower()
-    forbidden = any(word in lowered for word in ("publish", "send_to_production", "unpublish", "cancel"))
-    if forbidden or not any(r.match(path) for r in rules) or (method == "POST" and "orders" in lowered):
+    forbidden = any(word in lowered for word in ("publish", "send_to_production", "unpublish", "cancel", "express"))
+    on_hold_order = order and method == "POST" and bool(_ORDER.match(path))
+    if forbidden or not (on_hold_order or any(r.match(path) for r in rules)) \
+            or (method == "POST" and "orders" in lowered and not on_hold_order):
         _audit_log().error("BLOCKED %s /%s", method, path)
         raise PrintifySecurityError(f"Заблоковано з міркувань безпеки: {method} /{path}", 403)
 
@@ -90,10 +98,10 @@ def _human(err: httpc.HttpError, action: str) -> PrintifyError:
 
 
 def call(method: str, path: str, body: Any = None, action: str = "Запит до Printify", timeout: float = 60,
-         retries: int = 3, params: str = "") -> Any:
+         retries: int = 3, params: str = "", order: bool = False) -> Any:
     method = method.upper()
     path = path.lstrip("/")
-    _check(method, path)
+    _check(method, path, order)
     url = f"{API}/{path}{('?' + params) if params else ''}"
     _audit_log().info("%s /%s%s", method, path, f"?{params}" if params else "")
     try:
@@ -189,6 +197,24 @@ def create_product(shop_id: int, payload: dict) -> dict:
     return call("POST", f"shops/{shop_id}/products.json", payload, action="Створення продукту", timeout=180, retries=1)
 
 
+def manual_approval_confirmed() -> bool:
+    return bool(core.settings.section("printify").get("manualApprovalConfirmedAt"))
+
+
+def create_order_on_hold(shop_id: int, payload: dict) -> dict:
+    """The only order Book Studio places. Printify keeps an API order "On hold" and, with Manual order
+    approval, neither produces nor charges it until "Submit order" is pressed in Printify. Nothing here
+    can send it on: send_to_production is blocked by the allowlist."""
+    if not manual_approval_confirmed():
+        raise PrintifySecurityError("Спершу підтвердіть, що в Printify увімкнене ручне затвердження замовлень.", 403,
+                                    {"code": "manual_approval"})
+    safe = dict(payload)
+    safe.update({"is_printify_express": False, "send_shipping_notification": False})
+    # No automatic retry here either: a repeated POST could place the order twice.
+    return call("POST", f"shops/{shop_id}/orders.json", safe, action="Створення чернетки замовлення", timeout=120,
+                retries=1, order=True)
+
+
 # ---------------------------------------------------------------- master analysis
 
 def analyze_master(shop_id: int, product_id: str) -> dict:
@@ -251,6 +277,14 @@ def _test(req: Request):
     orders = call("GET", f"shops/{shop['id']}/orders.json", action="Замовлення Printify", params="page=1&limit=1")
     return {"shopId": shop.get("id"), "shopTitle": shop.get("title"), "ordersCount": orders.get("total"),
             "shops": [{"id": s.get("id"), "title": s.get("title"), "channel": s.get("sales_channel")} for s in shop_list]}
+
+
+@route("POST", "/api/printify/manual-approval")
+def _manual_approval(req: Request):
+    """The user confirms once that the Printify store approves orders manually (so an order from
+    Book Studio waits "On hold" until they press Submit order themselves)."""
+    core.settings.update({"printify": {"manualApprovalConfirmedAt": core.now_iso()}})
+    return {"ok": True}
 
 
 @route("GET", "/api/printify/shops")
