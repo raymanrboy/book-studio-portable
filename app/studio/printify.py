@@ -175,6 +175,9 @@ def slim_order(p: dict) -> dict:
         "created_at": p.get("created_at"),
         "status": p.get("status"),
         "metadata": {"shop_order_id": (p.get("metadata") or {}).get("shop_order_id")},
+        # tracking once the print provider has shipped: carrier code ("usps"), number, link
+        "shipments": [{k: s.get(k) for k in ("carrier", "number", "url")}
+                      for s in p.get("shipments") or [] if s.get("number")],
         "address_to": {k: addr.get(k) for k in ("first_name", "last_name", "country", "region", "city", "zip", "address1")},
         "line_items": [
             {"title": li.get("title"), "quantity": li.get("quantity"), "cost": li.get("cost"),

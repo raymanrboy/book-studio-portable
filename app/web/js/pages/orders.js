@@ -7,12 +7,21 @@ import {
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
-  STAGES, STAGE_EMPTY, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
+  STAGES, STAGE_EMPTY, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
   folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 
-const STAGE_LABEL = { new: 'нове', work: 'в роботі', shipped: 'відправлено' };
+// Printer statuses by what they mean for the owner: trouble first (drafts and "on-hold" are the normal
+// start, not a problem), then on its way, then not started yet; anything else is being made.
+const STATUS_TONE = [
+  [/issue|fail|return|unfulfillable|payment-not|declined|cancel/i, 'chip-amber'],
+  [/fulfilled|shipped|transit|delivered/i, 'chip-green'],
+  [/draft|hold|pending|created|uploading|approval/i, ''],
+];
+const statusTone = (s) => (STATUS_TONE.find(([re]) => re.test(s)) || [0, 'chip-accent'])[1];
+/** "in_transit" / "has-issues" → "In transit" / "Has issues": the printer's word, kept in English, written for people. */
+const statusText = (s) => String(s).replace(/[-_]+/g, ' ').trim().replace(/^./, (c) => c.toUpperCase());
 // Strip thumbnails: the server prepares this size ahead (creator.STRIP_PREVIEW), so scrolling never waits.
 const STRIP_THUMB = 360;
 
@@ -22,6 +31,28 @@ const isNameField = (v, item) => !!item.childName && (v.value || '').trim() === 
 // The cover format only decides the printer; it is never typed into Canva, so it gets no copy button.
 const isFormatField = (v) => /cover|size|format|binding|обкладинк|розмір/i.test(v.name || '')
   || /hard\s?cover|soft\s?cover|hardback|paperback/i.test(v.value || '');
+
+/** Tracking numbers in the printer's colour, after its chip: carrier | number (one text line, so both sit
+ * on the same baseline); a click copies the number. */
+const trackChips = (o) => (o.tracking || []).map((t) => html`<span class="chip svc-${o.provider} ord-track ord-copy" role="button"
+    data-act="copy-text" data-text="${t.number}" data-done="Трек-номер скопійовано" data-tip="Копіювати трек-номер">${ic('truck', 'icon-s')}<span class="ord-track-text">${t.carrier
+      ? html`<span class="ord-carrier">${t.carrier}</span><span class="ord-track-sep"></span>` : ''}<span class="ord-track-no">${t.number}</span></span></span>`);
+
+/** The printer's status (its own word, in English, as the owner asked); nothing before the book is ordered. */
+const statusChip = (o) => (o.printStatus
+  ? html`<span class="chip ${statusTone(o.printStatus)} ord-status" data-tip="Статус у ${providerName(o.provider)}"><span class="dot"></span>${statusText(o.printStatus)}</span>`
+  : '');
+
+/** The receipt number without "#": a click copies it (in the queue and in the card header). */
+const receiptCopy = (o, cls) => html`<span class="${cls} ord-copy" role="button" data-act="copy-text" data-text="${o.receiptId}"
+    data-done="Номер замовлення скопійовано" data-tip="Копіювати номер замовлення">#${o.receiptId}</span>`;
+
+// Receipt and tracking numbers sit inside the row link: copy without opening the order.
+function copyChip(e, el) {
+  e.preventDefault();
+  e.stopPropagation();
+  copyText(el.dataset.text, el.dataset.done);
+}
 
 export function mount(view, [rid]) {
   return rid ? mountCard(view, rid) : mountQueue(view);
@@ -49,22 +80,23 @@ async function mountQueue(view) {
   const syncedText = () => (data.syncedAt ? `Оновлено ${relTime(data.syncedAt)}` : 'Ще не завантажено');
   const setSub = (text) => { $('#or-sub').textContent = text; };
 
+  // Once ordered: where it was ordered. Before that: where the printer rule sends it.
   const printerChip = (o) => {
-    const p = o.stage === 'work' ? o.provider : o.plan?.provider;
+    const p = o.provider || (o.stage === 'new' ? o.plan?.provider : null);
     if (!p) return o.stage === 'new' ? html`<span class="chip chip-amber" data-tip="${planText(o.plan)}">${ic('alert', 'icon-s')}друкарня?</span>` : '';
-    const tip = o.stage === 'work' ? `Уже замовлено в ${providerName(p)}` : planText(o.plan);
+    const tip = o.provider ? `Замовлено в ${providerName(p)}` : planText(o.plan);
     return html`<span class="chip svc-${p}" data-tip="${tip}">${ic(p, 'icon-s')}${providerName(p)}</span>`;
   };
   const rowHtml = (o, entering) => html`<a class="ord-row ${entering ? 'enter' : ''}" href="#/orders/${o.receiptId}" data-rid="${o.receiptId}">
       <span class="ord-thumb ${o.book?.lqip ? 'lqip' : ''}" ${o.book?.lqip ? raw(`style="background-image:url(${o.book.lqip})"`) : ''}>
         ${o.book?.image ? html`<img data-fade loading="lazy" decoding="async" src="${bookImage(o.book, 160)}" alt="">` : ic('book')}</span>
       <span class="ord-main">
-        <span class="row" style="gap:8px"><b class="truncate">${o.name}</b><span class="chip chip-mono">#${o.receiptId}</span>
-          ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}${printerChip(o)}</span>
+        <span class="row ord-chips"><b class="truncate">${o.name}</b>${receiptCopy(o, 'chip chip-mono')}
+          ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}${printerChip(o)}${trackChips(o)}</span>
         <span class="ord-meta faint truncate"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> ·
-          ${o.book ? o.book.title : html`<span class="ord-miss">книги немає в бібліотеці</span>`} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</span>
+          ${o.childName ? html`<b class="ord-child">${o.childName}</b> · ` : ''}${o.book ? o.book.title : html`<span class="ord-miss">книги немає в бібліотеці</span>`} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</span>
       </span>
-      ${o.childName ? html`<span class="chip chip-accent">${o.childName}</span>` : html`<span></span>`}
+      ${statusChip(o) || html`<span></span>`}
       <span class="ord-go">${ic('chevRight')}</span>
     </a>`;
 
@@ -121,6 +153,7 @@ async function mountQueue(view) {
 
   const offs = [
     on(view, 'click', '[data-act="sync"]', () => refresh()),
+    on(view, 'click', '[data-act="copy-text"]', copyChip),
     on(view, 'click', '[data-seg="stage"] button', (e, b) => {
       if (b.dataset.value === stage) return;
       stage = b.dataset.value;
@@ -165,14 +198,15 @@ async function mountCard(view, rid) {
     <div class="page-head">
       <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
       <div class="grow" style="min-width:0">
-        <h1 class="page-title truncate">${o.name}</h1>
-        <div class="page-sub"><span class="mono">#${o.receiptId}</span> · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}</div>
+        <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1>${statusChip(o)}</div>
+        <div class="page-sub ord-sub">${receiptCopy(o, 'mono')} · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}${trackChips(o)}</div>
       </div>
       <div id="oc-plan"></div>
     </div>
-    ${o.stage !== 'new' ? html`<div class="notice notice-warn" style="margin-bottom:18px">${ic('alert')}<div>${o.stage === 'work'
-      ? `Цю книгу вже замовлено в ${providerName(o.provider)}. Друкуйте ще раз лише для передруку.`
-      : 'Замовлення вже відправлено. Друкуйте ще раз лише для передруку.'}</div></div>` : ''}
+    ${o.stage !== 'new' ? html`<div class="notice notice-warn" style="margin-bottom:18px">${ic('alert')}<div>${{
+      work: `Цю книгу вже замовлено в ${providerName(o.provider)}. Друкуйте ще раз лише для передруку.`,
+      sent: `${providerName(o.provider)} уже відправив цю книгу — позначте замовлення відправленим в Etsy. Друкуйте ще раз лише для передруку.`,
+    }[o.stage] || 'Замовлення вже відправлено. Друкуйте ще раз лише для передруку.'}</div></div>` : ''}
     <div class="ord-grid">
       <div class="stack-l" id="oc-flow"></div>
       <div class="stack-l ord-side" id="oc-data"></div>
@@ -183,7 +217,7 @@ async function mountCard(view, rid) {
   function renderPlan() {
     const p = provider();
     setHtml($('#oc-plan'), plan().provider
-      ? html`<span class="chip chip-lg svc-${p}" data-tip="${planText(plan())}">${ic(p, 'icon-s')}${providerName(p)} · <span class="num">${pagesLabel()}</span> стор.</span>`
+      ? html`<span class="chip chip-lg svc-${p}" data-tip="${planText(plan())}">${ic(p, 'icon-s')}<span>${providerName(p)} · ${pagesLabel()} стор.</span></span>`
       : html`<div class="row" style="gap:10px"><span class="faint" style="font-size:12.5px">Друкарня</span>${segHtml([
         { value: 'printify', icon: 'printify', tip: `Printify · ${pagesText(o.pageOptions?.printify)} стор.` },
         { value: 'gelato', icon: 'gelato', tip: `Gelato · ${pagesText(o.pageOptions?.gelato)} стор.` }], chosen, { name: 'provider' })}</div>`);
@@ -367,6 +401,7 @@ async function mountCard(view, rid) {
       else if (a === 'canva') openExternal(item().book?.canvaUrl);
       else if (a === 'browse') takeFolder();
       else if (a === 'print') print();
+      else if (a === 'copy-text') copyChip(e, t);
     }),
     on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
     on(view, 'click', '[data-lb]', (e, c) => { if (f.folder && f.pages) openLightbox(folderViewerItems(f.folder, f.pages, f.label), +c.dataset.lb); }),

@@ -251,6 +251,7 @@ p { margin: 0; }
 /* A group of related actions reads as one object (control radius 7 + padding 3 = group radius 10). */
 .tools { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); }
 .tools .ib { width: 30px; height: 30px; }
+.cr-tools .ib { width: 34px; height: 32px; } /* same height as the Printify/Gelato switch beside it */
 .tools .sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
 .tip {
   position: fixed; left: 0; top: 0; z-index: 1200; pointer-events: none;
@@ -339,6 +340,7 @@ p { margin: 0; }
 }
 .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .chip .icon { width: 13px; height: 13px; }
+.chip .num { font-family: inherit; }  /* digits in a chip match its text instead of jumping to the display face */
 .chip-green { background: var(--green-soft); color: var(--green); border-color: var(--green-line); }
 .chip-red { background: var(--red-soft); color: var(--red); border-color: var(--red-line); }
 .chip-amber { background: var(--amber-soft); color: var(--amber); border-color: var(--amber-line); }
@@ -346,7 +348,7 @@ p { margin: 0; }
 .chip-lime { background: var(--lime-soft); color: var(--lime); border-color: var(--lime-line); }
 .chip-purple { background: var(--purple-soft); color: var(--purple); border-color: var(--purple-line); }
 .chip-accent { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-line); }
-.chip-mono { font-family: var(--font-mono); font-weight: 400; font-size: 11.5px; }
+.chip-mono { font-family: var(--font-mono); font-weight: 400; font-size: 11.5px; padding-top: 2px; }  /* Consolas sits 1px high: its text lines up with the other chips */
 .chip-lg { height: 26px; padding: 0 9px; font-size: 12.5px; }
 a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--border-strong); }
 
@@ -583,6 +585,7 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 /* ================================================================== CREATOR — a job ticket */
 .creator-grid { display: grid; grid-template-columns: minmax(360px, 430px) minmax(0, 1fr); gap: 24px; align-items: start; }
 .creator .card-title { font-size: 14.5px; }
+.mode-switch { display: flex; } /* no text-line gap under the switch, so the icon beside it lines up */
 .mode-switch .seg button { height: 32px; }
 .mode-switch .seg button .icon { width: 19px; height: 19px; }
 /* Printify mode wears salad green; Gelato keeps the app's blue. Everything accent-coloured on the page
@@ -735,8 +738,32 @@ button.set-head:hover { background: var(--surface-hover); }
 .ord-thumb img, .ord-book-art img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 300ms; }
 .ord-thumb img.loaded, .ord-book-art img.loaded { opacity: 1; }
 .ord-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ord-chips { flex-wrap: wrap; row-gap: 4px; }  /* a narrow window moves the tracking chip to its own line */
+.ord-chips > .chip { flex: none; }
 .ord-meta { font-size: 12px; }
+.ord-child { font-weight: 600; color: var(--text-2); }
 .ord-miss { color: var(--amber); }
+/* Tracking chip: carrier | number, both in the printer's colour; a click copies the number.
+   One text line: the number (another font) sits on the chip text's baseline and, with line-height 0,
+   leaves the line height to the chip's own font — so it lines up with the texts of the other chips. */
+/* Receipt and tracking numbers copy on click. */
+.ord-copy { cursor: copy; transition: border-color var(--t-fast), background var(--t-fast), color var(--t-fast); }
+.ord-copy:hover { border-color: var(--border-strong); background: var(--surface-3); }
+.ord-sub .mono.ord-copy { margin: 0 -3px; padding: 1px 3px; border-radius: 4px; }
+.ord-sub .mono.ord-copy:hover { color: var(--text); }
+.ord-track-text { display: block; white-space: nowrap; }
+.ord-track-sep { display: inline-block; width: 1px; height: 11px; margin: 0 6px; vertical-align: -2px; background: currentColor; opacity: .3; }
+.ord-track-no { font-family: var(--font-mono); font-size: 12px; line-height: 0; font-variant-numeric: tabular-nums; }
+/* One contrast for everything printer-coloured in a row (owner, 17.09.2026, chose the softer tone):
+   the printer's name, the carrier and the number — its colour mixed 80/20 with the chip, medium weight. */
+.ord-chips .chip.svc-printify, .ord-sub .chip.svc-printify, #oc-plan .chip.svc-printify { color: color-mix(in srgb, var(--printify) 80%, var(--surface-2)); }
+.ord-chips .chip.svc-gelato, .ord-sub .chip.svc-gelato, #oc-plan .chip.svc-gelato { color: color-mix(in srgb, var(--gelato) 80%, var(--surface-2)); }
+.ord-chips .chip[class*="svc-"], .ord-sub .chip[class*="svc-"], #oc-plan .chip[class*="svc-"] { font-weight: 500; }
+/* Card header: the printer's status beside the buyer's name, centred on it. */
+.ord-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ord-title .page-title { min-width: 0; }
+.ord-title .chip { flex: none; }
+.ord-sub .chip { margin: -2.5px 0 0 8px; vertical-align: middle; }  /* the negative top margin puts chip text on the grey text's line */
 .ord-go { display: grid; color: var(--text-4); transition: color var(--t-fast), transform var(--t-fast) var(--ease); }
 .ord-row:hover .ord-go { color: var(--text-2); transform: translateX(2px); }
 

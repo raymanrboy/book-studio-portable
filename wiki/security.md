@@ -67,6 +67,8 @@ code:
 - `_allowed()`: читання каталогу й замовлень, пошук замовлень, і `POST /orders` лише з
   `orderType == "draft"`; слова `cancel`, `publish`, `production`, `confirm`, `:convert`, `patch` — блок.
 - `create_draft_order()` примусово ставить `orderType: draft`.
+- Трек-номери відправлених замовлень (з 17.09.2026) — окремі `GET /v4/orders/{id}`, тобто лише читання
+  (`attach_shipments()`); Printify віддає їх у звичайному списку замовлень.
 - Журнал — `data/logs/gelato.log`.
 
 ### Журнал відправок

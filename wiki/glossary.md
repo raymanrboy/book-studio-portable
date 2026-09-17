@@ -17,12 +17,13 @@ code: []
 |---|---|---|
 | Замовлення (сторінка), черга | Перший екран: список замовлень Etsy за етапами | [orders.js](../app/web/js/pages/orders.js) `mountQueue()` |
 | Картка замовлення | Один екран на одне замовлення | [orders.js](../app/web/js/pages/orders.js) `mountCard()` |
-| Нові / В роботі / Відправлені | Етапи замовлення (`new` / `work` / `shipped`) | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
-| Машинка (вкладка) | *План:* четверта вкладка між «В роботі» і «Відправлені» — друкарня вже відправила (є трек-номер або статус «відправлено»), а в Etsy ще не позначено | [plans/roadmap.md](plans/roadmap.md); вкладки — [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
+| Нові / В роботі / машинка / Відправлені | Етапи замовлення (`new` / `work` / `sent` / `shipped`) | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
+| Машинка (вкладка) | Етап `sent`: друкарня вже відправила (трек-номер або статус «відправлено»), а в Etsy ще не позначено | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES`; [rules/order-stages.md](rules/order-stages.md) |
 | Бокс, коробка (вкладка) | «Відправлені» — позначені відправленими в Etsy | [profit.py](../app/studio/profit.py) `order_stage()` |
 | Годинник (вкладка) | «В роботі» | [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
-| Квадратик справа (у рядку черги) | Голубий чип праворуч; зараз — ім'я дитини, за планом — статус друкарні англійською, як є | [orders.js](../app/web/js/pages/orders.js) `mountQueue()` (`rowHtml`) |
-| Трек-номер, перевізник (USPS…) | *План:* чип після чипа друкарні, клік копіює номер; зараз синхронізація його не зберігає | [plans/roadmap.md](plans/roadmap.md); [printify.py](../app/studio/printify.py) `slim_order()`, [gelato.py](../app/studio/gelato.py) `slim_order()` |
+| Квадратик справа (у рядку черги), статус | Чип праворуч: статус друкарні англійською, по-людськи («In transit»), з кольоровою крапкою | [orders.js](../app/web/js/pages/orders.js) `statusChip()`, `statusText()`; [profit.py](../app/studio/profit.py) `picker_orders()` (`printStatus`) |
+| Трек-номер, перевізник (USPS…) | Чип після чипа друкарні: перевізник \| номер; клік копіює номер | [orders.js](../app/web/js/pages/orders.js) `trackChips()`, `copyChip()`; [printify.py](../app/studio/printify.py) `slim_order()`; [gelato.py](../app/studio/gelato.py) `attach_shipments()` |
+| Номер замовлення Etsy, номер чека | `#…` у черзі й шапці картки; клік копіює цифри без «#» | [orders.js](../app/web/js/pages/orders.js) `receiptCopy()`, `copyChip()` |
 | Оновити замовлення, синхронізація | Завантаження замовлень Etsy + Printify + Gelato | [profit.py](../app/studio/profit.py) `_sync()`, `startup_sync()`; [order-bits.js](../app/web/js/order-bits.js) `syncOrders()` |
 | Друкарня, постачальник | Printify або Gelato | [orders.py](../app/studio/orders.py) `plan_for()` |
 | Правило друкарні | Hardcover у США → Printify, решта → Gelato | [rules/printer-rule.md](rules/printer-rule.md) |

@@ -277,8 +277,12 @@ def _sync(job, full: bool = False) -> dict:
     if vault.get("gelato_api_key"):
         job.progress("Завантаження замовлень Gelato…", 78, "Собівартість Gelato")
         try:
-            raw_g = gelato.all_orders(lambda n: job.progress(None, 78 + min(14, n / 100), f"Gelato: {n} замовлень"))
-            snap["gelato"] = [gelato.slim_order(g) for g in raw_g]
+            raw_g = gelato.all_orders(lambda n: job.progress(None, 78 + min(12, n / 100), f"Gelato: {n} замовлень"))
+            slim_g = [gelato.slim_order(g) for g in raw_g]
+            job.progress(None, 91, "Gelato: трек-номери відправлених")
+            if gelato.attach_shipments(slim_g, snap["gelato"]):
+                warnings.append("Gelato: не всі трек-номери вдалося прочитати — спробую при наступному оновленні.")
+            snap["gelato"] = slim_g
         except ApiError as err:
             warnings.append(f"Gelato: {err}. Використано попередні дані.")
 
@@ -442,38 +446,75 @@ def _delete_link(req: Request):
 HOUR_MS = 3_600_000
 
 
-def order_stage(row: dict, placed: dict) -> tuple[str, str | None]:
-    """Where an Etsy order stands for the Order Creator: ("new" | "work" | "shipped" | "closed", provider).
+# A print order that has left the printer: Printify marks it fulfilled, Gelato shipped / in transit / …
+SENT_STATUSES = ("fulfilled", "partially-fulfilled") + gelato.SHIPPED
+CARRIERS = {"usps": "USPS", "ups": "UPS", "dhl": "DHL", "fedex": "FedEx", "dpd": "DPD", "gls": "GLS",
+            "royal-mail": "Royal Mail", "canada-post": "Canada Post", "australia-post": "Australia Post"}
 
-    Etsy keeps the seller's own tabs such as "In Production" out of its API, so the signal is the
-    print order: once Printify or Gelato has an order carrying the receipt number, the book is in work.
-    placed maps "provider:id" to (created_at, status) of every print order.
-    """
-    if row.get("state") in ("canceled", "refund_full"):
-        return "closed", None
-    if row.get("is_shipped"):
-        return "shipped", None
+
+def carrier_label(code: str) -> str:
+    """Printify gives a carrier code ("usps"), Gelato a shipment method name ("UPS Surepost")."""
+    code = str(code or "").strip()
+    return CARRIERS.get(code.lower()) or (code.upper() if len(code) <= 4 else code)
+
+
+def placed_orders(snap: dict) -> dict:
+    """Every print order by "provider:id": when it was made, its status as the printer words it, tracking."""
+    def facts(created, status, shipments) -> dict:
+        return {"created": created, "status": status,
+                "tracking": [{"carrier": carrier_label(s.get("carrier")), "number": str(s["number"]),
+                              "url": s.get("url") or ""} for s in shipments or [] if s.get("number")]}
+
+    placed = {f"printify:{p.get('id')}": facts(p.get("created_at"), p.get("status"), p.get("shipments"))
+              for p in snap.get("printify") or []}
+    placed.update({f"gelato:{g.get('id')}": facts(g.get("createdAt"), g.get("fulfillmentStatus"), g.get("shipments"))
+                   for g in snap.get("gelato") or []})
+    return placed
+
+
+def print_order(row: dict, placed: dict) -> tuple[str | None, dict]:
+    """The live print order made for this receipt: (provider, facts), or (None, {}) when there is none —
+    never ordered, cancelled at the printer, or only an earlier order of a returning buyer."""
     provider = row.get("pod_provider")
     order_id = row.get("printify_order_id") if provider == "printify" else row.get("gelato_order_id")
     if not provider or not order_id:
-        return ("work", None) if row.get("link_blocked") else ("new", None)
-    created, status = placed.get(f"{provider}:{order_id}", (None, None))
-    if str(status or "").lower() in ("canceled", "cancelled"):
-        return "new", None  # the print order was cancelled, the book still has to be made
+        return None, {}
+    facts = placed.get(f"{provider}:{order_id}") or {}
+    if str(facts.get("status") or "").lower() in ("canceled", "cancelled"):
+        return None, {}  # the print order was cancelled, the book still has to be made
     if row.get("match_type") != "manual":
-        t_order, t_receipt = reconcile.parse_time(created), reconcile.parse_time(row.get("created_at"))
+        t_order, t_receipt = reconcile.parse_time(facts.get("created")), reconcile.parse_time(row.get("created_at"))
         if t_order is not None and t_receipt is not None and t_order < t_receipt - HOUR_MS:
-            return "new", None  # matched by name to an earlier order of a returning buyer
+            return None, {}  # matched by name to an earlier order of a returning buyer
+    return provider, facts
+
+
+def order_stage(row: dict, placed: dict) -> tuple[str, str | None]:
+    """Where an Etsy order stands: ("new" | "work" | "sent" | "shipped" | "closed", provider).
+
+    Etsy keeps the seller's own tabs such as "In Production" out of its API, so the signal is the
+    print order: once Printify or Gelato has an order carrying the receipt number, the book is in work;
+    once the printer has shipped it (tracking or a shipped status), it is "sent" — waiting for the
+    owner to mark it shipped on Etsy, after which Etsy's own flag makes it "shipped".
+    placed is placed_orders().
+    """
+    if row.get("state") in ("canceled", "refund_full"):
+        return "closed", None
+    provider, facts = print_order(row, placed)
+    if row.get("is_shipped"):
+        return "shipped", provider
+    if not provider:
+        return ("work", None) if row.get("link_blocked") else ("new", None)
+    if facts.get("tracking") or str(facts.get("status") or "").lower() in SENT_STATUSES:
+        return "sent", provider
     return "work", provider
 
 
 def picker_orders() -> list:
-    """Every Etsy order for the Order Creator picker, newest first, each with its stage.
-    Cancelled and fully refunded orders are left out."""
+    """Every Etsy order for the order queue and the Order Creator picker, newest first, each with its
+    stage and, once ordered, the printer's status and tracking. Cancelled and fully refunded orders are left out."""
     snap = load_snapshot()
-    placed = {f"printify:{p.get('id')}": (p.get("created_at"), p.get("status")) for p in snap.get("printify") or []}
-    placed.update({f"gelato:{g.get('id')}": (g.get("createdAt"), g.get("fulfillmentStatus"))
-                   for g in snap.get("gelato") or []})
+    placed = placed_orders(snap)
     rows = cached_view()["full"]
     out = []
     for r in snap.get("receipts") or []:
@@ -483,6 +524,7 @@ def picker_orders() -> list:
         stage, provider = order_stage(row, placed)
         if stage == "closed":
             continue
+        facts = print_order(row, placed)[1] if provider else {}
         # plain() again: receipts saved before the Etsy text was unescaped at sync time
         out.append({
             "receiptId": r["receipt_id"],
@@ -491,6 +533,8 @@ def picker_orders() -> list:
             "address": {k: plain(v) for k, v in (r.get("shipping_address") or {}).items()},
             "stage": stage,
             "provider": provider,
+            "printStatus": facts.get("status") or "",  # as Printify / Gelato word it, untranslated (owner's wish)
+            "tracking": facts.get("tracking") or [],
             "books": sum(int(i.get("quantity") or 1) for i in r.get("items") or []),
             "items": [{"title": plain(i.get("title")), "quantity": i.get("quantity"), "sku": i.get("sku") or "",
                        "listingId": str(i.get("listing_id") or ""),

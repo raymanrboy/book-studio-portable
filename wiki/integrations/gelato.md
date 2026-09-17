@@ -90,15 +90,25 @@ Gelato забирає файл **тільки за URL**, і (перевірен
 чернетки й без цього) по 100, до 5000; `slim_order()`. Вартість у EUR перераховується за курсом
 `eurUsdRate` (1.085).
 
+**Трек-номери** (з 17.09.2026, для вкладки з машинкою — [етапи](../rules/order-stages.md)): пошук їх не
+віддає. Для замовлень зі статусом із `SHIPPED` (`shipped`, `in_transit`, `delivered`, `returned`)
+`attach_shipments()` читає повне замовлення (`GET /v4/orders/{id}`, лише читання) і бере
+`shipment.shipmentMethodName` + `shipment.packages[].trackingCode/trackingUrl`, а якщо пакетів немає —
+`items[].fulfillments[]` (`shipments_of()`). У знімку це поле `shipments` (`carrier`, `number`, `url`)
+і `shipmentsFor` — статус, за якого читали. Кожне замовлення читається один раз; повторно — лише поки
+трек-номера немає і статус змінився; до 60 за оновлення (`TRACKING_READS`), по 4 паралельно.
+Документація: [Get order](https://dashboard.gelato.com/docs/orders/v4/get/),
+[статуси](https://dashboard.gelato.com/docs/orders/order_details/).
+
 ## Де в коді
 
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()`, `get_order()`
+- [app/studio/gelato.py](../../app/studio/gelato.py) — `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `SHIPPED`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`, `FileTunnel`, `_head_ok()`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `build_photobook_pdf()`, `COVER_TRIM_WARN_MM`, `_one_idat()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`, `_OLD_GELATO_SIZES`, `_upgrade()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `page_options()`, `_files()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderTunnels()`, `startCountdown()`, `loadPageCounts()`, `formatProblem()`, `formatCard()`
-- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`GelatoDraftFlow`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`SafetyRails`, `GelatoValidation`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`GelatoLength`)
+- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`GelatoDraftFlow`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`SafetyRails`, `GelatoValidation`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`GelatoTracking`)
 
 ## Пов'язане
 

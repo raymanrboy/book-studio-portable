@@ -29,7 +29,9 @@ code:
 | 7 | «До друку в …» | Order Creator заповнений: режим, папка, назва `чек - ім'я`, адреса, формат | [orders.js](../../app/web/js/pages/orders.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
 | 8 | «Створити чернетку (замовлення)» | Printify: книга + замовлення On hold; Gelato: PDF + чернетка | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator.py](../../app/studio/creator.py) `create_printify_draft()`, `create_gelato_draft()` |
 | 9 | У Printify — «Submit order»; у Gelato — відкрити чернетку в Dashboard (поки живе посилання) і підтвердити | — | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
-| 10 | Натискає «Оновити» | Замовлення переходить у «В роботі» (номер чека в reference / назві) | [profit.py](../../app/studio/profit.py) `order_stage()` |
+| 10 | Натискає «Оновити» | Замовлення переходить у «В роботі» (номер чека в reference / назві); праворуч — статус друкарні | [profit.py](../../app/studio/profit.py) `order_stage()` |
+| 11 | Коли друкарня відправила — відкриває вкладку з машинкою, копіює трек-номер кліком | Замовлення з трек-номером або статусом «відправлено» — у машинці, з перевізником і номером | [profit.py](../../app/studio/profit.py) `order_stage()`; [orders.js](../../app/web/js/pages/orders.js) `trackChips()` |
+| 12 | Позначає замовлення відправленим в Etsy (на київському ПК), потім «Оновити» | Замовлення переходить у «Відправлені» (коробка) | [rules/order-stages.md](../rules/order-stages.md) |
 
 Окремий Order Creator лишається для ручних випадків: передрук, заміна.
 

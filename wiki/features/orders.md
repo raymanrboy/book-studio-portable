@@ -16,27 +16,41 @@ code:
 
 ## Черга (`#/orders`)
 
-- Панель: пошук (ім'я покупця або номер чека; Enter відкриває перше), перемикач етапів
-  **Нові / В роботі / Відправлені** з лічильниками, кнопка «Оновити замовлення».
-- Рядок: обкладинка книги з бібліотеки, ім'я покупця, `#номер чека`, кількість книг (якщо > 1),
-  чип друкарні (для «Нових» — за правилом, з поясненням у підказці; для «В роботі» — де вже замовлено;
-  «друкарня?» — якщо тип обкладинки не прочитався), час, назва книги або «книги немає в бібліотеці»,
-  місто й країна, ім'я дитини.
+- Панель: пошук (ім'я покупця або номер чека; Enter відкриває перше), перемикач етапів з лічильниками
+  **Нові (іскра) / В роботі (годинник) / машинка / Відправлені (коробка)**, кнопка «Оновити замовлення».
+  Машинка — друкарня вже відправила, а в Etsy ще не позначено: звідси власник знає, що можна
+  позначати відправленим в Etsy ([rules/order-stages.md](../rules/order-stages.md)).
+- Рядок (з 17.09.2026 — за побажаннями власника):
+  - верхній рядок: ім'я покупця, `#номер чека` (**клік копіює номер без «#»**, `receiptCopy()`),
+    кількість книг (якщо > 1), чип друкарні (для «Нових» — за правилом, з поясненням у підказці; далі —
+    де вже замовлено; «друкарня?» — якщо тип обкладинки не прочитався), **чип трек-номера**
+    (`trackChips()`): іконка машинки, перевізник | номер, розділені тонкою рискою; **клік копіює
+    номер**; на вузькому вікні чип переходить на свій рядок. Копіювання (`copyChip()`, `data-act="copy-text"`)
+    картку не відкриває;
+  - назва друкарні, перевізник і номер — **одного м'якого тону** кольору друкарні (80 % кольору, середня
+    вага): власник попросив однакову контрастність і обрав найм'якший варіант (17.09.2026);
+  - сірий рядок: час · **ім'я дитини жирно** · назва книги або «книги немає в бібліотеці» · місто, країна;
+  - праворуч — **статус друкарні** (`statusChip()`): слово Printify/Gelato англійською, але по-людськи
+    (`statusText()`: `in_transit` → «In transit», `has-issues` → «Has issues») з крапкою кольору за змістом
+    (`statusTone()`: проблема — жовтий, відправлено/доставлено — зелений, чернетка/on hold/очікує —
+    сірий, решта — голубий). Для «Нових» статусу ще немає.
+  - Усі тексти верхнього рядка стоять на одній лінії (не по верхньому краю чипів) — вимога власника.
 - Оновлення: сторінка сама **не** синхронізує. Якщо відкрити її під час синхронізації після запуску,
   вона дочекається її (`runningSync()` → `watchSync()`). Кнопка запускає нову (`syncOrders()`).
 - Після оновлення рядки, що змістилися, на 0,45 с не клікаються (`inert`) — щоб клік не влучив
   в іншого покупця.
-- Етапи рахує сервер — [rules/order-stages.md](../rules/order-stages.md).
-- *Задумано (17.09.2026, ще не зроблено):* четверта вкладка з машинкою (друкарня відправила, в Etsy
-  ще не позначено), статус друкарні (англійською, як є) замість імені дитини праворуч, ім'я — жирно в сірому рядку після часу, чип трек-номера з
-  перевізником (клік — копіювати). Деталі — [plans/roadmap.md](../plans/roadmap.md).
+- Етапи, статус і трек-номери рахує сервер — [rules/order-stages.md](../rules/order-stages.md).
 
 ## Картка (`#/orders/<номер чека>`)
 
-Шапка: ім'я покупця, номер чека, час, етап; праворуч чип «Printify · 24 стор.» / «Gelato · 28 або 30 стор.»
-(після розстановки файлів — точне число, напр. «Gelato · 28 стор.») або, якщо тип обкладинки невідомий,
-перемикач друкарні (варіанти сторінок — `pageOptions` замовлення). Для «В роботі»/«Відправлених» — попередження
-«друкуйте ще раз лише для передруку». Esc — назад до черги.
+Шапка: ім'я покупця і поруч, по центру імені, — чип статусу друкарні (`.ord-title`, прохання власника
+17.09.2026); під ними сірим номер чека (клік копіює), час, етап (`STAGE_LABEL`), чип трек-номера (той
+самий, що в черзі, клік копіює); праворуч чип «Printify · 24 стор.» (того ж м'якого тону) /
+«Gelato · 28 або 30 стор.» (після розстановки файлів — точне число, напр. «Gelato · 28 стор.»; увесь
+текст чипа одним шрифтом, щоб цифри не «стрибали» — зауваження власника 17.09.2026) або, якщо тип
+обкладинки невідомий, перемикач друкарні (варіанти сторінок — `pageOptions` замовлення). Для
+«В роботі» / машинки / «Відправлених» — попередження «друкуйте ще раз лише для передруку» (для машинки —
+ще й «позначте відправленим в Etsy»). Esc — назад до черги.
 
 **Розкладка** (з 16.09.2026, за проханням власника): ліворуч — робота, праворуч — дані; права колонка
 «липка» (лишається на екрані, коли гортаєш звірку). На вузькому вікні (< 1100 px) — одна колонка.
@@ -74,7 +88,8 @@ code:
 
 ## Що віддає сервер
 
-- `GET /api/orders` → `{orders, syncedAt}`; кожне замовлення з `picker_orders()`, доповнене
+- `GET /api/orders` → `{orders, syncedAt}`; кожне замовлення з `picker_orders()` (`stage`: `new` /
+  `work` / `sent` / `shipped`, `provider`, `printStatus`, `tracking`), доповнене
   `enrich()`: для кожної книги `book` (з бібліотеки за номером лістингу), `plan` (правило друкарні;
   `plan.pages` — список дозволених довжин: `[24]` або `[28, 30]`), `childName`; для замовлення —
   `pageOptions` (довжини для кожної друкарні, коли її обирають вручну).
@@ -83,14 +98,15 @@ code:
 
 ## Де в коді
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `print()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `STRIP_THUMB`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `print()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `STRIP_THUMB`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
-- [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
+- [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `placed_orders()`, `carrier_label()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `guess_child_name()`, `gelato_pages_problem()`
-- [app/web/css/app.css](../../app/web/css/app.css) — `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`
-- Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (у т. ч. `GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages`)
+- [app/web/js/icons.js](../../app/web/js/icons.js) — `truck`
+- [app/web/css/app.css](../../app/web/css/app.css) — `.ord-chips`, `.ord-child`, `.ord-copy`, `.ord-title`, `.ord-track`, `.ord-track-text`, `.ord-carrier`, `.ord-track-sep`, `.ord-track-no`, `.ord-sub`, `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`
+- Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (у т. ч. `GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages`, `SentStage`)
 
 ## Пов'язане
 

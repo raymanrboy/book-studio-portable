@@ -50,7 +50,11 @@ code:
 ## Синхронізація
 
 `all_orders()` читає всі замовлення магазину (по 50, до 4 сторінок паралельно); `slim_order()` лишає
-тільки поля для зіставлення. Замовлення з номером чека в назві товару чи `shop_order_id` зіставляється
+тільки поля для зіставлення, статус і (з 17.09.2026) `shipments` — трек-номери після відправки
+(`carrier` кодом, напр. `usps`, `number`, `url`; без номера — не зберігаються). Вони вже є у списку
+замовлень, окремих запитів не треба. Статус `fulfilled`/`partially-fulfilled` або трек-номер переводить
+чек у вкладку з машинкою ([rules/order-stages.md](../rules/order-stages.md)).
+Замовлення з номером чека в назві товару чи `shop_order_id` зіставляється
 з чеком Etsy ([rules/reconciliation.md](../rules/reconciliation.md)).
 
 ## Посилання
@@ -63,7 +67,8 @@ code:
 - [app/studio/printify.py](../../app/studio/printify.py) — `_READ`, `_WRITE`, `_check()`, `call()`, `token()`, `shops()`, `product()`, `upload_exists()`, `all_orders()`, `slim_order()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `analyze_master()`, `_manual_approval()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `create_printify_draft()`, `build_printify_payload()`, `printify_order_payload()`, `matte_variant()`, `_master_fingerprint()`, `_remember_upload()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
-- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`FakePrintify`, `PrintifyDraftFlow`)
+- [app/studio/profit.py](../../app/studio/profit.py) — `carrier_label()`, `CARRIERS`
+- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`FakePrintify`, `PrintifyDraftFlow`), [app/tests/test_states.py](../../app/tests/test_states.py) (`SentStage`)
 
 ## Пов'язане
 

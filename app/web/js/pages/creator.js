@@ -78,7 +78,7 @@ export async function mount(view) {
 
   // ---------------------------------------------------------------- header / status
   function renderSwitch() {
-    setHtml($('#cr-switch'), html`<div class="mode-switch">${segHtml([
+    setHtml($('#cr-switch'), html`<div class="tools cr-tools">${ib('sendLog', 'Журнал відправок', 'data-act="open-sendlog"')}</div><div class="mode-switch">${segHtml([
       { value: 'printify', icon: 'printify', tip: 'Printify — неопублікована книга' },
       { value: 'gelato', icon: 'gelato', tip: 'Gelato — чернетка замовлення' }], st.mode, { name: 'mode' })}</div>`);
     requestAnimationFrame(() => syncSeg($('#cr-switch .seg')));

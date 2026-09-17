@@ -106,10 +106,13 @@ const P = {
   bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
   trending: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
   package: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+
+  // ---- shipping: the printer has sent the book (tracking number)
+  truck: '<path d="M4.6 17H2.5V6h11.5v11H8.4"/><path d="M14 9.5h4l3.5 3.8V17h-2.6M15.1 17H14"/><circle cx="6.5" cy="17.2" r="1.9"/><circle cx="17" cy="17.2" r="1.9"/>',
 };
 
 // Older names still used by the (hidden) profit page map onto the same meanings.
-const ALIAS = { refresh: 'sync', folder: 'folderOpen', logo: 'book', laptop: 'monitor', wallet: 'dollar', truck: 'package' };
+const ALIAS = { refresh: 'sync', folder: 'folderOpen', logo: 'book', laptop: 'monitor', wallet: 'dollar' };
 
 export function icon(name, cls = '') {
   const body = P[name] || P[ALIAS[name]] || P.info;

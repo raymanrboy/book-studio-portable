@@ -16,8 +16,11 @@ code:
   `preview_start("book-studio-dev")`. Вона запускає
   `python -B app/tools/dev_server.py --sample`.
 - Вручну: `python app/tools/dev_server.py --sample` → http://127.0.0.1:47890/
-- `--sample` кладе у `%TEMP%\bsdev` вигадані замовлення (Hardcover США → Printify, Softcover Канада,
-  Softcover 5.5 Британія, одне відправлене) і одну книгу з лістингом `4100000900` без ілюстрацій.
+- `--sample` кладе у `%TEMP%\bsdev` вигадані замовлення і одну книгу з лістингом `4100000900` без
+  ілюстрацій. Замовлення покривають усі вкладки черги: нове (Hardcover США), в роботі (Printify
+  `in-production` і `has-issues`, чернетка Gelato), машинка (Printify `fulfilled` з USPS, Gelato
+  `in_transit` з трек-номером), відправлене в Etsy (з трек-номером). Замовлення друку вигадані
+  (`_printify()`, `_gelato()`) і пишуться одразу в знімок — сервіси не викликаються.
 - Сервер відмовляється працювати, якщо папка даних — справжня `app/data`. Ключів у тимчасовій
   папці немає, тож синхронізація при запуску не стартує і сервіси не викликаються.
 
@@ -41,7 +44,7 @@ code:
 
 ## Де в коді
 
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `seed()`, `PORT`
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `seed()`, `_receipt()`, `_printify()`, `_gelato()`, `PORT`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (режим `--no-window`)
 
 ## Пов'язане

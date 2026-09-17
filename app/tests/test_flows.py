@@ -355,6 +355,21 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertTrue(link.reachable)
         self.assertEqual(asked[0], "https://brand-new.trycloudflare.com/book.pdf")
 
+    def test_journal_button_shows_the_newest_record(self):
+        from types import SimpleNamespace
+        from studio import desktop, sendlog
+        import os
+        import time
+        newest = sendlog.write({"provider": "gelato", "title": "Newer", "steps": []})
+        first = sendlog.write({"provider": "printify", "title": "Older", "steps": []})
+        past = time.time() - 3600
+        os.utime(first, (past, past))                                        # written an hour earlier
+        with mock.patch.object(desktop, "open_in_explorer") as shown:
+            sendlog._open(SimpleNamespace(json={}))                           # header icon: no record named
+            sendlog._open(SimpleNamespace(json={"file": first.name}))          # result card: its own record
+            sendlog._open(SimpleNamespace(json={"file": "..\\vault.json"}))    # anything else: the newest
+        self.assertEqual([c.args[0] for c in shown.call_args_list], [newest, first, newest])
+
     def test_drafts_are_asked_for_in_the_order_search(self):
         bodies = []
         with mock.patch.object(gelato, "call", lambda method, url, body=None, **kw: bodies.append(body) or {"orders": []}):

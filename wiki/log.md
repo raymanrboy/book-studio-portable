@@ -3,6 +3,43 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-17] decision | Перевірка тексту через Gemini — у плани
+
+- Обговорено й перевірено тестом на вигаданих сторінках (3.6 / 3.5 Flash знайшли всі закладені
+  помилки; 3.8 / 3.7 Flash були перевантажені). Код не змінювався; власник зберіг ключ
+  `gemini_api_key` у сховищі програми.
+- Власник відклав збудовування; безкоштовний рівень, лише сторінки з текстом (до 17). План —
+  [plans/roadmap.md](plans/roadmap.md), рішення й умови Google для ЄЕЗ — [decisions.md](decisions.md).
+
+## [2026-09-17] update | Черга: один тон, копіювання номера замовлення, статус біля імені
+
+- За зауваженнями власника на справжніх даних: назва друкарні, перевізник і номер — одного м'якого
+  тону; номер замовлення Etsy копіюється кліком (черга й картка); у картці статус друкарні — біля
+  імені, по центру. Оновлено [features/orders.md](features/orders.md),
+  [owner/ui-principles.md](owner/ui-principles.md), [glossary.md](glossary.md), [decisions.md](decisions.md).
+
+## [2026-09-17] update | Черга: вкладка «машинка», статус друкарні, трек-номери
+
+- Збудовано ідею власника: четвертий етап `sent` (друкарня відправила, в Etsy не позначено), статус
+  Printify/Gelato праворуч (англійською, по-людськи, з кольоровою крапкою), ім'я дитини жирно в сірому
+  рядку, чип трек-номера (перевізник | номер, клік копіює) — у черзі й шапці картки.
+- Синхронізація: Printify зберігає `shipments`; Gelato дочитує трек-номери відправлених замовлень
+  по одному (`attach_shipments()`, лише читання). Чип «Gelato · 28 або 30 стор.» — одним шрифтом;
+  тексти чипів на одній лінії.
+- Оновлено: [rules/order-stages.md](rules/order-stages.md), [features/orders.md](features/orders.md),
+  [integrations/printify.md](integrations/printify.md), [integrations/gelato.md](integrations/gelato.md),
+  [rules/sync-policy.md](rules/sync-policy.md), [flows/order-to-print.md](flows/order-to-print.md),
+  [architecture/frontend.md](architecture/frontend.md), [owner/ui-principles.md](owner/ui-principles.md),
+  [security.md](security.md), [dev/preview.md](dev/preview.md), [dev/testing.md](dev/testing.md),
+  [glossary.md](glossary.md), [decisions.md](decisions.md); ідею прибрано з [plans/roadmap.md](plans/roadmap.md).
+
+## [2026-09-17] update | Журнал відправок — кнопка в шапці Order Creator
+
+- Власник не знайшов піктограму журналу (вона була лише в картках результату й помилки). Тепер вона
+  завжди в шапці поруч із перемикачем Printify/Gelato і відкриває найновіший запис —
+  [features/send-journal.md](features/send-journal.md), [features/order-creator.md](features/order-creator.md).
+- Власник вирішив не міняти ключ Gelato, вставлений у чат ([decisions.md](decisions.md)).
+
 ## [2026-09-17] decision | Git: комітити все разом
 
 - Власник просить не ділити зміни на «свої / інших сесій» і не ускладнювати гілками — усе разом, історія

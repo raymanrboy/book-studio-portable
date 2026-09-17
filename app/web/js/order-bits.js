@@ -14,17 +14,21 @@ export const COUNTRIES = [
 export const countryName = (code) => COUNTRIES.find(([c]) => c === String(code || '').toUpperCase())?.[1] || code || '';
 
 // Etsy keeps the seller's own "In Production" tab out of its API, so an order counts as in work
-// once Printify or Gelato has a print order carrying its receipt number (decided on the server).
+// once Printify or Gelato has a print order carrying its receipt number, and as sent once the printer
+// has shipped it but Etsy is not told yet (all decided on the server).
 export const STAGES = [
   { value: 'new', icon: 'sparkle', tip: 'Нові — книгу ще не замовлено ні в Printify, ні в Gelato' },
   { value: 'work', icon: 'hourglass', tip: 'В роботі — книгу вже замовлено в Printify або Gelato' },
-  { value: 'shipped', icon: 'package', tip: 'Відправлені покупцю' },
+  { value: 'sent', icon: 'truck', tip: 'Друкарня відправила — можна позначати відправленими в Etsy' },
+  { value: 'shipped', icon: 'package', tip: 'Відправлені — позначені відправленими в Etsy' },
 ];
 export const STAGE_EMPTY = {
   new: ['sparkle', 'Нових замовлень немає', 'Для всіх оплачених замовлень книгу вже замовлено в Printify або Gelato.'],
   work: ['hourglass', 'Зараз нічого не друкується', 'Тут будуть замовлення, для яких книгу вже замовлено в Printify або Gelato.'],
+  sent: ['truck', 'Нічого не чекає позначки в Etsy', 'Тут з\'являться замовлення, які Printify або Gelato вже відправили, — поки ви не позначите їх відправленими в Etsy.'],
   shipped: ['package', 'Відправлених ще немає', ''],
 };
+export const STAGE_LABEL = { new: 'нове', work: 'в роботі', sent: 'відправлено друкарнею', shipped: 'відправлено' };
 
 export const providerName = (p) => (p === 'gelato' ? 'Gelato' : 'Printify');
 export const variationsOf = (o) => (o.items || []).flatMap((i) => i.variations || []);

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import core, etsy, outcomes, printify, profit, reconcile
+from studio import core, etsy, gelato, outcomes, printify, profit, reconcile
 from studio.fees import r2
 from studio.jobs import Job
 from studio.server import ApiError
@@ -181,8 +181,7 @@ class PickerStages(unittest.TestCase):
 
     def test_each_order_lands_in_its_stage(self):
         receipts, p_orders, g_orders = self.orders()
-        placed = {f"printify:{p['id']}": (p["created_at"], p["status"]) for p in p_orders}
-        placed.update({f"gelato:{g['id']}": (g["createdAt"], g["fulfillmentStatus"]) for g in g_orders})
+        placed = profit.placed_orders({"printify": p_orders, "gelato": g_orders})
         got = {rid: profit.order_stage(row, placed) for rid, row in view(receipts, p_orders, g_orders).items()}
         self.assertEqual(got, {
             "1001": ("new", None),            # nothing ordered yet
@@ -203,6 +202,119 @@ class PickerStages(unittest.TestCase):
             picked = {o["receiptId"]: o["stage"] for o in profit.picker_orders()}
         self.assertNotIn("1007", picked)
         self.assertEqual(sorted(picked.values()).count("new"), 3)
+
+
+class SentStage(unittest.TestCase):
+    """The truck tab: the printer has shipped the book, Etsy is not marked yet."""
+    AFTER = "2025-09-05 10:00:00+00:00"
+
+    def orders(self):
+        usps = [{"carrier": "usps", "number": "9400111", "url": "https://t.example/9400111"}]
+        p_sent = {**porder("a" * 24, "Zed", "Moss", status="fulfilled", shop_order_id="1001", created=self.AFTER),
+                  "shipments": usps}
+        p_work = porder("b" * 24, "Ann", "Lee", status="in-production", shop_order_id="1002", created=self.AFTER)
+        p_done = {**porder("c" * 24, "Bo", "Ray", status="fulfilled", shop_order_id="1004", created=self.AFTER),
+                  "shipments": usps}
+        g_sent = {"id": "g1", "orderReferenceId": "1003-x", "firstName": "Eve", "lastName": "Hart", "totalInclVat": 20,
+                  "currency": "USD", "fulfillmentStatus": "in_transit", "orderType": "order",
+                  "createdAt": "2025-09-05T10:00:00Z",
+                  "shipments": [{"carrier": "UPS Surepost", "number": "1Z999", "url": ""}]}
+        receipts = [receipt(1001, "Zed Moss", status="Paid"), receipt(1002, "Ann Lee", status="Paid"),
+                    receipt(1003, "Eve Hart", status="Paid"), receipt(1004, "Bo Ray")]
+        return receipts, [p_sent, p_work, p_done], [g_sent]
+
+    def picked(self):
+        receipts, p_orders, g_orders = self.orders()
+        snap = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": p_orders, "gelato": g_orders}
+        rows = view(receipts, p_orders, g_orders)
+        with mock.patch.object(profit, "load_snapshot", lambda: snap), \
+                mock.patch.object(profit, "cached_view", lambda: {"full": rows}):
+            return {o["receiptId"]: o for o in profit.picker_orders()}
+
+    def test_shipped_by_the_printer_waits_in_the_truck_until_etsy_is_marked(self):
+        got = {rid: (o["stage"], o["provider"]) for rid, o in self.picked().items()}
+        self.assertEqual(got, {
+            "1001": ("sent", "printify"),     # fulfilled with tracking, Etsy not marked
+            "1002": ("work", "printify"),
+            "1003": ("sent", "gelato"),       # Gelato in transit
+            "1004": ("shipped", "printify"),  # marked on Etsy: out of the truck, printer still known
+        })
+
+    def test_status_is_the_printers_word_and_tracking_has_a_readable_carrier(self):
+        picked = self.picked()
+        self.assertEqual(picked["1002"]["printStatus"], "in-production")
+        self.assertEqual(picked["1002"]["tracking"], [])
+        self.assertEqual(picked["1001"]["tracking"],
+                         [{"carrier": "USPS", "number": "9400111", "url": "https://t.example/9400111"}])
+        self.assertEqual(picked["1003"]["printStatus"], "in_transit")
+        self.assertEqual(picked["1003"]["tracking"][0]["carrier"], "UPS Surepost")
+
+    def test_shipped_status_alone_is_enough(self):
+        placed = {"gelato:g1": {"created": None, "status": "shipped", "tracking": []}}
+        row = {"pod_provider": "gelato", "gelato_order_id": "g1", "match_type": "manual"}
+        self.assertEqual(profit.order_stage(row, placed), ("sent", "gelato"))
+        placed["gelato:g1"]["status"] = "printed"
+        self.assertEqual(profit.order_stage(row, placed), ("work", "gelato"))
+
+    def test_carrier_labels(self):
+        self.assertEqual([profit.carrier_label(c) for c in ("usps", "fedex", "royal-mail", "asendia", "")],
+                         ["USPS", "FedEx", "Royal Mail", "asendia", ""])
+
+    def test_printify_snapshot_keeps_tracking(self):
+        slim = printify.slim_order({"id": "p1", "status": "fulfilled", "shipments": [
+            {"carrier": "usps", "number": "9400", "url": "u", "delivered_at": None},
+            {"carrier": "usps", "number": "", "url": ""}]})
+        self.assertEqual(slim["shipments"], [{"carrier": "usps", "number": "9400", "url": "u"}])
+
+
+class GelatoTracking(unittest.TestCase):
+    """Gelato's order search has no tracking: shipped orders are read one by one, once."""
+
+    FULL = {"shipment": {"shipmentMethodName": "USPS Ground Advantage",
+                         "packages": [{"trackingCode": "9200", "trackingUrl": "https://t.example/9200"}]}}
+
+    def test_tracking_from_packages_or_items(self):
+        self.assertEqual(gelato.shipments_of(self.FULL),
+                         [{"carrier": "USPS Ground Advantage", "number": "9200", "url": "https://t.example/9200"}])
+        by_items = {"shipment": {"shipmentMethodName": "DHL", "packages": []},
+                    "items": [{"fulfillments": [{"trackingCode": "D1", "trackingUrl": "", "shipmentMethodName": ""}]},
+                              {"fulfillments": [{"trackingCode": "D1"}]}]}
+        self.assertEqual(gelato.shipments_of(by_items), [{"carrier": "DHL", "number": "D1", "url": ""}])
+        self.assertEqual(gelato.shipments_of({}), [])
+
+    def test_each_shipped_order_is_read_once(self):
+        read = []
+
+        def get_order(order_id):
+            read.append(order_id)
+            if order_id == "bad":
+                raise gelato.GelatoError("no", 502)
+            return self.FULL if order_id == "s1" else {}
+
+        orders = [{"id": "s1", "fulfillmentStatus": "shipped"}, {"id": "s2", "fulfillmentStatus": "delivered"},
+                  {"id": "p1", "fulfillmentStatus": "printed"}, {"id": "bad", "fulfillmentStatus": "in_transit"}]
+        with mock.patch.object(gelato, "get_order", get_order):
+            failed = gelato.attach_shipments(orders, [])
+            self.assertEqual((sorted(read), failed), (["bad", "s1", "s2"], 1))
+            self.assertEqual(orders[0]["shipments"][0]["number"], "9200")
+            self.assertEqual(orders[1]["shipments"], [])       # shipped, but no tracking yet
+            self.assertNotIn("shipments", orders[2])           # still printing: not read
+
+            read.clear()
+            again = [{"id": "s1", "fulfillmentStatus": "delivered"}, {"id": "s2", "fulfillmentStatus": "delivered"},
+                     {"id": "p1", "fulfillmentStatus": "shipped"}, {"id": "bad", "fulfillmentStatus": "in_transit"}]
+            gelato.attach_shipments(again, orders)
+            # s1 keeps its tracking, s2 is not re-read while its status stays; p1 has just shipped; bad is retried
+            self.assertEqual(sorted(read), ["bad", "p1"])
+            self.assertEqual(again[0]["shipments"], orders[0]["shipments"])
+
+            read.clear()
+            later = [{"id": "s2", "fulfillmentStatus": "returned"}]
+            gelato.attach_shipments(later, again)
+            self.assertEqual(read, ["s2"])                      # status changed and still no tracking
+
+    def test_reading_one_order_is_allowed(self):
+        self.assertTrue(gelato._allowed("GET", f"{gelato.ORDER_API}/orders/abc", None))
 
 
 class IncrementalSync(unittest.TestCase):

@@ -67,12 +67,18 @@ def step(entry: dict, name: str, **data) -> None:
     entry["steps"].append({"step": name, "t": core.now_iso(), **data})
 
 
+def latest() -> Path | None:
+    records = list(SENDS.glob("*.json")) if SENDS.is_dir() else []
+    return max(records, key=lambda p: (p.stat().st_mtime_ns, p.name)) if records else None
+
+
 @route("POST", "/api/sends/open")
 def _open(req: Request):
+    """Shows a record in Explorer: the one asked for, else the newest (else just the folder)."""
     from . import desktop
     name = str((req.json or {}).get("file") or "")
-    path = SENDS / name if _NAME.fullmatch(name) else SENDS
-    if not path.exists():
+    path = SENDS / name if _NAME.fullmatch(name) else latest()
+    if path is None or not path.exists():
         SENDS.mkdir(parents=True, exist_ok=True)
         path = SENDS
     desktop.open_in_explorer(path)

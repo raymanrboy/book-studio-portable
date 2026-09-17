@@ -14,8 +14,10 @@ code:
 ## Де
 
 `app/data/logs/sends/РРРР-ММ-ДД_ГГХХСС_<printify|gelato>_<назва>.json`, останні 400 файлів
-(`KEEP`). Відкрити: піктограма «Журнал відправки» (список з крапками) у картці результату Order
-Creator — виділяє запис цієї відправки; у картці помилки — відкриває папку.
+(`KEEP`). Відкрити — піктограма списку з крапками в Order Creator:
+- **завжди** — у шапці, ліворуч від перемикача Printify/Gelato («Журнал відправок»): Провідник
+  виділяє найновіший запис (`latest()`; власник не знайшов кнопку, коли вона була лише в картках);
+- у картці результату — виділяє запис саме цієї відправки; у картці помилки — найновіший.
 
 ## Що в записі
 
@@ -45,11 +47,12 @@ Creator — виділяє запис цієї відправки; у картц
 
 ## Де в коді
 
-- [app/studio/sendlog.py](../../app/studio/sendlog.py) — `SENDS`, `KEEP`, `write()`, `attempt()`, `step()`, `_open()`
+- [app/studio/sendlog.py](../../app/studio/sendlog.py) — `SENDS`, `KEEP`, `write()`, `attempt()`, `step()`, `latest()`, `_open()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `create_printify_draft()`, `_printify_draft()`
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `sendLogButton()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderSwitch()` (піктограма в шапці), `sendLogButton()`
+- [app/web/css/app.css](../../app/web/css/app.css) — `.cr-tools`, `.mode-switch`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — піктограма `sendLog`
-- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow`)
+- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow` — у т. ч. `test_journal_button_shows_the_newest_record`)
 
 ## Пов'язане
 

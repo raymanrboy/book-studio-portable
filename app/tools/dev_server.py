@@ -43,18 +43,49 @@ def _receipt(rid: int, name: str, country: str, city: str, state: str, cover: st
     }
 
 
+def _printify(rid: int, status: str, tracking: str = "") -> dict:
+    """A made-up Printify order (slim, as saved at sync) carrying the receipt number."""
+    return {"id": f"{rid:024x}", "app_order_id": str(rid)[-6:], "total_price": 1995, "total_shipping": 500,
+            "total_tax": 0, "created_at": time.strftime("%Y-%m-%d %H:%M:%S+00:00", time.gmtime()), "status": status,
+            "metadata": {"shop_order_id": str(rid)}, "address_to": {}, "line_items": [],
+            "shipments": [{"carrier": "usps", "number": tracking, "url": ""}] if tracking else []}
+
+
+def _gelato(rid: int, status: str, carrier: str = "", tracking: str = "") -> dict:
+    """A made-up Gelato order (slim, tracking already read) carrying the receipt number."""
+    return {"id": f"00000000-0000-4000-8000-{rid:012d}", "orderReferenceId": f"{rid}-sample", "firstName": "",
+            "lastName": "", "totalInclVat": "21.50", "currency": "EUR", "fulfillmentStatus": status,
+            "financialStatus": "draft" if status == "draft" else "paid",
+            "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime()),
+            "orderType": "draft" if status == "draft" else "order",
+            "shipments": [{"carrier": carrier, "number": tracking, "url": ""}] if tracking else []}
+
+
 def seed(data: Path) -> None:
     from studio import core, profit  # imported after BOOK_STUDIO_DATA is set
 
+    hard, soft = "Hardcover 8&quot; x 8&quot;", "Softcover 8&quot; x 8&quot;"
     receipts = [
-        _receipt(4100000101, "Jane Doe", "US", "Springfield", "IL", "Hardcover 8&quot; x 8&quot;", "Emma"),
-        _receipt(4100000102, "Maria Example", "CA", "Toronto", "ON", "Softcover 8&quot; x 8&quot;", "Noah", days_ago=1),
+        _receipt(4100000101, "Jane Doe", "US", "Springfield", "IL", hard, "Emma"),
+        _receipt(4100000102, "Maria Example", "CA", "Toronto", "ON", soft, "Noah", days_ago=1),
         _receipt(4100000103, "Alex Sample", "GB", "Leeds", "", "Softcover 5.5&quot; x 5.5&quot;", "Olivia", days_ago=2),
-        _receipt(4100000104, "Sam Test", "US", "Austin", "TX", "Hardcover 8&quot; x 8&quot;", "Liam",
-                 shipped=True, days_ago=9),
+        _receipt(4100000104, "Sam Test", "US", "Austin", "TX", hard, "Liam", shipped=True, days_ago=9),
+        _receipt(4100000105, "Chris Demo", "US", "Denver", "CO", hard, "Ava", days_ago=4),
+        _receipt(4100000106, "Pat Example", "US", "Salem", "OR", hard, "Mia", days_ago=1),
+        _receipt(4100000107, "Lee Sample", "US", "Dayton", "OH", hard, "Leo", days_ago=3),
     ]
-    snapshot = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": [], "gelato": [],
-                "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": []}
+    printify_orders = [
+        _printify(4100000104, "fulfilled", "9400100000000000000001"),
+        _printify(4100000105, "fulfilled", "9400100000000000000002"),   # sent: waits for the mark on Etsy
+        _printify(4100000106, "in-production"),
+        _printify(4100000107, "has-issues"),
+    ]
+    gelato_orders = [
+        _gelato(4100000102, "in_transit", "Canada Post Tracked Packet", "7023210000000003"),  # sent
+        _gelato(4100000103, "draft"),
+    ]
+    snapshot = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": printify_orders,
+                "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": []}
     core.write_json(profit.SNAPSHOT, snapshot, backup=False)
     book_id = "0" * 31 + "1"
     folder = data / "library" / "books" / book_id

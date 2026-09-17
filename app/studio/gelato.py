@@ -187,6 +187,62 @@ def get_order(order_id: str) -> dict:
     return call("GET", f"{ORDER_API}/orders/{order_id}", action="Статус замовлення Gelato")
 
 
+# Statuses of an order that has left the printer (https://dashboard.gelato.com/docs/orders/order_details/).
+SHIPPED = ("shipped", "in_transit", "delivered", "returned")
+TRACKING_READS = 60  # full orders read per sync at most; the rest wait for the next one
+
+
+def shipments_of(order: dict) -> list:
+    """Tracking of a full order: one entry per package, carrier = the shipment method ("UPS Surepost")."""
+    ship = order.get("shipment") or {}
+    method = ship.get("shipmentMethodName") or ""
+    out = [{"carrier": method, "number": p.get("trackingCode"), "url": p.get("trackingUrl") or ""}
+           for p in ship.get("packages") or [] if p.get("trackingCode")]
+    if not out:  # some orders keep tracking only on their items
+        for item in order.get("items") or []:
+            for f in item.get("fulfillments") or []:
+                code = f.get("trackingCode")
+                if code and all(s["number"] != code for s in out):
+                    out.append({"carrier": f.get("shipmentMethodName") or method, "number": code,
+                                "url": f.get("trackingUrl") or ""})
+    return out
+
+
+def attach_shipments(orders: list, previous: list) -> int:
+    """Gives shipped orders (slim, from the search) their tracking, which the search leaves out.
+
+    Each shipped order is read in full once; again only while no tracking was found and its status
+    changes. Tracking already found is carried over from the previous snapshot. Returns how many
+    orders could not be read (they are tried again on the next sync).
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    before = {g.get("id"): g for g in previous or []}
+    todo = []
+    for g in orders:
+        old = before.get(g.get("id")) or {}
+        status = g.get("fulfillmentStatus")
+        if old.get("shipments"):
+            g["shipments"] = old["shipments"]
+        elif str(status or "").lower() in SHIPPED:
+            if old.get("shipmentsFor") == status:
+                g["shipments"], g["shipmentsFor"] = [], status
+            else:
+                todo.append(g)
+    failed = []
+
+    def read(g: dict) -> None:
+        try:
+            g["shipments"] = shipments_of(get_order(g["id"]))
+            g["shipmentsFor"] = g.get("fulfillmentStatus")
+        except ApiError:
+            failed.append(g["id"])
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(read, todo[:TRACKING_READS]))
+    return len(failed)
+
+
 @route("POST", "/api/gelato/test")
 def _test(req: Request):
     orders = all_orders(cap=3000)
