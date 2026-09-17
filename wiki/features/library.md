@@ -1,0 +1,88 @@
+---
+title: Бібліотека книг і паспорт книги
+type: feature
+updated: 2026-09-17
+code:
+  - app/studio/library.py
+  - app/web/js/pages/library.js
+  - app/web/js/pages/book.js
+  - app/studio/images.py
+---
+# Бібліотека книг
+
+> Еталонна версія кожної книги магазину: одна книга = один лістинг Etsy. Обкладинка, 16 місць для
+> ілюстрацій, тексти, посилання на шаблон Canva. За номером лістингу картка замовлення знаходить книгу.
+> Будова книги — [rules/book-structure.md](../rules/book-structure.md).
+
+## Галерея (`#/library`)
+
+- Панель (`.lib-toolbar`): пошук (назва або ID лістингу; Ctrl+F або `/`), перемикач «У роботі / Архів»,
+  сортування (нещодавно змінені, додані, за назвою, спочатку незавершені), **інструкція для агента**
+  (зберегти файлом або скопіювати), кнопка «+» (нова книга, клавіша N) — однакової висоти з рештою.
+- Картка: заставка (або обкладинка), назва, `#лістинг`, щит — лістинг перевірено, смужки готовності
+  (обкладинка, ілюстрації, тексти, Canva), галочка — книга повна.
+- Картки будуються один раз; пошук/фільтр/сортування лише ховають і переставляють їх з анімацією
+  (`flip()`), тож картинки не перезавантажуються. Вибір фільтра й сортування пам'ятається (`bs-lib-view`).
+
+## Нова книга
+
+Діалог `openAddBook()`: посилання на лістинг або ID → перевірка через Etsy API (ключі потрібні, вхід — ні)
+→ назва, фото, стан, магазин; попередження, якщо лістинг з іншого магазину. Без ключів або при помилці —
+можна додати без перевірки, вказавши назву. Необов'язково: посилання на Canva, фото лістингу як заставка.
+Дублікат за лістингом не створюється (відкривається наявна книга).
+
+## Паспорт книги (`#/book/<id>`)
+
+- **Шапка**: заставка (можна взяти головне фото лістингу), назва (редагується на місці), чип `#лістинг`
+  (**лише текст, не посилання** — щоб випадково не відкрити Etsy), кнопка Canva (відкрити або додати
+  посилання), стан лістингу, «в архіві», індикатори готовності.
+- **Обкладинка** + текст обкладинки.
+- **Сторінки**: 16 рядків — присвята (1), розвороти 2–15, післяслово (30). Кожен рядок: текст зліва
+  (копіювати, редагувати; `{Name}`/`{Gifter}` підсвічено) і ілюстрація справа: або цілий розворот, або
+  ліва/права сторінка окремо (можна поміняти місцями). Форзац/нахзац показані порожніми.
+- **Дії** (праворуч угорі): імпорт з папки, додати файли, текст книги (завантажити/вставити JSON,
+  скопіювати весь текст або як JSON), «Ще»: оновити з Etsy, фото лістингу як заставка, посилання на Canva,
+  експорт файлів у папку, відкрити папку книги, архів, видалити (у кошик).
+- **Перетягування**: файл на місце → туди; широка картинка на половину розвороту → цілий розворот;
+  два файли на розворот → ліва й права; ZIP → розпакування й «Імпорт з папки» (з текстом);
+  папка або кілька файлів → розкладання за назвами (`mapFiles()`); один `.json` → текст.
+- **Частковий набір** — нормально: що є, стає на місце; чого немає, лишається порожнім
+  (картинки без тексту, лише частина сторінок, хвости Upscayl у назвах).
+- **Переглядач**: клік по ілюстрації; T — текст сторінки; кнопка — відкрити оригінал у Windows.
+- Esc — назад до бібліотеки (якщо не йде редагування).
+
+Прибрано за рішенням власника: нотатки до книги (поле `notes` ще лишилося в моделі й API),
+фільтри ілюстрацій, відкриття лістингу Etsy. Див. [рішення](../decisions.md).
+
+## Модель книги (`book.json`)
+
+```json
+{ "id": "<32 hex>", "schema": 1, "rev": 3, "title": "…", "createdAt": "…", "updatedAt": "…",
+  "listing": {"id", "title", "state", "shopId", "url", "imageUrl", "verifiedAt"},
+  "canvaUrl": "", "notes": "", "archived": false, "archivedAt": null,
+  "cover": <asset|null>, "thumbnail": <asset|null>,
+  "slots": { "page1": {"image"}, "spread2": {"image", "left", "right"}, …, "page30": {"image"} },
+  "text":  { "cover", "page1", "spread2" … "spread15", "page30" } }
+```
+Asset: `{id, file, originalName, width, height, bytes, addedAt, lqip}`. `rev` захищає від одночасних
+змін з двох вікон (`PATCH` з застарілим `rev` → 409).
+
+## Інструкція для агента
+
+`agent_guide()` будує Markdown з тих самих правил, що й імпорт: таблиця назв файлів (`Cover.png`,
+`Thumbnail.png`, `1.png`, `2-3.png` або `2.png`+`3.png` … `30.png`), формат `book-text.json`
+(`cover`, `page1`, `spreads` з ключами "2"–"15", `page30`; `{Name}`, `{Gifter}`; `\n` для переносів).
+Тест гарантує, що інструкція і імпорт не розходяться.
+
+## Де в коді
+
+- [app/studio/library.py](../../app/studio/library.py) — `load()`, `save()`, `summary()`, `completeness()`, `all_books()`, `_store_asset()`, `_set_asset()`, `_parse_slot()`, `scan_folder()`, `parse_text_json()`, `export_text_json()`, `export_book()`, `agent_guide()`, `_backfill_lqip()`, `SLOT_KEYS`, `TEXT_KEYS`, `GUIDE_NAME`
+- [app/web/js/pages/library.js](../../app/web/js/pages/library.js) — `mount()`, `card()`, `apply()`, `openAddBook()`, `saveGuide()`, `copyGuide()`, `SORTS`
+- [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mount()`, `renderHero()`, `renderCover()`, `rowHtml()`, `editText()`, `uploadTo()`, `mapFiles()`, `importFiles()`, `importFolder()`, `importTextJson()`, `canvaDialog()`, `lightboxItems()`, `onDrop()`
+- [app/studio/images.py](../../app/studio/images.py) — `preview()`, `lqip()`, `display_size()`, `compose_spread()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `isZipDrop()`, `isFolderDrop()`, `filesInDrop()`, `receiveDrop()`
+- Тести: [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`TextJson`, `FolderScan`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PreparationGuide`, `PartialBookImport`)
+
+## Пов'язане
+
+- [Будова книги](../rules/book-structure.md) · [Назви файлів](../rules/file-naming.md) · [Наповнення бібліотеки](../flows/book-import.md)

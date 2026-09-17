@@ -9,7 +9,7 @@ from .server import ApiError, Request, route, state
 from .vault import SECRET_NAMES, unprotect_powershell_securestring, vault
 
 EDITABLE_SECRETS = ("etsy_keystring", "etsy_shared_secret", "printify_token", "gelato_api_key")
-DESKTOP = core.ROOT.parent
+DESKTOP = core.ROOT.parent.parent  # the program lives in "Book Studio/app" on the Desktop
 # The Order Creator folder was renamed at some point; accept both names.
 ORDER_CREATOR_LOCAL = next((p for p in (DESKTOP / "Order Creator" / ".local", DESKTOP / "Order Creator Printify" / ".local")
                             if p.exists()), DESKTOP / "Order Creator" / ".local")

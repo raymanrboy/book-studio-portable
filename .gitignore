@@ -1,6 +1,11 @@
 # Personal data: encrypted keys, Etsy orders, logs, caches, app window profile — never commit
-data/
+app/data/
 # Downloaded helper binary (cloudflared)
-bin/
+app/bin/
 __pycache__/
 *.pyc
+# Plaintext credential ledger, if one ever appears here
+.secrets.txt
+# Personal editor / agent state
+.obsidian/
+.claude/settings.local.json
