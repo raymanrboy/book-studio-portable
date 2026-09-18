@@ -20,7 +20,7 @@ import zlib
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 
-from . import core, desktop, gelato, images, printify, profit, sendlog, tunnel
+from . import archive, core, desktop, gelato, images, printify, profit, sendlog, tunnel
 from .jobs import JobError, jobs
 from .server import ApiError, Request, file_response, route
 from .vault import vault
@@ -378,11 +378,44 @@ def create_printify_draft(folder: str, title: str, job, address: dict | None = N
     with sendlog.attempt("printify", "book+order" if address else "book", title) as log:
         result = _printify_draft(folder, title, job, address, log)
         log["result"] = result
+    return _journaled(result, log)
+
+
+def _journaled(result: dict, log: dict) -> dict:
+    """The journal's file name, known only once the attempt is written, goes to the result and the archive."""
     result["sendLog"] = log["file"]
+    if result.get("archiveId"):
+        archive.update(result["archiveId"], sendLog=log["file"])
     return result
 
 
-def _printify_draft(folder: str, title: str, job, address: dict | None, log: dict) -> dict:
+def _to_archive(log: dict, job, warnings: list[str], provider: str, files: list[tuple[Path, str]], meta: dict) -> str | None:
+    """Keeps what was just sent in the order archive. A failure here never undoes the send: the book is
+    in Printify / Gelato, the result only says the archive copy is missing."""
+    job.progress("Збереження в архів замовлень…", 97, f"{len(files)} файлів")
+    try:
+        eid = archive.store(provider, files, meta)
+    except Exception as err:
+        core.log.exception("Archive: store failed")
+        warnings.append(f"Книгу відправлено, але в архів замовлень її не збережено: {err}")
+        sendlog.step(log, "archive", error=str(err))
+        return None
+    sendlog.step(log, "archive", id=eid)
+    return eid
+
+
+def _mark_reprint(log: dict, title: str, provider: str, order_id: str | None) -> None:
+    """A reprint is recorded as a replacement of its Etsy order (the queue keeps the first print order)."""
+    try:
+        marked = profit.mark_reprint(archive.receipt_of(title), provider, order_id)
+    except Exception as err:
+        core.log.exception("Reprint mark failed")
+        sendlog.step(log, "reprintMarked", ok=False, error=str(err))
+        return
+    sendlog.step(log, "reprintMarked", ok=marked)
+
+
+def _printify_draft(folder: str, title: str, job, address: dict | None, log: dict, reprint_of: str | None = None) -> dict:
     if not title:
         raise JobError("Введіть назву книги.")
     log["folder"] = str(folder)
@@ -543,9 +576,91 @@ def _printify_draft(folder: str, title: str, job, address: dict | None, log: dic
             else:
                 order_error = f"Книгу створено, але Printify відхилив замовлення: {err}. Його можна оформити вручну з цієї книги."
 
-    return {"productId": product_id, "url": url, "title": title, "uploaded": uploaded, "reused": reused,
+    # The book is in Printify now (with or without its order): keep exactly these files in the archive.
+    if reprint_of and order:
+        _mark_reprint(log, title, "printify", order["id"])
+    archive_id = _to_archive(log, job, warnings, "printify", [(Path(r["path"]), r["file"]) for r in files], {
+        "title": title, "productId": product_id, "url": url, "orderId": order["id"] if order else None,
+        "variant": order["variant"] if order else None, "address": address or None, "reprintOf": reprint_of})
+
+    return {"archiveId": archive_id, "productId": product_id, "url": url, "title": title, "uploaded": uploaded, "reused": reused,
             "total": len(image_ids), "verified": verified, "masterSafe": master_safe, "warnings": warnings,
             "order": order, "orderError": order_error}
+
+
+def create_printify_reprint(archive_id: str, title: str, address: dict | None, job) -> dict:
+    """A reprint of an archived Printify book: a new order "On hold" for the book already in Printify —
+    nothing is uploaded and no product is made. If the book is gone from Printify, it is made again
+    from the archived files (images already in Printify are reused). Journaled like every send."""
+    title = (title or "").strip()
+    with sendlog.attempt("printify", "reprint", title) as log:
+        result = _printify_reprint(archive_id, title, address, job, log)
+        log["result"] = result
+    return _journaled(result, log)
+
+
+def _printify_reprint(archive_id: str, title: str, address: dict | None, job, log: dict) -> dict:
+    log["reprintOf"] = archive_id
+    entry = archive.get(archive_id)
+    if entry.get("provider") != "printify" or not entry.get("productId"):
+        raise JobError("Ця книга надрукована не в Printify — для передруку створіть її як звичайну відправку.")
+    if not title:
+        raise JobError("Введіть назву книги.")
+    if not address:
+        raise JobError("Для передруку потрібна адреса отримувача.")
+    cfg = core.settings.section("printify")
+    master = cfg.get("master") or {}
+    shop_id = int(cfg.get("shopId") or 0)
+    if not shop_id or not master.get("productId"):
+        raise JobError("Не налаштовано магазин або Master-продукт Printify (Налаштування → Printify).")
+    printify.token()
+    problems = validate_address(address)
+    if problems:
+        raise JobError("\n".join(problems))
+    if not printify.manual_approval_confirmed():
+        raise JobError("Спершу підтвердіть, що в Printify увімкнене ручне затвердження замовлень.")
+    variant_id = matte_variant(master)
+    if not variant_id:
+        raise JobError("У шаблоні Printify (Master) немає увімкненого матового варіанту — замовлення не створено.")
+
+    product_id = entry["productId"]
+    job.progress("Книга в Printify…", 15, product_id)
+    try:
+        product = printify.product(shop_id, product_id)
+    except ApiError as err:
+        if getattr(err, "status", None) != 404:
+            raise JobError(f"Не вдалося прочитати книгу в Printify: {err}") from None
+        product = None
+    sendlog.step(log, "product", productId=product_id, found=product is not None,
+                 title=(product or {}).get("title"))
+    if product is None:  # deleted in Printify meanwhile: the archived files make it again
+        result = _printify_draft(str(archive.folder(archive_id)), title, job, address, log, reprint_of=archive_id)
+        result["reprint"] = True
+        result["warnings"].insert(0, "Книги в Printify вже не було — її створено заново з файлів архіву.")
+        return result
+
+    job.progress("Замовлення-передрук у Printify…", 60, "На утриманні — без відправки у виробництво")
+    order_payload = printify_order_payload(title, product_id, variant_id, address)
+    log["orderRequest"] = order_payload
+    try:
+        placed = printify.create_order_on_hold(shop_id, order_payload)
+    except ApiError as err:
+        if (err.extra or {}).get("ambiguous") or ((err.extra or {}).get("upstream") or 0) >= 500:
+            raise JobError("Зв'язок обірвався під час створення замовлення — результат невідомий. НЕ запускайте "
+                           "повторно одразу: спершу перевірте Printify → Orders.") from None
+        raise JobError(f"Printify відхилив замовлення-передрук: {err}") from None
+    log["orderResponse"] = placed
+    order = {"id": placed.get("id"), "variant": next((v.get("title") for v in master.get("variants") or []
+                                                     if int(v.get("id") or 0) == variant_id), "Matte")}
+    warnings: list[str] = []
+    _mark_reprint(log, title, "printify", order["id"])
+    url = entry.get("url") or f"https://printify.com/app/product-details/{product_id}?fromProductsPage=1"
+    kept = archive.folder(archive_id)
+    new_id = _to_archive(log, job, warnings, "printify", [(kept / r["file"], r["file"]) for r in entry.get("files") or []], {
+        "title": title, "productId": product_id, "url": url, "orderId": order["id"], "variant": order["variant"],
+        "address": address, "reprintOf": archive_id})
+    return {"reprint": True, "archiveId": new_id, "productId": product_id, "url": url, "title": title,
+            "order": order, "orderError": None, "warnings": warnings, "total": len(entry.get("files") or [])}
 
 
 # ---------------------------------------------------------------- Gelato draft
@@ -701,17 +816,20 @@ def _journal_readback(log: dict, order_id: str, pdf_bytes: int) -> None:
                  events=item.get("eventLog"), refusal=item.get("refusalReason"))
 
 
-def create_gelato_draft(folder: str, title: str, format_key: str, address: dict, job) -> dict:
-    """A Gelato draft order for one photo book; every attempt is written to the send journal."""
+def create_gelato_draft(folder: str, title: str, format_key: str, address: dict, job, reprint_of: str | None = None) -> dict:
+    """A Gelato draft order for one photo book; every attempt is written to the send journal.
+    reprint_of: the archived book this draft reprints (then the folder is that book's archive folder)."""
     title = (title or "").strip()
-    with sendlog.attempt("gelato", "draft", title) as log:
-        result = _gelato_draft(folder, title, format_key, address, job, log)
+    with sendlog.attempt("gelato", "reprint" if reprint_of else "draft", title) as log:
+        result = _gelato_draft(folder, title, format_key, address, job, log, reprint_of)
         log["result"] = result
-    result["sendLog"] = log["file"]
-    return result
+    return _journaled(result, log)
 
 
-def _gelato_draft(folder: str, title: str, format_key: str, address: dict, job, log: dict) -> dict:
+def _gelato_draft(folder: str, title: str, format_key: str, address: dict, job, log: dict,
+                  reprint_of: str | None = None) -> dict:
+    if reprint_of:
+        log["reprintOf"] = reprint_of
     if not title:
         raise JobError("Введіть назву книги.")
     cfg = core.settings.section("gelato")
@@ -802,10 +920,17 @@ def _gelato_draft(folder: str, title: str, format_key: str, address: dict, job, 
         keep = int(cfg.get("tunnelKeepAliveSeconds") or 900)
         tunnel.registry.keep(order_id, link, session_dir, keep)
         link = None  # owned by the registry now
-        return {"orderId": order_id, "orderReferenceId": payload["orderReferenceId"],
+        warnings = pdf["warnings"]
+        if reprint_of:
+            _mark_reprint(log, title, "gelato", order_id)
+        archive_id = _to_archive(log, job, warnings, "gelato", [(Path(r["path"]), r["file"]) for r in result["files"]], {
+            "title": title, "format": format_key, "formatLabel": fmt.get("label"), "productUid": fmt["productUid"],
+            "orderId": order_id, "orderReferenceId": payload["orderReferenceId"], "address": address,
+            "reprintOf": reprint_of})
+        return {"archiveId": archive_id, "orderId": order_id, "orderReferenceId": payload["orderReferenceId"],
                 "fulfillmentStatus": created.get("fulfillmentStatus"), "orderType": created.get("orderType"),
-                "format": fmt.get("label"), "keepAliveSeconds": keep, "title": title, "warnings": pdf["warnings"],
-                "pdfPages": pdf["pdfPages"], "pageCount": page_count}
+                "format": fmt.get("label"), "keepAliveSeconds": keep, "title": title, "warnings": warnings,
+                "pdfPages": pdf["pdfPages"], "pageCount": page_count, "reprint": bool(reprint_of)}
     finally:
         if link is not None:
             link.stop()
@@ -886,11 +1011,31 @@ def _create_printify(req: Request):
     return {"jobId": job.id}
 
 
+@route("POST", "/api/creator/printify/reprint")
+def _reprint_printify(req: Request):
+    """Reprint from the order archive: a new order on hold for the archived Printify book."""
+    body = req.json or {}
+    archive_id = str(body.get("archiveId") or "")
+    archive.get(archive_id)  # refuses an unknown or malformed id before anything starts
+    title = body.get("title") or ""
+    address = body.get("address") if isinstance(body.get("address"), dict) else None
+    job = jobs.start("printify-create", lambda j: create_printify_reprint(archive_id, title, address, j),
+                     exclusive="printify-create")
+    return {"jobId": job.id}
+
+
 @route("POST", "/api/creator/gelato/create")
 def _create_gelato(req: Request):
     body = req.json or {}
-    args = (body.get("folder") or "", body.get("title") or "", body.get("format") or "", body.get("address") or {})
-    job = jobs.start("gelato-create", lambda j: create_gelato_draft(*args, j), exclusive="gelato-create")
+    folder = body.get("folder") or ""
+    reprint_of = str(body.get("reprintOf") or "") or None
+    if reprint_of:  # a reprint always uses the archived files, whatever folder the page holds
+        if archive.get(reprint_of).get("provider") != "gelato":
+            raise ApiError("Ця книга з архіву надрукована не в Gelato — передрук робиться в тій самій друкарні.")
+        folder = str(archive.folder(reprint_of))
+    args = (folder, body.get("title") or "", body.get("format") or "", body.get("address") or {})
+    job = jobs.start("gelato-create", lambda j: create_gelato_draft(*args, j, reprint_of=reprint_of),
+                     exclusive="gelato-create")
     return {"jobId": job.id}
 
 

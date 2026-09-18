@@ -1,7 +1,7 @@
 ---
 title: Перегляд інтерфейсу під час розробки
 type: dev
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/tools/dev_server.py
 ---
@@ -21,6 +21,10 @@ code:
   `in-production` і `has-issues`, чернетка Gelato), машинка (Printify `fulfilled` з USPS, Gelato
   `in_transit` з трек-номером), відправлене в Etsy (з трек-номером). Замовлення друку вигадані
   (`_printify()`, `_gelato()`) і пишуться одразу в знімок — сервіси не викликаються.
+- [Архів замовлень](../features/archive.md) (`_seed_archive()`, лише коли архів порожній): чотири
+  книги з намальованими пронумерованими сторінками (`_sample_book()`) — Liam (Printify, відправлене
+  3 дні тому → «ще 11 дн.»), Noah (Gelato, 28 сторінок, чекає позначки в Etsy), Ava («Не видаляти») і
+  передрук Liam.
 - Сервер відмовляється працювати, якщо папка даних — справжня `app/data`. Ключів у тимчасовій
   папці немає, тож синхронізація при запуску не стартує і сервіси не викликаються.
 
@@ -44,7 +48,7 @@ code:
 
 ## Де в коді
 
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `seed()`, `_receipt()`, `_printify()`, `_gelato()`, `PORT`
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `seed()`, `_receipt()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `PORT`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (режим `--no-window`)
 
 ## Пов'язане

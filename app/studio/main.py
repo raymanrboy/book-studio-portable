@@ -36,13 +36,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Register all API routes.
-    from . import creator, etsy, gelato, library, orders, printify, profit, sendlog, settings_api, tunnel  # noqa: F401
+    from . import archive, creator, etsy, gelato, library, orders, printify, profit, sendlog, settings_api, tunnel  # noqa: F401
 
     tunnel.cleanup_stale()
     creator.forget_old_form()
     creator.clear_drops()
     httpd = server.start(args.port)
     profit.startup_sync()  # the one automatic refresh of orders; afterwards only the refresh button
+    # The order archive tidies up on its own (again after every sync): books whose 14 days are over go.
+    import threading
+    threading.Thread(target=archive.refresh_quietly, daemon=True).start()
     url = f"{server.base_url()}/"
     if args.no_window:
         print(f"Book Studio: {url}", flush=True)

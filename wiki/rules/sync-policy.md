@@ -1,7 +1,7 @@
 ---
 title: Коли оновлюються замовлення
 type: rule
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/studio/profit.py
   - app/web/js/order-bits.js
@@ -34,6 +34,9 @@ code:
    переносяться з попереднього знімка; не більше 60 читань за одне оновлення. Не вдалося прочитати →
    попередження, спроба при наступному оновленні. Помилка пошуку → попередження, попередні дані.
 4. Збереження знімка і перерахунок кешу подання (`cached_view()`).
+5. Перевірка [архіву замовлень](../features/archive.md) (`archive.refresh_quietly()`): з новими
+   етапами й статусами друкарень видаляються книги, чиї 14 днів минули. Сама по собі нічого не
+   завантажує — лише читає щойно збережений знімок.
 
 Кеш подання оновлюється за лічильником записів `_writes` (плюс час зміни файлів): два записи в один
 «тік» годинника Windows мають однаковий час зміни — баг, виправлений 16.09.2026.
@@ -46,6 +49,7 @@ code:
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `refresh()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `refresh()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`
+- [app/studio/archive.py](../../app/studio/archive.py) — `refresh_quietly()`
 - Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`SyncOnlyAtStartOrByHand`), [app/tests/test_states.py](../../app/tests/test_states.py) (`IncrementalSync`)
 
 ## Пов'язане

@@ -1,7 +1,7 @@
 ---
 title: Інтерфейс — будова і спільні помічники
 type: architecture
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -19,11 +19,13 @@ code:
 ## Оболонка і маршрутизація — `app.js`
 
 - **Бокова панель** (`NAV`): Замовлення `#/orders` (Alt+1), Бібліотека `#/library` (Alt+2),
-  Order Creator `#/creator` (Alt+3), Налаштування `#/settings` (Alt+4). Стартова — `HOME = '#/orders'`.
+  Order Creator `#/creator` (Alt+3), Архів замовлень `#/archive` (Alt+4, з 18.09.2026),
+  Налаштування `#/settings` (Alt+5). Стартова — `HOME = '#/orders'`.
   Внизу — меню теми (темна / світла / як у Windows, «мінімум анімацій»). Крапка на Налаштуваннях —
   коли якомусь сервісу бракує ключа чи входу.
 - **Маршрути** (`ROUTES`): `#/orders[/<номер чека>]` → `pages/orders.js`, `#/library` → `library.js`,
-  `#/book/<id>` → `book.js`, `#/creator` → `creator.js`, `#/settings[/<розділ>]` → `settings.js`.
+  `#/book/<id>` → `book.js`, `#/creator` → `creator.js`, `#/archive[/<id>]` → `archive.js`,
+  `#/settings[/<розділ>]` → `settings.js`.
   Сторінки **Прибуток немає в маршрутах** — вона прихована до 1 жовтня ([features/profit.md](../features/profit.md)).
 - **Контракт сторінки**: `export async function mount(view, params)` будує вміст у переданому
   елементі й повертає `{ shown(), unmount() }` (обидва необов'язкові). `navigate()` будує нову
@@ -48,13 +50,17 @@ code:
 
 - `icons.js` — піктограми 24×24, обведення 1,6. **Одна піктограма — одне значення.**
   Є логотипи сервісів: `etsy`, `canva`, `printify`, `gelato`; `sendLog` — журнал відправок;
+  `orderArchive` — архів замовлень (аркуш із годинником; не `archive`, що означає архів бібліотеки);
+  `pin` — «Не видаляти»;
   `truck` — «друкарня відправила» (вкладка й чип трек-номера; з 17.09.2026 окремий малюнок, а не
   псевдонім коробки `package`, яка означає «відправлено в Etsy»).
 - Чипи (`.chip`): текст чипа — одним шрифтом (`.chip .num` не перемикає шрифт), `.chip-mono` на 2 px
   нижче, щоб Consolas стояв на одній лінії з текстом інших чипів.
 - `handoff.js` — `give(to, data)` / `take(to)`: одноразова передача між сторінками лише в пам'яті
-  (картка замовлення → Order Creator).
-- `order-bits.js` — спільне для Замовлень і Order Creator ([features/orders.md](../features/orders.md)).
+  (картка замовлення → Order Creator; архів замовлень → Order Creator з `reprint`).
+- `order-bits.js` — спільне для Замовлень, архіву замовлень і Order Creator: етапи, чипи статусу
+  друкарні й трек-номера, номер чека, поля покупця ([features/orders.md](../features/orders.md),
+  [features/archive.md](../features/archive.md)).
 - `lightbox.js` — `openLightbox(items, start)`; елемент: `src`, `full` (чіткіша версія при зумі),
   `title`, `sub`, `text` (клавіша T), `onOriginal`. Колесо, перетягування з інерцією, ← →, Esc.
 

@@ -1,7 +1,7 @@
 ---
 title: Огляд Book Studio
 type: overview
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/studio/main.py
   - app/studio/core.py
@@ -21,7 +21,8 @@ code:
 
 Власник не програміст, пише українською і працює з двох комп'ютерів: **вроцлавського** (щоденна робота,
 тут запущена програма) і **віддаленого київського**, де зареєстрований магазин Etsy. Сторінки Etsy
-відкриваються лише на київському — див. [безпеку](security.md).
+відкриваються лише на київському — див. [безпеку](security.md). Сама програма на київському ПК не
+запускається.
 
 ## Розділи програми
 
@@ -30,6 +31,7 @@ code:
 | Замовлення (стартовий екран) | Черга нових замовлень Etsy і картка замовлення: книга, Canva, персоналізація, файли, звірка, передача в друк | [features/orders.md](features/orders.md) |
 | Бібліотека книг | Еталон кожної книги: обкладинка, 16 сторінок/розворотів, тексти, посилання на Canva | [features/library.md](features/library.md) |
 | Order Creator | Неопублікована книга (і замовлення On hold) у Printify, чернетка замовлення в Gelato | [features/order-creator.md](features/order-creator.md) |
+| Архів замовлень | Файли книг, що пішли в друк: звірка й передрук; живуть 14 днів після «Відправлених» | [features/archive.md](features/archive.md) |
 | Налаштування | Ключі сервісів, підключення Etsy, шаблон Printify, папка даних | [features/settings.md](features/settings.md) |
 | Прибуток (прихований до 1 жовтня) | Аналог Etsy Profit Calculator: Etsy Net мінус собівартість друку | [features/profit.md](features/profit.md) |
 

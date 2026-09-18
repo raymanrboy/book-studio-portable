@@ -3,6 +3,33 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-18] update | Архів замовлень збудовано: файли, що пішли в друк, 14 днів і передрук
+
+- Нове меню «Архів замовлень» (Alt+4, Налаштування тепер Alt+5): кожна відправка в Printify чи Gelato
+  кладе копію файлів книги в `data/archive/`; сторінка книги — звірка, дані замовлення, адреса, «Не
+  видаляти», передрук. Файли видаляються самі через 14 днів після «Відправлених»; без відомостей про
+  замовлення — нічого не видаляється. Опис — [features/archive.md](features/archive.md).
+- Передрук: Printify — нове замовлення On hold з тієї ж книги (нічого не завантажується; зникла книга
+  — створюється заново з архіву); Gelato — нова чернетка з тих самих файлів. Чек позначається
+  заміною, етап у черзі не змінюється.
+- Оновлено: [architecture/api-routes.md](architecture/api-routes.md), [architecture/data.md](architecture/data.md),
+  [architecture/frontend.md](architecture/frontend.md), [architecture/runtime.md](architecture/runtime.md),
+  [features/order-creator.md](features/order-creator.md), [features/profit.md](features/profit.md),
+  [rules/order-stages.md](rules/order-stages.md), [rules/sync-policy.md](rules/sync-policy.md),
+  [flows/order-to-print.md](flows/order-to-print.md), [security.md](security.md), [decisions.md](decisions.md),
+  [glossary.md](glossary.md), [code-map.md](code-map.md), [plans/roadmap.md](plans/roadmap.md),
+  [dev/preview.md](dev/preview.md), [dev/testing.md](dev/testing.md), [index.md](index.md).
+
+## [2026-09-18] decision | План «Архів замовлень»; програма лише на вроцлавському ПК
+
+- Узгоджено з власником (код не змінювався): окреме меню «Архів замовлень» з файлами книг, що пішли в
+  друк, звіркою і передруком; автовидалення через 14 днів після «Відправлених», кнопка «Не видаляти»,
+  лише нові замовлення — [plans/roadmap.md](plans/roadmap.md), [decisions.md](decisions.md),
+  [glossary.md](glossary.md).
+- Власник не запускає Book Studio на київському ПК: уточнено [overview.md](overview.md),
+  [owner/working-with-owner.md](owner/working-with-owner.md), [integrations/etsy.md](integrations/etsy.md);
+  прибрано питання про копію на київському ПК з [plans/open-questions.md](plans/open-questions.md).
+
 ## [2026-09-17] decision | Перевірка тексту через Gemini — у плани
 
 - Обговорено й перевірено тестом на вигаданих сторінках (3.6 / 3.5 Flash знайшли всі закладені

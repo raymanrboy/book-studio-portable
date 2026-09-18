@@ -1,7 +1,7 @@
 ---
 title: Карта коду
 type: reference
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -40,6 +40,7 @@ code:
 | [gelato.py](../app/studio/gelato.py) | Безпечний клієнт Gelato | `_allowed()`, `call()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
 | [tunnel.py](../app/studio/tunnel.py) | Тимчасове публічне посилання на PDF для Gelato | `FileTunnel`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()` |
 | [sendlog.py](../app/studio/sendlog.py) | Журнал відправок у Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
+| [archive.py](../app/studio/archive.py) | Архів замовлень: файли книг, що пішли в друк, автовидалення, «Не видаляти» | `store()`, `refresh()`, `clock()`, `summary()`, `get()` |
 | [images.py](../app/studio/images.py) | Прев'ю, перевірка PNG, склеювання розвороту | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `image_info()` |
 | [library.py](../app/studio/library.py) | Бібліотека книг: модель, імпорт, експорт, інструкція | `load()`, `save()`, `summary()`, `completeness()`, `scan_folder()`, `parse_text_json()`, `agent_guide()`, `export_book()` |
 | [creator.py](../app/studio/creator.py) | Order Creator: перевірка файлів, Printify, Gelato, перетягування | `validate()`, `gelato_page_options()`, `gelato_pages_problem()`, `create_printify_draft()`, `create_gelato_draft()`, `build_photobook_pdf()`, `extract_zip()`, `dropped_folder()`, `guess_child_name()` |
@@ -60,11 +61,12 @@ code:
 | [js/icons.js](../app/web/js/icons.js) | Піктограми | `icon()` |
 | [js/lightbox.js](../app/web/js/lightbox.js) | Переглядач зображень | `openLightbox()` |
 | [js/handoff.js](../app/web/js/handoff.js) | Передача даних між сторінками в пам'яті | `give()`, `take()` |
-| [js/order-bits.js](../app/web/js/order-bits.js) | Спільне для Замовлень і Order Creator | `STAGES`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `spreadsOf()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()` |
+| [js/order-bits.js](../app/web/js/order-bits.js) | Спільне для Замовлень, архіву замовлень і Order Creator | `STAGES`, `statusChip()`, `trackChips()`, `receiptCopy()`, `isNameField()`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `spreadsOf()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()` |
 | [js/pages/orders.js](../app/web/js/pages/orders.js) | Замовлення: черга і картка | `mountQueue()`, `mountCard()` |
 | [js/pages/library.js](../app/web/js/pages/library.js) | Галерея бібліотеки, нова книга, інструкція | `mount()`, `openAddBook()`, `saveGuide()` |
 | [js/pages/book.js](../app/web/js/pages/book.js) | Паспорт книги | `mount()` |
 | [js/pages/creator.js](../app/web/js/pages/creator.js) | Order Creator | `mount()` |
+| [js/pages/archive.js](../app/web/js/pages/archive.js) | Архів замовлень: список, книга, передрук | `mount()`, `mountList()`, `mountBook()` |
 | [js/pages/settings.js](../app/web/js/pages/settings.js) | Налаштування | `mount()` |
 | [js/pages/profit.js](../app/web/js/pages/profit.js) | Прибуток (прихований) | `mount()` |
 | [css/app.css](../app/web/css/app.css) | Уся візуальна система «Prepress» | — |
@@ -79,6 +81,7 @@ code:
 | [test_states.py](../app/tests/test_states.py) | Стани замовлень, етапи, інкрементна синхронізація, API станів |
 | [test_library_creator.py](../app/tests/test_library_creator.py) | Текст JSON, імпорт папки, перевірка файлів, запобіжники Printify/Gelato |
 | [test_flows.py](../app/tests/test_flows.py) | Створення в Printify/Gelato з імітаціями, перетягування, захист Etsy, OAuth |
+| [test_archive.py](../app/tests/test_archive.py) | Архів замовлень: копії файлів, 14/30 днів, «Не видаляти», передрук Printify/Gelato, позначка заміни |
 | [test_orders.py](../app/tests/test_orders.py) | Правило друкарні, розстановка сторінок, довжина книги Gelato, інструкція, частковий імпорт, правило синхронізації |
 | [test_wiki.py](../app/tests/test_wiki.py) | Вікі відповідає коду |
 

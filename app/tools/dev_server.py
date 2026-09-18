@@ -100,7 +100,65 @@ def seed(data: Path) -> None:
         book["text"]["page1"] = "Dear {Name},\n\nWishing you a lifetime filled with love.\n\nWith love,\n{Gifter}"
         folder.mkdir(parents=True, exist_ok=True)
         library.save(book)
-    print(f"Sample data: {len(receipts)} orders, 1 book", flush=True)
+    from studio import archive
+    if not archive.entries():
+        _seed_archive(data)
+    print(f"Sample data: {len(receipts)} orders, 1 book, {len(archive.entries())} archived books", flush=True)
+
+
+def _sample_book(folder: Path, name: str, pages: int, hue: int) -> list:
+    """Made-up print files (small, numbered) in the order archive's shape: Cover.png + 1..N.png."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    def font(size):
+        try:
+            return ImageFont.truetype("arialbd.ttf", size)
+        except OSError:
+            return ImageFont.load_default()
+
+    folder.mkdir(parents=True, exist_ok=True)
+    cover = Image.new("RGB", (934, 492), (235, 225 - hue % 40, 205))
+    d = ImageDraw.Draw(cover)
+    d.rectangle([462, 0, 472, 492], fill=(150, 120, 90))
+    d.text((233, 246), "BACK", font=font(60), fill=(80, 60, 50), anchor="mm")
+    d.text((700, 220), name, font=font(80), fill=(80, 60, 50), anchor="mm")
+    d.text((700, 300), "sample book", font=font(34), fill=(150, 60, 60), anchor="mm")
+    cover.save(folder / "Cover.png")
+    files = [(folder / "Cover.png", "Cover.png")]
+    for n in range(1, pages + 1):
+        page = Image.new("RGB", (480, 480), (200 + (n * 13 + hue) % 55, 215, 245 - (n * 7) % 50))
+        d = ImageDraw.Draw(page)
+        d.text((240, 200), str(n), font=font(170), fill=(40, 40, 40), anchor="mm")
+        d.text((240, 380), f"Dear {name}" if n == 1 else f"page {n}", font=font(34), fill=(40, 40, 40), anchor="mm")
+        page.save(folder / f"{n}.png")
+        files.append((folder / f"{n}.png", f"{n}.png"))
+    return files
+
+
+def _seed_archive(data: Path) -> None:
+    """Four archived books: counting down, waiting for Etsy, kept, and a reprint of the first."""
+    from studio import archive
+    src = data / "tmp" / "sample-archive"
+    day = 86400
+    address = {"firstName": "Sam", "lastName": "Test", "addressLine1": "12 Example St", "city": "Austin",
+               "state": "TX", "postCode": "10001", "country": "US"}
+    liam = archive.store("printify", _sample_book(src / "liam", "Liam", 24, 0), {
+        "title": "4100000104 - Liam", "productId": "sample-product-1", "orderId": f"{4100000104:024x}",
+        "url": "https://printify.com/app/products", "variant": "8x8 / Matte", "address": address})
+    archive.update(liam, sentAt=archive._iso(time.time() - 12 * day), shippedAt=archive._iso(time.time() - 3 * day))
+    noah = archive.store("gelato", _sample_book(src / "noah", "Noah", 28, 40), {
+        "title": "4100000102 - Noah", "format": "softcover_8x8", "formatLabel": "Softcover 8×8",
+        "orderId": "00000000-0000-4000-8000-004100000102", "address": {**address, "firstName": "Maria",
+                                                                     "lastName": "Example", "country": "CA", "state": "ON"}})
+    archive.update(noah, sentAt=archive._iso(time.time() - 1 * day))
+    ava = archive.store("printify", _sample_book(src / "ava", "Ava", 24, 80), {
+        "title": "4100000105 - Ava", "productId": "sample-product-2", "orderId": f"{4100000105:024x}", "address": address})
+    archive.update(ava, sentAt=archive._iso(time.time() - 5 * day), keep=True)
+    kept = archive.folder(liam)
+    reprint = archive.store("printify", [(kept / f["file"], f["file"]) for f in archive.get(liam)["files"]], {
+        "title": "4100000104 - Liam", "productId": "sample-product-1", "orderId": "sample-reprint-order",
+        "address": address, "reprintOf": liam})
+    archive.update(reprint, sentAt=archive._iso(time.time() - 2 * 3600))
 
 
 def main(argv: list[str]) -> int:

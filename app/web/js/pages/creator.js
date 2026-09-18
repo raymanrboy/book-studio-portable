@@ -19,24 +19,29 @@ export async function mount(view) {
   // The one exception is an order handed over from its card a moment ago (in memory only).
   // Printify: without an address only the unpublished book is made; with one, also an order for it that
   // waits "On hold" in Printify (like Gelato's draft) — nothing goes to production from here.
+  // reprint: set only by the order archive's "Передрук" ({archiveId, productId}); another folder cancels it.
   const st = {
     mode: 'printify',
-    printify: { folder: '', title: '', validation: null, validating: 0, running: false, result: null, error: null, address: { country: 'US' } },
+    printify: { folder: '', title: '', validation: null, validating: 0, running: false, result: null, error: null, address: { country: 'US' }, reprint: null },
     gelato: {
       folder: '', title: '', validation: null, validating: 0, running: false, result: null, error: null,
-      format: status.gelato.defaultFormat || status.gelato.formats[0]?.key, address: { country: 'US' },
+      format: status.gelato.defaultFormat || status.gelato.formats[0]?.key, address: { country: 'US' }, reprint: null,
     },
   };
   const handed = take('creator');
   if (handed) {
     st.mode = handed.mode;
-    Object.assign(st[handed.mode], { folder: handed.folder, label: handed.label, title: handed.title, address: { ...handed.address } });
+    Object.assign(st[handed.mode], { folder: handed.folder, label: handed.label, title: handed.title, address: { ...handed.address },
+      reprint: handed.reprint || null });
     if (handed.mode === 'gelato' && handed.format) st.gelato.format = handed.format;
   }
   const ADDRESS_NEEDED = { firstName: "Ім'я", lastName: 'Прізвище', addressLine1: 'Адреса', city: 'Місто', postCode: 'Індекс', country: 'Країна' };
   const hasAddress = (a) => ['firstName', 'lastName', 'addressLine1', 'city', 'postCode'].some((k) => (a[k] || '').trim());
-  const withOrder = () => st.mode === 'gelato' || hasAddress(st.printify.address);
-  const createLabel = () => (st.mode === 'gelato' ? 'Створити чернетку' : withOrder() ? 'Створити чернетку замовлення' : 'Створити книгу без замовлення');
+  // A Printify reprint is always an order (for the book Printify already has), so it needs the address.
+  const withOrder = () => st.mode === 'gelato' || !!st.printify.reprint || hasAddress(st.printify.address);
+  const createLabel = () => (st.mode === 'gelato' ? (st.gelato.reprint ? 'Створити чернетку-передрук' : 'Створити чернетку')
+    : st.printify.reprint ? 'Створити замовлення-передрук'
+      : withOrder() ? 'Створити чернетку замовлення' : 'Створити книгу без замовлення');
   let tunnelTimer = null;
   const cur = () => st[st.mode];
 
@@ -124,6 +129,9 @@ export async function mount(view) {
         <input class="input path-input" id="cr-folder" placeholder="Папку ще не вибрано" value="${s.label || s.folder}" title="${s.label ? s.folder : ''}" spellcheck="false" autocomplete="off" aria-label="Шлях до папки">
         ${ib('folderPick', 'Обрати папку', 'data-act="browse"')}
       </div>
+      ${s.reprint ? html`<div class="row faint cr-reprint">${ic('orderArchive', 'icon-s')}<span>${st.mode === 'printify'
+        ? 'Передрук з архіву: нове замовлення на книгу, яка вже є в Printify'
+        : 'Передрук з архіву: нова чернетка з тих самих файлів'}</span></div>` : ''}
       ${v && !s.validating ? html`
         ${v.errors.length ? html`<div class="notice notice-error">${ic('alertCircle')}<div><b>Перевірка не пройдена</b><ul>${v.errors.slice(0, 12).map((e) => html`<li>${e}</li>`)}</ul>${v.errors.length > 12 ? html`<div>…та ще ${v.errors.length - 12}</div>` : ''}</div></div>` : ''}
         ${v.warnings.length ? html`<div class="notice notice-warn">${ic('alert')}<div>${v.warnings.map((w) => html`<div>${w}</div>`)}</div></div>` : ''}
@@ -200,16 +208,19 @@ export async function mount(view) {
     const r = s.result;
     if (!r) return '';
     if (st.mode === 'printify') {
+      // A reprint for the book Printify already has sends nothing but the order (no upload counts to show).
+      const sameBook = r.reprint && r.uploaded === undefined;
       return html`<div class="result-card">
-        <h4>${ic('checkCircle')}${r.order ? 'Чернетку замовлення створено в Printify!' : 'Книгу створено в Printify!'}</h4>
+        <h4>${ic('checkCircle')}${r.reprint ? 'Передрук: замовлення створено в Printify!' : r.order ? 'Чернетку замовлення створено в Printify!' : 'Книгу створено в Printify!'}</h4>
         <dl class="kv">
           <dt>Назва</dt><dd>${r.title}</dd>
           <dt>Product ID</dt><dd class="mono">${r.productId}</dd>
           ${r.order ? html`<dt>Order ID</dt><dd class="mono">${r.order.id}</dd>
             <dt>Замовлення</dt><dd>На утриманні (On hold) · ${r.order.variant} — у виробництво лише після «Submit order» у Printify</dd>`
             : html`<dt>Статус</dt><dd>Неопублікована книга (Unpublished)</dd>`}
-          <dt>Ілюстрації</dt><dd>${r.total}/${r.total} на позиціях Master${r.reused ? ` · ${r.reused} вже були завантажені` : ''}</dd>
-          <dt>Перевірка</dt><dd>${r.verified ? '✓ позиції збігаються' : '— не підтверджено'} · Master ${r.masterSafe === true ? '✓ не змінено' : r.masterSafe === false ? '⚠ змінився' : '—'}</dd>
+          ${sameBook ? html`<dt>Книга</dt><dd>та сама, що й першого разу — нічого не завантажувалось</dd>`
+            : html`<dt>Ілюстрації</dt><dd>${r.total}/${r.total} на позиціях Master${r.reused ? ` · ${r.reused} вже були завантажені` : ''}</dd>
+          <dt>Перевірка</dt><dd>${r.verified ? '✓ позиції збігаються' : '— не підтверджено'} · Master ${r.masterSafe === true ? '✓ не змінено' : r.masterSafe === false ? '⚠ змінився' : '—'}</dd>`}
         </dl>
         ${r.orderError ? html`<div class="notice notice-error" style="margin-top:10px">${ic('alertCircle')}<div>${r.orderError}</div></div>` : ''}
         ${(r.warnings || []).map((w) => html`<div class="notice notice-warn" style="margin-top:10px">${ic('alert')}<div>${w}</div></div>`)}
@@ -219,7 +230,7 @@ export async function mount(view) {
       </div>`;
     }
     return html`<div class="result-card">
-      <h4>${ic('checkCircle')}Чернетку замовлення створено в Gelato!</h4>
+      <h4>${ic('checkCircle')}${r.reprint ? 'Передрук: чернетку створено в Gelato!' : 'Чернетку замовлення створено в Gelato!'}</h4>
       <dl class="kv">
         <dt>Назва</dt><dd>${r.title}</dd>
         <dt>Order ID</dt><dd class="mono">${r.orderId}</dd>
@@ -353,9 +364,12 @@ export async function mount(view) {
     const mode = st.mode;
     s.title = ($('#cr-title')?.value || '').trim();
     const problems = [];
+    // A Printify reprint sends no files (the book is already in Printify; if it is gone, the server checks
+    // the archived files itself before making it again), so the folder check does not hold it back.
+    const filesSent = !(mode === 'printify' && s.reprint);
     if (!s.folder) problems.push('Оберіть папку з ілюстраціями.');
-    else if (s.validating) problems.push('Зачекайте завершення перевірки файлів.');
-    else if (s.validation && !s.validation.ok) problems.push('Виправте помилки у файлах (див. крок «Папка з ілюстраціями»).');
+    else if (filesSent && s.validating) problems.push('Зачекайте завершення перевірки файлів.');
+    else if (filesSent && s.validation && !s.validation.ok) problems.push('Виправте помилки у файлах (див. крок «Папка з ілюстраціями»).');
     if (!s.title) problems.push('Введіть назву книги.');
     if (mode === 'gelato' && formatProblem()) problems.push(formatProblem());
     const order = withOrder();
@@ -373,9 +387,12 @@ export async function mount(view) {
     if (mode === 'printify' && order && !status.printify.manualApproval && !(await confirmManualApproval())) return;
     s.running = true; s.result = null; s.error = null;
     renderLeft();
-    const url = mode === 'printify' ? '/api/creator/printify/create' : '/api/creator/gelato/create';
-    const body = mode === 'printify' ? { folder: s.folder, title: s.title, address: order ? s.address : null }
-      : { folder: s.folder, title: s.title, format: st.gelato.format, address: s.address };
+    const reprint = s.reprint;
+    const url = mode === 'gelato' ? '/api/creator/gelato/create' : reprint ? '/api/creator/printify/reprint' : '/api/creator/printify/create';
+    const body = mode === 'gelato'
+      ? { folder: s.folder, title: s.title, format: st.gelato.format, address: s.address, ...(reprint ? { reprintOf: reprint.archiveId } : {}) }
+      : reprint ? { archiveId: reprint.archiveId, title: s.title, address: s.address }
+        : { folder: s.folder, title: s.title, address: order ? s.address : null };
     try {
       s.result = await runJob(api(url, { method: 'POST', body }), (j) => {
         if (st.mode !== mode) return;
@@ -387,6 +404,7 @@ export async function mount(view) {
         bar.style.width = `${j.percent}%`;
       });
       if (s.result?.orderError) toast('Книгу створено, але замовлення — ні. Подробиці в картці.', 'error', 7000);
+      else if (reprint) toast(mode === 'gelato' ? 'Передрук: чернетку створено в Gelato' : 'Передрук: замовлення створено в Printify', 'success');
       else toast(mode === 'gelato' ? 'Чернетку створено в Gelato' : s.result?.order ? 'Чернетку замовлення створено в Printify' : 'Книгу створено в Printify', 'success');
       status = await api('/api/creator/status');
     } catch (err) {
@@ -576,7 +594,7 @@ export async function mount(view) {
     const s = cur();
     const mode = st.mode;
     const my = ++validateSeq; // anything still being checked for the old folder is ignored from now on
-    Object.assign(s, { folder: '', label: dropLabel(dropped), validation: null, validating: 1, error: null });
+    Object.assign(s, { folder: '', label: dropLabel(dropped), validation: null, validating: 1, error: null, reprint: null });
     renderLeft(); renderRight();
     try {
       const path = await receiveDrop(dropped, (pct) => {
@@ -612,7 +630,7 @@ export async function mount(view) {
       if (a === 'browse') {
         try {
           const { path } = await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з Cover.png та ${(st.mode === 'printify' ? [status.printify.pageCount] : status.gelato.pageCounts).map((n) => `1–${n}.png`).join(' або ')}`, initial: s.folder } });
-          if (path) { s.folder = path; s.label = null; s.validation = null; renderLeft(); validate(); }
+          if (path) { s.folder = path; s.label = null; s.validation = null; s.reprint = null; renderLeft(); validate(); }
         } catch (err) { toast(err.message, 'error'); }
       } else if (a === 'revalidate') validate();
       else if (a === 'open-folder') api('/api/creator/open-folder', { method: 'POST', body: { path: s.folder } }).catch((er) => toast(er.message, 'error'));
@@ -642,7 +660,12 @@ export async function mount(view) {
   ];
   view.addEventListener('input', (e) => {
     const s = cur();
-    if (e.target.id === 'cr-folder') { s.folder = e.target.value.trim().replace(/^"|"$/g, ''); s.label = null; s.validation = null; validateSoon(); }
+    if (e.target.id === 'cr-folder') {
+      const wasReprint = !!s.reprint;
+      s.folder = e.target.value.trim().replace(/^"|"$/g, ''); s.label = null; s.validation = null; s.reprint = null;
+      if (wasReprint) renderLeft(); // the reprint line and the button's words go with the archived folder
+      validateSoon();
+    }
     if (e.target.id === 'cr-title') { s.title = e.target.value; const al = $('#cr-alert'); if (al && !s.error) al.innerHTML = ''; }
     if (e.target.dataset.addr) {
       s.address[e.target.dataset.addr] = e.target.value;

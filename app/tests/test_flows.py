@@ -126,7 +126,14 @@ class PrintifyDraftFlow(unittest.TestCase):
         self.assertEqual(record["request"]["title"], "4100000002 - Noah")
         self.assertEqual(record["orderRequest"], sent)
         self.assertEqual(record["orderResponse"], {"id": "order-on-hold-1"})
-        self.assertEqual([s["step"] for s in record["steps"]], ["files", "master", "uploads", "verify"])
+        self.assertEqual([s["step"] for s in record["steps"]], ["files", "master", "uploads", "verify", "archive"])
+        # …and exactly the files that went to Printify are in the order archive.
+        from studio import archive
+        kept = archive.get(res["archiveId"])
+        self.assertEqual((kept["provider"], kept["receiptId"], kept["productId"], kept["orderId"], kept["sendLog"]),
+                         ("printify", "4100000002", res["productId"], "order-on-hold-1", res["sendLog"]))
+        self.assertEqual([f["file"] for f in kept["files"]], ["Cover.png"] + [f"{i}.png" for i in range(1, 25)])
+        self.assertEqual((kept["pageCount"], kept["reprintOf"], kept["keep"]), (24, None, False))
         self.assertEqual(len(record["steps"][0]["files"]), 25)
         self.assertNotIn("fake-token-for-tests", json.dumps(record))
 
@@ -263,7 +270,12 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual(record["request"], sent)
         self.assertEqual(record["response"]["id"], "gelato-order-1")
         steps = {s["step"]: s for s in record["steps"]}
-        self.assertEqual(list(steps), ["files", "catalog", "pdf", "link", "readback"])
+        self.assertEqual(list(steps), ["files", "catalog", "pdf", "link", "readback", "archive"])
+        from studio import archive
+        kept = archive.get(res["archiveId"])
+        self.assertEqual((kept["provider"], kept["orderId"], kept["format"], kept["pageCount"], kept["sendLog"]),
+                         ("gelato", "gelato-order-1", "hardcover_8x8", 30, res["sendLog"]))
+        self.assertEqual(len(kept["files"]), 31)
         self.assertTrue(steps["readback"]["fileFetched"])                # Gelato already has our PDF
         self.assertEqual(steps["readback"]["pageCount"], 30)
         self.assertEqual(steps["files"]["pageCount"], 30)

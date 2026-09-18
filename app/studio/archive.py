@@ -1,0 +1,312 @@
+"""Order archive: the exact files of every book sent to print from Book Studio — to look back at what
+really went to the printer and to reprint it quickly.
+
+Each successful send (a Printify book / order, a Gelato draft) copies the Cover.png + 1..N.png it sent
+to data/archive/<id>/ together with entry.json: printer, title, receipt, pages, format, ids, the address.
+Files are removed automatically KEEP_DAYS after the order became "shipped" on Etsy (or was closed) —
+the owner's decision (wiki decisions.md, 18.09.2026), a deliberate exception to "never delete the
+owner's data". A reprint counts from the moment its printer shipped the reprint itself; a book whose
+Etsy order the program cannot see is kept LOST_DAYS from sending. "Keep" holds a book until unmarked.
+Only books sent after this feature appeared are here; nothing older is imported.
+"""
+from __future__ import annotations
+
+import math
+import os
+import re
+import shutil
+import threading
+import time
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+from . import core, images
+from .server import ApiError, Request, route
+
+ROOT = core.data_path("archive")
+KEEP_DAYS = 14   # after the order became "shipped" (Etsy) or was closed
+LOST_DAYS = 30   # a book whose Etsy order the program cannot find (e.g. no receipt number in the title)
+DAY = 86400
+_ID = re.compile(r"\d{8}-\d{6}-[0-9a-f]{6}")
+_RECEIPT = re.compile(r"\s*(\d{6,20})\b")  # the Etsy receipt number at the start of "4100000001 - Emma"
+_lock = threading.RLock()
+
+
+def receipt_of(title: str) -> str | None:
+    m = _RECEIPT.match(title or "")
+    return m.group(1) if m else None
+
+
+def folder(eid: str) -> Path:
+    if not _ID.fullmatch(str(eid or "")):
+        raise ApiError("Книгу в архіві не знайдено.", 404)
+    return ROOT / eid
+
+
+def _read(eid: str) -> dict | None:
+    entry = core.read_json(folder(eid) / "entry.json", None)
+    return entry if isinstance(entry, dict) and entry.get("id") == eid else None
+
+
+def _write(entry: dict) -> None:
+    core.write_json(folder(entry["id"]) / "entry.json", entry, backup=False)
+
+
+def _ts(iso: str | None) -> float | None:
+    try:
+        return datetime.fromisoformat(str(iso).replace("Z", "+00:00")).timestamp() if iso else None
+    except ValueError:
+        return None
+
+
+def _iso(ts: float) -> str:
+    """UTC, the same form as core.now_iso()."""
+    return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(ts)) + "Z"
+
+
+# ---------------------------------------------------------------- storing a send
+
+def store(provider: str, files: list[tuple[Path, str]], meta: dict) -> str:
+    """Keeps the files of one successful send; returns the new archive id.
+
+    files: (source path, name to keep it under — "Cover.png", "1.png" …). Files already in the archive
+    (a reprint of an archived book) are hard-linked — archive files never change, so it costs no space;
+    everything else is copied, never linked: the owner's own folder may be edited later, and the archive
+    must keep what was really sent. The folder appears only when complete.
+    """
+    eid = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+    final, tmp = ROOT / eid, ROOT / f".tmp-{eid}"
+    tmp.mkdir(parents=True)
+    root = ROOT.resolve()
+    try:
+        rows = []
+        for src, name in files:
+            src, dest = Path(src), tmp / name
+            if root in src.resolve().parents:
+                try:
+                    os.link(src, dest)
+                except OSError:
+                    shutil.copyfile(src, dest)
+            else:
+                shutil.copyfile(src, dest)
+            info = images.image_info(dest)
+            rows.append({"file": name, "width": info["width"], "height": info["height"], "bytes": dest.stat().st_size})
+        entry = {"id": eid, "provider": provider, "title": "", "receiptId": None, "sentAt": core.now_iso(),
+                 "pageCount": sum(1 for r in rows if r["file"] != "Cover.png"), "keep": False, "shippedAt": None,
+                 "reprintOf": None, **meta, "files": rows}
+        entry["receiptId"] = entry.get("receiptId") or receipt_of(entry.get("title") or "")
+        core.write_json(tmp / "entry.json", entry, backup=False)
+        os.replace(tmp, final)
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    core.log.info("Archive: stored %s (%s, %s files)", eid, entry.get("title"), len(rows))
+    threading.Thread(target=_warm_previews, args=(final, [r["file"] for r in rows]), daemon=True).start()
+    return eid
+
+
+def _warm_previews(path: Path, names: list[str]) -> None:
+    """Previews for the archive page and its viewer, made ahead so the page opens at once."""
+    for name in names:
+        try:
+            images.preview(path / name, 1400)
+            images.preview(path / name, 360)
+        except Exception:
+            pass
+
+
+def update(eid: str, **fields) -> None:
+    """Adds facts known only after the send (the journal file name); never fails the send."""
+    try:
+        with _lock:
+            entry = _read(eid)
+            if entry:
+                entry.update(fields)
+                _write(entry)
+    except Exception:
+        core.log.exception("Archive: could not update %s", eid)
+
+
+def entries() -> list[dict]:
+    out = []
+    if ROOT.is_dir():
+        for path in ROOT.iterdir():
+            if path.is_dir() and _ID.fullmatch(path.name):
+                entry = _read(path.name)
+                if entry:
+                    out.append(entry)
+    return sorted(out, key=lambda e: (e.get("sentAt") or "", e["id"]), reverse=True)
+
+
+def get(eid: str) -> dict:
+    entry = _read(eid) if folder(eid).is_dir() else None
+    if not entry:
+        raise ApiError("Книгу в архіві не знайдено — можливо, її вже прибрано.", 404)
+    return entry
+
+
+# ---------------------------------------------------------------- when files go
+
+def _facts() -> dict:
+    """What the last sync knows: stage of every Etsy order and every print order (status, tracking)."""
+    from . import profit  # late: profit is heavy and imports nothing from here
+    snap = profit.load_snapshot()
+    placed = profit.placed_orders(snap)
+    rows = profit.cached_view()["full"]
+    stages = {}
+    for r in snap.get("receipts") or []:
+        row = rows.get(str(r["receipt_id"]))
+        if row:
+            stages[str(r["receipt_id"])] = profit.order_stage(row, placed)[0]
+    names = {str(r["receipt_id"]): profit.plain(r.get("customer_shipping_name")) for r in snap.get("receipts") or []}
+    return {"stages": stages, "placed": placed, "names": names, "sent": profit.SENT_STATUSES,
+            "haveReceipts": bool(snap.get("receipts"))}
+
+
+_NO_FACTS = {"stages": {}, "placed": {}, "names": {}, "sent": (), "haveReceipts": False}
+
+
+def _own_order(entry: dict, facts: dict) -> dict:
+    if not entry.get("orderId"):
+        return {}
+    return facts["placed"].get(f"{entry.get('provider')}:{entry.get('orderId')}") or {}
+
+
+def _reached_buyer(entry: dict, facts: dict) -> bool:
+    """The moment the 14 days start: the Etsy order shipped or closed; for a reprint, its own print order
+    shipped by the printer (the Etsy order was shipped long before) or cancelled there."""
+    if entry.get("reprintOf"):
+        own = _own_order(entry, facts)
+        status = str(own.get("status") or "").lower()
+        return bool(own.get("tracking")) or status in facts["sent"] or status in ("canceled", "cancelled")
+    return facts["stages"].get(entry.get("receiptId") or "") in ("shipped", "closed")
+
+
+def _unknown(entry: dict, facts: dict) -> bool:
+    """The program cannot follow this book's order, so the timer counts from sending instead: no Etsy
+    receipt number, a receipt the synced orders do not have, or a reprint whose print order is not among
+    the printer's orders (deleted draft) — until the order shows up, which restarts the usual rule."""
+    if entry.get("reprintOf"):
+        return not entry.get("orderId") or (bool(facts["placed"]) and not _own_order(entry, facts))
+    rid = entry.get("receiptId")
+    return not rid or (facts["haveReceipts"] and rid not in facts["stages"])
+
+
+def clock(entry: dict, facts: dict) -> tuple[float | None, str]:
+    """(when the files go, why): "keep" (never while marked), "shipped" (KEEP_DAYS after the order
+    reached the buyer), "unknown" (LOST_DAYS after sending) or "waiting" (the 14 days have not started)."""
+    if entry.get("keep"):
+        return None, "keep"
+    shipped = _ts(entry.get("shippedAt"))
+    if shipped is not None:
+        return shipped + KEEP_DAYS * DAY, "shipped"
+    if _unknown(entry, facts):
+        sent = _ts(entry.get("sentAt"))
+        return (sent + LOST_DAYS * DAY if sent is not None else None), "unknown"
+    return None, "waiting"
+
+
+def refresh(now: float | None = None) -> list[str]:
+    """Notes orders that reached the buyer and removes books whose time is up; returns the removed ids.
+    Runs at start-up and after every sync. Without a readable snapshot nothing is removed."""
+    now = time.time() if now is None else now
+    removed: list[str] = []
+    with _lock:
+        try:
+            facts = _facts()
+        except Exception:
+            core.log.exception("Archive: order facts unavailable — nothing removed")
+            return removed
+        for entry in entries():
+            if not entry.get("shippedAt") and _reached_buyer(entry, facts):
+                entry["shippedAt"] = _iso(now)  # first seen "shipped" — as the owner sees it in the queue
+                _write(entry)
+            due = clock(entry, facts)[0]
+            if due is not None and now >= due:
+                if _remove(entry["id"]):
+                    core.log.info("Archive: removed %s (%s) — its %s days are over", entry["id"], entry.get("title"),
+                                  KEEP_DAYS if entry.get("shippedAt") else LOST_DAYS)
+                    removed.append(entry["id"])
+                else:
+                    core.log.warning("Archive: %s is due but a file is in use — trying again next time", entry["id"])
+        if ROOT.is_dir():  # halves of a copy interrupted by a crash or power loss
+            for tmp in ROOT.glob(".tmp-*"):
+                try:
+                    if now - tmp.stat().st_mtime > 3600:
+                        shutil.rmtree(tmp, ignore_errors=True)
+                except OSError:
+                    pass
+    return removed
+
+
+def _remove(eid: str) -> bool:
+    """Deletes one archived book: the pictures first, entry.json last — so a picture held open by another
+    program leaves the book listed (and due), and the next refresh simply tries again."""
+    path = folder(eid)
+    for item in path.iterdir():
+        if item.name != "entry.json":
+            try:
+                item.unlink()
+            except OSError:
+                return False
+    try:
+        (path / "entry.json").unlink(missing_ok=True)
+        path.rmdir()
+    except OSError:
+        return False
+    return True
+
+
+def refresh_quietly() -> None:
+    try:
+        refresh()
+    except Exception:
+        core.log.exception("Archive refresh failed")
+
+
+def summary(entry: dict, facts: dict | None, now: float | None = None) -> dict:
+    """An entry as the archive pages show it: plus its folder, when its files go, the buyer's name and
+    the status and tracking of its own print order."""
+    now = time.time() if now is None else now
+    facts = facts or _NO_FACTS  # orders unreadable: "keep" and a started countdown still show right
+    due, why = clock(entry, facts)
+    own = _own_order(entry, facts)
+    return {**entry, "folder": str(folder(entry["id"])),
+            "buyer": facts["names"].get(entry.get("receiptId") or "") or "",
+            "stage": facts["stages"].get(entry.get("receiptId") or ""),
+            "printStatus": own.get("status") or "", "tracking": own.get("tracking") or [],
+            "clock": why, "deleteAt": _iso(due) if due else None,
+            "daysLeft": max(0, math.ceil((due - now) / DAY)) if due else None, "keepDays": KEEP_DAYS}
+
+
+def _facts_or_none() -> dict | None:
+    try:
+        return _facts()
+    except Exception:
+        core.log.exception("Archive: order facts unavailable")
+        return None
+
+
+# ---------------------------------------------------------------- routes
+
+@route("GET", "/api/archive")
+def _list(req: Request):
+    facts = _facts_or_none()
+    return {"entries": [summary(e, facts) for e in entries()], "keepDays": KEEP_DAYS, "lostDays": LOST_DAYS}
+
+
+@route("GET", r"/api/archive/(\d{8}-\d{6}-[0-9a-f]{6})")
+def _one(req: Request):
+    return summary(get(req.groups[0]), _facts_or_none())
+
+
+@route("POST", r"/api/archive/(\d{8}-\d{6}-[0-9a-f]{6})/keep")
+def _keep(req: Request):
+    """"Не видаляти": the book stays until unmarked; unmarked, the usual 14 days apply again."""
+    keep = bool((req.json or {}).get("keep"))
+    with _lock:
+        entry = get(req.groups[0])
+        entry["keep"] = keep
+        _write(entry)
+    return summary(entry, _facts_or_none())

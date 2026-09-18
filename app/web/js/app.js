@@ -46,7 +46,8 @@ const NAV = [
   { hash: '#/orders', label: 'Замовлення', icon: 'inbox', kbd: 'Alt+1', match: /^#\/orders/ },
   { hash: '#/library', label: 'Бібліотека книг', icon: 'shelf', kbd: 'Alt+2', match: /^#\/(library|book)/ },
   { hash: '#/creator', label: 'Order Creator', icon: 'printer', kbd: 'Alt+3', match: /^#\/creator/ },
-  { hash: '#/settings', label: 'Налаштування', icon: 'sliders', kbd: 'Alt+4', match: /^#\/settings/ },
+  { hash: '#/archive', label: 'Архів замовлень', icon: 'orderArchive', kbd: 'Alt+4', match: /^#\/archive/ },
+  { hash: '#/settings', label: 'Налаштування', icon: 'sliders', kbd: 'Alt+5', match: /^#\/settings/ },
 ];
 const HOME = '#/orders';
 const THEMES = [
@@ -141,6 +142,7 @@ const ROUTES = [
   [/^#\/library\/?$/, () => import('./pages/library.js')],
   [/^#\/book\/([0-9a-f]{32})$/, () => import('./pages/book.js')],
   [/^#\/creator\/?$/, () => import('./pages/creator.js')],
+  [/^#\/archive(?:\/(\d{8}-\d{6}-[0-9a-f]{6}))?\/?$/, () => import('./pages/archive.js')],
   [/^#\/settings(?:\/(\w+))?$/, () => import('./pages/settings.js')],
 ];
 

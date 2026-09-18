@@ -1,7 +1,7 @@
 ---
 title: Order Creator — книга в Printify, чернетка в Gelato
 type: feature
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/studio/creator.py
   - app/web/js/pages/creator.js
@@ -48,6 +48,18 @@ code:
 `take('creator')` один раз забирає дані з картки (режим, папка, назва, формат, адреса) — і перевірка
 запускається одразу. Якщо зайти на сторінку напряму, вона порожня.
 
+## Передрук з архіву замовлень (з 18.09.2026)
+
+Кнопка «Передрук» в [архіві замовлень](archive.md) передає ще й `reprint: {archiveId, productId}`:
+- у блоці папки — рядок «Передрук з архіву: …», кнопка — «Створити замовлення-передрук» (Printify,
+  адреса обов'язкова — `withOrder()`) або «Створити чернетку-передрук» (Gelato);
+- Printify іде на `POST /api/creator/printify/reprint`: **нове замовлення «On hold» на ту саму книгу**,
+  файли не відправляються, тож перевірка файлів кнопку не блокує; Gelato — звичайне створення з
+  `reprintOf` (сервер сам бере файли з архіву);
+- інша папка (вибір, перетягування, введений шлях) — режим передруку знімається;
+- картка результату: «Передрук: замовлення створено в Printify!» (для тієї самої книги — «нічого не
+  завантажувалось») / «Передрук: чернетку створено в Gelato!».
+
 ## Printify: що відбувається на сервері
 
 `create_printify_draft(folder, title, job, address)`:
@@ -87,19 +99,25 @@ code:
 
 Обидві відправки (Printify і Gelato) пишуть [журнал відправок](send-journal.md): обгортки
 `create_printify_draft()` / `create_gelato_draft()` кличуть `_printify_draft()` / `_gelato_draft()`
-усередині `sendlog.attempt()`.
+усередині `sendlog.attempt()`; `_journaled()` дописує назву запису журналу в результат і в архів.
+
+Після **успішної** відправки файли йдуть в [архів замовлень](archive.md) (`_to_archive()`): Printify —
+щойно книга створена (з замовленням чи без), Gelato — щойно створено чернетку. Збій архівування
+відправку не скасовує — у картці результату з'являється попередження. Передрук позначається як
+заміна чека (`_mark_reprint()` → `profit.mark_reprint()`).
 
 ## Де в коді
 
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `mount()`, `renderStatus()`, `folderCard()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `expected_files()`, `validate()`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_draft()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `expected_files()`, `validate()`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_draft()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
 - [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `page_counts()`, `photobook_geometry()`, `create_draft_order()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `pagesText()`
 - [app/studio/sendlog.py](../../app/studio/sendlog.py) — `attempt()`, `step()`
-- [app/web/css/app.css](../../app/web/css/app.css) — `.fmt-pill.bad`
+- [app/studio/archive.py](../../app/studio/archive.py) — `store()`, `update()`, `get()`
+- [app/web/css/app.css](../../app/web/css/app.css) — `.fmt-pill.bad`, `.cr-reprint`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `take()`
-- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`PrintifyValidation`, `GelatoValidation`)
+- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`PrintifyValidation`, `GelatoValidation`), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`PrintifyReprint`, `GelatoReprint`)
 
 ## Пов'язане
 

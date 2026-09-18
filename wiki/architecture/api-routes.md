@@ -1,8 +1,9 @@
 ---
 title: Маршрути сервера
 type: reference
-updated: 2026-09-17
+updated: 2026-09-18
 code:
+  - app/studio/archive.py
   - app/studio/server.py
   - app/studio/settings_api.py
   - app/studio/orders.py
@@ -83,7 +84,8 @@ code:
 | POST | `/api/creator/validate` | token | `_validate` | creator.js, orders.js (фонова задача) |
 | POST | `/api/creator/pick-folder` | token | `_pick` | creator.js, orders.js |
 | POST | `/api/creator/printify/create` | token | `_create_printify` | creator.js (фонова задача) |
-| POST | `/api/creator/gelato/create` | token | `_create_gelato` | creator.js (фонова задача) |
+| POST | `/api/creator/printify/reprint` | token | `_reprint_printify` | creator.js `create` у режимі передруку з архіву (фонова задача; нове замовлення на ту саму книгу) |
+| POST | `/api/creator/gelato/create` | token | `_create_gelato` | creator.js (фонова задача; з `reprintOf` — чернетка-передрук з файлів архіву) |
 | GET | `/api/creator/gelato/page-counts` | token | `_gelato_page_counts` | creator.js `loadPageCounts` (скільки сторінок Gelato друкує в кожному форматі — з його каталогу) |
 | POST | `/api/creator/gelato/close-tunnel` | token | `_close_tunnel` | creator.js |
 | GET | `/api/creator/etsy-orders` | token | `_etsy_orders` | creator.js `fromEtsy` |
@@ -131,6 +133,14 @@ code:
 | POST | `/api/printify/master/analyze` | token | `_analyze` | settings.js `pickMaster` |
 | POST | `/api/printify/master/save` | token | `_save_master` | settings.js `pickMaster` |
 | POST | `/api/gelato/test` | token | `_test` | settings.js |
+
+## Архів замовлень — [archive.py](../../app/studio/archive.py)
+
+| Метод | Шаблон | Доступ | Функція | Хто викликає |
+|---|---|---|---|---|
+| GET | `/api/archive` | token | `_list` | archive.js (список) |
+| GET | `/api/archive/(\d{8}-\d{6}-[0-9a-f]{6})` | token | `_one` | archive.js (сторінка книги) |
+| POST | `/api/archive/(\d{8}-\d{6}-[0-9a-f]{6})/keep` | token | `_keep` | archive.js «Не видаляти» |
 
 ## Журнал відправок — [sendlog.py](../../app/studio/sendlog.py)
 

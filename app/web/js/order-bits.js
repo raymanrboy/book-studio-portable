@@ -1,6 +1,7 @@
-// Pieces shared by the order pipeline page and the Order Creator: order stages, countries, the
-// Etsy → Gelato address mapping, the sync, dropped folders/ZIPs and the page viewer of a print folder.
-import { api, runJob, upload, media } from './lib.js';
+// Pieces shared by the order pipeline page, the order archive and the Order Creator: order stages,
+// countries, the printer's status and tracking chips, the buyer's fields, the Etsy → Gelato address
+// mapping, the sync, dropped folders/ZIPs and the page viewer of a print folder.
+import { api, runJob, upload, media, html, ic, copyText } from './lib.js';
 
 export const COUNTRIES = [
   ['US', 'США'], ['CA', 'Канада'], ['GB', 'Велика Британія'], ['AU', 'Австралія'], ['NZ', 'Нова Зеландія'], ['IE', 'Ірландія'],
@@ -33,6 +34,46 @@ export const STAGE_LABEL = { new: 'нове', work: 'в роботі', sent: 'в
 export const providerName = (p) => (p === 'gelato' ? 'Gelato' : 'Printify');
 export const variationsOf = (o) => (o.items || []).flatMap((i) => i.variations || []);
 export const matchesOrder = (o, t) => !t || (o.name || '').toLowerCase().includes(t) || o.receiptId.includes(t);
+
+// Printer statuses by what they mean for the owner: trouble first (drafts and "on-hold" are the normal
+// start, not a problem), then on its way, then not started yet; anything else is being made.
+const STATUS_TONE = [
+  [/issue|fail|return|unfulfillable|payment-not|declined|cancel/i, 'chip-amber'],
+  [/fulfilled|shipped|transit|delivered/i, 'chip-green'],
+  [/draft|hold|pending|created|uploading|approval/i, ''],
+];
+const statusTone = (s) => (STATUS_TONE.find(([re]) => re.test(s)) || [0, 'chip-accent'])[1];
+/** "in_transit" / "has-issues" → "In transit" / "Has issues": the printer's word, kept in English, written for people. */
+const statusText = (s) => String(s).replace(/[-_]+/g, ' ').trim().replace(/^./, (c) => c.toUpperCase());
+
+/** Tracking numbers in the printer's colour, after its chip: carrier | number (one text line, so both sit
+ * on the same baseline); a click copies the number. o: { provider, tracking }. */
+export const trackChips = (o) => (o.tracking || []).map((t) => html`<span class="chip svc-${o.provider} ord-track ord-copy" role="button"
+    data-act="copy-text" data-text="${t.number}" data-done="Трек-номер скопійовано" data-tip="Копіювати трек-номер">${ic('truck', 'icon-s')}<span class="ord-track-text">${t.carrier
+      ? html`<span class="ord-carrier">${t.carrier}</span><span class="ord-track-sep"></span>` : ''}<span class="ord-track-no">${t.number}</span></span></span>`);
+
+/** The printer's status (its own word, in English, as the owner asked); nothing before the book is ordered. */
+export const statusChip = (o) => (o.printStatus
+  ? html`<span class="chip ${statusTone(o.printStatus)} ord-status" data-tip="Статус у ${providerName(o.provider)}"><span class="dot"></span>${statusText(o.printStatus)}</span>`
+  : '');
+
+/** The receipt number without "#": a click copies it (in the queue, the card header and the archive). */
+export const receiptCopy = (o, cls) => html`<span class="${cls} ord-copy" role="button" data-act="copy-text" data-text="${o.receiptId}"
+    data-done="Номер замовлення скопійовано" data-tip="Копіювати номер замовлення">#${o.receiptId}</span>`;
+
+/** Receipt and tracking numbers may sit inside a row link: copy without opening it. */
+export function copyChip(e, el) {
+  e.preventDefault();
+  e.stopPropagation();
+  copyText(el.dataset.text, el.dataset.done);
+}
+
+// The buyer's fields: a dedication of their own, the child's name, and the cover format (which only
+// decides the printer — it is never typed into Canva, so it gets no copy button).
+export const isCustomText = (v) => /dedicat|closing|присвят/i.test(v.name || '') && !/^\s*default\s*$/i.test(v.value || '');
+export const isNameField = (v, item) => !!item.childName && (v.value || '').trim() === item.childName;
+export const isFormatField = (v) => /cover|size|format|binding|обкладинк|розмір/i.test(v.name || '')
+  || /hard\s?cover|soft\s?cover|hardback|paperback/i.test(v.value || '');
 
 /** [28, 30] → "28 або 30": the book lengths a printer takes (Gelato: as many pages as were downloaded). */
 export const pagesText = (options) => [].concat(options || []).join(' або ');

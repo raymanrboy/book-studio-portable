@@ -98,7 +98,8 @@ code:
 
 ## Де в коді
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `print()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `STRIP_THUMB`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `print()`, `STRIP_THUMB`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — спільні з [архівом замовлень](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `placed_orders()`, `carrier_label()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`

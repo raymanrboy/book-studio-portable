@@ -1,7 +1,7 @@
 ---
 title: Прибуток (прихований до 1 жовтня)
 type: feature
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/web/js/pages/profit.js
   - app/studio/profit.py
@@ -30,14 +30,23 @@ code:
 - Стани: скасовано, повне/часткове повернення (сума), заміна (замовлення-передрук і/або сума).
 - Кнопка синхронізації (і повна — з перечитуванням усіх чеків).
 
+## Що працює й без сторінки
+
+- **Передрук з [архіву замовлень](archive.md)** сам записує стан «заміна» для чека (`mark_reprint()`):
+  нове замовлення друку додається в `replacementOrders`, тож зіставлення лишає за чеком перше
+  замовлення (етап у черзі не стрибає), а передрук не рахується новим продажем. Чек зі станом
+  «скасовано» чи «повернення» не чіпається.
+- Після кожної синхронізації (`_sync()`) програма перевіряє архів замовлень —
+  `archive.refresh_quietly()` видаляє книги, чиї 14 днів минули.
+
 ## Де в коді
 
 - [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `renderTable()`, `detailHtml()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
-- [app/studio/profit.py](../../app/studio/profit.py) — `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
+- [app/studio/profit.py](../../app/studio/profit.py) — `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`, `mark_reprint()`, `reserved_orders()`, `_sync()`
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `match()`, `printify_only_rows()`
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `apply()`
 - [app/studio/fees.py](../../app/studio/fees.py) — `calculate_ukrainian_etsy_fees()`
-- Тести: [app/tests/test_profit.py](../../app/tests/test_profit.py), [app/tests/test_states.py](../../app/tests/test_states.py)
+- Тести: [app/tests/test_profit.py](../../app/tests/test_profit.py), [app/tests/test_states.py](../../app/tests/test_states.py), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`ReprintMark`)
 
 ## Пов'язане
 

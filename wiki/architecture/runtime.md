@@ -1,7 +1,7 @@
 ---
 title: Запуск і завершення програми
 type: architecture
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -21,14 +21,16 @@ code:
    `app/data/logs/startup-error.txt` і показується вікном.
 2. **`main()`**: створює папки даних, вмикає журнал (`data/logs/app.log`).
 3. Якщо програма вже запущена (відповідає `/api/ping`) — просто відкриває ще одне вікно і виходить.
-4. Імпортує всі модулі з маршрутами (`creator`, `etsy`, `gelato`, `library`, `orders`, `printify`,
-   `profit`, `settings_api`, `tunnel`) — саме імпорт реєструє маршрути.
+4. Імпортує всі модулі з маршрутами (`archive`, `creator`, `etsy`, `gelato`, `library`, `orders`,
+   `printify`, `profit`, `sendlog`, `settings_api`, `tunnel`) — саме імпорт реєструє маршрути.
 5. Прибирання: старі тимчасові папки Gelato (`cleanup_stale()`), залишки старої форми Order Creator
    (`forget_old_form()`), перетягнуті файли минулого сеансу (`clear_drops()`).
 6. **Сервер** на порту 47821 (`DEFAULT_PORT`). Порт зайнятий → випадковий вільний порт і попередження
    в Налаштуваннях Etsy (адреса повернення OAuth містить порт).
 7. **Одна автоматична синхронізація замовлень** — `startup_sync()` (далі лише кнопкою,
-   див. [правило](../rules/sync-policy.md)).
+   див. [правило](../rules/sync-policy.md)). Паралельно у фоні — перевірка
+   [архіву замовлень](../features/archive.md) (`archive.refresh_quietly()`: книги, чиї 14 днів минули,
+   видаляються); вона ж повторюється після кожної синхронізації.
 8. **Вікно**: Edge або Chrome з `--app=<адреса>`, окремим профілем `data/window-profile`, розміром
    1480×940. Немає ні Edge, ні Chrome — відкривається звичайний браузер.
 
@@ -62,6 +64,7 @@ code:
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `cleanup_stale()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `forget_old_form()`, `clear_drops()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `startup_sync()`
+- [app/studio/archive.py](../../app/studio/archive.py) — `refresh_quietly()`
 - [app/web/js/app.js](../../app/web/js/app.js) — `heartbeat()`, `boot()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `markOffline()`
 - [app/tools/make_shortcut.py](../../app/tools/make_shortcut.py) — `main()`

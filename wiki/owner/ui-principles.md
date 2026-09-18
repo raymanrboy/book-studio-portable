@@ -54,7 +54,7 @@ code:
 ## Де в коді
 
 - [app/web/css/app.css](../../app/web/css/app.css) — токени кольорів і `.lib-toolbar`, `.tint-printify`, `.chip-mono`, `.ord-track`
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `statusText()`, `trackChips()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `statusText()`, `trackChips()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `ib()`, `fadeImages()`, `slide()`, `flip()`, `reducedMotion()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `smoothWheel()`

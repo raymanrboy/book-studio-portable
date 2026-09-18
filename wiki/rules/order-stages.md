@@ -1,7 +1,7 @@
 ---
 title: Етапи замовлення — нове, в роботі, відправлено друкарнею, відправлене
 type: rule
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/studio/profit.py
 ---
@@ -45,6 +45,13 @@ code:
 Відомий пробіл: книга, створена в Printify **без** замовлення, чек не переводить. Ідея позначки
 «товар уже створено» — у [планах](../plans/roadmap.md).
 
+## Передрук етап не змінює (з 18.09.2026)
+
+Передрук з [архіву замовлень](../features/archive.md) записується як заміна (`mark_reprint()`), а
+замовлення-заміни не беруть участі в автоматичному зіставленні (`reserved_orders()`). Тому чек лишається
+на своєму етапі (зазвичай «Відправлені» — книга вже була в покупця), а друге замовлення друку не
+займає місце першого.
+
 ## Статус і трек-номер для черги
 
 `picker_orders()` віддає для кожного замовлення з живим замовленням друку:
@@ -57,7 +64,7 @@ code:
 
 ## Де в коді
 
-- [app/studio/profit.py](../../app/studio/profit.py) — `order_stage()`, `print_order()`, `placed_orders()`, `picker_orders()`, `carrier_label()`, `SENT_STATUSES`, `CARRIERS`, `HOUR_MS`
+- [app/studio/profit.py](../../app/studio/profit.py) — `order_stage()`, `print_order()`, `placed_orders()`, `picker_orders()`, `carrier_label()`, `SENT_STATUSES`, `CARRIERS`, `HOUR_MS`, `mark_reprint()`, `reserved_orders()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `SHIPPED`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`
 - [app/studio/creator.py](../../app/studio/creator.py) — `printify_order_payload()`, `create_gelato_draft()`

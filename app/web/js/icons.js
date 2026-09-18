@@ -98,6 +98,10 @@ const P = {
   monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
   motion: '<path d="M3 12c1.8-3.6 3.7-3.6 5.5 0s3.7 3.6 5.5 0 3.7-3.6 5.5 0"/><path d="M3 17h18" opacity=".45"/>',
 
+  // ---- order archive: books sent to print, kept for a while (a page with a clock); "keep" (a pin)
+  orderArchive: '<path d="M14.5 10V5A1.5 1.5 0 0 0 13 3.5H5.5A1.5 1.5 0 0 0 4 5v14a1.5 1.5 0 0 0 1.5 1.5H10"/><path d="M7 7.5h4.5M7 11h3"/><circle cx="16.5" cy="16.5" r="4.5"/><path d="M16.5 14.3v2.4l1.7 1"/>',
+  pin: '<path d="M9.5 3.5h5l-.8 5.2 3 3v1.8H7.3v-1.8l3-3z"/><path d="M12 13.5V20.5"/>',
+
   // ---- send journal (what went to Printify / Gelato)
   sendLog: '<circle cx="5" cy="7" r="1.1"/><circle cx="5" cy="12" r="1.1"/><circle cx="5" cy="17" r="1.1"/><path d="M9 7h11M9 12h11M9 17h7.5"/>',
 

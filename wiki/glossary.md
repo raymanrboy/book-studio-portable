@@ -1,7 +1,7 @@
 ---
 title: Словник — слова власника і назви в коді
 type: reference
-updated: 2026-09-17
+updated: 2026-09-18
 code: []
 ---
 # Словник
@@ -21,17 +21,17 @@ code: []
 | Машинка (вкладка) | Етап `sent`: друкарня вже відправила (трек-номер або статус «відправлено»), а в Etsy ще не позначено | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES`; [rules/order-stages.md](rules/order-stages.md) |
 | Бокс, коробка (вкладка) | «Відправлені» — позначені відправленими в Etsy | [profit.py](../app/studio/profit.py) `order_stage()` |
 | Годинник (вкладка) | «В роботі» | [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
-| Квадратик справа (у рядку черги), статус | Чип праворуч: статус друкарні англійською, по-людськи («In transit»), з кольоровою крапкою | [orders.js](../app/web/js/pages/orders.js) `statusChip()`, `statusText()`; [profit.py](../app/studio/profit.py) `picker_orders()` (`printStatus`) |
-| Трек-номер, перевізник (USPS…) | Чип після чипа друкарні: перевізник \| номер; клік копіює номер | [orders.js](../app/web/js/pages/orders.js) `trackChips()`, `copyChip()`; [printify.py](../app/studio/printify.py) `slim_order()`; [gelato.py](../app/studio/gelato.py) `attach_shipments()` |
-| Номер замовлення Etsy, номер чека | `#…` у черзі й шапці картки; клік копіює цифри без «#» | [orders.js](../app/web/js/pages/orders.js) `receiptCopy()`, `copyChip()` |
+| Квадратик справа (у рядку черги), статус | Чип праворуч: статус друкарні англійською, по-людськи («In transit»), з кольоровою крапкою | [order-bits.js](../app/web/js/order-bits.js) `statusChip()`, `statusText()`; [profit.py](../app/studio/profit.py) `picker_orders()` (`printStatus`) |
+| Трек-номер, перевізник (USPS…) | Чип після чипа друкарні: перевізник \| номер; клік копіює номер | [order-bits.js](../app/web/js/order-bits.js) `trackChips()`, `copyChip()`; [printify.py](../app/studio/printify.py) `slim_order()`; [gelato.py](../app/studio/gelato.py) `attach_shipments()` |
+| Номер замовлення Etsy, номер чека | `#…` у черзі й шапці картки; клік копіює цифри без «#» | [order-bits.js](../app/web/js/order-bits.js) `receiptCopy()`, `copyChip()` |
 | Оновити замовлення, синхронізація | Завантаження замовлень Etsy + Printify + Gelato | [profit.py](../app/studio/profit.py) `_sync()`, `startup_sync()`; [order-bits.js](../app/web/js/order-bits.js) `syncOrders()` |
 | Друкарня, постачальник | Printify або Gelato | [orders.py](../app/studio/orders.py) `plan_for()` |
 | Правило друкарні | Hardcover у США → Printify, решта → Gelato | [rules/printer-rule.md](rules/printer-rule.md) |
 | Персоналізація, поля Etsy | Варіації покупця (назва: значення) | [profit.py](../app/studio/profit.py) `normalize_receipt()`; [orders.js](../app/web/js/pages/orders.js) `renderLeft()` |
 | Ім'я дитини | Значення поля з «name/child…» у назві | [creator.py](../app/studio/creator.py) `guess_child_name()` |
 | «Від кого» | Назва поля в лістингу Etsy; показується як є | [orders.js](../app/web/js/pages/orders.js) `renderLeft()` |
-| Свій текст (присвята не DEFAULT) | Позначка «свій текст» біля поля | [orders.js](../app/web/js/pages/orders.js) `isCustomText()` |
-| Формат обкладинки (Cover Type & Size) | Поле, що вирішує друкарню; без кнопки копіювання і без рядка в записці | [orders.js](../app/web/js/pages/orders.js) `isFormatField()` |
+| Свій текст (присвята не DEFAULT) | Позначка «свій текст» біля поля | [order-bits.js](../app/web/js/order-bits.js) `isCustomText()` |
+| Формат обкладинки (Cover Type & Size) | Поле, що вирішує друкарню; без кнопки копіювання і без рядка в записці | [order-bits.js](../app/web/js/order-bits.js) `isFormatField()` |
 | Повідомлення покупця | `message_from_buyer` з чека Etsy | [orders.py](../app/studio/orders.py) `_one()` |
 | Файли з Canva, розставити сторінки | ZIP/папка з Canva → `Cover.png` + `1…N.png` | [orders.py](../app/studio/orders.py) `arrange_pages()` |
 | Звірка | Крок 2 картки: обкладинка, перший розворот, стрічка | [orders.js](../app/web/js/pages/orders.js) `proofCard()` |
@@ -70,7 +70,10 @@ code: []
 | Інструкція для агента | Файл про назви файлів і формат JSON | [library.py](../app/studio/library.py) `agent_guide()`; [library.js](../app/web/js/pages/library.js) `saveGuide()` |
 | Імпорт з папки | Розкладання файлів папки по слотах | [library.py](../app/studio/library.py) `scan_folder()` |
 | Апскейл, Upscayl | Хвіст `_upscayl…` у назвах файлів ігнорується | [library.py](../app/studio/library.py) `scan_folder()`; [orders.py](../app/studio/orders.py) `page_number()` |
-| Архів | Книга прихована з робочого списку | [library.py](../app/studio/library.py) `_archive()` |
+| Архів (у бібліотеці) | Книга прихована з робочого списку | [library.py](../app/studio/library.py) `_archive()` |
+| Архів замовлень | Окреме меню з файлами книг, що пішли в друк (14 днів після «Відправлених»), і передруком | [archive.py](../app/studio/archive.py); [archive.js](../app/web/js/pages/archive.js); [features/archive.md](features/archive.md) |
+| Передрук, редрук | Повторний друк тієї самої книги з архіву замовлень: Printify — нове замовлення на ту саму книгу, Gelato — нова чернетка | [creator.py](../app/studio/creator.py) `create_printify_reprint()`; [features/archive.md](features/archive.md) |
+| Не видаляти (у архіві) | Шпилька на книзі в архіві: файли лишаються, доки позначку не знято | [archive.py](../app/studio/archive.py) `_keep()` |
 | Кошик | `data/library/trash` — куди йде видалена книга | [library.py](../app/studio/library.py) `_delete()` |
 | Переглядач (лайтбокс) | Повноекранний перегляд із зумом | [lightbox.js](../app/web/js/lightbox.js) `openLightbox()` |
 

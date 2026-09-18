@@ -1,13 +1,13 @@
 ---
 title: Тести
 type: dev
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/tests/
 ---
 # Тести
 
-> 88 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
+> 110 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
 > дані — у тимчасовій папці, покупці — вигадані. Запускати після кожної зміни.
 
 ## Запуск
@@ -34,6 +34,9 @@ python -m unittest discover -s app/tests -t app
   заборонені шляхи.
 - **Gelato** — підміна `gelato.call`, тунель — `FileTunnel.start`, `registry.keep`.
 - **Etsy** — підміна `etsy.tokens`, `etsy.fetch_all_receipts`, `httpc.request_json`.
+- **Архів замовлень** — час підставляється параметром `now` у `archive.refresh()`, факти про
+  замовлення — підміною `archive._facts`; фонове готування прев'ю (`_warm_previews`) вимкнене, щоб
+  не тримало файли відкритими під час видалення.
 - Відкриття браузера — `mock.patch("webbrowser.open")`.
 - `golden_profit.json` — вигадані чеки й замовлення з результатами оригінального Profit Calculator
   (паритет до цента).
@@ -57,6 +60,7 @@ python -m unittest discover -s app/tests -t app
 | [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation`, `GelatoValidation`, `SafetyRails` |
 | [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`, `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
 | [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand` |
+| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint` |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode` |
 
 ## Де в коді

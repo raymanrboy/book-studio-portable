@@ -1,12 +1,13 @@
 ---
 title: Шлях замовлення від Etsy до друку
 type: flow
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/web/js/pages/orders.js
   - app/studio/orders.py
   - app/web/js/pages/creator.js
   - app/studio/creator.py
+  - app/studio/archive.py
 ---
 # Шлях замовлення від Etsy до друку
 
@@ -27,19 +28,21 @@ code:
 | 5 | Перетягує ZIP/папку в «Файли з Canva» | Копіює в програму, розставляє `Cover.png` + `1…N.png`, повна перевірка | [orders.js](../../app/web/js/pages/orders.js) `takeDrop()`; [orders.py](../../app/studio/orders.py) `arrange_pages()` |
 | 6 | Звіряє | Обкладинка, перший розворот із запискою (ім'я, поля), стрічка всіх розворотів, переглядач | [orders.js](../../app/web/js/pages/orders.js) `proofCard()` |
 | 7 | «До друку в …» | Order Creator заповнений: режим, папка, назва `чек - ім'я`, адреса, формат | [orders.js](../../app/web/js/pages/orders.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
-| 8 | «Створити чернетку (замовлення)» | Printify: книга + замовлення On hold; Gelato: PDF + чернетка | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator.py](../../app/studio/creator.py) `create_printify_draft()`, `create_gelato_draft()` |
+| 8 | «Створити чернетку (замовлення)» | Printify: книга + замовлення On hold; Gelato: PDF + чернетка. Копія файлів, що пішли в друк, — в [архів замовлень](../features/archive.md) | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator.py](../../app/studio/creator.py) `create_printify_draft()`, `create_gelato_draft()` |
 | 9 | У Printify — «Submit order»; у Gelato — відкрити чернетку в Dashboard (поки живе посилання) і підтвердити | — | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
 | 10 | Натискає «Оновити» | Замовлення переходить у «В роботі» (номер чека в reference / назві); праворуч — статус друкарні | [profit.py](../../app/studio/profit.py) `order_stage()` |
 | 11 | Коли друкарня відправила — відкриває вкладку з машинкою, копіює трек-номер кліком | Замовлення з трек-номером або статусом «відправлено» — у машинці, з перевізником і номером | [profit.py](../../app/studio/profit.py) `order_stage()`; [orders.js](../../app/web/js/pages/orders.js) `trackChips()` |
-| 12 | Позначає замовлення відправленим в Etsy (на київському ПК), потім «Оновити» | Замовлення переходить у «Відправлені» (коробка) | [rules/order-stages.md](../rules/order-stages.md) |
+| 12 | Позначає замовлення відправленим в Etsy (на київському ПК), потім «Оновити» | Замовлення переходить у «Відправлені» (коробка); в архіві замовлень пішов відлік 14 днів | [rules/order-stages.md](../rules/order-stages.md); [archive.py](../../app/studio/archive.py) `refresh()` |
+| 13 | Якщо з книгою щось сталося — «Архів замовлень» → книга → «Передрук» | Printify: нове замовлення On hold з тієї ж книги; Gelato: нова чернетка з тих самих файлів; чек позначено заміною | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator.py](../../app/studio/creator.py) `create_printify_reprint()` |
 
-Окремий Order Creator лишається для ручних випадків: передрук, заміна.
+Окремий Order Creator лишається для ручних випадків (передрук, коли файлів в архіві вже немає, заміна).
 
 ## Принципи (чому не як в Etsy OS)
 
 - Одне замовлення — один екран, без блокувань, ревізій, «поколінь файлів» і блокерів.
 - Стан замовлення береться з фактів (Etsy + Printify/Gelato), а не з прихованих збережених станів.
-- Нічого не зберігається про запас; тимчасові копії файлів стираються при запуску.
+- Нічого не зберігається про запас; тимчасові копії файлів стираються при запуску. Єдиний виняток —
+  архів замовлень: книги, що пішли в друк, живуть 14 днів після «Відправлених».
 - Будується маленькими кроками, кожен одразу працює і перевіряється власником.
 
 ## Лишається вручну (рішення власника)

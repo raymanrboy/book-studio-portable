@@ -8,51 +8,15 @@ import {
 import { openLightbox } from '../lightbox.js';
 import {
   STAGES, STAGE_EMPTY, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
-  folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel,
+  folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel, trackChips, statusChip, receiptCopy, copyChip,
+  isCustomText, isNameField, isFormatField,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 
-// Printer statuses by what they mean for the owner: trouble first (drafts and "on-hold" are the normal
-// start, not a problem), then on its way, then not started yet; anything else is being made.
-const STATUS_TONE = [
-  [/issue|fail|return|unfulfillable|payment-not|declined|cancel/i, 'chip-amber'],
-  [/fulfilled|shipped|transit|delivered/i, 'chip-green'],
-  [/draft|hold|pending|created|uploading|approval/i, ''],
-];
-const statusTone = (s) => (STATUS_TONE.find(([re]) => re.test(s)) || [0, 'chip-accent'])[1];
-/** "in_transit" / "has-issues" → "In transit" / "Has issues": the printer's word, kept in English, written for people. */
-const statusText = (s) => String(s).replace(/[-_]+/g, ' ').trim().replace(/^./, (c) => c.toUpperCase());
 // Strip thumbnails: the server prepares this size ahead (creator.STRIP_PREVIEW), so scrolling never waits.
 const STRIP_THUMB = 360;
 
 const bookImage = (b, w) => media(`/media/book/${b.id}/${b.image}`, { w });
-const isCustomText = (v) => /dedicat|closing|присвят/i.test(v.name || '') && !/^\s*default\s*$/i.test(v.value || '');
-const isNameField = (v, item) => !!item.childName && (v.value || '').trim() === item.childName;
-// The cover format only decides the printer; it is never typed into Canva, so it gets no copy button.
-const isFormatField = (v) => /cover|size|format|binding|обкладинк|розмір/i.test(v.name || '')
-  || /hard\s?cover|soft\s?cover|hardback|paperback/i.test(v.value || '');
-
-/** Tracking numbers in the printer's colour, after its chip: carrier | number (one text line, so both sit
- * on the same baseline); a click copies the number. */
-const trackChips = (o) => (o.tracking || []).map((t) => html`<span class="chip svc-${o.provider} ord-track ord-copy" role="button"
-    data-act="copy-text" data-text="${t.number}" data-done="Трек-номер скопійовано" data-tip="Копіювати трек-номер">${ic('truck', 'icon-s')}<span class="ord-track-text">${t.carrier
-      ? html`<span class="ord-carrier">${t.carrier}</span><span class="ord-track-sep"></span>` : ''}<span class="ord-track-no">${t.number}</span></span></span>`);
-
-/** The printer's status (its own word, in English, as the owner asked); nothing before the book is ordered. */
-const statusChip = (o) => (o.printStatus
-  ? html`<span class="chip ${statusTone(o.printStatus)} ord-status" data-tip="Статус у ${providerName(o.provider)}"><span class="dot"></span>${statusText(o.printStatus)}</span>`
-  : '');
-
-/** The receipt number without "#": a click copies it (in the queue and in the card header). */
-const receiptCopy = (o, cls) => html`<span class="${cls} ord-copy" role="button" data-act="copy-text" data-text="${o.receiptId}"
-    data-done="Номер замовлення скопійовано" data-tip="Копіювати номер замовлення">#${o.receiptId}</span>`;
-
-// Receipt and tracking numbers sit inside the row link: copy without opening the order.
-function copyChip(e, el) {
-  e.preventDefault();
-  e.stopPropagation();
-  copyText(el.dataset.text, el.dataset.done);
-}
 
 export function mount(view, [rid]) {
   return rid ? mountCard(view, rid) : mountQueue(view);

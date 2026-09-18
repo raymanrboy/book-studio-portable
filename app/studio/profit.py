@@ -291,6 +291,9 @@ def _sync(job, full: bool = False) -> dict:
     snap["warnings"] = warnings
     _save(SNAPSHOT, snap)
 
+    from . import archive  # late: the archive reads this module's view
+    archive.refresh_quietly()  # orders that reached the buyer start their 14 days; expired books go
+
     matched = sum(1 for r in cached_view()["full"].values()
                   if r.get("profit") is not None and r.get("match_type") not in (None, "unmatched"))
     return {"receipts": len(snap["receipts"]), "matched": matched, "printify": len(snap["printify"]),
@@ -431,6 +434,28 @@ def _set_state(req: Request):
         _save(STATES, states)
     row = cached_view()["full"].get(receipt_id)
     return {"ok": True, "row": row}
+
+
+def mark_reprint(receipt_id: str | None, provider: str, order_id: str | None) -> bool:
+    """A reprint made from the order archive is recorded as a replacement of its receipt, so matching
+    keeps the receipt's first print order (the queue stage does not jump) and the reprint is not
+    counted as a new sale. A receipt with another manual state (cancelled, refunded) is left as it is.
+    Returns whether the reprint was recorded."""
+    if not receipt_id or not order_id:
+        return False
+    with _links_lock:
+        states = load_states()
+        entry = states.get(receipt_id)
+        if entry and entry.get("status") not in ("normal", "replacement"):
+            return False
+        if not entry or entry.get("status") != "replacement":
+            entry = {"status": "replacement", "at": core.now_iso(), "replacementOrders": []}
+        refs = entry.setdefault("replacementOrders", [])
+        if not any(r.get("provider") == provider and str(r.get("orderId")) == str(order_id) for r in refs):
+            refs.append({"provider": provider, "orderId": str(order_id)})
+        states[receipt_id] = entry
+        _save(STATES, states)
+    return True
 
 
 @route("DELETE", "/api/profit/links")
