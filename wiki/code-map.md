@@ -60,7 +60,8 @@ code:
 | [js/lib.js](../app/web/js/lib.js) | Спільні помічники: шаблони, API, підказки, діалоги, меню, анімації | `html()`, `api()`, `ib()`, `modal()`, `menu()`, `runJob()`, `upload()`, `toast()`, `segHtml()` |
 | [js/icons.js](../app/web/js/icons.js) | Піктограми | `icon()` |
 | [js/lightbox.js](../app/web/js/lightbox.js) | Переглядач зображень | `openLightbox()` |
-| [js/handoff.js](../app/web/js/handoff.js) | Передача даних між сторінками в пам'яті | `give()`, `take()` |
+| [js/handoff.js](../app/web/js/handoff.js) | Передача даних між сторінками в пам'яті | `give()`, `take()`, `waiting()` |
+| [js/keep.js](../app/web/js/keep.js) | Збережена робота над новим замовленням: сховані картка й Order Creator, «чернетку створено» | `stash()`, `unstash()`, `settle()`, `markSent()`, `sentOf()` |
 | [js/order-bits.js](../app/web/js/order-bits.js) | Спільне для Замовлень, архіву замовлень і Order Creator | `STAGES`, `statusChip()`, `trackChips()`, `receiptCopy()`, `isNameField()`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `spreadsOf()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()` |
 | [js/pages/orders.js](../app/web/js/pages/orders.js) | Замовлення: черга і картка | `mountQueue()`, `mountCard()` |
 | [js/pages/library.js](../app/web/js/pages/library.js) | Галерея бібліотеки, нова книга, інструкція | `mount()`, `openAddBook()`, `saveGuide()` |

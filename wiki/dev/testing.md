@@ -7,7 +7,7 @@ code:
 ---
 # Тести
 
-> 110 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
+> 117 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
 > дані — у тимчасовій папці, покупці — вигадані. Запускати після кожної зміни.
 
 ## Запуск
@@ -60,7 +60,7 @@ python -m unittest discover -s app/tests -t app
 | [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation`, `GelatoValidation`, `SafetyRails` |
 | [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`, `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
 | [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand` |
-| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint` |
+| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint` |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode` |
 
 ## Де в коді

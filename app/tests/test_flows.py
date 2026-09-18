@@ -203,11 +203,13 @@ class GelatoDraftFlow(unittest.TestCase):
              "wraparoundInsideSize": {"width": 458.0, "height": 246.0, "left": 0, "top": 0},
              "contentBackSize": {"width": 198.0, "height": 206.0, "left": 20, "top": 20},
              "contentFrontSize": {"width": 198.0, "height": 206.0, "left": 240.0, "top": 20}}
+    # A white endpaper at 300 dpi on the 206 mm page — the same 2434 px as in the PDFs Gelato makes itself.
+    BLANK = 2434
 
     def test_one_pdf_with_cover_blank_pages_blank(self):
         """Regressions: without the blank endpapers Gelato put page 1 in the endpaper's place ("Page 0")
         and left the last page empty (test draft, 17.09.2026); earlier the cover was the only 'default'
-        file and was printed on every page."""
+        file and was printed on every page; a 16-pixel blank made Gelato rate the whole book 3 dpi."""
         vault.set("gelato_api_key", "fake-gelato-key")
         gelato._geometry.clear()
         gelato._products.clear()
@@ -219,7 +221,7 @@ class GelatoDraftFlow(unittest.TestCase):
                 self.assertIn("pageCount=30", url)
                 return self.COVER
             if method == "GET" and url.endswith("/orders/gelato-order-1"):  # read back right after creating
-                session = sent["orderReferenceId"].removeprefix("draft-")
+                session = sent["customerReferenceId"].removeprefix("local-review-")
                 size = core.data_path("tmp", "gelato", session, "book.pdf").stat().st_size
                 return {"items": [{"productUid": "p", "pageCount": 30, "fulfillmentStatus": "draft",
                                    "files": [{"type": "default", "mimeType": "application/pdf", "sizeBytes": size}]}]}
@@ -248,14 +250,16 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual(item["pageCount"], 30)
         self.assertEqual(item["files"], [{"type": "default", "url": "https://fake.trycloudflare.com/book.pdf"}])
         self.assertEqual(sent["shippingAddress"]["country"], "US")
+        self.assertEqual(sent["shippingAddress"]["phone"], creator.GELATO_PLACEHOLDER_PHONE)  # none from Etsy
+        self.assertEqual(sent["orderReferenceId"], "Book")                  # named like the book, as the owner does
         self.assertEqual(sent["metadata"][0], {"key": "title", "value": "Book"})
 
-        session = sent["orderReferenceId"].removeprefix("draft-")  # no receipt number in the title "Book"
+        session = sent["customerReferenceId"].removeprefix("local-review-")
         pdf = core.data_path("tmp", "gelato", session, "book.pdf").read_bytes().decode("latin-1")
         boxes = [(float(w), float(h)) for w, h in re.findall(r"/MediaBox \[ ?0 0 ([\d.]+) ([\d.]+) ?\]", pdf)]
         widths = [int(w) for w in re.findall(r"/Width (\d+)", pdf)]
         self.assertEqual(len(boxes), 33)                                 # cover, blank, 30 pages, blank
-        self.assertEqual(widths, [466, 16] + [100 + i for i in range(1, 31)] + [16])
+        self.assertEqual(widths, [466, self.BLANK] + [100 + i for i in range(1, 31)] + [self.BLANK])
         self.assertEqual(res["pdfPages"], 33)
         pt = 72 / 25.4
         self.assertAlmostEqual(boxes[0][0], 458 * pt, places=1)         # cover sheet at Gelato's size
@@ -319,10 +323,10 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual(sent["items"][0]["pageCount"], 28)
         self.assertTrue(any(u.endswith("cover-dimensions?pageCount=28") for u in asked))
         self.assertEqual((res["pdfPages"], res["pageCount"]), (31, 28))
-        session = sent["orderReferenceId"].removeprefix("draft-")
+        session = sent["customerReferenceId"].removeprefix("local-review-")
         pdf = core.data_path("tmp", "gelato", session, "book.pdf").read_bytes().decode("latin-1")
         widths = [int(w) for w in re.findall(r"/Width (\d+)", pdf)]
-        self.assertEqual(widths, [466, 16] + [100 + i for i in range(1, 29)] + [16])  # cover, blank, 28 pages, blank
+        self.assertEqual(widths, [466, self.BLANK] + [100 + i for i in range(1, 29)] + [self.BLANK])  # cover, blank, 28, blank
 
     def test_length_gelato_does_not_print_stops_before_anything_is_made(self):
         from studio import sendlog

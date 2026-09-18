@@ -1,6 +1,7 @@
 // Order pipeline: the queue of Etsy orders and one order's card — its book and Canva template, all
 // the buyer wrote, the Canva export dropped in and put in page order, a proof of the first spread and
-// every page, then the hand-over to the Order Creator. Nothing is remembered between visits.
+// every page, then the hand-over to the Order Creator. Nothing is saved to disk; while an order is new, its
+// card is kept in memory when the owner steps to another tab and comes back as it was left (keep.js).
 import {
   api, html, ic, ib, raw, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
   openExternal, runJob, fadeImages, plural,
@@ -12,6 +13,7 @@ import {
   isCustomText, isNameField, isFormatField,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
+import { settle, sentOf, keptOrder } from '../keep.js';
 
 // Strip thumbnails: the server prepares this size ahead (creator.STRIP_PREVIEW), so scrolling never waits.
 const STRIP_THUMB = 360;
@@ -27,6 +29,7 @@ async function mountQueue(view) {
   let data;
   try { data = await api('/api/orders'); }
   catch (err) { setHtml(view, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`); return null; }
+  settle(data.orders); // kept cards of orders that are no longer new are let go
   let stage = 'new', term = '', syncing = false, shown = [], unfreeze = 0;
 
   setHtml(view, html`
@@ -103,6 +106,7 @@ async function mountQueue(view) {
     try {
       await pull();
       const next = await api('/api/orders');
+      settle(next.orders);
       if (!view.isConnected) return;
       data = next;
       setSub(syncedText());
@@ -226,6 +230,9 @@ async function mountCard(view, rid) {
 
   // ---------------------------------------------------------------- left: files → proof → print
   const thumb = (name, w) => media('/media/folder', { path: f.folder, file: name, w });
+  // The newest send of this order to the chosen printer that never went to print (a cancelled order, a
+  // deleted or unconfirmed draft): its archived files can be taken instead of downloading them again.
+  const earlier = () => (o.earlierSends || []).find((e) => e.provider === provider());
 
   function filesCard() {
     const v = f.validation;
@@ -241,6 +248,8 @@ async function mountCard(view, rid) {
           placeholder="${provider() ? `ZIP або папка · обкладинка і ${pagesText(pageOptions())} ${plural(pageOptions().at(-1) || 0, ['сторінка', 'сторінки', 'сторінок'])}` : 'Спершу оберіть друкарню'}">
         ${ib('folderPick', 'Обрати папку', `data-act="browse" ${provider() ? '' : 'disabled'}`)}
       </div>
+      ${!f.folder && !f.busy && earlier() ? html`<button class="btn btn-sm btn-ghost" style="align-self:flex-start" data-act="earlier"
+        data-tip="Ці файли вже відправлялись ${dateTime(earlier().sentAt)}, але замовлення в друкарні не оформлене чи скасоване">${ic('orderArchive', 'icon-s')}Взяти файли минулої відправки · ${relTime(earlier().sentAt)}</button>` : ''}
       ${f.note && !f.busy ? html`<div class="row faint" style="font-size:12.5px">${ic('swap', 'icon-s')}<span>${f.note}</span></div>` : ''}
       ${errors.length && !f.busy ? html`<div class="notice notice-error">${ic('alertCircle')}<div><ul>${errors.slice(0, 10).map((e) => html`<li>${e}</li>`)}</ul>${errors.length > 10 ? html`<div>…та ще ${errors.length - 10}</div>` : ''}</div></div>` : ''}
       ${v?.warnings?.length && !f.busy ? html`<div class="notice notice-warn">${ic('alert')}<div>${v.warnings.map((w) => html`<div>${w}</div>`)}</div></div>` : ''}
@@ -279,11 +288,18 @@ async function mountCard(view, rid) {
     </section>`;
   }
 
+  // Once the Order Creator has made the draft for this order, the step says so instead of offering
+  // «До друку» again (the order stays in «Нові» until the next sync finds it at the printer).
   function printCard() {
     const p = provider();
-    return html`<section class="card card-pad stack ${p === 'printify' ? 'tint-printify' : ''}">
+    const done = sentOf(o.receiptId);
+    const result = keptOrder('#/creator') === String(o.receiptId);
+    return html`<section class="card card-pad stack ${p === 'printify' ? 'tint-printify' : ''}" id="oc-print">
       <div class="row"><span class="step-no">3</span><h3 class="card-title grow">Друк</h3></div>
-      <button class="btn btn-xl btn-primary btn-block" data-act="print">${ic('send', 'icon-l')}До друку в ${providerName(p)}</button>
+      ${done ? html`<div class="notice notice-success">${ic('checkCircle')}<div class="grow">${done.what}</div></div>
+        <div class="row">${result ? html`<button class="btn btn-primary grow" data-act="to-creator">${ic('printer', 'icon-s')}Результат в Order Creator</button>` : ''}
+          ${ib('send', 'Надіслати ще раз', 'data-act="print"')}</div>`
+    : html`<button class="btn btn-xl btn-primary btn-block" data-act="print">${ic('send', 'icon-l')}До друку в ${providerName(p)}</button>`}
     </section>`;
   }
 
@@ -342,6 +358,18 @@ async function mountCard(view, rid) {
     try { await arrange(path, my); } catch (err) { failed(my, err); }
   }
 
+  async function takeEarlier() {
+    const e = earlier();
+    if (!e) return;
+    const my = ++seq;
+    Object.assign(f, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '' });
+    renderPlan(); renderRight();
+    try {
+      const { path } = await api(`/api/archive/${e.id}/reuse`, { method: 'POST', body: {} });
+      if (my === seq) await arrange(path, my);
+    } catch (err) { failed(my, err); }
+  }
+
   function resetFiles() {
     seq++;
     Object.assign(f, { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '' });
@@ -351,6 +379,7 @@ async function mountCard(view, rid) {
     const it = item();
     const name = it.childName || o.childName || '';
     give('creator', {
+      receiptId: String(o.receiptId), // the Order Creator keeps its work (and result) for this order
       mode: provider(), folder: f.folder, label: f.label, format: plan().format || null,
       title: name ? `${o.receiptId} - ${name}` : String(o.receiptId), address: addressFromEtsy(o),
     });
@@ -364,7 +393,9 @@ async function mountCard(view, rid) {
       if (a === 'back') location.hash = '#/orders';
       else if (a === 'canva') openExternal(item().book?.canvaUrl);
       else if (a === 'browse') takeFolder();
+      else if (a === 'earlier') takeEarlier();
       else if (a === 'print') print();
+      else if (a === 'to-creator') location.hash = '#/creator';
       else if (a === 'copy-text') copyChip(e, t);
     }),
     on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
@@ -391,10 +422,24 @@ async function mountCard(view, rid) {
     if (document.querySelector('.modal-root, .lightbox, .menu')) return;
     location.hash = '#/orders';
   };
-  document.addEventListener('keydown', onKey);
+  const keys = (listen) => document[listen ? 'addEventListener' : 'removeEventListener']('keydown', onKey);
+  keys(true);
 
   renderPlan(); renderLeft(); renderRight();
+  // A new order's card is kept when the owner steps to another tab (keep.js): hidden, it lets go of Esc;
+  // brought back, it first asks whether the order is still new, then shows a draft made meanwhile.
   return {
-    unmount() { offs.forEach((fn) => fn()); seq++; document.removeEventListener('keydown', onKey); },
+    receiptId: String(o.receiptId),
+    keep: () => o.stage === 'new',
+    hidden() { keys(false); },
+    async revive() {
+      const fresh = await api(`/api/orders/${rid}`);
+      if (fresh.stage !== 'new') return false;
+      keys(true);
+      const step = $('#oc-print');
+      if (step) step.outerHTML = String(printCard());
+      return true;
+    },
+    unmount() { offs.forEach((fn) => fn()); seq++; keys(false); },
   };
 }

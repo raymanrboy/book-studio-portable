@@ -9,6 +9,7 @@ import {
   wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText,
 } from '../order-bits.js';
 import { take } from '../handoff.js';
+import { markSent } from '../keep.js';
 
 export async function mount(view) {
   let status;
@@ -16,7 +17,8 @@ export async function mount(view) {
   catch (err) { setHtml(view, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`); return null; }
 
   // Every visit starts empty: nothing from an earlier book (folder, buyer, address) is remembered.
-  // The one exception is an order handed over from its card a moment ago (in memory only).
+  // The one exception is an order handed over from its card a moment ago (in memory only); while that
+  // order is new, this page is kept — form or result — when the owner steps to another tab (keep.js).
   // Printify: without an address only the unpublished book is made; with one, also an order for it that
   // waits "On hold" in Printify (like Gelato's draft) — nothing goes to production from here.
   // reprint: set only by the order archive's "Передрук" ({archiveId, productId}); another folder cancels it.
@@ -29,6 +31,8 @@ export async function mount(view) {
     },
   };
   const handed = take('creator');
+  // The new order this page works on (from its card, or picked below); a reprint from the archive is not one.
+  st.receiptId = handed?.receiptId && !handed.reprint ? String(handed.receiptId) : '';
   if (handed) {
     st.mode = handed.mode;
     Object.assign(st[handed.mode], { folder: handed.folder, label: handed.label, title: handed.title, address: { ...handed.address },
@@ -177,7 +181,7 @@ export async function mount(view) {
         ${inp('city', 'Місто *')}${inp('state', 'Штат / провінція (US, CA, AU)')}
         ${inp('postCode', 'Індекс *')}
         <select class="select" data-addr="country">${COUNTRIES.map(([c, n]) => html`<option value="${c}" ${(a.country || 'US') === c ? 'selected' : ''}>${c} — ${n}</option>`)}</select>
-        ${inp('phone', 'Телефон (необов’язково)', 'span2')}
+        ${inp('phone', st.mode === 'gelato' ? 'Телефон (порожньо — підставиться вигаданий)' : 'Телефон (необов’язково)', 'span2')}
       </div>
     </section>`;
   }
@@ -403,6 +407,7 @@ export async function mount(view) {
         $('#cr-detail').textContent = j.detail || '';
         bar.style.width = `${j.percent}%`;
       });
+      if (st.receiptId && !reprint) markSent(st.receiptId, { provider: mode, what: sentText(mode, s.result) });
       if (s.result?.orderError) toast('Книгу створено, але замовлення — ні. Подробиці в картці.', 'error', 7000);
       else if (reprint) toast(mode === 'gelato' ? 'Передрук: чернетку створено в Gelato' : 'Передрук: замовлення створено в Printify', 'success');
       else toast(mode === 'gelato' ? 'Чернетку створено в Gelato' : s.result?.order ? 'Чернетку замовлення створено в Printify' : 'Книгу створено в Printify', 'success');
@@ -413,6 +418,13 @@ export async function mount(view) {
       s.running = false;
       if (st.mode === mode) { renderStatus(); renderLeft(); }
     }
+  }
+
+  /** What the order's card says once the draft is made (its print step shows it instead of «До друку»). */
+  function sentText(mode, r) {
+    if (mode === 'gelato') return 'Чернетку замовлення створено в Gelato';
+    if (r?.orderError) return 'Книгу створено в Printify, замовлення — ні (подробиці в Order Creator)';
+    return r?.order ? 'Чернетку замовлення створено в Printify (On hold)' : 'Книгу створено в Printify, без замовлення';
   }
 
   // Once: an order from here is safe only while the Printify store approves orders by hand — with
@@ -579,6 +591,7 @@ export async function mount(view) {
       const o = data.orders.find((x) => x.receiptId === row.dataset.rid);
       m.close();
       const s = cur();
+      if (o.stage === 'new') st.receiptId = String(o.receiptId);
       s.title = `${o.receiptId} - ${o.childName || ''}`.trim().replace(/-$/, '- ');
       s.address = { ...s.address, ...addressFromEtsy(o) };
       renderLeft();
@@ -680,6 +693,16 @@ export async function mount(view) {
 
   renderAll();
   if (handed && cur().folder) validate();
-  return { unmount() { offs.forEach((f) => f()); clearInterval(tunnelTimer); } };
+  // Working on a new order, the page is kept when left and brought back as it was — while the order is new.
+  return {
+    get receiptId() { return st.receiptId; },
+    keep: () => !!st.receiptId,
+    async revive() {
+      if (!st.receiptId) return true;
+      const o = await api(`/api/orders/${st.receiptId}`);
+      return o.stage === 'new';
+    },
+    unmount() { offs.forEach((f) => f()); clearInterval(tunnelTimer); },
+  };
 }
 

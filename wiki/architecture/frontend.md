@@ -8,6 +8,7 @@ code:
   - app/web/js/lib.js
   - app/web/js/icons.js
   - app/web/js/handoff.js
+  - app/web/js/keep.js
   - app/web/js/lightbox.js
   - app/web/css/app.css
 ---
@@ -23,6 +24,11 @@ code:
   Налаштування `#/settings` (Alt+5). Стартова — `HOME = '#/orders'`.
   Внизу — меню теми (темна / світла / як у Windows, «мінімум анімацій»). Крапка на Налаштуваннях —
   коли якомусь сервісу бракує ключа чи входу.
+  Активний пункт позначає «квадратик» (`.nav-pill`, `placeNavPill()`), що переїжджає пружною анімацією.
+  Під час зміни сторінки панель лишається «живою» над переходом (`.vt-running .nav` має власне
+  `view-transition-name`, старий знімок прихований): квадратик їде **під** іконками, іконка плавно
+  змінює колір. Окремим знімком квадратик малювався б поверх іконки — вона зникала, поки він їхав
+  (зауваження власника, 18.09.2026).
 - **Маршрути** (`ROUTES`): `#/orders[/<номер чека>]` → `pages/orders.js`, `#/library` → `library.js`,
   `#/book/<id>` → `book.js`, `#/creator` → `creator.js`, `#/archive[/<id>]` → `archive.js`,
   `#/settings[/<розділ>]` → `settings.js`.
@@ -31,6 +37,18 @@ code:
   елементі й повертає `{ shown(), unmount() }` (обидва необов'язкові). `navigate()` будує нову
   сторінку поза екраном і міняє їх одним View Transition — без порожніх кадрів.
 - `unmount()` мусить зняти всі слухачі (`on()` повертає функцію відписки) і таймери.
+- **Збереження роботи над замовленням** (з 18.09.2026, бажання власника; `keep.js`): контролер
+  може мати ще `keep()`, `hidden()`, `revive()` і `receiptId`. Якщо при виході зі сторінки `keep()`
+  повертає true, `navigate()` не знімає її, а ховає: викликає `hidden()` (відпустити глобальні
+  слухачі, як Esc у картці) і кладе вигляд у `keep.js` разом із прокруткою сторінки й прокруткою
+  всередині (стрічка звірки, права колонка). Повернення на той самий хеш — `revive()` (асинхронно
+  питає, чи замовлення ще нове; `false` або помилка → сторінка будується заново) і той самий вигляд
+  повертається, як був: запущені перевірки файлів чи створення чернетки тим часом доходять до кінця.
+  Сторінку, для якої чекає `give()`, завжди будують заново (`waiting()`).
+  Так роблять картка нового замовлення і Order Creator, заповнений із замовлення; черга відпускає
+  все про замовлення, що пішли з «Нових» (`settle()`). Лише в пам'яті — перезапуск усе забуває.
+- Іконка «Замовлення» (і Alt+1) з іншої вкладки веде туди, де власник був у «Замовленнях»: у
+  відкриту картку, якщо вона збережена, інакше в чергу (`ordersTarget()`, `lastOrders`).
 - `refreshInfo()` → `/api/app` (стан сервісів, кількість книг) для панелі та сторінок.
 
 ## Спільні помічники — `lib.js`
@@ -56,7 +74,10 @@ code:
   псевдонім коробки `package`, яка означає «відправлено в Etsy»).
 - Чипи (`.chip`): текст чипа — одним шрифтом (`.chip .num` не перемикає шрифт), `.chip-mono` на 2 px
   нижче, щоб Consolas стояв на одній лінії з текстом інших чипів.
-- `handoff.js` — `give(to, data)` / `take(to)`: одноразова передача між сторінками лише в пам'яті
+- `keep.js` — збережені сторінки (`stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`),
+  `settle(orders)` — відпустити те, що стосується вже не нових замовлень; `markSent()` / `sentOf()` —
+  Order Creator повідомляє картці, що чернетку для замовлення створено.
+- `handoff.js` — `give(to, data)` / `take(to)` / `waiting(to)`: одноразова передача між сторінками лише в пам'яті
   (картка замовлення → Order Creator; архів замовлень → Order Creator з `reprint`).
 - `order-bits.js` — спільне для Замовлень, архіву замовлень і Order Creator: етапи, чипи статусу
   друкарні й трек-номера, номер чека, поля покупця ([features/orders.md](../features/orders.md),
@@ -83,10 +104,11 @@ code:
 ## Де в коді
 
 - [app/web/index.html](../../app/web/index.html) — токен `__STUDIO_TOKEN__`, тема до першого кадру
-- [app/web/js/app.js](../../app/web/js/app.js) — `NAV`, `HOME`, `ROUTES`, `navigate()`, `buildSidebar()`, `applyTheme()`, `applyMotion()`, `refreshInfo()`, `openThemeMenu()`
+- [app/web/js/app.js](../../app/web/js/app.js) — `NAV`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `applyTheme()`, `applyMotion()`, `refreshInfo()`, `openThemeMenu()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
-- [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`
+- [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`
+- [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`
 - [app/web/js/lightbox.js](../../app/web/js/lightbox.js) — `openLightbox()`, `TAU`, `MAX_ZOOM`
 - [app/web/css/app.css](../../app/web/css/app.css) — токени кольорів на початку файлу
 

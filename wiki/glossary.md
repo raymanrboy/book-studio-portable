@@ -23,6 +23,7 @@ code: []
 | Годинник (вкладка) | «В роботі» | [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
 | Квадратик справа (у рядку черги), статус | Чип праворуч: статус друкарні англійською, по-людськи («In transit»), з кольоровою крапкою | [order-bits.js](../app/web/js/order-bits.js) `statusChip()`, `statusText()`; [profit.py](../app/studio/profit.py) `picker_orders()` (`printStatus`) |
 | Трек-номер, перевізник (USPS…) | Чип після чипа друкарні: перевізник \| номер; клік копіює номер | [order-bits.js](../app/web/js/order-bits.js) `trackChips()`, `copyChip()`; [printify.py](../app/studio/printify.py) `slim_order()`; [gelato.py](../app/studio/gelato.py) `attach_shipments()` |
+| Останній стан, «повертає, де я був» | Картка нового замовлення й Order Creator з ним зберігаються при переході на іншу вкладку | [keep.js](../app/web/js/keep.js); [app.js](../app/web/js/app.js) `navigate()`; [architecture/frontend.md](architecture/frontend.md) |
 | Номер замовлення Etsy, номер чека | `#…` у черзі й шапці картки; клік копіює цифри без «#» | [order-bits.js](../app/web/js/order-bits.js) `receiptCopy()`, `copyChip()` |
 | Оновити замовлення, синхронізація | Завантаження замовлень Etsy + Printify + Gelato | [profit.py](../app/studio/profit.py) `_sync()`, `startup_sync()`; [order-bits.js](../app/web/js/order-bits.js) `syncOrders()` |
 | Друкарня, постачальник | Printify або Gelato | [orders.py](../app/studio/orders.py) `plan_for()` |
@@ -74,6 +75,9 @@ code: []
 | Архів замовлень | Окреме меню з файлами книг, що пішли в друк (14 днів після «Відправлених»), і передруком | [archive.py](../app/studio/archive.py); [archive.js](../app/web/js/pages/archive.js); [features/archive.md](features/archive.md) |
 | Передрук, редрук | Повторний друк тієї самої книги з архіву замовлень: Printify — нове замовлення на ту саму книгу, Gelato — нова чернетка | [creator.py](../app/studio/creator.py) `create_printify_reprint()`; [features/archive.md](features/archive.md) |
 | Не видаляти (у архіві) | Шпилька на книзі в архіві: файли лишаються, доки позначку не знято | [archive.py](../app/studio/archive.py) `_keep()` |
+| Оформлене замовлення (в друкарні) | Підтверджене й оплачене, не чернетка, не «on hold», не скасоване; лише воно переводить замовлення «в роботу» і кладе книгу в архів | [profit.py](../app/studio/profit.py) `is_placed()`; [rules/order-stages.md](rules/order-stages.md) |
+| Вигаданий номер (телефон) | Телефон, який підставляється в Gelato, коли в замовленні Etsy його немає: `+1 555 555 0100` | [creator.py](../app/studio/creator.py) `GELATO_PLACEHOLDER_PHONE` |
+| Взяти файли минулої відправки | Кнопка в картці замовлення: файли відправки, що не стала замовленням (скасовано, чернетку видалено), беруться з архіву — і замовлення відправляється як звичайне | [orders.js](../app/web/js/pages/orders.js) `takeEarlier()`; [features/archive.md](features/archive.md) |
 | Кошик | `data/library/trash` — куди йде видалена книга | [library.py](../app/studio/library.py) `_delete()` |
 | Переглядач (лайтбокс) | Повноекранний перегляд із зумом | [lightbox.js](../app/web/js/lightbox.js) `openLightbox()` |
 

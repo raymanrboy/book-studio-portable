@@ -9,6 +9,7 @@ Nothing is ever published, ordered or sent to production.
 """
 from __future__ import annotations
 
+import math
 import re
 import shutil
 import struct
@@ -715,6 +716,8 @@ def _one_idat(src: Path, dst: Path) -> Path:
 
 
 COVER_TRIM_WARN_MM = 10  # the Canva cover is always a few mm off Gelato's; only a wrong picture trims more
+GELATO_PLACEHOLDER_PHONE = "+1 555 555 0100"  # a made-up number (555-01xx is reserved for fiction)
+BLANK_DPI = 300  # the blank endpapers, as in the PDFs Gelato makes itself (1725 px for a 14 cm page)
 
 
 def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) -> dict:
@@ -726,7 +729,10 @@ def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) ->
       last page       — blank: the back endpaper (not shown in the draft view).
 
     The blanks are required: without them the book's page 1 took the endpaper's place ("Page 0")
-    and the last page was left empty (test draft, 17.09.2026).
+    and the last page was left empty (test draft, 17.09.2026). The PDF Gelato itself printed for the
+    owner's good API order (made over in Gelato's editor) has the same shape; only a book from that
+    editor is listed without "Page 0". The blanks are white pictures at print resolution: Gelato rates
+    the whole book by its poorest picture, and a 16-pixel blank made it 3 dpi.
 
     Every PDF page gets Gelato's physical size; pictures are embedded without recompression and
     scaled to fill their page (a slightly different aspect is trimmed evenly at the edges).
@@ -742,7 +748,8 @@ def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) ->
     work.mkdir(exist_ok=True)
     try:
         blank = work / "blank.png"
-        Image.new("RGB", (16, 16), (255, 255, 255)).save(blank)
+        blank_px = tuple(math.ceil(mm / 25.4 * BLANK_DPI) for mm in geo["pageMm"])
+        Image.new("RGB", blank_px, (255, 255, 255)).save(blank)
         ready = [_one_idat(p, work / f"{i:03d}.png") for i, p in enumerate([cover, *pages])]
         sequence = [(ready[0], cover_page), (blank, inner_page)] + [(p, inner_page) for p in ready[1:]] + [(blank, inner_page)]
         sizes = iter([size for _, size in sequence])  # img2pdf lays images out in the order they are given
@@ -844,6 +851,9 @@ def _gelato_draft(folder: str, title: str, format_key: str, address: dict, job, 
     problems = validate_address(address)
     if problems:
         raise JobError("\n".join(problems))
+    # Gelato will not let a draft be ordered without a phone; Etsy gives none, and a made-up one is the
+    # owner's usual practice (18.09.2026).
+    address.setdefault("phone", GELATO_PLACEHOLDER_PHONE)
 
     job.progress("Перевірка файлів…", 4, "Наявність і цілісність PNG")
     result = validate("gelato", folder, None)
@@ -882,12 +892,11 @@ def _gelato_draft(folder: str, title: str, format_key: str, address: dict, job, 
             raise JobError(str(err)) from None
         sendlog.step(log, "link", url=f"{base}/book.pdf", reachable=link.reachable)
 
-        # The Etsy receipt number from the title ("4100000001 - Emma") goes into the reference, so the
-        # order is matched to its receipt at the next sync and leaves the "new" queue.
-        receipt = re.match(r"\s*(\d{6,20})\b", title)
+        # The order's name in Gelato is the book's title, "4100000001 - Emma", as the owner names his own
+        # orders; its receipt number matches the order to its receipt at the next sync.
         payload = {
             "orderType": "draft",
-            "orderReferenceId": f"{receipt.group(1)}-{session[:8]}" if receipt else f"draft-{session}",
+            "orderReferenceId": title[:100],
             "customerReferenceId": f"local-review-{session}",
             "currency": cfg.get("currency") or "USD",
             "items": [{
@@ -1016,7 +1025,7 @@ def _reprint_printify(req: Request):
     """Reprint from the order archive: a new order on hold for the archived Printify book."""
     body = req.json or {}
     archive_id = str(body.get("archiveId") or "")
-    archive.get(archive_id)  # refuses an unknown or malformed id before anything starts
+    archive.reprintable(archive_id)  # refuses an unknown id, or a send that never went to print, before anything starts
     title = body.get("title") or ""
     address = body.get("address") if isinstance(body.get("address"), dict) else None
     job = jobs.start("printify-create", lambda j: create_printify_reprint(archive_id, title, address, j),
@@ -1030,7 +1039,7 @@ def _create_gelato(req: Request):
     folder = body.get("folder") or ""
     reprint_of = str(body.get("reprintOf") or "") or None
     if reprint_of:  # a reprint always uses the archived files, whatever folder the page holds
-        if archive.get(reprint_of).get("provider") != "gelato":
+        if archive.reprintable(reprint_of).get("provider") != "gelato":
             raise ApiError("Ця книга з архіву надрукована не в Gelato — передрук робиться в тій самій друкарні.")
         folder = str(archive.folder(reprint_of))
     args = (folder, body.get("title") or "", body.get("format") or "", body.get("address") or {})

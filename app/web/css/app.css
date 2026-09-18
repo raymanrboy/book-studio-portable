@@ -189,14 +189,13 @@ p { margin: 0; }
   position: absolute; left: 0; top: 0; width: 40px; height: 40px; z-index: -1; border-radius: 10px;
   background: var(--surface); box-shadow: var(--shadow-s), 0 0 0 1px var(--border);
   transition: transform 460ms var(--spring), opacity var(--t) ease; will-change: transform; pointer-events: none;
-  view-transition-name: nav-pill;
 }
 .nav-item {
   position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
   color: var(--text-3); transition: color var(--t-fast) ease, background var(--t-fast) ease;
 }
 .nav-item:hover { color: var(--text); background: color-mix(in srgb, var(--surface) 55%, transparent); text-decoration: none; }
-.nav-item.active { color: var(--accent-ink); }
+.nav-item.active { color: var(--accent-ink); transition: color var(--t) ease, background var(--t-fast) ease; }
 .nav-item.active:hover { background: transparent; }
 .nav-item .icon { width: 21px; height: 21px; }
 /* Something to attend to (a missing key, Etsy not connected): a small dot on the icon, nothing more. */
@@ -205,10 +204,13 @@ p { margin: 0; }
 
 .main { min-width: 0; min-height: 0; overflow: hidden auto; position: relative; scroll-behavior: smooth; overscroll-behavior: contain; view-transition-name: main; }
 .view { min-height: 100%; padding: 22px 34px 64px; max-width: 1480px; margin: 0 auto; }
-.vt-running .nav-pill { transition: none; }
+/* On a page change the icon rail stays live above the page cross-fade: the pill glides under the icons
+   and the new icon fades to its colour (a snapshot of the pill would be drawn over the icons). */
+.vt-running .nav { view-transition-name: nav; }
+::view-transition-old(nav) { animation: none; opacity: 0; }
+::view-transition-new(nav) { animation: none; }
 ::view-transition-old(main) { animation: vt-out 130ms var(--ease-in-out) both; }
 ::view-transition-new(main) { animation: vt-in 260ms var(--ease) both; }
-::view-transition-group(nav-pill) { animation-duration: 420ms; animation-timing-function: var(--spring); }
 @keyframes vt-out { to { opacity: 0; transform: translateY(-3px); } }
 @keyframes vt-in { from { opacity: 0; transform: translateY(8px); } }
 /* Loading strip: the four process inks, as on a press sheet's colour bar. */

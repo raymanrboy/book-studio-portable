@@ -47,7 +47,7 @@ code:
 | Метод | Шаблон | Доступ | Функція | Хто викликає |
 |---|---|---|---|---|
 | GET | `/api/orders` | token | `_list` | orders.js (черга) |
-| GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (картка) |
+| GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (картка; `earlierSends` — відправки цього замовлення, що не стали замовленням у друкарні) |
 | POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (розстановка сторінок; для Gelato — ще й чи друкує він стільки сторінок у цьому форматі) |
 
 ## Бібліотека — [library.py](../../app/studio/library.py)
@@ -84,8 +84,8 @@ code:
 | POST | `/api/creator/validate` | token | `_validate` | creator.js, orders.js (фонова задача) |
 | POST | `/api/creator/pick-folder` | token | `_pick` | creator.js, orders.js |
 | POST | `/api/creator/printify/create` | token | `_create_printify` | creator.js (фонова задача) |
-| POST | `/api/creator/printify/reprint` | token | `_reprint_printify` | creator.js `create` у режимі передруку з архіву (фонова задача; нове замовлення на ту саму книгу) |
-| POST | `/api/creator/gelato/create` | token | `_create_gelato` | creator.js (фонова задача; з `reprintOf` — чернетка-передрук з файлів архіву) |
+| POST | `/api/creator/printify/reprint` | token | `_reprint_printify` | creator.js `create` у режимі передруку з архіву (фонова задача; нове замовлення на ту саму книгу; з відправки, що не стала замовленням, — 409) |
+| POST | `/api/creator/gelato/create` | token | `_create_gelato` | creator.js (фонова задача; з `reprintOf` — чернетка-передрук з файлів архіву, лише з книги, що справді друкувалась) |
 | GET | `/api/creator/gelato/page-counts` | token | `_gelato_page_counts` | creator.js `loadPageCounts` (скільки сторінок Gelato друкує в кожному форматі — з його каталогу) |
 | POST | `/api/creator/gelato/close-tunnel` | token | `_close_tunnel` | creator.js |
 | GET | `/api/creator/etsy-orders` | token | `_etsy_orders` | creator.js `fromEtsy` |
@@ -138,9 +138,10 @@ code:
 
 | Метод | Шаблон | Доступ | Функція | Хто викликає |
 |---|---|---|---|---|
-| GET | `/api/archive` | token | `_list` | archive.js (список) |
-| GET | `/api/archive/(\d{8}-\d{6}-[0-9a-f]{6})` | token | `_one` | archive.js (сторінка книги) |
+| GET | `/api/archive` | token | `_list` | archive.js (список; лише книги, чиє замовлення в друкарні оформлене й оплачене, та «Не видаляти») |
+| GET | `/api/archive/(\d{8}-\d{6}-[0-9a-f]{6})` | token | `_one` | archive.js (сторінка книги; прихованої — 404) |
 | POST | `/api/archive/(\d{8}-\d{6}-[0-9a-f]{6})/keep` | token | `_keep` | archive.js «Не видаляти» |
+| POST | `/api/archive/(\d{8}-\d{6}-[0-9a-f]{6})/reuse` | token | `_reuse` | orders.js `takeEarlier` (робоча копія файлів минулої відправки в `tmp/dropped`) |
 
 ## Журнал відправок — [sendlog.py](../../app/studio/sendlog.py)
 

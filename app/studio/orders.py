@@ -13,11 +13,13 @@ import uuid
 from collections import Counter
 from pathlib import Path
 
-from . import core, creator, images, library, profit, reconcile
+from . import archive, core, creator, images, library, profit, reconcile
 from .server import ApiError, Request, route
 
 PRINTIFY_PAGES = 24
-_SMALL = re.compile(r"5[.,]5")
+# The small book (14×14 cm): Etsy calls it 5" × 5" (the owner's listings), elsewhere 5.5" or 14 × 14 cm.
+_SMALL = re.compile(r'5[.,]5|(?<![\d.,])5\s*(?:"|″|”|&quot;|in\b\.?|inch(?:es)?)?\s*[x×х*]\s*5(?![\d.,])'
+                    r"|14\s*(?:cm|см)?\s*[x×х*]\s*14", re.I)
 _UPSCAYL = re.compile(r"_upscayl.*$", re.I)
 _LAST_NUMBER = re.compile(r"(\d+)(?=\D*$)")
 
@@ -204,6 +206,8 @@ def _one(req: Request):
         raise ApiError("Замовлення не знайдено або його скасовано.", 404)
     receipt = next((r for r in profit.load_snapshot().get("receipts") or [] if r["receipt_id"] == rid), {})
     order["buyerMessage"] = profit.plain(receipt.get("message_from_buyer"))
+    # a send of this order that never went to print (cancelled, a deleted draft): its files can be taken again
+    order["earlierSends"] = archive.earlier_sends(rid)
     return enrich(order, books_by_listing())
 
 

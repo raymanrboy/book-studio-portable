@@ -4,6 +4,9 @@ let parcel = null;
 
 export function give(to, data) { parcel = { to, data }; }
 
+/** Something waits for this page: it must be built anew, not brought back as it was left. */
+export const waiting = (to) => parcel?.to === to;
+
 export function take(to) {
   if (parcel?.to !== to) return null;
   const { data } = parcel;

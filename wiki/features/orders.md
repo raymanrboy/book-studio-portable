@@ -1,18 +1,19 @@
 ---
 title: Замовлення — черга і картка замовлення
 type: feature
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
   - app/web/js/order-bits.js
   - app/web/js/handoff.js
+  - app/web/js/keep.js
 ---
 # Замовлення
 
 > Стартовий екран. Черга замовлень Etsy за етапами і картка, яка проводить одне замовлення шляхом
-> *книга і Canva → файли → звірка → друк*. Нічого не зберігає: усе виводиться зі знімка синхронізації
-> і бібліотеки. Покроково — [flows/order-to-print.md](../flows/order-to-print.md).
+> *книга і Canva → файли → звірка → друк*. Нічого не зберігає на диск: усе виводиться зі знімка
+> синхронізації і бібліотеки (незавершена робота над новим замовленням живе лише в пам'яті). Покроково — [flows/order-to-print.md](../flows/order-to-print.md).
 
 ## Черга (`#/orders`)
 
@@ -20,6 +21,9 @@ code:
   **Нові (іскра) / В роботі (годинник) / машинка / Відправлені (коробка)**, кнопка «Оновити замовлення».
   Машинка — друкарня вже відправила, а в Etsy ще не позначено: звідси власник знає, що можна
   позначати відправленим в Etsy ([rules/order-stages.md](../rules/order-stages.md)).
+- **«В роботі» — лише оформлене й оплачене** замовлення в друкарні (з 18.09.2026): чернетка Gelato чи
+  «On hold» у Printify лишає замовлення в «Нових» з чипом статусу друкарні (`Draft`, `On hold`), доки
+  власник не підтвердить і не оплатить його та не натисне «Оновити». Скасоване — знову в «Нових» без чипа.
 - Рядок (з 17.09.2026 — за побажаннями власника):
   - верхній рядок: ім'я покупця, `#номер чека` (**клік копіює номер без «#»**, `receiptCopy()`),
     кількість книг (якщо > 1), чип друкарні (для «Нових» — за правилом, з поясненням у підказці; далі —
@@ -52,6 +56,15 @@ code:
 «В роботі» / машинки / «Відправлених» — попередження «друкуйте ще раз лише для передруку» (для машинки —
 ще й «позначте відправленим в Etsy»). Esc — назад до черги.
 
+**Картка пам'ятає, де зупинився власник** (з 18.09.2026, його прохання): поки замовлення в «Нових»,
+картка при переході на іншу вкладку не знищується, а ховається — і повертається рівно такою (файли,
+звірка, прокрутка стрічки й сторінки), чи то з черги, чи іконкою «Замовлення» (вона з іншої вкладки
+веде в останню відкриту картку). Після «До друку» і створення чернетки в Order Creator крок «Друк»
+показує «Чернетку … створено» і кнопку «Результат в Order Creator» (той самий збережений Order Creator
+із результатом); «Надіслати ще раз» — маленька кнопка поруч. Усе це відпускається, щойно замовлення
+піде з «Нових» (наступне оновлення знайде його в друкарні) або після перезапуску програми.
+Як влаштовано — [architecture/frontend.md](../architecture/frontend.md) (`keep.js`).
+
 **Розкладка** (з 16.09.2026, за проханням власника): ліворуч — робота, праворуч — дані; права колонка
 «липка» (лишається на екрані, коли гортаєш звірку). На вузькому вікні (< 1100 px) — одна колонка.
 
@@ -73,6 +86,10 @@ code:
    далі — повна перевірка, як в Order Creator. Для Gelato сервер одразу питає каталог, чи друкує він
    стільки сторінок у форматі замовлення; ні → помилка в цьому ж блоці
    ([integrations/gelato.md](../integrations/gelato.md)).
+   Якщо це замовлення вже відправлялось, але **не стало замовленням у друкарні** (скасовано, чернетку
+   видалено), під полем — кнопка **«Взяти файли минулої відправки · … тому»** (`earlier()`,
+   `takeEarlier()`): файли з [архіву](archive.md) підставляються, і далі все як звичайно — це нове
+   звичайне замовлення, не передрук.
 2. **Звірка** (`proofCard()`, з'являється після успішної перевірки; сторінка сама прокручується до неї):
    - обкладинка на всю ширину;
    - під нею перший розворот на всю ширину: ліва (у друці порожня) половина — **записка**: ім'я дитини
@@ -82,7 +99,7 @@ code:
      без «примагнічування»), до останнього розвороту; мініатюри 360 px сервер готує заздалегідь
      (`STRIP_THUMB` = `STRIP_PREVIEW`);
    - клік по будь-чому — переглядач розворотами (`folderViewerItems()`).
-3. **Друк** (`printCard()`): «До друку в Printify/Gelato» → Order Creator, заповнений назвою
+3. **Друк** (`printCard()`, `#oc-print`): «До друку в Printify/Gelato» → Order Creator, заповнений номером чека, назвою
    `номер чека - ім'я`, адресою, форматом і файлами (`print()` → `give('creator', …)`).
    Картка Printify — у салатовому акценті.
 
@@ -93,17 +110,20 @@ code:
   `enrich()`: для кожної книги `book` (з бібліотеки за номером лістингу), `plan` (правило друкарні;
   `plan.pages` — список дозволених довжин: `[24]` або `[28, 30]`), `childName`; для замовлення —
   `pageOptions` (довжини для кожної друкарні, коли її обирають вручну).
-- `GET /api/orders/<чек>` → те саме для одного + `buyerMessage`.
+- `GET /api/orders/<чек>` → те саме для одного + `buyerMessage` і `earlierSends` (відправки, що не стали
+  замовленням у друкарні, чиї файли ще в архіві — `archive.earlier_sends()`).
 - `POST /api/orders/<чек>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount}`.
 
 ## Де в коді
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `print()`, `STRIP_THUMB`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `STRIP_THUMB`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — спільні з [архівом замовлень](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
-- [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `placed_orders()`, `carrier_label()`
+- [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`, `is_placed()`, `placed_orders()`, `carrier_label()`
+- [app/studio/archive.py](../../app/studio/archive.py) — `earlier_sends()`, `_reuse()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
+- [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `guess_child_name()`, `gelato_pages_problem()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `truck`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.ord-chips`, `.ord-child`, `.ord-copy`, `.ord-title`, `.ord-track`, `.ord-track-text`, `.ord-carrier`, `.ord-track-sep`, `.ord-track-no`, `.ord-sub`, `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`

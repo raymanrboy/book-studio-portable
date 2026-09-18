@@ -440,20 +440,48 @@ def mark_reprint(receipt_id: str | None, provider: str, order_id: str | None) ->
     """A reprint made from the order archive is recorded as a replacement of its receipt, so matching
     keeps the receipt's first print order (the queue stage does not jump) and the reprint is not
     counted as a new sale. A receipt with another manual state (cancelled, refunded) is left as it is.
+    So is one whose print order was cancelled at the printer: the reprint is then its only live print
+    order and is matched as usual, so the queue moves the order on instead of keeping it in "new".
     Returns whether the reprint was recorded."""
     if not receipt_id or not order_id:
         return False
+    try:
+        row = cached_view()["full"].get(str(receipt_id))
+        if row and print_order(row, placed_orders(load_snapshot()))[0] is None:
+            return False
+    except Exception:
+        core.log.exception("Reprint: the receipt's print order could not be read; recorded as a replacement")
     with _links_lock:
         states = load_states()
         entry = states.get(receipt_id)
         if entry and entry.get("status") not in ("normal", "replacement"):
             return False
         if not entry or entry.get("status") != "replacement":
-            entry = {"status": "replacement", "at": core.now_iso(), "replacementOrders": []}
+            entry = {"status": "replacement", "at": core.now_iso(), "replacementOrders": [], "byArchive": True}
         refs = entry.setdefault("replacementOrders", [])
         if not any(r.get("provider") == provider and str(r.get("orderId")) == str(order_id) for r in refs):
             refs.append({"provider": provider, "orderId": str(order_id)})
         states[receipt_id] = entry
+        _save(STATES, states)
+    return True
+
+
+def unmark_reprint(receipt_id: str | None, provider: str, order_id: str | None) -> bool:
+    """Undoes mark_reprint() for a reprint that never went to print (its draft was deleted or the order
+    cancelled): its reference goes, and so does a replacement state the archive made that holds nothing else."""
+    if not receipt_id or not order_id:
+        return False
+    with _links_lock:
+        states = load_states()
+        entry = states.get(receipt_id)
+        refs = (entry or {}).get("replacementOrders") or []
+        rest = [r for r in refs if not (r.get("provider") == provider and str(r.get("orderId")) == str(order_id))]
+        if not entry or entry.get("status") != "replacement" or len(rest) == len(refs):
+            return False
+        if not rest and entry.get("byArchive") and not entry.get("replacementCost"):
+            states.pop(receipt_id)
+        else:
+            entry["replacementOrders"] = rest
         _save(STATES, states)
     return True
 
@@ -483,30 +511,46 @@ def carrier_label(code: str) -> str:
     return CARRIERS.get(code.lower()) or (code.upper() if len(code) <= 4 else code)
 
 
+# Only a print order really placed at the printer counts (owner, 18.09.2026): a draft, an order on hold or
+# awaiting payment, or a cancelled one neither moves its Etsy order out of "new" nor puts its book in the
+# order archive. Printify charges when an order goes to production: on hold and pending ones are not paid.
+PRINTIFY_NOT_PLACED = ("on-hold", "pending", "payment-not-received", "canceled", "cancelled")
+GELATO_NOT_PAID = ("draft", "pending", "canceled", "cancelled", "refused")
+CANCELLED = ("canceled", "cancelled")
+
+
+def is_placed(provider: str, order: dict) -> bool:
+    """Whether a print order from the snapshot is really placed: ordered, paid and not cancelled."""
+    if provider == "printify":
+        return str(order.get("status") or "").lower() not in PRINTIFY_NOT_PLACED
+    return (str(order.get("orderType") or "order").lower() == "order"
+            and str(order.get("fulfillmentStatus") or "").lower() not in CANCELLED + ("draft",)
+            and str(order.get("financialStatus") or "").lower() not in GELATO_NOT_PAID)
+
+
 def placed_orders(snap: dict) -> dict:
-    """Every print order by "provider:id": when it was made, its status as the printer words it, tracking."""
-    def facts(created, status, shipments) -> dict:
-        return {"created": created, "status": status,
+    """Every print order by "provider:id": when it was made, its status as the printer words it, tracking,
+    and whether it is really placed (is_placed())."""
+    def facts(provider, order, created, status, shipments) -> dict:
+        return {"created": created, "status": status, "placed": is_placed(provider, order),
                 "tracking": [{"carrier": carrier_label(s.get("carrier")), "number": str(s["number"]),
                               "url": s.get("url") or ""} for s in shipments or [] if s.get("number")]}
 
-    placed = {f"printify:{p.get('id')}": facts(p.get("created_at"), p.get("status"), p.get("shipments"))
+    placed = {f"printify:{p.get('id')}": facts("printify", p, p.get("created_at"), p.get("status"), p.get("shipments"))
               for p in snap.get("printify") or []}
-    placed.update({f"gelato:{g.get('id')}": facts(g.get("createdAt"), g.get("fulfillmentStatus"), g.get("shipments"))
+    placed.update({f"gelato:{g.get('id')}": facts("gelato", g, g.get("createdAt"), g.get("fulfillmentStatus"),
+                                                  g.get("shipments"))
                    for g in snap.get("gelato") or []})
     return placed
 
 
-def print_order(row: dict, placed: dict) -> tuple[str | None, dict]:
-    """The live print order made for this receipt: (provider, facts), or (None, {}) when there is none —
-    never ordered, cancelled at the printer, or only an earlier order of a returning buyer."""
+def _matched_order(row: dict, placed: dict) -> tuple[str | None, dict]:
+    """The print order matched to this receipt, unless it is an earlier order of a returning buyer."""
     provider = row.get("pod_provider")
     order_id = row.get("printify_order_id") if provider == "printify" else row.get("gelato_order_id")
     if not provider or not order_id:
         return None, {}
     facts = placed.get(f"{provider}:{order_id}") or {}
-    if str(facts.get("status") or "").lower() in ("canceled", "cancelled"):
-        return None, {}  # the print order was cancelled, the book still has to be made
     if row.get("match_type") != "manual":
         t_order, t_receipt = reconcile.parse_time(facts.get("created")), reconcile.parse_time(row.get("created_at"))
         if t_order is not None and t_receipt is not None and t_order < t_receipt - HOUR_MS:
@@ -514,11 +558,31 @@ def print_order(row: dict, placed: dict) -> tuple[str | None, dict]:
     return provider, facts
 
 
+def print_order(row: dict, placed: dict) -> tuple[str | None, dict]:
+    """The live print order made for this receipt: (provider, facts), or (None, {}) when there is none —
+    never ordered, not placed yet (a draft, on hold, awaiting payment), cancelled at the printer, or only
+    an earlier order of a returning buyer."""
+    provider, facts = _matched_order(row, placed)
+    if provider and not facts.get("placed", True):
+        return None, {}  # the book still has to be ordered (or ordered again)
+    return provider, facts
+
+
+def waiting_order(row: dict, placed: dict) -> tuple[str | None, dict]:
+    """A print order made for this receipt that waits at the printer — a draft, on hold or awaiting payment
+    (not cancelled): shown on the order in "new" so a second one is not made by mistake."""
+    provider, facts = _matched_order(row, placed)
+    if provider and facts and not facts.get("placed", True) and str(facts.get("status") or "").lower() not in CANCELLED:
+        return provider, facts
+    return None, {}
+
+
 def order_stage(row: dict, placed: dict) -> tuple[str, str | None]:
     """Where an Etsy order stands: ("new" | "work" | "sent" | "shipped" | "closed", provider).
 
     Etsy keeps the seller's own tabs such as "In Production" out of its API, so the signal is the
-    print order: once Printify or Gelato has an order carrying the receipt number, the book is in work;
+    print order: once Printify or Gelato has a placed order carrying the receipt number (not a draft, not on
+    hold or unpaid, not cancelled — is_placed()), the book is in work;
     once the printer has shipped it (tracking or a shipped status), it is "sent" — waiting for the
     owner to mark it shipped on Etsy, after which Etsy's own flag makes it "shipped".
     placed is placed_orders().
@@ -550,6 +614,8 @@ def picker_orders() -> list:
         if stage == "closed":
             continue
         facts = print_order(row, placed)[1] if provider else {}
+        if stage == "new":  # a draft or unpaid order waiting at the printer: its status shows, the stage stays
+            provider, facts = waiting_order(row, placed)
         # plain() again: receipts saved before the Etsy text was unescaped at sync time
         out.append({
             "receiptId": r["receipt_id"],

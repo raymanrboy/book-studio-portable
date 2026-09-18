@@ -10,7 +10,8 @@ code:
 
 > Остання ланка: з папки PNG (`Cover.png` + сторінки) створює в **Printify** неопубліковану книгу
 > (і, якщо заповнена адреса, замовлення «On hold»), а в **Gelato** — чернетку замовлення з PDF.
-> Нічого не публікується і не йде у виробництво. Відкривається завжди порожнім.
+> Нічого не публікується і не йде у виробництво. Відкривається порожнім — крім роботи над новим
+> замовленням, яка зберігається, поки замовлення в «Нових» (див. нижче).
 
 ## Екран (`#/creator`)
 
@@ -29,7 +30,8 @@ code:
 - **Папка**: вибрати, вставити шлях або **перетягнути папку чи ZIP** на блок (поле підсвічується;
   показується власна назва папки, а шлях — копії в програмі). Перевірка запускається сама.
 - **Назва**: `номер чека - ім'я дитини` (кнопка-чек заповнює назву й адресу із замовлення Etsy).
-- **Адреса**: іконка-гумка очищує. Штат обов'язковий для US, CA, AU.
+- **Адреса**: іконка-гумка очищує. Штат обов'язковий для US, CA, AU. Для Gelato порожній телефон →
+  вигаданий `+1 555 555 0100` (без телефону Gelato не дає оформити замовлення).
 - **Кнопка** змінює підпис: Gelato — «Створити чернетку»; Printify з адресою — «Створити чернетку
   замовлення», без адреси — «Створити книгу без замовлення».
 - **Результат**: картка з ID, перевірками, попередженнями; Printify — «Замовлення в Printify» або
@@ -45,8 +47,16 @@ code:
 
 ## Передача з картки замовлення
 
-`take('creator')` один раз забирає дані з картки (режим, папка, назва, формат, адреса) — і перевірка
-запускається одразу. Якщо зайти на сторінку напряму, вона порожня.
+`take('creator')` один раз забирає дані з картки (номер чека, режим, папка, назва, формат, адреса) — і
+перевірка запускається одразу. Якщо зайти на сторінку напряму без такої роботи, вона порожня.
+
+**Робота над замовленням зберігається** (з 18.09.2026, прохання власника): Order Creator, заповнений
+з картки або вибором нового замовлення Etsy, пам'ятає своє замовлення (`st.receiptId`). Перейшовши на
+іншу вкладку, власник повертається до тієї ж форми або до сторінки результату (з відліком посилання
+Gelato), поки замовлення в «Нових»; потім — порожня сторінка. Після успіху картка замовлення показує
+«Чернетку … створено» (`markSent()`, `sentText()`). Нова передача з картки чи з архіву замінює
+збережене. Передрук з архіву не зберігається (замовлення вже не нове). Як влаштовано —
+[architecture/frontend.md](../architecture/frontend.md).
 
 ## Передрук з архіву замовлень (з 18.09.2026)
 
@@ -92,8 +102,8 @@ code:
    перестиснення (PNG Canva склеюється в один IDAT — `_one_idat()`), підгонка з обрізанням країв;
    попередження лише коли обкладинка обрізається більш ніж на 10 мм.
 4. Тимчасове посилання Cloudflare на цей PDF (перевірка доступності — і через публічний DNS).
-5. `create_draft_order()`: `orderReferenceId` = `<чек>-<сеанс>` (щоб після синхронізації замовлення
-   перейшло в «В роботі»), `files: [{type: "default", url}]`, метадані; потім чернетка перечитується
+5. `create_draft_order()`: `orderReferenceId` = назва книги `<чек> - <ім'я>` (щоб після підтвердження й оплати в Gelato
+   і синхронізації замовлення перейшло в «В роботі»), `files: [{type: "default", url}]`, метадані; потім чернетка перечитується
    для журналу (`_journal_readback()`).
 6. Посилання живе 15 хв (`tunnelKeepAliveSeconds`); Gelato забирає файл сам, приблизно за хвилину.
 
@@ -102,13 +112,19 @@ code:
 усередині `sendlog.attempt()`; `_journaled()` дописує назву запису журналу в результат і в архів.
 
 Після **успішної** відправки файли йдуть в [архів замовлень](archive.md) (`_to_archive()`): Printify —
-щойно книга створена (з замовленням чи без), Gelato — щойно створено чернетку. Збій архівування
+щойно книга створена (з замовленням чи без), Gelato — щойно створено чернетку; у списку архіву книга
+з'являється, коли замовлення в друкарні оформлене й оплачене. Передрук — лише з книги, що справді
+пішла в друк (`archive.reprintable()`). Збій архівування
 відправку не скасовує — у картці результату з'являється попередження. Передрук позначається як
-заміна чека (`_mark_reprint()` → `profit.mark_reprint()`).
+заміна чека (`_mark_reprint()` → `profit.mark_reprint()`), крім випадку, коли перше замовлення
+скасоване в друкарні.
+
+PDF для Gelato: обкладинка · порожня · сторінки · порожня; порожні — білі 300 dpi (`BLANK_DPI`), чому
+саме так — [Gelato](../integrations/gelato.md).
 
 ## Де в коді
 
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `mount()`, `renderStatus()`, `folderCard()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `mount()`, `renderStatus()`, `folderCard()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `expected_files()`, `validate()`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_draft()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
 - [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `page_counts()`, `photobook_geometry()`, `create_draft_order()`

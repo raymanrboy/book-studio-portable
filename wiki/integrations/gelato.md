@@ -1,7 +1,7 @@
 ---
 title: Gelato і тимчасове посилання
 type: integration
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/studio/gelato.py
   - app/studio/tunnel.py
@@ -49,19 +49,34 @@ code:
 **обов'язкові**.
 
 - Як це виглядає в чернетці Gelato: Cover, **Page 0** — порожня (це форзац, так і має бути),
-  Page 1…Page N — книга; нахзац у переліку не показується. У вже оформленому замовленні Gelato
-  показує лише Cover і Page 1…N.
+  Page 1…Page N — книга; нахзац у переліку не показується. Page 0 лишається й після оформлення
+  замовлення (перевірено 18.09.2026); без неї Gelato показує лише книги зі свого редактора (нижче).
 - Докази (17.09.2026): друкарські PDF обох справжніх замовлень власника мають саме таку будову.
   Тестова чернетка **без** порожніх сторінок вийшла зсунутою: сторінка «1» стала Page 0, а Page 28
   лишилась порожньою. Тестова чернетка **з** порожніми (хардкавер 20×20, 28 сторінок) — без зсуву:
   Page 0 порожня, Page 1…28 = «1»…«28» (підтвердив власник). **Не прибирати порожні сторінки** — це
   зламає і 28-, і 30-сторінкові книги.
+- **Чому «правильне» замовлення 5d72fd05 (15.09.2026) показано без Page 0** (з'ясовано 18.09.2026 за
+  читанням замовлень з API і журналом старого Order Creator): його створив старий Order Creator
+  (обкладинка `default` + сторінки `inside`), але потім книга пройшла через **редактор Gelato**. Через
+  6 хв після чернетки позиція створилась заново (`order-item-<час>`), з'явився `designId`, і Gelato сам
+  зробив новий PDF (22 МБ, 300 dpi). Для книг з редактора Gelato показує лише Page 1…N. Сам PDF, що
+  пішов у друк, має ту саму будову, що й наш: обкладинка · порожня · сторінки · порожня (перевірено
+  17.09.2026). Тобто Page 0 — це внутрішній бік обкладинки, білий в обох книгах. Сторінка 1 (присвята)
+  в обох на Page 1.
+- **Порожні сторінки — білі картинки 300 dpi** (`BLANK_DPI`; 1725 px для 14 см, 2434 px для 20 см —
+  як у PDF самого Gelato). До 18.09.2026 були 16×16 px, і Gelato оцінював якість усієї книги в **3 dpi**
+  (поле `dpi` позиції замовлення), хоча сторінки мають ~700 dpi.
 - Розміри сторінок PDF — з каталогу: сторінка з запасом (206 мм для 20×20), обкладинка на весь аркуш.
   Картинки не перестискаються, підганяються з рівномірним обрізанням країв.
 - **Обкладинка з Canva** (4672×2464, як для Printify) підходить: Gelato сам бере її такою, краї
   обрізаються на ~3–5 мм. Попередження — лише якщо обрізання понад 10 мм (`COVER_TRIM_WARN_MM`,
   тобто це явно не обкладинка); скільки обрізалось — у [журналі відправок](../features/send-journal.md).
-- Тип `inside` — лише для листівок: колись через нього Gelato заповнив усі сторінки обкладинкою.
+- Обкладинка `default` + сторінки `inside` (так робив старий Order Creator) **не працює**: Gelato ставить
+  обкладинку на всі сторінки. Так було в Book Studio до 15.09 і знову в тестовій чернетці старого
+  Order Creator 18.09.2026 (справжня книга, 30 стор.; власник її видалив). Отже, вдале замовлення 5d72fd05
+  виправили в редакторі Gelato (вище). **Page 0 — ціна автоматичної відправки; книга друкується
+  правильно.**
 
 ## Тимчасове посилання
 
@@ -80,8 +95,11 @@ Gelato забирає файл **тільки за URL**, і (перевірен
 
 ## Чернетка
 
-`orderType: draft` (примусово), `orderReferenceId: <чек>-<сеанс>` — за ним синхронізація знаходить
-чек, і замовлення переходить у «В роботі». Чернетки в обліку не рахуються як витрата. Кожна спроба
+`orderType: draft` (примусово), `orderReferenceId` = **назва книги** `номер чека - ім'я` (з 18.09.2026,
+так власник називає й свої ручні замовлення; Gelato не вимагає унікальності) — за номером у ній синхронізація знаходить
+чек, і після підтвердження й оплати замовлення переходить у «В роботі». **Телефон:** Etsy його не дає, а
+без нього Gelato не дає оформити чернетку — порожній підставляється вигаданий `+1 555 555 0100`
+(`GELATO_PLACEHOLDER_PHONE`; звичайна практика власника). Пошта не потрібна (у ручних замовленнях її теж немає). Чернетки в обліку не рахуються як витрата. Кожна спроба
 (вдала чи ні) — окремий запис у [журналі відправок](../features/send-journal.md).
 
 ## Синхронізація
@@ -104,7 +122,7 @@ Gelato забирає файл **тільки за URL**, і (перевірен
 
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `SHIPPED`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`, `FileTunnel`, `_head_ok()`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `build_photobook_pdf()`, `COVER_TRIM_WARN_MM`, `_one_idat()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `build_photobook_pdf()`, `COVER_TRIM_WARN_MM`, `BLANK_DPI`, `GELATO_PLACEHOLDER_PHONE`, `_one_idat()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`, `_OLD_GELATO_SIZES`, `_upgrade()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `page_options()`, `_files()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderTunnels()`, `startCountdown()`, `loadPageCounts()`, `formatProblem()`, `formatCard()`

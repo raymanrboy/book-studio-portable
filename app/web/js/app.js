@@ -1,5 +1,7 @@
 // App shell: icon rail, routing between pages (View Transitions), theme, heartbeat.
 import { api, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, hideTip } from './lib.js';
+import { isKept, stash, unstash, release } from './keep.js';
+import { waiting } from './handoff.js';
 
 export const store = { info: null };
 const listeners = new Set();
@@ -79,6 +81,7 @@ function placeNavPill() {
     a.classList.toggle('active', on);
     if (on) active = a;
   });
+  document.querySelector('[data-nav="#/orders"]')?.setAttribute('href', ordersTarget());
   if (!pill) return;
   if (!active) { pill.style.opacity = '0'; return; }
   pill.style.transform = `translateY(${active.offsetTop}px)`;
@@ -118,7 +121,7 @@ function wireSidebar() {
   document.addEventListener('keydown', (e) => {
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
     const n = NAV[Number(e.key) - 1];
-    if (n) { e.preventDefault(); location.hash = n.hash; }
+    if (n) { e.preventDefault(); location.hash = n.hash === '#/orders' ? ordersTarget() : n.hash; }
   });
 }
 
@@ -147,11 +150,23 @@ const ROUTES = [
 ];
 
 let current = null;
+let currentHash = '';
+let lastOrders = HOME; // where the owner was inside «Замовлення»: the queue or one order's card
 let navToken = 0;
 let firstPage = true;
+let pageTransition = null;
+
+const unmountSafely = (ctrl) => { try { ctrl?.unmount?.(); } catch (err) { console.error(err); } };
+
+/** The Orders icon brings back the order card the owner stepped away from (kept while the order is new). */
+function ordersTarget() {
+  return !/^#\/orders/.test(location.hash || HOME) && isKept(lastOrders) ? lastOrders : HOME;
+}
 
 // The new page is built off-screen while the old one stays visible, then both swap in one
 // View Transition (GPU cross-fade) — no blank frames and no half-rendered pages.
+// A page with work on a new order is not taken down when left: it is kept hidden (keep.js) and comes
+// back as it was — unless its order has moved on (revive() says no) or new data waits for the page.
 async function navigate() {
   const hash = location.hash || HOME;
   const found = ROUTES.find(([re]) => re.test(hash));
@@ -160,28 +175,55 @@ async function navigate() {
   const [re, loader] = found;
   const params = hash.match(re).slice(1);
   topbarStart();
-  let mod;
-  try { mod = await loader(); } catch (err) { console.error(err); topbarDone(); toast('Не вдалося відкрити сторінку', 'error'); return; }
-  if (my !== navToken) return;
 
-  const view = document.createElement('div');
-  view.className = 'view';
-  view.id = 'view';
-  let ctrl = null;
-  try {
-    ctrl = (await mod.mount(view, params)) || null;
-  } catch (err) {
-    console.error(err);
-    setHtml(view, html`<div class="empty"><div class="empty-icon">${ic('alertCircle')}</div><h3>Сторінку не вдалося завантажити</h3><p>${err.message || err}</p></div>`);
+  let view = null, ctrl = null, scroll = 0, inner = [];
+  if (waiting(hash.slice(2).split('/')[0])) release(hash);
+  const saved = unstash(hash);
+  if (saved) {
+    let alive = false;
+    try { alive = (await saved.ctrl?.revive?.()) !== false; } catch (err) { console.error(err); }
+    if (my !== navToken) {
+      if (alive) { try { saved.ctrl?.hidden?.(); } catch {} stash(hash, saved); } else unmountSafely(saved.ctrl);
+      return;
+    }
+    if (alive) ({ view, ctrl, scroll, inner = [] } = saved);
+    else unmountSafely(saved.ctrl);
   }
-  if (my !== navToken) { try { ctrl?.unmount?.(); } catch {} return; }
+  if (!view) {
+    let mod;
+    try { mod = await loader(); } catch (err) { console.error(err); topbarDone(); toast('Не вдалося відкрити сторінку', 'error'); return; }
+    if (my !== navToken) return;
+    view = document.createElement('div');
+    view.className = 'view';
+    view.id = 'view';
+    try {
+      ctrl = (await mod.mount(view, params)) || null;
+    } catch (err) {
+      console.error(err);
+      setHtml(view, html`<div class="empty"><div class="empty-icon">${ic('alertCircle')}</div><h3>Сторінку не вдалося завантажити</h3><p>${err.message || err}</p></div>`);
+    }
+    if (my !== navToken) { unmountSafely(ctrl); return; }
+  }
 
   const swap = () => {
-    try { current?.unmount?.(); } catch (err) { console.error(err); }
-    document.getElementById('view').replaceWith(view);
-    // Instant, not the smooth scroll-behavior of .main: a new page starts at its top in the same frame.
-    document.getElementById('main').scrollTo({ top: 0, behavior: 'instant' });
+    const old = document.getElementById('view');
+    const main = document.getElementById('main');
+    let keepOld = false;
+    try { keepOld = !!current?.keep?.(); } catch (err) { console.error(err); }
+    if (keepOld) {
+      try { current.hidden?.(); } catch (err) { console.error(err); }
+      // A detached element forgets how far it was scrolled (the proof strip, the sticky data column).
+      const scrolled = [...old.querySelectorAll('*')].filter((el) => el.scrollLeft || el.scrollTop)
+        .map((el) => [el, el.scrollLeft, el.scrollTop]);
+      stash(currentHash, { view: old, ctrl: current, scroll: main.scrollTop, inner: scrolled });
+    } else unmountSafely(current);
+    old.replaceWith(view);
+    // Instant, not the smooth scroll-behavior of .main: a page starts at its top (or where it was left) in the same frame.
+    main.scrollTo({ top: scroll, behavior: 'instant' });
+    for (const [el, left, top] of inner) { el.scrollLeft = left; el.scrollTop = top; }
     current = ctrl;
+    currentHash = hash;
+    if (/^#\/orders/.test(hash)) lastOrders = hash;
     placeNavPill();
   };
   const shown = () => {
@@ -192,7 +234,9 @@ async function navigate() {
   if (!firstPage && canTransition()) {
     document.documentElement.classList.add('vt-running');
     const vt = transition(swap);
-    const done = () => document.documentElement.classList.remove('vt-running');
+    pageTransition = vt;
+    // A quicker second click skips this transition; only the latest one clears the class.
+    const done = () => { if (pageTransition === vt) { pageTransition = null; document.documentElement.classList.remove('vt-running'); } };
     vt.updateCallbackDone.then(shown, shown);
     vt.finished.then(done, done);
   } else {

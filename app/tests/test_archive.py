@@ -35,9 +35,9 @@ def book(folder: Path, pages: int = 24, cover_name: str = "Cover.png") -> Path:
     return folder
 
 
-def facts(stages=None, placed=None, have=True):
+def facts(stages=None, placed=None, have=True, synced=None):
     return {"stages": stages or {}, "placed": placed or {}, "names": {"4100000001": "Jane Doe"},
-            "sent": profit.SENT_STATUSES, "haveReceipts": have}
+            "sent": profit.SENT_STATUSES, "haveReceipts": have, "syncedAt": synced}
 
 
 class ArchiveCase(unittest.TestCase):
@@ -48,17 +48,21 @@ class ArchiveCase(unittest.TestCase):
         warm = mock.patch.object(archive, "_warm_previews", lambda *a: None)
         warm.start()
         self.addCleanup(warm.stop)
-        self._states = profit.STATES.read_bytes() if profit.STATES.exists() else None
-        profit.STATES.unlink(missing_ok=True)
+        # states.json and its .bak (read when the main file is missing) start empty and are put back after
+        self._states = {p: (p.read_bytes() if p.exists() else None)
+                        for p in (profit.STATES, profit.STATES.with_name(profit.STATES.name + ".bak"))}
+        for p in self._states:
+            p.unlink(missing_ok=True)
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
 
     def tearDown(self):
         self.tmp.cleanup()
         shutil.rmtree(archive.ROOT, ignore_errors=True)
-        profit.STATES.unlink(missing_ok=True)
-        if self._states is not None:
-            profit.STATES.write_bytes(self._states)
+        for p, data in self._states.items():
+            p.unlink(missing_ok=True)
+            if data is not None:
+                p.write_bytes(data)
 
     def keep(self, title="4100000001 - Emma", provider="printify", pages=24, **meta) -> str:
         src = book(self.root / f"src-{time.time_ns()}", pages)
@@ -183,14 +187,17 @@ class Removing(ArchiveCase):
                      placed={"printify:o2": {"status": "fulfilled", "tracking": [{"number": "94001"}]}})
         self.assertIsNotNone(archive.get(eid)["shippedAt"])
 
-    def test_a_reprint_whose_order_vanished_goes_30_days_after_sending(self):
+    def test_a_reprint_whose_draft_was_deleted_goes_and_leaves_no_mark(self):
         eid = self.keep(reprintOf="20260101-101010-abcdef", orderId="deleted-draft")
-        others = {"printify:o9": {"status": "fulfilled", "tracking": []}}   # the printer's orders, without this one
-        t0 = time.time()
-        self.assertEqual(archive.clock(archive.get(eid), facts(placed=others))[1], "unknown")
-        self.assertEqual(archive.clock(archive.get(eid), facts(placed={}))[1], "waiting")  # nothing synced: no guess
-        self.assertEqual(self.refresh(t0 + 29 * DAY, placed=others), [])
-        self.assertEqual(self.refresh(t0 + 31 * DAY, placed=others), [eid])
+        self.assertTrue(profit.mark_reprint("4100000001", "printify", "deleted-draft"))
+        sent = archive._ts(archive.get(eid)["sentAt"])
+        others = {"printify:o9": {"status": "fulfilled", "tracking": [], "placed": True}}  # without this one
+        self.assertEqual(self.refresh(sent + DAY, placed=others, synced=sent + DAY), [])  # maybe not synced yet
+        self.assertIsNone(archive.get(eid).get("droppedAt"))
+        self.assertEqual(self.refresh(sent + 2 * DAY, placed=others, synced=sent + 2 * DAY), [])
+        self.assertIsNotNone(archive.get(eid)["droppedAt"])                 # gone from the printer: deleted
+        self.assertNotIn("4100000001", profit.load_states())               # the replacement mark goes with it
+        self.assertEqual(self.refresh(sent + 5 * DAY + 60, placed=others, synced=sent + 5 * DAY), [eid])
 
     def test_a_picture_held_open_keeps_the_book_until_next_time(self):
         eid = self.keep(title="Book for a friend")
@@ -234,6 +241,61 @@ class Removing(ArchiveCase):
         self.assertEqual((waiting["clock"], waiting["daysLeft"], waiting["deleteAt"]), ("waiting", None, None))
 
 
+class OnlyWhatWentToPrint(ArchiveCase):
+    """Only a send whose print order is really placed — ordered and paid — is in the archive (owner, 18.09.2026)."""
+
+    def listed(self, **kw):
+        with mock.patch.object(archive, "_facts", lambda: facts(**kw)):
+            return [e["id"] for e in archive._list(SimpleNamespace())["entries"]]
+
+    def test_a_draft_is_hidden_until_it_is_ordered_and_paid(self):
+        eid = self.keep(provider="gelato", orderId="g1")
+        draft = {"gelato:g1": {"status": "draft", "placed": False, "tracking": []}}
+        paid = {"gelato:g1": {"status": "passed", "placed": True, "tracking": []}}
+        self.assertEqual(self.listed(placed=draft), [])
+        self.assertEqual(self.listed(placed=paid), [eid])
+        with mock.patch.object(archive, "_facts", lambda: facts(placed=draft)), self.assertRaises(ApiError):
+            archive._one(SimpleNamespace(groups=[eid]))                     # not even by its address
+        t0 = archive._ts(archive.get(eid)["sentAt"])
+        self.assertEqual(self.refresh(t0 + 29 * DAY, placed=draft), [])      # a draft left unconfirmed…
+        self.assertEqual(self.refresh(t0 + 31 * DAY, placed=draft), [eid])   # …goes after 30 days
+
+    def test_a_cancelled_send_goes_in_three_days_and_its_files_can_be_sent_again(self):
+        eid = self.keep(title="4100000001 - Emma", provider="gelato", pages=30, orderId="g1")
+        cancelled = {"gelato:g1": {"status": "canceled", "placed": False, "tracking": []}}
+        t0 = time.time()
+        self.assertEqual(self.refresh(t0, placed=cancelled), [])
+        self.assertIsNotNone(archive.get(eid)["droppedAt"])
+        self.assertEqual(self.listed(placed=cancelled), [])
+        with mock.patch.object(archive, "_facts", lambda: facts(placed=cancelled)):
+            offered = archive.earlier_sends("4100000001")
+            self.assertEqual([(e["id"], e["provider"], e["pageCount"]) for e in offered], [(eid, "gelato", 30)])
+            copy = Path(archive._reuse(SimpleNamespace(groups=[eid]))["path"])
+        self.assertEqual(copy.parent, creator.DROPS)                         # a working copy for the order card
+        self.assertEqual(sorted(p.name for p in copy.iterdir()), sorted(["Cover.png"] + [f"{i}.png" for i in range(1, 31)]))
+        self.assertEqual(self.refresh(t0 + 3 * DAY + 60, placed=cancelled), [eid])
+        self.assertTrue((copy / "1.png").exists())                          # the copy outlives the archived book
+        shutil.rmtree(copy, ignore_errors=True)
+
+    def test_a_placed_order_is_not_offered_again(self):
+        self.keep(provider="gelato", orderId="g1")
+        with mock.patch.object(archive, "_facts", lambda: facts(placed={"gelato:g1": {"status": "passed", "placed": True}})):
+            self.assertEqual(archive.earlier_sends("4100000001"), [])
+
+    def test_keep_holds_even_a_cancelled_book(self):
+        eid = self.keep(provider="gelato", orderId="g1", keep=True)
+        cancelled = {"gelato:g1": {"status": "canceled", "placed": False, "tracking": []}}
+        self.assertEqual(self.refresh(time.time() + 40 * DAY, placed=cancelled), [])
+        self.assertEqual(self.listed(placed=cancelled), [eid])
+
+    def test_nothing_synced_yet_shows_everything(self):
+        eid = self.keep(provider="gelato", orderId="g1")
+        self.assertEqual(self.listed(placed={}, have=False), [eid])
+        with mock.patch.object(archive, "_facts", side_effect=RuntimeError("broken snapshot")), \
+                self.assertLogs("studio", "ERROR"):
+            self.assertEqual([e["id"] for e in archive._list(SimpleNamespace())["entries"]], [eid])
+
+
 class ReprintMark(ArchiveCase):
     def test_recorded_as_a_replacement_without_touching_other_states(self):
         self.assertTrue(profit.mark_reprint("4100000001", "printify", "o2"))
@@ -248,6 +310,18 @@ class ReprintMark(ArchiveCase):
         self.assertFalse(profit.mark_reprint("4100000009", "printify", "o7"))   # the owner's refund stays
         self.assertEqual(profit.load_states()["4100000009"]["status"], "refund_full")
         self.assertFalse(profit.mark_reprint(None, "printify", "o8"))
+
+    def test_a_book_cancelled_at_the_printer_is_simply_made_again(self):
+        """Its reprint is the only live print order, so it is matched as usual and the queue moves on."""
+        row = {"pod_provider": "gelato", "gelato_order_id": "g1", "match_type": "manual"}
+        view = {"full": {"4100000002": row}}
+        with mock.patch.object(profit, "cached_view", lambda: view), \
+                mock.patch.object(profit, "placed_orders", lambda snap: {"gelato:g1": {"status": "canceled", "placed": False}}):
+            self.assertFalse(profit.mark_reprint("4100000002", "gelato", "g2"))
+        self.assertNotIn("4100000002", profit.load_states())
+        with mock.patch.object(profit, "cached_view", lambda: view), \
+                mock.patch.object(profit, "placed_orders", lambda snap: {"gelato:g1": {"status": "shipped", "placed": True}}):
+            self.assertTrue(profit.mark_reprint("4100000002", "gelato", "g2"))    # the first book is out there
 
 
 class FakePrintify:
@@ -350,6 +424,10 @@ class GelatoReprint(ArchiveCase):
 
     def test_a_new_draft_from_the_archived_files(self):
         first = self.keep(title="4100000002 - Noah", provider="gelato", pages=28, format="hardcover_8x8", orderId="g1")
+        printed = facts(placed={"gelato:g1": {"status": "delivered", "placed": True, "tracking": []}})
+        went = mock.patch.object(archive, "_facts", lambda: printed)
+        went.start()
+        self.addCleanup(went.stop)
         vault.set("gelato_api_key", "fake-gelato-key")
         gelato._geometry.clear()
         gelato._products.clear()
@@ -387,6 +465,19 @@ class GelatoReprint(ArchiveCase):
         printed_elsewhere = self.keep(provider="printify")
         with self.assertRaises(ApiError):   # a reprint stays with the printer that printed the book
             creator._create_gelato(SimpleNamespace(json={"reprintOf": printed_elsewhere}))
+
+    def test_no_reprint_from_a_send_that_never_went_to_print(self):
+        draft = self.keep(provider="gelato", orderId="g1")
+        cancelled = self.keep(provider="printify", orderId="o1", productId="p1")
+        not_placed = facts(placed={"gelato:g1": {"status": "draft", "placed": False},
+                                   "printify:o1": {"status": "canceled", "placed": False}})
+        with mock.patch.object(archive, "_facts", lambda: not_placed), \
+                mock.patch.object(creator.jobs, "start", lambda *a, **kw: self.fail("nothing may start")):
+            with self.assertRaises(ApiError) as caught:
+                creator._create_gelato(SimpleNamespace(json={"reprintOf": draft, "title": "4100000001 - Emma"}))
+            self.assertEqual(caught.exception.status, 409)
+            with self.assertRaises(ApiError):
+                creator._reprint_printify(SimpleNamespace(json={"archiveId": cancelled, "title": "4100000001 - Emma"}))
 
 
 if __name__ == "__main__":

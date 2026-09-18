@@ -29,11 +29,15 @@ code:
 | 6 | Звіряє | Обкладинка, перший розворот із запискою (ім'я, поля), стрічка всіх розворотів, переглядач | [orders.js](../../app/web/js/pages/orders.js) `proofCard()` |
 | 7 | «До друку в …» | Order Creator заповнений: режим, папка, назва `чек - ім'я`, адреса, формат | [orders.js](../../app/web/js/pages/orders.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
 | 8 | «Створити чернетку (замовлення)» | Printify: книга + замовлення On hold; Gelato: PDF + чернетка. Копія файлів, що пішли в друк, — в [архів замовлень](../features/archive.md) | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator.py](../../app/studio/creator.py) `create_printify_draft()`, `create_gelato_draft()` |
-| 9 | У Printify — «Submit order»; у Gelato — відкрити чернетку в Dashboard (поки живе посилання) і підтвердити | — | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
-| 10 | Натискає «Оновити» | Замовлення переходить у «В роботі» (номер чека в reference / назві); праворуч — статус друкарні | [profit.py](../../app/studio/profit.py) `order_stage()` |
+| 9 | У Printify — «Submit order»; у Gelato — відкрити чернетку в Dashboard (поки живе посилання), підтвердити й оплатити | До цього замовлення лишається в «Нових» з чипом «Draft» / «On hold»: чернетка не рахується | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
+| 10 | Натискає «Оновити» | Оформлене й оплачене замовлення переходить у «В роботі» (номер чека в reference / назві); праворуч — статус друкарні; книга з'являється в архіві замовлень | [profit.py](../../app/studio/profit.py) `order_stage()`, `is_placed()` |
 | 11 | Коли друкарня відправила — відкриває вкладку з машинкою, копіює трек-номер кліком | Замовлення з трек-номером або статусом «відправлено» — у машинці, з перевізником і номером | [profit.py](../../app/studio/profit.py) `order_stage()`; [orders.js](../../app/web/js/pages/orders.js) `trackChips()` |
 | 12 | Позначає замовлення відправленим в Etsy (на київському ПК), потім «Оновити» | Замовлення переходить у «Відправлені» (коробка); в архіві замовлень пішов відлік 14 днів | [rules/order-stages.md](../rules/order-stages.md); [archive.py](../../app/studio/archive.py) `refresh()` |
 | 13 | Якщо з книгою щось сталося — «Архів замовлень» → книга → «Передрук» | Printify: нове замовлення On hold з тієї ж книги; Gelato: нова чернетка з тих самих файлів; чек позначено заміною | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator.py](../../app/studio/creator.py) `create_printify_reprint()` |
+
+Поки замовлення в «Нових», картка й Order Creator з ним пам'ятають, де власник зупинився: можна
+перейти на іншу вкладку й повернутися до того самого кроку, навіть до сторінки успішного створення
+([features/orders.md](../features/orders.md)).
 
 Окремий Order Creator лишається для ручних випадків (передрук, коли файлів в архіві вже немає, заміна).
 

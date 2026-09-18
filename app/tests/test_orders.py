@@ -29,6 +29,10 @@ class PrinterRule(unittest.TestCase):
         self.assertEqual((soft["provider"], soft["format"]), ("gelato", "softcover_8x8"))
         small = orders.plan_for(item("5.5\" × 5.5\" Softcover"), "CA")
         self.assertEqual(small["format"], "softcover_5x5")
+        for label in ('5" × 5" Softcover', "5&quot; × 5&quot; Softcover", "Softcover 14 x 14 cm"):  # as Etsy names it
+            with self.subTest(label=label):
+                self.assertEqual(orders.plan_for(item(label), "US")["format"], "softcover_5x5")
+        self.assertEqual(orders.plan_for(item("8&quot; × 8&quot; Softcover"), "US")["format"], "softcover_8x8")
 
     def test_unknown_cover_leaves_the_choice_to_the_owner(self):
         self.assertIsNone(orders.plan_for(item(cover="Blue", title="Book"), "US")["provider"])

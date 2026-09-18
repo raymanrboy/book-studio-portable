@@ -3,6 +3,54 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-18] update | Gelato: назва «номер - ім'я», вигаданий телефон, формат 5" × 5"
+
+- За зауваженнями власника: `orderReferenceId` = назва книги; порожній телефон → `+1 555 555 0100`;
+  малий софткавер з Etsy (`5" × 5"`) тепер одразу обирає Softcover 5.5×5.5. Оновлено
+  [integrations/gelato.md](integrations/gelato.md), [features/order-creator.md](features/order-creator.md),
+  [rules/printer-rule.md](rules/printer-rule.md), [decisions.md](decisions.md), [glossary.md](glossary.md).
+
+## [2026-09-18] update | Рахується лише оформлене й оплачене замовлення в друкарні
+
+- Бажання власника: чернетки, неоплачені й скасовані замовлення не переводять замовлення «в роботу»,
+  не кладуть книгу в архів і не роблять наступну відправку передруком (`is_placed()`). У «Нових» чип
+  статусу чернетки; у картці — «Взяти файли минулої відправки»; передрук лише з надрукованої книги.
+- Оновлено: [rules/order-stages.md](rules/order-stages.md), [features/archive.md](features/archive.md),
+  [features/orders.md](features/orders.md), [features/order-creator.md](features/order-creator.md),
+  [features/profit.md](features/profit.md), [flows/order-to-print.md](flows/order-to-print.md),
+  [architecture/api-routes.md](architecture/api-routes.md), [decisions.md](decisions.md),
+  [glossary.md](glossary.md), [dev/preview.md](dev/preview.md), [dev/testing.md](dev/testing.md).
+
+## [2026-09-18] update | Gelato: звідки «Page 0»; порожні сторінки 300 dpi; передрук скасованого
+
+- З'ясовано (читання двох замовлень з API, журнал старого Order Creator, PDF від 17.09): «правильне»
+  замовлення без Page 0 пройшло через редактор Gelato; надрукований PDF має ту саму будову, що й наш.
+- Порожні сторінки PDF — білі 300 dpi замість 16×16 px (через них Gelato оцінював книгу в 3 dpi).
+- Передрук, коли перше замовлення скасоване в друкарні, не позначається заміною.
+- Тестова чернетка старим Order Creator (обкладинка й сторінки окремо): обкладинка на всіх сторінках —
+  лишаємо один PDF, Page 0 — нормально.
+- Оновлено: [integrations/gelato.md](integrations/gelato.md), [decisions.md](decisions.md),
+  [features/archive.md](features/archive.md), [rules/order-stages.md](rules/order-stages.md),
+  [rules/book-structure.md](rules/book-structure.md), [dev/testing.md](dev/testing.md).
+
+## [2026-09-18] update | Робота над новим замовленням пам'ятається при переході на іншу вкладку
+
+- Бажання власника: повертатися до того самого кроку замовлення (файли, звірка, Order Creator, навіть
+  сторінка успішного створення), поки замовлення не зникне з «Нових». Сторінки тепер ховаються й
+  повертаються (`keep.js`, `navigate()`); іконка «Замовлення» веде в останню відкриту картку; після
+  успіху крок «Друк» каже «чернетку створено». Order Creator, відкритий вручну, — і далі порожній.
+- Оновлено: [architecture/frontend.md](architecture/frontend.md), [features/orders.md](features/orders.md),
+  [features/order-creator.md](features/order-creator.md), [flows/order-to-print.md](flows/order-to-print.md),
+  [owner/ui-principles.md](owner/ui-principles.md), [owner/working-with-owner.md](owner/working-with-owner.md),
+  [decisions.md](decisions.md), [glossary.md](glossary.md), [code-map.md](code-map.md).
+
+## [2026-09-18] update | Бокове меню: іконка не зникає під квадратиком
+
+- Під час зміни сторінки квадратик активного пункту був окремим знімком поверх іконок і накривав
+  іконку, до якої їхав. Тепер панель лишається живою над переходом: квадратик їде під іконками, іконка
+  плавно змінює колір. Оновлено [architecture/frontend.md](architecture/frontend.md),
+  [owner/ui-principles.md](owner/ui-principles.md).
+
 ## [2026-09-18] update | Архів замовлень збудовано: файли, що пішли в друк, 14 днів і передрук
 
 - Нове меню «Архів замовлень» (Alt+4, Налаштування тепер Alt+5): кожна відправка в Printify чи Gelato

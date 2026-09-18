@@ -162,7 +162,9 @@ class ProviderCancellations(unittest.TestCase):
 
 
 class PickerStages(unittest.TestCase):
-    """Order Creator picker: brand-new orders apart from ones already ordered from a print provider."""
+    """Order Creator picker: brand-new orders apart from ones already ordered from a print provider.
+    Only a print order really placed counts (owner, 18.09.2026): a draft, an order on hold or unpaid, or a
+    cancelled one leaves the Etsy order in "new"."""
     AFTER = "2025-09-05 10:00:00+00:00"  # receipts below are from 2025-09-04 15:33 UTC
 
     def orders(self):
@@ -171,13 +173,21 @@ class PickerStages(unittest.TestCase):
         earlier = porder("b" * 24, "Mia", "Stone", created="2025-08-01 10:00:00+00:00")  # her previous book
         cancelled = {**porder("c" * 24, "Kai", "Lund", status="canceled", created=self.AFTER),
                      "line_items": [{"title": "1004 - Kai"}]}
-        draft = {"id": "g1", "orderReferenceId": "1005", "firstName": "Eve", "lastName": "Hart", "totalInclVat": 20,
-                 "currency": "USD", "fulfillmentStatus": "draft", "orderType": "draft", "createdAt": "2025-09-05T10:00:00Z"}
+        on_hold = {**porder("d" * 24, "Di", "Hale", status="on-hold", created=self.AFTER),
+                   "line_items": [{"title": "1009 - Di"}]}
+        gelato = {"totalInclVat": 20, "currency": "USD", "createdAt": "2025-09-05T10:00:00Z"}
+        draft = {**gelato, "id": "g1", "orderReferenceId": "1005", "firstName": "Eve", "lastName": "Hart",
+                 "fulfillmentStatus": "draft", "orderType": "draft", "financialStatus": "draft"}
+        paid = {**gelato, "id": "g2", "orderReferenceId": "1008-ab12cd34", "firstName": "Lu", "lastName": "Park",
+                "fulfillmentStatus": "passed", "orderType": "order", "financialStatus": "paid"}
+        unpaid = {**gelato, "id": "g3", "orderReferenceId": "1010", "firstName": "Jo", "lastName": "Kim",
+                  "fulfillmentStatus": "created", "orderType": "order", "financialStatus": "pending"}
         receipts = [receipt(1001, "Ann Lee", status="Paid"), receipt(1002, "Zed Moss", status="Paid"),
                     receipt(1003, "Mia Stone", status="Paid"), receipt(1004, "Kai Lund", status="Paid"),
                     receipt(1005, "Eve Hart", status="Paid"), receipt(1006, "Bo Ray"),
-                    receipt(1007, "Cy Fox", status="Canceled", refunds=[49.98])]
-        return receipts, [printed, earlier, cancelled], [draft]
+                    receipt(1007, "Cy Fox", status="Canceled", refunds=[49.98]), receipt(1008, "Lu Park", status="Paid"),
+                    receipt(1009, "Di Hale", status="Paid"), receipt(1010, "Jo Kim", status="Paid")]
+        return receipts, [printed, earlier, cancelled, on_hold], [draft, paid, unpaid]
 
     def test_each_order_lands_in_its_stage(self):
         receipts, p_orders, g_orders = self.orders()
@@ -188,20 +198,26 @@ class PickerStages(unittest.TestCase):
             "1002": ("work", "printify"),     # Printify order carries the receipt number
             "1003": ("new", None),            # only an older order of the same buyer
             "1004": ("new", None),            # the print order was cancelled
-            "1005": ("work", "gelato"),       # Gelato draft made by the Order Creator
+            "1005": ("new", None),            # only a Gelato draft: not ordered until confirmed and paid
             "1006": ("shipped", None),
             "1007": ("closed", None),
+            "1008": ("work", "gelato"),       # the draft confirmed and paid in Gelato
+            "1009": ("new", None),            # Printify order on hold: not submitted yet
+            "1010": ("new", None),            # Gelato order awaiting payment
         })
 
-    def test_picker_leaves_out_cancelled_orders(self):
+    def test_picker_leaves_out_cancelled_orders_and_shows_waiting_drafts(self):
         receipts, p_orders, g_orders = self.orders()
         snap = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": p_orders, "gelato": g_orders}
         rows = view(receipts, p_orders, g_orders)
-        with mock.patch.object(profit, "load_snapshot", lambda: snap), \
-                mock.patch.object(profit, "cached_view", lambda: {"full": rows}):
-            picked = {o["receiptId"]: o["stage"] for o in profit.picker_orders()}
+        with mock.patch.object(profit, "load_snapshot", lambda: snap),                 mock.patch.object(profit, "cached_view", lambda: {"full": rows}):
+            picked = {o["receiptId"]: o for o in profit.picker_orders()}
         self.assertNotIn("1007", picked)
-        self.assertEqual(sorted(picked.values()).count("new"), 3)
+        self.assertEqual(sorted(o["stage"] for o in picked.values()).count("new"), 6)
+        waiting = {rid: (o["provider"], o["printStatus"]) for rid, o in picked.items() if o["stage"] == "new"}
+        self.assertEqual(waiting, {                     # in "new", a draft waiting at the printer shows its status
+            "1001": (None, ""), "1003": (None, ""), "1004": (None, ""),  # nothing, an old order, a cancelled one
+            "1005": ("gelato", "draft"), "1009": ("printify", "on-hold"), "1010": ("gelato", "created")})
 
 
 class SentStage(unittest.TestCase):

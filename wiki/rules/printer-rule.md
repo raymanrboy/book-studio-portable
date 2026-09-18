@@ -1,7 +1,7 @@
 ---
 title: Правило друкарні — Printify чи Gelato
 type: rule
-updated: 2026-09-17
+updated: 2026-09-18
 code:
   - app/studio/orders.py
   - app/studio/reconcile.py
@@ -14,7 +14,7 @@ code:
 |---|---|---|---|
 | Hardcover, США | Printify | 24 | — |
 | Hardcover, будь-яка інша країна | Gelato | 28 / 30 | `hardcover_8x8` |
-| Softcover 5.5×5.5 (у полях є «5.5» або «5,5»), будь-куди | Gelato | 28 / 30 | `softcover_5x5` |
+| Softcover 5.5×5.5 (у полях — `5" × 5"`, як це називає Etsy у власника, або «5.5», «5,5», «14 × 14»), будь-куди | Gelato | 28 / 30 | `softcover_5x5` |
 | Softcover, будь-куди | Gelato | 28 / 30 | `softcover_8x8` |
 | Тип обкладинки не прочитався | вирішує власник (перемикач у картці) | 24 / 28–30 | — |
 

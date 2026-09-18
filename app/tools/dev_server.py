@@ -79,6 +79,7 @@ def seed(data: Path) -> None:
         _printify(4100000105, "fulfilled", "9400100000000000000002"),   # sent: waits for the mark on Etsy
         _printify(4100000106, "in-production"),
         _printify(4100000107, "has-issues"),
+        {**_printify(4100000104, "in-production"), "id": "e" * 20 + "0104"},  # Liam's reprint from the archive
     ]
     gelato_orders = [
         _gelato(4100000102, "in_transit", "Canada Post Tracked Packet", "7023210000000003"),  # sent
@@ -136,7 +137,8 @@ def _sample_book(folder: Path, name: str, pages: int, hue: int) -> list:
 
 
 def _seed_archive(data: Path) -> None:
-    """Four archived books: counting down, waiting for Etsy, kept, and a reprint of the first."""
+    """Four archived books — counting down, waiting for Etsy, kept, a reprint of the first — and a Gelato draft
+    that never went to print: not in the archive, but Olivia's order card offers its files."""
     from studio import archive
     src = data / "tmp" / "sample-archive"
     day = 86400
@@ -156,9 +158,13 @@ def _seed_archive(data: Path) -> None:
     archive.update(ava, sentAt=archive._iso(time.time() - 5 * day), keep=True)
     kept = archive.folder(liam)
     reprint = archive.store("printify", [(kept / f["file"], f["file"]) for f in archive.get(liam)["files"]], {
-        "title": "4100000104 - Liam", "productId": "sample-product-1", "orderId": "sample-reprint-order",
+        "title": "4100000104 - Liam", "productId": "sample-product-1", "orderId": "e" * 20 + "0104",
         "address": address, "reprintOf": liam})
     archive.update(reprint, sentAt=archive._iso(time.time() - 2 * 3600))
+    olivia = archive.store("gelato", _sample_book(src / "olivia", "Olivia", 30, 120), {
+        "title": "4100000103 - Olivia", "format": "softcover_5x5", "formatLabel": "Softcover 5.5×5.5",
+        "orderId": "00000000-0000-4000-8000-004100000103", "address": {**address, "country": "GB", "state": ""}})
+    archive.update(olivia, sentAt=archive._iso(time.time() - 2 * day))
 
 
 def main(argv: list[str]) -> int:
