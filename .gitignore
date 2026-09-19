@@ -9,3 +9,5 @@ __pycache__/
 # Personal editor / agent state
 .obsidian/
 .claude/settings.local.json
+# Windows folder view settings
+desktop.ini
