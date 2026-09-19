@@ -56,6 +56,7 @@ code:
 | Метод | Шаблон | Доступ | Функція | Хто викликає |
 |---|---|---|---|---|
 | POST | `/api/orders/(\d{5,20})/textcheck` | token | `_check` | orders.js `startCheck` (фонова задача; вимкнено в Налаштуваннях → `{off: true}`) |
+| POST | `/api/orders/(\d{5,20})/textcheck/cancel` | token | `_cancel` | orders.js `dropCheck` (картку закрито, інші файли, інша книга; `{jobId}` — лише перевірку цієї задачі) |
 | GET | `/api/textcheck/status` | token | `_status` | settings.js `loadTextcheck` (увімкнено, модель, чи відповідає Ollama) |
 | POST | `/api/settings/textcheck` | token | `_save_settings` | settings.js (вмикач, модель) |
 | POST | `/api/textcheck/start` | token | `_start` | settings.js «Запустити» Ollama |

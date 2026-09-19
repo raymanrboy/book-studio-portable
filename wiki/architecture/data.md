@@ -26,7 +26,7 @@ code:
 | `profit/states.json` | Ручні стани: скасування, повернення, заміна (сюди ж — передруки з архіву замовлень) | `profit._set_state()`, `profit.mark_reprint()` |
 | `creator/upload-cache.json` | SHA-256 файлу → ID зображення в Printify (щоб не завантажувати двічі) | `creator._remember_upload()` |
 | `creator/master-snapshots/` | Знімки Master-продукту перед кожним створенням книги | `create_printify_draft()` |
-| `cache/thumbs/` | JPEG-прев'ю (ключ — шлях, час зміни, розмір, розмір прев'ю) | `images.preview()` |
+| `cache/thumbs/` | JPEG-прев'ю (ключ — шлях, час зміни, розмір, розмір прев'ю); не потрібні 21 день — видаляються при запуску (з 19.09.2026; прев'ю в роботі раз на добу оновлює дату) | `images.preview()`, `images.prune_cache()` |
 | `tmp/dropped/` | Копії перетягнутих папок і ZIP; стирається при запуску | `creator._drop_file()` |
 | `tmp/gelato/<сеанс>/` | PDF для Gelato, поки працює тимчасове посилання | `create_gelato_draft()` |
 | `logs/` | `app.log`, `printify.log`, `gelato.log`, `startup-error.txt` | журнали |

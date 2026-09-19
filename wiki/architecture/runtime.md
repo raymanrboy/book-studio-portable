@@ -30,7 +30,8 @@ code:
 7. **Одна автоматична синхронізація замовлень** — `startup_sync()` (далі лише кнопкою,
    див. [правило](../rules/sync-policy.md)). Паралельно у фоні — перевірка
    [архіву замовлень](../features/archive.md) (`archive.refresh_quietly()`: книги, чиї 14 днів минули,
-   видаляються); вона ж повторюється після кожної синхронізації.
+   видаляються); вона ж повторюється після кожної синхронізації. Ще у фоні — прибирання кешу прев'ю
+   (`images.prune_cache_quietly()`: не потрібні 21 день).
 8. **Вікно**: Edge або Chrome з `--app=<адреса>`, окремим профілем `data/window-profile`, розміром
    1480×940. Немає ні Edge, ні Chrome — відкривається звичайний браузер.
 
@@ -65,6 +66,7 @@ code:
 - [app/studio/creator.py](../../app/studio/creator.py) — `forget_old_form()`, `clear_drops()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `startup_sync()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `refresh_quietly()`
+- [app/studio/images.py](../../app/studio/images.py) — `prune_cache_quietly()`, `prune_cache()`
 - [app/web/js/app.js](../../app/web/js/app.js) — `heartbeat()`, `boot()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `markOffline()`
 - [app/tools/make_shortcut.py](../../app/tools/make_shortcut.py) — `main()`

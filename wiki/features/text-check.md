@@ -45,7 +45,7 @@ code:
 ## Як це працює (`textcheck.py`)
 
 1. **Готовність** (`_ready()`): Ollama відповідає (інакше `start_ollama()`), модель встановлена, модель
-   завантажена у відеокарту (перший раз після простою — ~70 с, крок «Модель завантажується…»).
+   завантажена у відеокарту (крок «Модель завантажується…»: ~4 с з пам'яті комп'ютера, ~70 с з диска).
 2. **Читання** (`READ_PROMPT`, сліпе, лише перші рядки — `READ_TOKENS`): сторінки 2…N−1 і зворот
    обкладинки. `has_text()` відкидає «I'm sorry, I cannot transcribe…» і 1–3 слова — так модель
    відповідає на декоративні «псевдонаписи» в ілюстраціях (на них вона ще й вигадує текст і зациклюється).
@@ -68,8 +68,15 @@ code:
    у будь-якому написанні (`is_default()`); своя присвята ділиться на «Dedication:» / «Closing:».
 7. Відповіді моделі кешуються в пам'яті (файл + розмір + час зміни + запит): повторна перевірка тих
    самих файлів — миттєва, після правки однієї сторінки — лише вона. Новіша перевірка того самого
-   замовлення зупиняє попередню.
-8. **Журнал** — `data/logs/checks/<дата>_<чек>.json` (що прочитала модель, що мало бути, проблеми;
+   замовлення зупиняє попередню; картка зупиняє свою (`cancel()`), коли її закрито, перетягнуто інші
+   файли чи обрано іншу книгу (з 19.09.2026). Прихована картка (перехід на іншу вкладку) — не зупиняє.
+   Кожен запит до моделі — у `_Run` (4 одночасно, лічильник для відсотків, зупинка).
+8. **Відеокарта звільняється одразу** після останньої перевірки (`_release_model()`): модель займає
+   ~9,2 ГБ з 12, а вікно Book Studio малює та сама відеокарта (огляд коду 19.09.2026 —
+   [open-questions](../plans/open-questions.md)). Наступна перевірка завантажує її знову за ~4 с.
+   `KEEP_ALIVE` (2 хв) — лише запасний варіант. Менший `num_ctx` (4096) пам'яті не заощадив — не змінено.
+   Обкладинка для моделі — з того ж прев'ю 1400 px, що й звірка (без окремого розпакування 4000 px).
+9. **Журнал** — `data/logs/checks/<дата>_<чек>.json` (що прочитала модель, що мало бути, проблеми;
    останні 400). Лише локально, у git не йде.
 
 ## Налаштування
@@ -77,8 +84,9 @@ code:
 Блок «Перевірка тексту» в [Налаштуваннях](settings.md): вмикач, модель (з установлених в Ollama, що
 бачать картинки), стан Ollama, «Запустити», «Перевірити зв'язок». У `settings.json` — розділ `textcheck`
 (`enabled`, `model`, `url`); адреса — **лише 127.0.0.1** (`_base()`), тож сторінки з іменами дітей не
-покидають комп'ютер. Модель тримається у відеокарті 5 хв після перевірки (`KEEP_ALIVE`) — щоб Upscayl
-отримав пам'ять назад.
+покидають комп'ютер. Відеокарту модель звільняє одразу після перевірки — і для вікна Book Studio, і
+для Upscayl. Вимкнена Ollama: кожна спроба з'єднання на Windows чекає 2 с, тож перевірка «чи жива»
+обмежена 1 с (`PROBE_TIMEOUT`), а блок у Налаштуваннях малюється одразу, стан дотягується слідом.
 
 ## Перевірено на справжніх книгах (19.09.2026, gemma4:12b-it-qat, RTX 4070 SUPER)
 
@@ -101,8 +109,8 @@ code:
 
 ## Де в коді
 
-- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `startCheck()`, `checkBadge()`, `checkBody()`, `checkTip()`, `markPages()`, `paintCheck()`, `viewerItems()`, `learnable()`, `learnPassport()`, `print()`, `LEVEL_WORDS`, `LIGHT_TIP`
+- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `cancel()`, `_release_model()`, `_cancel()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `startCheck()`, `checkBadge()`, `checkBody()`, `checkTip()`, `markPages()`, `paintCheck()`, `viewerItems()`, `learnable()`, `learnPassport()`, `dropCheck()`, `print()`, `LEVEL_WORDS`, `LIGHT_TIP`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.tc-list`, `.tc-issue`, `.tc-where`, `.tc-note`, `.tc-light`, `.tc-error`, `.tc-warn`, `.v-badge.warn`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS` (`textcheck`)

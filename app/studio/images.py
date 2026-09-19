@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import hashlib
 import io
+import os
 import threading
+import time
+import weakref
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -16,8 +19,9 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 
 _gen_slots = threading.BoundedSemaphore(3)
-_key_locks: dict[str, threading.Lock] = {}
 _key_locks_guard = threading.Lock()
+CACHE_DAYS = 21  # a preview nobody asked for in three weeks goes (it is made again when needed)
+FRESH = 86400    # a preview in use gets a new date at most once a day
 
 
 def sha256_file(path: Path) -> str:
@@ -34,12 +38,70 @@ def image_info(path: Path) -> dict:
         return {"format": im.format, "width": im.width, "height": im.height, "mode": im.mode}
 
 
-def _lock_for(key: str) -> threading.Lock:
+class _KeyLock:
+    """One preview made by one thread at a time; forgotten once nobody holds it (the table no longer grows
+    by a lock for every preview ever made)."""
+    __slots__ = ("lock", "__weakref__")
+
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+
+    def __enter__(self) -> "_KeyLock":
+        self.lock.acquire()
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.lock.release()
+
+
+_key_locks: "weakref.WeakValueDictionary[str, _KeyLock]" = weakref.WeakValueDictionary()
+
+
+def _lock_for(key: str) -> _KeyLock:
     with _key_locks_guard:
         lock = _key_locks.get(key)
         if lock is None:
-            lock = _key_locks[key] = threading.Lock()
+            lock = _key_locks[key] = _KeyLock()
         return lock
+
+
+def _hit(out: Path) -> bool:
+    """The cached file is there. One in use gets a fresh date now and then, so prune_cache() leaves it."""
+    try:
+        age = time.time() - out.stat().st_mtime
+    except FileNotFoundError:
+        return False
+    if age > FRESH:
+        try:
+            os.utime(out)
+        except OSError:
+            pass
+    return True
+
+
+def prune_cache(days: int = CACHE_DAYS) -> int:
+    """Removes previews not used for `days` (and half-written ones older than an hour): the cache grew for
+    ever — 152 MB in five days (19.09.2026), with previews of temporary copies long gone."""
+    root = core.data_path("cache", "thumbs")
+    now = time.time()
+    removed = 0
+    for f in root.rglob("*") if root.is_dir() else []:
+        try:
+            if f.is_file() and now - f.stat().st_mtime > (3600 if f.suffix == ".tmp" else days * 86400):
+                f.unlink()
+                removed += 1
+        except OSError:
+            continue
+    return removed
+
+
+def prune_cache_quietly() -> None:
+    try:
+        removed = prune_cache()
+        if removed:
+            core.log.info("Preview cache: %d old files removed", removed)
+    except Exception:
+        core.log.exception("Preview cache not pruned")
 
 
 _LARGER = (1400, 2600, 4096)  # preview sizes the UI already asks for; a smaller one can be cut from these
@@ -58,7 +120,7 @@ def preview(path: Path, max_side: int) -> Path:
     instead of decoding the whole 4000-pixel PNG again (the page strips need dozens of them at once)."""
     stat = path.stat()
     key, out = _cached(path, stat, max_side)
-    if out.exists():
+    if _hit(out):
         return out
     with _lock_for(key):
         if out.exists():
@@ -138,7 +200,7 @@ def compose_spread(left: Path | None, right: Path | None, height: int) -> Path:
             parts.append("-")
     key = hashlib.sha1(("spread|" + "|".join(parts) + f"|{height}").encode("utf-8")).hexdigest()
     out = core.data_path("cache", "thumbs", key[:2], f"{key}.jpg")
-    if out.exists():
+    if _hit(out):
         return out
     with _lock_for(key):
         if out.exists():
@@ -148,7 +210,8 @@ def compose_spread(left: Path | None, right: Path | None, height: int) -> Path:
             if p is None:
                 sides.append(None)
                 continue
-            src = preview(p, max(height, 1400))
+            # one of the sizes kept anyway (1400 / 2600): the viewer's zoom (2400) decoded the 4000-px pages again
+            src = preview(p, next((s for s in _LARGER if s >= height), _LARGER[-1]))
             with Image.open(src) as im:
                 im = im.convert("RGB")
                 w = max(1, round(im.width * height / im.height))

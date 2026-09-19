@@ -8,7 +8,14 @@ const sent = new Map();  // receipt id → { provider, what } once the Order Cre
 export const isKept = (hash) => pages.has(hash);
 /** Which order the page kept under this hash is working on ('' when none is kept). */
 export const keptOrder = (hash) => String(pages.get(hash)?.ctrl?.receiptId || '');
-export function stash(hash, page) { pages.set(hash, page); }
+// Cards with nothing but a position to remember (no files, no draft) are cheap but add up over a day of
+// opening orders: only the latest few of them are kept (code review 19.09.2026).
+const IDLE_KEPT = 3;
+export function stash(hash, page) {
+  pages.set(hash, page);
+  const idle = [...pages].filter(([, p]) => { try { return !!p.ctrl?.idle?.(); } catch { return false; } });
+  for (const [old] of idle.slice(0, Math.max(0, idle.length - IDLE_KEPT))) release(old);
+}
 export function unstash(hash) {
   const page = pages.get(hash) || null;
   pages.delete(hash);

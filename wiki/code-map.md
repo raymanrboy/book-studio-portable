@@ -40,9 +40,9 @@ code:
 | [gelato.py](../app/studio/gelato.py) | Безпечний клієнт Gelato | `_allowed()`, `call()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
 | [tunnel.py](../app/studio/tunnel.py) | Тимчасове публічне посилання на PDF для Gelato | `FileTunnel`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()` |
 | [sendlog.py](../app/studio/sendlog.py) | Журнал відправок у Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
-| [textcheck.py](../app/studio/textcheck.py) | Перевірка тексту локальною моделлю (Ollama): читання сторінок, зіставлення з паспортом, звірка, правила для імен | `check_order()`, `check_book()`, `assign()`, `diff()`, `findings()`, `page_issues()`, `status()`, `start_ollama()` |
+| [textcheck.py](../app/studio/textcheck.py) | Перевірка тексту локальною моделлю (Ollama): читання сторінок, зіставлення з паспортом, звірка, правила для імен | `check_order()`, `check_book()`, `assign()`, `diff()`, `findings()`, `page_issues()`, `cancel()`, `status()`, `start_ollama()` |
 | [archive.py](../app/studio/archive.py) | Архів замовлень: файли книг, що пішли в друк, автовидалення, «Не видаляти» | `store()`, `refresh()`, `clock()`, `summary()`, `get()` |
-| [images.py](../app/studio/images.py) | Прев'ю, перевірка PNG, склеювання розвороту | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `image_info()` |
+| [images.py](../app/studio/images.py) | Прев'ю, перевірка PNG, склеювання розвороту, прибирання кешу | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `image_info()`, `prune_cache()` |
 | [library.py](../app/studio/library.py) | Бібліотека книг: модель, імпорт, експорт, інструкція | `load()`, `save()`, `summary()`, `completeness()`, `scan_folder()`, `parse_text_json()`, `agent_guide()`, `export_book()` |
 | [creator.py](../app/studio/creator.py) | Order Creator: перевірка файлів, Printify, Gelato, перетягування | `validate()`, `gelato_page_options()`, `gelato_pages_problem()`, `create_printify_draft()`, `create_gelato_draft()`, `build_photobook_pdf()`, `extract_zip()`, `dropped_folder()`, `guess_child_name()` |
 | [orders.py](../app/studio/orders.py) | Конвеєр замовлень: друкарня, книга, розстановка сторінок | `plan_for()`, `page_options()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()`, `page_number()` |

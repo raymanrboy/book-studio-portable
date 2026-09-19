@@ -44,12 +44,13 @@ DEFAULT_MODEL = "gemma4:12b-it-qat"
 DEFAULT_URL = "http://127.0.0.1:11434"
 PARALLEL = 4             # pages in flight at once — the owner set OLLAMA_NUM_PARALLEL=4
 IMAGE_SIDE = 1024        # tested: 768–2000 px read equally well; smaller is faster to send
-KEEP_ALIVE = "5m"        # the model leaves the graphics card soon after (Upscayl needs it too)
+KEEP_ALIVE = "2m"        # a fallback: the model is let go right after each check (_release_model())
 # The same options on every call: another context size would make Ollama load the model again.
 OPTIONS = {"temperature": 0, "num_ctx": 8192}
 READ_TOKENS = 64         # the read pass needs only the first lines of a page
-JUDGE_TOKENS = 700       # a page's copy and verdict fit easily; a model that runs on is stopped here
-CALL_TIMEOUT = 300       # the first call after a pause also loads the model (~70 s from disk)
+JUDGE_TOKENS = 1000      # a page's copy and verdict fit easily; a model that runs on is stopped here
+CALL_TIMEOUT = 300       # a call may also load the model: ~4 s from memory, ~70 s from disk
+PROBE_TIMEOUT = 1.0      # "is Ollama there": on Windows a refused connection takes 2 s to say so
 MATCH = 0.45             # how alike a page's first lines and a library text must be to call them one
 CHECKS = core.data_path("logs", "checks")
 KEEP = 400
@@ -145,7 +146,7 @@ def _ollama_command() -> list[str] | None:
 
 def _alive() -> bool:
     try:
-        _call("/api/version", timeout=2)
+        _call("/api/version", timeout=PROBE_TIMEOUT)
         return True
     except ModelError:
         return False
@@ -180,7 +181,7 @@ def status() -> dict:
     out = {**_settings(), "running": False, "version": None, "models": [], "installed": False, "loaded": False,
            "canStart": bool(_ollama_command())}
     try:
-        out["version"] = _call("/api/version", timeout=2).get("version")
+        out["version"] = _call("/api/version", timeout=PROBE_TIMEOUT).get("version")
         out["running"] = True
         tags = _call("/api/tags", timeout=5).get("models") or []
         out["models"] = [m.get("name") for m in tags if "vision" in (m.get("capabilities") or ["vision"])]
@@ -219,9 +220,10 @@ def _chat(model: str, prompt: str, picture: str, schema: dict | None = None, max
 # ---------------------------------------------------------------- pictures
 
 def picture(path: Path, part: str | None = None) -> str:
-    """A page as the model sees it: a 1024-px JPEG cut from the preview the proof already made. The cover
-    (back and front in one picture) is sent as two halves, each about as square as a page."""
-    source = images.preview(path, 2600 if part else 1400)
+    """A page as the model sees it: a 1024-px JPEG cut from the preview the proof already made (no second
+    decoding of the 4000-px file). The cover (back and front in one picture) is sent as two halves, each about
+    as square as a page."""
+    source = images.preview(path, 1400)
     with Image.open(source) as im:
         im = im.convert("RGB")
         if part:
@@ -453,8 +455,10 @@ def findings(printed: list[str], child: str, vocab: set[str], others: set[str]) 
 
 _cache: dict[str, str] = {}
 _cache_lock = threading.Lock()
-_runs: dict[str, threading.Event] = {}
+_runs: dict[str, tuple[threading.Event, str | None]] = {}  # order -> (stop, job id) of its running check
 _runs_lock = threading.Lock()
+_active = 0  # checks running now
+_active_lock = threading.Lock()
 
 
 def _cache_key(path: Path, part: str | None, model: str, prompt: str, max_tokens: int | None) -> str:
@@ -640,67 +644,51 @@ def check_order(job, receipt_id: str, folder_raw: str, count: int, pick: int = 0
 def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) -> dict:
     """One book of an order (an enriched order item: variations, childName, book) against its print folder."""
     started = time.monotonic()
-    model = _settings()["model"]
-    folder = Path(str(folder_raw or "").strip().strip('"'))
-    present = creator._files_by_lower(folder) if folder.is_dir() else {}
-    files = {0: present.get("cover.png")} | {n: present.get(f"{n}.png") for n in range(1, count + 1)}
-    if count < 3 or not all(files.values()):
-        raise UserError("Файли книги змінилися — перетягніть їх ще раз.")
-
+    files = _print_files(folder_raw, count)
     pers = personalization(item)
     book = library.load(item["book"]["id"]) if item.get("book") else None
     texts = (book or {}).get("text") or {}
     refs = {k: fill(texts.get(k) or "", pers["child"], pers["gifter"]) for k in library.TEXT_KEYS if texts.get(k)}
     full = bool(pers["child"]) and any(refs.get(f"spread{n}") for n in library.SPREAD_NUMBERS)
-    cancel = threading.Event()
-    with _runs_lock:
-        if receipt_id in _runs:
-            _runs[receipt_id].set()  # a newer check of the same order replaces the running one
-        _runs[receipt_id] = cancel
+    target = _targets(files, count, refs, pers)
+    with _Run(job, receipt_id, _settings()["model"]) as run:
+        targets, answers, layout = _passes(run, target, files, count, refs, pers, full)
+        run.say("Підсумок…")
+    issues = _all_issues(targets, answers, layout, files, pers, count, receipt_id)
+    learn = _learnable(targets, issues)
+    found = set(layout["mapping"].values())
+    result = {
+        "mode": "full" if full else "light",
+        "light": None if full else ("noBook" if not book else "noName" if not pers["child"] else "noTexts"),
+        "bookId": (book or {}).get("id"),
+        "model": run.model,
+        "seconds": round(time.monotonic() - started, 1),
+        "child": pers["child"],
+        "pages": [{"page": t["page"], "part": t.get("part"), "file": t["file"], "label": t["label"],
+                   "key": t.get("key"), "mode": t["mode"], "expected": t.get("expected"),
+                   "learn": None if answers[i].get("failed") else learn.get(i),
+                   "text": "" if answers[i].get("failed") else (answers[i].get("transcript") or "")}
+                  for i, t in enumerate(targets)],
+        "skipped": [n for n in library.SPREAD_NUMBERS if refs.get(f"spread{n}") and f"spread{n}" not in found] if full else [],
+        "issues": issues,
+    }
+    _journal(receipt_id, result, pers)
+    return result
 
-    state = {"done": 0, "total": 1}
-    lock = threading.Lock()
 
-    def say(step: str) -> None:
-        job.progress(step, 100 * state["done"] / max(1, state["total"]))
+def _print_files(folder_raw: str, count: int) -> dict[int, Path]:
+    """The print folder's Cover.png (as page 0) and 1..count.png."""
+    folder = Path(str(folder_raw or "").strip().strip('"'))
+    present = {p.name.lower(): p for p in folder.iterdir() if p.is_file()} if folder.is_dir() else {}
+    files = {0: present.get("cover.png")} | {n: present.get(f"{n}.png") for n in range(1, count + 1)}
+    if count < 3 or not all(files.values()):
+        raise UserError("Файли книги змінилися — перетягніть їх ще раз.")
+    return files
 
-    def ask(path: Path, part: str | None, prompt: str, schema: dict | None = None, max_tokens: int | None = None):
-        if cancel.is_set():
-            raise UserError("Перевірку перервано.")
-        key = _cache_key(path, part, model, prompt, max_tokens)
-        with _cache_lock:
-            hit = _cache.get(key)
-        if hit is None:
-            image = picture(path, part)
-            for attempt in (1, 2):
-                try:
-                    hit = _chat(model, prompt, image, schema, max_tokens)
-                    break
-                except Unavailable:
-                    raise
-                except ModelError:
-                    if attempt == 2:
-                        raise
-            with _cache_lock:
-                if len(_cache) > 3000:
-                    _cache.clear()
-                _cache[key] = hit
-        with lock:
-            state["done"] += 1
-            say("Звірка тексту…" if schema else "Читання сторінок…")
-        return hit
 
-    def judged(t: dict) -> dict:
-        try:
-            return _parse(ask(t["path"], t.get("part"), t["prompt"], SCHEMA, JUDGE_TOKENS))
-        except Unavailable:
-            raise
-        except ModelError as err:
-            return {"failed": str(err)}
-
-    # The cover's front, the dedication (page 1) and the last page are always checked; the cover's back
-    # and the story pages when the read pass finds text there — in the full check only the pages that are
-    # a library text: the picture page of a spread may hold lettering the model cannot read and invents.
+def _targets(files: dict[int, Path], count: int, refs: dict, pers: dict):
+    """Makes a page to check: with the text it must carry (strict; the first and last page «personal»), or
+    with only what is known of it (loose — the buyer's own dedication, a book without texts)."""
     child, gifter = pers["child"], pers["gifter"]
     who = f"The book is from: {gifter}\n" if gifter else ""
 
@@ -721,45 +709,48 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) ->
             t.update(mode="loose", key=None, prompt=_loose(child, who if page in (1, count) else ""))
         return t
 
+    return target
+
+
+def _passes(run: "_Run", target, files: dict, count: int, refs: dict, pers: dict, full: bool):
+    """Both passes. The cover's front, the dedication and the last page are always checked; the cover's back
+    and the story pages when the read pass finds text there — in the full check only the pages that are a
+    library text: the picture page of a spread may hold lettering the model cannot read and invents."""
     fixed = [target(0, "front", "cover"), target(1, None, "page1", pers["dedication"]),
              target(count, None, "page30", pers["closing"])]
     story = list(range(2, count))
     spreads = [[p for p in (first, first + 1) if p < count] for first in range(2, count, 2)]
-    state["total"] = len(story) + 1 + len(fixed) + len(spreads)
-    try:
-        say("Підготовка…")
-        _ready(model, lambda step: job.progress(step, 1))
-        say("Читання сторінок…")
-        with ThreadPoolExecutor(PARALLEL, thread_name_prefix="textcheck") as pool:
-            fixed_answers = [pool.submit(judged, t) for t in fixed]
-            back = pool.submit(_safe_read, ask, files[0], "back")
-            reads = dict(zip(story, pool.map(lambda n: _safe_read(ask, files[n]), story)))
-            texty = {n for n in story if has_text(reads[n])}
-            mapping = assign(count, {n: reads[n] for n in texty}, refs) if full else {}
-            stories, blank, unmatched = [], [], []
-            for pair in spreads:
-                hit = [p for p in pair if p in mapping]
-                lettered = [p for p in pair if p in texty]
-                if hit:
-                    stories += [target(p, None, mapping[p]) for p in hit]
-                    continue
-                if not lettered:
-                    blank.append(pair)
-                elif full:
-                    unmatched.append(max(lettered, key=lambda p: len(words(reads[p]))))
-                stories += [target(p) for p in lettered]
-            if has_text(back.result()):
-                stories.insert(0, target(0, "back"))
-            state["total"] = state["done"] + sum(1 for f in fixed_answers if not f.done()) + len(stories)
-            story_answers = [pool.submit(judged, t) for t in stories]
-            targets = fixed + stories
-            answers = {i: f.result() for i, f in enumerate(fixed_answers + story_answers)}
-    finally:
-        with _runs_lock:
-            if _runs.get(receipt_id) is cancel:
-                del _runs[receipt_id]
+    run.total = len(story) + 1 + len(fixed) + len(spreads)
+    run.say("Підготовка…")
+    _ready(run.model, lambda step: run.job.progress(step, 1))
+    run.say("Читання сторінок…")
+    fixed_answers = [run.pool.submit(run.judge, t) for t in fixed]
+    back = run.pool.submit(run.read, files[0], "back")
+    reads = dict(zip(story, run.pool.map(lambda n: run.read(files[n]), story)))
+    texty = {n for n in story if has_text(reads[n])}
+    mapping = assign(count, {n: reads[n] for n in texty}, refs) if full else {}
+    stories, blank, unmatched = [], [], []
+    for pair in spreads:
+        hit = [p for p in pair if p in mapping]
+        lettered = [p for p in pair if p in texty]
+        if hit:
+            stories += [target(p, None, mapping[p]) for p in hit]
+            continue
+        if not lettered:
+            blank.append(pair)
+        elif full:
+            unmatched.append(max(lettered, key=lambda p: len(words(reads[p]))))
+        stories += [target(p) for p in lettered]
+    if has_text(back.result()):
+        stories.insert(0, target(0, "back"))
+    run.total = run.done + sum(1 for f in fixed_answers if not f.done()) + len(stories)
+    story_answers = [run.pool.submit(run.judge, t) for t in stories]
+    answers = {i: f.result() for i, f in enumerate(fixed_answers + story_answers)}
+    return fixed + stories, answers, {"mapping": mapping, "blank": blank, "unmatched": unmatched}
 
-    say("Підсумок…")
+
+def _all_issues(targets: list, answers: dict, layout: dict, files: dict, pers: dict, count: int,
+                receipt_id: str) -> list[dict]:
     vocab, others = _vocabulary(pers), _other_children(receipt_id)
     issues: list[dict] = []
     for i, t in enumerate(targets):
@@ -769,42 +760,133 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) ->
         else:
             issues += page_issues(t, a, pers, vocab, others)
     issues += book_issues(targets, answers, pers, count)
-    for pair in blank:  # every story spread carries text on one of its pages
+    for pair in layout["blank"]:  # every story spread carries text on one of its pages
         issues.append(_issue({"page": pair[0], "file": files[pair[0]].name,
                               "label": f"Стор. {'–'.join(map(str, pair))}"}, "warn", "На розвороті немає тексту"))
-    for page in unmatched:
+    for page in layout["unmatched"]:
         issues.append(_issue({"page": page, "file": files[page].name, "label": _label(page)},
                              "warn", "Текст не схожий на жоден текст паспорта книги", kind="unmatched"))
-    # Pages whose only fault is a difference from the library text can teach the passport (the owner decides):
-    # the library was written apart from the Canva template, and a template that differs would be red every time.
+    order_of = {"error": 0, "warn": 1}
+    issues.sort(key=lambda x: (x["page"] if x["page"] else -1, order_of.get(x["level"], 2)))
+    return issues
+
+
+def _learnable(targets: list, issues: list) -> dict[int, str]:
+    """Pages whose only fault is a difference from the library text can teach the passport (the owner decides):
+    the library was written apart from the Canva template, and a template that differs would be red every time."""
     kinds: dict[tuple, set] = {}
     for i in issues:
         kinds.setdefault((i["page"], i.get("part")), set()).add(i["kind"])
-
-    def learn(t: dict) -> str | None:
+    out = {}
+    for i, t in enumerate(targets):
         k = kinds.get((t["page"], t.get("part")), set())
-        return t["key"] if t["mode"] == "strict" and t.get("key") and "diff" in k and "rule" not in k else None
+        if t["mode"] == "strict" and t.get("key") and "diff" in k and "rule" not in k:
+            out[i] = t["key"]
+    return out
 
-    order_of = {"error": 0, "warn": 1}
-    issues.sort(key=lambda x: (x["page"] if x["page"] else -1, order_of.get(x["level"], 2)))
-    found = set(mapping.values())
-    result = {
-        "mode": "full" if full else "light",
-        "light": None if full else ("noBook" if not book else "noName" if not child else "noTexts"),
-        "bookId": (book or {}).get("id"),
-        "model": model,
-        "seconds": round(time.monotonic() - started, 1),
-        "child": pers["child"],
-        "pages": [{"page": t["page"], "part": t.get("part"), "file": t["file"], "label": t["label"],
-                   "key": t.get("key"), "mode": t["mode"], "expected": t.get("expected"),
-                   "learn": learn(t) if not answers[i].get("failed") else None,
-                   "text": (answers[i].get("transcript") or "") if not answers[i].get("failed") else ""}
-                  for i, t in enumerate(targets)],
-        "skipped": [n for n in library.SPREAD_NUMBERS if refs.get(f"spread{n}") and f"spread{n}" not in found] if full else [],
-        "issues": issues,
-    }
-    _journal(receipt_id, result, pers)
-    return result
+
+class _Run:
+    """One check's model calls: four at a time, cached, counted for the progress bar, stoppable. A newer check
+    of the same order stops this one; the model leaves the graphics card when the last running check ends."""
+
+    def __init__(self, job, receipt_id: str, model: str):
+        self.job, self.receipt_id, self.model = job, receipt_id, model
+        self.cancel = threading.Event()
+        self.lock = threading.Lock()
+        self.done, self.total = 0, 1
+        self.pool: ThreadPoolExecutor | None = None
+
+    def __enter__(self) -> "_Run":
+        global _active
+        with _runs_lock:
+            old = _runs.get(self.receipt_id)
+            if old:
+                old[0].set()
+            _runs[self.receipt_id] = (self.cancel, getattr(self.job, "id", None))
+        with _active_lock:
+            _active += 1
+        self.pool = ThreadPoolExecutor(PARALLEL, thread_name_prefix="textcheck")
+        return self
+
+    def __exit__(self, kind, err, tb) -> bool:
+        global _active
+        if kind:
+            self.cancel.set()  # the queued pages give up at once
+        self.pool.shutdown(wait=True, cancel_futures=True)
+        with _runs_lock:
+            if _runs.get(self.receipt_id, (None,))[0] is self.cancel:
+                del _runs[self.receipt_id]
+        with _active_lock:
+            _active -= 1
+            last = _active == 0
+        if last:
+            _release_model(self.model)
+        return False
+
+    def say(self, step: str) -> None:
+        self.job.progress(step, 100 * self.done / max(1, self.total))
+
+    def ask(self, path: Path, part: str | None, prompt: str, schema: dict | None = None,
+            max_tokens: int | None = None) -> str:
+        if self.cancel.is_set():
+            raise UserError("Перевірку перервано.")
+        key = _cache_key(path, part, self.model, prompt, max_tokens)
+        with _cache_lock:
+            answer = _cache.get(key)
+        if answer is None:
+            image = picture(path, part)
+            try:
+                answer = _chat(self.model, prompt, image, schema, max_tokens)
+            except Unavailable:
+                raise
+            except ModelError:
+                if self.cancel.is_set():
+                    raise UserError("Перевірку перервано.") from None
+                answer = _chat(self.model, prompt, image, schema, max_tokens)  # once more
+            with _cache_lock:
+                if len(_cache) > 3000:
+                    _cache.clear()
+                _cache[key] = answer
+        with self.lock:
+            self.done += 1
+            self.say("Звірка тексту…" if schema else "Читання сторінок…")
+        return answer
+
+    def read(self, path: Path, part: str | None = None) -> str:
+        try:
+            return self.ask(path, part, READ_PROMPT, None, READ_TOKENS)
+        except Unavailable:
+            raise
+        except ModelError:
+            return ""  # the check pass still reads the page when it turns out to carry text
+
+    def judge(self, target: dict) -> dict:
+        try:
+            return _parse(self.ask(target["path"], target.get("part"), target["prompt"], SCHEMA, JUDGE_TOKENS))
+        except Unavailable:
+            raise
+        except ModelError as err:
+            return {"failed": str(err)}
+
+
+def cancel(receipt_id: str, job_id: str | None = None) -> bool:
+    """Stops the running check of an order (only the one of that job, when given): the card was closed or
+    got other files. Pages already with the model finish; the rest are not asked."""
+    with _runs_lock:
+        run = _runs.get(str(receipt_id))
+        if not run or (job_id and run[1] != job_id):
+            return False
+        run[0].set()
+        return True
+
+
+def _release_model(model: str) -> None:
+    """Frees the graphics card right after the check (19.09.2026: the model held 9 GB of 12 for five more minutes
+    and the Book Studio window, drawn by the same card, lost smoothness). Loading it again takes ~4 s."""
+    try:
+        _call("/api/generate", {"model": model, "keep_alive": 0}, timeout=10)
+    except ModelError:
+        pass  # KEEP_ALIVE lets it go a little later anyway
 
 
 _REFUSAL = re.compile(r"^\W*(?:i'?m sorry|i am sorry|sorry|i cannot|i can'?t|i'?m unable|i am unable|unable to|"
@@ -815,15 +897,6 @@ _REFUSAL = re.compile(r"^\W*(?:i'?m sorry|i am sorry|sorry|i cannot|i can'?t|i'?
 def has_text(read: str | None) -> bool:
     """A page with lettering worth checking: a few words, not the model's apology for illegible decoration."""
     return len(words(read or "")) >= 4 and not _REFUSAL.match(read or "")
-
-
-def _safe_read(ask, path: Path, part: str | None = None) -> str:
-    try:
-        return ask(path, part, READ_PROMPT, None, READ_TOKENS)
-    except Unavailable:
-        raise
-    except ModelError:
-        return ""  # the check pass still reads the page when it turns out to carry text
 
 
 def _journal(receipt_id: str, result: dict, pers: dict) -> None:
@@ -891,12 +964,14 @@ def _passport(req: Request):
         if key not in allowed or not text or len(text) > 4000:
             raise ApiError("Некоректний текст сторінки.")
         texts[key] = as_template(text, child)
-    with library._lock:
-        book = library.load(str(body.get("bookId") or ""))
-        book["text"].update(texts)
-        library.save(book)
+    book = library.update_texts(str(body.get("bookId") or ""), texts)
     core.log.info("Passport texts of %s updated from a print: %s", book["id"], ", ".join(texts))
     return {"updated": sorted(texts)}
+
+
+@route("POST", r"/api/orders/(\d{5,20})/textcheck/cancel")
+def _cancel(req: Request):
+    return {"stopped": cancel(req.groups[0], str((req.json or {}).get("jobId") or "") or None)}
 
 
 @route("POST", r"/api/orders/(\d{5,20})/textcheck")

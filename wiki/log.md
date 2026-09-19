@@ -3,6 +3,17 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-19] update | Плавність: виправлення після огляду коду
+
+- Модель звільняє відеокарту одразу після перевірки; перевірка зупиняється, коли вже не потрібна (новий
+  маршрут `…/textcheck/cancel`); картки без роботи — не більше трьох; кеш прев'ю чиститься (21 день);
+  дрібні виправлення з [plans/open-questions.md](plans/open-questions.md). Рішення — [decisions.md](decisions.md).
+- Оновлено: [features/text-check.md](features/text-check.md), [features/orders.md](features/orders.md),
+  [features/settings.md](features/settings.md), [features/library.md](features/library.md),
+  [architecture/api-routes.md](architecture/api-routes.md), [architecture/frontend.md](architecture/frontend.md),
+  [architecture/data.md](architecture/data.md), [architecture/runtime.md](architecture/runtime.md),
+  [code-map.md](code-map.md), [dev/testing.md](dev/testing.md), [index.md](index.md).
+
 ## [2026-09-19] query | Огляд коду: чому стало менш плавно, знайдені вади
 
 - На прохання власника — аналіз якості коду й плавності (без змін коду): сервер швидкий, головна

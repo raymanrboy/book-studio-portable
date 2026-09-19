@@ -224,11 +224,35 @@ class WholeCheck(unittest.TestCase):
                            "problems": ["Текст відрізняється"] if bad else []})
 
     def run_check(self, item_):
-        job = SimpleNamespace(progress=lambda *a, **k: None)
+        job = SimpleNamespace(id="job1", progress=lambda *a, **k: None)
         with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=self.fake_chat), \
                 mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
-                mock.patch.object(tc, "_other_children", return_value={"noah"}):
-            return tc.check_book(job, "4100000101", item_, str(self.folder), 24)
+                mock.patch.object(tc, "_other_children", return_value={"noah"}), \
+                mock.patch.object(tc, "_release_model") as release:
+            res = tc.check_book(job, "4100000101", item_, str(self.folder), 24)
+        release.assert_called_once()   # the graphics card is freed right after the check
+        self.assertEqual((tc._active, tc._runs), (0, {}))
+        return res
+
+    def test_a_stopped_check_stops(self):
+        """The card was closed: pages not yet asked are never asked, the model is still let go."""
+        asked = []
+
+        def chat(*args, **kwargs):
+            asked.append(1)
+            if len(asked) == 3:
+                self.assertTrue(tc.cancel("4100000101", "job1"))
+                self.assertFalse(tc.cancel("4100000101", "another-job"))   # only that job's check
+            return self.fake_chat(*args, **kwargs)
+
+        job = SimpleNamespace(id="job1", progress=lambda *a, **k: None)
+        with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=chat), \
+                mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
+                mock.patch.object(tc, "_release_model") as release, self.assertRaises(UserError):
+            tc.check_book(job, "4100000101", item(book_id=self.book_id), str(self.folder), 24)
+        self.assertLess(len(asked), 10)
+        release.assert_called_once()
+        self.assertEqual((tc._active, tc._runs), (0, {}))
 
     def test_finds_the_planted_mistakes_and_nothing_else(self):
         res = self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
@@ -281,6 +305,8 @@ class Passport(unittest.TestCase):
         text = library.load(book_id)["text"]
         self.assertEqual((text["cover"], text["spread15"]), ("Sweet Dreams\ndear {Name}", "{Name}'s plane sleeps."))
         self.assertEqual(text["spread2"], TEXTS["spread2"])
+        with self.assertRaises(Exception):
+            library.update_texts(book_id, {"notes": "x"})
         for bad in ({"key": "page1", "text": "Dear Jasper"}, {"key": "cover", "text": ""}):  # the owner's own pages stay his
             with self.subTest(bad=bad), self.assertRaises(Exception):
                 tc._passport(SimpleNamespace(json={"bookId": book_id, "child": "Jasper", "pages": [bad]}))

@@ -13,7 +13,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import archive, core, creator, gelato, printify, profit, tunnel
+from studio import archive, core, creator, gelato, images, printify, profit, tunnel
 from studio.jobs import Job, JobError
 from studio.server import ApiError
 from studio.vault import vault
@@ -478,6 +478,45 @@ class GelatoReprint(ArchiveCase):
             self.assertEqual(caught.exception.status, 409)
             with self.assertRaises(ApiError):
                 creator._reprint_printify(SimpleNamespace(json={"archiveId": cancelled, "title": "4100000001 - Emma"}))
+
+
+class PreviewCache(unittest.TestCase):
+    """The preview cache no longer grows for ever: unused previews go after three weeks, used ones stay."""
+
+    def test_old_previews_go_and_used_ones_stay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "1.png"
+            png(page, (300, 300))
+            used = images.preview(page, 120)
+            old = core.data_path("cache", "thumbs", "zz", "gone.jpg")
+            half = core.data_path("cache", "thumbs", "zz", "half.tmp")
+            old.parent.mkdir(parents=True, exist_ok=True)
+            old.write_bytes(b"x")
+            half.write_bytes(b"x")
+            month = time.time() - 30 * DAY
+            for f in (used, old, half):
+                os.utime(f, (month, month))
+            images.preview(page, 120)                  # asked again: its date is fresh again
+            self.assertGreaterEqual(images.prune_cache(), 2)
+            self.assertTrue(used.exists())
+            self.assertFalse(old.exists() or half.exists())
+
+    def test_the_lock_table_forgets_finished_previews(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "2.png"
+            png(page, (300, 300))
+            images.preview(page, 90)
+            images.preview(page, 60)
+            self.assertEqual(len(images._key_locks), 0)
+
+    def test_the_viewer_zoom_reuses_a_kept_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            left, right = Path(tmp) / "2.png", Path(tmp) / "3.png"
+            png(left, (3000, 3000))
+            png(right, (3000, 3000))
+            images.compose_spread(left, right, 2400)
+            self.assertTrue(images._cached(left, left.stat(), 2600)[1].exists())
+            self.assertFalse(images._cached(left, left.stat(), 2400)[1].exists())
 
 
 if __name__ == "__main__":

@@ -50,6 +50,7 @@ def _settings(req: Request):
         "etsy": {**data["etsy"], **etsy.status()},
         "printify": data["printify"],
         "gelato": data["gelato"],
+        "textcheck": {k: data["textcheck"].get(k) for k in ("enabled", "model")},  # Ollama's state: /api/textcheck/status
         "secrets": {name: vault.status(name) for name in EDITABLE_SECRETS},
         "dataDir": str(core.DATA_DIR),
         "legacy": legacy_sources(),

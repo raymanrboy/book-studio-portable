@@ -27,6 +27,8 @@ export async function mount(view, [section]) {
 
   async function load() {
     s = await api('/api/settings');
+    // The text-check block is drawn at once from the settings; whether Ollama answers comes a moment later.
+    if (!tc) tc = { ...s.textcheck, models: [], pending: true };
     // A block that needs the user's attention opens by itself.
     if (!s.etsy.connected || s.etsy.portWarning) openCards.add('etsy');
     if (!s.secrets.printify_token.configured) openCards.add('printify');
@@ -171,18 +173,18 @@ export async function mount(view, [section]) {
   function textcheckCard() {
     if (!tc) return '';
     const ready = tc.running && tc.installed;
-    const summary = !tc.enabled ? 'Вимкнено' : !tc.running ? 'Ollama не запущена'
+    const summary = !tc.enabled ? 'Вимкнено' : tc.pending ? `${tc.model} · перевірка стану…` : !tc.running ? 'Ollama не запущена'
       : !tc.installed ? `Немає моделі ${tc.model}` : `${tc.model} · на цьому комп'ютері`;
     return card('textcheck', {
       logo: ic('textScan'), logoClass: 'int-ui', title: 'Перевірка тексту', summary,
-      mark: tc.enabled ? stateMark(ready, ready ? 'Працює' : summary) : '',
+      mark: tc.enabled && !tc.pending ? stateMark(ready, ready ? 'Працює' : summary) : '',
       body: html`<div class="stack">
         <label class="set-row"><span class="grow">Перевіряти текст сторінок у картці замовлення</span>
           <span class="switch"><input type="checkbox" data-tc-enabled ${tc.enabled ? 'checked' : ''} aria-label="Перевіряти текст сторінок"></span></label>
         <div class="set-row">${ic('sparkle')}<span class="grow">Модель <b>${tc.model}</b>${tc.loaded ? html` <span class="faint">· у відеокарті</span>` : ''}</span>
           ${tc.models.length > 1 ? ib('swap', 'Обрати модель', 'data-act="tc-model"') : ''}
           ${ib('pulse', 'Перевірити зв\'язок', 'data-act="tc-test"')}</div>
-        ${!tc.running ? html`<div class="notice notice-warn">${ic('alert')}<div class="grow">${tc.canStart
+        ${tc.pending ? '' : !tc.running ? html`<div class="notice notice-warn">${ic('alert')}<div class="grow">${tc.canStart
             ? 'Ollama не запущена — програма запустить її сама, коли прийде час перевірки.'
             : 'Ollama не знайдена на цьому комп\'ютері.'}</div>${tc.canStart ? html`<button class="btn btn-sm" data-act="tc-start">Запустити</button>` : ''}</div>`
           : !tc.installed ? html`<div class="notice notice-warn">${ic('alert')}<div>В Ollama немає моделі ${tc.model}${tc.models.length ? ' — оберіть іншу' : ''}.</div></div>` : ''}
@@ -192,7 +194,7 @@ export async function mount(view, [section]) {
   }
 
   async function loadTextcheck() {
-    try { tc = await api('/api/textcheck/status'); } catch { tc = null; }
+    try { tc = await api('/api/textcheck/status'); } catch { return; } // the block stays as drawn from the settings
     const old = view.querySelector('#set-textcheck');
     if (!view.isConnected || !tc) return;
     if (old) old.outerHTML = String(textcheckCard());

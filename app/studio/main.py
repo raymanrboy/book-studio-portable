@@ -36,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Register all API routes.
-    from . import archive, creator, etsy, gelato, library, orders, printify, profit, sendlog, settings_api, textcheck, tunnel  # noqa: F401
+    from . import archive, creator, etsy, gelato, images, library, orders, printify, profit, sendlog, settings_api, textcheck, tunnel  # noqa: F401
 
     tunnel.cleanup_stale()
     creator.forget_old_form()
@@ -46,6 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     # The order archive tidies up on its own (again after every sync): books whose 14 days are over go.
     import threading
     threading.Thread(target=archive.refresh_quietly, daemon=True).start()
+    threading.Thread(target=images.prune_cache_quietly, daemon=True).start()  # old previews go
     url = f"{server.base_url()}/"
     if args.no_window:
         print(f"Book Studio: {url}", flush=True)

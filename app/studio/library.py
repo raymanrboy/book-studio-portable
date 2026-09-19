@@ -140,6 +140,18 @@ def summary(book: dict) -> dict:
     }
 
 
+
+def update_texts(book_id: str, texts: dict[str, str]) -> dict:
+    """Replaces some of a book's texts (the text check's «оновити паспорт»); the rest stays as it is."""
+    unknown = set(texts) - set(TEXT_KEYS)
+    if unknown:
+        raise ApiError(f"Невідомі тексти: {', '.join(sorted(unknown))}")
+    with _lock:
+        book = load(book_id)
+        book["text"].update(texts)
+        return save(book)
+
+
 def all_books() -> list[dict]:
     books = []
     if BOOKS_DIR.exists():

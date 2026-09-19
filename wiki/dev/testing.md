@@ -60,7 +60,7 @@ python -m unittest discover -s app/tests -t app
 | [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation`, `GelatoValidation`, `SafetyRails` |
 | [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`, `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
 | [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand` |
-| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint` |
+| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint`, `PreviewCache` (прибирання кешу, замки, зум) |
 | [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (модель — імітація: «читає» те, що тест «надрукував»), `Passport`, `OllamaAndRoutes` |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode` |
 

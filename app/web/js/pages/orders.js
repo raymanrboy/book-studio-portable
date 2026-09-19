@@ -168,6 +168,7 @@ async function mountCard(view, rid) {
   let chosen = null;   // printer picked by hand when the cover type could not be read
   let seq = 0;
   let checkSeq = 0;
+  let freshIssues = false; // the next paint of the findings is a new result: they slide in (once)
   const dismissed = new Set(); // text-check findings the owner marked «це не помилка» (kept for the card's life)
   // check: null (none yet / switched off) | {state:'run', percent, step} | {state:'done', result} | {state:'error', message}
   const f = { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '', check: null };
@@ -343,7 +344,7 @@ async function mountCard(view, rid) {
     const light = r.mode === 'light' ? html`<div class="row faint tc-light">${ic('info', 'icon-s')}<span>${LIGHT_TIP[r.light]}${r.bookId && r.light === 'noTexts' ? html` · <a href="#/book/${r.bookId}">паспорт книги</a>` : ''}</span></div>` : '';
     const list = openIssues();
     const learn = learnable();
-    return html`${list.length ? html`<div class="tc-list">${list.map((i) => html`<div class="tc-issue ${i.level}" data-lb="${viewerIndex(i.page)}">
+    return html`${list.length ? html`<div class="tc-list">${list.map((i) => html`<div class="tc-issue ${i.level} ${freshIssues ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}">
         <span class="tc-where">${i.label}</span>
         <span class="tc-text">${quoteBold(i.text)}${i.note ? html`<span class="tc-note">${i.note}</span>` : ''}</span>
         ${ib('check', 'Це не помилка', `data-dismiss="${i.id}"`, { cls: 'sm' })}
@@ -388,7 +389,17 @@ async function mountCard(view, rid) {
     if (!badge || !body) return;
     setHtml(badge, checkBadge());
     setHtml(body, checkBody());
+    freshIssues = false;
     markPages();
+  }
+
+  // The check is no longer wanted (the card closes, other files, another book): the model stops on it.
+  function dropCheck() {
+    checkSeq++;
+    const c = f.check;
+    if (c?.state === 'run' && c.jobId) {
+      api(`/api/orders/${o.receiptId}/textcheck/cancel`, { method: 'POST', body: { jobId: c.jobId } }).catch(() => {});
+    }
   }
 
   async function startCheck() {
@@ -400,14 +411,16 @@ async function mountCard(view, rid) {
       const start = await api(`/api/orders/${o.receiptId}/textcheck`, { method: 'POST', body: { folder: f.folder, pages: f.pages, pick } });
       if (!live()) return;
       if (start.off) { f.check = null; paintCheck(); return; } // switched off in Settings
+      f.check.jobId = start.jobId;
       const result = await runJob(Promise.resolve(start), (j) => {
         if (!live() || f.check?.state !== 'run') return;
         Object.assign(f.check, { percent: j.percent || 0, step: j.step || '' });
         const badge = view.querySelector('#oc-check-badge .v-badge.run');
         if (badge) { badge.querySelector('.num').textContent = `${Math.round(f.check.percent)}%`; badge.dataset.tip = f.check.step; }
-      }, 700);
+      }, 700, live);
       if (!live()) return;
       f.check = { state: 'done', result };
+      freshIssues = true;
     } catch (err) {
       if (!live()) return;
       f.check = { state: 'error', message: err.message };
@@ -481,6 +494,7 @@ async function mountCard(view, rid) {
 
   async function takeDrop(dropped) {
     if (!provider()) { toast('Спершу оберіть друкарню', 'info'); return; }
+    dropCheck();
     const my = ++seq;
     Object.assign(f, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
@@ -495,6 +509,7 @@ async function mountCard(view, rid) {
     try { path = (await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з обкладинкою і ${pagesText(pageOptions())} сторінками` } })).path; }
     catch (err) { toast(err.message, 'error'); return; }
     if (!path) return;
+    dropCheck();
     const my = ++seq;
     Object.assign(f, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
@@ -504,6 +519,7 @@ async function mountCard(view, rid) {
   async function takeEarlier() {
     const e = earlier();
     if (!e) return;
+    dropCheck();
     const my = ++seq;
     Object.assign(f, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
@@ -514,6 +530,7 @@ async function mountCard(view, rid) {
   }
 
   function resetFiles() {
+    dropCheck();
     seq++;
     Object.assign(f, { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '', check: null });
   }
@@ -596,6 +613,8 @@ async function mountCard(view, rid) {
       if (step) step.outerHTML = String(printCard());
       return true;
     },
-    unmount() { offs.forEach((fn) => fn()); seq++; keys(false); },
+    // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
+    idle: () => !(f.folder || f.busy || f.label || sentOf(o.receiptId)),
+    unmount() { dropCheck(); offs.forEach((fn) => fn()); seq++; keys(false); },
   };
 }

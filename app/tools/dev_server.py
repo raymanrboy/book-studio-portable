@@ -8,7 +8,6 @@ reaches Etsy, Printify or Gelato. Stop it with Ctrl+C (or preview_stop).
 """
 from __future__ import annotations
 
-import json
 import os
 import sys
 import tempfile

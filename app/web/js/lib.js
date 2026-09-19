@@ -169,10 +169,12 @@ export function upload(url, file, onProgress) {
   });
 }
 
-export async function runJob(startPromise, onProgress, interval = 420) {
+// keepGoing() false — the page no longer needs the result: polling stops (the error is for the caller to ignore).
+export async function runJob(startPromise, onProgress, interval = 420, keepGoing = () => true) {
   const { jobId } = await startPromise;
   for (;;) {
     await sleep(interval);
+    if (!keepGoing()) throw new ApiError('Більше не потрібно', 0);
     const job = await api(`/api/jobs/${jobId}`);
     onProgress?.(job);
     if (job.status === 'done') return job.result;
