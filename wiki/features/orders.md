@@ -39,6 +39,9 @@ code:
     (`statusTone()`: проблема — жовтий, відправлено/доставлено — зелений, чернетка/on hold/очікує —
     сірий, решта — голубий). Для «Нових» статусу ще немає.
   - Усі тексти верхнього рядка стоять на одній лінії (не по верхньому краю чипів) — вимога власника.
+- **Черга пам'ятає, де був власник** (з 19.09.2026, його прохання): вкладку, пошук і прокрутку. Стрілка
+  «назад» і Esc у картці, іконка «Замовлення» з іншої сторінки ведуть туди ж, а не на «Нові»; рядки при
+  поверненні не «виїжджають» заново (`queueState`). Лише в пам'яті — програма стартує з «Нових».
 - Оновлення: сторінка сама **не** синхронізує. Якщо відкрити її під час синхронізації після запуску,
   вона дочекається її (`runningSync()` → `watchSync()`). Кнопка запускає нову (`syncOrders()`).
 - Після оновлення рядки, що змістилися, на 0,45 с не клікаються (`inert`) — щоб клік не влучив
@@ -129,7 +132,7 @@ code:
 
 ## Де в коді
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `startCheck()`, `checkBadge()`, `checkBody()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `queueState`, `startCheck()`, `checkBadge()`, `checkBody()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — спільні з [архівом замовлень](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`, `is_placed()`, `placed_orders()`, `carrier_label()`

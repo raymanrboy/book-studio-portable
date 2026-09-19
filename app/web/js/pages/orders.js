@@ -38,12 +38,19 @@ export function mount(view, [rid]) {
 }
 
 // ==================================================================== queue
+// Where the owner was in the queue — the tab, the search, how far down: the card's back arrow (and Esc, the
+// Orders icon) bring him back there, not to «Нові» (owner, 19.09.2026). Memory only: the program starts at «Нові».
+const queueState = { stage: 'new', term: '', scroll: 0, visited: false };
+
 async function mountQueue(view) {
   let data;
   try { data = await api('/api/orders'); }
   catch (err) { setHtml(view, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`); return null; }
   settle(data.orders); // kept cards of orders that are no longer new are let go
-  let stage = 'new', term = '', syncing = false, shown = [], unfreeze = 0;
+  let { stage, term } = queueState;
+  let syncing = false, shown = [], unfreeze = 0;
+  const returning = queueState.visited; // coming back: the rows stand where they were, no entrance
+  queueState.visited = true;
 
   setHtml(view, html`
     <div class="page-head"><div><h1 class="page-title">Замовлення</h1><div class="page-sub" id="or-sub"></div></div></div>
@@ -98,7 +105,7 @@ async function mountQueue(view) {
       }
       return;
     }
-    setHtml(list, rows.map((o) => rowHtml(o, !before.length || (fresh && !before.includes(o.receiptId)))));
+    setHtml(list, rows.map((o) => rowHtml(o, (!before.length && !returning) || (fresh && !before.includes(o.receiptId)))));
     fadeImages(list);
     if (fresh && before.join() !== shown.join()) {
       // The rows just moved: ignore clicks for a moment so a click aimed at one buyer never lands on another.
@@ -137,21 +144,26 @@ async function mountQueue(view) {
     on(view, 'click', '[data-act="copy-text"]', copyChip),
     on(view, 'click', '[data-seg="stage"] button', (e, b) => {
       if (b.dataset.value === stage) return;
-      stage = b.dataset.value;
+      stage = queueState.stage = b.dataset.value;
       setSeg(seg, stage);
       render();
     }),
   ];
   const q = $('#or-q');
-  q.addEventListener('input', () => { term = q.value; render(); });
+  q.value = term;
+  q.addEventListener('input', () => { term = queueState.term = q.value; render(); });
   q.addEventListener('keydown', (e) => { if (e.key === 'Enter' && shown.length) location.hash = `#/orders/${shown[0]}`; });
 
   setSub(syncedText());
   render();
   runningSync().then((jobId) => { if (jobId && view.isConnected) refresh(() => watchSync(jobId, setSub)); });
+  const main = document.getElementById('main');
   return {
-    shown() { syncSeg(seg); },
-    unmount() { offs.forEach((f) => f()); clearTimeout(unfreeze); },
+    shown() {
+      syncSeg(seg);
+      if (returning) main.scrollTo({ top: queueState.scroll, behavior: 'instant' }); // .main scrolls smoothly otherwise
+    },
+    unmount() { queueState.scroll = main.scrollTop; offs.forEach((f) => f()); clearTimeout(unfreeze); },
   };
 }
 
