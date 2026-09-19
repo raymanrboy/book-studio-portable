@@ -272,7 +272,13 @@ export function confirmBox({ title, text = '', confirm = 'Підтвердити
 }
 
 // ------------------------------------------------------------------ dropdown menu
+let closeOpenMenu = null;
+/** Closes the dropdown menu on screen, if any: a page change must not leave one floating over another page
+ *  (Alt+1…5 moved on while «Ще» of a book's passport, with «Видалити книгу…», stayed open — 19.09.2026). */
+export function closeMenu() { closeOpenMenu?.(); }
+
 export function menu(anchor, items, { side = 'below' } = {}) {
+  closeMenu();
   document.querySelectorAll('.menu').forEach((m) => m.remove());
   const m = el(html`<div class="menu" role="menu">${items.map((it, i) => it === '-' ? raw('<hr>') :
     html`<button role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''} ${it.on ? 'on' : ''}" ${it.disabled ? 'disabled' : ''}>${ic(it.icon || 'chevRight')}<span class="grow">${it.label}</span>${it.on ? ic('check', 'icon-s') : ''}</button>`)}</div>`);
@@ -285,7 +291,11 @@ export function menu(anchor, items, { side = 'below' } = {}) {
   else if (top + h > window.innerHeight - 10) top = Math.max(10, r.top - h - 6);
   m.style.left = `${Math.max(10, left)}px`;
   m.style.top = `${top}px`;
-  const close = () => { m.remove(); document.removeEventListener('mousedown', outside, true); document.removeEventListener('keydown', key, true); };
+  const close = () => {
+    m.remove(); document.removeEventListener('mousedown', outside, true); document.removeEventListener('keydown', key, true);
+    if (closeOpenMenu === close) closeOpenMenu = null;
+  };
+  closeOpenMenu = close;
   const outside = (e) => { if (!m.contains(e.target)) close(); };
   const key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
   setTimeout(() => { document.addEventListener('mousedown', outside, true); document.addEventListener('keydown', key, true); });

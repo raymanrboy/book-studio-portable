@@ -1,5 +1,5 @@
 // App shell: icon rail, routing between pages (View Transitions), theme, heartbeat.
-import { api, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, hideTip } from './lib.js';
+import { api, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, closeMenu, hideTip } from './lib.js';
 import { isKept, stash, unstash, release } from './keep.js';
 import { waiting } from './handoff.js';
 
@@ -120,6 +120,7 @@ function wireSidebar() {
   on(side, 'click', '#theme-btn', (e, b) => { hideTip(); openThemeMenu(b); });
   document.addEventListener('keydown', (e) => {
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
+    if (document.querySelector('.modal-root, .lightbox')) return; // a dialog or the viewer first; the page stays under it
     const n = NAV[Number(e.key) - 1];
     if (n) { e.preventDefault(); location.hash = n.hash === '#/orders' ? ordersTarget() : n.hash; }
   });
@@ -172,6 +173,8 @@ async function navigate() {
   const found = ROUTES.find(([re]) => re.test(hash));
   if (!found) { location.hash = HOME; return; }
   const my = ++navToken;
+  hideTip();
+  closeMenu(); // a menu or a tip of the page being left never stays over the next one
   const [re, loader] = found;
   const params = hash.match(re).slice(1);
   topbarStart();
