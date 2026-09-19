@@ -1,7 +1,7 @@
 ---
 title: Вікі Book Studio — зміст
 type: index
-updated: 2026-09-17
+updated: 2026-09-19
 code: []
 ---
 # Вікі Book Studio
@@ -22,6 +22,7 @@ code: []
 
 - [Замовлення](features/orders.md) — черга і картка замовлення (стартовий екран).
 - [Бібліотека книг](features/library.md) — галерея, нова книга, паспорт книги, модель `book.json`.
+- [Перевірка тексту](features/text-check.md) — локальна модель Gemma читає сторінки, програма звіряє з паспортом книги.
 - [Order Creator](features/order-creator.md) — книга/замовлення On hold у Printify, чернетка Gelato.
 - [Налаштування](features/settings.md) — ключі, Etsy, Master Printify, дані.
 - [Журнал відправок](features/send-journal.md) — що саме пішло в Printify і Gelato при кожній спробі.
@@ -47,7 +48,7 @@ code: []
 
 - [Запуск і завершення](architecture/runtime.md)
 - [Сервер](architecture/server.md) — маршрути, фонові задачі, помилки, налаштування.
-- [Маршрути сервера](architecture/api-routes.md) — усі 81, з тим, хто їх викликає.
+- [Маршрути сервера](architecture/api-routes.md) — усі 87, з тим, хто їх викликає.
 - [Інтерфейс](architecture/frontend.md) — оболонка, контракт сторінки, помічники, візуальна система.
 - [Дані](architecture/data.md) — що лежить в `app/data`.
 

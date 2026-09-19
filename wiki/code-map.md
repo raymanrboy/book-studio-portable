@@ -1,7 +1,7 @@
 ---
 title: Карта коду
 type: reference
-updated: 2026-09-18
+updated: 2026-09-19
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -40,6 +40,7 @@ code:
 | [gelato.py](../app/studio/gelato.py) | Безпечний клієнт Gelato | `_allowed()`, `call()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
 | [tunnel.py](../app/studio/tunnel.py) | Тимчасове публічне посилання на PDF для Gelato | `FileTunnel`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()` |
 | [sendlog.py](../app/studio/sendlog.py) | Журнал відправок у Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
+| [textcheck.py](../app/studio/textcheck.py) | Перевірка тексту локальною моделлю (Ollama): читання сторінок, зіставлення з паспортом, звірка, правила для імен | `check_order()`, `check_book()`, `assign()`, `diff()`, `findings()`, `page_issues()`, `status()`, `start_ollama()` |
 | [archive.py](../app/studio/archive.py) | Архів замовлень: файли книг, що пішли в друк, автовидалення, «Не видаляти» | `store()`, `refresh()`, `clock()`, `summary()`, `get()` |
 | [images.py](../app/studio/images.py) | Прев'ю, перевірка PNG, склеювання розвороту | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `image_info()` |
 | [library.py](../app/studio/library.py) | Бібліотека книг: модель, імпорт, експорт, інструкція | `load()`, `save()`, `summary()`, `completeness()`, `scan_folder()`, `parse_text_json()`, `agent_guide()`, `export_book()` |
@@ -83,6 +84,7 @@ code:
 | [test_library_creator.py](../app/tests/test_library_creator.py) | Текст JSON, імпорт папки, перевірка файлів, запобіжники Printify/Gelato |
 | [test_flows.py](../app/tests/test_flows.py) | Створення в Printify/Gelato з імітаціями, перетягування, захист Etsy, OAuth |
 | [test_archive.py](../app/tests/test_archive.py) | Архів замовлень: копії файлів, 14/30 днів, «Не видаляти», передрук Printify/Gelato, позначка заміни |
+| [test_textcheck.py](../app/tests/test_textcheck.py) | Перевірка тексту: порівняння, правила імен, зіставлення сторінок (24 і 30), уся перевірка з імітацією моделі, оновлення паспорта, лише 127.0.0.1 |
 | [test_orders.py](../app/tests/test_orders.py) | Правило друкарні, розстановка сторінок, довжина книги Gelato, інструкція, частковий імпорт, правило синхронізації |
 | [test_wiki.py](../app/tests/test_wiki.py) | Вікі відповідає коду |
 

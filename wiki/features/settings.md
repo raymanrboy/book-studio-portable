@@ -1,14 +1,14 @@
 ---
 title: Налаштування
 type: feature
-updated: 2026-09-17
+updated: 2026-09-19
 code:
   - app/studio/settings_api.py
   - app/web/js/pages/settings.js
 ---
 # Налаштування
 
-> Мінімальна сторінка: ключі сервісів, підключення Etsy, шаблон Printify, папка даних.
+> Мінімальна сторінка: ключі сервісів, підключення Etsy, шаблон Printify, перевірка тексту, папка даних.
 > Кожен блок згорнутий в один рядок зі станом; блок, якому щось потрібно, відкривається сам.
 > Тема — не тут, а в меню внизу бокової панелі.
 
@@ -24,6 +24,11 @@ code:
 - **Printify**: токен; шаблон (Master) і «24 стор.»; кнопка вибору шаблону — лише коли його ще немає;
   перевірка зв'язку.
 - **Gelato**: ключ; три формати і «28 або 30 стор.»; перевірка зв'язку.
+- **Перевірка тексту** (з 19.09.2026): вмикач «Перевіряти текст сторінок у картці замовлення», модель
+  (іконка вибору — коли в Ollama їх кілька, що бачать картинки), «у відеокарті», «Перевірити зв'язок»;
+  Ollama не запущена → «Запустити» (програма й сама запускає її перед перевіркою). Стан питається
+  окремим запитом уже після того, як сторінка намальована, — Налаштування не чекають Ollama.
+  Докладно — [text-check.md](text-check.md).
 - **Дані програми**: шлях до `app/data` і кнопка «Відкрити».
 
 Технічні значення (позиції Master, розміри artwork, product UID, курс EUR→USD, час життя посилання)
@@ -42,10 +47,11 @@ cover і page_1…page_N, варіанти, розміри) → «Зробити
 
 ## Де в коді
 
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `dataCard()`, `oauthFlow()`, `pickMaster()`, `SECRET_LABELS`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `oauthFlow()`, `pickMaster()`, `SECRET_LABELS`
 - [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
 - [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `status()`, `import_session()`
+- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `status()`, `start_ollama()`, `_save_settings()`, `_start()`
 
 ## Пов'язане
 

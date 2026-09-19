@@ -1,7 +1,7 @@
 ---
 title: Перегляд інтерфейсу під час розробки
 type: dev
-updated: 2026-09-18
+updated: 2026-09-19
 code:
   - app/tools/dev_server.py
 ---
@@ -26,6 +26,11 @@ code:
   3 дні тому → «ще 11 дн.»), Noah (Gelato, 28 сторінок, чекає позначки в Etsy), Ava («Не видаляти») і
   передрук Liam. П'ята — Olivia: чернетка Gelato, що ще не стала замовленням, — в архіві її немає, а в
   «Нових» Olivia має чип «Draft» і в картці кнопку «Взяти файли минулої відправки».
+  Книга Olivia — з віршами (`SAMPLE_TEXTS`, `_printed()`): текст на одній сторінці кожного розвороту, як у
+  справжніх книгах, з двома закладеними помилками (`SLIPS`: «Olivai», забутий `{NAME}`); паспорт вигаданої
+  книги має ті самі тексти — тож **перевірка тексту** в картці Olivia знаходить рівно 2 помилки. Вона
+  звертається до справжньої Ollama на цьому ПК (локально, вигадані сторінки); без Ollama — жовта плашка.
+  Щоб архів перемалювався після змін `dev_server.py`, видаліть `%TEMP%\bsdev`.
 - Сервер відмовляється працювати, якщо папка даних — справжня `app/data`. Ключів у тимчасовій
   папці немає, тож синхронізація при запуску не стартує і сервіси не викликаються.
 
@@ -54,7 +59,7 @@ code:
 
 ## Де в коді
 
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `seed()`, `_receipt()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `PORT`
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `seed()`, `_receipt()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`, `PORT`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (режим `--no-window`)
 
 ## Пов'язане

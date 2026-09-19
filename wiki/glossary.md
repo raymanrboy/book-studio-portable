@@ -1,7 +1,7 @@
 ---
 title: Словник — слова власника і назви в коді
 type: reference
-updated: 2026-09-18
+updated: 2026-09-19
 code: []
 ---
 # Словник
@@ -77,6 +77,10 @@ code: []
 | Не видаляти (у архіві) | Шпилька на книзі в архіві: файли лишаються, доки позначку не знято | [archive.py](../app/studio/archive.py) `_keep()` |
 | Оформлене замовлення (в друкарні) | Підтверджене й оплачене, не чернетка, не «on hold», не скасоване; лише воно переводить замовлення «в роботу» і кладе книгу в архів | [profit.py](../app/studio/profit.py) `is_placed()`; [rules/order-stages.md](rules/order-stages.md) |
 | Вигаданий номер (телефон) | Телефон, який підставляється в Gelato, коли в замовленні Etsy його немає: `+1 555 555 0100` | [creator.py](../app/studio/creator.py) `GELATO_PLACEHOLDER_PHONE` |
+| ШІ-валідатор, перевірка тексту, «кнопка перевірити» | Локальна модель читає сторінки в картці замовлення, програма звіряє з паспортом книги | [textcheck.py](../app/studio/textcheck.py) `check_order()`; [orders.js](../app/web/js/pages/orders.js) `startCheck()`; [features/text-check.md](features/text-check.md) |
+| Gemma, локальна модель, Ollama | `gemma4:12b-it-qat` в Ollama на відеокарті цього ПК | [textcheck.py](../app/studio/textcheck.py) `DEFAULT_MODEL`, `status()`, `start_ollama()` |
+| Сліпе переписування / з підказкою | Прохід «читання» (модель не знає, що мало бути) і «звірки» (знає) | [textcheck.py](../app/studio/textcheck.py) `READ_PROMPT`, `STRICT_PROMPT` |
+| Паспорт застарів, оновити паспорт | Тексти паспорта не збігаються з шаблоном Canva — беруться з надрукованої книги | [orders.js](../app/web/js/pages/orders.js) `learnPassport()`; [textcheck.py](../app/studio/textcheck.py) `_passport()` |
 | Взяти файли минулої відправки | Кнопка в картці замовлення: файли відправки, що не стала замовленням (скасовано, чернетку видалено), беруться з архіву — і замовлення відправляється як звичайне | [orders.js](../app/web/js/pages/orders.js) `takeEarlier()`; [features/archive.md](features/archive.md) |
 | Кошик | `data/library/trash` — куди йде видалена книга | [library.py](../app/studio/library.py) `_delete()` |
 | Переглядач (лайтбокс) | Повноекранний перегляд із зумом | [lightbox.js](../app/web/js/lightbox.js) `openLightbox()` |

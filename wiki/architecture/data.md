@@ -1,7 +1,7 @@
 ---
 title: Дані програми — папка app/data
 type: architecture
-updated: 2026-09-18
+updated: 2026-09-19
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -16,7 +16,7 @@ code:
 
 | Шлях у `app/data/` | Що це | Хто пише |
 |---|---|---|
-| `settings.json` (+`.bak`) | Несекретні налаштування: тема, Etsy (магазин, адреса повернення), Printify (магазин, Master, розміри, `manualApprovalConfirmedAt`), Gelato (формати, курс EUR→USD, `pageCounts` 28 і 30; при запуску `_upgrade()` прибирає старе `pageCount` і міняє «дюймові» товари Gelato на метричні) | `core.settings` |
+| `settings.json` (+`.bak`) | Несекретні налаштування: тема, Etsy (магазин, адреса повернення), Printify (магазин, Master, розміри, `manualApprovalConfirmedAt`), Gelato (формати, курс EUR→USD, `pageCounts` 28 і 30; при запуску `_upgrade()` прибирає старе `pageCount` і міняє «дюймові» товари Gelato на метричні), `textcheck` (увімкнено, модель, адреса Ollama — лише 127.0.0.1) | `core.settings` |
 | `vault.json` (+`.bak`) | Ключі Etsy/Printify/Gelato, токени Etsy і ключ Gemini (`gemini_api_key`, для запланованої перевірки тексту — поки не використовується), зашифровані DPAPI. **Не читати й не друкувати** | `Vault` |
 | `library/books/<id>/book.json` | Модель книги ([features/library.md](../features/library.md)) | `library.save()` |
 | `library/books/<id>/assets/<uuid>.png` | Ілюстрації книги (оригінали) | `library._store_asset()` |
@@ -31,6 +31,7 @@ code:
 | `tmp/gelato/<сеанс>/` | PDF для Gelato, поки працює тимчасове посилання | `create_gelato_draft()` |
 | `logs/` | `app.log`, `printify.log`, `gelato.log`, `startup-error.txt` | журнали |
 | `logs/sends/` | по одному JSON на кожну відправку в Printify/Gelato (останні 400; з адресами, без ключів) | [журнал відправок](../features/send-journal.md) |
+| `logs/checks/` | по одному JSON на кожну перевірку тексту: що прочитала модель, що мало бути, проблеми (останні 400; з іменами дітей) | [перевірка тексту](../features/text-check.md) |
 | `archive/<id>/` | Архів замовлень: `Cover.png` + сторінки, що пішли в друк, і `entry.json` (що, куди, коли, адреса). **Видаляється сама** через 14 днів після «Відправлених» (30 — якщо замовлення не простежити), крім «Не видаляти» | [архів замовлень](../features/archive.md) |
 | `window-profile/` | Профіль вікна Edge (≈0,5 ГБ) | Edge |
 

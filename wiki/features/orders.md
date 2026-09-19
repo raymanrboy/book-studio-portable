@@ -1,7 +1,7 @@
 ---
 title: Замовлення — черга і картка замовлення
 type: feature
-updated: 2026-09-18
+updated: 2026-09-19
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
@@ -99,10 +99,17 @@ code:
    - **стрічка** всіх розворотів (`#oc-strip`): колесо миші гортає її плавно (`smoothWheel()`,
      без «примагнічування»), до останнього розвороту; мініатюри 360 px сервер готує заздалегідь
      (`STRIP_THUMB` = `STRIP_PREVIEW`);
-   - клік по будь-чому — переглядач розворотами (`folderViewerItems()`).
+   - клік по будь-чому — переглядач розворотами (`folderViewerItems()`; клавіша T — що прочитала
+     перевірка тексту й що мало бути, `viewerItems()`);
+   - **перевірка тексту** (з 19.09.2026): стартує сама, щойно файли перевірено (`startCheck()`); значок
+     праворуч від заголовка «Звірка» (відсотки → «Текст збігається» / «N помилок» / «N питань», ↻),
+     список проблем під заголовком (клік — переглядач на тій сторінці, ✓ «Це не помилка»), червоні й
+     жовті рамки на сторінках (`markPages()`), «Оновити паспорт» для розбіжностей із паспортом книги.
+     Докладно — [text-check.md](text-check.md).
 3. **Друк** (`printCard()`, `#oc-print`): «До друку в Printify/Gelato» → Order Creator, заповнений номером чека, назвою
    `номер чека - ім'я`, адресою, форматом і файлами (`print()` → `give('creator', …)`).
-   Картка Printify — у салатовому акценті.
+   Картка Printify — у салатовому акценті. Якщо перевірка тексту ще йде або знайшла червоне —
+   спершу питання («Відправити, не дочекавшись?» / «Все одно до друку?»), друк не блокується.
 
 ## Що віддає сервер
 
@@ -114,10 +121,12 @@ code:
 - `GET /api/orders/<чек>` → те саме для одного + `buyerMessage` і `earlierSends` (відправки, що не стали
   замовленням у друкарні, чиї файли ще в архіві — `archive.earlier_sends()`).
 - `POST /api/orders/<чек>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount}`.
+- `POST /api/orders/<чек>/textcheck` `{folder, pages, pick}` → `{jobId}` (або `{off: true}`, коли
+  перевірку вимкнено); результат задачі — `{mode, issues, pages, skipped, …}` ([text-check.md](text-check.md)).
 
 ## Де в коді
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `STRIP_THUMB`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `startCheck()`, `checkBadge()`, `checkBody()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — спільні з [архівом замовлень](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`, `is_placed()`, `placed_orders()`, `carrier_label()`
@@ -133,4 +142,4 @@ code:
 ## Пов'язане
 
 - [Шлях замовлення до друку](../flows/order-to-print.md) · [Правило друкарні](../rules/printer-rule.md) · [Етапи](../rules/order-stages.md)
-- [Order Creator](order-creator.md) · [Canva](../integrations/canva.md) · [Відкриті питання](../plans/open-questions.md)
+- [Order Creator](order-creator.md) · [Перевірка тексту](text-check.md) · [Canva](../integrations/canva.md) · [Відкриті питання](../plans/open-questions.md)

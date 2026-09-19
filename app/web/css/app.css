@@ -619,6 +619,7 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .v-badge.ok { color: var(--green); background: var(--green-soft); border-color: var(--green-line); }
 .v-badge.bad { color: var(--red); background: var(--red-soft); border-color: var(--red-line); }
 .v-badge.run { color: var(--accent-ink); background: var(--accent-soft); border-color: var(--accent-line); }
+.v-badge.warn { color: var(--amber); background: var(--amber-soft); border-color: var(--amber-line); }
 .result-card { border-radius: var(--r-card); padding: 14px 16px; background: var(--green-soft); border: 1px solid var(--green-line); animation: modal-in 380ms var(--spring) both; }
 .result-card h4 { font-size: 15px; color: var(--green); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 13px; }
@@ -814,6 +815,22 @@ button.set-head:hover { background: var(--surface-hover); }
 .strip-item > .spread-view, .strip-item > .structure-cover { transition: transform 300ms var(--ease); }
 .strip-item:hover > .spread-view, .strip-item:hover > .structure-cover { transform: translateY(-2px); }
 .strip-no { font-size: 11.5px; color: var(--text-3); }
+/* Text check: findings under the proof's title (red — certain, amber — worth a look), a click opens the
+   spread; the pages with findings are outlined in the proof and the strip. */
+#oc-check:empty, .tc-head:empty { display: none; }
+.tc-head { gap: 4px; }
+.tc-list { display: grid; gap: 6px; }
+.tc-issue { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 5px 5px 5px 12px; border-radius: 9px; border: 1px solid var(--red-line); background: var(--red-soft); font-size: 13px; cursor: zoom-in; animation: notice-in var(--t-slow) var(--ease) both; }
+.tc-issue.warn { border-color: var(--amber-line); background: var(--amber-soft); }
+.tc-where { min-width: 58px; font-family: var(--font-display); font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--red); }
+.tc-issue.warn .tc-where { color: var(--amber); }
+.tc-text { padding: 2px 0; line-height: 1.4; color: var(--text); overflow-wrap: anywhere; }
+.tc-text b { font-weight: 650; }
+.tc-note { display: block; margin-top: 1px; font-size: 12px; color: var(--text-3); }
+.tc-light { gap: 6px; font-size: 12.5px; }
+.tc-light a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.spread-view .half.tc-error, .structure-cover.tc-error { outline: 2px solid var(--red); outline-offset: -2px; }
+.spread-view .half.tc-warn, .structure-cover.tc-warn { outline: 2px solid var(--amber); outline-offset: -2px; }
 /* minmax(0, …): a plain 1fr would let the wide page strip stretch the whole column */
 @media (max-width: 1100px) {
   .ord-grid { grid-template-columns: minmax(0, 1fr); }

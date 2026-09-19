@@ -18,6 +18,31 @@ from pathlib import Path
 APP = Path(__file__).resolve().parents[1]
 PORT = 47890
 
+# The sample book's texts (made up): the library passport and what Olivia's printed book carries — with
+# one misspelt name and one forgotten {Name}, for the text check to find.
+SAMPLE_TEXTS = {
+    "cover": "Blessed Day\nfor {Name}",
+    "page1": "Dear {Name},\n\nWishing you a lifetime filled with love.\n\nWith love,\n{Gifter}",
+    "page30": "Made for {Name},\nwith love and prayer.",
+    **{f"spread{n}": f"{line}\n{{Name}} {verb} with a happy heart,\n{end}" for n, (line, verb, end) in enumerate([
+        ("The morning bells ring soft and clear,", "wakes", "a brand new day is here."),
+        ("A little dove sits on the wall,", "waves", "the gentlest bird of all."),
+        ("The chapel door is open wide,", "steps", "with family by the side."),
+        ("The water shines like morning dew,", "smiles", "the sky is bright and blue."),
+        ("A candle glows with golden light,", "watches", "the flame so warm and bright."),
+        ("The garden path is lined with flowers,", "skips", "through sunny morning hours."),
+        ("A lamb is resting by the gate,", "sings", "the evening will not wait."),
+        ("The choir hums a quiet tune,", "claps", "beneath the silver moon."),
+        ("The river hums along the stones,", "dances", "on grassy meadow zones."),
+        ("A rainbow bends across the hill,", "listens", "the world is calm and still."),
+        ("The picnic cloth is checked and red,", "laughs", "with honey on the bread."),
+        ("The stars come out one by one,", "yawns", "the busy day is done."),
+        ("The moon peeks through the window pane,", "rests", "and dreams of gentle rain."),
+        ("Goodnight to every tree and bird,", "prays", "with every gentle word."),
+    ], 2)},
+}
+SLIPS = {6: ("{Name}", "Olivai"), 10: ("{Name}", "{NAME}")}  # spread -> what Olivia's book prints instead
+
 
 def _receipt(rid: int, name: str, country: str, city: str, state: str, cover: str, child: str,
              shipped: bool = False, days_ago: int = 0) -> dict:
@@ -98,8 +123,12 @@ def seed(data: Path) -> None:
                 "canvaUrl": "https://www.canva.com/design/sample", "notes": "", "archived": False,
                 "cover": None, "thumbnail": None, "slots": library._empty_slots(),
                 "text": {k: "" for k in library.TEXT_KEYS}}
-        book["text"]["page1"] = "Dear {Name},\n\nWishing you a lifetime filled with love.\n\nWith love,\n{Gifter}"
         folder.mkdir(parents=True, exist_ok=True)
+        library.save(book)
+    from studio import library
+    book = library.load(book_id)
+    if book["text"] != SAMPLE_TEXTS:
+        book["text"] = dict(SAMPLE_TEXTS)
         library.save(book)
     from studio import archive
     if not archive.entries():
@@ -107,8 +136,9 @@ def seed(data: Path) -> None:
     print(f"Sample data: {len(receipts)} orders, 1 book, {len(archive.entries())} archived books", flush=True)
 
 
-def _sample_book(folder: Path, name: str, pages: int, hue: int) -> list:
-    """Made-up print files (small, numbered) in the order archive's shape: Cover.png + 1..N.png."""
+def _sample_book(folder: Path, name: str, pages: int, hue: int, story: bool = False) -> list:
+    """Made-up print files (small, numbered) in the order archive's shape: Cover.png + 1..N.png. With
+    `story`, a 30-page book carries SAMPLE_TEXTS as a printed book would (one text page per spread)."""
     from PIL import Image, ImageDraw, ImageFont
 
     def font(size):
@@ -122,18 +152,44 @@ def _sample_book(folder: Path, name: str, pages: int, hue: int) -> list:
     d = ImageDraw.Draw(cover)
     d.rectangle([462, 0, 472, 492], fill=(150, 120, 90))
     d.text((233, 246), "BACK", font=font(60), fill=(80, 60, 50), anchor="mm")
-    d.text((700, 220), name, font=font(80), fill=(80, 60, 50), anchor="mm")
-    d.text((700, 300), "sample book", font=font(34), fill=(150, 60, 60), anchor="mm")
+    if story:
+        d.text((700, 200), "Blessed Day", font=font(56), fill=(80, 60, 50), anchor="mm")
+        d.text((700, 290), f"for {name}", font=font(56), fill=(80, 60, 50), anchor="mm")
+    else:
+        d.text((700, 220), name, font=font(80), fill=(80, 60, 50), anchor="mm")
+        d.text((700, 300), "sample book", font=font(34), fill=(150, 60, 60), anchor="mm")
     cover.save(folder / "Cover.png")
     files = [(folder / "Cover.png", "Cover.png")]
     for n in range(1, pages + 1):
         page = Image.new("RGB", (480, 480), (200 + (n * 13 + hue) % 55, 215, 245 - (n * 7) % 50))
         d = ImageDraw.Draw(page)
-        d.text((240, 200), str(n), font=font(170), fill=(40, 40, 40), anchor="mm")
-        d.text((240, 380), f"Dear {name}" if n == 1 else f"page {n}", font=font(34), fill=(40, 40, 40), anchor="mm")
+        text = _printed(n, pages, name) if story else None
+        if text is None:
+            d.text((240, 200), str(n), font=font(170), fill=(40, 40, 40), anchor="mm")
+            d.text((240, 380), f"Dear {name}" if n == 1 else f"page {n}", font=font(34), fill=(40, 40, 40), anchor="mm")
+        else:
+            lines = text.split("\n")
+            for i, line in enumerate(lines):
+                d.text((240, 240 + (i - len(lines) / 2) * 30), line, font=font(20), fill=(40, 40, 40), anchor="mm")
         page.save(folder / f"{n}.png")
         files.append((folder / f"{n}.png", f"{n}.png"))
     return files
+
+
+def _printed(n: int, pages: int, name: str) -> str | None:
+    """What page n of the sample story book says, or None for a picture page."""
+    fill = lambda t: t.replace("{Gifter}", "Grandma & Grandpa").replace("{Name}", name)  # noqa: E731
+    if n == 1:
+        return fill(SAMPLE_TEXTS["page1"])
+    if n == pages:
+        return fill(SAMPLE_TEXTS["page30"])
+    spread = n // 2 + 1
+    if n != (2 * spread - 1 if spread % 2 == 0 else 2 * spread - 2):
+        return None
+    text = SAMPLE_TEXTS[f"spread{spread}"]
+    if spread in SLIPS:
+        text = text.replace(*SLIPS[spread])
+    return fill(text)
 
 
 def _seed_archive(data: Path) -> None:
@@ -161,7 +217,7 @@ def _seed_archive(data: Path) -> None:
         "title": "4100000104 - Liam", "productId": "sample-product-1", "orderId": "e" * 20 + "0104",
         "address": address, "reprintOf": liam})
     archive.update(reprint, sentAt=archive._iso(time.time() - 2 * 3600))
-    olivia = archive.store("gelato", _sample_book(src / "olivia", "Olivia", 30, 120), {
+    olivia = archive.store("gelato", _sample_book(src / "olivia", "Olivia", 30, 120, story=True), {
         "title": "4100000103 - Olivia", "format": "softcover_5x5", "formatLabel": "Softcover 5.5×5.5",
         "orderId": "00000000-0000-4000-8000-004100000103", "address": {**address, "country": "GB", "state": ""}})
     archive.update(olivia, sentAt=archive._iso(time.time() - 2 * day))

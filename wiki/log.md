@@ -3,6 +3,21 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-19] update | Перевірка тексту локальною моделлю — збудовано
+
+- Картка замовлення, крок «Звірка»: Gemma в Ollama читає сторінки, програма звіряє з паспортом книги
+  й даними Etsy; значок, список проблем, рамки на сторінках, питання перед друком, «Оновити паспорт»;
+  блок у Налаштуваннях. Нова сторінка [features/text-check.md](features/text-check.md).
+- Перевірено на трьох справжніх книгах з архіву і на 24-сторінковій книзі із закладеними помилками
+  (усі знайдено, хибних тривог немає); виявлено, що паспорти двох книг розходяться з шаблонами Canva.
+- Оновлено: [features/orders.md](features/orders.md), [flows/order-to-print.md](flows/order-to-print.md),
+  [features/settings.md](features/settings.md), [features/library.md](features/library.md),
+  [architecture/api-routes.md](architecture/api-routes.md), [architecture/data.md](architecture/data.md),
+  [architecture/frontend.md](architecture/frontend.md), [security.md](security.md),
+  [code-map.md](code-map.md), [glossary.md](glossary.md), [decisions.md](decisions.md),
+  [plans/roadmap.md](plans/roadmap.md), [dev/testing.md](dev/testing.md), [dev/preview.md](dev/preview.md),
+  [overview.md](overview.md), [index.md](index.md).
+
 ## [2026-09-19] decision | Ідеї: сторінки без Canva, мокапи для лістингу скриптом Photoshop
 
 - Записано на прохання власника («потім реалізуємо»): програма сама малює сторінки й присвяти (з

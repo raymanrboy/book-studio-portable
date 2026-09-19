@@ -1,10 +1,11 @@
 // Order pipeline: the queue of Etsy orders and one order's card — its book and Canva template, all
 // the buyer wrote, the Canva export dropped in and put in page order, a proof of the first spread and
-// every page, then the hand-over to the Order Creator. Nothing is saved to disk; while an order is new, its
-// card is kept in memory when the owner steps to another tab and comes back as it was left (keep.js).
+// every page with the text check by the local model, then the hand-over to the Order Creator. Nothing is
+// saved to disk; while an order is new, its card is kept in memory when the owner steps to another tab and
+// comes back as it was left (keep.js).
 import {
-  api, html, ic, ib, raw, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
-  openExternal, runJob, fadeImages, plural,
+  api, html, ic, ib, raw, esc, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
+  openExternal, runJob, fadeImages, plural, confirmBox,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
@@ -17,6 +18,18 @@ import { settle, sentOf, keptOrder } from '../keep.js';
 
 // Strip thumbnails: the server prepares this size ahead (creator.STRIP_PREVIEW), so scrolling never waits.
 const STRIP_THUMB = 360;
+
+// Text check (textcheck.py): how its findings are counted and why a check was only the light one.
+const LEVEL_WORDS = { error: ['помилка', 'помилки', 'помилок'], warn: ['питання', 'питання', 'питань'] };
+const LIGHT_TIP = {
+  noBook: 'Легка перевірка: книги немає в бібліотеці',
+  noTexts: 'Легка перевірка: у паспорті книги немає текстів',
+  noName: 'Легка перевірка: ім\'я дитини не знайдено в персоналізації',
+};
+// «Ollivia» замість «Olivia» — the quoted words stand out.
+const quoteBold = (text) => raw(String(text).split(/(«[^»]*»)/).map((part) => (part.startsWith('«') ? `<b>${esc(part)}</b>` : esc(part))).join(''));
+// Viewer position of a page: the cover, then spreads [форзац|1], [2|3], [4|5] …
+const viewerIndex = (page) => (page === 0 ? 0 : 1 + (page === 1 ? 0 : Math.floor(page / 2)));
 
 const bookImage = (b, w) => media(`/media/book/${b.id}/${b.image}`, { w });
 
@@ -154,7 +167,10 @@ async function mountCard(view, rid) {
   let pick = 0;        // which book of the order this pass is for (most orders hold one)
   let chosen = null;   // printer picked by hand when the cover type could not be read
   let seq = 0;
-  const f = { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '' };
+  let checkSeq = 0;
+  const dismissed = new Set(); // text-check findings the owner marked «це не помилка» (kept for the card's life)
+  // check: null (none yet / switched off) | {state:'run', percent, step} | {state:'done', result} | {state:'error', message}
+  const f = { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '', check: null };
   const item = () => o.items[pick] || {};
   const plan = () => item().plan || {};
   const provider = () => plan().provider || chosen;
@@ -260,12 +276,13 @@ async function mountCard(view, rid) {
     const it = item();
     const cover = f.validation.files.find((r) => r.position === 'cover') || {};
     const ratio = cover.width ? cover.width / cover.height : 1.9;
-    const half = (n) => (n === null ? html`<div class="half blank"></div>` : html`<div class="half"><img data-fade loading="lazy" decoding="async" src="${thumb(`${n}.png`, STRIP_THUMB)}" alt=""></div>`);
+    const half = (n) => (n === null ? html`<div class="half blank"></div>` : html`<div class="half" data-page="${n}"><img data-fade loading="lazy" decoding="async" src="${thumb(`${n}.png`, STRIP_THUMB)}" alt=""></div>`);
     const notes = (it.variations || []).filter((v) => !isNameField(v, it) && !isFormatField(v)); // only what the page itself says
     return html`<section class="card card-pad stack-l" id="oc-proof">
-      <div class="row"><span class="step-no">2</span><h3 class="card-title grow">Звірка</h3></div>
+      <div class="row"><span class="step-no">2</span><h3 class="card-title grow">Звірка</h3><span class="row tc-head" id="oc-check-badge">${checkBadge()}</span></div>
+      <div id="oc-check">${checkBody()}</div>
       <div class="proof">
-        <div class="structure-cover" data-lb="0" style="aspect-ratio:${ratio}">
+        <div class="structure-cover" data-lb="0" data-page="0" style="aspect-ratio:${ratio}">
           <img data-fade decoding="async" src="${thumb('Cover.png', 1400)}" alt="Обкладинка"><div class="gutter"></div><i class="crops"></i>
         </div>
         <div class="spread-view proof-spread" data-lb="1">
@@ -273,19 +290,141 @@ async function mountCard(view, rid) {
             ${it.childName ? html`<div class="proof-name">${it.childName}</div>` : ''}
             <dl>${notes.map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>
           </div>
-          <div class="half"><img data-fade decoding="async" src="${thumb('1.png', 1400)}" alt="Сторінка 1"></div>
+          <div class="half" data-page="1"><img data-fade decoding="async" src="${thumb('1.png', 1400)}" alt="Сторінка 1"></div>
           <div class="gutter-s"></div><i class="crops"></i>
         </div>
       </div>
       <div class="strip" id="oc-strip">
         <div class="strip-item" data-lb="0" style="width:${Math.round(110 * ratio)}px">
-          <div class="structure-cover" style="height:110px"><img data-fade loading="lazy" decoding="async" src="${thumb('Cover.png', STRIP_THUMB)}" alt=""></div>
+          <div class="structure-cover" data-page="0" style="height:110px"><img data-fade loading="lazy" decoding="async" src="${thumb('Cover.png', STRIP_THUMB)}" alt=""></div>
           <span class="strip-no">обкладинка</span></div>
         ${spreadsOf(f.pages).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}">
           <div class="spread-view">${half(sp.left)}${half(sp.right)}<div class="gutter-s"></div></div>
           <span class="strip-no num">${[sp.left, sp.right].filter(Boolean).join('–')}</span></div>`)}
       </div>
     </section>`;
+  }
+
+  // ---------------------------------------------------------------- text check (the local model reads every page)
+  // Starts by itself once the files are in; the proof stays usable meanwhile. Red — certain mistakes,
+  // amber — worth a look; «це не помилка» hides a finding (a deliberate edit) for as long as the card lives.
+  const openIssues = () => (f.check?.state === 'done' ? f.check.result.issues.filter((i) => !dismissed.has(i.id)) : []);
+  const countOf = (level) => openIssues().filter((i) => i.level === level).length;
+
+  function checkTip(r) {
+    const lettered = r.pages.filter((p) => p.text).length;
+    return [r.mode === 'full' ? 'Звірено з текстами паспорта книги' : LIGHT_TIP[r.light],
+      `сторінок з текстом: ${lettered}`, r.skipped.length ? `без розворотів ${r.skipped.join(', ')}` : '', `${r.seconds} с`]
+      .filter(Boolean).join(' · ');
+  }
+
+  function checkBadge() {
+    const c = f.check;
+    if (!c) return '';
+    if (c.state === 'run') {
+      return html`<span class="v-badge run" data-tip="${c.step || 'Перевірка тексту…'}"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span>${ic('textScan')}<span class="num">${Math.round(c.percent)}%</span></span>`;
+    }
+    const again = ib('sync', 'Перевірити текст ще раз', 'data-act="recheck"', { cls: 'sm' });
+    if (c.state === 'error') return html`<span class="v-badge" data-tip="${c.message}">${ic('textScan')}Текст не перевірено</span>`;
+    const tip = checkTip(c.result);
+    const errors = countOf('error'), warns = countOf('warn');
+    if (errors) return html`<span class="v-badge bad" data-tip="${tip}">${ic('textScan')}<span class="num">${errors}</span>${plural(errors, LEVEL_WORDS.error)}</span>${again}`;
+    if (warns) return html`<span class="v-badge warn" data-tip="${tip}">${ic('textScan')}<span class="num">${warns}</span>${plural(warns, LEVEL_WORDS.warn)}</span>${again}`;
+    return html`<span class="v-badge ok" data-tip="${tip}">${ic('textScan')}Текст збігається</span>${again}`;
+  }
+
+  function checkBody() {
+    const c = f.check;
+    if (c?.state === 'error') {
+      return html`<div class="notice notice-warn">${ic('alert')}<div class="grow">Текст не перевірено: ${c.message}</div>${ib('sync', 'Перевірити ще раз', 'data-act="recheck"', { cls: 'sm' })}</div>`;
+    }
+    if (c?.state !== 'done') return '';
+    const r = c.result;
+    const light = r.mode === 'light' ? html`<div class="row faint tc-light">${ic('info', 'icon-s')}<span>${LIGHT_TIP[r.light]}${r.bookId && r.light === 'noTexts' ? html` · <a href="#/book/${r.bookId}">паспорт книги</a>` : ''}</span></div>` : '';
+    const list = openIssues();
+    const learn = learnable();
+    return html`${list.length ? html`<div class="tc-list">${list.map((i) => html`<div class="tc-issue ${i.level}" data-lb="${viewerIndex(i.page)}">
+        <span class="tc-where">${i.label}</span>
+        <span class="tc-text">${quoteBold(i.text)}${i.note ? html`<span class="tc-note">${i.note}</span>` : ''}</span>
+        ${ib('check', 'Це не помилка', `data-dismiss="${i.id}"`, { cls: 'sm' })}
+      </div>`)}</div>` : ''}${learn.length ? html`<div class="row tc-light faint">${ic('book', 'icon-s')}<span class="grow">Якщо в шаблоні Canva саме так — паспорт книги застарів</span>
+        <button class="btn btn-sm" data-act="learn">Оновити паспорт · <span class="num">${learn.length}</span> ${plural(learn.length, ['сторінка', 'сторінки', 'сторінок'])}</button></div>` : ''}${light}`;
+  }
+
+  // Pages that differ from the book's passport only in their words (no name or placeholder mistakes)
+  // and whose findings are all still shown: «Так у шаблоні Canva» writes them into the passport.
+  function learnable() {
+    if (f.check?.state !== 'done' || !f.check.result.bookId) return [];
+    const shown = new Set(openIssues().map((i) => `${i.page}|${i.part}`));
+    return f.check.result.pages.filter((p) => p.learn && shown.has(`${p.page}|${p.part}`));
+  }
+
+  async function learnPassport() {
+    const r = f.check.result, pages = learnable();
+    const ok = await confirmBox({
+      title: 'Оновити паспорт книги?', confirm: 'Оновити паспорт',
+      text: `Тексти ${pages.length} ${plural(pages.length, ['сторінки', 'сторінок', 'сторінок'])} (${pages.map((p) => p.label).join(', ')}) у паспорті книги стануть такими, як у цьому друці; ім'я дитини — знову {Name}.\n\nРобіть це, лише якщо ці сторінки в шаблоні Canva правильні — тоді наступні замовлення цієї книги звірятимуться вже з ними.`,
+    });
+    if (!ok) return;
+    try {
+      await api('/api/textcheck/passport', { method: 'POST', body: { bookId: r.bookId, child: r.child, pages: pages.map((p) => ({ key: p.learn, text: p.text })) } });
+      toast('Паспорт книги оновлено', 'success');
+      startCheck();
+    } catch (err) { toast(err.message, 'error'); }
+  }
+
+  // Red / amber outline on the pages with findings: the big cover and page 1, and the strip.
+  function markPages() {
+    const worst = {};
+    for (const i of openIssues()) if (worst[i.page] !== 'error') worst[i.page] = i.level;
+    view.querySelectorAll('#oc-proof [data-page]').forEach((el) => {
+      el.classList.toggle('tc-error', worst[el.dataset.page] === 'error');
+      el.classList.toggle('tc-warn', worst[el.dataset.page] === 'warn');
+    });
+  }
+
+  function paintCheck() {
+    const badge = $('#oc-check-badge'), body = $('#oc-check');
+    if (!badge || !body) return;
+    setHtml(badge, checkBadge());
+    setHtml(body, checkBody());
+    markPages();
+  }
+
+  async function startCheck() {
+    const my = seq, mine = ++checkSeq;
+    const live = () => my === seq && mine === checkSeq;
+    f.check = { state: 'run', percent: 0, step: 'Перевірка тексту…' };
+    paintCheck();
+    try {
+      const start = await api(`/api/orders/${o.receiptId}/textcheck`, { method: 'POST', body: { folder: f.folder, pages: f.pages, pick } });
+      if (!live()) return;
+      if (start.off) { f.check = null; paintCheck(); return; } // switched off in Settings
+      const result = await runJob(Promise.resolve(start), (j) => {
+        if (!live() || f.check?.state !== 'run') return;
+        Object.assign(f.check, { percent: j.percent || 0, step: j.step || '' });
+        const badge = view.querySelector('#oc-check-badge .v-badge.run');
+        if (badge) { badge.querySelector('.num').textContent = `${Math.round(f.check.percent)}%`; badge.dataset.tip = f.check.step; }
+      }, 700);
+      if (!live()) return;
+      f.check = { state: 'done', result };
+    } catch (err) {
+      if (!live()) return;
+      f.check = { state: 'error', message: err.message };
+    }
+    paintCheck();
+  }
+
+  // The viewer shows, with T, what the model read on a spread's pages and what they must say.
+  function viewerItems() {
+    const items = folderViewerItems(f.folder, f.pages, f.label);
+    for (const p of f.check?.state === 'done' ? f.check.result.pages : []) {
+      const item = items[viewerIndex(p.page)];
+      if (!item || (!p.text && !p.expected)) continue;
+      const block = [`${p.label} — надруковано:`, p.text || '—', ...(p.expected ? ['', 'Має бути:', p.expected] : [])].join('\n');
+      item.text = item.text ? `${item.text}\n\n${block}` : block;
+    }
+    return items;
   }
 
   // Once the Order Creator has made the draft for this order, the step says so instead of offering
@@ -309,6 +448,7 @@ async function mountCard(view, rid) {
     fadeImages($('#oc-flow'));
     const strip = $('#oc-strip');
     if (strip) smoothWheel(strip);
+    markPages();
   }
 
   const setBusy = (pct) => {
@@ -326,9 +466,12 @@ async function mountCard(view, rid) {
     const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: provider(), folder: f.folder } }),
       (j) => { if (my === seq) setBusy(60 + (j.percent || 0) * 0.4); }, 300);
     if (my !== seq) return;
-    Object.assign(f, { validation: v, busy: 0 });
+    Object.assign(f, { validation: v, busy: 0, check: null });
     renderRight();
-    if (v.ok) requestAnimationFrame(() => $('#oc-proof')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    if (v.ok) {
+      requestAnimationFrame(() => $('#oc-proof')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      startCheck();
+    }
   }
   const failed = (my, err) => {
     if (my !== seq) return;
@@ -339,7 +482,7 @@ async function mountCard(view, rid) {
   async function takeDrop(dropped) {
     if (!provider()) { toast('Спершу оберіть друкарню', 'info'); return; }
     const my = ++seq;
-    Object.assign(f, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '' });
+    Object.assign(f, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
     try {
       const path = await receiveDrop(dropped, (pct) => { if (my === seq) setBusy(pct * 0.6); });
@@ -353,7 +496,7 @@ async function mountCard(view, rid) {
     catch (err) { toast(err.message, 'error'); return; }
     if (!path) return;
     const my = ++seq;
-    Object.assign(f, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '' });
+    Object.assign(f, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
     try { await arrange(path, my); } catch (err) { failed(my, err); }
   }
@@ -362,7 +505,7 @@ async function mountCard(view, rid) {
     const e = earlier();
     if (!e) return;
     const my = ++seq;
-    Object.assign(f, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '' });
+    Object.assign(f, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
     try {
       const { path } = await api(`/api/archive/${e.id}/reuse`, { method: 'POST', body: {} });
@@ -372,10 +515,17 @@ async function mountCard(view, rid) {
 
   function resetFiles() {
     seq++;
-    Object.assign(f, { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '' });
+    Object.assign(f, { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '', check: null });
   }
 
-  function print() {
+  // The text check never blocks printing — it asks once when it is still running or found mistakes.
+  async function print() {
+    const c = f.check;
+    if (c?.state === 'run' && !(await confirmBox({ title: 'Текст ще перевіряється',
+      text: 'Відправити до друку, не дочекавшись перевірки тексту?', confirm: 'До друку', cancel: 'Зачекати' }))) return;
+    const errors = c?.state === 'done' ? countOf('error') : 0;
+    if (errors && !(await confirmBox({ title: 'У тексті є помилки', danger: true, confirm: 'Все одно до друку', cancel: 'Повернутись',
+      text: `Перевірка знайшла ${errors} ${plural(errors, LEVEL_WORDS.error)} у тексті сторінок.` }))) return;
     const it = item();
     const name = it.childName || o.childName || '';
     give('creator', {
@@ -397,9 +547,15 @@ async function mountCard(view, rid) {
       else if (a === 'print') print();
       else if (a === 'to-creator') location.hash = '#/creator';
       else if (a === 'copy-text') copyChip(e, t);
+      else if (a === 'recheck') startCheck();
+      else if (a === 'learn') learnPassport();
     }),
     on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
-    on(view, 'click', '[data-lb]', (e, c) => { if (f.folder && f.pages) openLightbox(folderViewerItems(f.folder, f.pages, f.label), +c.dataset.lb); }),
+    on(view, 'click', '[data-dismiss]', (e, b) => { dismissed.add(b.dataset.dismiss); paintCheck(); }),
+    on(view, 'click', '[data-lb]', (e, c) => {
+      if (e.target.closest('[data-dismiss]') || !f.folder || !f.pages) return;
+      openLightbox(viewerItems(), +c.dataset.lb);
+    }),
     on(view, 'click', '[data-seg="provider"] button', (e, b) => {
       chosen = b.dataset.value;
       setSeg(b.closest('.seg'), chosen);

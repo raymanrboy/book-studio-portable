@@ -1,9 +1,10 @@
-// Settings: keys (encrypted with Windows DPAPI), Etsy connection, Printify Master, Gelato, data folder.
+// Settings: keys (encrypted with Windows DPAPI), Etsy connection, Printify Master, Gelato, the text check
+// by a local model (Ollama), data folder.
 // Every block is collapsed to one line with its status; the rare technical values live one more
 // click away, behind the details toggle, so the page stays quiet. Theme lives only in the rail.
 import {
   api, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, openExternal, syncSeg,
-  dateTime, sleep, slide,
+  dateTime, sleep, slide, menu,
 } from '../lib.js';
 import { refreshInfo } from '../app.js';
 
@@ -17,6 +18,7 @@ const OPEN_KEY = 'bs-settings-open';
 
 export async function mount(view, [section]) {
   let s;
+  let tc = null; // text check: on/off, model, whether Ollama answers (asked separately — never slows the page)
   const editing = new Set();
   const openCards = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]'));
   const openDetails = new Set();
@@ -165,6 +167,45 @@ export async function mount(view, [section]) {
     });
   }
 
+  // The text check reads the order's pages with a model in Ollama on this computer (textcheck.py).
+  function textcheckCard() {
+    if (!tc) return '';
+    const ready = tc.running && tc.installed;
+    const summary = !tc.enabled ? 'Вимкнено' : !tc.running ? 'Ollama не запущена'
+      : !tc.installed ? `Немає моделі ${tc.model}` : `${tc.model} · на цьому комп'ютері`;
+    return card('textcheck', {
+      logo: ic('textScan'), logoClass: 'int-ui', title: 'Перевірка тексту', summary,
+      mark: tc.enabled ? stateMark(ready, ready ? 'Працює' : summary) : '',
+      body: html`<div class="stack">
+        <label class="set-row"><span class="grow">Перевіряти текст сторінок у картці замовлення</span>
+          <span class="switch"><input type="checkbox" data-tc-enabled ${tc.enabled ? 'checked' : ''} aria-label="Перевіряти текст сторінок"></span></label>
+        <div class="set-row">${ic('sparkle')}<span class="grow">Модель <b>${tc.model}</b>${tc.loaded ? html` <span class="faint">· у відеокарті</span>` : ''}</span>
+          ${tc.models.length > 1 ? ib('swap', 'Обрати модель', 'data-act="tc-model"') : ''}
+          ${ib('pulse', 'Перевірити зв\'язок', 'data-act="tc-test"')}</div>
+        ${!tc.running ? html`<div class="notice notice-warn">${ic('alert')}<div class="grow">${tc.canStart
+            ? 'Ollama не запущена — програма запустить її сама, коли прийде час перевірки.'
+            : 'Ollama не знайдена на цьому комп\'ютері.'}</div>${tc.canStart ? html`<button class="btn btn-sm" data-act="tc-start">Запустити</button>` : ''}</div>`
+          : !tc.installed ? html`<div class="notice notice-warn">${ic('alert')}<div>В Ollama немає моделі ${tc.model}${tc.models.length ? ' — оберіть іншу' : ''}.</div></div>` : ''}
+        <div id="tc-test" class="faint" style="font-size:12.5px" hidden></div>
+      </div>`,
+    });
+  }
+
+  async function loadTextcheck() {
+    try { tc = await api('/api/textcheck/status'); } catch { tc = null; }
+    const old = view.querySelector('#set-textcheck');
+    if (!view.isConnected || !tc) return;
+    if (old) old.outerHTML = String(textcheckCard());
+    else view.querySelector('#set-data')?.insertAdjacentHTML('beforebegin', String(textcheckCard()));
+  }
+
+  async function saveTextcheck(patch) {
+    try { tc = await api('/api/settings/textcheck', { method: 'POST', body: patch }); }
+    catch (err) { toast(err.message, 'error'); }
+    const old = view.querySelector('#set-textcheck');
+    if (old && tc) old.outerHTML = String(textcheckCard());
+  }
+
   function dataCard() {
     return card('data', {
       logo: ic('database'), logoClass: 'int-ui', title: 'Дані програми',
@@ -182,6 +223,7 @@ export async function mount(view, [section]) {
         ${etsyCard()}
         ${printifyCard()}
         ${gelatoCard()}
+        ${textcheckCard()}
         ${dataCard()}
       </div>`);
     requestAnimationFrame(() => view.querySelectorAll('.seg').forEach(syncSeg));
@@ -450,12 +492,34 @@ export async function mount(view, [section]) {
         finally { b.disabled = false; }
       } else if (a === 'master-pick') pickMaster();
       else if (a === 'open-data') api('/api/app/open-data', { method: 'POST', body: {} }).catch((er) => toast(er.message, 'error'));
+      else if (a === 'tc-model') {
+        menu(b, tc.models.map((m) => ({ label: m, icon: 'sparkle', on: m === tc.model, onClick: () => saveTextcheck({ model: m }) })));
+      } else if (a === 'tc-start') {
+        b.disabled = true;
+        try { tc = await api('/api/textcheck/start', { method: 'POST', body: {} }); toast('Ollama запущено', 'success'); }
+        catch (err) { toast(err.message, 'error'); }
+        loadTextcheck();
+      } else if (a === 'tc-test') {
+        const out = view.querySelector('#tc-test');
+        out.hidden = false;
+        setHtml(out, html`<span class="row"><span class="spinner" style="width:14px;height:14px"></span>Перевірка зв'язку…</span>`);
+        await loadTextcheck();
+        const res = view.querySelector('#tc-test');
+        if (!res) return;
+        res.hidden = false;
+        const ok = tc?.running && tc.installed;
+        setHtml(res, ok
+          ? html`<span class="row" style="color:var(--green)">${ic('checkCircle', 'icon-s')}Працює · Ollama <span class="num">${tc.version}</span> · модель на місці</span>`
+          : html`<span class="row" style="color:var(--red)">${ic('alertCircle', 'icon-s')}${!tc?.running ? 'Ollama не відповідає' : `В Ollama немає моделі ${tc.model}`}</span>`);
+      }
     }),
+    on(view, 'change', '[data-tc-enabled]', (e, i) => saveTextcheck({ enabled: i.checked })),
   ];
   view.addEventListener('keydown', (e) => { if (e.target.id === 'etsy-key' && e.key === 'Enter') view.querySelector('[data-act="etsy-import"]')?.click(); });
 
   await load();
   render();
+  loadTextcheck();
   return {
     shown() {
       const target = section && view.querySelector(`#set-${section}`);

@@ -36,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Register all API routes.
-    from . import archive, creator, etsy, gelato, library, orders, printify, profit, sendlog, settings_api, tunnel  # noqa: F401
+    from . import archive, creator, etsy, gelato, library, orders, printify, profit, sendlog, settings_api, textcheck, tunnel  # noqa: F401
 
     tunnel.cleanup_stale()
     creator.forget_old_form()
@@ -76,8 +76,9 @@ def main(argv: list[str] | None = None) -> int:
             # Fallback browser without process tracking: stop after a long silence.
             if proc is None and st.last_heartbeat and now - st.last_heartbeat > 600:
                 closed = True
-            # Finish background work first: uploads, drafts, and Gelato file links still in use.
-            if closed and not jobs.any_running() and not tunnel.registry.active():
+            # Finish background work first: uploads, drafts, and Gelato file links still in use
+            # (a text check only reads — it is not waited for).
+            if closed and not jobs.any_running(ignore=("textcheck",)) and not tunnel.registry.active():
                 break
     except KeyboardInterrupt:
         pass

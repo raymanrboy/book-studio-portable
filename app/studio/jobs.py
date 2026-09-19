@@ -102,8 +102,8 @@ class Jobs:
         job = self._jobs.get(self._exclusive.get(exclusive, ""))
         return job if job and job.status == "running" else None
 
-    def any_running(self) -> bool:
-        return any(j.status == "running" for j in list(self._jobs.values()))
+    def any_running(self, ignore: tuple[str, ...] = ()) -> bool:
+        return any(j.status == "running" and j.kind not in ignore for j in list(self._jobs.values()))
 
     def _gc(self) -> None:
         cutoff = time.time() - 3600

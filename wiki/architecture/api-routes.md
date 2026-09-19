@@ -1,7 +1,7 @@
 ---
 title: Маршрути сервера
 type: reference
-updated: 2026-09-18
+updated: 2026-09-19
 code:
   - app/studio/archive.py
   - app/studio/server.py
@@ -14,6 +14,7 @@ code:
   - app/studio/printify.py
   - app/studio/gelato.py
   - app/studio/sendlog.py
+  - app/studio/textcheck.py
 ---
 # Маршрути сервера
 
@@ -49,6 +50,16 @@ code:
 | GET | `/api/orders` | token | `_list` | orders.js (черга) |
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (картка; `earlierSends` — відправки цього замовлення, що не стали замовленням у друкарні) |
 | POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (розстановка сторінок; для Gelato — ще й чи друкує він стільки сторінок у цьому форматі) |
+
+## Перевірка тексту — [textcheck.py](../../app/studio/textcheck.py)
+
+| Метод | Шаблон | Доступ | Функція | Хто викликає |
+|---|---|---|---|---|
+| POST | `/api/orders/(\d{5,20})/textcheck` | token | `_check` | orders.js `startCheck` (фонова задача; вимкнено в Налаштуваннях → `{off: true}`) |
+| GET | `/api/textcheck/status` | token | `_status` | settings.js `loadTextcheck` (увімкнено, модель, чи відповідає Ollama) |
+| POST | `/api/settings/textcheck` | token | `_save_settings` | settings.js (вмикач, модель) |
+| POST | `/api/textcheck/start` | token | `_start` | settings.js «Запустити» Ollama |
+| POST | `/api/textcheck/passport` | token | `_passport` | orders.js `learnPassport` (тексти обкладинки й розворотів у паспорт книги — лише кліком власника) |
 
 ## Бібліотека — [library.py](../../app/studio/library.py)
 
