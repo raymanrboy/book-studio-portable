@@ -1,7 +1,7 @@
 ---
 title: Printify
 type: integration
-updated: 2026-09-17
+updated: 2026-09-20
 code:
   - app/studio/printify.py
 ---
@@ -28,7 +28,8 @@ code:
   «Submit order» у Printify; автоматичні варіанти — самі через заданий час. У магазині власника
   стоїть **Manual** (скриншот від 15.09.2026), і програма один раз просить це підтвердити.
 - Поля: `external_id` (`<чек>-<8 символів>`), `label` (назва книги), `line_items`
-  (`product_id` + `variant_id` матового варіанту + `quantity` 1), `shipping_method: 1` (стандартна),
+  (`product_id` + `variant_id` матового варіанту + `quantity` 1) — **позиція на кожну книгу чека**:
+  замовлення з двох книг іде одним замовленням на одну адресу (з 20.09.2026), `shipping_method: 1` (стандартна),
   `is_printify_express: false`, `send_shipping_notification: false`, `address_to` (`first_name`,
   `last_name`, `address1`, `address2`, `city`, `region`, `zip`, `country`, `phone`).
 - Фініш книги **завжди матовий**.

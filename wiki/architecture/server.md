@@ -1,7 +1,7 @@
 ---
 title: Сервер — маршрути, задачі, помилки
 type: architecture
-updated: 2026-09-17
+updated: 2026-09-20
 code:
   - app/studio/server.py
   - app/studio/jobs.py
@@ -44,9 +44,12 @@ code:
 - `jobs.start(kind, fn, exclusive=...)` запускає потік і повертає `Job` з `id`.
   `exclusive` не дає запустити дві однакові дії (`profit-sync`, `printify-create`, `gelato-create`,
   `library-<id книги>`).
-- Усередині `fn(job)` — `job.progress(step, percent, detail)`.
+- Усередині `fn(job)` — `job.progress(step, percent, detail)`, а `job.share(дані)` віддає те, що вже
+  відоме, до кінця задачі (з 20.09.2026): у знімку це поле `partial`, і сторінка малює його, поки
+  задача триває — так перевірка тексту показує знайдені помилки, ще працюючи
+  ([features/text-check.md](../features/text-check.md)).
 - Інтерфейс: маршрут повертає `{"jobId"}`, `runJob()` опитує `/api/jobs/<id>` кожні ~0,4 с до
-  `done`/`error`.
+  `done`/`error`; проміжні знімки йдуть у `onProgress`.
 - `UserError` у задачі → `status: error` з текстом; інше → «Несподівана помилка» + trace у журналі.
 - Завершені задачі зберігаються годину.
 
@@ -67,7 +70,7 @@ code:
 ## Де в коді
 
 - [app/studio/server.py](../../app/studio/server.py) — `route()`, `ROUTES`, `Request`, `Response`, `_Handler`, `ApiError`, `_index_html()`, `json_response()`, `file_response()`, `html_response()`, `redirect()`
-- [app/studio/jobs.py](../../app/studio/jobs.py) — `Jobs`, `Job`, `UserError`, `JobError`
+- [app/studio/jobs.py](../../app/studio/jobs.py) — `Jobs`, `Job`, `Job.progress()`, `Job.share()`, `Job.snapshot()`, `UserError`, `JobError`
 - [app/studio/httpc.py](../../app/studio/httpc.py) — `request()`, `request_json()`, `HttpError`, `RETRY_STATUSES`
 - [app/studio/core.py](../../app/studio/core.py) — `Settings`, `DEFAULT_SETTINGS`, `write_json()`, `read_json()`, `setup_logging()`, `data_path()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `api()`, `runJob()`, `upload()`, `media()`

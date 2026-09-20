@@ -1,7 +1,7 @@
 ---
 title: Замовлення — черга і картка замовлення
 type: feature
-updated: 2026-09-19
+updated: 2026-09-20
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
@@ -50,6 +50,10 @@ code:
 
 ## Картка (`#/orders/<номер чека>`)
 
+**Хрестик «Завершити роботу над замовленням»** біля стрілки «назад» з'являється, коли для замовлення вже
+створено чернетку (`sentOf()`, `renderFinish()`). Клік — картка й Order Creator забувають це замовлення
+(`keep.finish()`), і відкривається черга. Бажання власника 20.09.2026: «відправив — і закрив».
+
 Шапка: ім'я покупця і поруч, по центру імені, — чип статусу друкарні (`.ord-title`, прохання власника
 17.09.2026); під ними сірим номер чека (клік копіює), час, етап (`STAGE_LABEL`), чип трек-номера (той
 самий, що в черзі, клік копіює); праворуч чип «Printify · 24 стор.» (того ж м'якого тону) /
@@ -78,8 +82,8 @@ code:
 - **Персоналізація**: усі поля рівно так, як їх повертає Etsy (`dl.ord-fields`), значення жирні,
   біля кожного — копіювання. Поле з ім'ям дитини — більшим (`.is-name`). Поле формату обкладинки
   (`isFormatField()`) — без копіювання: воно лише вибирає друкарню. Присвята не `DEFAULT` →
-  позначка «свій текст» (`isCustomText()`). Кілька книг у замовленні → перемикач «Книга 1 / Книга 2»,
-  кожна проходить шлях окремо.
+  позначка «свій текст» (`isCustomText()`). Кілька книг у замовленні → перемикач «Книга 1 / Книга 2»
+  (такий самий є над кроком «Файли з Canva»), кожна проходить шлях окремо — див. нижче.
 - **Повідомлення покупця**, якщо є.
 - **Доставка**: адреса з Etsy.
 
@@ -117,6 +121,25 @@ code:
    Картка Printify — у салатовому акценті. Якщо перевірка тексту ще йде або знайшла червоне —
    спершу питання («Відправити, не дочекавшись?» / «Все одно до друку?»), друк не блокується.
 
+## Замовлення на кілька книг (з 20.09.2026)
+
+> Один чек — кілька книг (10 % замовлень власника: 2–5 книг, зазвичай та сама книга для різних дітей).
+> Вони йдуть в одну **спільну чернетку на одну адресу**, а не окремими замовленнями.
+
+- **Кожна книга має власну роботу** (`work[]`, по одній на позицію замовлення): свою папку, свою
+  перевірку файлів, свою звірку й свою перевірку тексту. Перемикач «Книга 1 / Книга 2» (над кроком
+  «Файли з Canva» і в «Персоналізації») лише показує іншу — **нічого не втрачається**, і перевірка
+  тексту прихованої книги спокійно дороблює своє.
+- **Крок «Друк»** для такого замовлення показує список: яка книга готова, а яка ще ні («немає файлів»,
+  «перевіряються файли», «файли не пройшли перевірку», «друкується в Gelato» — якщо тип обкладинки
+  інший). Кнопка — «До друку в … · N книги».
+- **«До друку» бере всі готові книги тієї самої друкарні** (`readyBooks()`) і передає їх Order Creator
+  списком. Якщо готові не всі — питає: «Відправити лише їх? Решту можна надіслати пізніше — це буде
+  окреме замовлення в друкарні». Питання про перевірку тексту рахують помилки всіх книг, що йдуть.
+- **Назви** — `номер чека - ім'я дитини`; двох дітей з однаковим ім'ям розрізняє номер: `… - Emma (2)`.
+- Далі — [Order Creator](order-creator.md): Printify робить продукт на кожну книгу й **одне** замовлення
+  з кількома позиціями, Gelato — одну чернетку з кількома товарами.
+
 ## Що віддає сервер
 
 - `GET /api/orders` → `{orders, syncedAt}`; кожне замовлення з `picker_orders()` (`stage`: `new` /
@@ -132,14 +155,14 @@ code:
 
 ## Де в коді
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `queueState`, `startCheck()`, `checkBadge()`, `checkBody()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `readyBooks()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `queueState`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — спільні з [архівом замовлень](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`, `is_placed()`, `placed_orders()`, `carrier_label()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `earlier_sends()`, `_reuse()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
-- [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`
+- [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`, `finish()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `guess_child_name()`, `gelato_pages_problem()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `truck`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.ord-chips`, `.ord-child`, `.ord-copy`, `.ord-title`, `.ord-track`, `.ord-track-text`, `.ord-carrier`, `.ord-track-sep`, `.ord-track-no`, `.ord-sub`, `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`

@@ -181,6 +181,8 @@ export async function mount(view, [section]) {
       body: html`<div class="stack">
         <label class="set-row"><span class="grow">Перевіряти текст сторінок у картці замовлення</span>
           <span class="switch"><input type="checkbox" data-tc-enabled ${tc.enabled ? 'checked' : ''} aria-label="Перевіряти текст сторінок"></span></label>
+        <label class="set-row"><span class="grow">Спершу швидко дивитися, на яких сторінках узагалі є текст<span class="faint"> — модель читає лише їх</span></span>
+          <span class="switch"><input type="checkbox" data-tc-prescan ${tc.prescan ? 'checked' : ''} aria-label="Швидкий огляд сторінок перед перевіркою"></span></label>
         <div class="set-row">${ic('sparkle')}<span class="grow">Модель <b>${tc.model}</b>${tc.loaded ? html` <span class="faint">· у відеокарті</span>` : ''}</span>
           ${tc.models.length > 1 ? ib('swap', 'Обрати модель', 'data-act="tc-model"') : ''}
           ${ib('pulse', 'Перевірити зв\'язок', 'data-act="tc-test"')}</div>
@@ -516,6 +518,7 @@ export async function mount(view, [section]) {
       }
     }),
     on(view, 'change', '[data-tc-enabled]', (e, i) => saveTextcheck({ enabled: i.checked })),
+    on(view, 'change', '[data-tc-prescan]', (e, i) => saveTextcheck({ prescan: i.checked })),
   ];
   view.addEventListener('keydown', (e) => { if (e.target.id === 'etsy-key' && e.key === 'Enter') view.querySelector('[data-act="etsy-import"]')?.click(); });
 

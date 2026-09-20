@@ -2,16 +2,19 @@
 whole check with the model faked (no Ollama needed; made-up children and buyers only)."""
 import json
 import re
+import random
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import core, library, textcheck as tc
+from studio import core, images, library, textcheck as tc
 from studio.jobs import UserError
 
 STORY = {  # made-up library texts: every spread starts differently, as real books do
@@ -209,8 +212,10 @@ class WholeCheck(unittest.TestCase):
             Image.new("RGB", (40, 40)).save(self.folder / f"{n}.png")
         self.calls = 0
         tc._cache.clear()
+        core.settings.update({"textcheck": {"prescan": False}})  # these pages are blank squares
 
     def tearDown(self):
+        core.settings.update({"textcheck": {"prescan": True}})
         self.tmp.cleanup()
 
     def fake_chat(self, model, prompt, picture, schema=None, max_tokens=None):
@@ -223,8 +228,13 @@ class WholeCheck(unittest.TestCase):
         return json.dumps({"transcript": text, "verdict": "error" if bad else "ok",
                            "problems": ["Текст відрізняється"] if bad else []})
 
+    def fake_job(self):
+        """A job like the real one; self.shared keeps every list of findings the check handed out as it ran."""
+        self.shared = []
+        return SimpleNamespace(id="job1", progress=lambda *a, **k: None, share=self.shared.append)
+
     def run_check(self, item_):
-        job = SimpleNamespace(id="job1", progress=lambda *a, **k: None)
+        job = self.fake_job()
         with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=self.fake_chat), \
                 mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
                 mock.patch.object(tc, "_other_children", return_value={"noah"}), \
@@ -245,7 +255,7 @@ class WholeCheck(unittest.TestCase):
                 self.assertFalse(tc.cancel("4100000101", "another-job"))   # only that job's check
             return self.fake_chat(*args, **kwargs)
 
-        job = SimpleNamespace(id="job1", progress=lambda *a, **k: None)
+        job = self.fake_job()
         with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=chat), \
                 mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
                 mock.patch.object(tc, "_release_model") as release, self.assertRaises(UserError):
@@ -312,6 +322,187 @@ class Passport(unittest.TestCase):
                 tc._passport(SimpleNamespace(json={"bookId": book_id, "child": "Jasper", "pages": [bad]}))
 
 
+class WhileItRuns(unittest.TestCase):
+    """A 30-page book, as long as the library passport: every spread is checked the moment its own two
+    pages are read, and the findings reach the card while the rest of the book is still with the model."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.folder = Path(self.tmp.name) / "print"
+        self.folder.mkdir()
+        self.book_id = "c" * 32
+        library.save({"id": self.book_id, "schema": 1, "rev": 0, "title": "Planes", "listing": {"id": "4100000902"},
+                      "slots": library._empty_slots(), "text": dict(TEXTS), "cover": None, "thumbnail": None})
+        refs = {k: fill(v, gifter="Grandma & Grandpa") for k, v in TEXTS.items()}
+        self.printed = {"Cover.png|front": refs["cover"], "Cover.png|back": "",
+                        "1.png|None": refs["page1"], "30.png|None": refs["page30"]}
+        for k, n in enumerate(STORY, 1):  # spread k holds pages 2k and 2k+1; the text is on one of them
+            text_page, picture_page = (2 * k, 2 * k + 1) if k % 2 == 0 else (2 * k + 1, 2 * k)
+            text = refs[f"spread{n}"]
+            if n == 7:
+                text = text.replace("Olivia", "Ollivia")                                 # a misspelt name
+            self.printed[f"{text_page}.png|None"] = text
+            self.printed[f"{picture_page}.png|None"] = ""
+        Image.new("RGB", (60, 30)).save(self.folder / "Cover.png")
+        for n in range(1, 31):
+            Image.new("RGB", (40, 40)).save(self.folder / f"{n}.png")
+        self.asked = []
+        self.lock = threading.Lock()
+        tc._cache.clear()
+        core.settings.update({"textcheck": {"prescan": False}})  # these pages are blank squares
+
+    def tearDown(self):
+        core.settings.update({"textcheck": {"prescan": True}})
+        self.tmp.cleanup()
+
+    def fake_chat(self, model, prompt, picture, schema=None, max_tokens=None):
+        with self.lock:
+            self.asked.append(("check" if schema else "read", picture))
+        time.sleep(0.02 if schema else 0.005)   # a check takes longer than a read, as it does with Gemma
+        text = self.printed.get(picture, "")
+        if schema is None:
+            return " ".join(text.split()[:12])
+        expected = prompt.split("EXPECTED:", 1)[1].strip() if "EXPECTED:" in prompt else None
+        bad = expected is not None and tc.words(expected) != tc.words(text)
+        return json.dumps({"transcript": text, "verdict": "error" if bad else "ok",
+                           "problems": ["Текст відрізняється"] if bad else []})
+
+    def test_spreads_are_checked_before_the_last_page_is_read(self):
+        shared = []
+        job = SimpleNamespace(id="job1", progress=lambda *a, **k: None, share=shared.append)
+        with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=self.fake_chat), \
+                mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
+                mock.patch.object(tc, "_other_children", return_value=set()), \
+                mock.patch.object(tc, "_release_model"):
+            res = tc.check_book(job, "4100000102", item(book_id=self.book_id), str(self.folder), 30)
+        kinds = [kind for kind, _ in self.asked]
+        story_check = next(i for i, (kind, pic) in enumerate(self.asked)
+                           if kind == "check" and pic not in ("Cover.png|front", "1.png|None", "30.png|None"))
+        self.assertLess(story_check, len(kinds) - 1 - kinds[::-1].index("read"))  # before the last read
+        self.assertEqual(res["mode"], "full")
+        self.assertEqual([i["text"] for i in res["issues"]], ["«Ollivia» замість «Olivia»"])
+        self.assertTrue(shared, "the check shares its findings while it runs")
+        self.assertTrue(any(s["issues"] for s in shared[:-1]), "a mistake reaches the card before the end")
+        self.assertEqual([i["id"] for i in shared[-1]["issues"]], [i["id"] for i in res["issues"]])
+
+
+class Prescan(unittest.TestCase):
+    """A local look at the pages before the model: drawn text against a drawn illustration, and a whole
+    book where only the pages that may carry text are ever sent to Gemma."""
+
+    SIZE = 600
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.folder = Path(self.tmp.name) / "print"
+        self.folder.mkdir()
+        tc._cache.clear()
+
+    def tearDown(self):
+        core.settings.update({"textcheck": {"prescan": True}})
+        self.tmp.cleanup()
+
+    def draw(self, path, lines=0):
+        """A page of a children's book: shapes everywhere, and `lines` rows of words on top."""
+        size = self.SIZE
+        im = Image.new("RGB", (size, size), (238, 230, 214))
+        d = ImageDraw.Draw(im)
+        rnd = random.Random(3 if not lines else 7)
+        for _ in range(120 if not lines else 60):
+            x, y = rnd.randrange(size), rnd.randrange(size)
+            d.ellipse([x, y, x + rnd.randrange(30, 190), y + rnd.randrange(30, 190)],
+                      fill=(rnd.randrange(80, 220), rnd.randrange(90, 220), rnd.randrange(70, 200)))
+        for n in range(lines):
+            y, x = size * 0.30 + n * size * 0.06, size * 0.18
+            for w in (0.10, 0.06, 0.13, 0.08):
+                d.rectangle([x, y, x + size * w, y + size * 0.028], fill=(40, 30, 25))
+                x += size * (w + 0.02)
+        im.save(path)
+
+    def test_text_and_picture_pages_are_told_apart(self):
+        text, picture = self.folder / "t.png", self.folder / "p.png"
+        self.draw(text, lines=4)
+        self.draw(picture)
+        self.assertGreaterEqual(images.text_score(text), tc.LOOKS_TEXT)
+        self.assertLess(images.text_score(picture), tc.LOOKS_PICTURE)
+
+    def book(self, slips=()):
+        """A 30-page book with text on one page of every spread, as the owner's books are."""
+        library.save({"id": "d" * 32, "schema": 1, "rev": 0, "title": "Planes", "listing": {"id": "4100000903"},
+                      "slots": library._empty_slots(), "text": dict(TEXTS), "cover": None, "thumbnail": None})
+        refs = {k: fill(v, gifter="Grandma & Grandpa") for k, v in TEXTS.items()}
+        printed = {"Cover.png|front": refs["cover"], "Cover.png|back": "",
+                   "1.png|None": refs["page1"], "30.png|None": refs["page30"]}
+        self.draw(self.folder / "Cover.png", lines=2)
+        self.text_pages = []
+        for k, n in enumerate(STORY, 1):
+            text_page, picture_page = (2 * k, 2 * k + 1) if k % 2 == 0 else (2 * k + 1, 2 * k)
+            self.text_pages.append(text_page)
+            printed[f"{text_page}.png|None"] = refs[f"spread{n}"].replace("Olivia", "Ollivia") if n in slips else refs[f"spread{n}"]
+            self.draw(self.folder / f"{text_page}.png", lines=3)
+            self.draw(self.folder / f"{picture_page}.png")
+        for n in (1, 30):
+            self.draw(self.folder / f"{n}.png", lines=3)
+        self.printed = printed
+
+    def run_check(self, chat=None):
+        self.asked = []
+        job = SimpleNamespace(id="job1", progress=lambda *a, **k: None, share=lambda data: None)
+
+        def fake_chat(model, prompt, picture, schema=None, max_tokens=None):
+            self.asked.append((picture, bool(schema)))
+            text = self.printed.get(picture, "")
+            if chat:
+                text = chat(picture, text)
+            if schema is None:
+                return " ".join(text.split()[:12])
+            expected = prompt.split("EXPECTED:", 1)[1].strip() if "EXPECTED:" in prompt else None
+            bad = expected is not None and tc.words(expected) != tc.words(text)
+            return json.dumps({"transcript": text, "verdict": "error" if bad else "ok",
+                               "problems": ["Текст відрізняється"] if bad else []})
+
+        with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=fake_chat), \
+                mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
+                mock.patch.object(tc, "_other_children", return_value=set()), \
+                mock.patch.object(tc, "_release_model"):
+            return tc.check_book(job, "4100000103", item(book_id="d" * 32), str(self.folder), 30)
+
+    def test_only_pages_that_may_carry_text_reach_the_model(self):
+        """The picture half of every spread is never sent; the read pass disappears altogether, because the
+        passport says what each spread must carry — and a mistake is still found."""
+        self.book(slips={7})
+        res = self.run_check()
+        seen = {name for name, _ in self.asked}
+        for page in range(2, 30):
+            if page not in self.text_pages:
+                self.assertNotIn(f"{page}.png|None", seen, f"сторінку-малюнок {page} не треба показувати моделі")
+        self.assertFalse([1 for _, judged in self.asked if not judged and "Cover" not in _],
+                         "читання сторінок більше не потрібне")
+        self.assertEqual([i["text"] for i in res["issues"]], ["«Ollivia» замість «Olivia»"])
+        self.assertLessEqual(len(self.asked), 20)
+
+    def test_the_other_half_is_checked_when_the_guess_was_wrong(self):
+        """The local look pointed at the wrong half of a spread (the model sees nothing there): the check
+        moves to the other page instead of crying about a missing text."""
+        self.book()
+        wrong = self.text_pages[3]
+
+        def blind(picture, text):
+            return "" if picture == f"{wrong}.png|None" else text
+
+        res = self.run_check(chat=blind)
+        other = wrong + 1 if wrong % 2 == 0 else wrong - 1
+        self.assertIn(f"{other}.png|None", {name for name, _ in self.asked}, "друга половина розвороту перевірена")
+        self.assertEqual([i["text"] for i in res["issues"] if i["page"] == wrong], [])
+
+    def test_switched_off_it_is_the_old_check(self):
+        core.settings.update({"textcheck": {"prescan": False}})
+        self.book()
+        self.run_check()
+        reads = [name for name, judged in self.asked if not judged]
+        self.assertGreaterEqual(len(reads), 28)   # every story page read again, as before
+
+
 class OllamaAndRoutes(unittest.TestCase):
     def test_only_this_computer(self):
         with mock.patch.object(core.settings, "section", return_value={"url": "http://192.168.1.5:11434"}):
@@ -347,7 +538,8 @@ class OllamaAndRoutes(unittest.TestCase):
     def test_a_check_needs_the_order(self):
         with mock.patch("studio.profit.picker_orders", return_value=[]):
             with self.assertRaises(UserError):
-                tc.check_order(SimpleNamespace(progress=lambda *a, **k: None), "4100000101", "x", 24)
+                tc.check_order(SimpleNamespace(progress=lambda *a, **k: None, share=lambda data: None),
+                               "4100000101", "x", 24)
 
 
 if __name__ == "__main__":

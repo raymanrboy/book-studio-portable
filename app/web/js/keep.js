@@ -39,3 +39,12 @@ export function settle(orders) {
 /** The Order Creator made the draft for this order; its card shows it instead of «До друку». */
 export const markSent = (rid, info) => { sent.set(String(rid), info); };
 export const sentOf = (rid) => sent.get(String(rid)) || null;
+
+/** «Завершити» (owner, 20.09.2026): the work on this order is done — its kept pages and the
+ *  «draft created» mark go, so the card and the Order Creator start clean next time. */
+export function finish(rid) {
+  const id = String(rid || '');
+  if (!id) return;
+  for (const [hash, page] of [...pages]) if (String(page.ctrl?.receiptId || '') === id) release(hash);
+  sent.delete(id);
+}

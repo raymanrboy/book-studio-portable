@@ -10,7 +10,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import core, creator, etsy, gelato, httpc, printify, profit, tunnel
+from studio import archive, core, creator, etsy, gelato, httpc, printify, profit, tunnel
 from studio.jobs import Job, JobError
 from studio.vault import vault
 
@@ -84,7 +84,7 @@ class PrintifyDraftFlow(unittest.TestCase):
 
     def test_create_then_retry_reuses_uploads(self):
         with mock.patch.object(printify, "call", self.fake):
-            res = creator.create_printify_draft(str(self.root), "4100000001 - Emma", Job("t"))
+            res = creator.create_printify_draft([{"folder": str(self.root), "title": "4100000001 - Emma"}], Job("t"))
             self.assertEqual(res["total"], 25)
             self.assertEqual(res["uploaded"], 25)
             self.assertTrue(res["verified"])
@@ -97,7 +97,7 @@ class PrintifyDraftFlow(unittest.TestCase):
             page7 = payload["print_areas"][0]["placeholders"][7]["images"][0]["id"]
             self.assertEqual(self.fake.uploads[page7], "7.png")
             # A second book from the same folder re-uses every uploaded image.
-            res2 = creator.create_printify_draft(str(self.root), "Second", Job("t"))
+            res2 = creator.create_printify_draft([{"folder": str(self.root), "title": "Second"}], Job("t"))
             self.assertEqual(res2["uploaded"], 0)
             self.assertEqual(res2["reused"], 25)
         self.assertFalse(any(m == "POST" and "publish" in p for m, p in self.fake.calls))
@@ -108,8 +108,8 @@ class PrintifyDraftFlow(unittest.TestCase):
     def test_with_an_address_the_book_also_gets_an_order_on_hold(self):
         core.settings.update({"printify": {"manualApprovalConfirmedAt": "2026-09-15T20:00:00Z"}})
         with mock.patch.object(printify, "call", self.fake):
-            res = creator.create_printify_draft(str(self.root), "4100000002 - Noah", Job("t"), self.ADDRESS)
-        self.assertEqual(res["order"], {"id": "order-on-hold-1", "variant": "8x8 / Matte"})
+            res = creator.create_printify_draft([{"folder": str(self.root), "title": "4100000002 - Noah"}], Job("t"), self.ADDRESS)
+        self.assertEqual(res["order"], {"id": "order-on-hold-1", "variant": "8x8 / Matte", "books": 1})
         self.assertIsNone(res["orderError"])
         sent = self.fake.orders[0]
         self.assertEqual(sent["line_items"], [{"product_id": res["productId"], "variant_id": 149191, "quantity": 1}])  # matte
@@ -126,9 +126,8 @@ class PrintifyDraftFlow(unittest.TestCase):
         self.assertEqual(record["request"]["title"], "4100000002 - Noah")
         self.assertEqual(record["orderRequest"], sent)
         self.assertEqual(record["orderResponse"], {"id": "order-on-hold-1"})
-        self.assertEqual([s["step"] for s in record["steps"]], ["files", "master", "uploads", "verify", "archive"])
+        self.assertEqual([s["step"] for s in record["steps"]], ["files", "master", "uploads", "product", "verify", "masterSafe", "archive"])
         # …and exactly the files that went to Printify are in the order archive.
-        from studio import archive
         kept = archive.get(res["archiveId"])
         self.assertEqual((kept["provider"], kept["receiptId"], kept["productId"], kept["orderId"], kept["sendLog"]),
                          ("printify", "4100000002", res["productId"], "order-on-hold-1", res["sendLog"]))
@@ -137,11 +136,44 @@ class PrintifyDraftFlow(unittest.TestCase):
         self.assertEqual(len(record["steps"][0]["files"]), 25)
         self.assertNotIn("fake-token-for-tests", json.dumps(record))
 
+    def test_two_books_of_one_order_share_a_single_order(self):
+        """An Etsy receipt with two books (owner, 20.09.2026): a product each, one order "On hold" with two
+        line items to one address, and an archive entry per book pointing at that same order."""
+        core.settings.update({"printify": {"manualApprovalConfirmedAt": "2026-09-15T20:00:00Z"}})
+        second = Path(self.dir.name) / "liam"
+        second.mkdir()
+        png(second / "Cover.png", (60, 30), (30, 20, 10))
+        for i in range(1, 25):
+            png(second / f"{i}.png", (40, 40), (5, i * 10, 200))
+        with mock.patch.object(printify, "call", self.fake):
+            res = creator.create_printify_draft([{"folder": str(self.root), "title": "4100000001 - Emma"},
+                                                 {"folder": str(second), "title": "4100000001 - Liam"}],
+                                                Job("t"), self.ADDRESS)
+        ids = [b["productId"] for b in res["books"]]
+        self.assertEqual([b["title"] for b in res["books"]], ["4100000001 - Emma", "4100000001 - Liam"])
+        self.assertEqual(len(set(ids)), 2)                      # two unpublished books
+        self.assertEqual(len(self.fake.orders), 1)              # one order for them both
+        self.assertEqual(self.fake.orders[0]["line_items"],
+                         [{"product_id": pid, "variant_id": 149191, "quantity": 1} for pid in ids])
+        self.assertEqual(self.fake.orders[0]["label"], "4100000001 - Emma, Liam")
+        self.assertTrue(self.fake.orders[0]["external_id"].startswith("4100000001-"))
+        self.assertEqual((res["total"], res["uploaded"], res["order"]["books"]), (50, 50, 2))
+        kept = [archive.get(b["archiveId"]) for b in res["books"]]
+        self.assertEqual([k["title"] for k in kept], ["4100000001 - Emma", "4100000001 - Liam"])
+        self.assertEqual({k["orderId"] for k in kept}, {"order-on-hold-1"})
+        self.assertEqual({k["sendLog"] for k in kept}, {res["sendLog"]})
+        record = journal(res["sendLog"])
+        self.assertEqual([s["step"] for s in record["steps"]],
+                         ["files", "files", "master", "uploads", "product", "verify",
+                          "uploads", "product", "verify", "masterSafe", "archive", "archive"])
+        self.assertEqual([s["book"] for s in record["steps"] if s["step"] == "product"],
+                         ["4100000001 - Emma", "4100000001 - Liam"])
+
     def test_no_order_without_the_manual_approval_confirmation(self):
         core.settings.update({"printify": {"manualApprovalConfirmedAt": None}})
         with mock.patch.object(printify, "call", self.fake):
             with self.assertRaises(JobError) as ctx:
-                creator.create_printify_draft(str(self.root), "4100000002 - Noah", Job("t"), self.ADDRESS)
+                creator.create_printify_draft([{"folder": str(self.root), "title": "4100000002 - Noah"}], Job("t"), self.ADDRESS)
         self.assertIn("ручне затвердження", str(ctx.exception))
         self.assertEqual(self.fake.uploads, {})                       # stopped before anything was uploaded
         with self.assertRaises(printify.PrintifySecurityError):
@@ -162,7 +194,7 @@ class PrintifyDraftFlow(unittest.TestCase):
         before = set(sendlog.SENDS.glob("*.json"))
         with mock.patch.object(printify, "call", self.fake):
             with self.assertRaises(JobError):
-                creator.create_printify_draft(str(self.root), "4100000003 - Failed", Job("t"))
+                creator.create_printify_draft([{"folder": str(self.root), "title": "4100000003 - Failed"}], Job("t"))
         self.assertEqual(self.fake.uploads, {})
         self.assertEqual(self.fake.created, [])
         new = sorted(set(sendlog.SENDS.glob("*.json")) - before)           # a failed attempt is journaled too
@@ -179,7 +211,7 @@ class PrintifyDraftFlow(unittest.TestCase):
             return self.fake(method, path, *a, **kw)
         with mock.patch.object(printify, "call", flaky):
             with self.assertRaises(JobError) as ctx:
-                creator.create_printify_draft(str(self.root), "X", Job("t"))
+                creator.create_printify_draft([{"folder": str(self.root), "title": "X"}], Job("t"))
         self.assertIn("повторний запуск продовжить", str(ctx.exception))
         self.assertEqual(self.fake.created, [])
 
@@ -190,7 +222,7 @@ class PrintifyDraftFlow(unittest.TestCase):
             return self.fake(method, path, *a, **kw)
         with mock.patch.object(printify, "call", timeout_on_create):
             with self.assertRaises(JobError) as ctx:
-                creator.create_printify_draft(str(self.root), "X", Job("t"))
+                creator.create_printify_draft([{"folder": str(self.root), "title": "X"}], Job("t"))
         self.assertIn("НЕ запускайте повторно", str(ctx.exception))
 
 
@@ -241,7 +273,7 @@ class GelatoDraftFlow(unittest.TestCase):
             with mock.patch.object(gelato, "call", fake_call), \
                     mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
                     mock.patch.object(tunnel.registry, "keep", lambda *a, **kw: None):
-                res = creator.create_gelato_draft(str(root), "Book", "hardcover_8x8", address, Job("t"))
+                res = creator.create_gelato_draft([{"folder": str(root), "title": "Book", "format": "hardcover_8x8"}], address, Job("t"))
         vault.set("gelato_api_key", None)
         self.assertEqual(res["orderId"], "gelato-order-1")
         self.assertEqual(res["warnings"], [])
@@ -275,7 +307,6 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual(record["response"]["id"], "gelato-order-1")
         steps = {s["step"]: s for s in record["steps"]}
         self.assertEqual(list(steps), ["files", "catalog", "pdf", "link", "readback", "archive"])
-        from studio import archive
         kept = archive.get(res["archiveId"])
         self.assertEqual((kept["provider"], kept["orderId"], kept["format"], kept["pageCount"], kept["sendLog"]),
                          ("gelato", "gelato-order-1", "hardcover_8x8", 30, res["sendLog"]))
@@ -286,7 +317,66 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual(steps["catalog"]["geometry"]["coverMm"], [458.0, 246.0])
         self.assertEqual((steps["pdf"]["pdfPages"], steps["pdf"]["coverPx"]), (33, [466, 250]))
         self.assertLess(steps["pdf"]["coverTrimMm"], 10)
-        self.assertEqual(steps["link"]["url"], "https://fake.trycloudflare.com/book.pdf")
+        self.assertEqual(steps["link"]["urls"], ["https://fake.trycloudflare.com/book.pdf"])
+        self.assertNotIn("fake-gelato-key", json.dumps(record))
+
+    def test_two_books_travel_as_items_of_one_draft(self):
+        """Two books of one Etsy order (owner, 20.09.2026): one draft, one address, an item and a PDF of its
+        own for each — a 30-page book and a 28-page one keep their own lengths."""
+        vault.set("gelato_api_key", "fake-gelato-key")
+        gelato._geometry.clear()
+        gelato._products.clear()
+        sent = {}
+
+        def fake_call(method, url, body=None, **kw):
+            self.assertTrue(gelato._allowed(method, url, body))
+            if method == "GET" and "/cover-dimensions" in url:
+                return self.COVER
+            if method == "GET" and url.endswith("/orders/gelato-order-1"):
+                session = sent["customerReferenceId"].removeprefix("local-review-")
+                folder = core.data_path("tmp", "gelato", session)
+                return {"items": [{"productUid": "p", "pageCount": 30, "fulfillmentStatus": "draft",
+                                   "files": [{"type": "default", "mimeType": "application/pdf",
+                                              "sizeBytes": (folder / name).stat().st_size}]}
+                                  for name in ("book-1.pdf", "book-2.pdf")]}
+            if method == "GET":
+                return self.PRODUCT
+            sent.update(body)
+            return {"id": "gelato-order-1", "orderType": "draft", "fulfillmentStatus": "draft"}
+
+        with tempfile.TemporaryDirectory() as d:
+            emma, liam = Path(d) / "emma", Path(d) / "liam"
+            for folder, pages in ((emma, 30), (liam, 28)):
+                folder.mkdir()
+                png(folder / "Cover.png", (466, 250), (1, 2, 3))
+                for i in range(1, pages + 1):
+                    png(folder / f"{i}.png", (100 + i, 100 + i), (i, i, i))
+            creator._validation_cache.clear()
+            address = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Austin",
+                       "postCode": "73301", "country": "us", "state": "TX"}
+            with mock.patch.object(gelato, "call", fake_call), \
+                    mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
+                    mock.patch.object(tunnel.registry, "keep", lambda *a, **kw: None):
+                res = creator.create_gelato_draft([{"folder": str(emma), "title": "4100000001 - Emma", "format": "hardcover_8x8"},
+                                                   {"folder": str(liam), "title": "4100000001 - Liam", "format": "hardcover_8x8"}],
+                                                  address, Job("t"))
+        vault.set("gelato_api_key", None)
+        self.assertEqual(sent["orderReferenceId"], "4100000001 - Emma, Liam")   # the receipt number stays in front
+        self.assertEqual([i["pageCount"] for i in sent["items"]], [30, 28])
+        self.assertEqual([i["files"][0]["url"] for i in sent["items"]],
+                         ["https://fake.trycloudflare.com/book-1.pdf", "https://fake.trycloudflare.com/book-2.pdf"])
+        self.assertEqual(len({i["itemReferenceId"] for i in sent["items"]}), 2)
+        self.assertEqual([b["pageCount"] for b in res["books"]], [30, 28])
+        self.assertEqual([b["pdfPages"] for b in res["books"]], [33, 31])
+        kept = [archive.get(b["archiveId"]) for b in res["books"]]
+        self.assertEqual([(k["orderId"], k["pageCount"]) for k in kept],
+                         [("gelato-order-1", 30), ("gelato-order-1", 28)])
+        record = journal(res["sendLog"])
+        self.assertEqual([s["step"] for s in record["steps"]],
+                         ["files", "catalog", "files", "catalog", "pdf", "pdf", "link", "readback", "readback",
+                          "archive", "archive"])
+        self.assertEqual([s["urls"] for s in record["steps"] if s["step"] == "link"],
+                         [["https://fake.trycloudflare.com/book-1.pdf", "https://fake.trycloudflare.com/book-2.pdf"]])
         self.assertNotIn("fake-gelato-key", json.dumps(record))
 
     ADDRESS = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Berlin",
@@ -317,7 +407,7 @@ class GelatoDraftFlow(unittest.TestCase):
             with mock.patch.object(gelato, "call", fake_call), \
                     mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
                     mock.patch.object(tunnel.registry, "keep", lambda *a, **kw: None):
-                res = creator.create_gelato_draft(str(root), "Book", "hardcover_8x8", self.ADDRESS, Job("t"))
+                res = creator.create_gelato_draft([{"folder": str(root), "title": "Book", "format": "hardcover_8x8"}], self.ADDRESS, Job("t"))
         vault.set("gelato_api_key", None)
         self.assertEqual((checked["ok"], checked["pageCount"], checked["expected"]), (True, 28, 29))
         self.assertEqual(sent["items"][0]["pageCount"], 28)
@@ -349,7 +439,7 @@ class GelatoDraftFlow(unittest.TestCase):
             with mock.patch.object(gelato, "call", fake_call), \
                     mock.patch.object(tunnel.FileTunnel, "start", side_effect=AssertionError("no link")):
                 with self.assertRaises(JobError) as ctx:
-                    creator.create_gelato_draft(str(root), "Book", "softcover_8x8", self.ADDRESS, Job("t"))
+                    creator.create_gelato_draft([{"folder": str(root), "title": "Book", "format": "softcover_8x8"}], self.ADDRESS, Job("t"))
         vault.set("gelato_api_key", None)
         gelato._products.clear()
         self.assertIn("Gelato не друкує Softcover 8×8 на 28 сторінках (можна від 30)", str(ctx.exception))

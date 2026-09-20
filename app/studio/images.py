@@ -9,7 +9,7 @@ import time
 import weakref
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops, ImageFilter, ImageOps
 
 from . import core
 
@@ -146,6 +146,41 @@ def preview(path: Path, max_side: int) -> Path:
             tmp.write_bytes(buf.getvalue())
             tmp.replace(out)
     return out
+
+
+TEXT_SIDE = 360   # the page preview the order card's strip already asks for — so this costs nothing extra
+
+
+def text_score(path: Path) -> float:
+    """How much a page looks like it carries lines of text, rather than only a picture.
+
+    Printed text is thin strokes gathered into a few narrow rows, with empty space between them; an
+    illustration spreads its detail evenly down the page. So: take what a slight blur cannot explain
+    (the strokes and edges), keep the sharpest 1 %, and measure how unevenly that ink sits across the
+    rows of the page. Measured on the owner's five real books (20.09.2026): a page with text scores
+    2.4–2.6, a picture page 0.9–1.5 — see wiki/features/text-check.md.
+    """
+    with Image.open(preview(path, TEXT_SIDE)) as src:
+        im = src.convert("L").resize((TEXT_SIDE, TEXT_SIDE), Image.Resampling.BILINEAR)
+    ink = ImageChops.difference(im, im.filter(ImageFilter.GaussianBlur(1.6)))
+    mask = ink.point(lambda v, cut=max(_percentile(ink.histogram(), 0.99), 8): 255 if v > cut else 0)
+    rows = mask.resize((1, TEXT_SIDE), Image.Resampling.BOX).tobytes()  # ink per row of the page (0…255)
+    mean = sum(rows) / len(rows)
+    if mean <= 0:
+        return 0.0
+    spread = (sum((r - mean) ** 2 for r in rows) / len(rows)) ** 0.5
+    return spread / mean
+
+
+def _percentile(histogram: list[int], share: float) -> int:
+    """The grey value below which `share` of the pixels sit."""
+    total = sum(histogram)
+    seen = 0
+    for value, count in enumerate(histogram):
+        seen += count
+        if seen >= total * share:
+            return value
+    return 255
 
 
 def lqip(path: Path, size: int = 20) -> str:

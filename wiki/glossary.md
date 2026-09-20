@@ -1,7 +1,7 @@
 ---
 title: Словник — слова власника і назви в коді
 type: reference
-updated: 2026-09-19
+updated: 2026-09-20
 code: []
 ---
 # Словник
@@ -19,6 +19,8 @@ code: []
 | Картка замовлення | Один екран на одне замовлення | [orders.js](../app/web/js/pages/orders.js) `mountCard()` |
 | Нові / В роботі / машинка / Відправлені | Етапи замовлення (`new` / `work` / `sent` / `shipped`) | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
 | Машинка (вкладка) | Етап `sent`: друкарня вже відправила (трек-номер або статус «відправлено»), а в Etsy ще не позначено | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES`; [rules/order-stages.md](rules/order-stages.md) |
+| Замовлення на кілька книг, «Книга 1 / Книга 2» | Один чек Etsy з кількома книгами: у картці кожна має свою папку, звірку й перевірку тексту, а в друк вони йдуть однією чернеткою на одну адресу | [orders.js](../app/web/js/pages/orders.js) `readyBooks()`, `printCard()`; [creator.py](../app/studio/creator.py) `books_of()`, `joint_title()`; [features/orders.md](features/orders.md) |
+| Швидкий огляд сторінок, пред-перевірка | Програма сама дивиться на прев'ю кожної сторінки й визначає, де взагалі є текст: моделі показуються лише такі сторінки | [images.py](../app/studio/images.py) `text_score()`; [textcheck.py](../app/studio/textcheck.py) `page_kinds()`; [features/text-check.md](features/text-check.md) |
 | Бокс, коробка (вкладка) | «Відправлені» — позначені відправленими в Etsy | [profit.py](../app/studio/profit.py) `order_stage()` |
 | Годинник (вкладка) | «В роботі» | [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
 | Квадратик справа (у рядку черги), статус | Чип праворуч: статус друкарні англійською, по-людськи («In transit»), з кольоровою крапкою | [order-bits.js](../app/web/js/order-bits.js) `statusChip()`, `statusText()`; [profit.py](../app/studio/profit.py) `picker_orders()` (`printStatus`) |
@@ -76,6 +78,7 @@ code: []
 | Передрук, редрук | Повторний друк тієї самої книги з архіву замовлень: Printify — нове замовлення на ту саму книгу, Gelato — нова чернетка | [creator.py](../app/studio/creator.py) `create_printify_reprint()`; [features/archive.md](features/archive.md) |
 | Не видаляти (у архіві) | Шпилька на книзі в архіві: файли лишаються, доки позначку не знято | [archive.py](../app/studio/archive.py) `_keep()` |
 | Оформлене замовлення (в друкарні) | Підтверджене й оплачене, не чернетка, не «on hold», не скасоване; лише воно переводить замовлення «в роботу» і кладе книгу в архів | [profit.py](../app/studio/profit.py) `is_placed()`; [rules/order-stages.md](rules/order-stages.md) |
+| Завершити роботу над замовленням | Хрестик у картці замовлення й в Order Creator після вдалої відправки: програма забуває збережену роботу над цим замовленням і відкриває чергу | [keep.js](../app/web/js/keep.js) `finish()`; [features/orders.md](features/orders.md) |
 | Вигаданий номер (телефон) | Телефон, який підставляється в Gelato, коли в замовленні Etsy його немає: `+1 555 555 0100` | [creator.py](../app/studio/creator.py) `GELATO_PLACEHOLDER_PHONE` |
 | ШІ-валідатор, перевірка тексту, «кнопка перевірити» | Локальна модель читає сторінки в картці замовлення, програма звіряє з паспортом книги | [textcheck.py](../app/studio/textcheck.py) `check_order()`; [orders.js](../app/web/js/pages/orders.js) `startCheck()`; [features/text-check.md](features/text-check.md) |
 | Gemma, локальна модель, Ollama | `gemma4:12b-it-qat` в Ollama на відеокарті цього ПК | [textcheck.py](../app/studio/textcheck.py) `DEFAULT_MODEL`, `status()`, `start_ollama()` |

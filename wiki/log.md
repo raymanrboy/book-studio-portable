@@ -3,6 +3,56 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-20] update | Моделі — лише сторінки, де може бути текст
+
+- Зауваження власника: навіщо показувати моделі всі сторінки, якщо текст лише на половині. Тепер
+  програма сама дивиться на прев'ю кожної сторінки (тонкі штрихи, зібрані в рядки = текст) і відправляє
+  моделі лише те, що може мати текст; у 30-сторінковій книзі читання зникає повністю — сторінка йде
+  одразу на звірку з еталоном паспорта.
+- Заміряно на справжніх книгах: 39,7 → 24,4 с (30 стор.), 44,8 → 33,6 с (24 стор.), 40,3 → 30,9 с
+  (складна книга); знайдені проблеми — однакові. Ознака сама нічого не вирішує: «не впевнений» іде до
+  моделі, порожній розворот читає модель, помилка ознаки → перевіряється друга половина розвороту.
+  Вимикач — у Налаштуваннях.
+- Виправлено власну помилку того ж ранку: через `setdefault()` кожна сторінка замовлялась у моделі
+  двічі (56 запитів замість 29) — перевірка була на ~40 % довшою.
+- Оновлено: [features/text-check.md](features/text-check.md), [features/settings.md](features/settings.md),
+  [dev/testing.md](dev/testing.md), [code-map.md](code-map.md), [glossary.md](glossary.md),
+  [decisions.md](decisions.md).
+
+## [2026-09-20] update | Замовлення на кілька книг — одна чернетка на одну адресу
+
+- Прохання власника: «щоб у драфт летіло декілька книг на одну адресу». У картці кожна книга чека
+  тепер має власну папку, звірку й перевірку тексту (перемикач лише показує іншу), а «До друку» бере
+  всі готові книги однієї друкарні. Printify — продукт на книгу й **одне** замовлення «On hold» з
+  позицією на кожну; Gelato — одна чернетка з товаром і PDF на кожну книгу.
+- Оновлено: [features/orders.md](features/orders.md), [features/order-creator.md](features/order-creator.md),
+  [flows/order-to-print.md](flows/order-to-print.md), [features/send-journal.md](features/send-journal.md),
+  [integrations/printify.md](integrations/printify.md), [integrations/gelato.md](integrations/gelato.md),
+  [architecture/frontend.md](architecture/frontend.md), [dev/preview.md](dev/preview.md),
+  [dev/testing.md](dev/testing.md), [code-map.md](code-map.md), [glossary.md](glossary.md),
+  [decisions.md](decisions.md), [plans/roadmap.md](plans/roadmap.md),
+  [plans/open-questions.md](plans/open-questions.md).
+
+## [2026-09-20] update | Перевірка тексту: знахідки під час роботи і прогрів моделі
+
+- Прохання власника (перше і друге з переліку «що ще можна пришвидшити»): помилки з'являються в картці,
+  щойно сторінку перевірено, а розворот іде на звірку одразу після читання своїх сторінок (у книзі на
+  30 сторінок); модель вантажиться у відеокарту, щойно картка взяла файли, — новий маршрут
+  `POST /api/textcheck/warm`.
+- Чесно про виграш: час перевірки майже той самий (черга до моделі й так була повна), економія — від
+  прогріву (~4 с, до ~70 с «з холодного»); головне — власник бачить перші помилки раніше.
+- Оновлено: [features/text-check.md](features/text-check.md), [architecture/server.md](architecture/server.md),
+  [architecture/api-routes.md](architecture/api-routes.md), [architecture/frontend.md](architecture/frontend.md),
+  [dev/testing.md](dev/testing.md), [code-map.md](code-map.md), [decisions.md](decisions.md),
+  [plans/roadmap.md](plans/roadmap.md).
+
+## [2026-09-20] update | Хрестик «Завершити роботу над замовленням»
+
+- Прохання власника: після вдалої відправки — хрестик у картці (біля стрілки «назад») і в шапці Order
+  Creator; він забуває збережену роботу над замовленням (`keep.finish()`) і відкриває чергу. Оновлено
+  [features/orders.md](features/orders.md), [features/order-creator.md](features/order-creator.md),
+  [architecture/frontend.md](architecture/frontend.md), [glossary.md](glossary.md), [code-map.md](code-map.md).
+
 ## [2026-09-19] update | Підказки не обрізаються; меню не лишається після переходу
 
 - Зауваження власника: довгі підказки вилазили за плашку. Автоскан усіх сторінок (1480 і 1100 px): решта

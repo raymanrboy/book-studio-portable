@@ -1,7 +1,7 @@
 ---
 title: Журнал відправок у Printify і Gelato
 type: feature
-updated: 2026-09-17
+updated: 2026-09-20
 code:
   - app/studio/sendlog.py
 ---
@@ -25,7 +25,7 @@ code:
 |---|---|
 | `provider`, `kind`, `title`, `at`, `seconds` | куди (`printify` / `gelato`), що (`book`, `book+order`, `draft`), назва, час, тривалість |
 | `ok`, `error`, `errorType` | чи вдалося; текст помилки, яку побачив власник |
-| `folder`, `format` | папка з файлами; формат Gelato |
+| `folder`, `format`, `books` | папка з файлами і формат Gelato (першої книги); `books` — усі книги відправки (назва, папка, формат) |
 | `steps` | кроки по порядку (нижче) |
 | `request`, `response` | тіло запиту на створення і відповідь сервісу повністю (з адресою) |
 | `orderRequest`, `orderResponse`, `orderError` | Printify: замовлення On hold |
@@ -33,9 +33,14 @@ code:
 
 Кроки: **Gelato** — `files` (кожен PNG: розмір у px, байти, помилки) → `catalog` (товар, кількість
 сторінок, розміри з каталогу) → `pdf` (сторінок у PDF, байти, розмір обкладинки в px, на скільки мм
-обріжеться) → `link` (адреса, `reachable`) → `readback` (що Gelato записав у чернетці: товар,
+обріжеться) → `link` (адреси всіх PDF, `reachable`) → `readback` (що Gelato записав у чернетці: товар,
 сторінки, файл і чи вже забраний — `fileFetched`). **Printify** — `files` (з SHA-256) → `master` →
-`uploads` (перевикористані / нові, ID зображень за позиціями) → `verify` (позиції, Master не змінився).
+`uploads` (перевикористані / нові, ID зображень за позиціями) → `product` (запит і відповідь на
+створення) → `verify` (позиції) → `masterSafe` (Master не змінився).
+
+**Замовлення з кількох книг** (з 20.09.2026) — один запис на всю відправку: покнижкові кроки
+повторюються, і в кожного є поле `book` з назвою книги (`files`, `uploads`, `product`, `verify`,
+`catalog`, `pdf`, `archive`); `orderRequest` один — замовлення спільне.
 
 Запис робиться й тоді, коли відправка зупинилась на перевірці — тоді кроків менше, а `request` немає
 (нічого не пішло). Якщо журнал не вдалося записати, відправка все одно відбувається.
@@ -48,7 +53,7 @@ code:
 ## Де в коді
 
 - [app/studio/sendlog.py](../../app/studio/sendlog.py) — `SENDS`, `KEEP`, `write()`, `attempt()`, `step()`, `latest()`, `_open()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `create_printify_draft()`, `_printify_draft()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `create_printify_draft()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderSwitch()` (піктограма в шапці), `sendLogButton()`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.cr-tools`, `.mode-switch`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — піктограма `sendLog`

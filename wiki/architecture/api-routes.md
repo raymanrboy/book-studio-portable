@@ -1,7 +1,7 @@
 ---
 title: Маршрути сервера
 type: reference
-updated: 2026-09-19
+updated: 2026-09-20
 code:
   - app/studio/archive.py
   - app/studio/server.py
@@ -60,6 +60,7 @@ code:
 | GET | `/api/textcheck/status` | token | `_status` | settings.js `loadTextcheck` (увімкнено, модель, чи відповідає Ollama) |
 | POST | `/api/settings/textcheck` | token | `_save_settings` | settings.js (вмикач, модель) |
 | POST | `/api/textcheck/start` | token | `_start` | settings.js «Запустити» Ollama |
+| POST | `/api/textcheck/warm` | token | `_warm` | orders.js `warmModel` (картка взяла файли — модель вантажиться у відеокарту наперед) |
 | POST | `/api/textcheck/passport` | token | `_passport` | orders.js `learnPassport` (тексти обкладинки й розворотів у паспорт книги — лише кліком власника) |
 
 ## Бібліотека — [library.py](../../app/studio/library.py)

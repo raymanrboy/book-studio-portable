@@ -26,6 +26,7 @@ class Job:
         self.percent = 0.0
         self.detail = ""
         self.result: Any = None
+        self.partial: Any = None  # what is already known while the job runs (the card shows it as it comes)
         self.error: str | None = None
         self.started = time.time()
         self.finished: float | None = None
@@ -40,6 +41,11 @@ class Job:
             if detail is not None:
                 self.detail = detail
 
+    def share(self, data: Any) -> None:
+        """Part of the answer, ready before the job is: the page polling it paints this at once."""
+        with self._lock:
+            self.partial = data
+
     def snapshot(self) -> dict:
         with self._lock:
             return {
@@ -49,6 +55,7 @@ class Job:
                 "step": self.step,
                 "percent": round(self.percent, 1),
                 "detail": self.detail,
+                "partial": self.partial,
                 "result": self.result,
                 "error": self.error,
                 "elapsed": round((self.finished or time.time()) - self.started, 1),

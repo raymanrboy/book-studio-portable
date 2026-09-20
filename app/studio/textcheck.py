@@ -31,7 +31,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from PIL import Image
@@ -52,6 +52,11 @@ JUDGE_TOKENS = 1000      # a page's copy and verdict fit easily; a model that ru
 CALL_TIMEOUT = 300       # a call may also load the model: ~4 s from memory, ~70 s from disk
 PROBE_TIMEOUT = 1.0      # "is Ollama there": on Windows a refused connection takes 2 s to say so
 MATCH = 0.45             # how alike a page's first lines and a library text must be to call them one
+# What images.text_score() says about a page. Measured on the owner's five real books (20.09.2026):
+# a page with text scores 2.4-2.6, a page with only a picture 0.9-1.5. Anything in between is «not sure»
+# and goes to the model exactly as before — the heuristic may only save work, never decide alone.
+LOOKS_TEXT = 2.2
+LOOKS_PICTURE = 1.6
 CHECKS = core.data_path("logs", "checks")
 KEEP = 400
 
@@ -125,7 +130,8 @@ def _call(path: str, body: dict | None = None, timeout: float = 10) -> dict:
 
 def _settings() -> dict:
     s = core.settings.section("textcheck")
-    return {"enabled": bool(s.get("enabled", True)), "model": str(s.get("model") or DEFAULT_MODEL)}
+    return {"enabled": bool(s.get("enabled", True)), "model": str(s.get("model") or DEFAULT_MODEL),
+            "prescan": bool(s.get("prescan", True))}
 
 
 def _same_model(a: str, b: str) -> bool:
@@ -206,6 +212,34 @@ def _ready(model: str, say) -> None:
         say("Модель завантажується у відеокарту…")
         _call("/api/chat", {"model": model, "messages": [], "keep_alive": KEEP_ALIVE, "options": OPTIONS},
               timeout=CALL_TIMEOUT)
+
+
+_warm_lock = threading.Lock()
+_warmed_at = 0.0
+WARM_AGAIN = 30  # seconds: one warm-up per folder is enough, however many files are dropped
+
+
+def warm() -> bool:
+    """Asks for the model while the card is still copying and checking the files, so the check that starts
+    right after them does not wait for it (~4 s from this computer's memory, ~70 s from disk). Quiet: a
+    model that cannot be had is the check's own thing to report, and the card hears it there."""
+    global _warmed_at
+    if not _settings()["enabled"]:
+        return False
+    with _warm_lock:
+        if _active or time.monotonic() - _warmed_at < WARM_AGAIN:
+            return False  # a check is already holding the model, or one folder asked twice
+        _warmed_at = time.monotonic()
+    model = _settings()["model"]
+
+    def load() -> None:
+        try:
+            _ready(model, lambda step: None)
+        except ModelError as err:
+            core.log.info("Text check: the model was not warmed up (%s)", err)
+
+    threading.Thread(target=load, name="textcheck-warm", daemon=True).start()
+    return True
 
 
 def _chat(model: str, prompt: str, picture: str, schema: dict | None = None, max_tokens: int | None = None) -> str:
@@ -651,10 +685,11 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) ->
     refs = {k: fill(texts.get(k) or "", pers["child"], pers["gifter"]) for k in library.TEXT_KEYS if texts.get(k)}
     full = bool(pers["child"]) and any(refs.get(f"spread{n}") for n in library.SPREAD_NUMBERS)
     target = _targets(files, count, refs, pers)
+    rules = (_vocabulary(pers), _other_children(receipt_id))  # the program's own call on names and placeholders
     with _Run(job, receipt_id, _settings()["model"]) as run:
-        targets, answers, layout = _passes(run, target, files, count, refs, pers, full)
+        targets, answers, layout = _passes(run, target, files, count, refs, pers, full, rules)
         run.say("Підсумок…")
-    issues = _all_issues(targets, answers, layout, files, pers, count, receipt_id)
+    issues = _all_issues(targets, answers, layout, files, pers, count, rules)
     learn = _learnable(targets, issues)
     found = set(layout["mapping"].values())
     result = {
@@ -674,6 +709,28 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) ->
     }
     _journal(receipt_id, result, pers)
     return result
+
+
+def page_kinds(files: dict[int, Path], pages: list[int]) -> dict[int, str]:
+    """A local, model-free guess for each story page: "text", "picture" or "unsure" (nothing is decided
+    by it alone — see LOOKS_TEXT). It reads the 360 px preview the page strip has already made, so it
+    costs about 5 ms a page; switched off in Settings, every page is "unsure" and the check is as it was."""
+    if not _settings()["prescan"]:
+        return {n: "unsure" for n in pages}
+    kinds: dict[int, str] = {}
+    with ThreadPoolExecutor(min(4, max(1, len(pages))), thread_name_prefix="prescan") as pool:
+        for page, score in zip(pages, pool.map(lambda n: _page_score(files[n]), pages)):
+            kinds[page] = ("unsure" if score is None else
+                           "text" if score >= LOOKS_TEXT else "picture" if score < LOOKS_PICTURE else "unsure")
+    return kinds
+
+
+def _page_score(path: Path) -> float | None:
+    try:
+        return images.text_score(path)
+    except Exception:  # a preview that cannot be made must not stop the check
+        core.log.exception("Text check: page not scanned locally")
+        return None
 
 
 def _print_files(folder_raw: str, count: int) -> dict[int, Path]:
@@ -712,10 +769,14 @@ def _targets(files: dict[int, Path], count: int, refs: dict, pers: dict):
     return target
 
 
-def _passes(run: "_Run", target, files: dict, count: int, refs: dict, pers: dict, full: bool):
+def _passes(run: "_Run", target, files: dict, count: int, refs: dict, pers: dict, full: bool, rules: tuple):
     """Both passes. The cover's front, the dedication and the last page are always checked; the cover's back
     and the story pages when the read pass finds text there — in the full check only the pages that are a
-    library text: the picture page of a spread may hold lettering the model cannot read and invents."""
+    library text: the picture page of a spread may hold lettering the model cannot read and invents.
+    A spread goes to the check pass the moment its own two pages are read (owner's wish, 20.09.2026): in a
+    book as long as the passport every spread is its own, so nothing else has to be known first. A shorter
+    book (24 or 28 pages) misses some spreads and keeps only their order, so its mapping is the best
+    order-keeping match of every read at once — there the check pass still waits for the whole read pass."""
     fixed = [target(0, "front", "cover"), target(1, None, "page1", pers["dedication"]),
              target(count, None, "page30", pers["closing"])]
     story = list(range(2, count))
@@ -724,41 +785,123 @@ def _passes(run: "_Run", target, files: dict, count: int, refs: dict, pers: dict
     run.say("Підготовка…")
     _ready(run.model, lambda step: run.job.progress(step, 1))
     run.say("Читання сторінок…")
-    fixed_answers = [run.pool.submit(run.judge, t) for t in fixed]
+    pending = [(t, run.pool.submit(run.judge, t)) for t in fixed]
     back = run.pool.submit(run.read, files[0], "back")
-    reads = dict(zip(story, run.pool.map(lambda n: run.read(files[n]), story)))
-    texty = {n for n in story if has_text(reads[n])}
-    mapping = assign(count, {n: reads[n] for n in texty}, refs) if full else {}
-    stories, blank, unmatched = [], [], []
-    for pair in spreads:
-        hit = [p for p in pair if p in mapping]
-        lettered = [p for p in pair if p in texty]
-        if hit:
-            stories += [target(p, None, mapping[p]) for p in hit]
+    kinds = page_kinds(files, story)  # local, while the model is busy with the cover and the owner's pages
+
+    by_place = full and len(spreads) == len(library.SPREAD_NUMBERS)
+    places = [f"spread{n}" for n in library.SPREAD_NUMBERS] if by_place else []
+    ref_words = {k: words(v) for k, v in refs.items()}
+    # A page that only looks like a picture is not read at all; where the passport says what a spread must
+    # carry and only one of its two pages looks like text, that page skips the read pass and goes straight
+    # to the check (the whole read pass then disappears on a 30-page book).
+    straight: dict[int, str] = {}
+    to_read: list[int] = []
+    for i, pair in enumerate(spreads):
+        key = places[i] if by_place and places[i] in refs else None
+        looks = [p for p in pair if kinds[p] != "picture"]
+        if key and len(looks) == 1 and kinds[looks[0]] == "text":
+            straight[looks[0]] = key
             continue
-        if not lettered:
+        to_read += looks or list(pair)  # a spread that looks empty is still confirmed by the model itself
+    reading: dict[int, "Future"] = {}
+
+    def read(page: int) -> str:
+        """This page's first lines, for the pages worth reading ("" for the rest). The queue is kept a few
+        pages long on purpose: with the whole book in it, a spread's check would have to wait behind every
+        remaining read instead of slipping in next."""
+        if page not in to_read:
+            return ""
+        for n in [p for p in to_read if p >= page][:PARALLEL + 2]:
+            if n not in reading:  # setdefault() would ask the model again before looking
+                reading[n] = run.pool.submit(run.read, files[n])
+        return reading[page].result()
+
+    mapping: dict[int, str] = dict(straight)
+    if full and not by_place:
+        mapping = assign(count, {n: read(n) for n in to_read if has_text(read(n))}, refs)
+    blank, unmatched = [], []
+    for i, pair in enumerate(spreads):
+        lettered = [p for p in pair if has_text(read(p))]
+        key = places[i] if by_place and places[i] in refs else None
+        if key and lettered:
+            best = max(lettered, key=lambda p: (similarity(words(read(p)), ref_words[key]), len(words(read(p)))))
+            mapping[best] = key
+        hit = next((p for p in pair if p in mapping), None)
+        if hit:
+            here = [target(hit, None, mapping[hit])]
+            if hit in straight:  # nothing was read of this spread: keep the other page in case it was the one
+                here[0] = {**here[0], "straight": next((p for p in pair if p != hit), None)}
+        elif not lettered:
             blank.append(pair)
-        elif full:
-            unmatched.append(max(lettered, key=lambda p: len(words(reads[p]))))
-        stories += [target(p) for p in lettered]
+            here = []
+        else:
+            if full:
+                unmatched.append(max(lettered, key=lambda p: len(words(read(p)))))
+            here = [target(p) for p in lettered]
+        pending += [(t, run.pool.submit(run.judge, t)) for t in here]
     if has_text(back.result()):
-        stories.insert(0, target(0, "back"))
-    run.total = run.done + sum(1 for f in fixed_answers if not f.done()) + len(stories)
-    story_answers = [run.pool.submit(run.judge, t) for t in stories]
-    answers = {i: f.result() for i, f in enumerate(fixed_answers + story_answers)}
-    return fixed + stories, answers, {"mapping": mapping, "blank": blank, "unmatched": unmatched}
+        t = target(0, "back")
+        pending.append((t, run.pool.submit(run.judge, t)))
+    run.total = run.done + sum(1 for _, fut in pending if not fut.done())
+    answers, found = _collect(run, pending, pers, rules)
+    _second_half(run, pending, answers, found, target, pers, rules, mapping)
+    return [t for t, _ in pending], answers, {"mapping": mapping, "blank": blank, "unmatched": unmatched}
+
+
+def _second_half(run: "_Run", pending: list, answers: dict, found: list, target, pers: dict, rules: tuple,
+                 mapping: dict) -> None:
+    """A page the local look sent straight to the check, on which the model then saw no text at all: the
+    text must be on the other half of that spread, so that one is checked instead (rare, and cheap)."""
+    again = [i for i, (t, _) in enumerate(pending)
+             if t.get("straight") and not answers[i].get("failed") and _saw_nothing(answers[i].get("transcript"))]
+    if not again:
+        return
+    run.say("Друга половина розвороту…")
+    spoiled = {(pending[i][0]["page"], pending[i][0].get("part")) for i in again}
+    found[:] = [f for f in found if (f["page"], f.get("part")) not in spoiled]
+    for i in again:
+        old = pending[i][0]
+        mapping.pop(old["page"], None)
+        other = target(old["straight"], None, old["key"])
+        mapping[other["page"]] = old["key"]
+        pending[i] = (other, run.pool.submit(run.judge, other))
+    run.total += len(again)
+    _collect(run, pending, pers, rules, answers, found, only=again)
+
+
+def _collect(run: "_Run", pending: list, pers: dict, rules: tuple, answers: dict | None = None,
+             found: list | None = None, only: list[int] | None = None) -> tuple[dict[int, dict], list[dict]]:
+    """The answers as they come back. Each finished page adds its findings to what the card already shows,
+    so the first mistakes can be read while the rest of the book is still with the model."""
+    answers = {} if answers is None else answers
+    found = [] if found is None else found
+    wanted = set(range(len(pending)) if only is None else only)
+    which = {fut: i for i, (_, fut) in enumerate(pending) if i in wanted}
+    for fut in as_completed(which):
+        i = which[fut]
+        answers[i] = fut.result()
+        if not answers[i].get("failed"):
+            found += page_issues(pending[i][0], answers[i], pers, *rules)
+        run.job.share({"issues": _ordered(found)})
+    return answers, found
+
+
+def _ordered(issues: list[dict]) -> list[dict]:
+    """Findings in reading order, the certain ones before the ones only worth a look."""
+    rank = {"error": 0, "warn": 1}
+    return sorted(issues, key=lambda x: (x["page"] if x["page"] else -1, rank.get(x["level"], 2)))
 
 
 def _all_issues(targets: list, answers: dict, layout: dict, files: dict, pers: dict, count: int,
-                receipt_id: str) -> list[dict]:
-    vocab, others = _vocabulary(pers), _other_children(receipt_id)
+                rules: tuple) -> list[dict]:
     issues: list[dict] = []
     for i, t in enumerate(targets):
         a = answers[i]
         if a.get("failed"):
             issues.append(_issue(t, "warn", f"Сторінку не вдалося перевірити — перегляньте її самі ({a['failed']})"))
         else:
-            issues += page_issues(t, a, pers, vocab, others)
+            issues += page_issues(t, a, pers, *rules)
     issues += book_issues(targets, answers, pers, count)
     for pair in layout["blank"]:  # every story spread carries text on one of its pages
         issues.append(_issue({"page": pair[0], "file": files[pair[0]].name,
@@ -766,9 +909,7 @@ def _all_issues(targets: list, answers: dict, layout: dict, files: dict, pers: d
     for page in layout["unmatched"]:
         issues.append(_issue({"page": page, "file": files[page].name, "label": _label(page)},
                              "warn", "Текст не схожий на жоден текст паспорта книги", kind="unmatched"))
-    order_of = {"error": 0, "warn": 1}
-    issues.sort(key=lambda x: (x["page"] if x["page"] else -1, order_of.get(x["level"], 2)))
-    return issues
+    return _ordered(issues)
 
 
 def _learnable(targets: list, issues: list) -> dict[int, str]:
@@ -894,6 +1035,12 @@ _REFUSAL = re.compile(r"^\W*(?:i'?m sorry|i am sorry|sorry|i cannot|i can'?t|i'?
                       r"(?:does not|doesn'?t|contains no|has no))", re.I)
 
 
+def _saw_nothing(read: str | None) -> bool:
+    """The model found no writing at all on this page (not merely a short line)."""
+    text = (read or "").strip()
+    return not text or bool(_REFUSAL.match(text))
+
+
 def has_text(read: str | None) -> bool:
     """A page with lettering worth checking: a few words, not the model's apology for illegible decoration."""
     return len(words(read or "")) >= 4 and not _REFUSAL.match(read or "")
@@ -925,6 +1072,8 @@ def _save_settings(req: Request):
     patch = {}
     if "enabled" in body:
         patch["enabled"] = bool(body["enabled"])
+    if "prescan" in body:
+        patch["prescan"] = bool(body["prescan"])
     if "model" in body:
         model = str(body.get("model") or "").strip()
         if not re.fullmatch(r"[\w.\-/:]{1,120}", model):
@@ -967,6 +1116,12 @@ def _passport(req: Request):
     book = library.update_texts(str(body.get("bookId") or ""), texts)
     core.log.info("Passport texts of %s updated from a print: %s", book["id"], ", ".join(texts))
     return {"updated": sorted(texts)}
+
+
+@route("POST", "/api/textcheck/warm")
+def _warm(req: Request):
+    """The card is taking files: the model is asked for now, so the check does not wait for it later."""
+    return {"warming": warm()}
 
 
 @route("POST", r"/api/orders/(\d{5,20})/textcheck/cancel")

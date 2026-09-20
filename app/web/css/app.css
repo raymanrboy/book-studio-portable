@@ -786,6 +786,13 @@ button.set-head:hover { background: var(--surface-hover); }
 .arc-clock { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; line-height: 1.45; }
 .arc-clock .icon { flex: none; margin-top: 1px; }
 .cr-reprint { font-size: 12.5px; }
+/* An order of several books: one block per book inside the folder step (the shown one is outlined). */
+.cr-book { display: flex; flex-direction: column; gap: 10px; }
+.cr-book + .cr-book { padding-top: 12px; border-top: 1px solid var(--border); }
+.cr-book-head { gap: 8px; }
+.cr-book-name { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid transparent; border-radius: 8px; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.cr-book-name:hover { background: var(--surface-2); }
+.cr-book.is-shown .cr-book-name { border-color: var(--accent-line); color: var(--accent-ink); }
 .ord-fields { display: grid; grid-template-columns: minmax(92px, 36%) minmax(0, 1fr); margin: 0; font-size: 13px; }
 .ord-fields dt, .ord-fields dd { border-top: 1px solid var(--border); }
 .ord-fields dt:first-of-type, .ord-fields dt:first-of-type + dd { border-top: 0; }
@@ -832,6 +839,11 @@ button.set-head:hover { background: var(--surface-hover); }
 .tc-note { display: block; margin-top: 1px; font-size: 12px; color: var(--text-3); }
 .tc-light { gap: 6px; font-size: 12.5px; }
 .tc-light a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* An order of several books: which of them this send takes (the print step). */
+.oc-books { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
+.oc-books li { display: flex; align-items: center; gap: 8px; }
+.oc-books li.is-ready { color: var(--text-2); }
+.oc-books li.is-ready svg { color: var(--green); }
 .spread-view .half.tc-error, .structure-cover.tc-error { outline: 2px solid var(--red); outline-offset: -2px; }
 .spread-view .half.tc-warn, .structure-cover.tc-warn { outline: 2px solid var(--amber); outline-offset: -2px; }
 /* minmax(0, …): a plain 1fr would let the wide page strip stretch the whole column */

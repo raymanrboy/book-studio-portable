@@ -43,9 +43,25 @@ SAMPLE_TEXTS = {
 SLIPS = {6: ("{Name}", "Olivai"), 10: ("{Name}", "{NAME}")}  # spread -> what Olivia's book prints instead
 
 
+def _book_bought(rid: int, n: int, cover: str, child: str) -> dict:
+    """One book of a receipt: Etsy calls it a transaction, the program — an item of the order."""
+    money = lambda cents: {"amount": cents, "divisor": 100, "currency_code": "USD"}  # noqa: E731
+    return {
+        "transaction_id": rid * 10 + n, "title": "Personalized Baptism Storybook for Kids", "quantity": 1,
+        "price": money(3990), "sku": "", "listing_id": 4100000900,
+        "variations": [
+            {"formatted_name": "Cover Type &amp; Size", "formatted_value": cover},
+            {"formatted_name": "Child's Name", "formatted_value": child},
+            {"formatted_name": "Dedication", "formatted_value": "DEFAULT"},
+            {"formatted_name": "From whom", "formatted_value": "Grandma &amp; Grandpa"},
+        ],
+    }
+
+
 def _receipt(rid: int, name: str, country: str, city: str, state: str, cover: str, child: str,
-             shipped: bool = False, days_ago: int = 0) -> dict:
-    """A made-up Etsy receipt in the shape the Etsy API returns (see profit.normalize_receipt)."""
+             shipped: bool = False, days_ago: int = 0, also: tuple[str, ...] = ()) -> dict:
+    """A made-up Etsy receipt in the shape the Etsy API returns (see profit.normalize_receipt).
+    `also`: more children of the same order — an order of several books, one address."""
     money = lambda cents: {"amount": cents, "divisor": 100, "currency_code": "USD"}  # noqa: E731
     return {
         "receipt_id": rid, "name": name, "first_line": "12 Example St", "second_line": "", "city": city,
@@ -54,16 +70,7 @@ def _receipt(rid: int, name: str, country: str, city: str, state: str, cover: st
         "message_from_buyer": "Could you ship before the baptism? Thank you!" if rid % 2 else "",
         "grandtotal": money(4990), "total_price": money(3990), "subtotal": money(3990),
         "total_shipping_cost": money(1000), "total_tax_cost": money(0), "discount_amt": money(0),
-        "transactions": [{
-            "transaction_id": rid * 10, "title": "Personalized Baptism Storybook for Kids", "quantity": 1,
-            "price": money(3990), "sku": "", "listing_id": 4100000900,
-            "variations": [
-                {"formatted_name": "Cover Type &amp; Size", "formatted_value": cover},
-                {"formatted_name": "Child's Name", "formatted_value": child},
-                {"formatted_name": "Dedication", "formatted_value": "DEFAULT"},
-                {"formatted_name": "From whom", "formatted_value": "Grandma &amp; Grandpa"},
-            ],
-        }],
+        "transactions": [_book_bought(rid, i, cover, kid) for i, kid in enumerate([child, *also])],
     }
 
 
@@ -97,6 +104,9 @@ def seed(data: Path) -> None:
         _receipt(4100000105, "Chris Demo", "US", "Denver", "CO", hard, "Ava", days_ago=4),
         _receipt(4100000106, "Pat Example", "US", "Salem", "OR", hard, "Mia", days_ago=1),
         _receipt(4100000107, "Lee Sample", "US", "Dayton", "OH", hard, "Leo", days_ago=3),
+        # An order of two books to one address: each book has its own child and its own files, and they
+        # go to the printer in one draft (owner, 20.09.2026).
+        _receipt(4100000108, "Robin Sample", "US", "Madison", "WI", soft, "Sofia", days_ago=1, also=("Jack",)),
     ]
     printify_orders = [
         _printify(4100000104, "fulfilled", "9400100000000000000001"),

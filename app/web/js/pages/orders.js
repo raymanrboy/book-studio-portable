@@ -14,7 +14,7 @@ import {
   isCustomText, isNameField, isFormatField,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
-import { settle, sentOf, keptOrder } from '../keep.js';
+import { settle, sentOf, keptOrder, finish } from '../keep.js';
 
 // Strip thumbnails: the server prepares this size ahead (creator.STRIP_PREVIEW), so scrolling never waits.
 const STRIP_THUMB = 360;
@@ -177,23 +177,36 @@ async function mountCard(view, rid) {
     return null;
   }
   let pick = 0;        // which book of the order this pass is for (most orders hold one)
-  let chosen = null;   // printer picked by hand when the cover type could not be read
-  let seq = 0;
-  let checkSeq = 0;
-  let freshIssues = false; // the next paint of the findings is a new result: they slide in (once)
-  const dismissed = new Set(); // text-check findings the owner marked «це не помилка» (kept for the card's life)
+  let finished = false; // «Завершити»: this card is not kept when the owner leaves it
+  // Every book of the order goes its own way — its own files, proof and text check — and they all leave
+  // for the printer together, in one draft to one address (owner, 20.09.2026).
   // check: null (none yet / switched off) | {state:'run', percent, step} | {state:'done', result} | {state:'error', message}
-  const f = { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '', check: null };
+  const blank = () => ({ folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '', check: null,
+    chosen: null,        // printer picked by hand when the cover type could not be read
+    seq: 0, checkSeq: 0, // a flow whose number moved on is no longer this book's newest
+    fresh: false,        // the next paint of the findings is a new result: they slide in (once)
+    dismissed: new Set() }); // findings the owner marked «це не помилка» (kept for the card's life)
+  const work = (o.items.length ? o.items : [{}]).map(blank);
+  let f = work[pick];
+  const showing = (w) => w === f;
   const item = () => o.items[pick] || {};
-  const plan = () => item().plan || {};
-  const provider = () => plan().provider || chosen;
+  const plan = (i = pick) => o.items[i]?.plan || {};
+  const providerOf = (i) => plan(i).provider || work[i].chosen;
+  const provider = () => providerOf(pick);
   // Printify takes 24 pages; Gelato as many as were downloaded (28 or 30) — known once the files are in (f.pages).
   const pageOptions = () => (plan().provider ? plan().pages : (o.pageOptions || {})[provider()]) || [];
+  // «4100000001 - Emma»; two books for children of the same name are told apart by a number.
+  const titleOf = (i) => {
+    const name = o.items[i]?.childName || o.childName || '';
+    const same = o.items.filter((x, j) => j < i && (x.childName || '') === (o.items[i]?.childName || ''));
+    return (name ? `${o.receiptId} - ${name}` : String(o.receiptId)) + (same.length ? ` (${same.length + 1})` : '');
+  };
   const pagesLabel = () => (f.pages ? String(f.pages) : pagesText(pageOptions()));
 
   setHtml(view, html`
     <div class="page-head">
       <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
+      <span id="oc-finish"></span>
       <div class="grow" style="min-width:0">
         <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1>${statusChip(o)}</div>
         <div class="page-sub ord-sub">${receiptCopy(o, 'mono')} · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}${trackChips(o)}</div>
@@ -217,7 +230,7 @@ async function mountCard(view, rid) {
       ? html`<span class="chip chip-lg svc-${p}" data-tip="${planText(plan())}">${ic(p, 'icon-s')}<span>${providerName(p)} · ${pagesLabel()} стор.</span></span>`
       : html`<div class="row" style="gap:10px"><span class="faint" style="font-size:12.5px">Друкарня</span>${segHtml([
         { value: 'printify', icon: 'printify', tip: `Printify · ${pagesText(o.pageOptions?.printify)} стор.` },
-        { value: 'gelato', icon: 'gelato', tip: `Gelato · ${pagesText(o.pageOptions?.gelato)} стор.` }], chosen, { name: 'provider' })}</div>`);
+        { value: 'gelato', icon: 'gelato', tip: `Gelato · ${pagesText(o.pageOptions?.gelato)} стор.` }], f.chosen, { name: 'provider' })}</div>`);
     requestAnimationFrame(() => syncSeg($('#oc-plan .seg')));
   }
 
@@ -271,7 +284,8 @@ async function mountCard(view, rid) {
     else if (f.error || v) badge = html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
     const errors = f.error ? [f.error] : (v?.errors || []);
     return html`<section class="card card-pad stack" data-folder-drop>
-      <div class="row"><span class="step-no">1</span><h3 class="card-title grow">Файли з Canva</h3>${badge}</div>
+      <div class="row"><span class="step-no">1</span><h3 class="card-title grow">Файли з Canva</h3>
+        ${o.items.length > 1 ? segHtml(o.items.map((x, i) => ({ value: String(i), label: `Книга ${i + 1}`, tip: x.childName || x.title })), String(pick), { name: 'book' }) : ''}${badge}</div>
       <div class="input-group">
         <input class="input path-input" id="oc-folder" readonly value="${f.label}" title="${f.folder}" aria-label="Файли з Canva"
           placeholder="${provider() ? `ZIP або папка · обкладинка і ${pagesText(pageOptions())} ${plural(pageOptions().at(-1) || 0, ['сторінка', 'сторінки', 'сторінок'])}` : 'Спершу оберіть друкарню'}">
@@ -321,8 +335,10 @@ async function mountCard(view, rid) {
   // ---------------------------------------------------------------- text check (the local model reads every page)
   // Starts by itself once the files are in; the proof stays usable meanwhile. Red — certain mistakes,
   // amber — worth a look; «це не помилка» hides a finding (a deliberate edit) for as long as the card lives.
-  const openIssues = () => (f.check?.state === 'done' ? f.check.result.issues.filter((i) => !dismissed.has(i.id)) : []);
-  const countOf = (level) => openIssues().filter((i) => i.level === level).length;
+  // While the check runs these are the findings it has already shared; the model is still on the rest.
+  const openIssues = (w = f) => (w.check?.state === 'done' ? w.check.result.issues
+    : w.check?.state === 'run' ? (w.check.partial?.issues || []) : []).filter((i) => !w.dismissed.has(i.id));
+  const countOf = (level, w = f) => openIssues(w).filter((i) => i.level === level).length;
 
   function checkTip(r) {
     const lettered = r.pages.filter((p) => p.text).length;
@@ -346,8 +362,19 @@ async function mountCard(view, rid) {
     return html`<span class="v-badge ok" data-tip="${tip}">${ic('textScan')}Текст збігається</span>${again}`;
   }
 
+  const issueRow = (i) => html`<div class="tc-issue ${i.level} ${f.fresh ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}">
+      <span class="tc-where">${i.label}</span>
+      <span class="tc-text">${quoteBold(i.text)}${i.note ? html`<span class="tc-note">${i.note}</span>` : ''}</span>
+      ${ib('check', 'Це не помилка', `data-dismiss="${i.id}"`, { cls: 'sm' })}
+    </div>`;
+
   function checkBody() {
     const c = f.check;
+    // The pages already checked are shown at once, without waiting for the rest of the book.
+    if (c?.state === 'run') {
+      const running = openIssues();
+      return running.length ? html`<div class="tc-list">${running.map(issueRow)}</div>` : '';
+    }
     if (c?.state === 'error') {
       return html`<div class="notice notice-warn">${ic('alert')}<div class="grow">Текст не перевірено: ${c.message}</div>${ib('sync', 'Перевірити ще раз', 'data-act="recheck"', { cls: 'sm' })}</div>`;
     }
@@ -356,11 +383,7 @@ async function mountCard(view, rid) {
     const light = r.mode === 'light' ? html`<div class="row faint tc-light">${ic('info', 'icon-s')}<span>${LIGHT_TIP[r.light]}${r.bookId && r.light === 'noTexts' ? html` · <a href="#/book/${r.bookId}">паспорт книги</a>` : ''}</span></div>` : '';
     const list = openIssues();
     const learn = learnable();
-    return html`${list.length ? html`<div class="tc-list">${list.map((i) => html`<div class="tc-issue ${i.level} ${freshIssues ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}">
-        <span class="tc-where">${i.label}</span>
-        <span class="tc-text">${quoteBold(i.text)}${i.note ? html`<span class="tc-note">${i.note}</span>` : ''}</span>
-        ${ib('check', 'Це не помилка', `data-dismiss="${i.id}"`, { cls: 'sm' })}
-      </div>`)}</div>` : ''}${learn.length ? html`<div class="row tc-light faint">${ic('book', 'icon-s')}<span class="grow">Якщо в шаблоні Canva саме так — паспорт книги застарів</span>
+    return html`${list.length ? html`<div class="tc-list">${list.map(issueRow)}</div>` : ''}${learn.length ? html`<div class="row tc-light faint">${ic('book', 'icon-s')}<span class="grow">Якщо в шаблоні Canva саме так — паспорт книги застарів</span>
         <button class="btn btn-sm" data-act="learn">Оновити паспорт · <span class="num">${learn.length}</span> ${plural(learn.length, ['сторінка', 'сторінки', 'сторінок'])}</button></div>` : ''}${light}`;
   }
 
@@ -401,43 +424,51 @@ async function mountCard(view, rid) {
     if (!badge || !body) return;
     setHtml(badge, checkBadge());
     setHtml(body, checkBody());
-    freshIssues = false;
+    f.fresh = false;
     markPages();
   }
 
   // The check is no longer wanted (the card closes, other files, another book): the model stops on it.
-  function dropCheck() {
-    checkSeq++;
-    const c = f.check;
+  function dropCheck(w = f) {
+    w.checkSeq++;
+    const c = w.check;
     if (c?.state === 'run' && c.jobId) {
       api(`/api/orders/${o.receiptId}/textcheck/cancel`, { method: 'POST', body: { jobId: c.jobId } }).catch(() => {});
     }
   }
 
-  async function startCheck() {
-    const my = seq, mine = ++checkSeq;
-    const live = () => my === seq && mine === checkSeq;
-    f.check = { state: 'run', percent: 0, step: 'Перевірка тексту…' };
-    paintCheck();
+  // The model takes ~4 s to reach the graphics card (~70 s when it comes from disk): it is asked for while
+  // the files are still being copied and checked, so the check right after them does not wait for it.
+  const warmModel = () => { api('/api/textcheck/warm', { method: 'POST' }).catch(() => {}); };
+
+  async function startCheck(w = f, at = w.seq) {
+    const mine = ++w.checkSeq;
+    const live = () => at === w.seq && mine === w.checkSeq;
+    const paint = () => { if (showing(w)) paintCheck(); };
+    w.check = { state: 'run', percent: 0, step: 'Перевірка тексту…' };
+    paint();
     try {
-      const start = await api(`/api/orders/${o.receiptId}/textcheck`, { method: 'POST', body: { folder: f.folder, pages: f.pages, pick } });
+      const start = await api(`/api/orders/${o.receiptId}/textcheck`, { method: 'POST', body: { folder: w.folder, pages: w.pages, pick: work.indexOf(w) } });
       if (!live()) return;
-      if (start.off) { f.check = null; paintCheck(); return; } // switched off in Settings
-      f.check.jobId = start.jobId;
+      if (start.off) { w.check = null; paint(); return; } // switched off in Settings
+      w.check.jobId = start.jobId;
       const result = await runJob(Promise.resolve(start), (j) => {
-        if (!live() || f.check?.state !== 'run') return;
-        Object.assign(f.check, { percent: j.percent || 0, step: j.step || '' });
+        if (!live() || w.check?.state !== 'run') return;
+        const had = openIssues(w).length;
+        Object.assign(w.check, { percent: j.percent || 0, step: j.step || '', partial: j.partial || null });
+        if (!showing(w)) return;
         const badge = view.querySelector('#oc-check-badge .v-badge.run');
-        if (badge) { badge.querySelector('.num').textContent = `${Math.round(f.check.percent)}%`; badge.dataset.tip = f.check.step; }
+        if (badge) { badge.querySelector('.num').textContent = `${Math.round(w.check.percent)}%`; badge.dataset.tip = w.check.step; }
+        if (openIssues(w).length !== had) { setHtml($('#oc-check'), checkBody()); markPages(); }
       }, 700, live);
       if (!live()) return;
-      f.check = { state: 'done', result };
-      freshIssues = true;
+      w.check = { state: 'done', result };
+      w.fresh = true;
     } catch (err) {
       if (!live()) return;
-      f.check = { state: 'error', message: err.message };
+      w.check = { state: 'error', message: err.message };
     }
-    paintCheck();
+    paint();
   }
 
   // The viewer shows, with T, what the model read on a spread's pages and what they must say.
@@ -458,19 +489,37 @@ async function mountCard(view, rid) {
     const p = provider();
     const done = sentOf(o.receiptId);
     const result = keptOrder('#/creator') === String(o.receiptId);
+    const ready = readyBooks(p);
+    // An order of several books: which of them this send takes, and what each one still waits for.
+    const list = work.length > 1 ? html`<ul class="oc-books">${work.map((w, i) => {
+      const its = ready.some((r) => r.i === i);
+      const why = its ? 'готова' : !providerOf(i) ? 'не обрано друкарню' : providerOf(i) !== p ? `друкується в ${providerName(providerOf(i))}`
+        : w.busy ? 'перевіряються файли' : w.folder ? 'файли не пройшли перевірку' : 'немає файлів';
+      return html`<li class="${its ? 'is-ready' : 'faint'}">${ic(its ? 'check' : 'clock', 'icon-s')}<span class="grow truncate">Книга ${i + 1}${o.items[i]?.childName ? ` · ${o.items[i].childName}` : ''}</span><span>${why}</span></li>`;
+    })}</ul>` : '';
     return html`<section class="card card-pad stack ${p === 'printify' ? 'tint-printify' : ''}" id="oc-print">
       <div class="row"><span class="step-no">3</span><h3 class="card-title grow">Друк</h3></div>
+      ${list}
       ${done ? html`<div class="notice notice-success">${ic('checkCircle')}<div class="grow">${done.what}</div></div>
         <div class="row">${result ? html`<button class="btn btn-primary grow" data-act="to-creator">${ic('printer', 'icon-s')}Результат в Order Creator</button>` : ''}
           ${ib('send', 'Надіслати ще раз', 'data-act="print"')}</div>`
-    : html`<button class="btn btn-xl btn-primary btn-block" data-act="print">${ic('send', 'icon-l')}До друку в ${providerName(p)}</button>`}
+    : html`<button class="btn btn-xl btn-primary btn-block" data-act="print">${ic('send', 'icon-l')}До друку в ${providerName(p)}${ready.length > 1 ? html` · <span class="num">${ready.length}</span> книги` : ''}</button>`}
     </section>`;
+  }
+
+  // The cross beside the back arrow appears once the draft is made: «робота над цим замовленням
+  // завершена» — the card and the Order Creator let go of it and the queue opens (owner, 20.09.2026).
+  function renderFinish() {
+    setHtml($('#oc-finish'), sentOf(o.receiptId)
+      ? ib('x', 'Завершити роботу над замовленням', 'data-act="finish"', { cls: 'sm' }) : '');
   }
 
   function renderRight() {
     const ready = !!(f.folder && f.validation?.ok && !f.busy);
+    renderFinish();
     setHtml($('#oc-flow'), [filesCard(), ready ? proofCard() : '', ready ? printCard() : '']);
     fadeImages($('#oc-flow'));
+    requestAnimationFrame(() => syncSeg($('#oc-flow .seg')));
     const strip = $('#oc-strip');
     if (strip) smoothWheel(strip);
     markPages();
@@ -483,84 +532,100 @@ async function mountCard(view, rid) {
   };
 
   // Put the export in page order (Cover.png + 1..N.png), then run the same full check as the Order Creator.
-  async function arrange(path, my) {
-    const res = await api(`/api/orders/${o.receiptId}/files`, { method: 'POST', body: { folder: path, provider: provider(), format: plan().format || null } });
-    if (my !== seq) return;
-    Object.assign(f, { folder: res.path, note: res.note, pages: res.pageCount });
-    renderPlan();
-    const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: provider(), folder: f.folder } }),
-      (j) => { if (my === seq) setBusy(60 + (j.percent || 0) * 0.4); }, 300);
-    if (my !== seq) return;
-    Object.assign(f, { validation: v, busy: 0, check: null });
-    renderRight();
+  async function arrange(path, w, my) {
+    const i = work.indexOf(w);
+    const res = await api(`/api/orders/${o.receiptId}/files`, { method: 'POST', body: { folder: path, provider: providerOf(i), format: plan(i).format || null } });
+    if (my !== w.seq) return;
+    Object.assign(w, { folder: res.path, note: res.note, pages: res.pageCount });
+    if (showing(w)) renderPlan();
+    const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(i), folder: w.folder } }),
+      (j) => { if (my === w.seq && showing(w)) setBusy(60 + (j.percent || 0) * 0.4); }, 300);
+    if (my !== w.seq) return;
+    Object.assign(w, { validation: v, busy: 0, check: null });
+    if (showing(w)) renderRight();
     if (v.ok) {
-      requestAnimationFrame(() => $('#oc-proof')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-      startCheck();
+      if (showing(w)) requestAnimationFrame(() => $('#oc-proof')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      startCheck(w, my);
     }
   }
-  const failed = (my, err) => {
-    if (my !== seq) return;
-    Object.assign(f, { busy: 0, error: err.message, validation: null, pages: 0 });
-    renderPlan(); renderRight();
+  const failed = (w, my, err) => {
+    if (my !== w.seq) return;
+    Object.assign(w, { busy: 0, error: err.message, validation: null, pages: 0 });
+    if (showing(w)) { renderPlan(); renderRight(); }
   };
 
   async function takeDrop(dropped) {
     if (!provider()) { toast('Спершу оберіть друкарню', 'info'); return; }
-    dropCheck();
-    const my = ++seq;
-    Object.assign(f, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
+    const w = f;
+    dropCheck(w);
+    warmModel();
+    const my = ++w.seq;
+    Object.assign(w, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
     try {
-      const path = await receiveDrop(dropped, (pct) => { if (my === seq) setBusy(pct * 0.6); });
-      if (my === seq) await arrange(path, my);
-    } catch (err) { failed(my, err); }
+      const path = await receiveDrop(dropped, (pct) => { if (my === w.seq && showing(w)) setBusy(pct * 0.6); });
+      if (my === w.seq) await arrange(path, w, my);
+    } catch (err) { failed(w, my, err); }
   }
 
   async function takeFolder() {
     let path;
+    warmModel();
     try { path = (await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з обкладинкою і ${pagesText(pageOptions())} сторінками` } })).path; }
     catch (err) { toast(err.message, 'error'); return; }
     if (!path) return;
-    dropCheck();
-    const my = ++seq;
-    Object.assign(f, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
+    const w = f;
+    dropCheck(w);
+    const my = ++w.seq;
+    Object.assign(w, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
-    try { await arrange(path, my); } catch (err) { failed(my, err); }
+    try { await arrange(path, w, my); } catch (err) { failed(w, my, err); }
   }
 
   async function takeEarlier() {
     const e = earlier();
     if (!e) return;
-    dropCheck();
-    const my = ++seq;
-    Object.assign(f, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
+    const w = f;
+    dropCheck(w);
+    warmModel();
+    const my = ++w.seq;
+    Object.assign(w, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
     renderPlan(); renderRight();
     try {
       const { path } = await api(`/api/archive/${e.id}/reuse`, { method: 'POST', body: {} });
-      if (my === seq) await arrange(path, my);
-    } catch (err) { failed(my, err); }
+      if (my === w.seq) await arrange(path, w, my);
+    } catch (err) { failed(w, my, err); }
   }
 
-  function resetFiles() {
-    dropCheck();
-    seq++;
-    Object.assign(f, { folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '', check: null });
+  function resetFiles(w = f) {
+    dropCheck(w);
+    w.seq++;
+    Object.assign(w, blank(), { chosen: w.chosen, seq: w.seq, checkSeq: w.checkSeq });
   }
+
+  /** The books of this order that are ready for the printer now shown (files in, checked, not busy). */
+  const readyBooks = (p = provider()) => work.map((w, i) => ({ w, i }))
+    .filter(({ w, i }) => w.folder && w.validation?.ok && !w.busy && providerOf(i) === p);
 
   // The text check never blocks printing — it asks once when it is still running or found mistakes.
+  // Every ready book of the order goes in one draft to one address; the rest wait for another send.
   async function print() {
-    const c = f.check;
-    if (c?.state === 'run' && !(await confirmBox({ title: 'Текст ще перевіряється',
+    const p = provider();
+    const ready = readyBooks(p);
+    if (!ready.length) { toast('Спершу розставте файли книги', 'info'); return; }
+    const left = work.length - ready.length;
+    if (left && !(await confirmBox({ title: 'Готові не всі книги замовлення',
+      text: `Готов${ready.length > 1 ? 'і' : 'а'} ${ready.length} з ${work.length} книг замовлення. Відправити лише ${ready.length > 1 ? 'їх' : 'її'}? Решту можна надіслати пізніше — це буде окреме замовлення в друкарні.`,
+      confirm: 'Відправити готові', cancel: 'Повернутись' }))) return;
+    if (ready.some(({ w }) => w.check?.state === 'run') && !(await confirmBox({ title: 'Текст ще перевіряється',
       text: 'Відправити до друку, не дочекавшись перевірки тексту?', confirm: 'До друку', cancel: 'Зачекати' }))) return;
-    const errors = c?.state === 'done' ? countOf('error') : 0;
+    const errors = ready.reduce((n, { w }) => n + (w.check?.state === 'done' ? countOf('error', w) : 0), 0);
     if (errors && !(await confirmBox({ title: 'У тексті є помилки', danger: true, confirm: 'Все одно до друку', cancel: 'Повернутись',
       text: `Перевірка знайшла ${errors} ${plural(errors, LEVEL_WORDS.error)} у тексті сторінок.` }))) return;
-    const it = item();
-    const name = it.childName || o.childName || '';
+    const books = ready.map(({ w, i }) => ({ folder: w.folder, label: w.label, title: titleOf(i), format: plan(i).format || null }));
     give('creator', {
       receiptId: String(o.receiptId), // the Order Creator keeps its work (and result) for this order
-      mode: provider(), folder: f.folder, label: f.label, format: plan().format || null,
-      title: name ? `${o.receiptId} - ${name}` : String(o.receiptId), address: addressFromEtsy(o),
+      mode: p, books, ...books[0], address: addressFromEtsy(o),
     });
     location.hash = '#/creator';
   }
@@ -570,6 +635,7 @@ async function mountCard(view, rid) {
     on(view, 'click', '[data-act]', (e, t) => {
       const a = t.dataset.act;
       if (a === 'back') location.hash = '#/orders';
+      else if (a === 'finish') { finished = true; finish(o.receiptId); location.hash = '#/orders'; }
       else if (a === 'canva') openExternal(item().book?.canvaUrl);
       else if (a === 'browse') takeFolder();
       else if (a === 'earlier') takeEarlier();
@@ -580,22 +646,22 @@ async function mountCard(view, rid) {
       else if (a === 'learn') learnPassport();
     }),
     on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
-    on(view, 'click', '[data-dismiss]', (e, b) => { dismissed.add(b.dataset.dismiss); paintCheck(); }),
+    on(view, 'click', '[data-dismiss]', (e, b) => { f.dismissed.add(b.dataset.dismiss); paintCheck(); }),
     on(view, 'click', '[data-lb]', (e, c) => {
       if (e.target.closest('[data-dismiss]') || !f.folder || !f.pages) return;
       openLightbox(viewerItems(), +c.dataset.lb);
     }),
     on(view, 'click', '[data-seg="provider"] button', (e, b) => {
-      chosen = b.dataset.value;
-      setSeg(b.closest('.seg'), chosen);
+      f.chosen = b.dataset.value;
+      setSeg(b.closest('.seg'), f.chosen);
       resetFiles();
       renderPlan(); renderRight();
     }),
+    // Each book keeps its own work: switching simply shows another one, nothing is lost.
     on(view, 'click', '[data-seg="book"] button', (e, b) => {
       if (+b.dataset.value === pick) return;
       pick = +b.dataset.value;
-      chosen = null;
-      resetFiles();
+      f = work[pick];
       renderPlan(); renderLeft(); renderRight();
     }),
   ];
@@ -615,7 +681,7 @@ async function mountCard(view, rid) {
   // brought back, it first asks whether the order is still new, then shows a draft made meanwhile.
   return {
     receiptId: String(o.receiptId),
-    keep: () => o.stage === 'new',
+    keep: () => o.stage === 'new' && !finished,
     hidden() { keys(false); },
     async revive() {
       const fresh = await api(`/api/orders/${rid}`);
@@ -623,10 +689,11 @@ async function mountCard(view, rid) {
       keys(true);
       const step = $('#oc-print');
       if (step) step.outerHTML = String(printCard());
+      renderFinish();
       return true;
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
-    idle: () => !(f.folder || f.busy || f.label || sentOf(o.receiptId)),
-    unmount() { dropCheck(); offs.forEach((fn) => fn()); seq++; keys(false); },
+    idle: () => !(work.some((w) => w.folder || w.busy || w.label) || sentOf(o.receiptId)),
+    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); keys(false); },
   };
 }

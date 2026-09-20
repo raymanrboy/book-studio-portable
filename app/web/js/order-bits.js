@@ -213,11 +213,16 @@ export async function receiveDrop({ entries, files }, onProgress, { withText = f
 /** Lights `input` while files are dragged over `[data-folder-drop]` inside `root`; calls onDrop(contents). */
 export function wireFolderDrop(root, input, onDrop) {
   const zone = (e) => e.target.closest?.('[data-folder-drop]');
-  const mark = (on) => input()?.classList.toggle('drop-hot', on);
+  // With several books each folder block is its own drop zone: the one under the cursor lights up, and
+  // the drop tells the page which book it was meant for.
+  const mark = (on, z) => {
+    root.querySelectorAll('.drop-hot').forEach((el) => el.classList.remove('drop-hot'));
+    if (on) input(z)?.classList.add('drop-hot');
+  };
   root.addEventListener('dragover', (e) => {
     if (!e.dataTransfer?.types?.includes('Files')) return;
     const z = zone(e);
-    mark(!!z);
+    mark(!!z, z);
     if (z) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
   });
   root.addEventListener('dragleave', (e) => { if (!e.relatedTarget || !e.relatedTarget.closest?.('[data-folder-drop]')) mark(false); });
@@ -225,7 +230,7 @@ export function wireFolderDrop(root, input, onDrop) {
     mark(false);
     if (!zone(e) || !e.dataTransfer?.files?.length) return;
     e.preventDefault();
-    onDrop(dropContents(e));
+    onDrop(dropContents(e), zone(e));
   });
 }
 

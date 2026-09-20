@@ -370,7 +370,8 @@ class PrintifyReprint(ArchiveCase):
         creator.UPLOAD_CACHE.unlink(missing_ok=True)
         self.fake = FakePrintify(core.settings.section("printify")["master"])
         with mock.patch.object(printify, "call", self.fake):
-            self.first = creator.create_printify_draft(str(book(self.root / "Emma")), "4100000001 - Emma", Job("t"), ADDRESS)
+            self.first = creator.create_printify_draft([{"folder": str(book(self.root / "Emma")), "title": "4100000001 - Emma"}],
+                                                       Job("t"), ADDRESS)
         self.calls_before = len(self.fake.calls)
 
     def tearDown(self):

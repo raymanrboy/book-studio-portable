@@ -9,10 +9,11 @@ import {
   wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText,
 } from '../order-bits.js';
 import { take } from '../handoff.js';
-import { markSent } from '../keep.js';
+import { markSent, finish } from '../keep.js';
 
 export async function mount(view) {
   let status;
+  let finished = false; // «Завершити»: this page is not kept when the owner leaves it
   try { status = await api('/api/creator/status'); }
   catch (err) { setHtml(view, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`); return null; }
 
@@ -22,22 +23,27 @@ export async function mount(view) {
   // Printify: without an address only the unpublished book is made; with one, also an order for it that
   // waits "On hold" in Printify (like Gelato's draft) — nothing goes to production from here.
   // reprint: set only by the order archive's "Передрук" ({archiveId, productId}); another folder cancels it.
+  // A book of the send: its own folder, name, format and file check. An Etsy order of two or three books
+  // sends them all at once — one draft, one address (owner, 20.09.2026).
+  const newBook = (extra = {}) => ({
+    folder: '', label: null, title: '', validation: null, validating: 0, seq: 0,
+    format: status.gelato.defaultFormat || status.gelato.formats[0]?.key, ...extra,
+  });
   const st = {
     mode: 'printify',
-    printify: { folder: '', title: '', validation: null, validating: 0, running: false, result: null, error: null, address: { country: 'US' }, reprint: null },
-    gelato: {
-      folder: '', title: '', validation: null, validating: 0, running: false, result: null, error: null,
-      format: status.gelato.defaultFormat || status.gelato.formats[0]?.key, address: { country: 'US' }, reprint: null,
-    },
+    printify: { books: [newBook()], pick: 0, running: false, result: null, error: null, address: { country: 'US' }, reprint: null },
+    gelato: { books: [newBook()], pick: 0, running: false, result: null, error: null, address: { country: 'US' }, reprint: null },
   };
   const handed = take('creator');
   // The new order this page works on (from its card, or picked below); a reprint from the archive is not one.
   st.receiptId = handed?.receiptId && !handed.reprint ? String(handed.receiptId) : '';
   if (handed) {
     st.mode = handed.mode;
-    Object.assign(st[handed.mode], { folder: handed.folder, label: handed.label, title: handed.title, address: { ...handed.address },
-      reprint: handed.reprint || null });
-    if (handed.mode === 'gelato' && handed.format) st.gelato.format = handed.format;
+    const list = handed.books?.length ? handed.books : [handed];
+    Object.assign(st[handed.mode], {
+      books: list.map((h) => newBook({ folder: h.folder, label: h.label, title: h.title, ...(h.format ? { format: h.format } : {}) })),
+      pick: 0, address: { ...handed.address }, reprint: handed.reprint || null,
+    });
   }
   const ADDRESS_NEEDED = { firstName: "Ім'я", lastName: 'Прізвище', addressLine1: 'Адреса', city: 'Місто', postCode: 'Індекс', country: 'Країна' };
   const hasAddress = (a) => ['firstName', 'lastName', 'addressLine1', 'city', 'postCode'].some((k) => (a[k] || '').trim());
@@ -48,10 +54,13 @@ export async function mount(view) {
       : withOrder() ? 'Створити чернетку замовлення' : 'Створити книгу без замовлення');
   let tunnelTimer = null;
   const cur = () => st[st.mode];
+  const bk = (i = cur().pick) => cur().books[i] || cur().books[0];   // the book being shown / edited
+  const many = () => cur().books.length > 1;
+  const bookName = (i) => cur().books[i].title.split(' - ').slice(1).join(' - ').trim() || `Книга ${i + 1}`;
 
   // Pages: Printify takes exactly its template's 24; Gelato as many as the folder holds (28 or 30), and
   // its catalog says which of those each format is printed with (asked once, when Gelato is shown).
-  const pageTotal = () => (st.mode === 'printify' ? status.printify.pageCount : cur().validation?.pageCount || 0);
+  const pageTotal = (i = cur().pick) => (st.mode === 'printify' ? status.printify.pageCount : bk(i).validation?.pageCount || 0);
   let pageCounts = null;
   let countsAsked = false;
   function loadPageCounts() {
@@ -63,9 +72,9 @@ export async function mount(view) {
     }).catch(() => {});
   }
   /** Why Gelato would not print the chosen folder in this format; '' when fine or not known. */
-  function formatProblem(key = st.gelato.format) {
+  function formatProblem(key = bk().format, i = cur().pick) {
     const valid = pageCounts?.[key];
-    const n = st.gelato.validation?.pageCount;
+    const n = bk(i).validation?.pageCount;
     if (!valid?.length || !n || valid.includes(n)) return '';
     const label = status.gelato.formats.find((f) => f.key === key)?.label || key;
     return `Gelato не друкує ${label} на ${n} сторінках (можна від ${valid[0]}).`;
@@ -87,7 +96,9 @@ export async function mount(view) {
 
   // ---------------------------------------------------------------- header / status
   function renderSwitch() {
-    setHtml($('#cr-switch'), html`<div class="tools cr-tools">${ib('sendLog', 'Журнал відправок', 'data-act="open-sendlog"')}</div><div class="mode-switch">${segHtml([
+    // The cross closes the work on this order: the page and its card forget it and the queue opens.
+    setHtml($('#cr-switch'), html`<div class="tools cr-tools">${st.receiptId && cur().result
+      ? ib('x', 'Завершити роботу над замовленням', 'data-act="finish"') : ''}${ib('sendLog', 'Журнал відправок', 'data-act="open-sendlog"')}</div><div class="mode-switch">${segHtml([
       { value: 'printify', icon: 'printify', tip: 'Printify — неопублікована книга' },
       { value: 'gelato', icon: 'gelato', tip: 'Gelato — чернетка замовлення' }], st.mode, { name: 'mode' })}</div>`);
     requestAnimationFrame(() => syncSeg($('#cr-switch .seg')));
@@ -118,54 +129,77 @@ export async function mount(view) {
   }
 
   // ---------------------------------------------------------------- left column
-  function folderCard(num) {
+  /** One book's folder: the path, what the check found, and (with several books) its own name. */
+  function folderBlock(i) {
     const s = cur();
-    const v = s.validation;
+    const b = cur().books[i];
+    const v = b.validation;
     let badge;
-    if (s.validating) badge = html`<span class="v-badge run"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(s.validating)}%</span></span>`;
+    if (b.validating) badge = html`<span class="v-badge run"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(b.validating)}%</span></span>`;
     else if (!v) badge = '';
     else if (v.ok) badge = html`<span class="v-badge ok" data-tip="Усі PNG повністю прочитано й перевірено">${ic('check')}<span class="num">${v.found}/${v.expected}</span></span>`;
     else badge = html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
-    // A dragged folder is shown by its own name (s.label); s.folder is where the program copied it.
-    return html`<section class="card card-pad stack" data-folder-drop>
-      <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">Папка з файлами</h3>${badge}</div>
+    // A dragged folder is shown by its own name (b.label); b.folder is where the program copied it.
+    return html`<div class="cr-book ${many() && i === cur().pick ? 'is-shown' : ''}" data-folder-drop data-book="${i}">
+      ${many() ? html`<div class="row cr-book-head"><button class="cr-book-name" data-act="show-book" data-book="${i}" data-tip="Показати структуру цієї книги">${ic('book', 'icon-s')}Книга ${i + 1}</button>
+        <span class="spacer"></span>${badge}${cur().books.length > 2 || !cur().books[i].folder ? ib('x', 'Прибрати книгу', `data-act="drop-book" data-book="${i}"`, { cls: 'sm' }) : ''}</div>` : ''}
       <div class="input-group">
-        <input class="input path-input" id="cr-folder" placeholder="Папку ще не вибрано" value="${s.label || s.folder}" title="${s.label ? s.folder : ''}" spellcheck="false" autocomplete="off" aria-label="Шлях до папки">
-        ${ib('folderPick', 'Обрати папку', 'data-act="browse"')}
+        <input class="input path-input" id="cr-folder-${i}" data-book="${i}" placeholder="Папку ще не вибрано" value="${b.label || b.folder}" title="${b.label ? b.folder : ''}" spellcheck="false" autocomplete="off" aria-label="Шлях до папки">
+        ${ib('folderPick', 'Обрати папку', `data-act="browse" data-book="${i}"`)}
       </div>
-      ${s.reprint ? html`<div class="row faint cr-reprint">${ic('orderArchive', 'icon-s')}<span>${st.mode === 'printify'
+      ${!many() ? html`<div class="row" style="display:none">${badge}</div>` : ''}
+      ${s.reprint && i === 0 ? html`<div class="row faint cr-reprint">${ic('orderArchive', 'icon-s')}<span>${st.mode === 'printify'
         ? 'Передрук з архіву: нове замовлення на книгу, яка вже є в Printify'
         : 'Передрук з архіву: нова чернетка з тих самих файлів'}</span></div>` : ''}
-      ${v && !s.validating ? html`
+      ${v && !b.validating ? html`
         ${v.errors.length ? html`<div class="notice notice-error">${ic('alertCircle')}<div><b>Перевірка не пройдена</b><ul>${v.errors.slice(0, 12).map((e) => html`<li>${e}</li>`)}</ul>${v.errors.length > 12 ? html`<div>…та ще ${v.errors.length - 12}</div>` : ''}</div></div>` : ''}
         ${v.warnings.length ? html`<div class="notice notice-warn">${ic('alert')}<div>${v.warnings.map((w) => html`<div>${w}</div>`)}</div></div>` : ''}
         <div class="row">${v.ok ? html`<span class="faint mono" style="font-size:12px">${bytes(v.totalBytes)}</span>` : ''}<span class="spacer"></span>
-          ${v.ok ? ib('folderOpen', 'Відкрити папку', 'data-act="open-folder"', { cls: 'sm' }) : ''}
-          ${ib('scan', 'Перевірити файли знову', 'data-act="revalidate"', { cls: 'sm' })}</div>` : ''}
+          ${v.ok ? ib('folderOpen', 'Відкрити папку', `data-act="open-folder" data-book="${i}"`, { cls: 'sm' }) : ''}
+          ${ib('scan', 'Перевірити файли знову', `data-act="revalidate" data-book="${i}"`, { cls: 'sm' })}</div>` : ''}
+    </div>`;
+  }
+
+  function folderCard(num) {
+    const one = !many();
+    const b = bk();
+    let badge = '';
+    if (one && b.validating) badge = html`<span class="v-badge run"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(b.validating)}%</span></span>`;
+    else if (one && b.validation) badge = b.validation.ok
+      ? html`<span class="v-badge ok" data-tip="Усі PNG повністю прочитано й перевірено">${ic('check')}<span class="num">${b.validation.found}/${b.validation.expected}</span></span>`
+      : html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
+    return html`<section class="card card-pad stack">
+      <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">${one ? 'Папка з файлами' : `Папки з файлами · ${cur().books.length} книги`}</h3>${badge}</div>
+      ${cur().books.map((x, i) => folderBlock(i))}
+      ${st.receiptId || many() ? html`<button class="btn btn-sm btn-ghost" style="align-self:flex-start" data-act="add-book"
+        data-tip="Ще одна книга цього ж замовлення — вони підуть у друк разом, однією чернеткою">${ic('plus', 'icon-s')}Ще книга</button>` : ''}
     </section>`;
   }
 
   function titleCard(num) {
-    const s = cur();
     return html`<section class="card card-pad stack">
-      <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">Назва</h3>
+      <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">${many() ? 'Назви книг' : 'Назва'}</h3>
         ${ib('receipt', st.mode === 'gelato' ? 'Заповнити назву й адресу із замовлення Etsy' : 'Заповнити із замовлення Etsy', 'data-act="from-etsy"', { cls: 'sm' })}</div>
-      <input class="input input-lg" id="cr-title" placeholder="4100000001 - Emma" value="${s.title}" autocomplete="off" aria-label="Назва">
+      ${cur().books.map((b, i) => html`${many() ? html`<label class="eyebrow" for="cr-title-${i}">Книга ${i + 1}</label>` : ''}
+        <input class="input input-lg" id="cr-title-${i}" data-book="${i}" placeholder="4100000001 - Emma" value="${b.title}" autocomplete="off" aria-label="Назва книги ${i + 1}">`)}
     </section>`;
   }
 
   function formatCard(num) {
-    const pill = (f) => {
+    const pill = (f, i) => {
       const valid = pageCounts?.[f.key];
-      const bad = formatProblem(f.key);
+      const bad = formatProblem(f.key, i);
       const tip = bad || (valid?.length ? `${valid[0]}–${valid.at(-1)} стор.` : '');
-      return html`<button class="fmt-pill ${st.gelato.format === f.key ? 'active' : ''} ${bad ? 'bad' : ''}" data-format="${f.key}" data-tip="${tip}">${f.label}</button>`;
+      return html`<button class="fmt-pill ${cur().books[i].format === f.key ? 'active' : ''} ${bad ? 'bad' : ''}" data-format="${f.key}" data-book="${i}" data-tip="${tip}">${f.label}</button>`;
     };
-    const problem = formatProblem();
     return html`<section class="card card-pad stack">
-      <div class="row"><span class="step-no">${num}</span><h3 class="card-title">Формат</h3></div>
-      <div class="fmt-pills">${status.gelato.formats.map(pill)}</div>
-      ${problem ? html`<div class="notice notice-warn">${ic('alert')}<div>${problem}</div></div>` : ''}
+      <div class="row"><span class="step-no">${num}</span><h3 class="card-title">${many() ? 'Формати книг' : 'Формат'}</h3></div>
+      ${cur().books.map((b, i) => {
+        const problem = formatProblem(b.format, i);
+        return html`${many() ? html`<span class="eyebrow">Книга ${i + 1}</span>` : ''}
+          <div class="fmt-pills">${status.gelato.formats.map((f) => pill(f, i))}</div>
+          ${problem ? html`<div class="notice notice-warn">${ic('alert')}<div>${problem}</div></div>` : ''}`;
+      })}
     </section>`;
   }
 
@@ -218,7 +252,9 @@ export async function mount(view) {
         <h4>${ic('checkCircle')}${r.reprint ? 'Передрук: замовлення створено в Printify!' : r.order ? 'Чернетку замовлення створено в Printify!' : 'Книгу створено в Printify!'}</h4>
         <dl class="kv">
           <dt>Назва</dt><dd>${r.title}</dd>
-          <dt>Product ID</dt><dd class="mono">${r.productId}</dd>
+          ${(r.books || []).length > 1
+            ? html`<dt>Книги</dt><dd>${r.books.map((b) => html`<div>${b.title} · <span class="mono">${b.productId}</span></div>`)}</dd>`
+            : html`<dt>Product ID</dt><dd class="mono">${r.productId}</dd>`}
           ${r.order ? html`<dt>Order ID</dt><dd class="mono">${r.order.id}</dd>
             <dt>Замовлення</dt><dd>На утриманні (On hold) · ${r.order.variant} — у виробництво лише після «Submit order» у Printify</dd>`
             : html`<dt>Статус</dt><dd>Неопублікована книга (Unpublished)</dd>`}
@@ -240,8 +276,10 @@ export async function mount(view) {
         <dt>Order ID</dt><dd class="mono">${r.orderId}</dd>
         <dt>Reference</dt><dd class="mono">${r.orderReferenceId}</dd>
         <dt>Тип</dt><dd class="mono">${r.orderType || 'draft'}</dd>
-        <dt>Формат</dt><dd>${r.format}</dd>
-        ${r.pdfPages ? html`<dt>Файл</dt><dd>один PDF, <span class="num">${r.pdfPages}</span> стор.: обкладинка · форзац · <span class="num">${r.pdfPages - 3}</span> сторінок · нахзац</dd>` : ''}
+        ${(r.books || []).length > 1
+          ? html`<dt>Книги</dt><dd>${r.books.map((b) => html`<div>${b.title} · ${b.format} · <span class="num">${b.pageCount}</span> стор.</div>`)}</dd>`
+          : html`<dt>Формат</dt><dd>${r.format}</dd>
+            ${r.pdfPages ? html`<dt>Файл</dt><dd>один PDF, <span class="num">${r.pdfPages}</span> стор.: обкладинка · форзац · <span class="num">${r.pdfPages - 3}</span> сторінок · нахзац</dd>` : ''}`}
       </dl>
       ${(r.warnings || []).map((w) => html`<div class="notice notice-warn" style="margin-top:10px">${ic('alert')}<div>${w}</div></div>`)}
       <div class="notice notice-warn" style="margin-top:12px" id="cr-tunnel">${ic('clock')}<div class="grow">
@@ -264,26 +302,27 @@ export async function mount(view) {
 
   // ---------------------------------------------------------------- right column (structure)
   const fileState = (name) => {
-    const v = cur().validation;
+    const v = bk().validation;
     if (!v) return null;
     const row = v.files.find((r) => r.file.toLowerCase() === name.toLowerCase());
     return row ? (row.ok ? 'ok' : 'bad') : 'missing';
   };
-  const thumb = (name, w = 420) => media('/media/folder', { path: cur().folder, file: name, w });
+  const thumb = (name, w = 420) => media('/media/folder', { path: bk().folder, file: name, w });
 
   function renderRight() {
     const s = cur();
+    const b = bk();
     const pr = st.mode === 'printify';
     const known = pageTotal(); // a Gelato book's length is known once its folder is checked
     const total = known || Math.max(...status.gelato.pageCounts);
-    const v = s.validation;
+    const v = b.validation;
     const has = (n) => v && v.files.some((r) => r.file.toLowerCase() === n.toLowerCase());
     const coverRow = v?.files.find((r) => r.position === 'cover');
     const ratio = coverRow?.width ? `${coverRow.width} / ${coverRow.height}` : pr ? `${status.printify.coverSize[0]} / ${status.printify.coverSize[1]}` : '464 / 249';
     const spreads = spreadsOf(total);
     const count = v ? v.found : 0;
     const expectedCount = total + 1;
-    const fmtLabel = pr ? 'Hardcover 8×8' : (status.gelato.formats.find((f) => f.key === st.gelato.format)?.label || '');
+    const fmtLabel = pr ? 'Hardcover 8×8' : (status.gelato.formats.find((f) => f.key === b.format)?.label || '');
     const half = (n, side, blankLabel) => {
       if (n === null) return html`<div class="half blank"><span>${blankLabel}</span></div>`;
       const name = `${n}.png`;
@@ -292,7 +331,7 @@ export async function mount(view) {
     };
     setHtml($('#cr-right'), html`<section class="card card-pad stack-l">
       <div class="row" style="align-items:baseline">
-        <h2 class="card-title grow" style="font-size:17px">Структура <span class="faint" style="font-weight:500">· ${fmtLabel}</span></h2>
+        <h2 class="card-title grow" style="font-size:17px">Структура <span class="faint" style="font-weight:500">· ${many() ? `${bookName(cur().pick)} · ` : ''}${fmtLabel}</span></h2>
         <span class="v-badge ${count === expectedCount && v?.ok ? 'ok' : ''}" data-tip="Зображень у папці"><span class="num">${count}/${expectedCount}</span></span>
       </div>
       <div class="stack-s">
@@ -323,59 +362,62 @@ export async function mount(view) {
   }
 
   function openStructure(index) {
-    const s = cur();
-    if (!s.validation || !s.folder) { toast('Спершу оберіть папку з ілюстраціями', 'info'); return; }
-    openLightbox(folderViewerItems(s.folder, pageTotal(), s.label || s.folder), index);
+    const b = bk();
+    if (!b.validation || !b.folder) { toast('Спершу оберіть папку з ілюстраціями', 'info'); return; }
+    openLightbox(folderViewerItems(b.folder, pageTotal(), b.label || b.folder), index);
   }
 
   function renderAll() {
     renderSwitch(); renderStatus(); renderTunnels(); renderLeft(); renderRight();
   }
 
-  // ---------------------------------------------------------------- validation
-  let validateSeq = 0;
-  async function validate() {
+  // ---------------------------------------------------------------- validation (each book on its own)
+  async function validate(i = cur().pick) {
     const s = cur();
+    const b = s.books[i];
     const mode = st.mode;
-    if (!s.folder.trim()) { s.validation = null; renderLeft(); renderRight(); return; }
-    const my = ++validateSeq;
-    s.validating = 1; s.error = null;
+    if (!b || !b.folder.trim()) { if (b) b.validation = null; renderLeft(); renderRight(); return; }
+    const my = ++b.seq;
+    b.validating = 1; s.error = null;
     renderLeft();
     try {
-      const res = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode, folder: s.folder } }), (j) => {
-        if (my !== validateSeq || st.mode !== mode) return;
-        s.validating = Math.max(1, j.percent);
-        const badge = view.querySelector('.v-badge.run');
-        if (badge) badge.lastChild.textContent = `Перевірка… ${Math.round(s.validating)}%`;
+      const res = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode, folder: b.folder } }), (j) => {
+        if (my !== b.seq || st.mode !== mode) return;
+        b.validating = Math.max(1, j.percent);
+        const badge = view.querySelector(`[data-book="${i}"] .v-badge.run, #cr-left .v-badge.run`);
+        if (badge) badge.lastChild.textContent = `Перевірка… ${Math.round(b.validating)}%`;
       }, 300);
-      if (my !== validateSeq) return;
-      s.validation = res;
+      if (my !== b.seq) return;
+      b.validation = res;
     } catch (err) {
-      if (my !== validateSeq) return;
-      s.validation = { ok: false, errors: [err.message], warnings: [], files: [], found: 0, expected: 0 };
+      if (my !== b.seq) return;
+      b.validation = { ok: false, errors: [err.message], warnings: [], files: [], found: 0, expected: 0 };
     } finally {
-      if (my === validateSeq) {
-        s.validating = 0;
+      if (my === b.seq) {
+        b.validating = 0;
         if (st.mode === mode) { renderLeft(); renderRight(); }
       }
     }
   }
-  const validateSoon = debounce(validate, 600);
+  const validateSoon = debounce((i) => validate(i), 600);
 
   // ---------------------------------------------------------------- create
   async function create() {
     const s = cur();
     const mode = st.mode;
-    s.title = ($('#cr-title')?.value || '').trim();
+    s.books.forEach((b, i) => { b.title = ($(`#cr-title-${i}`)?.value ?? b.title).trim(); });
     const problems = [];
     // A Printify reprint sends no files (the book is already in Printify; if it is gone, the server checks
     // the archived files itself before making it again), so the folder check does not hold it back.
     const filesSent = !(mode === 'printify' && s.reprint);
-    if (!s.folder) problems.push('Оберіть папку з ілюстраціями.');
-    else if (filesSent && s.validating) problems.push('Зачекайте завершення перевірки файлів.');
-    else if (filesSent && s.validation && !s.validation.ok) problems.push('Виправте помилки у файлах (див. крок «Папка з ілюстраціями»).');
-    if (!s.title) problems.push('Введіть назву книги.');
-    if (mode === 'gelato' && formatProblem()) problems.push(formatProblem());
+    s.books.forEach((b, i) => {
+      const which = many() ? ` (книга ${i + 1})` : '';
+      if (!b.folder) problems.push(`Оберіть папку з ілюстраціями${which}.`);
+      else if (filesSent && b.validating) problems.push(`Зачекайте завершення перевірки файлів${which}.`);
+      else if (filesSent && b.validation && !b.validation.ok) problems.push(`Виправте помилки у файлах${which}.`);
+      if (!b.title) problems.push(`Введіть назву книги${which}.`);
+      if (mode === 'gelato' && formatProblem(b.format, i)) problems.push(formatProblem(b.format, i));
+    });
     const order = withOrder();
     if (order) {
       const a = s.address;
@@ -393,10 +435,11 @@ export async function mount(view) {
     renderLeft();
     const reprint = s.reprint;
     const url = mode === 'gelato' ? '/api/creator/gelato/create' : reprint ? '/api/creator/printify/reprint' : '/api/creator/printify/create';
+    const books = s.books.map((b) => ({ folder: b.folder, title: b.title, format: b.format }));
     const body = mode === 'gelato'
-      ? { folder: s.folder, title: s.title, format: st.gelato.format, address: s.address, ...(reprint ? { reprintOf: reprint.archiveId } : {}) }
-      : reprint ? { archiveId: reprint.archiveId, title: s.title, address: s.address }
-        : { folder: s.folder, title: s.title, address: order ? s.address : null };
+      ? { books, address: s.address, ...(reprint ? { reprintOf: reprint.archiveId } : {}) }
+      : reprint ? { archiveId: reprint.archiveId, title: bk().title, address: s.address }
+        : { books, address: order ? s.address : null };
     try {
       s.result = await runJob(api(url, { method: 'POST', body }), (j) => {
         if (st.mode !== mode) return;
@@ -416,15 +459,18 @@ export async function mount(view) {
       s.error = err.message;
     } finally {
       s.running = false;
-      if (st.mode === mode) { renderStatus(); renderLeft(); }
+      if (st.mode === mode) { renderSwitch(); renderStatus(); renderLeft(); }
     }
   }
 
   /** What the order's card says once the draft is made (its print step shows it instead of «До друку»). */
   function sentText(mode, r) {
-    if (mode === 'gelato') return 'Чернетку замовлення створено в Gelato';
-    if (r?.orderError) return 'Книгу створено в Printify, замовлення — ні (подробиці в Order Creator)';
-    return r?.order ? 'Чернетку замовлення створено в Printify (On hold)' : 'Книгу створено в Printify, без замовлення';
+    const n = (r?.books || []).length;
+    const books = n > 1 ? ` · ${n} книги` : '';
+    if (mode === 'gelato') return `Чернетку замовлення створено в Gelato${books}`;
+    if (r?.orderError) return `${n > 1 ? 'Книги' : 'Книгу'} створено в Printify, замовлення — ні (подробиці в Order Creator)`;
+    return r?.order ? `Чернетку замовлення створено в Printify (On hold)${books}`
+      : `${n > 1 ? 'Книги' : 'Книгу'} створено в Printify, без замовлення`;
   }
 
   // Once: an order from here is safe only while the Printify store approves orders by hand — with
@@ -592,10 +638,13 @@ export async function mount(view) {
       m.close();
       const s = cur();
       if (o.stage === 'new') st.receiptId = String(o.receiptId);
-      s.title = `${o.receiptId} - ${o.childName || ''}`.trim().replace(/-$/, '- ');
+      // An order of several books gives a name to each of them (a folder is still chosen for each by hand).
+      const names = (o.items || []).map((it) => it.childName || o.childName || '');
+      while (s.books.length < Math.max(1, names.length)) s.books.push(newBook({ format: bk(0).format }));
+      s.books.forEach((b, i) => { b.title = `${o.receiptId} - ${names[i] || names[0] || ''}`.trim().replace(/-$/, '- '); });
       s.address = { ...s.address, ...addressFromEtsy(o) };
       renderLeft();
-      const ti = $('#cr-title');
+      const ti = $('#cr-title-0');
       if (ti) { ti.focus(); ti.setSelectionRange(ti.value.length, ti.value.length); }
       toast(o.childName ? 'Заповнено із замовлення — перевірте назву' : 'Допишіть ім’я дитини в назві', 'info', 3500);
     });
@@ -603,50 +652,61 @@ export async function mount(view) {
 
   // ---------------------------------------------------------------- drag & drop onto the folder block
   // A dragged folder or ZIP is copied into the program first; the field shows the folder's own name.
-  async function dropFolder(dropped) {
+  async function dropFolder(dropped, zone) {
     const s = cur();
+    const i = zone?.dataset.book ? +zone.dataset.book : cur().pick;
+    const b = s.books[i];
     const mode = st.mode;
-    const my = ++validateSeq; // anything still being checked for the old folder is ignored from now on
-    Object.assign(s, { folder: '', label: dropLabel(dropped), validation: null, validating: 1, error: null, reprint: null });
+    const my = ++b.seq; // anything still being checked for the old folder is ignored from now on
+    s.pick = i;
+    s.reprint = null;
+    Object.assign(b, { folder: '', label: dropLabel(dropped), validation: null, validating: 1 });
+    s.error = null;
     renderLeft(); renderRight();
     try {
       const path = await receiveDrop(dropped, (pct) => {
-        if (my !== validateSeq || st.mode !== mode) return;
-        s.validating = pct;
-        const num = view.querySelector('.v-badge.run .num');
+        if (my !== b.seq || st.mode !== mode) return;
+        b.validating = pct;
+        const num = view.querySelector(`[data-book="${i}"] .v-badge.run .num, #cr-left .v-badge.run .num`);
         if (num) num.textContent = `${Math.round(pct)}%`;
       });
-      if (my !== validateSeq) return;
-      s.folder = path;
-      s.validating = 0;
-      if (st.mode === mode) validate();
+      if (my !== b.seq) return;
+      b.folder = path;
+      b.validating = 0;
+      if (st.mode === mode) validate(i);
     } catch (err) {
-      if (my !== validateSeq) return;
-      Object.assign(s, { folder: '', label: null, validating: 0, validation: { ok: false, errors: [err.message], warnings: [], files: [], found: 0, expected: 0 } });
+      if (my !== b.seq) return;
+      Object.assign(b, { folder: '', label: null, validating: 0, validation: { ok: false, errors: [err.message], warnings: [], files: [], found: 0, expected: 0 } });
       if (st.mode === mode) { renderLeft(); renderRight(); }
     }
   }
-  wireFolderDrop(view, () => $('#cr-folder'), dropFolder);
+  wireFolderDrop(view, (zone) => zone?.querySelector('.path-input') || $(`#cr-folder-${cur().pick}`), dropFolder);
 
   // ---------------------------------------------------------------- events
   const offs = [
     on(view, 'click', '[data-seg="mode"] button', (e, b) => {
       if (st.mode === b.dataset.value) return;
-      const t = $('#cr-title'); if (t) cur().title = t.value;
+      cur().books.forEach((x, i) => { const t = $(`#cr-title-${i}`); if (t) x.title = t.value; });
       st.mode = b.dataset.value; setSeg(b.closest('.seg'), st.mode);
       renderStatus(); renderTunnels(); renderLeft(); renderRight();
-      if (cur().folder && !cur().validation && !cur().validating) validate();
+      cur().books.forEach((x, i) => { if (x.folder && !x.validation && !x.validating) validate(i); });
     }),
     on(view, 'click', '[data-act]', async (e, t) => {
       const a = t.dataset.act;
       const s = cur();
+      const i = t.dataset.book ? +t.dataset.book : s.pick;
+      const b = s.books[i] || bk();
       if (a === 'browse') {
         try {
-          const { path } = await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з Cover.png та ${(st.mode === 'printify' ? [status.printify.pageCount] : status.gelato.pageCounts).map((n) => `1–${n}.png`).join(' або ')}`, initial: s.folder } });
-          if (path) { s.folder = path; s.label = null; s.validation = null; s.reprint = null; renderLeft(); validate(); }
+          const { path } = await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з Cover.png та ${(st.mode === 'printify' ? [status.printify.pageCount] : status.gelato.pageCounts).map((n) => `1–${n}.png`).join(' або ')}`, initial: b.folder } });
+          if (path) { Object.assign(b, { folder: path, label: null, validation: null }); s.pick = i; s.reprint = null; renderLeft(); renderRight(); validate(i); }
         } catch (err) { toast(err.message, 'error'); }
-      } else if (a === 'revalidate') validate();
-      else if (a === 'open-folder') api('/api/creator/open-folder', { method: 'POST', body: { path: s.folder } }).catch((er) => toast(er.message, 'error'));
+      } else if (a === 'finish') { finished = true; finish(st.receiptId); location.hash = '#/orders'; }
+      else if (a === 'revalidate') validate(i);
+      else if (a === 'show-book') { s.pick = i; renderLeft(); renderRight(); }
+      else if (a === 'add-book') { s.books.push(newBook({ format: bk(0).format, title: bk(0).title.split(' - ')[0] ? `${bk(0).title.split(' - ')[0]} - ` : '' })); s.pick = s.books.length - 1; renderLeft(); renderRight(); }
+      else if (a === 'drop-book' && s.books.length > 1) { s.books.splice(i, 1); s.pick = Math.min(s.pick, s.books.length - 1); renderLeft(); renderRight(); }
+      else if (a === 'open-folder') api('/api/creator/open-folder', { method: 'POST', body: { path: b.folder } }).catch((er) => toast(er.message, 'error'));
       else if (a === 'from-etsy') fromEtsy();
       else if (a === 'clear-address') { s.address = { country: 'US' }; renderLeft(); $('#addr-firstName')?.focus(); }
       else if (a === 'open-orders') openExternal('https://printify.com/app/orders');
@@ -664,7 +724,12 @@ export async function mount(view) {
       }
     }),
     on(view, 'click', '#cr-create', () => create()),
-    on(view, 'click', '[data-format]', (e, b) => { st.gelato.format = b.dataset.format; renderLeft(); renderRight(); }),
+    on(view, 'click', '[data-format]', (e, b) => {
+      const i = b.dataset.book ? +b.dataset.book : cur().pick;
+      cur().books[i].format = b.dataset.format;
+      cur().pick = i;
+      renderLeft(); renderRight();
+    }),
     on(view, 'click', '[data-lb]', (e, c) => openStructure(+c.dataset.lb)),
     on(view, 'click', '[data-close-tunnel]', async (e, b) => {
       await api('/api/creator/gelato/close-tunnel', { method: 'POST', body: { orderId: b.dataset.closeTunnel } }).catch(() => {});
@@ -673,13 +738,15 @@ export async function mount(view) {
   ];
   view.addEventListener('input', (e) => {
     const s = cur();
-    if (e.target.id === 'cr-folder') {
+    const i = e.target.dataset?.book ? +e.target.dataset.book : s.pick;
+    if (e.target.classList?.contains('path-input')) {
       const wasReprint = !!s.reprint;
-      s.folder = e.target.value.trim().replace(/^"|"$/g, ''); s.label = null; s.validation = null; s.reprint = null;
+      Object.assign(s.books[i], { folder: e.target.value.trim().replace(/^"|"$/g, ''), label: null, validation: null });
+      s.pick = i; s.reprint = null;
       if (wasReprint) renderLeft(); // the reprint line and the button's words go with the archived folder
-      validateSoon();
+      validateSoon(i);
     }
-    if (e.target.id === 'cr-title') { s.title = e.target.value; const al = $('#cr-alert'); if (al && !s.error) al.innerHTML = ''; }
+    if (e.target.id === `cr-title-${i}`) { s.books[i].title = e.target.value; const al = $('#cr-alert'); if (al && !s.error) al.innerHTML = ''; }
     if (e.target.dataset.addr) {
       s.address[e.target.dataset.addr] = e.target.value;
       const label = $('#cr-create-label'); // Printify: the button says whether an order will be made too
@@ -689,14 +756,14 @@ export async function mount(view) {
   view.addEventListener('change', (e) => {
     if (e.target.dataset.addr === 'country') cur().address.country = e.target.value;
   });
-  view.addEventListener('keydown', (e) => { if (e.target.id === 'cr-title' && e.key === 'Enter') { e.preventDefault(); create(); } });
+  view.addEventListener('keydown', (e) => { if (e.target.id?.startsWith('cr-title-') && e.key === 'Enter') { e.preventDefault(); create(); } });
 
   renderAll();
-  if (handed && cur().folder) validate();
+  if (handed) cur().books.forEach((b, i) => { if (b.folder) validate(i); });
   // Working on a new order, the page is kept when left and brought back as it was — while the order is new.
   return {
     get receiptId() { return st.receiptId; },
-    keep: () => !!st.receiptId,
+    keep: () => !!st.receiptId && !finished,
     async revive() {
       if (!st.receiptId) return true;
       const o = await api(`/api/orders/${st.receiptId}`);

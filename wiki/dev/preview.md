@@ -1,7 +1,7 @@
 ---
 title: Перегляд інтерфейсу під час розробки
 type: dev
-updated: 2026-09-19
+updated: 2026-09-20
 code:
   - app/tools/dev_server.py
 ---
@@ -19,7 +19,9 @@ code:
 - `--sample` кладе у `%TEMP%\bsdev` вигадані замовлення і одну книгу з лістингом `4100000900` без
   ілюстрацій. Замовлення покривають усі вкладки черги: нове (Hardcover США), в роботі (Printify
   `in-production` і `has-issues`, чернетка Gelato), машинка (Printify `fulfilled` з USPS, Gelato
-  `in_transit` з трек-номером), відправлене в Etsy (з трек-номером). Замовлення друку вигадані
+  `in_transit` з трек-номером), відправлене в Etsy (з трек-номером). Замовлення `4100000108`
+  (Robin Sample) — **на дві книги** (Sofia і Jack, Softcover США → Gelato): для перевірки покнижкової
+  роботи в картці й спільної чернетки (`_receipt(..., also=("Jack",))`). Замовлення друку вигадані
   (`_printify()`, `_gelato()`) і пишуться одразу в знімок — сервіси не викликаються.
 - [Архів замовлень](../features/archive.md) (`_seed_archive()`, лише коли архів порожній): чотири
   книги з намальованими пронумерованими сторінками (`_sample_book()`) — Liam (Printify, відправлене
@@ -59,7 +61,7 @@ code:
 
 ## Де в коді
 
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `seed()`, `_receipt()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`, `PORT`
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`, `PORT`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (режим `--no-window`)
 
 ## Пов'язане
