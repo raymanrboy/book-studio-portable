@@ -57,6 +57,15 @@ export const statusChip = (o) => (o.printStatus
   ? html`<span class="chip ${statusTone(o.printStatus)} ord-status" data-tip="Статус у ${providerName(o.provider)}"><span class="dot"></span>${statusText(o.printStatus)}</span>`
   : '');
 
+/** Books of this order sent in another go, or to the other printer: the status chip beside it describes
+ *  only the first print order, so this says how many more there are. o: { alsoSent }. */
+export const alsoSentChip = (o) => {
+  const more = o.alsoSent || [];
+  if (!more.length) return '';
+  const where = [...new Set(more.map((m) => providerName(m.provider)))].join(' і ');
+  return html`<span class="chip ord-status" data-tip="Ще ${more.length === 1 ? 'одне замовлення друку' : `${more.length} замовлення друку`} цього чека — у ${where}">+${more.length} у друці</span>`;
+};
+
 /** The receipt number without "#": a click copies it (in the queue, the card header and the archive). */
 export const receiptCopy = (o, cls) => html`<span class="${cls} ord-copy" role="button" data-act="copy-text" data-text="${o.receiptId}"
     data-done="Номер замовлення скопійовано" data-tip="Копіювати номер замовлення">#${o.receiptId}</span>`;

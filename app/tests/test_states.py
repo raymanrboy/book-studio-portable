@@ -35,14 +35,14 @@ def porder(pid, first, last, cost_cents=1195, status="fulfilled", shop_order_id=
             "line_items": []}
 
 
-def view(receipts, p_orders=(), g_orders=(), states=None, links=None):
+def view(receipts, p_orders=(), g_orders=(), states=None, links=None, sent=None):
     """Runs the same pipeline as build_view without touching the snapshot."""
     norm = [profit.normalize_receipt(r) for r in receipts]
     states = states or {}
     orders = {f"printify:{p['id']}": p for p in p_orders}
     orders.update({f"gelato:{g['id']}": g for g in g_orders})
     rows = reconcile.match(norm, list(p_orders), list(g_orders), links or {}, 1.085,
-                           reserved=profit.reserved_orders(states))
+                           reserved=profit.reserved_orders(states), sent=sent)
     by_id = {r["receipt_id"]: r for r in norm}
     for row in rows:
         outcomes.apply(row, by_id[row["id"]], states.get(row["id"]), orders, 1.085)
@@ -159,6 +159,62 @@ class ProviderCancellations(unittest.TestCase):
         row = view([receipt(1, "Ann Lee", status="Canceled", refunds=[49.98])], g_orders=[draft])["1"]
         self.assertEqual(row["pod_dead"], "draft")
         self.assertEqual(row["profit"], 0.0)
+
+
+class SeveralPrintOrdersForOneReceipt(unittest.TestCase):
+    """Books of one order can go in two goes (some ready now, the rest later) or to two printers. Every
+    print order this program made then costs money, and all of it belongs to that one sale."""
+
+    def gorder(self, gid, ref, cost=18.0, status="printed"):
+        return {"id": gid, "orderReferenceId": ref, "firstName": "Dana", "lastName": "Reed",
+                "totalInclVat": cost, "currency": "USD", "fulfillmentStatus": status,
+                "orderType": "order", "createdAt": "2025-09-04T12:00:00Z"}
+
+    def sent(self, *orders):
+        return {"1": [{"provider": p, "orderId": o} for p, o in orders]}
+
+    def test_the_second_printer_order_is_counted_too(self):
+        first = {**porder("a" * 24, "Dana", "Reed", cost_cents=1195), "line_items": [{"title": "1 - Emma"}]}
+        second = self.gorder("g-second", "1-later")
+        rid = view([receipt(1, "Dana Reed")], [first], [second],
+                   sent=self.sent(("printify", "a" * 24), ("gelato", "g-second")))["1"]
+        self.assertEqual(rid["pod_provider"], "printify")               # the row still has one main order
+        self.assertEqual([f["order_id"] for f in rid["further_orders"]], ["g-second"])
+        self.assertEqual(rid["pod_total_cost"], r2(11.95 + 18.0))       # and the whole cost of the sale
+        self.assertEqual(rid["profit"], r2(rid["etsy_net"] - rid["pod_total_cost"]))
+
+    def test_without_the_second_order_nothing_changes(self):
+        only = {**porder("a" * 24, "Dana", "Reed", cost_cents=1195), "line_items": [{"title": "1 - Emma"}]}
+        rid = view([receipt(1, "Dana Reed")], [only], sent=self.sent(("printify", "a" * 24)))["1"]
+        self.assertEqual(rid["further_orders"], [])
+        self.assertEqual(rid["pod_total_cost"], 11.95)
+
+    def test_a_draft_the_owner_has_not_confirmed_costs_nothing_yet(self):
+        first = {**porder("a" * 24, "Dana", "Reed", cost_cents=1195), "line_items": [{"title": "1 - Emma"}]}
+        draft = {**self.gorder("g-draft", "1-later", status="draft"), "orderType": "draft"}
+        rid = view([receipt(1, "Dana Reed")], [first], [draft],
+                   sent=self.sent(("printify", "a" * 24), ("gelato", "g-draft")))["1"]
+        self.assertEqual(rid["further_orders"], [])
+        self.assertEqual(rid["pod_total_cost"], 11.95)
+
+    def test_a_cancelled_second_order_costs_nothing(self):
+        first = {**porder("a" * 24, "Dana", "Reed", cost_cents=1195), "line_items": [{"title": "1 - Emma"}]}
+        killed = self.gorder("g-dead", "1-later", status="canceled")
+        rid = view([receipt(1, "Dana Reed")], [first], [killed],
+                   sent=self.sent(("printify", "a" * 24), ("gelato", "g-dead")))["1"]
+        self.assertEqual(rid["further_orders"], [])
+        self.assertEqual(rid["pod_total_cost"], 11.95)
+
+    def test_a_reprint_is_not_counted_as_a_further_order(self):
+        """A reprint is a replacement, recorded elsewhere; counting it here would charge the sale twice."""
+        first = {**porder("a" * 24, "Dana", "Reed", cost_cents=1195), "line_items": [{"title": "1 - Emma"}]}
+        again = {**porder("b" * 24, "Dana", "Reed", cost_cents=1195), "line_items": [{"title": "1 - Emma"}]}
+        states = {"1": {"status": "replacement",
+                        "replacementOrders": [{"provider": "printify", "orderId": "b" * 24}]}}
+        rid = view([receipt(1, "Dana Reed")], [first, again], states=states,
+                   sent=self.sent(("printify", "a" * 24), ("printify", "b" * 24)))["1"]
+        self.assertEqual(rid["further_orders"], [])
+        self.assertEqual(rid["pod_total_cost"], 11.95)
 
 
 class PickerStages(unittest.TestCase):

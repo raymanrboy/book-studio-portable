@@ -11,7 +11,7 @@ import { openLightbox } from '../lightbox.js';
 import {
   STAGES, STAGE_EMPTY, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
   folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel, trackChips, statusChip, receiptCopy, copyChip,
-  isCustomText, isNameField, isFormatField, restorable,
+  isCustomText, isNameField, isFormatField, restorable, alsoSentChip,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 import { settle, sentOf, keptOrder, finish } from '../keep.js';
@@ -79,7 +79,7 @@ async function mountQueue(view) {
         ${o.book?.image ? html`<img data-fade loading="lazy" decoding="async" src="${bookImage(o.book, 160)}" alt="">` : ic('book')}</span>
       <span class="ord-main">
         <span class="row ord-chips"><b class="truncate">${o.name}</b>${receiptCopy(o, 'chip chip-mono')}
-          ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}${printerChip(o)}${trackChips(o)}</span>
+          ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}${printerChip(o)}${alsoSentChip(o)}${trackChips(o)}</span>
         <span class="ord-meta faint truncate"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> ·
           ${o.childName ? html`<b class="ord-child">${o.childName}</b> · ` : ''}${o.book ? o.book.title : html`<span class="ord-miss">книги немає в бібліотеці</span>`} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</span>
       </span>
@@ -210,7 +210,7 @@ async function mountCard(view, rid) {
       <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
       <span id="oc-finish"></span>
       <div class="grow" style="min-width:0">
-        <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1>${statusChip(o)}</div>
+        <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1>${statusChip(o)}${alsoSentChip(o)}</div>
         <div class="page-sub ord-sub">${receiptCopy(o, 'mono')} · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}${trackChips(o)}</div>
       </div>
       <div id="oc-plan"></div>

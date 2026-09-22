@@ -126,7 +126,9 @@ class PrintifyDraftFlow(unittest.TestCase):
         self.assertEqual(record["request"]["title"], "4100000002 - Noah")
         self.assertEqual(record["orderRequest"], sent)
         self.assertEqual(record["orderResponse"], {"id": "order-on-hold-1"})
-        self.assertEqual([s["step"] for s in record["steps"]], ["files", "master", "uploads", "product", "verify", "masterSafe", "archive"])
+        self.assertEqual([s["step"] for s in record["steps"]],
+                         ["files", "master", "uploads", "product", "verify", "masterSafe",
+                          "printOrderRemembered", "archive"])
         # …and exactly the files that went to Printify are in the order archive.
         kept = archive.get(res["archiveId"])
         self.assertEqual((kept["provider"], kept["receiptId"], kept["productId"], kept["orderId"], kept["sendLog"]),
@@ -165,7 +167,8 @@ class PrintifyDraftFlow(unittest.TestCase):
         record = journal(res["sendLog"])
         self.assertEqual([s["step"] for s in record["steps"]],
                          ["files", "files", "master", "uploads", "product", "verify",
-                          "uploads", "product", "verify", "masterSafe", "archive", "archive"])
+                          "uploads", "product", "verify", "masterSafe", "printOrderRemembered",
+                          "archive", "archive"])
         self.assertEqual([s["book"] for s in record["steps"] if s["step"] == "product"],
                          ["4100000001 - Emma", "4100000001 - Liam"])
 
@@ -306,7 +309,8 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual(record["request"], sent)
         self.assertEqual(record["response"]["id"], "gelato-order-1")
         steps = {s["step"]: s for s in record["steps"]}
-        self.assertEqual(list(steps), ["files", "catalog", "pdf", "link", "readback", "archive"])
+        self.assertEqual(list(steps), ["files", "catalog", "pdf", "link", "readback",
+                                       "printOrderRemembered", "archive"])
         kept = archive.get(res["archiveId"])
         self.assertEqual((kept["provider"], kept["orderId"], kept["format"], kept["pageCount"], kept["sendLog"]),
                          ("gelato", "gelato-order-1", "hardcover_8x8", 30, res["sendLog"]))
@@ -374,7 +378,7 @@ class GelatoDraftFlow(unittest.TestCase):
         record = journal(res["sendLog"])
         self.assertEqual([s["step"] for s in record["steps"]],
                          ["files", "catalog", "files", "catalog", "pdf", "pdf", "link", "readback", "readback",
-                          "archive", "archive"])
+                          "printOrderRemembered", "archive", "archive"])
         self.assertEqual([s["urls"] for s in record["steps"] if s["step"] == "link"],
                          [["https://fake.trycloudflare.com/book-1.pdf", "https://fake.trycloudflare.com/book-2.pdf"]])
         self.assertNotIn("fake-gelato-key", json.dumps(record))

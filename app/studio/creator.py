@@ -443,6 +443,20 @@ def _to_archive(log: dict, job, warnings: list[str], provider: str, files: list[
     return eid
 
 
+def _remember_sent(log: dict, books: list, provider: str, order_id: str | None) -> None:
+    """Which print order this program made for which receipt. The books of one order can go in two goes,
+    or to two printers, and then one receipt really has two print orders; nothing else proves it, because
+    a receipt number in the printer's own text also appears on reprints. Never fails a finished send."""
+    receipts = {archive.receipt_of(b["title"]) for b in books}
+    try:
+        written = [r for r in receipts if r and profit.remember_print_order(r, provider, order_id)]
+    except Exception as err:
+        core.log.exception("Print order not remembered")
+        sendlog.step(log, "printOrderRemembered", ok=False, error=str(err))
+        return
+    sendlog.step(log, "printOrderRemembered", ok=bool(written), receipts=sorted(r for r in receipts if r))
+
+
 def _mark_reprint(log: dict, warnings: list[str], title: str, provider: str, order_id: str | None) -> None:
     """A reprint is recorded as a replacement of its Etsy order (the queue keeps the first print order).
     A failure here never undoes the send — but it must not be quiet either: the order is already in the
@@ -655,8 +669,11 @@ def _printify_draft(books: list[dict], job, address: dict | None, log: dict, rep
         order, order_error = _printify_order(books, made, variant_id, address, job, log, cfg, shop_id)
 
     # The books are in Printify now (with or without their order): keep exactly these files in the archive.
-    if reprint_of and order:
-        _mark_reprint(log, warnings, books[0]["title"], "printify", order["id"])
+    if order:
+        if reprint_of:
+            _mark_reprint(log, warnings, books[0]["title"], "printify", order["id"])
+        else:
+            _remember_sent(log, books, "printify", order["id"])
     for book, m in zip(books, made):
         m["archiveId"] = _to_archive(log, job, warnings, "printify",
                                      [(Path(r["path"]), r["file"]) for r in book["checked"]["files"]],
@@ -1033,6 +1050,8 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
         warnings = [f"{b['title']}: {w}" if b["mark"] else w for b in ready for w in b["pdf"]["warnings"]]
         if reprint_of:
             _mark_reprint(log, warnings, books[0]["title"], "gelato", order_id)
+        else:
+            _remember_sent(log, ready, "gelato", order_id)
         for book in ready:
             book["archiveId"] = _to_archive(log, job, warnings, "gelato",
                                             [(Path(r["path"]), r["file"]) for r in book["files"]],

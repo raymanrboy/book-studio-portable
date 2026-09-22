@@ -15,6 +15,7 @@ from .vault import vault
 SNAPSHOT = core.data_path("profit", "snapshot.json")
 LINKS = core.data_path("profit", "links.json")
 STATES = core.data_path("profit", "states.json")  # receipt id -> manual state (cancel / refund / replacement)
+SENDS = core.data_path("profit", "print-orders.json")  # receipt id -> the print orders this program sent
 _links_lock = threading.Lock()
 FULL_SYNC_EVERY = 7 * 86400   # a complete Etsy re-read once a week; otherwise only changed receipts
 SYNC_OVERLAP = 3600           # re-read the last hour again so nothing slips between two syncs
@@ -100,6 +101,28 @@ def load_states() -> dict:
     return core.read_json(STATES, {}) or {}
 
 
+def load_sends() -> dict:
+    return core.read_json(SENDS, {}) or {}
+
+
+def remember_print_order(receipt_id: str | None, provider: str, order_id: str | None) -> bool:
+    """What this program itself sent to a printer for a receipt. Books of one order can go in two goes
+    (some ready now, the rest later) or to two printers, and then one receipt honestly has two print
+    orders. Matching finds one of them by itself; only this record proves the others belong here too —
+    a receipt number inside a printer's own text also appears on reprints, so it cannot be trusted for
+    money. Reprints are not written here: they are replacements (mark_reprint)."""
+    if not receipt_id or not order_id:
+        return False
+    with _links_lock:
+        sends = load_sends()
+        refs = sends.setdefault(str(receipt_id), [])
+        if any(r.get("provider") == provider and str(r.get("orderId")) == str(order_id) for r in refs):
+            return False
+        refs.append({"provider": provider, "orderId": str(order_id), "at": core.now_iso()})
+        _save(SENDS, sends)
+    return True
+
+
 def reserved_orders(states: dict) -> set[str]:
     """Provider orders marked as replacement reprints are kept out of automatic matching."""
     return {f"{ref.get('provider')}:{ref.get('orderId')}"
@@ -118,7 +141,8 @@ def build_view() -> dict:
     orders = {f"printify:{p.get('id')}": p for p in p_orders}
     orders.update({f"gelato:{g.get('id')}": g for g in g_orders})
     if receipts:
-        rows = reconcile.match(receipts, p_orders, g_orders, links, rate, reserved=reserved_orders(states))
+        rows = reconcile.match(receipts, p_orders, g_orders, links, rate, reserved=reserved_orders(states),
+                               sent=load_sends())
         by_id = {str(r["receipt_id"]): r for r in receipts}
         for row in rows:
             outcomes.apply(row, by_id[row["id"]], states.get(row["id"]), orders, rate)
@@ -626,6 +650,10 @@ def picker_orders() -> list:
             "provider": provider,
             "printStatus": facts.get("status") or "",  # as Printify / Gelato word it, untranslated (owner's wish)
             "tracking": facts.get("tracking") or [],
+            # books of this receipt sent in another go, or to the other printer: the row above describes
+            # only the first order, so the card says there is more than one
+            "alsoSent": [{"provider": f["provider"], "status": f.get("status") or ""}
+                         for f in row.get("further_orders") or []],
             "books": sum(int(i.get("quantity") or 1) for i in r.get("items") or []),
             "items": [{"title": plain(i.get("title")), "quantity": i.get("quantity"), "sku": i.get("sku") or "",
                        "listingId": str(i.get("listing_id") or ""),

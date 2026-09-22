@@ -118,10 +118,17 @@ def seed(data: Path) -> None:
     gelato_orders = [
         _gelato(4100000102, "in_transit", "Canada Post Tracked Packet", "7023210000000003"),  # sent
         _gelato(4100000103, "draft"),
+        _gelato(4100000107, "printed"),   # Leo's order was split: one book here, one in Printify
     ]
     snapshot = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": printify_orders,
                 "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": []}
     core.write_json(profit.SNAPSHOT, snapshot, backup=False)
+    # One receipt with two print orders: what the queue and the profit row look like when the books of an
+    # order went in two goes, or to two printers.
+    core.write_json(profit.SENDS, {"4100000107": [
+        {"provider": "printify", "orderId": f"{4100000107:024x}", "at": core.now_iso()},
+        {"provider": "gelato", "orderId": f"00000000-0000-4000-8000-{4100000107:012d}", "at": core.now_iso()},
+    ]}, backup=False)
     book_id = "0" * 31 + "1"
     folder = data / "library" / "books" / book_id
     if not (folder / "book.json").exists():
