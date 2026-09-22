@@ -212,6 +212,8 @@ def check() -> list[str]:
         if not described:
             problems.append(f"{name}: жодна сторінка вікі не описує цей файл (додайте його в code: потрібної сторінки).")
 
+    problems += stale_numbers()
+
     routes_page = WIKI / ROUTES_PAGE
     if routes_page.exists():
         in_code, in_wiki = routes_in_code(), routes_in_wiki(routes_page.read_text(encoding="utf-8"))
@@ -221,6 +223,30 @@ def check() -> list[str]:
             problems.append(f"{ROUTES_PAGE}: маршруту {method} {pattern} у коді вже немає")
     else:
         problems.append(f"Немає сторінки {ROUTES_PAGE}.")
+    return problems
+
+
+def test_count() -> int:
+    """How many tests there really are: every `def test_…` in app/tests (what the runner then reports)."""
+    return sum(len(re.findall(r"^\s*def test_", p.read_text(encoding="utf-8"), re.M))
+               for p in sorted((REPO / "app" / "tests").glob("test_*.py")))
+
+
+def stale_numbers() -> list[str]:
+    """Numbers the wiki states in plain words. Links, names and route tables were always checked; counts
+    were not, and they quietly drifted (117 tests against 162, 88 routes against 92 — audit, 22.09.2026)."""
+    claims = [("dev/testing.md", r"(\d+)\s+тест", test_count(), "тестів"),
+              ("index.md", r"усі\s+(\d+)", len(routes_in_code()), "маршрутів")]
+    problems = []
+    for name, pattern, real, what in claims:
+        page = WIKI / name
+        if not page.exists():
+            continue
+        found = re.search(pattern, page.read_text(encoding="utf-8"))
+        if not found:
+            problems.append(f"{name}: не знайдено числа «{what}» — перевірка застарілих чисел його не бачить.")
+        elif int(found.group(1)) != real:
+            problems.append(f"{name}: написано {found.group(1)} {what}, а насправді {real}.")
     return problems
 
 

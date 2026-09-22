@@ -1,7 +1,7 @@
 ---
 title: Словник — слова власника і назви в коді
 type: reference
-updated: 2026-09-20
+updated: 2026-09-22
 code: []
 ---
 # Словник
@@ -86,6 +86,8 @@ code: []
 | Сліпе переписування / з підказкою | Прохід «читання» (модель не знає, що мало бути) і «звірки» (знає) | [textcheck.py](../app/studio/textcheck.py) `READ_PROMPT`, `STRICT_PROMPT` |
 | Паспорт застарів, оновити паспорт | Тексти паспорта не збігаються з шаблоном Canva — беруться з надрукованої книги | [orders.js](../app/web/js/pages/orders.js) `learnPassport()`; [textcheck.py](../app/studio/textcheck.py) `_passport()` |
 | Взяти файли минулої відправки | Кнопка в картці замовлення: файли відправки, що не стала замовленням (скасовано, чернетку видалено), беруться з архіву — і замовлення відправляється як звичайне | [orders.js](../app/web/js/pages/orders.js) `takeEarlier()`; [features/archive.md](features/archive.md) |
+| «+N у друці» (чип у черзі) | У цього чека є ще N замовлень друку, крім того, статус якого показано: книги пішли двома заходами або у дві друкарні | [order-bits.js](../app/web/js/order-bits.js) `alsoSentChip()`; [profit.py](../app/studio/profit.py) `picker_orders()` (`alsoSent`); [rules/reconciliation.md](rules/reconciliation.md) |
+| Відправка (записана програмою) | Список замовлень друку, які програма сама створила для чека — з нього рахується повна собівартість | [profit.py](../app/studio/profit.py) `remember_print_order()`, `SENDS` |
 | Кошик | `data/library/trash` — куди йде видалена книга | [library.py](../app/studio/library.py) `_delete()` |
 | Переглядач (лайтбокс) | Повноекранний перегляд із зумом | [lightbox.js](../app/web/js/lightbox.js) `openLightbox()` |
 

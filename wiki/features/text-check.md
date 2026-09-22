@@ -1,7 +1,7 @@
 ---
 title: Перевірка тексту (ШІ-валідатор на локальній моделі)
 type: feature
-updated: 2026-09-20
+updated: 2026-09-22
 code:
   - app/studio/textcheck.py
   - app/tests/test_textcheck.py
@@ -111,8 +111,17 @@ code:
    [open-questions](../plans/open-questions.md)). Наступна перевірка завантажує її знову за ~4 с.
    `KEEP_ALIVE` (2 хв) — лише запасний варіант. Менший `num_ctx` (4096) пам'яті не заощадив — не змінено.
    Обкладинка для моделі — з того ж прев'ю 1400 px, що й звірка (без окремого розпакування 4000 px).
-10. **Журнал** — `data/logs/checks/<дата>_<чек>.json` (що прочитала модель, що мало бути, проблеми;
-   останні 400). Лише локально, у git не йде.
+10. **Журнал** — `data/logs/checks/<дата>_<чек>-<номер книги>.json` (що прочитала модель, що мало бути,
+   проблеми; останні 400). Номер книги в назві — щоб дві книги одного чека, які закінчили перевірку в
+   ту саму секунду, не писали в один файл. Лише локально, у git не йде.
+
+### Кожна книга замовлення перевіряється окремо (з 22.09.2026)
+
+Перевірка належить **книзі**, а не чеку: ключ — `чек#номер книги` (`run_key()`). Запуск перевірки
+другої книги більше не обриває першу помилкою «Перевірку перервано» — саме це обіцяє картка
+(«перевірка тексту прихованої книги спокійно дороблює своє»), а код до 22.09.2026 робив навпаки
+(знайшов аудит). Нова перевірка **тієї самої** книги, як і раніше, скасовує попередню; закриття всієї
+картки (`cancel()` без номера задачі) зупиняє всі книги цього чека.
 
 ## Налаштування
 
@@ -163,7 +172,7 @@ code:
 
 ## Де в коді
 
-- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_saw_nothing()`, `_collect()`, `_ordered()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `cancel()`, `warm()`, `_release_model()`, `_cancel()`, `_warm()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
+- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_saw_nothing()`, `_collect()`, `_ordered()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `_release_model()`, `_cancel()`, `_warm()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
 - [app/studio/images.py](../../app/studio/images.py) — `text_score()`, `_percentile()`, `TEXT_SIDE`
 - [app/studio/jobs.py](../../app/studio/jobs.py) — `Job.share()` (знахідки, готові раніше за всю перевірку)
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `checkTip()`, `markPages()`, `paintCheck()`, `viewerItems()`, `learnable()`, `learnPassport()`, `dropCheck()`, `print()`, `LEVEL_WORDS`, `LIGHT_TIP`

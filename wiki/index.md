@@ -48,7 +48,7 @@ code: []
 
 - [Запуск і завершення](architecture/runtime.md)
 - [Сервер](architecture/server.md) — маршрути, фонові задачі, помилки, налаштування.
-- [Маршрути сервера](architecture/api-routes.md) — усі 88, з тим, хто їх викликає.
+- [Маршрути сервера](architecture/api-routes.md) — усі 92, з тим, хто їх викликає.
 - [Інтерфейс](architecture/frontend.md) — оболонка, контракт сторінки, помічники, візуальна система.
 - [Дані](architecture/data.md) — що лежить в `app/data`.
 

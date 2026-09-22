@@ -1,7 +1,7 @@
 ---
 title: Зіставлення замовлень і розрахунок прибутку
 type: rule
-updated: 2026-09-17
+updated: 2026-09-22
 code:
   - app/studio/reconcile.py
   - app/studio/fees.py
@@ -23,6 +23,27 @@ code:
 5. Одне замовлення друку на кілька чеків = **посилка-бандл**, собівартість ділиться порівну.
 
 Замовлення, позначені як передрук (заміна), у автоматичне зіставлення не беруться.
+
+## Один чек — кілька замовлень друку (з 22.09.2026)
+
+Кроки вище знаходять чеку **одне** замовлення друку. Але книги одного чека можуть піти **двома
+заходами** (частина готова зараз, решта пізніше — картка сама це пропонує) або **у дві різні друкарні**.
+Тоді решта замовлень випадала з обліку: чек з Printify на 11,95 і Gelato на 18,00 показував
+собівартість 11,95 і завищений прибуток (знайшов аудит 22.09.2026).
+
+Тепер програма **сама записує кожну свою відправку** — `data/profit/print-orders.json`
+(`profit.remember_print_order()`), і `match(..., sent=…)` додає ці замовлення до рядка чека
+(`further_orders`): їхня вартість входить у `pod_total_cost` і прибуток, а чип «+N у друці» показує їх
+у черзі.
+
+**Чому саме цей запис, а не номер чека в тексті замовлення друку.** Номер чека стоїть і в назві позиції
+**передруку** (продукт робиться з архівної книги «чек - Ім'я»), тож рахувати за текстом — це рахувати
+передруки як нові витрати; два справжні чеки власника це підтвердили. Тому основне зіставлення не
+змінилося, а `sent` — єдине надійне джерело. Не рахуються: передруки (вони — заміни), скасовані
+замовлення і непідтверджені чернетки Gelato.
+
+**Межа:** відправки, зроблені не цією програмою (або до 22.09.2026), у цьому записі відсутні — для них
+усе як раніше, одне замовлення на чек. Ручний зв'язок власника (`links.json`) залишається головним.
 
 ## Комісії Etsy (український продавець, `calculate_ukrainian_etsy_fees()`)
 
@@ -53,10 +74,10 @@ EUR переводиться за курсом `eurUsdRate`.
 
 ## Де в коді
 
-- [app/studio/reconcile.py](../../app/studio/reconcile.py) — `match()`, `is_name_match()`, `normalize_name()`, `cover_label()`, `gelato_cost_to_usd()`, `printify_only_rows()`, `_NameIndex`
+- [app/studio/reconcile.py](../../app/studio/reconcile.py) — `match()`, `_further_orders()`, `is_name_match()`, `normalize_name()`, `cover_label()`, `gelato_cost_to_usd()`, `printify_only_rows()`, `_NameIndex`
 - [app/studio/fees.py](../../app/studio/fees.py) — `calculate_ukrainian_etsy_fees()`, `r2()`, `money()`
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `apply()`, `auto_state()`, `pod_order_info()`, `STATES`, `LABELS`
-- [app/studio/profit.py](../../app/studio/profit.py) — `build_view()`, `reserved_orders()`
+- [app/studio/profit.py](../../app/studio/profit.py) — `build_view()`, `reserved_orders()`, `remember_print_order()`, `load_sends()`, `SENDS`
 - Тести: [app/tests/test_profit.py](../../app/tests/test_profit.py) (`ProfitParity` проти `golden_profit.json`), [app/tests/test_states.py](../../app/tests/test_states.py)
 
 ## Пов'язане

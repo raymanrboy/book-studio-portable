@@ -1,7 +1,7 @@
 ---
 title: Дані програми — папка app/data
 type: architecture
-updated: 2026-09-19
+updated: 2026-09-22
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -9,7 +9,8 @@ code:
 ---
 # Дані програми
 
-> Усе, що програма пам'ятає, лежить у `app/data/` (≈1,4 ГБ, не в git). Для резервної копії достатньо
+> Усе, що програма пам'ятає, лежить у `app/data/` (≈6,6 ГБ на 22.09.2026: архів замовлень 4,0 ГБ,
+> бібліотека 1,6 ГБ, кеш прев'ю 364 МБ; не в git). Для резервної копії достатньо
 > скопіювати цю папку. Змінна середовища `BOOK_STUDIO_DATA` підміняє папку (тести, перегляд).
 
 ## Що де лежить
@@ -24,6 +25,7 @@ code:
 | `profit/snapshot.json` | Знімок останньої синхронізації: чеки Etsy, замовлення Printify і Gelato (скорочені), курсор синхронізації | `profit._sync()` |
 | `profit/links.json` | Ручні зв'язки «чек → замовлення друку» або «без собівартості» | `profit._set_link()` |
 | `profit/states.json` | Ручні стани: скасування, повернення, заміна (сюди ж — передруки з архіву замовлень) | `profit._set_state()`, `profit.mark_reprint()` |
+| `profit/print-orders.json` | Які замовлення друку ця програма сама створила для якого чека (книги одного чека можуть піти двома заходами або у дві друкарні) | `profit.remember_print_order()` |
 | `creator/upload-cache.json` | SHA-256 файлу → ID зображення в Printify (щоб не завантажувати двічі) | `creator._remember_upload()` |
 | `creator/master-snapshots/` | Знімки Master-продукту перед кожним створенням книги | `create_printify_draft()` |
 | `cache/thumbs/` | JPEG-прев'ю (ключ — шлях, час зміни, розмір, розмір прев'ю); не потрібні 21 день — видаляються при запуску (з 19.09.2026; прев'ю в роботі раз на добу оновлює дату) | `images.preview()`, `images.prune_cache()` |
@@ -50,7 +52,7 @@ code:
 - [app/studio/vault.py](../../app/studio/vault.py) — `Vault`, `SECRET_NAMES`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `_cached()`
 - [app/studio/library.py](../../app/studio/library.py) — `BOOKS_DIR`, `TRASH_DIR`
-- [app/studio/profit.py](../../app/studio/profit.py) — `SNAPSHOT`, `LINKS`, `STATES`
+- [app/studio/profit.py](../../app/studio/profit.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `remember_print_order()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `DROPS`, `forget_old_form()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `store()`, `refresh()`
 - [app/tests/__init__.py](../../app/tests/__init__.py) — `BOOK_STUDIO_DATA` для тестів

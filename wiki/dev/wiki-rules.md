@@ -1,7 +1,7 @@
 ---
 title: Як вести цю вікі
 type: dev
-updated: 2026-09-17
+updated: 2026-09-22
 code:
   - app/tools/wiki_check.py
   - app/tests/test_wiki.py
@@ -83,7 +83,10 @@ python app/tools/wiki_check.py --map      # файл коду → сторінк
 ```
 Перевіряє: шапки, живі посилання, що згадані `функції()` і `КОНСТАНТИ` існують у файлі, що кожна
 сторінка є в `index.md`, що кожен файл коду описаний хоча б однією сторінкою, що таблиця
-[маршрутів](../architecture/api-routes.md) збігається з кодом, формат `log.md`.
+[маршрутів](../architecture/api-routes.md) збігається з кодом, формат `log.md`, і **числа, які вікі
+називає словами** (`stale_numbers()`, з 22.09.2026): скільки тестів у `dev/testing.md` і скільки
+маршрутів в `index.md`. Останнє — бо перевірка проходила, поки у вікі стояло 117 тестів проти 182 і
+88 маршрутів проти 92 (знайшов аудит): структуру вона звіряла, а числа в тексті — ні.
 Та сама перевірка — тест `test_wiki.py`, тож розходження вікі з кодом валить тести.
 
 ## Операції
@@ -110,7 +113,7 @@ python app/tools/wiki_check.py --map      # файл коду → сторінк
 
 ## Де в коді
 
-- [app/tools/wiki_check.py](../../app/tools/wiki_check.py) — `check()`, `coverage()`, `front_matter()`, `routes_in_code()`, `routes_in_wiki()`, `changed_files()`, `TYPES`
+- [app/tools/wiki_check.py](../../app/tools/wiki_check.py) — `check()`, `stale_numbers()`, `test_count()`, `coverage()`, `front_matter()`, `routes_in_code()`, `routes_in_wiki()`, `changed_files()`, `TYPES`
 - [app/tests/test_wiki.py](../../app/tests/test_wiki.py) — `WikiMatchesCode`
 
 ## Пов'язане

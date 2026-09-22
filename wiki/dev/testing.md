@@ -1,14 +1,15 @@
 ---
 title: Тести
 type: dev
-updated: 2026-09-20
+updated: 2026-09-22
 code:
   - app/tests/
 ---
 # Тести
 
-> 117 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
-> дані — у тимчасовій папці, покупці — вигадані. Запускати після кожної зміни.
+> 182 тести на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
+> дані — **завжди** у новій тимчасовій папці (набір тестів забирає `BOOK_STUDIO_DATA` собі, хай там
+> що було), покупці — вигадані. Запускати після кожної зміни.
 
 ## Запуск
 
@@ -26,9 +27,12 @@ python -m unittest discover -s app/tests -t app
 
 ## Як влаштовано
 
-- `tests/__init__.py` до будь-якого імпорту ставить `BOOK_STUDIO_DATA` у тимчасову папку і стирає її
-  після тестів — справжня `app/data` не зачіпається. Кожен тестовий модуль починає з
+- `tests/__init__.py` до будь-якого імпорту ставить `BOOK_STUDIO_DATA` у нову тимчасову папку і стирає
+  її після тестів — справжня `app/data` не зачіпається. Кожен тестовий модуль починає з
   `from tests import __init__`.
+  **Безумовно** (з 22.09.2026): раніше вже задану `BOOK_STUDIO_DATA` тести приймали як є — а вони
+  чистять цілі папки (`shutil.rmtree(archive.ROOT)`), тож запуск з налаштованої оболонки міг стерти
+  справжній архів. Знайшов аудит; перевіряє `TestsNeverRunOnRealData` у `test_orders.py`.
 - **Printify** підмінюється `FakePrintify` (у пам'яті: завантаження, продукти, Master, замовлення) через
   `mock.patch.object(printify, "call", …)`; справжній `_check()` при цьому працює — тест ловить
   заборонені шляхи.
@@ -56,12 +60,12 @@ python -m unittest discover -s app/tests -t app
 | Файл | Класи |
 |---|---|
 | [test_profit.py](../../app/tests/test_profit.py) | `ProfitParity`, `FeeRules`, `NameMatching` |
-| [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `SentStage`, `GelatoTracking`, `IncrementalSync`, `StateApi` |
-| [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation`, `GelatoValidation`, `ReplacePage` (заміна однієї сторінки, «Повернути», що саме дозволено записувати), `SafetyRails` |
+| [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `SeveralPrintOrdersForOneReceipt` (чек з двома замовленнями друку), `SentStage`, `GelatoTracking`, `IncrementalSync`, `StateApi` |
+| [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation`, `GelatoValidation`, `ReplacePage` (заміна однієї сторінки, «Повернути» після перезапуску, дві заміни за секунду, заборона заміни під час відправки, що саме дозволено записувати), `NothingIsLostWhenAWriteFails`, `SafetyRails` |
 | [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow` (у т. ч. дві книги — одне замовлення з двома позиціями), `GelatoDraftFlow` (у т. ч. дві книги — одна чернетка з двома товарами), `CreatorStartsEmpty`, `DroppedFolders`, `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
-| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand` |
-| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint`, `PreviewCache` (прибирання кешу, замки, зум) |
-| [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (модель — імітація: «читає» те, що тест «надрукував»), `WhileItRuns` (розворот іде на звірку, не чекаючи останнього читання; знахідки віддаються під час перевірки), `Prescan` (швидкий огляд сторінок: намальований текст проти намальованої ілюстрації, сторінки-малюнки до моделі не потрапляють, помилка ознаки — перевіряється друга половина розвороту), `Passport`, `OllamaAndRoutes` |
+| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand`, `DevToolsKeepOffRealData` (сервер перегляду не пише у справжню папку), `TestsNeverRunOnRealData` |
+| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint` (у т. ч. попередження, коли друкарня прийняла, а облік не записався), `PreviewCache` (прибирання кешу, замки, зум) |
+| [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (модель — імітація: «читає» те, що тест «надрукував»), `WhileItRuns` (розворот іде на звірку, не чекаючи останнього читання; знахідки віддаються під час перевірки), `Prescan` (швидкий огляд сторінок: намальований текст проти намальованої ілюстрації, сторінки-малюнки до моделі не потрапляють, помилка ознаки — перевіряється друга половина розвороту), `Passport`, `BooksOfOneOrder` (дві книги одного чека не глушать перевірок одна одної), `OllamaAndRoutes` |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode` |
 
 ## Де в коді

@@ -3,6 +3,27 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-22] update | Виправлення за зовнішнім аудитом коду
+
+- Перевірено по коду знахідки аудиту, який передав колега власника, і виправлено те, що справді
+  болить: **перевірка тексту тепер належить книзі** (друга книга чека більше не обриває першу),
+  **«Повернути» переживає перезапуск** (береться з диска, а не з пам'яті сторінки), **чек може мати
+  кілька замовлень друку** — і всі вони входять у собівартість (новий `profit/print-orders.json`,
+  чип «+N у друці» в черзі).
+- Безпека інструментів: тести **завжди** беруть власну тимчасову папку, сервер перегляду пише лише у
+  свою (мітка `.book-studio-sample`, ніколи — папка з `vault.json`). Помилка обліку після вдалої
+  відправки більше не мовчить. Бібліотека зберігає запис книги перед видаленням старого файлу.
+  Сторінку не можна підмінити, поки книга відправляється в друкарню.
+- Перевірка вікі навчилась ловити застарілі числа в тексті (було: 117 тестів проти 182, 88 маршрутів
+  проти 92); числа виправлено, `app/data` — ≈6,6 ГБ.
+- Що свідомо не робили і чому — у [decisions.md](decisions.md).
+- Оновлено: [features/text-check.md](features/text-check.md), [features/orders.md](features/orders.md),
+  [features/order-creator.md](features/order-creator.md), [features/library.md](features/library.md),
+  [rules/reconciliation.md](rules/reconciliation.md), [architecture/data.md](architecture/data.md),
+  [security.md](security.md), [dev/testing.md](dev/testing.md), [dev/preview.md](dev/preview.md),
+  [dev/wiki-rules.md](dev/wiki-rules.md), [code-map.md](code-map.md), [glossary.md](glossary.md),
+  [decisions.md](decisions.md), [index.md](index.md), [plans/open-questions.md](plans/open-questions.md).
+
 ## [2026-09-20] update | Заміна однієї сторінки з переглядача — збудовано
 
 - У переглядачі сторінок — кнопка на кожну сторінку розвороту: обрати виправлений файл на комп'ютері,
