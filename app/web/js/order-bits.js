@@ -114,6 +114,12 @@ export async function watchSync(jobId, onStep) {
   await runJob(Promise.resolve({ jobId }), (j) => { if (j.step) onStep?.(j.step); });
 }
 
+/** Pages that still have a previous version on disk, from the files check — so «Повернути» is offered
+ *  again after leaving the card, reopening it or restarting the program. */
+export function restorable(validation) {
+  return new Set((validation?.files || []).filter((r) => r.replaced).map((r) => r.file.toLowerCase()));
+}
+
 // ------------------------------------------------------------------ print folder: spreads and viewer
 /** Spreads of a book with `total` pages: page numbers, null = the blank endpaper. */
 export function spreadsOf(total) {

@@ -175,6 +175,37 @@ class ReplacePage(unittest.TestCase):
         with self.assertRaises(ApiError):
             creator.restore_page(str(self.folder), "7.png")   # nothing left to put back
 
+    def test_the_files_check_says_which_pages_can_be_put_back(self):
+        """«Повернути» is offered from what lies on disk, so it is still there after the card is closed,
+        reopened or the program restarted — the card itself remembers nothing."""
+        creator.replace_page(str(self.folder), "7.png", str(self.fresh))
+        creator._validation_cache.clear()
+        rows = {r["file"]: r for r in creator.validate("printify", str(self.folder), None)["files"]}
+        self.assertTrue(rows["7.png"]["replaced"])
+        self.assertFalse(rows["8.png"]["replaced"])
+        self.assertFalse(rows["Cover.png"]["replaced"])
+        creator.restore_page(str(self.folder), "7.png")
+        creator._validation_cache.clear()
+        rows = {r["file"]: r for r in creator.validate("printify", str(self.folder), None)["files"]}
+        self.assertFalse(rows["7.png"]["replaced"])
+
+    def test_two_replacements_keep_both_old_pages(self):
+        """Replaced twice within the same second: «Повернути» walks back version by version."""
+        first = (self.folder / "7.png").read_bytes()
+        creator.replace_page(str(self.folder), "7.png", str(self.fresh))
+        second = (self.folder / "7.png").read_bytes()
+        other = self.root / "Lily - 8 again.png"
+        png(other, (40, 40), (9, 8, 7))
+        res = creator.replace_page(str(self.folder), "7.png", str(other))
+        self.assertTrue(res["canRestore"])
+        self.assertEqual(len(list((self.folder / creator.REPLACED).glob("7.png.*"))), 2)
+        back = creator.restore_page(str(self.folder), "7.png")
+        self.assertEqual((self.folder / "7.png").read_bytes(), second)
+        self.assertTrue(back["canRestore"], "the page before that one is still there")
+        back = creator.restore_page(str(self.folder), "7.png")
+        self.assertEqual((self.folder / "7.png").read_bytes(), first)
+        self.assertFalse(back["canRestore"])
+
     def test_a_page_of_the_wrong_size_is_caught_by_the_usual_check(self):
         """Printify wants 4000x4000 (here 40x40): a page straight from Canva, without Upscayl, must not
         pass quietly — the file check says so right after the replacement."""

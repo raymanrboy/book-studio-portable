@@ -28,6 +28,7 @@ from .server import ApiError, Request, file_response, route
 from .vault import vault
 
 UPLOAD_CACHE = core.data_path("creator", "upload-cache.json")
+REPLACED = ".replaced"          # the pages a new one was put over, kept here so «Повернути» can work
 _cache_lock = threading.Lock()
 _validation_cache: dict[tuple, dict] = {}
 
@@ -47,6 +48,12 @@ def _files_by_lower(folder: Path) -> dict[str, Path]:
 
 def _signature(folder: Path) -> tuple:
     return tuple(sorted((p.name, p.stat().st_size, p.stat().st_mtime_ns) for p in folder.iterdir() if p.is_file()))
+
+
+def _backups(folder: Path, name: str) -> list[Path]:
+    """The previous versions of one page, oldest first: what «Повернути» can put back."""
+    keep = folder / REPLACED
+    return sorted(keep.glob(f"{name}.*")) if keep.is_dir() else []
 
 
 def gelato_page_options() -> list[int]:
@@ -119,6 +126,8 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
                 row["error"] = (f"розмір {info['width']}×{info['height']} px, очікується рівно {size[0]}×{size[1]} px")
         if row["ok"] and mode == "printify":
             row["sha256"] = images.sha256_file(path)
+        # «Повернути» is offered from what is on disk, so it survives leaving the card and a restart.
+        row["replaced"] = bool(_backups(folder, entry["file"]))
         return row
 
     done = [0]
@@ -1043,7 +1052,6 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
 
 # ---------------------------------------------------------------- one page replaced by hand
 
-REPLACED = ".replaced"          # the pages a new one was put over, kept here so «Повернути» can work
 _PAGE_NAME = re.compile(r"(?:cover|\d{1,3})\.png", re.I)
 
 
@@ -1075,7 +1083,12 @@ def replace_page(folder_raw: str, file: str, source_raw: str) -> dict:
         raise ApiError(f"Це не придатний PNG: {error or 'файл не читається'}.")
     keep = folder / REPLACED
     keep.mkdir(exist_ok=True)
-    kept = keep / f"{page.name}.{time.strftime('%Y%m%d-%H%M%S')}"
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    kept = keep / f"{page.name}.{stamp}"
+    for n in range(2, 100):     # two replacements of one page within the same second keep both
+        if not kept.exists():
+            break
+        kept = keep / f"{page.name}.{stamp}-{n}"
     shutil.copy2(page, kept)
     tmp = page.with_name(page.name + ".new")
     shutil.copy2(source, tmp)
@@ -1089,14 +1102,13 @@ def replace_page(folder_raw: str, file: str, source_raw: str) -> dict:
 def restore_page(folder_raw: str, file: str) -> dict:
     """«Повернути»: the page that was there before the last replacement comes back."""
     folder, page = _print_page(folder_raw, file)
-    kept = sorted((folder / REPLACED).glob(f"{page.name}.*")) if (folder / REPLACED).is_dir() else []
+    kept = _backups(folder, page.name)
     if not kept:
         raise ApiError("Немає чого повертати.", 404)
-    last = kept[-1]
-    os.replace(last, page)
+    os.replace(kept[-1], page)
     _validation_cache.clear()
     core.log.info("Page %s restored", page.name)
-    return {"file": page.name, "canRestore": bool(sorted((folder / REPLACED).glob(f"{page.name}.*")))}
+    return {"file": page.name, "canRestore": bool(_backups(folder, page.name))}
 
 
 # ---------------------------------------------------------------- personalization helpers

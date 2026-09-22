@@ -11,7 +11,7 @@ import { openLightbox } from '../lightbox.js';
 import {
   STAGES, STAGE_EMPTY, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
   folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel, trackChips, statusChip, receiptCopy, copyChip,
-  isCustomText, isNameField, isFormatField,
+  isCustomText, isNameField, isFormatField, restorable,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 import { settle, sentOf, keptOrder, finish } from '../keep.js';
@@ -562,7 +562,7 @@ async function mountCard(view, rid) {
     const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(i), folder: w.folder } }),
       (j) => { if (my === w.seq && showing(w)) setBusy(60 + (j.percent || 0) * 0.4); }, 300);
     if (my !== w.seq) return;
-    Object.assign(w, { validation: v, busy: 0, check: null });
+    Object.assign(w, { validation: v, busy: 0, check: null, replaced: restorable(v) });
     if (showing(w)) renderRight();
     if (v.ok) {
       if (showing(w)) requestAnimationFrame(() => $('#oc-proof')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -659,19 +659,27 @@ async function mountCard(view, rid) {
     if (sentOf(o.receiptId) && !(await confirmBox({ title: 'Чернетку вже створено',
       text: 'У друкарні лежить стара сторінка. Замінити її тут і надіслати замовлення ще раз?',
       confirm: 'Замінити', cancel: 'Не чіпати' }))) return;
+    let res;
     try {
-      await api('/api/creator/replace-page', { method: 'POST', body: { folder: w.folder, file, path } });
+      res = await api('/api/creator/replace-page', { method: 'POST', body: { folder: w.folder, file, path } });
     } catch (err) { toast(err.message, 'error'); return; }
-    w.replaced.add(file.toLowerCase());
+    setRestorable(w, file, res.canRestore);
     pageChanged(w, file, lb, again, `Замінено ${pageWord(file)}`);
   }
 
   async function restorePage(w, file, lb, again) {
+    let res;
     try {
-      await api('/api/creator/restore-page', { method: 'POST', body: { folder: w.folder, file } });
+      res = await api('/api/creator/restore-page', { method: 'POST', body: { folder: w.folder, file } });
     } catch (err) { toast(err.message, 'error'); return; }
-    w.replaced.delete(file.toLowerCase());
+    setRestorable(w, file, res.canRestore);   // an older version may still be there
     pageChanged(w, file, lb, again, `Повернено ${pageWord(file)}`);
+  }
+
+  /** The server says whether this page still has a previous version; the card only repeats it. */
+  function setRestorable(w, file, can) {
+    if (can) w.replaced.add(file.toLowerCase());
+    else w.replaced.delete(file.toLowerCase());
   }
 
   /** After a page changed: new picture everywhere, files checked again, text checked again — and the
@@ -696,7 +704,7 @@ async function mountCard(view, rid) {
       const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(work.indexOf(w)), folder: w.folder } }),
         null, 300);
       if (my !== w.seq) return;
-      Object.assign(w, { validation: v, busy: 0, check: null });
+      Object.assign(w, { validation: v, busy: 0, check: null, replaced: restorable(v) });
       if (showing(w)) renderRight();
       if (v.ok) startCheck(w, my);
     } catch (err) { failed(w, my, err); }

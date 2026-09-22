@@ -277,7 +277,7 @@ class WholeCheck(unittest.TestCase):
         learn = {p["key"]: p["learn"] for p in res["pages"] if p["key"]}
         self.assertIsNone(learn["spread7"])        # a misspelt name never teaches the passport
         self.assertFalse(any(learn.values()))      # clean pages have nothing to teach
-        journal = sorted(tc.CHECKS.glob("*_4100000101.json"))
+        journal = sorted(tc.CHECKS.glob("*_4100000101-1.json"))
         self.assertTrue(journal)
         self.assertNotIn("key", json.loads(journal[-1].read_text(encoding="utf-8"))["pages"][0].get("prompt", ""))
 
@@ -384,6 +384,48 @@ class WhileItRuns(unittest.TestCase):
         self.assertTrue(shared, "the check shares its findings while it runs")
         self.assertTrue(any(s["issues"] for s in shared[:-1]), "a mistake reaches the card before the end")
         self.assertEqual([i["id"] for i in shared[-1]["issues"]], [i["id"] for i in res["issues"]])
+
+
+class BooksOfOneOrder(unittest.TestCase):
+    """Two books of one order are two checks: starting the second must not stop the first (the card says
+    a hidden book's check carries on). Only a new check of the same book replaces it."""
+
+    def job(self, job_id):
+        return SimpleNamespace(id=job_id, progress=lambda *a, **k: None, share=lambda data: None)
+
+    def test_a_second_book_does_not_stop_the_first(self):
+        with mock.patch.object(tc, "_release_model"):
+            with tc._Run(self.job("job1"), "4100000108", "m", 0) as first:
+                with tc._Run(self.job("job2"), "4100000108", "m", 1) as second:
+                    self.assertFalse(first.cancel.is_set(), "book 1 keeps checking while book 2 starts")
+                    self.assertEqual(sorted(tc._runs), ["4100000108#0", "4100000108#1"])
+                    self.assertTrue(tc.cancel("4100000108", "job2"))      # only the job that was named
+                    self.assertTrue(second.cancel.is_set())
+                    self.assertFalse(first.cancel.is_set())
+        self.assertEqual(tc._runs, {})
+
+    def test_the_same_book_again_stops_the_older_check(self):
+        with mock.patch.object(tc, "_release_model"):
+            with tc._Run(self.job("job1"), "4100000108", "m", 1) as older:
+                with tc._Run(self.job("job2"), "4100000108", "m", 1):
+                    self.assertTrue(older.cancel.is_set())
+        self.assertEqual(tc._runs, {})
+
+    def test_closing_the_card_stops_every_book(self):
+        with mock.patch.object(tc, "_release_model"):
+            with tc._Run(self.job("job1"), "4100000108", "m", 0) as first, \
+                    tc._Run(self.job("job2"), "4100000108", "m", 1) as second, \
+                    tc._Run(self.job("job3"), "4100000109", "m", 0) as other_order:
+                self.assertTrue(tc.cancel("4100000108"))                  # no job named: the whole card
+                self.assertTrue(first.cancel.is_set() and second.cancel.is_set())
+                self.assertFalse(other_order.cancel.is_set())
+        self.assertFalse(tc.cancel("4100000108"))                         # nothing left to stop
+
+    def test_each_book_writes_its_own_journal(self):
+        tc._journal("4100000108", {"issues": []}, {"child": "Sofia"}, 0)
+        tc._journal("4100000108", {"issues": []}, {"child": "Jack"}, 1)
+        names = sorted(p.name.split("_")[-1] for p in tc.CHECKS.glob("*_4100000108-*.json"))
+        self.assertEqual(names, ["4100000108-1.json", "4100000108-2.json"])
 
 
 class Prescan(unittest.TestCase):

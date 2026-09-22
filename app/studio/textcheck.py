@@ -498,7 +498,7 @@ def findings(printed: list[str], child: str, vocab: set[str], others: set[str]) 
 
 _cache: dict[str, str] = {}
 _cache_lock = threading.Lock()
-_runs: dict[str, tuple[threading.Event, str | None]] = {}  # order -> (stop, job id) of its running check
+_runs: dict[str, tuple[threading.Event, str | None]] = {}  # book of an order -> (stop, job id) of its check
 _runs_lock = threading.Lock()
 _active = 0  # checks running now
 _active_lock = threading.Lock()
@@ -674,6 +674,11 @@ def _parse(content: str) -> dict:
     return data
 
 
+def run_key(receipt_id: str, pick: int = 0) -> str:
+    """Which check is which: one per book of an order, so books of the same order do not stop each other."""
+    return f"{receipt_id}#{max(0, pick)}"
+
+
 def check_order(job, receipt_id: str, folder_raw: str, count: int, pick: int = 0) -> dict:
     """The whole check of one order's print folder (Cover.png + 1..count.png), for its book number `pick`."""
     order = next((o for o in profit.picker_orders() if str(o["receiptId"]) == str(receipt_id)), None)
@@ -681,10 +686,12 @@ def check_order(job, receipt_id: str, folder_raw: str, count: int, pick: int = 0
         raise UserError("Замовлення не знайдено.")
     orders.enrich(order, orders.books_by_listing())
     items = order.get("items") or [{}]
-    return check_book(job, str(receipt_id), items[pick] if 0 <= pick < len(items) else items[0], folder_raw, count)
+    if not 0 <= pick < len(items):
+        pick = 0
+    return check_book(job, str(receipt_id), items[pick], folder_raw, count, pick)
 
 
-def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) -> dict:
+def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int, pick: int = 0) -> dict:
     """One book of an order (an enriched order item: variations, childName, book) against its print folder."""
     started = time.monotonic()
     files = _print_files(folder_raw, count)
@@ -695,7 +702,7 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) ->
     full = bool(pers["child"]) and any(refs.get(f"spread{n}") for n in library.SPREAD_NUMBERS)
     target = _targets(files, count, refs, pers)
     rules = (_vocabulary(pers), _other_children(receipt_id))  # the program's own call on names and placeholders
-    with _Run(job, receipt_id, _settings()["model"]) as run:
+    with _Run(job, receipt_id, _settings()["model"], pick) as run:
         targets, answers, layout = _passes(run, target, files, count, refs, pers, full, rules)
         run.say("Підсумок…")
     issues = _all_issues(targets, answers, layout, files, pers, count, rules)
@@ -716,7 +723,7 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) ->
         "skipped": [n for n in library.SPREAD_NUMBERS if refs.get(f"spread{n}") and f"spread{n}" not in found] if full else [],
         "issues": issues,
     }
-    _journal(receipt_id, result, pers)
+    _journal(receipt_id, result, pers, pick)
     return result
 
 
@@ -937,10 +944,12 @@ def _learnable(targets: list, issues: list) -> dict[int, str]:
 
 class _Run:
     """One check's model calls: four at a time, cached, counted for the progress bar, stoppable. A newer check
-    of the same order stops this one; the model leaves the graphics card when the last running check ends."""
+    of the same book stops this one; other books of the same order carry on. The model leaves the graphics
+    card when the last running check ends."""
 
-    def __init__(self, job, receipt_id: str, model: str):
+    def __init__(self, job, receipt_id: str, model: str, pick: int = 0):
         self.job, self.receipt_id, self.model = job, receipt_id, model
+        self.key = run_key(receipt_id, pick)
         self.cancel = threading.Event()
         self.lock = threading.Lock()
         self.done, self.total = 0, 1
@@ -949,10 +958,10 @@ class _Run:
     def __enter__(self) -> "_Run":
         global _active
         with _runs_lock:
-            old = _runs.get(self.receipt_id)
+            old = _runs.get(self.key)
             if old:
                 old[0].set()
-            _runs[self.receipt_id] = (self.cancel, getattr(self.job, "id", None))
+            _runs[self.key] = (self.cancel, getattr(self.job, "id", None))
         with _active_lock:
             _active += 1
         self.pool = ThreadPoolExecutor(PARALLEL, thread_name_prefix="textcheck")
@@ -964,8 +973,8 @@ class _Run:
             self.cancel.set()  # the queued pages give up at once
         self.pool.shutdown(wait=True, cancel_futures=True)
         with _runs_lock:
-            if _runs.get(self.receipt_id, (None,))[0] is self.cancel:
-                del _runs[self.receipt_id]
+            if _runs.get(self.key, (None,))[0] is self.cancel:
+                del _runs[self.key]
         with _active_lock:
             _active -= 1
             last = _active == 0
@@ -1020,14 +1029,14 @@ class _Run:
 
 
 def cancel(receipt_id: str, job_id: str | None = None) -> bool:
-    """Stops the running check of an order (only the one of that job, when given): the card was closed or
-    got other files. Pages already with the model finish; the rest are not asked."""
+    """Stops running checks of an order: the one of that job when given, otherwise every book of the order
+    (the whole card was closed). Pages already with the model finish; the rest are not asked."""
+    prefix = f"{receipt_id}#"
     with _runs_lock:
-        run = _runs.get(str(receipt_id))
-        if not run or (job_id and run[1] != job_id):
-            return False
-        run[0].set()
-        return True
+        keys = [k for k in _runs if k.startswith(prefix) and (not job_id or _runs[k][1] == job_id)]
+        for key in keys:
+            _runs[key][0].set()
+        return bool(keys)
 
 
 def _release_model(model: str) -> None:
@@ -1055,13 +1064,14 @@ def has_text(read: str | None) -> bool:
     return len(words(read or "")) >= 4 and not _REFUSAL.match(read or "")
 
 
-def _journal(receipt_id: str, result: dict, pers: dict) -> None:
-    """Every check, with what the model read — to see later why something was (not) flagged. Local only."""
+def _journal(receipt_id: str, result: dict, pers: dict, pick: int = 0) -> None:
+    """Every check, with what the model read — to see later why something was (not) flagged. Local only.
+    The book number is in the name: two books of one order can finish within the same second."""
     try:
         CHECKS.mkdir(parents=True, exist_ok=True)
-        path = CHECKS / f"{time.strftime('%Y-%m-%d_%H%M%S')}_{receipt_id}.json"
-        core.write_json(path, {"receiptId": receipt_id, "at": core.now_iso(), "personalization": pers, **result},
-                        backup=False)
+        path = CHECKS / f"{time.strftime('%Y-%m-%d_%H%M%S')}_{receipt_id}-{pick + 1}.json"
+        core.write_json(path, {"receiptId": receipt_id, "book": pick + 1, "at": core.now_iso(),
+                               "personalization": pers, **result}, backup=False)
         for old in sorted(CHECKS.glob("*.json"))[:-KEEP]:
             old.unlink(missing_ok=True)
     except Exception:

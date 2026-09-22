@@ -6,7 +6,7 @@ import {
 import { openLightbox } from '../lightbox.js';
 import {
   COUNTRIES, STAGES, STAGE_EMPTY, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf, folderViewerItems, receiveDrop, dropLabel,
-  wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText,
+  wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText, restorable,
 } from '../order-bits.js';
 import { take } from '../handoff.js';
 import { markSent, finish } from '../keep.js';
@@ -405,19 +405,27 @@ export async function mount(view) {
     if (cur().result && !(await confirmBox({ title: 'Чернетку вже створено',
       text: 'У друкарні лежить стара сторінка. Замінити її тут і створити чернетку ще раз?',
       confirm: 'Замінити', cancel: 'Не чіпати' }))) return;
+    let res;
     try {
-      await api('/api/creator/replace-page', { method: 'POST', body: { folder: b.folder, file, path } });
+      res = await api('/api/creator/replace-page', { method: 'POST', body: { folder: b.folder, file, path } });
     } catch (err) { toast(err.message, 'error'); return; }
-    b.replaced.add(file.toLowerCase());
+    setRestorable(b, file, res.canRestore);
     pageChanged(b, i, lb, again, `Замінено ${pageWord(file)}`);
   }
 
   async function restorePage(b, i, file, lb, again) {
+    let res;
     try {
-      await api('/api/creator/restore-page', { method: 'POST', body: { folder: b.folder, file } });
+      res = await api('/api/creator/restore-page', { method: 'POST', body: { folder: b.folder, file } });
     } catch (err) { toast(err.message, 'error'); return; }
-    b.replaced.delete(file.toLowerCase());
+    setRestorable(b, file, res.canRestore);   // an older version may still be there
     pageChanged(b, i, lb, again, `Повернено ${pageWord(file)}`);
+  }
+
+  /** The server says whether this page still has a previous version; the page only repeats it. */
+  function setRestorable(b, file, can) {
+    if (can) b.replaced.add(file.toLowerCase());
+    else b.replaced.delete(file.toLowerCase());
   }
 
   function pageChanged(b, i, lb, again, message) {
@@ -449,6 +457,7 @@ export async function mount(view) {
       }, 300);
       if (my !== b.seq) return;
       b.validation = res;
+      b.replaced = restorable(res);
     } catch (err) {
       if (my !== b.seq) return;
       b.validation = { ok: false, errors: [err.message], warnings: [], files: [], found: 0, expected: 0 };
