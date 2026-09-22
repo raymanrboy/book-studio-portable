@@ -29,7 +29,10 @@ code:
     з каталогу — `loadPageCounts()`, лише коли є ключ); якщо папка має 28 сторінок, а формат їх не
     приймає — кнопка жовта, під нею одне речення, «Створити» не пускає (`formatProblem()`).
 - Права колонка — **структура**: обкладинка і всі розвороти з мініатюрами; зелені/червоні назви файлів
-  за результатом перевірки; клік — переглядач. Для Gelato до вибору папки — «28 або 30 стор.»,
+  за результатом перевірки; клік — переглядач. У переглядачі — **кнопки заміни сторінки** (по одній на
+  кожну сторінку розвороту, з 20.09.2026): обрати файл на комп'ютері, і сторінка стає на місце старої;
+  поруч «Повернути». Після заміни папка перевіряється заново. Те саме є в
+  [картці замовлення](orders.md), тільки там ще й перезапускається перевірка тексту. Для Gelato до вибору папки — «28 або 30 стор.»,
   після перевірки — точне число з папки (`pageCount` у відповіді перевірки).
 - **Папка**: вибрати, вставити шлях або **перетягнути папку чи ZIP** на блок (поле підсвічується;
   показується власна назва папки, а шлях — копії в програмі). Перевірка запускається сама.
@@ -138,8 +141,8 @@ PDF для Gelato: обкладинка · порожня · сторінки ·
 
 ## Де в коді
 
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `books_of()`, `joint_title()`, `expected_files()`, `validate()`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `structureItems()`, `replacePage()`, `restorePage()`, `pageChanged()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `replace_page()`, `restore_page()`, `_print_page()`, `REPLACED`, `books_of()`, `joint_title()`, `expected_files()`, `validate()`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
 - [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `page_counts()`, `photobook_geometry()`, `create_draft_order()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `pagesText()`
@@ -147,6 +150,7 @@ PDF для Gelato: обкладинка · порожня · сторінки ·
 - [app/studio/archive.py](../../app/studio/archive.py) — `store()`, `update()`, `get()`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.fmt-pill.bad`, `.cr-reprint`, `.cr-book`, `.cr-book-name`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `take()`
+- [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_folder()`, `pick_file()`
 - Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`PrintifyValidation`, `GelatoValidation`), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`PrintifyReprint`, `GelatoReprint`)
 
 ## Пов'язане

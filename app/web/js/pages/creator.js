@@ -1,7 +1,7 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
   api, html, ic, ib, raw, setHtml, on, media, modal, toast, runJob, segHtml, syncSeg, setSeg, bytes, dateTime,
-  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide,
+  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, confirmBox,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
@@ -27,6 +27,8 @@ export async function mount(view) {
   // sends them all at once — one draft, one address (owner, 20.09.2026).
   const newBook = (extra = {}) => ({
     folder: '', label: null, title: '', validation: null, validating: 0, seq: 0,
+    stamp: 0,            // grows with every replaced page, so its pictures are fetched anew
+    replaced: new Set(), // pages a new file was put over — they can be put back
     format: status.gelato.defaultFormat || status.gelato.formats[0]?.key, ...extra,
   });
   const st = {
@@ -307,7 +309,7 @@ export async function mount(view) {
     const row = v.files.find((r) => r.file.toLowerCase() === name.toLowerCase());
     return row ? (row.ok ? 'ok' : 'bad') : 'missing';
   };
-  const thumb = (name, w = 420) => media('/media/folder', { path: bk().folder, file: name, w });
+  const thumb = (name, w = 420) => media('/media/folder', { path: bk().folder, file: name, w, ...(bk().stamp ? { v: bk().stamp } : {}) });
 
   function renderRight() {
     const s = cur();
@@ -361,10 +363,68 @@ export async function mount(view) {
     fadeImages(view.querySelector('#cr-right'));
   }
 
+  // The viewer of one book's structure. A page can be replaced right there by a file from the computer
+  // (the owner fixed it in Canva and downloaded that page again) — and put back while the card is open.
+  const pageNo = (file) => (/^cover/i.test(file) ? 0 : parseInt(file, 10));
+  const pageWord = (file) => (pageNo(file) ? `сторінку ${pageNo(file)}` : 'обкладинку');
+
+  function structureItems(b, i, again) {
+    const items = folderViewerItems(b.folder, pageTotal(i), b.label || b.folder, b.stamp);
+    for (const it of items) {
+      it.actions = [];
+      for (const file of it.files || []) {
+        const num = pageNo(file) ? String(pageNo(file)) : '';
+        it.actions.push({ icon: 'swap', label: num, tip: `Замінити ${pageWord(file)} — обрати файл на комп'ютері`,
+          run: (lb) => replacePage(b, i, file, lb, again) });
+        if (b.replaced.has(file.toLowerCase())) {
+          it.actions.push({ icon: 'restore', label: num, on: true, tip: `Повернути попередню ${pageWord(file)}`,
+            run: (lb) => restorePage(b, i, file, lb, again) });
+        }
+      }
+    }
+    return items;
+  }
+
   function openStructure(index) {
     const b = bk();
+    const i = cur().pick;
     if (!b.validation || !b.folder) { toast('Спершу оберіть папку з ілюстраціями', 'info'); return; }
-    openLightbox(folderViewerItems(b.folder, pageTotal(), b.label || b.folder), index);
+    const items = [];
+    const again = (lb) => { items.splice(0, items.length, ...structureItems(b, i, again)); lb.refresh(); };
+    items.push(...structureItems(b, i, again));
+    openLightbox(items, index);
+  }
+
+  async function replacePage(b, i, file, lb, again) {
+    let path;
+    try {
+      path = (await api('/api/creator/pick-file', { method: 'POST',
+        body: { title: `Оберіть ${pageWord(file)} (${file})`, initial: b.folder } })).path;
+    } catch (err) { toast(err.message, 'error'); return; }
+    if (!path) return;
+    if (cur().result && !(await confirmBox({ title: 'Чернетку вже створено',
+      text: 'У друкарні лежить стара сторінка. Замінити її тут і створити чернетку ще раз?',
+      confirm: 'Замінити', cancel: 'Не чіпати' }))) return;
+    try {
+      await api('/api/creator/replace-page', { method: 'POST', body: { folder: b.folder, file, path } });
+    } catch (err) { toast(err.message, 'error'); return; }
+    b.replaced.add(file.toLowerCase());
+    pageChanged(b, i, lb, again, `Замінено ${pageWord(file)}`);
+  }
+
+  async function restorePage(b, i, file, lb, again) {
+    try {
+      await api('/api/creator/restore-page', { method: 'POST', body: { folder: b.folder, file } });
+    } catch (err) { toast(err.message, 'error'); return; }
+    b.replaced.delete(file.toLowerCase());
+    pageChanged(b, i, lb, again, `Повернено ${pageWord(file)}`);
+  }
+
+  function pageChanged(b, i, lb, again, message) {
+    b.stamp++;
+    toast(message, 'success');
+    again(lb);
+    validate(i);   // the folder is checked again: a page of the wrong size is caught here
   }
 
   function renderAll() {

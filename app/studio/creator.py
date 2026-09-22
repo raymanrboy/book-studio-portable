@@ -10,6 +10,7 @@ Nothing is ever published, ordered or sent to production.
 from __future__ import annotations
 
 import math
+import os
 import re
 import shutil
 import struct
@@ -1040,6 +1041,64 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
             shutil.rmtree(session_dir, ignore_errors=True)
 
 
+# ---------------------------------------------------------------- one page replaced by hand
+
+REPLACED = ".replaced"          # the pages a new one was put over, kept here so «Повернути» can work
+_PAGE_NAME = re.compile(r"(?:cover|\d{1,3})\.png", re.I)
+
+
+def _print_page(folder_raw: str, file: str) -> tuple[Path, Path]:
+    """The print folder and the page inside it, as they are really named on disk."""
+    folder = Path(str(folder_raw or "").strip().strip('"'))
+    if not folder.is_dir():
+        raise ApiError("Папку з файлами не знайдено — перетягніть їх ще раз.", 404)
+    if not _PAGE_NAME.fullmatch(str(file or "")):
+        raise ApiError("Так сторінка книги не називається.")
+    page = _files_by_lower(folder).get(str(file).lower())
+    if not page:
+        raise ApiError(f"У папці немає {file}.", 404)
+    return folder, page
+
+
+def replace_page(folder_raw: str, file: str, source_raw: str) -> dict:
+    """Puts a page downloaded from Canva in place of one in the print folder (the owner fixed it in the
+    template and wants only that page changed). The old one waits in `.replaced` for «Повернути»; the
+    checks that follow are the usual ones, so a page of the wrong size is caught there."""
+    folder, page = _print_page(folder_raw, file)
+    source = Path(str(source_raw or "").strip().strip('"'))
+    if not source.is_file():
+        raise ApiError("Файл не знайдено.", 404)
+    if source.resolve() == page.resolve():
+        raise ApiError("Це той самий файл, що вже в папці.")
+    info, error = images.check_png(source)
+    if error or not info:
+        raise ApiError(f"Це не придатний PNG: {error or 'файл не читається'}.")
+    keep = folder / REPLACED
+    keep.mkdir(exist_ok=True)
+    kept = keep / f"{page.name}.{time.strftime('%Y%m%d-%H%M%S')}"
+    shutil.copy2(page, kept)
+    tmp = page.with_name(page.name + ".new")
+    shutil.copy2(source, tmp)
+    os.replace(tmp, page)   # the page is never half-written: it changes in one step
+    _validation_cache.clear()
+    core.log.info("Page %s replaced from %s", page.name, source.name)
+    return {"file": page.name, "width": info["width"], "height": info["height"], "bytes": info["bytes"],
+            "canRestore": True}
+
+
+def restore_page(folder_raw: str, file: str) -> dict:
+    """«Повернути»: the page that was there before the last replacement comes back."""
+    folder, page = _print_page(folder_raw, file)
+    kept = sorted((folder / REPLACED).glob(f"{page.name}.*")) if (folder / REPLACED).is_dir() else []
+    if not kept:
+        raise ApiError("Немає чого повертати.", 404)
+    last = kept[-1]
+    os.replace(last, page)
+    _validation_cache.clear()
+    core.log.info("Page %s restored", page.name)
+    return {"file": page.name, "canRestore": bool(sorted((folder / REPLACED).glob(f"{page.name}.*")))}
+
+
 # ---------------------------------------------------------------- personalization helpers
 
 _NAME_HINT = re.compile(r"(child|kid|baby|boy|girl|name|ім'я|имя)", re.I)
@@ -1161,6 +1220,26 @@ def _etsy_orders(req: Request):
     for o in orders:
         o["childName"] = guess_child_name(o["items"])
     return {"orders": orders, "syncedAt": profit.load_snapshot().get("syncedAt")}
+
+
+@route("POST", "/api/creator/pick-file")
+def _pick_file(req: Request):
+    body = req.json or {}
+    path = desktop.pick_file(body.get("title") or "Оберіть сторінку", body.get("initial") or "")
+    return {"path": path or ""}
+
+
+@route("POST", "/api/creator/replace-page")
+def _replace_page(req: Request):
+    """One page of a print folder is replaced by a file chosen on this computer."""
+    body = req.json or {}
+    return replace_page(body.get("folder") or "", body.get("file") or "", body.get("path") or "")
+
+
+@route("POST", "/api/creator/restore-page")
+def _restore_page(req: Request):
+    body = req.json or {}
+    return restore_page(body.get("folder") or "", body.get("file") or "")
 
 
 @route("POST", "/api/creator/open-folder")

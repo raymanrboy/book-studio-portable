@@ -130,6 +130,81 @@ class PrintifyValidation(unittest.TestCase):
         self.assertNotIn("publish", json.dumps(payload))
 
 
+class ReplacePage(unittest.TestCase):
+    """The owner fixed one page in Canva and downloaded it again: it takes the place of the old one,
+    and the old one waits in .replaced for «Повернути» (owner, 20.09.2026)."""
+
+    def setUp(self):
+        self._saved = core.settings.get()
+        core.settings.update({"printify": {"coverSize": [60, 30], "pageSize": [40, 40]}})
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.folder = self.root / "print"
+        self.folder.mkdir()
+        png(self.folder / "Cover.png", (60, 30))
+        for n in range(1, 25):
+            png(self.folder / f"{n}.png", (40, 40), (n * 10, 60, 60))
+        self.fresh = self.root / "Lily - 8.png"
+        png(self.fresh, (40, 40), (7, 8, 9))
+        creator._validation_cache.clear()
+
+    def tearDown(self):
+        core.settings.replace_section("printify", self._saved["printify"])
+        self.tmp.cleanup()
+
+    def test_the_page_changes_and_the_old_one_waits(self):
+        before = (self.folder / "7.png").read_bytes()
+        res = creator.replace_page(str(self.folder), "7.png", str(self.fresh))
+        self.assertEqual((res["file"], res["width"], res["height"]), ("7.png", 40, 40))
+        self.assertEqual((self.folder / "7.png").read_bytes(), self.fresh.read_bytes())
+        kept = list((self.folder / creator.REPLACED).glob("7.png.*"))
+        self.assertEqual(len(kept), 1)
+        self.assertEqual(kept[0].read_bytes(), before)
+        # the pages Printify gets are still exactly the expected ones — the kept copy is not one of them
+        check = creator.validate("printify", str(self.folder), None)
+        self.assertTrue(check["ok"], check["errors"])
+        self.assertEqual(check["found"], 25)
+        self.assertEqual(check["warnings"], [])
+
+    def test_the_old_page_comes_back(self):
+        before = (self.folder / "7.png").read_bytes()
+        creator.replace_page(str(self.folder), "7.png", str(self.fresh))
+        res = creator.restore_page(str(self.folder), "7.png")
+        self.assertEqual(res["file"], "7.png")
+        self.assertEqual((self.folder / "7.png").read_bytes(), before)
+        with self.assertRaises(ApiError):
+            creator.restore_page(str(self.folder), "7.png")   # nothing left to put back
+
+    def test_a_page_of_the_wrong_size_is_caught_by_the_usual_check(self):
+        """Printify wants 4000x4000 (here 40x40): a page straight from Canva, without Upscayl, must not
+        pass quietly — the file check says so right after the replacement."""
+        small = self.root / "small.png"
+        png(small, (20, 20))
+        creator.replace_page(str(self.folder), "7.png", str(small))
+        check = creator.validate("printify", str(self.folder), None)
+        self.assertFalse(check["ok"])
+        self.assertTrue(any("7.png" in e for e in check["errors"]), check["errors"])
+
+    def test_the_cover_can_be_replaced_too(self):
+        wide = self.root / "cover-new.png"
+        png(wide, (60, 30), (1, 2, 3))
+        creator.replace_page(str(self.folder), "Cover.png", str(wide))
+        self.assertEqual((self.folder / "Cover.png").read_bytes(), wide.read_bytes())
+
+    def test_nothing_else_may_be_written(self):
+        for bad in ("../secret.png", "7.txt", "25a.png", "book.json", ""):
+            with self.subTest(file=bad), self.assertRaises(ApiError):
+                creator.replace_page(str(self.folder), bad, str(self.fresh))
+        with self.assertRaises(ApiError):   # a page the folder does not have
+            creator.replace_page(str(self.folder), "99.png", str(self.fresh))
+        with self.assertRaises(ApiError):   # not a picture at all
+            text = self.root / "note.png"
+            text.write_text("not a png", encoding="utf-8")
+            creator.replace_page(str(self.folder), "7.png", str(text))
+        with self.assertRaises(ApiError):   # the file already in the folder
+            creator.replace_page(str(self.folder), "7.png", str(self.folder / "7.png"))
+
+
 class GelatoValidation(unittest.TestCase):
     def test_gelato_needs_30_pages(self):
         with tempfile.TemporaryDirectory() as d:

@@ -3,6 +3,30 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-20] update | Заміна однієї сторінки з переглядача — збудовано
+
+- У переглядачі сторінок — кнопка на кожну сторінку розвороту: обрати виправлений файл на комп'ютері,
+  і він стає на місце старої. Поруч «Повернути». Працює і в картці замовлення, і в Order Creator; нові
+  маршрути `pick-file`, `replace-page`, `restore-page`.
+- Після заміни: нова картинка (адреса з номером версії), перевірка файлів заново, перезапуск перевірки
+  тексту (модель перепитує лише цю сторінку), позначки «це не помилка» цієї сторінки забуваються.
+- Позначки «це не помилка» тепер скидаються й від нових файлів (прохання власника).
+- Кинуті одна-дві окремі картинки на підготовлену книгу більше не стирають роботу — підказують про
+  переглядач. Ollama більше не запускається двічі (прогрів і перевірка беруть замок).
+- Оновлено: [features/orders.md](features/orders.md), [features/order-creator.md](features/order-creator.md),
+  [features/text-check.md](features/text-check.md), [flows/order-to-print.md](flows/order-to-print.md),
+  [rules/file-naming.md](rules/file-naming.md), [architecture/frontend.md](architecture/frontend.md),
+  [architecture/api-routes.md](architecture/api-routes.md), [dev/testing.md](dev/testing.md),
+  [code-map.md](code-map.md), [glossary.md](glossary.md), [decisions.md](decisions.md),
+  [plans/roadmap.md](plans/roadmap.md).
+
+## [2026-09-20] decision | Заміна виправленої сторінки — з переглядача
+
+- Обговорено з власником і записано в плани: кнопки заміни в переглядачі (дві на розворот), рідне вікно
+  вибору файлу, повторна перевірка лише цієї сторінки, «Повернути», і в картці, і в Order Creator.
+  Чекає його «старт». Туди ж — вимога скидати позначки «це не помилка», коли приходять нові файли.
+- [plans/roadmap.md](plans/roadmap.md), [decisions.md](decisions.md).
+
 ## [2026-09-20] update | Моделі — лише сторінки, де може бути текст
 
 - Зауваження власника: навіщо показувати моделі всі сторінки, якщо текст лише на половині. Тепер

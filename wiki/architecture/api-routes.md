@@ -95,6 +95,9 @@ code:
 |---|---|---|---|---|
 | GET | `/api/creator/status` | token | `_status` | creator.js |
 | POST | `/api/creator/validate` | token | `_validate` | creator.js, orders.js (фонова задача) |
+| POST | `/api/creator/pick-file` | token | `_pick_file` | orders.js / creator.js `replacePage` (рідне вікно Windows: одна картинка з комп'ютера) |
+| POST | `/api/creator/replace-page` | token | `_replace_page` | orders.js / creator.js `replacePage` (нова сторінка замість однієї в папці друку) |
+| POST | `/api/creator/restore-page` | token | `_restore_page` | orders.js / creator.js `restorePage` («Повернути» попередню сторінку) |
 | POST | `/api/creator/pick-folder` | token | `_pick` | creator.js, orders.js |
 | POST | `/api/creator/printify/create` | token | `_create_printify` | creator.js (фонова задача) |
 | POST | `/api/creator/printify/reprint` | token | `_reprint_printify` | creator.js `create` у режимі передруку з архіву (фонова задача; нове замовлення на ту саму книгу; з відправки, що не стала замовленням, — 409) |

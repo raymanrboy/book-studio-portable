@@ -158,11 +158,20 @@ def _alive() -> bool:
         return False
 
 
+_start_lock = threading.Lock()
+
+
 def start_ollama(wait: float = 40) -> bool:
     """Starts Ollama when it is not running (it stays running after Book Studio closes, like from the
-    Start menu). False when it is not installed or did not answer in time."""
+    Start menu). False when it is not installed or did not answer in time. Under a lock: the warm-up and
+    the check can both notice it missing at the same moment, and it must be started only once."""
     if _alive():
         return True
+    with _start_lock:
+        return _alive() or _start_ollama(wait)
+
+
+def _start_ollama(wait: float) -> bool:
     command = _ollama_command()
     if not command:
         return False

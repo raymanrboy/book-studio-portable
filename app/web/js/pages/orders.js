@@ -185,6 +185,8 @@ async function mountCard(view, rid) {
     chosen: null,        // printer picked by hand when the cover type could not be read
     seq: 0, checkSeq: 0, // a flow whose number moved on is no longer this book's newest
     fresh: false,        // the next paint of the findings is a new result: they slide in (once)
+    stamp: 0,            // grows with every replaced page, so pictures are fetched anew
+    replaced: new Set(), // pages a new file was put over — they can be put back
     dismissed: new Set() }); // findings the owner marked «це не помилка» (kept for the card's life)
   const work = (o.items.length ? o.items : [{}]).map(blank);
   let f = work[pick];
@@ -271,7 +273,7 @@ async function mountCard(view, rid) {
   }
 
   // ---------------------------------------------------------------- left: files → proof → print
-  const thumb = (name, w) => media('/media/folder', { path: f.folder, file: name, w });
+  const thumb = (name, w) => media('/media/folder', { path: f.folder, file: name, w, ...(f.stamp ? { v: f.stamp } : {}) });
   // The newest send of this order to the chosen printer that never went to print (a cancelled order, a
   // deleted or unconfirmed draft): its archived files can be taken instead of downloading them again.
   const earlier = () => (o.earlierSends || []).find((e) => e.provider === provider());
@@ -471,10 +473,29 @@ async function mountCard(view, rid) {
     paint();
   }
 
-  // The viewer shows, with T, what the model read on a spread's pages and what they must say.
-  function viewerItems() {
-    const items = folderViewerItems(f.folder, f.pages, f.label);
-    for (const p of f.check?.state === 'done' ? f.check.result.pages : []) {
+  // The viewer shows, with T, what the model read on a spread's pages and what they must say, and lets
+  // a page be replaced by a file from the computer (the owner fixed it in Canva and downloaded it again).
+  const pageNo = (file) => (/^cover/i.test(file) ? 0 : parseInt(file, 10));
+  const pageWord = (file) => (pageNo(file) ? `сторінку ${pageNo(file)}` : 'обкладинку');
+
+  function pageActions(w, item, again) {
+    const acts = [];
+    for (const file of item.files || []) {
+      const num = pageNo(file) ? String(pageNo(file)) : '';
+      acts.push({ icon: 'swap', label: num, tip: `Замінити ${pageWord(file)} — обрати файл на комп'ютері`,
+        run: (lb) => replacePage(w, file, lb, again) });
+      if (w.replaced.has(file.toLowerCase())) {
+        acts.push({ icon: 'restore', label: num, on: true, tip: `Повернути попередню ${pageWord(file)}`,
+          run: (lb) => restorePage(w, file, lb, again) });
+      }
+    }
+    return acts;
+  }
+
+  function viewerItems(w = f, again = null) {
+    const items = folderViewerItems(w.folder, w.pages, w.label, w.stamp);
+    if (again) items.forEach((it) => { it.actions = pageActions(w, it, again); });
+    for (const p of w.check?.state === 'done' ? w.check.result.pages : []) {
       const item = items[viewerIndex(p.page)];
       if (!item || (!p.text && !p.expected)) continue;
       const block = [`${p.label} — надруковано:`, p.text || '—', ...(p.expected ? ['', 'Має бути:', p.expected] : [])].join('\n');
@@ -556,11 +577,20 @@ async function mountCard(view, rid) {
 
   async function takeDrop(dropped) {
     if (!provider()) { toast('Спершу оберіть друкарню', 'info'); return; }
+    // A couple of loose pictures on a book that is already prepared is not a new export — most likely
+    // one page fixed in Canva. The prepared work stays where it is; the viewer replaces that page.
+    const zip = dropped.files.length === 1 && /\.zip$/i.test(dropped.files[0].name);
+    const loose = !zip && !dropped.entries.some((x) => x.isDirectory);
+    if (loose && dropped.files.length <= 3 && f.validation?.ok) {
+      toast('Щоб замінити одну сторінку — відкрийте її в переглядачі (клік по сторінці) і натисніть «Замінити»', 'info', 7000);
+      return;
+    }
     const w = f;
     dropCheck(w);
     warmModel();
     const my = ++w.seq;
-    Object.assign(w, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
+    Object.assign(w, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
+      stamp: 0, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
       const path = await receiveDrop(dropped, (pct) => { if (my === w.seq && showing(w)) setBusy(pct * 0.6); });
@@ -577,7 +607,8 @@ async function mountCard(view, rid) {
     const w = f;
     dropCheck(w);
     const my = ++w.seq;
-    Object.assign(w, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
+    Object.assign(w, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
+      stamp: 0, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try { await arrange(path, w, my); } catch (err) { failed(w, my, err); }
   }
@@ -589,7 +620,8 @@ async function mountCard(view, rid) {
     dropCheck(w);
     warmModel();
     const my = ++w.seq;
-    Object.assign(w, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null });
+    Object.assign(w, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
+      stamp: 0, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
       const { path } = await api(`/api/archive/${e.id}/reuse`, { method: 'POST', body: {} });
@@ -606,6 +638,69 @@ async function mountCard(view, rid) {
   /** The books of this order that are ready for the printer now shown (files in, checked, not busy). */
   const readyBooks = (p = provider()) => work.map((w, i) => ({ w, i }))
     .filter(({ w, i }) => w.folder && w.validation?.ok && !w.busy && providerOf(i) === p);
+
+  /** The viewer, with a live list of items: a replaced page rebuilds them and the viewer redraws. */
+  function openViewer(start) {
+    const w = f;
+    const items = [];
+    const again = (lb) => { items.splice(0, items.length, ...viewerItems(w, again)); lb.refresh(); };
+    items.push(...viewerItems(w, again));
+    openLightbox(items, start);
+  }
+
+  /** A page fixed in Canva takes the place of the old one; the old one waits for «Повернути». */
+  async function replacePage(w, file, lb, again) {
+    let path;
+    try {
+      path = (await api('/api/creator/pick-file', { method: 'POST',
+        body: { title: `Оберіть ${pageWord(file)} (${file})`, initial: w.folder } })).path;
+    } catch (err) { toast(err.message, 'error'); return; }
+    if (!path) return;
+    if (sentOf(o.receiptId) && !(await confirmBox({ title: 'Чернетку вже створено',
+      text: 'У друкарні лежить стара сторінка. Замінити її тут і надіслати замовлення ще раз?',
+      confirm: 'Замінити', cancel: 'Не чіпати' }))) return;
+    try {
+      await api('/api/creator/replace-page', { method: 'POST', body: { folder: w.folder, file, path } });
+    } catch (err) { toast(err.message, 'error'); return; }
+    w.replaced.add(file.toLowerCase());
+    pageChanged(w, file, lb, again, `Замінено ${pageWord(file)}`);
+  }
+
+  async function restorePage(w, file, lb, again) {
+    try {
+      await api('/api/creator/restore-page', { method: 'POST', body: { folder: w.folder, file } });
+    } catch (err) { toast(err.message, 'error'); return; }
+    w.replaced.delete(file.toLowerCase());
+    pageChanged(w, file, lb, again, `Повернено ${pageWord(file)}`);
+  }
+
+  /** After a page changed: new picture everywhere, files checked again, text checked again — and the
+   *  «це не помилка» marks of that page forgotten, because it is a different page now. */
+  function pageChanged(w, file, lb, again, message) {
+    w.stamp++;
+    for (const i of w.check?.state === 'done' ? w.check.result.issues : []) {
+      if (i.page === pageNo(file)) w.dismissed.delete(i.id);
+    }
+    toast(message, 'success');
+    again(lb);
+    revalidate(w);
+  }
+
+  /** The same checks as after new files, but the folder stays as it is (only one page changed). The
+   *  proof is not taken down while they run — it is redrawn once, when the new page is in it. */
+  async function revalidate(w) {
+    dropCheck(w);
+    const my = ++w.seq;
+    w.error = '';
+    try {
+      const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(work.indexOf(w)), folder: w.folder } }),
+        null, 300);
+      if (my !== w.seq) return;
+      Object.assign(w, { validation: v, busy: 0, check: null });
+      if (showing(w)) renderRight();
+      if (v.ok) startCheck(w, my);
+    } catch (err) { failed(w, my, err); }
+  }
 
   // The text check never blocks printing — it asks once when it is still running or found mistakes.
   // Every ready book of the order goes in one draft to one address; the rest wait for another send.
@@ -649,7 +744,7 @@ async function mountCard(view, rid) {
     on(view, 'click', '[data-dismiss]', (e, b) => { f.dismissed.add(b.dataset.dismiss); paintCheck(); }),
     on(view, 'click', '[data-lb]', (e, c) => {
       if (e.target.closest('[data-dismiss]') || !f.folder || !f.pages) return;
-      openLightbox(viewerItems(), +c.dataset.lb);
+      openViewer(+c.dataset.lb);
     }),
     on(view, 'click', '[data-seg="provider"] button', (e, b) => {
       f.chosen = b.dataset.value;

@@ -5,7 +5,7 @@
 // inertia. Images are decoded off the main thread before they are shown and cross-fade.
 // Items may carry `full` — a sharper version fetched once the user zooms past the preview's pixels
 // and swapped in while nothing is moving (same box size, so the picture does not jump).
-import { html, ic, el, highlightTokens, reducedMotion } from './lib.js';
+import { html, ic, el, setHtml, highlightTokens, reducedMotion } from './lib.js';
 
 const TAU = 85;           // ms — smoothing time constant for zoom/pan
 const FRICTION = 260;     // ms — inertia decay after a drag
@@ -26,6 +26,7 @@ export function openLightbox(items, start = 0) {
     <div class="lb-top">
       <div class="grow"><div class="lb-title"></div><div class="lb-sub"></div></div>
       <button class="lb-btn" data-a="text" aria-label="Текст сторінки" data-tip="Текст сторінки" data-kbd="T">${ic('captions')}</button>
+      <span class="lb-acts"></span>
       <button class="lb-btn" data-a="original" aria-label="Відкрити файл-оригінал" data-tip="Відкрити файл-оригінал">${ic('fileOpen')}</button>
       <button class="lb-btn" data-a="close" aria-label="Закрити" data-tip="Закрити" data-kbd="Esc">${ic('x')}</button>
     </div>
@@ -137,6 +138,9 @@ export function openLightbox(items, start = 0) {
     root.querySelector('.lb-counter').textContent = `${index + 1} / ${items.length}`;
     root.querySelector('[data-a="prev"]').disabled = items.length < 2;
     root.querySelector('[data-a="next"]').disabled = items.length < 2;
+    setHtml(root.querySelector('.lb-acts'), (it.actions || []).map((act, i) => html`
+      <button class="lb-btn ${act.on ? 'on' : ''}" data-a="act" data-i="${i}" aria-label="${act.tip || act.label}"
+        data-tip="${act.tip || act.label}">${ic(act.icon || 'swap')}${act.label ? html`<span class="lb-act-label">${act.label}</span>` : ''}</button>`));
     root.querySelector('[data-a="original"]').hidden = !it.onOriginal;
     root.querySelector('[data-a="text"]').hidden = !it.text;
     textBox.hidden = !(it.text && showText);
@@ -191,6 +195,8 @@ export function openLightbox(items, start = 0) {
   }
   document.addEventListener('keydown', onKey, true);
   window.addEventListener('resize', onResize);
+  // Given to the actions above: the page was replaced, so the item is drawn again with its new picture.
+  const api = { close, refresh: (i = index) => show(i), get index() { return index; } };
 
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-a]');
@@ -204,6 +210,7 @@ export function openLightbox(items, start = 0) {
     else if (a === 'fit') { fitTarget(); kick(); }
     else if (a === 'text') { showText = !showText; textBox.hidden = !(items[index].text && showText); root.querySelector('[data-a="text"]').classList.toggle('on', !textBox.hidden); }
     else if (a === 'original') items[index].onOriginal?.();
+    else if (a === 'act') items[index].actions?.[+b.dataset.i]?.run?.(api);
   });
 
   stage.addEventListener('wheel', (e) => {
@@ -254,5 +261,5 @@ export function openLightbox(items, start = 0) {
   });
 
   show(index);
-  return { close };
+  return api;
 }

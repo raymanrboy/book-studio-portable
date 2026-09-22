@@ -23,6 +23,20 @@ sys.stdout.write(path or '')
 """
 
 
+_FILE_SCRIPT = r"""
+import sys, tkinter as tk
+from tkinter import filedialog
+root = tk.Tk()
+root.withdraw()
+root.attributes('-topmost', True)
+root.update()
+path = filedialog.askopenfilename(parent=root, title=sys.argv[1], initialdir=sys.argv[2] or None,
+                                  filetypes=[('PNG', '*.png'), ('Зображення', '*.png *.jpg *.jpeg *.webp')])
+root.destroy()
+sys.stdout.write(path or '')
+"""
+
+
 def _console_python() -> str:
     exe = Path(sys.executable)
     if exe.name.lower() == "pythonw.exe":
@@ -37,6 +51,19 @@ def pick_folder(title: str, initial: str = "") -> str | None:
         initial = ""
     result = subprocess.run(
         [_console_python(), "-c", _PICKER_SCRIPT, title, initial],
+        capture_output=True, text=True, encoding="utf-8",
+        creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
+        timeout=3600,
+    )
+    path = (result.stdout or "").strip()
+    return str(Path(path)) if path else None
+
+
+def pick_file(title: str, initial: str = "") -> str | None:
+    """One picture from the computer (a page freshly downloaded from Canva), in the usual Windows dialog."""
+    folder = initial if initial and Path(initial).is_dir() else ""
+    result = subprocess.run(
+        [_console_python(), "-c", _FILE_SCRIPT, title, folder],
         capture_output=True, text=True, encoding="utf-8",
         creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
         timeout=3600,

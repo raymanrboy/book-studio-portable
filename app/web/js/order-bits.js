@@ -123,16 +123,21 @@ export function spreadsOf(total) {
 }
 
 /** Viewer items for a folder of Cover.png + 1..total.png: the cover, then every spread. */
-export function folderViewerItems(folder, total, sub = '') {
-  const items = [{ src: media('/media/folder', { path: folder, file: 'Cover.png', w: 2600 }),
-    full: media('/media/folder', { path: folder, file: 'Cover.png', w: 4096 }), title: 'Обкладинка', sub }];
+// `v` changes whenever a page of the folder was replaced: the address changes with it, so the viewer
+// shows the new picture instead of the one the browser kept (previews are cached for ten minutes).
+export function folderViewerItems(folder, total, sub = '', v = 0) {
+  const stamp = v ? { v } : {};
+  const items = [{ src: media('/media/folder', { path: folder, file: 'Cover.png', w: 2600, ...stamp }),
+    full: media('/media/folder', { path: folder, file: 'Cover.png', w: 4096, ...stamp }), title: 'Обкладинка', sub,
+    files: ['Cover.png'] }];
   spreadsOf(total).forEach((sp, i) => {
-    const q = { path: folder, h: 1400 };
+    const q = { path: folder, h: 1400, ...stamp };
     if (sp.left) q.left = `${sp.left}.png`;
     if (sp.right) q.right = `${sp.right}.png`;
     const lp = i === 0 ? 1 : sp.left + 1;
     items.push({ src: media('/media/folder-spread', q), full: media('/media/folder-spread', { ...q, h: 2400 }),
-      title: `Розворот ${i + 1} · стор. ${lp}–${lp + 1}`, sub: `${sp.left ? `${sp.left}.png` : 'форзац'} · ${sp.right ? `${sp.right}.png` : 'нахзац'}` });
+      title: `Розворот ${i + 1} · стор. ${lp}–${lp + 1}`, sub: `${sp.left ? `${sp.left}.png` : 'форзац'} · ${sp.right ? `${sp.right}.png` : 'нахзац'}`,
+      files: [sp.left, sp.right].filter(Boolean).map((n) => `${n}.png`) });
   });
   return items;
 }

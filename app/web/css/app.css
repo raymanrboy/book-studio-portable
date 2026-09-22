@@ -452,6 +452,10 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .lb-btn:active:not(:disabled) { transform: scale(.93); }
 .lb-btn.on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
 .lb-btn:disabled { opacity: .35; cursor: default; }
+/* «Замінити 6» / «Замінити 7» у переглядачі: кнопка з номером сторінки, яку міняють. */
+.lb-acts { display: inline-flex; gap: 8px; }
+.lb-acts .lb-btn { width: auto; grid-auto-flow: column; gap: 5px; padding: 0 10px; }
+.lb-act-label { font-family: var(--font-display); font-size: 12.5px; font-weight: 600; }
 .lb-counter { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-2); min-width: 66px; text-align: center; }
 .lb-zoom { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--text-3); min-width: 50px; text-align: center; }
 .lb-text { position: absolute; right: 18px; bottom: 18px; width: min(380px, 40vw); max-height: 45%; overflow: auto; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-l); font-family: var(--font-book-text); font-size: 14px; line-height: 1.6; white-space: pre-wrap; color: var(--text); z-index: 2; }

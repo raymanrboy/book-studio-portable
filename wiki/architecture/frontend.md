@@ -101,7 +101,12 @@ code:
   друкарні й трек-номера, номер чека, поля покупця ([features/orders.md](../features/orders.md),
   [features/archive.md](../features/archive.md)).
 - `lightbox.js` — `openLightbox(items, start)`; елемент: `src`, `full` (чіткіша версія при зумі),
-  `title`, `sub`, `text` (клавіша T), `onOriginal`. Колесо, перетягування з інерцією, ← →, Esc.
+  `title`, `sub`, `text` (клавіша T), `onOriginal`, `files` (які файли показано) і `actions` — кнопки
+  вгорі (`{icon, label, tip, on, run(lb)}`). Повертає `{close, refresh}`: сторінку замінили — той, хто
+  відкрив переглядач, перебудовує масив елементів **на місці** і кличе `refresh()`, і переглядач
+  малює нову картинку. Колесо, перетягування з інерцією, ← →, Esc.
+- `folderViewerItems(folder, total, sub, v)` — елементи переглядача для папки друку; `v` росте з кожною
+  заміненою сторінкою й потрапляє в адресу картинки, бо прев'ю кешуються в браузері на 10 хвилин.
 
 ## Візуальна система — `app.css` («Prepress»)
 

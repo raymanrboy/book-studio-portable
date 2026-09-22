@@ -88,7 +88,9 @@ code:
 - **Доставка**: адреса з Etsy.
 
 ### Ліворуч — робота (`#oc-flow`, `renderRight()`)
-1. **Файли з Canva** (`filesCard()`): перетягнути ZIP/папку або обрати папку. Сервер розставляє сторінки
+1. **Файли з Canva** (`filesCard()`): перетягнути ZIP/папку або обрати папку. Кинуті одна-дві окремі
+   картинки на вже підготовлену книгу **нічого не стирають** — програма підказує, що одну сторінку
+   міняють у переглядачі (до 20.09.2026 такий кидок знищував усю роботу над книгою). Сервер розставляє сторінки
    (`arrange_pages()`: обкладинка + 24 сторінки для Printify, 28 або 30 для Gelato — скільки скачано,
    див. [rules/file-naming.md](../rules/file-naming.md)), показує, що перейменував («сторінки 2–25 → 1–24»),
    далі — повна перевірка, як в Order Creator. Для Gelato сервер одразу питає каталог, чи друкує він
@@ -109,6 +111,15 @@ code:
      (`STRIP_THUMB` = `STRIP_PREVIEW`);
    - клік по будь-чому — переглядач розворотами (`folderViewerItems()`; клавіша T — що прочитала
      перевірка тексту й що мало бути, `viewerItems()`);
+   - **заміна однієї сторінки просто в переглядачі** (з 20.09.2026): угорі — кнопка на кожну сторінку
+     розвороту («Замінити 6», «Замінити 7»; на обкладинці й крайніх розворотах одна). Клік відкриває
+     звичайне вікно Windows, власник обирає сторінку, яку щойно виправив у Canva й скачав. Далі
+     програма сама: нова картинка в переглядачі (адреса з новим номером `v`, щоб браузер не показав
+     стару), **повторна перевірка файлів** і **перезапуск перевірки тексту** (модель перепитає лише цю
+     сторінку), позначки «це не помилка» цієї сторінки забуваються. Поруч з'являється «Повернути» —
+     попередня сторінка чекає в прихованій підпапці `.replaced`. Якщо чернетку вже створено — питання,
+     бо в друкарні лежить стара сторінка. Для Printify сторінка має бути 4000×4000: невиправлений
+     розмір покаже перевірка файлів («проженіть через Upscayl»);
    - **перевірка тексту** (з 19.09.2026): стартує сама, щойно файли перевірено (`startCheck()`); значок
      праворуч від заголовка «Звірка» (відсотки → «Текст збігається» / «N помилок» / «N питань», ↻),
      список проблем під заголовком (клік — переглядач на тій сторінці, ✓ «Це не помилка»), червоні й
@@ -155,7 +166,7 @@ code:
 
 ## Де в коді
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `readyBooks()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `queueState`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `openViewer()`, `pageActions()`, `replacePage()`, `restorePage()`, `pageChanged()`, `revalidate()`, `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `readyBooks()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `queueState`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — спільні з [архівом замовлень](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`, `is_placed()`, `placed_orders()`, `carrier_label()`

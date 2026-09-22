@@ -1,7 +1,7 @@
 ---
 title: Назви файлів — друк і бібліотека
 type: rule
-updated: 2026-09-17
+updated: 2026-09-20
 code:
   - app/studio/orders.py
   - app/studio/library.py
@@ -52,6 +52,13 @@ code:
 - Правила для людини чи агента, що готує файли, — у «інструкції для агента» (`agent_guide()`),
   побудованій з цих самих правил.
 
+## Замінена сторінка
+
+Коли власник міняє одну сторінку з переглядача (`replace_page()`), стара лягає поруч у **приховану**
+підпапку `.replaced` під ім'ям `7.png.20260920-142530`. Перевірки, підрахунок сторінок і архів дивляться
+лише на файли в самій папці (`_files_by_lower()`, `_signature()` беруть `is_file()`), тож ця підпапка їм
+не заважає; «Повернути» (`restore_page()`) бере найсвіжішу копію звідти.
+
 ## Перетягнуті файли (`_drop_rel()`)
 
 Приймаються лише картинки (і `.json` для бібліотеки), до 6 рівнів вкладення; `..`, `:`, `__MACOSX`,
@@ -63,7 +70,7 @@ code:
 - [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()`, `page_options()`, `pages_word()`, `page_number()`, `ranges()`, `_UPSCAYL`, `_LAST_NUMBER`
 - [app/studio/library.py](../../app/studio/library.py) — `scan_folder()`, `_UPSCAYL_TAIL`, `_NUM_RE`, `agent_guide()`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mapFiles()`, `IMG_RE`
-- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `expected_files()`, `_gelato_page_count()`, `_drop_rel()`, `DROPS`
+- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `expected_files()`, `_gelato_page_count()`, `_drop_rel()`, `DROPS`, `replace_page()`, `restore_page()`, `REPLACED`
 - Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`FolderScan`, `GelatoValidation`)
 
 ## Пов'язане
