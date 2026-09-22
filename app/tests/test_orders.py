@@ -272,5 +272,54 @@ class SyncOnlyAtStartOrByHand(unittest.TestCase):
         self.assertIsNone(profit._sync_state(None)["jobId"])
 
 
+class DevToolsKeepOffRealData(unittest.TestCase):
+    """The sample server writes its own orders and books into the data folder it is given. It must refuse
+    anything that could be the owner's real data — not only the one exact path of the real folder."""
+
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "dev_server", Path(__file__).resolve().parents[1] / "tools" / "dev_server.py")
+        self.dev = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.dev)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_it_refuses_a_folder_that_is_not_its_own(self):
+        looks_real = self.root / "backup"
+        looks_real.mkdir()
+        (looks_real / "settings.json").write_text("{}", encoding="utf-8")
+        self.assertIsNotNone(self.dev.claim(looks_real, self.root / "bsdev"))
+        self.assertFalse((looks_real / self.dev.MARK).exists())
+
+    def test_it_refuses_a_folder_with_keys(self):
+        keys = self.root / "copy"
+        keys.mkdir()
+        (keys / "vault.json").write_text("{}", encoding="utf-8")
+        self.assertIsNotNone(self.dev.claim(keys, keys))
+
+    def test_it_refuses_the_real_data_folder(self):
+        self.assertIsNotNone(self.dev.claim((self.dev.APP / "data").resolve(), self.root / "bsdev"))
+
+    def test_an_empty_folder_becomes_its_own_and_stays_usable(self):
+        mine = self.root / "bsdev"
+        self.assertIsNone(self.dev.claim(mine, mine))
+        self.assertTrue((mine / self.dev.MARK).exists())
+        (mine / "settings.json").write_text("{}", encoding="utf-8")
+        self.assertIsNone(self.dev.claim(mine, self.root / "elsewhere"))   # marked once, used again
+
+
+class TestsNeverRunOnRealData(unittest.TestCase):
+    def test_the_data_folder_is_a_throw_away_one(self):
+        """Whatever BOOK_STUDIO_DATA said before, the suite took a fresh temporary folder: tests below
+        empty whole folders, so this may not depend on how the program was started."""
+        import os
+        from studio import core
+        self.assertIn("bstests-", os.environ["BOOK_STUDIO_DATA"])
+        self.assertTrue(Path(os.environ["BOOK_STUDIO_DATA"]).is_absolute())
+        self.assertEqual(core.DATA_DIR, Path(os.environ["BOOK_STUDIO_DATA"]))
+
+
 if __name__ == "__main__":
     unittest.main()

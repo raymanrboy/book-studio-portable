@@ -232,15 +232,36 @@ def _seed_archive(data: Path) -> None:
     archive.update(olivia, sentAt=archive._iso(time.time() - 2 * day))
 
 
-def main(argv: list[str]) -> int:
-    data = Path(os.environ.get("BOOK_STUDIO_DATA") or Path(tempfile.gettempdir()) / "bsdev").resolve()
+MARK = ".book-studio-sample"    # this folder was made by this tool and may be written over
+
+
+def claim(data: Path, default: Path) -> str | None:
+    """Sample data goes only into this tool's own folder or one it made itself. Any other folder may be
+    the owner's real data — a copy, a backup, a moved folder — and refusing one exact path is not enough.
+    Returns the reason to stop, or None when the folder may be used (and is marked as ours)."""
     if data == (APP / "data").resolve():
-        print("Refusing to run on the real data folder.", file=sys.stderr)
+        return "це справжня папка даних програми"
+    if (data / "vault.json").exists():
+        return "у ній лежать ключі — це не тимчасові дані"
+    if not (data / MARK).exists() and data != default and data.exists() and any(data.iterdir()):
+        return "вона не порожня й не створена цим інструментом"
+    data.mkdir(parents=True, exist_ok=True)
+    (data / MARK).write_text("Sample data for app/tools/dev_server.py. Delete this folder any time.\n",
+                             encoding="utf-8")
+    return None
+
+
+def main(argv: list[str]) -> int:
+    default = (Path(tempfile.gettempdir()) / "bsdev").resolve()
+    data = Path(os.environ.get("BOOK_STUDIO_DATA") or default).resolve()
+    stop = claim(data, default)
+    if stop:
+        print(f"Не чіпаю {data}: {stop}.\nВиберіть іншу папку в BOOK_STUDIO_DATA або видаліть цю.",
+              file=sys.stderr)
         return 1
     os.environ["BOOK_STUDIO_DATA"] = str(data)
     sys.path.insert(0, str(APP))
     if "--sample" in argv:
-        data.mkdir(parents=True, exist_ok=True)
         seed(data)
     from studio.main import main as run
     return run(["--no-window", "--port", str(PORT)])

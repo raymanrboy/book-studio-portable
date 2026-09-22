@@ -443,13 +443,17 @@ def _to_archive(log: dict, job, warnings: list[str], provider: str, files: list[
     return eid
 
 
-def _mark_reprint(log: dict, title: str, provider: str, order_id: str | None) -> None:
-    """A reprint is recorded as a replacement of its Etsy order (the queue keeps the first print order)."""
+def _mark_reprint(log: dict, warnings: list[str], title: str, provider: str, order_id: str | None) -> None:
+    """A reprint is recorded as a replacement of its Etsy order (the queue keeps the first print order).
+    A failure here never undoes the send — but it must not be quiet either: the order is already in the
+    printer, so the owner has to know that only the local record is missing, and not send it again."""
     try:
         marked = profit.mark_reprint(archive.receipt_of(title), provider, order_id)
     except Exception as err:
         core.log.exception("Reprint mark failed")
         sendlog.step(log, "reprintMarked", ok=False, error=str(err))
+        warnings.append(f"Замовлення вже створено в {provider.capitalize()}, але програма не записала його "
+                        f"як передрук: {err}. Не надсилайте ще раз — перевірте собівартість вручну.")
         return
     sendlog.step(log, "reprintMarked", ok=marked)
 
@@ -652,7 +656,7 @@ def _printify_draft(books: list[dict], job, address: dict | None, log: dict, rep
 
     # The books are in Printify now (with or without their order): keep exactly these files in the archive.
     if reprint_of and order:
-        _mark_reprint(log, books[0]["title"], "printify", order["id"])
+        _mark_reprint(log, warnings, books[0]["title"], "printify", order["id"])
     for book, m in zip(books, made):
         m["archiveId"] = _to_archive(log, job, warnings, "printify",
                                      [(Path(r["path"]), r["file"]) for r in book["checked"]["files"]],
@@ -736,7 +740,7 @@ def _printify_reprint(archive_id: str, title: str, address: dict | None, job, lo
     order = {"id": placed.get("id"), "variant": next((v.get("title") for v in master.get("variants") or []
                                                      if int(v.get("id") or 0) == variant_id), "Matte")}
     warnings: list[str] = []
-    _mark_reprint(log, title, "printify", order["id"])
+    _mark_reprint(log, warnings, title, "printify", order["id"])
     url = entry.get("url") or f"https://printify.com/app/product-details/{product_id}?fromProductsPage=1"
     kept = archive.folder(archive_id)
     new_id = _to_archive(log, job, warnings, "printify", [(kept / r["file"], r["file"]) for r in entry.get("files") or []], {
@@ -1028,7 +1032,7 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
         link = None  # owned by the registry now
         warnings = [f"{b['title']}: {w}" if b["mark"] else w for b in ready for w in b["pdf"]["warnings"]]
         if reprint_of:
-            _mark_reprint(log, books[0]["title"], "gelato", order_id)
+            _mark_reprint(log, warnings, books[0]["title"], "gelato", order_id)
         for book in ready:
             book["archiveId"] = _to_archive(log, job, warnings, "gelato",
                                             [(Path(r["path"]), r["file"]) for r in book["files"]],

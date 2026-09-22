@@ -726,9 +726,10 @@ def _download_listing_image(book: dict, url: str) -> None:
         with _lock:
             fresh = load(book["id"])
             asset = _store_asset(book["id"], tmp, "etsy-listing.jpg", move=True)
-            for old in _set_asset(fresh, "thumbnail", asset):
+            gone = _set_asset(fresh, "thumbnail", asset)
+            save(fresh)     # the record first: if the write fails, the old picture is still there
+            for old in gone:
                 _delete_asset_file(book["id"], old)
-            save(fresh)
     finally:
         tmp.unlink(missing_ok=True)
 
@@ -767,9 +768,10 @@ def _upload_asset(req: Request):
         with _lock:
             book = load(book_id)
             asset = _store_asset(book_id, tmp, name, move=True)
-            for old in _set_asset(book, slot, asset):
+            gone = _set_asset(book, slot, asset)
+            save(book)      # the record first: if the write fails, the old picture is still there
+            for old in gone:
                 _delete_asset_file(book_id, old)
-            save(book)
     finally:
         tmp.unlink(missing_ok=True)
     return _book_response(book)
@@ -788,9 +790,9 @@ def _remove_asset(req: Request):
             s = book["slots"][key]
             old = [s[part]] if s.get(part) else []
             s[part] = None
+        save(book)          # the record first: if the write fails, the picture is still there
         for asset in old:
             _delete_asset_file(book_id, asset)
-        save(book)
     return _book_response(book)
 
 
@@ -860,9 +862,10 @@ def _folder_import(req: Request):
                     asset = fut.result()
                     with _lock:
                         book = load(book_id)
-                        for old in _set_asset(book, slot, asset):
+                        gone = _set_asset(book, slot, asset)
+                        save(book)      # the record first: if the write fails, the old picture is still there
+                        for old in gone:
                             _delete_asset_file(book_id, old)
-                        save(book)
                 except (ApiError, OSError) as err:
                     image_errors.append(f"{info['name']}: {err}")
         text_result, text_error = None, None

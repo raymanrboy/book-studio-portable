@@ -397,6 +397,20 @@ class PrintifyReprint(ArchiveCase):
         self.assertEqual((journal["kind"], journal["ok"], journal["reprintOf"]), ("reprint", True, self.first["archiveId"]))
         self.assertEqual([s["step"] for s in journal["steps"]], ["product", "reprintMarked", "archive"])
 
+    def test_a_failed_local_record_is_told_to_the_owner(self):
+        """The order is already in Printify. If the program then cannot write it down as a reprint, the
+        result must say so — quietly succeeding would invite a second, paid, order for the same book."""
+        with mock.patch.object(printify, "call", self.fake), \
+                mock.patch.object(profit, "mark_reprint", side_effect=OSError("states.json locked")):
+            res = creator.create_printify_reprint(self.first["archiveId"], "4100000001 - Emma", ADDRESS, Job("t"))
+        self.assertEqual(res["order"]["id"], "order-2")                  # the printer did accept it
+        warned = " ".join(res["warnings"])
+        self.assertIn("вже створено", warned)
+        self.assertIn("Не надсилайте ще раз", warned)
+        journal = json.loads((core.data_path("logs", "sends") / res["sendLog"]).read_text(encoding="utf-8"))
+        step = next(s for s in journal["steps"] if s["step"] == "reprintMarked")
+        self.assertFalse(step["ok"])
+
     def test_a_book_deleted_in_printify_is_made_again_from_the_archive(self):
         self.fake.gone.add(self.first["productId"])
         with mock.patch.object(printify, "call", self.fake):

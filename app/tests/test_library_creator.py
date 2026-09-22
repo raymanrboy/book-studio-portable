@@ -2,12 +2,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
 from studio import core, creator, gelato, library, printify
-from studio.server import ApiError
+from studio.server import ApiError, Request
 
 
 def png(path: Path, size=(40, 40), color=(200, 120, 90)):
@@ -66,6 +67,45 @@ class FolderScan(unittest.TestCase):
             self.assertEqual(scan["slotsFound"], 16)
             self.assertEqual(scan["mapping"]["spread2:left"]["name"], "2.png")
             self.assertEqual(scan["mapping"]["spread2:right"]["name"], "3.png")
+
+
+class NothingIsLostWhenAWriteFails(unittest.TestCase):
+    """A picture is removed from disk only after the book record that stopped pointing at it is saved.
+    The other way round, one failed write would take the picture and leave a book pointing at nothing."""
+
+    def setUp(self):
+        self.book_id = "e" * 32
+        library.save({"id": self.book_id, "schema": 1, "rev": 0, "title": "Failing writes",
+                      "listing": {"id": "4100000903"}, "slots": library._empty_slots(),
+                      "text": {}, "cover": None, "thumbnail": None})
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        source = Path(self.tmp.name) / "page.png"
+        png(source, (80, 40))
+        self.asset = library._store_asset(self.book_id, source, "page.png")
+        book = library.load(self.book_id)
+        library._set_asset(book, "spread2", self.asset)
+        library.save(book)
+        self.file = library._book_dir(self.book_id) / "assets" / self.asset["file"]
+        self.assertTrue(self.file.exists())
+
+    def remove(self):
+        """The real «прибрати ілюстрацію» route, as the page calls it."""
+        return library._remove_asset(Request(None, "DELETE", "/api/library/books/x/assets",
+                                             {"slot": ["spread2"]}, (self.book_id,)))
+
+    def test_the_picture_stays_when_the_record_cannot_be_written(self):
+        with mock.patch.object(library, "save", side_effect=OSError("disk full")), self.assertRaises(OSError):
+            self.remove()
+        self.assertTrue(self.file.exists(), "a failed write must not cost the picture")
+        kept = library.load(self.book_id)["slots"]["spread2"]
+        self.assertEqual((kept.get("image") or {}).get("file"), self.asset["file"],
+                         "and the book still points at it")
+
+    def test_the_picture_goes_once_the_record_is_written(self):
+        self.remove()
+        self.assertFalse(self.file.exists())
+        self.assertIsNone(library.load(self.book_id)["slots"]["spread2"].get("image"))
 
 
 class PrintifyValidation(unittest.TestCase):
