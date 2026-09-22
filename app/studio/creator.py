@@ -9,6 +9,7 @@ Nothing is ever published, ordered or sent to production.
 """
 from __future__ import annotations
 
+import contextlib
 import math
 import os
 import re
@@ -54,6 +55,32 @@ def _backups(folder: Path, name: str) -> list[Path]:
     """The previous versions of one page, oldest first: what «Повернути» can put back."""
     keep = folder / REPLACED
     return sorted(keep.glob(f"{name}.*")) if keep.is_dir() else []
+
+
+_sending: set[str] = set()      # print folders a send is reading right now
+_sending_lock = threading.Lock()
+
+
+@contextlib.contextmanager
+def _while_sending(folders):
+    """A send checks the files, then uploads them, builds the PDF and copies them to the archive — all by
+    reading the same paths again. While that runs, the pages must not change under it, or what the printer
+    gets is not what passed the check. Replacing a page waits for the send to finish."""
+    mine = {str(Path(f).resolve()) for f in folders if f}
+    with _sending_lock:
+        _sending.update(mine)
+    try:
+        yield
+    finally:
+        with _sending_lock:
+            _sending.difference_update(mine)
+
+
+def _not_while_sending(folder: Path) -> None:
+    with _sending_lock:
+        busy = str(folder.resolve()) in _sending
+    if busy:
+        raise ApiError("Книга саме відправляється в друкарню — зачекайте, поки відправка завершиться.")
 
 
 def gelato_page_options() -> list[int]:
@@ -413,7 +440,8 @@ def create_printify_draft(books, job, address: dict | None = None) -> dict:
     """Unpublished Printify books, one per book of the order; with an address also a single order for all
     of them that waits "On hold". Every attempt is written to the send journal."""
     books = books_of(books)
-    with sendlog.attempt("printify", "book+order" if address else "book", joint_title(books)) as log:
+    with sendlog.attempt("printify", "book+order" if address else "book", joint_title(books)) as log, \
+            _while_sending(b["folder"] for b in books):
         result = _printify_draft(books, job, address, log)
         log["result"] = result
     return _journaled(result, log)
@@ -696,7 +724,8 @@ def create_printify_reprint(archive_id: str, title: str, address: dict | None, j
     nothing is uploaded and no product is made. If the book is gone from Printify, it is made again
     from the archived files (images already in Printify are reused). Journaled like every send."""
     title = (title or "").strip()
-    with sendlog.attempt("printify", "reprint", title) as log:
+    with sendlog.attempt("printify", "reprint", title) as log, \
+            _while_sending([archive.folder(archive_id)]):
         result = _printify_reprint(archive_id, title, address, job, log)
         log["result"] = result
     return _journaled(result, log)
@@ -932,7 +961,8 @@ def create_gelato_draft(books, address: dict, job, reprint_of: str | None = None
     one address. Every attempt is written to the send journal.
     reprint_of: the archived book this draft reprints (then the folder is that book's archive folder)."""
     books = books_of(books)
-    with sendlog.attempt("gelato", "reprint" if reprint_of else "draft", joint_title(books)) as log:
+    with sendlog.attempt("gelato", "reprint" if reprint_of else "draft", joint_title(books)) as log, \
+            _while_sending(b["folder"] for b in books):
         result = _gelato_draft(books, address, job, log, reprint_of)
         log["result"] = result
     return _journaled(result, log)
@@ -1096,6 +1126,7 @@ def replace_page(folder_raw: str, file: str, source_raw: str) -> dict:
     template and wants only that page changed). The old one waits in `.replaced` for «Повернути»; the
     checks that follow are the usual ones, so a page of the wrong size is caught there."""
     folder, page = _print_page(folder_raw, file)
+    _not_while_sending(folder)
     source = Path(str(source_raw or "").strip().strip('"'))
     if not source.is_file():
         raise ApiError("Файл не знайдено.", 404)
@@ -1125,6 +1156,7 @@ def replace_page(folder_raw: str, file: str, source_raw: str) -> dict:
 def restore_page(folder_raw: str, file: str) -> dict:
     """«Повернути»: the page that was there before the last replacement comes back."""
     folder, page = _print_page(folder_raw, file)
+    _not_while_sending(folder)
     kept = _backups(folder, page.name)
     if not kept:
         raise ApiError("Немає чого повертати.", 404)

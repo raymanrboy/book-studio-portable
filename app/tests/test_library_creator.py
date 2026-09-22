@@ -246,6 +246,23 @@ class ReplacePage(unittest.TestCase):
         self.assertEqual((self.folder / "7.png").read_bytes(), first)
         self.assertFalse(back["canRestore"])
 
+    def test_a_page_cannot_change_under_a_running_send(self):
+        """A send checks every PNG, then uploads those same paths, builds the PDF and copies them to the
+        archive. If a page could be replaced in between, the printer would get bytes that never passed
+        the check — and the upload cache would file the new picture under the old file's hash."""
+        with creator._while_sending([str(self.folder)]):
+            with self.assertRaises(ApiError) as caught:
+                creator.replace_page(str(self.folder), "7.png", str(self.fresh))
+            self.assertIn("відправляється", str(caught.exception))
+            with self.assertRaises(ApiError):
+                creator.restore_page(str(self.folder), "7.png")
+            other = self.root / "elsewhere"          # another book's folder is not blocked
+            other.mkdir()
+            png(other / "7.png", (40, 40))
+            self.assertEqual(creator.replace_page(str(other), "7.png", str(self.fresh))["file"], "7.png")
+        res = creator.replace_page(str(self.folder), "7.png", str(self.fresh))   # free again once it ends
+        self.assertEqual(res["file"], "7.png")
+
     def test_a_page_of_the_wrong_size_is_caught_by_the_usual_check(self):
         """Printify wants 4000x4000 (here 40x40): a page straight from Canva, without Upscayl, must not
         pass quietly — the file check says so right after the replacement."""
