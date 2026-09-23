@@ -1,4 +1,5 @@
 """Order pipeline: which printer an order goes to, and turning a Canva export into Cover.png + 1..N.png."""
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -87,6 +88,14 @@ class ArrangePages(unittest.TestCase):
             res = orders.arrange_pages(d, 24)
         self.assertTrue((Path(res["path"]) / "24.png").exists())
         self.assertIn("2–25 → 1–24", res["note"])
+
+    def test_a_cover_named_in_ukrainian_is_the_cover_here_too(self):
+        """The library took «Обкладинка.png» as the cover and the print folder did not (22.09.2026 audit)."""
+        d = self.folder([f"{i}.png" for i in range(1, 25)], cover="Обкладинка.png")
+        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+            res = orders.arrange_pages(d, 24)
+        self.assertIn("обкладинка — Обкладинка.png", res["note"])
+        self.assertTrue((Path(res["path"]) / "Cover.png").exists())
 
     def test_wrong_count_says_what_is_there(self):
         d = self.folder([f"{i}.png" for i in range(1, 23)], cover="Cover.png")
@@ -309,6 +318,19 @@ class DevToolsKeepOffRealData(unittest.TestCase):
         (mine / "settings.json").write_text("{}", encoding="utf-8")
         self.assertIsNone(self.dev.claim(mine, self.root / "elsewhere"))   # marked once, used again
 
+    def test_the_sample_server_neither_offers_nor_keeps_a_real_key(self):
+        """23.09.2026: its Settings offered to import the owner's real keys from the old programs on the Desktop
+        — and a preview server holding them could reach Etsy, Printify and Gelato."""
+        from studio import core, settings_api
+        from studio.jobs import JobError
+        from studio.vault import vault
+        with mock.patch.object(core, "SAMPLE", True):
+            self.assertEqual(settings_api.legacy_sources()["items"], [])
+            with self.assertRaises(JobError):
+                vault.set("printify_token", "real-looking-token")
+            vault.set("printify_token", None)                                 # clearing is always allowed
+        self.assertIn('os.environ["BOOK_STUDIO_SAMPLE"] = "1"', (self.dev.APP / "tools" / "dev_server.py").read_text(encoding="utf-8"))
+
 
 class TestsNeverRunOnRealData(unittest.TestCase):
     def test_the_data_folder_is_a_throw_away_one(self):
@@ -319,6 +341,30 @@ class TestsNeverRunOnRealData(unittest.TestCase):
         self.assertIn("bstests-", os.environ["BOOK_STUDIO_DATA"])
         self.assertTrue(Path(os.environ["BOOK_STUDIO_DATA"]).is_absolute())
         self.assertEqual(core.DATA_DIR, Path(os.environ["BOOK_STUDIO_DATA"]))
+
+
+class SharedNumbers(unittest.TestCase):
+    """Numbers the pages and the server must agree on, read from the page files themselves."""
+    WEB = Path(__file__).resolve().parents[1] / "web"
+
+    def js(self) -> str:
+        return "\n".join(p.read_text(encoding="utf-8") for p in sorted((self.WEB / "js").rglob("*.js")))
+
+    def test_the_pages_ask_for_the_preview_sizes_the_server_keeps(self):
+        """22.09.2026 audit: the viewer asked for 2400 px — a fourth file per picture, decoded from the original."""
+        from studio import images
+        asked = {int(n) for n in re.findall(r"assetUrl\([^,()]+, (\d+)\)|[{,]\s*w: (\d+)", self.js()) for n in n if n}
+        self.assertTrue(asked)
+        self.assertEqual(sorted(n for n in asked if n >= 1400 and n not in images._LARGER), [])
+
+    def test_a_dialog_opened_from_the_page_viewer_shows_over_it(self):
+        """22.09.2026 audit: «Чернетку вже створено» and every error of a page replacement opened under the viewer."""
+        css = (self.WEB / "css" / "app.css").read_text(encoding="utf-8")
+        z = {name: int(re.search(rf"^\.{name} \{{[^}}]*z-index: (\d+)", css, re.M).group(1))
+             for name in ("lightbox", "modal-root", "menu", "toasts")}
+        self.assertEqual(z["modal-root"], z["lightbox"])   # the one opened later is on top
+        self.assertGreater(z["menu"], z["modal-root"])
+        self.assertGreater(z["toasts"], z["menu"])
 
 
 if __name__ == "__main__":

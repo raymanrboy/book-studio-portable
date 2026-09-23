@@ -1,7 +1,7 @@
 ---
 title: Наповнення бібліотеки — нова книга і файли
 type: flow
-updated: 2026-09-17
+updated: 2026-09-23
 code:
   - app/web/js/pages/book.js
   - app/web/js/pages/library.js
@@ -20,10 +20,10 @@ code:
    ([library.js](../../app/web/js/pages/library.js) `saveGuide()`, `copyGuide()`).
    Агент перейменовує картинки (`Cover.png`, `1.png`, `2-3.png`…`30.png`) і пише `book-text.json`.
 3. **Завантажити в паспорт** — будь-який спосіб:
-   - перетягнути **ZIP** → розпакування в програму разом із JSON → діалог «Імпорт з папки»
-     ([book.js](../../app/web/js/pages/book.js) `onDrop()`, `importFolder()`);
-   - перетягнути **папку** або **кілька файлів** → діалог «Розкласти файли по книзі», завантаження по
-     одному ([book.js](../../app/web/js/pages/book.js) `importFiles()`, `mapFiles()`);
+   - перетягнути **ZIP**, **папку** або **кілька файлів** (чи вибрати їх кнопкою «Додати файли») →
+     копія в програму разом із JSON → той самий діалог «Імпорт з папки», що й кнопка
+     ([book.js](../../app/web/js/pages/book.js) `onDrop()`, `importDropped()`, `importFolder()`) — одні
+     правила назв для всіх способів;
    - кнопка «Імпорт з папки» → вибір папки → сервер сам розкладає і копіює у фоні
      ([book.js](../../app/web/js/pages/book.js) `importFolder()`; сервер — [library.py](../../app/studio/library.py) `scan_folder()`, `_folder_import()`);
    - один файл на конкретне місце; `.json` — лише текст.
@@ -40,7 +40,7 @@ code:
 ## Де в коді
 
 - [app/studio/library.py](../../app/studio/library.py) — `_create()`, `scan_folder()`, `_folder_scan()`, `_folder_import()`, `_upload_asset()`, `_import_text()`, `_store_asset()`, `_add_lqip()`, `_backfill_lqip()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `receiveDrop()` (ZIP з `withText`), `filesInDrop()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `receiveDrop()` (папка, ZIP чи файли з `withText`)
 - [app/studio/creator.py](../../app/studio/creator.py) — `extract_zip()` (з `with_text`)
 - Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PartialBookImport`, `PreparationGuide`)
 

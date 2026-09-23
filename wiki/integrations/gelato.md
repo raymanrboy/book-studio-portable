@@ -1,7 +1,7 @@
 ---
 title: Gelato і тимчасове посилання
 type: integration
-updated: 2026-09-20
+updated: 2026-09-23
 code:
   - app/studio/gelato.py
   - app/studio/tunnel.py
@@ -34,8 +34,8 @@ code:
   Перемикача немає — число визначається файлами (`settings.gelato.pageCounts` = `[28, 30]`).
 - `pageCount` у замовленні — **лише внутрішні сторінки** (28 / 30), як у ручних замовленнях власника.
   Каталог обкладинки рахує їх разом зі сторонами обкладинки (`pagesCount` 32 / 34).
-- Що Gelato друкує, каже **його каталог**: `validPageCounts` товару (лише читання, кешується до
-  перезапуску). 17.09.2026 усі три формати — **28–200**. Відкрита довідка Gelato пише «від 30» — вона
+- Що Gelato друкує, каже **його каталог**: `validPageCounts` товару (лише читання; пам'ятається
+  `CATALOG_HOURS` = 6 год або до зміни ключа Gelato, `_fresh_catalog()` — раніше до перезапуску). 17.09.2026 усі три формати — **28–200**. Відкрита довідка Gelato пише «від 30» — вона
   застаріла; програма все одно довіряє каталогу.
 - Програма питає каталог у трьох місцях: картка замовлення (одразу після розстановки файлів),
   Order Creator (кнопки форматів: підказка «28–200 стор.», жовта позначка й речення, якщо формат не
@@ -108,7 +108,9 @@ Gelato забирає файл **тільки за URL**, і (перевірен
 ## Синхронізація
 
 `all_orders()` — пошук замовлень (`orders:search`, явно `orderTypes: order, draft`; Gelato віддає
-чернетки й без цього) по 100, до 5000; `slim_order()`. Вартість у EUR перераховується за курсом
+чернетки й без цього) по 100, до 5000; `slim_order()`. Список, що зупинився на 5000, позначається
+неповним (`httpc.Listing.complete`): синхронізація попереджає, а архів не вважає такий список свіжим.
+Пошук — POST, що лише читає, тож його можна повторити після обриву (`idempotent=True`). Вартість у EUR перераховується за курсом
 `eurUsdRate` (1.085).
 
 **Трек-номери** (з 17.09.2026, для вкладки з машинкою — [етапи](../rules/order-stages.md)): пошук їх не
@@ -121,11 +123,17 @@ Gelato забирає файл **тільки за URL**, і (перевірен
 Документація: [Get order](https://dashboard.gelato.com/docs/orders/v4/get/),
 [статуси](https://dashboard.gelato.com/docs/orders/order_details/).
 
+## Помилки
+
+Відповіді Gelato читає спільна з Printify функція `httpc.human()` (`_human()`): 401/403 — ключ, 404, 429,
+4xx — «Gelato відхилив дані», 5xx і обрив — з `ambiguous`. Для створення чернетки це розрізняє відмову і
+**невідомий результат** ([order-creator.md](../features/order-creator.md), крок 7).
+
 ## Де в коді
 
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `SHIPPED`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
-- [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`, `FileTunnel`, `_head_ok()`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `build_photobook_pdf()`, `COVER_TRIM_WARN_MM`, `BLANK_DPI`, `GELATO_PLACEHOLDER_PHONE`, `_one_idat()`
+- [app/studio/gelato.py](../../app/studio/gelato.py) — `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `_human()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `_fresh_catalog()`, `CATALOG_HOURS`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `SHIPPED`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
+- [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`, `FileTunnel`, `_head_ok()`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()`, `_ends_with_us()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_unknown_outcome()`, `_journal_readback()`, `build_photobook_pdf()`, `COVER_TRIM_WARN_MM`, `BLANK_DPI`, `GELATO_PLACEHOLDER_PHONE`, `_one_idat()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`, `_OLD_GELATO_SIZES`, `_upgrade()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `page_options()`, `_files()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderTunnels()`, `startCountdown()`, `loadPageCounts()`, `formatProblem()`, `formatCard()`

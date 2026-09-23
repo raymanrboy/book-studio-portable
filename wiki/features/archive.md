@@ -1,7 +1,7 @@
 ---
 title: Архів замовлень — що пішло в друк і передрук
 type: feature
-updated: 2026-09-18
+updated: 2026-09-23
 code:
   - app/studio/archive.py
   - app/web/js/pages/archive.js
@@ -44,13 +44,20 @@ code:
 | «Не видаляти» | — | ніколи, доки позначку не знято |
 | Звичайна | з моменту, коли програма **вперше побачила замовлення «Відправленим»** (коробка) або закритим (скасування, повне повернення) | через **14 днів** (`KEEP_DAYS`) |
 | Передрук | з моменту, коли **друкарня відправила сам передрук** (трек-номер чи статус відправлено) | через 14 днів |
-| Програма не може простежити замовлення: у назві немає номера чека або чек не знайдено серед синхронізованих | від відправки в друк | через **30 днів** (`LOST_DAYS`) |
+| Програма не може простежити замовлення: книга не з замовлення Etsy (номера чека немає) або чек не знайдено серед синхронізованих | від відправки в друк | через **30 днів** (`LOST_DAYS`) |
 | Замовлення ще не «Відправлене» | ще не почався | — |
-| **Не стала замовленням:** скасована в друкарні або чернетку видалено (її немає серед замовлень друкарні в синхронізації, зробленій щонайменше через 2 дні після відправки, `VANISH_DAYS`) — у списку не показується | з моменту, коли програма це побачила (`droppedAt`) | через **3 дні** (`DROP_DAYS`); доти файли можна взяти в картці замовлення |
+| **Не стала замовленням:** скасована в друкарні або чернетку видалено (її немає серед замовлень **своєї** друкарні, завантажених повністю щонайменше через 2 дні після відправки, `VANISH_DAYS`) — у списку не показується | з моменту, коли програма це побачила (`droppedAt`) | через **3 дні** (`DROP_DAYS`); доти файли можна взяти в картці замовлення |
 | Чернетка, «on hold» чи не оплачено — у списку не показується | від відправки | через 30 днів, якщо так і не оформили |
 
 - Немає даних синхронізації (Etsy не підключено) або їх не вдалося прочитати → **нічого не видаляється**,
   а список показує все, як раніше.
+- **Лише свіжий список друкарні** (аудит 22.09.2026): синхронізація записує для Etsy, Printify і Gelato
+  окремо, коли їхній список замовлень **востаннє завантажився повністю** (`loaded` у знімку, `_loaded()`).
+  Друкарня, чий список не завантажився (прострочений ключ, збій) або обрізався на межі, нічого не
+  доводить: відсутність замовлення в старому списку не робить книгу «видаленою чернеткою». І «не стала
+  замовленням» (3 дні) та «так і не оформили» (30 днів) видаляють файли, лише якщо список цієї друкарні
+  завантажився **після** настання строку. Раніше досить було свіжого списку будь-якої друкарні — і книга,
+  що пішла в друк у Gelato, губила файли через 5 днів збою Gelato.
 - Передрук, що не став замовленням, знімає свою позначку «заміна» з чека (`profit.unmark_reprint()`).
 - Спершу видаляються картинки, опис — останнім: якщо якийсь файл відкрито в іншій програмі, книга
   лишається в списку і видаляється при наступній перевірці (`_remove()`).
@@ -105,6 +112,10 @@ code:
 «До друку» — це **звичайне замовлення, не передрук**. Список таких відправок — `earlierSends` у
 `GET /api/orders/<чек>` (`earlier_sends()`).
 
+Та сама картка знає й протилежне — що відправка цього замовлення **вже лежить у друкарні** (книга, чернетка
+чи замовлення, не скасовані й не видалені): `atPrinter` (`at_printer()`). Тоді заміна сторінки спершу
+питає «Чернетку вже створено…», навіть після перезапуску програми (раніше це пам'ятала лише сторінка).
+
 ## Що віддає сервер
 
 - `GET /api/archive` → `{entries, keepDays, lostDays}`; кожен запис — `entry.json` + `folder`, `buyer`,
@@ -117,10 +128,10 @@ code:
 
 ## Де в коді
 
-- [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `_facts()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `earlier_sends()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
+- [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `earlier_sends()`, `at_printer()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
 - [app/studio/creator.py](../../app/studio/creator.py) — `_to_archive()`, `_mark_reprint()`, `_journaled()`, `create_printify_reprint()`, `_printify_reprint()`, `_reprint_printify()`, `_create_gelato()`
-- [app/studio/profit.py](../../app/studio/profit.py) — `is_placed()`, `mark_reprint()`, `unmark_reprint()`, `_sync()` (після синхронізації — `archive.refresh_quietly()`)
-- [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`); [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `earlier()`, `takeEarlier()`
+- [app/studio/profit.py](../../app/studio/profit.py) — `is_placed()`, `mark_reprint()`, `unmark_reprint()`, `_sync()` (`loaded` кожного списку; після синхронізації — `archive.refresh_quietly()`)
+- [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`, `atPrinter`); [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `earlier()`, `takeEarlier()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (перевірка архіву при запуску)
 - [app/web/js/pages/archive.js](../../app/web/js/pages/archive.js) — `mountList()`, `mountBook()`, `clockChip()`, `clockText()`, `proofCard()`, `reprintCard()`, `sendCard()`, `fieldsCard()`, `addressCard()`, `toggleKeep()`, `reprint()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — режим передруку: `withOrder()`, `createLabel()`, `folderCard()`, `create()`

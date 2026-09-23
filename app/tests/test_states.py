@@ -390,6 +390,10 @@ class GelatoTracking(unittest.TestCase):
 
 
 class IncrementalSync(unittest.TestCase):
+    def setUp(self):
+        for path in (profit.SNAPSHOT, profit.STATES, profit.LINKS):  # whatever another test synced before
+            path.unlink(missing_ok=True)
+
     def tearDown(self):
         vault.set("printify_token", None)
         for path in (profit.SNAPSHOT, profit.STATES, profit.LINKS):
@@ -418,6 +422,35 @@ class IncrementalSync(unittest.TestCase):
             self.assertEqual(snap["receipts"][2]["status"], "Canceled")
             profit._sync(Job("c"), full=True)
             self.assertIsNone(calls[2])
+
+    def test_a_list_that_failed_or_was_cut_keeps_its_old_load_time(self):
+        """The archive trusts a printer's orders only as of their last whole load (22.09.2026 audit: a stale
+        Gelato list made a book that went to print look like a deleted draft)."""
+        from studio import httpc
+        keys = {"gelato_api_key": "fake-gelato-key"}
+        fetch = lambda progress=None, min_last_modified=None: ([receipt(1, "A")], 63208655, "Shop")
+        with mock.patch.object(etsy, "tokens", lambda: {"access_token": "1.x", "shop_id": 63208655}), \
+                mock.patch.object(etsy, "fetch_all_receipts", fetch), \
+                mock.patch.object(vault, "get", lambda name: keys.get(name)):
+            with mock.patch.object(gelato, "all_orders", side_effect=gelato.GelatoError("немає з'єднання з Gelato", 502)):
+                profit._sync(Job("a"))
+            self.assertEqual(sorted(profit.load_snapshot()["loaded"]), ["etsy"])
+            cut = httpc.Listing([{"id": "g1", "fulfillmentStatus": "draft"}])
+            cut.complete = False
+            with mock.patch.object(gelato, "all_orders", lambda progress=None: cut):
+                result = profit._sync(Job("b"))
+            self.assertEqual(sorted(profit.load_snapshot()["loaded"]), ["etsy"])
+            self.assertTrue(any("лише останні" in w for w in result["warnings"]))
+            with mock.patch.object(gelato, "all_orders", lambda progress=None: httpc.Listing(cut)):
+                profit._sync(Job("c"))
+            self.assertEqual(sorted(profit.load_snapshot()["loaded"]), ["etsy", "gelato"])
+
+    def test_the_snapshot_is_read_once_per_change(self):
+        core.write_json(profit.SNAPSHOT, {"receipts": [], "syncedAt": "2026-09-22T10:00:00Z"})
+        first = profit.load_snapshot()
+        self.assertIs(profit.load_snapshot(), first)                     # nothing changed: not parsed again
+        core.write_json(profit.SNAPSHOT, {"receipts": [], "syncedAt": "2026-09-22T11:00:00Z"})
+        self.assertEqual(profit.load_snapshot()["syncedAt"], "2026-09-22T11:00:00Z")
 
 
 class StateApi(unittest.TestCase):

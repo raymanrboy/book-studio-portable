@@ -1,7 +1,7 @@
 ---
 title: Order Creator — книга в Printify, чернетка в Gelato
 type: feature
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/studio/creator.py
   - app/web/js/pages/creator.js
@@ -38,8 +38,16 @@ code:
   саме читає ці файли (з 22.09.2026). Для Gelato до вибору папки — «28 або 30 стор.»,
   після перевірки — точне число з папки (`pageCount` у відповіді перевірки).
 - **Папка**: вибрати, вставити шлях або **перетягнути папку чи ZIP** на блок (поле підсвічується;
-  показується власна назва папки, а шлях — копії в програмі). Перевірка запускається сама.
-- **Назва**: `номер чека - ім'я дитини` (кнопка-чек заповнює назву й адресу із замовлення Etsy).
+  показується власна назва папки, а шлях — копії в програмі). Перевірка запускається сама; нова
+  перевірка тієї ж папки (нові файли, замінена сторінка) зупиняє попередню, а сторінка, яку закрили,
+  перестає її опитувати.
+- **Назва**: `номер чека - ім'я дитини` (кнопка-чек заповнює назву й адресу із замовлення Etsy; у
+  замовленні з кількох книг кожна отримує ім'я своєї дитини).
+- **Номер чека — окреме поле книги** (`receiptId`, з 23.09.2026): його дає картка замовлення або вибір
+  замовлення Etsy, і саме за ним сервер веде архів, запис «які замовлення друкарні для якого чека» і
+  `external_id` Printify. Назва лишається тим, що бачить власник і друкарня. Назва, що починається з
+  **іншого** номера, ніж у замовлення, відхиляється до будь-якого завантаження (`receipt_for()`); книга,
+  набрана вручну без замовлення, бере номер із початку назви, як раніше.
 - **Адреса**: іконка-гумка очищує. Штат обов'язковий для US, CA, AU. Для Gelato порожній телефон →
   вигаданий `+1 555 555 0100` (без телефону Gelato не дає оформити замовлення).
 - **Кнопка** змінює підпис: Gelato — «Створити чернетку»; Printify з адресою — «Створити чернетку
@@ -87,7 +95,8 @@ Gelato), поки замовлення в «Нових»; потім — пор�
 `create_printify_draft(books, job, address)` — `books` це список `{folder, title}` (одна книга або всі
 книги чека; `books_of()` їх звіряє, `joint_title()` дає спільну назву `4100000001 - Emma, Liam`):
 1. Якщо є адреса — **спершу** перевіряє все про замовлення: адресу (`validate_address()`),
-   підтвердження ручного затвердження, наявність матового варіанту в Master (`matte_variant()`).
+   підтвердження ручного затвердження, наявність матового варіанту в Master (`matte_variant()`). Ці
+   перевірки — одна функція для книги й для передруку (`_printify_setup()`).
 2. Повна перевірка файлів **кожної книги** (`_printify_files()` → `validate("printify")`): рівно
    `Cover.png` 4672×2464 і `1…24.png` 4000×4000, справжні PNG, повне декодування, без анімації;
    дублікати — попередження. Жодна книга не створюється, поки в іншої негаразд з файлами.
@@ -101,6 +110,9 @@ Gelato), поки замовлення в «Нових»; потім — пор�
    `external_id` = `<чек>-<8 символів>`, `label` = спільна назва, **позиція (`line_item`) на кожну
    книгу**, матовий варіант, стандартна доставка, без Express і сповіщень. Помилка тут не скасовує
    книги: `orderError` пояснює, що зробити.
+8. «Результат невідомий» (зв'язок обірвався після відправлення запиту або друкарня відповіла 500/502/504)
+   відрізняється від відмови однаково для всіх відправок (`_unknown_outcome()`): повідомлення каже **не
+   надсилати повторно**, а спершу подивитися в Printify / Gelato.
 
 Перед першим замовленням інтерфейс показує діалог «Ручне затвердження замовлень у Printify»
 (`confirmManualApproval()`), і сервер запам'ятовує `manualApprovalConfirmedAt`.
@@ -113,7 +125,9 @@ Gelato), поки замовлення в «Нових»; потім — пор�
    (`_gelato_page_count()`): найкоротша дозволена, що вміщає найбільший номер сторінки — `1…27` →
    бракує `28`; `1…29` → бракує `30`. Дві книги одного замовлення можуть бути різної довжини.
 2. Чи друкує Gelato стільки сторінок у цьому форматі (`gelato_pages_problem()`, каталог) і розміри
-   книги (`photobook_geometry()` з тією ж кількістю). Не друкує → помилка, нічого не створено.
+   книги (`photobook_geometry()` з тією ж кількістю). Не друкує → помилка, нічого не створено. Той самий
+   текст сторінка Order Creator отримує готовим (`problems` у `GET /api/creator/gelato/page-counts`,
+   `_pages_problem()`), тож картка, Order Creator і сама відправка кажуть однаково.
 3. PDF на кожну книгу (`build_photobook_pdf()`, `book.pdf` або `book-1.pdf`, `book-2.pdf`…):
    обкладинка, порожній форзац, 28 або 30 сторінок, порожній
    нахзац — порожні обов'язкові ([integrations/gelato.md](../integrations/gelato.md)); зображення без
@@ -126,6 +140,11 @@ Gelato), поки замовлення в «Нових»; потім — пор�
    `pageCount` і своїм `files: [{type: "default", url}]`, метадані; потім чернетка перечитується
    для журналу (`_journal_readback()` — по запису на кожен товар).
 6. Посилання живе 15 хв (`tunnelKeepAliveSeconds`); Gelato забирає файл сам, приблизно за хвилину.
+7. **Результат невідомий** (Gelato не відповів за 120 с, зв'язок обірвався, 500/502/504): чернетка могла
+   створитися. Тоді посилання на PDF **лишається** на ті самі 15 хв (Gelato ще може забрати файл), у журналі
+   `outcome: unknown`, а повідомлення каже не надсилати повторно, доки власник не перевірить Gelato →
+   Orders → Drafts. Справжня відмова (4xx) — «Gelato відхилив…», посилання закривається (аудит 22.09.2026:
+   раніше будь-яка помилка була «відхилив», а посилання закривалось одразу).
 
 Обидві відправки (Printify і Gelato) пишуть [журнал відправок](send-journal.md): обгортки
 `create_printify_draft()` / `create_gelato_draft()` кличуть `_printify_draft()` / `_gelato_draft()`
@@ -145,7 +164,7 @@ PDF для Gelato: обкладинка · порожня · сторінки ·
 ## Де в коді
 
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `structureItems()`, `replacePage()`, `restorePage()`, `pageChanged()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `books_of()`, `joint_title()`, `expected_files()`, `validate()`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `books_of()`, `receipt_for()`, `joint_title()`, `expected_files()`, `validate()`, `_forget_validation()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_printify_draft()`, `_printify_setup()`, `_unknown_outcome()`, `_variant_title()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
 - [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `page_counts()`, `photobook_geometry()`, `create_draft_order()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `pagesText()`

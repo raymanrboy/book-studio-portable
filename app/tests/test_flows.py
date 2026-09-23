@@ -5,6 +5,7 @@ import tempfile
 import unittest
 import urllib.parse
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from PIL import Image
@@ -61,6 +62,13 @@ class FakePrintify:
             product = next(p for p in self.created if p["id"] == pid)
             return {"id": pid, "print_areas": product["print_areas"]}
         raise AssertionError(f"unexpected call {method} {path}")
+
+
+def assert_steps(test, record, expected):
+    """These steps are in the send journal in this order (others may come between them)."""
+    names = iter(s["step"] for s in record["steps"])
+    missing = [step for step in expected if not any(n == step for n in names)]
+    test.assertEqual(missing, [], f"journal steps {[s['step'] for s in record['steps']]}")
 
 
 class PrintifyDraftFlow(unittest.TestCase):
@@ -126,9 +134,8 @@ class PrintifyDraftFlow(unittest.TestCase):
         self.assertEqual(record["request"]["title"], "4100000002 - Noah")
         self.assertEqual(record["orderRequest"], sent)
         self.assertEqual(record["orderResponse"], {"id": "order-on-hold-1"})
-        self.assertEqual([s["step"] for s in record["steps"]],
-                         ["files", "master", "uploads", "product", "verify", "masterSafe",
-                          "printOrderRemembered", "archive"])
+        assert_steps(self, record, ["files", "master", "uploads", "product", "verify", "masterSafe",
+                                    "printOrderRemembered", "archive"])
         # …and exactly the files that went to Printify are in the order archive.
         kept = archive.get(res["archiveId"])
         self.assertEqual((kept["provider"], kept["receiptId"], kept["productId"], kept["orderId"], kept["sendLog"]),
@@ -165,12 +172,38 @@ class PrintifyDraftFlow(unittest.TestCase):
         self.assertEqual({k["orderId"] for k in kept}, {"order-on-hold-1"})
         self.assertEqual({k["sendLog"] for k in kept}, {res["sendLog"]})
         record = journal(res["sendLog"])
-        self.assertEqual([s["step"] for s in record["steps"]],
-                         ["files", "files", "master", "uploads", "product", "verify",
-                          "uploads", "product", "verify", "masterSafe", "printOrderRemembered",
-                          "archive", "archive"])
+        assert_steps(self, record, ["files", "files", "master", "uploads", "product", "verify",
+                                    "uploads", "product", "verify", "masterSafe", "printOrderRemembered",
+                                    "archive", "archive"])
         self.assertEqual([s["book"] for s in record["steps"] if s["step"] == "product"],
                          ["4100000001 - Emma", "4100000001 - Liam"])
+
+    def test_the_order_names_its_receipt_not_the_title(self):
+        """22.09.2026 audit: the receipt lived only in the title — a title typed without its number left the
+        archive and the print-order record without their Etsy order. The page now names the receipt itself,
+        and a title that names another receipt is refused before anything is uploaded."""
+        core.settings.update({"printify": {"manualApprovalConfirmedAt": "2026-09-15T20:00:00Z"}})
+        with mock.patch.object(printify, "call", self.fake):
+            with self.assertRaises(JobError) as ctx:
+                creator.create_printify_draft([{"folder": str(self.root), "title": "4100000006 - Emma",
+                                                "receiptId": "4100000005"}], Job("t"), self.ADDRESS)
+            self.assertIn("4100000006", str(ctx.exception))
+            self.assertEqual(self.fake.uploads, {})
+            res = creator.create_printify_draft([{"folder": str(self.root), "title": "Emma",
+                                                  "receiptId": "4100000005"}], Job("t"), self.ADDRESS)
+        self.assertEqual(archive.get(res["archiveId"])["receiptId"], "4100000005")
+        self.assertTrue(self.fake.orders[0]["external_id"].startswith("4100000005-"))
+        self.assertEqual([r["orderId"] for r in profit.load_sends()["4100000005"]], ["order-on-hold-1"])
+
+    def test_a_record_that_cannot_be_written_is_said(self):
+        core.settings.update({"printify": {"manualApprovalConfirmedAt": "2026-09-15T20:00:00Z"}})
+        with mock.patch.object(printify, "call", self.fake), \
+                mock.patch.object(profit, "remember_print_order", side_effect=OSError("print-orders.json locked")), \
+                self.assertLogs("studio", "ERROR"):
+            res = creator.create_printify_draft([{"folder": str(self.root), "title": "4100000007 - Ava"}],
+                                                Job("t"), self.ADDRESS)
+        self.assertEqual(res["order"]["id"], "order-on-hold-1")                  # the send itself stands
+        self.assertTrue(any("Не надсилайте ще раз" in w for w in res["warnings"]))
 
     def test_no_order_without_the_manual_approval_confirmation(self):
         core.settings.update({"printify": {"manualApprovalConfirmedAt": None}})
@@ -309,8 +342,7 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual(record["request"], sent)
         self.assertEqual(record["response"]["id"], "gelato-order-1")
         steps = {s["step"]: s for s in record["steps"]}
-        self.assertEqual(list(steps), ["files", "catalog", "pdf", "link", "readback",
-                                       "printOrderRemembered", "archive"])
+        assert_steps(self, record, ["files", "catalog", "pdf", "link", "readback", "printOrderRemembered", "archive"])
         kept = archive.get(res["archiveId"])
         self.assertEqual((kept["provider"], kept["orderId"], kept["format"], kept["pageCount"], kept["sendLog"]),
                          ("gelato", "gelato-order-1", "hardcover_8x8", 30, res["sendLog"]))
@@ -323,6 +355,47 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertLess(steps["pdf"]["coverTrimMm"], 10)
         self.assertEqual(steps["link"]["urls"], ["https://fake.trycloudflare.com/book.pdf"])
         self.assertNotIn("fake-gelato-key", json.dumps(record))
+
+    def test_an_unclear_draft_keeps_its_files_reachable(self):
+        """22.09.2026 audit: a timeout after the draft was sent read as «Gelato відхилив», and the PDF link went
+        at once — the owner would send again (a second draft), and a draft made anyway had no files."""
+        vault.set("gelato_api_key", "fake-gelato-key")
+        gelato._geometry.clear()
+        gelato._products.clear()
+        self.addCleanup(vault.set, "gelato_api_key", None)
+        for failure, unclear in ((gelato.GelatoError("немає з'єднання з Gelato", 502, {"ambiguous": True}), True),
+                                 (gelato.GelatoError("Gelato відхилив дані", 400, {"upstream": 400}), False)):
+            kept, stopped = [], []
+
+            def fake_call(method, url, body=None, **kw):
+                if method == "GET" and "/cover-dimensions" in url:
+                    return self.COVER
+                if method == "GET":
+                    return self.PRODUCT
+                raise failure
+
+            with self.subTest(unclear=unclear), tempfile.TemporaryDirectory() as d:
+                root = Path(d)
+                png(root / "Cover.png", (466, 250), (1, 2, 3))
+                for i in range(1, 31):
+                    png(root / f"{i}.png", (100, 100), (i, i, i))
+                creator._validation_cache.clear()
+                address = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Austin",
+                           "postCode": "73301", "country": "US", "state": "TX"}
+                with mock.patch.object(gelato, "call", fake_call), \
+                        mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
+                        mock.patch.object(tunnel.FileTunnel, "stop", lambda self: stopped.append(self)), \
+                        mock.patch.object(tunnel.registry, "keep", lambda key, *a: kept.append(key)):
+                    with self.assertRaises(JobError) as caught:
+                        creator.create_gelato_draft([{"folder": str(root), "title": "4100000009 - Mia",
+                                                      "format": "hardcover_8x8"}], address, Job("t"))
+                if unclear:
+                    self.assertIn("результат невідомий", str(caught.exception))
+                    self.assertIn("4100000009 - Mia", str(caught.exception))       # what to look for in Gelato
+                    self.assertEqual((len(kept), stopped), (1, []))                # the files stay reachable
+                else:
+                    self.assertIn("відхилив", str(caught.exception))
+                    self.assertEqual((kept, len(stopped)), ([], 1))                # a real refusal cleans up
 
     def test_two_books_travel_as_items_of_one_draft(self):
         """Two books of one Etsy order (owner, 20.09.2026): one draft, one address, an item and a PDF of its
@@ -376,9 +449,8 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual([(k["orderId"], k["pageCount"]) for k in kept],
                          [("gelato-order-1", 30), ("gelato-order-1", 28)])
         record = journal(res["sendLog"])
-        self.assertEqual([s["step"] for s in record["steps"]],
-                         ["files", "catalog", "files", "catalog", "pdf", "pdf", "link", "readback", "readback",
-                          "printOrderRemembered", "archive", "archive"])
+        assert_steps(self, record, ["files", "catalog", "files", "catalog", "pdf", "pdf", "link", "readback",
+                                    "readback", "printOrderRemembered", "archive", "archive"])
         self.assertEqual([s["urls"] for s in record["steps"] if s["step"] == "link"],
                          [["https://fake.trycloudflare.com/book-1.pdf", "https://fake.trycloudflare.com/book-2.pdf"]])
         self.assertNotIn("fake-gelato-key", json.dumps(record))
@@ -466,7 +538,6 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertEqual(asked[0], "https://brand-new.trycloudflare.com/book.pdf")
 
     def test_journal_button_shows_the_newest_record(self):
-        from types import SimpleNamespace
         from studio import desktop, sendlog
         import os
         import time
@@ -510,6 +581,19 @@ class GelatoDraftFlow(unittest.TestCase):
             counts = creator.gelato_page_counts()
         gelato._products.clear()
         self.assertEqual(counts, {"hardcover_8x8": [28, 30, 32], "softcover_8x8": [28, 30, 32], "softcover_5x5": None})
+
+    def test_the_creator_page_shows_the_senders_own_words_about_length(self):
+        """The Order Creator had its own copy of this message, without «Скачайте з Canva …» (22.09.2026 audit)."""
+        gelato._products.clear()
+        self.addCleanup(gelato._products.clear)
+        valid = {"hardcover": [30, 32], "softcover": [28, 30]}
+        fake = lambda method, url, body=None, **kw: {"validPageCounts": valid["hardcover" if "hardcover" in url else "softcover"]}
+        with mock.patch.object(gelato, "call", fake):
+            res = creator._gelato_page_counts(SimpleNamespace())
+            said = creator.gelato_pages_problem("hardcover_8x8", 28)
+        self.assertEqual(res["problems"]["hardcover_8x8"], {"28": said})
+        self.assertIn("Скачайте з Canva 30 сторінок", said)
+        self.assertEqual(res["problems"]["softcover_8x8"], {})
 
     def test_canva_style_png_is_joined_without_touching_pixels(self):
         import struct
@@ -595,6 +679,36 @@ class DroppedFolders(unittest.TestCase):
             self.assertFalse((root / "evil.png").exists())
             self.assertEqual(sorted(p.name for p in (target / "Madelynn").iterdir()), ["1.png", "Cover.png"])
 
+    def test_a_folder_dropped_on_a_book_is_read_like_the_folder_dialog(self):
+        """The library's drop gets the dropped folder itself back — with its generated/ and book-text.json — and
+        the importer reads it by the same rules as «Імпорт з папки» (22.09.2026 audit: the drop had its own)."""
+        from studio import library
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            book = root / "session" / "Planes"
+            (book / "generated").mkdir(parents=True)
+            (book / "old").mkdir()
+            for name in ("generated/Cover.png", "generated/1.png", "generated/2-3.png", "old/5.png"):
+                png(book / name, (20, 20), (1, 2, 3))
+            (book / "book-text.json").write_text("{}", encoding="utf-8")
+            (book / "notes.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(creator.dropped_top(root / "session"), book)
+            self.assertEqual(creator.dropped_folder(root / "session"), book / "generated")
+            scan = library.scan_folder(creator.dropped_top(root / "session"))
+            self.assertEqual(sorted(scan["mapping"]), ["cover", "page1", "spread2"])
+            self.assertEqual(scan["text"]["name"], "book-text.json")          # not whichever JSON came last
+        self.assertEqual(creator._drop_rel("Planes/book-text.json", with_text=True), Path("Planes", "book-text.json"))
+        self.assertIsNone(creator._drop_rel("Planes/book-text.json"))           # the order card takes pictures only
+
+    def test_every_book_of_a_picked_order_gets_its_own_child(self):
+        """23.09.2026: «Заповнити із замовлення Etsy» named both books of a two-book order after the first child."""
+        order = {"receiptId": "4100000108", "items": [
+            {"variations": [{"name": "Child's Name", "value": "Sofia"}]},
+            {"variations": [{"name": "Child's Name", "value": "Jack."}]}]}
+        with mock.patch.object(profit, "picker_orders", lambda: [order]):
+            res = creator._etsy_orders(SimpleNamespace())
+        self.assertEqual([i["childName"] for i in res["orders"][0]["items"]], ["Sofia", "Jack"])
+
     def test_only_pictures_inside_the_session_folder_are_accepted(self):
         self.assertEqual(creator._drop_rel("Madelynn/Cover.png"), Path("Madelynn", "Cover.png"))
         for bad in ("../x.png", "C:/Windows/x.png", "a/../../x.png", "book/run.exe", "", "._Cover.png"):
@@ -615,7 +729,6 @@ class DroppedFolders(unittest.TestCase):
 
 class OpenUrlGuard(unittest.TestCase):
     def test_etsy_pages_never_open_on_this_computer(self):
-        from types import SimpleNamespace
         from studio import settings_api
         from studio.server import ApiError
         open_url = lambda url: settings_api._open_url(SimpleNamespace(json={"url": url}))

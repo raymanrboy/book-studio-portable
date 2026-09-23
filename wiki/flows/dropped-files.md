@@ -1,7 +1,7 @@
 ---
 title: Перетягування папок і ZIP-архівів
 type: flow
-updated: 2026-09-17
+updated: 2026-09-23
 code:
   - app/web/js/order-bits.js
   - app/studio/creator.py
@@ -22,9 +22,11 @@ code:
      по 3 одночасно, з прогресом; окремі файли без папки кладуться в `Файли/`.
 3. `POST /api/creator/drop/done {session}` → сервер повертає папку для роботи: найменш вкладену папку з
    `Cover.png`, інакше — єдину папку з картинками, інакше — корінь сеансу (`dropped_folder()`).
+   Для бібліотеки (`receiveDrop(…, { withText: true })` → `text=1` у кожному файлі й `whole: true`) —
+   **саму перетягнуту папку** (`dropped_top()`): імпорт читає й її `generated/`, `pages/` і `book-text.json`.
    Заодно стираються сеанси, старші за 2 години.
 4. Далі: у картці замовлення — розстановка сторінок; в Order Creator — перевірка; у паспорті книги —
-   «Імпорт з папки».
+   «Імпорт з папки» (так само для папки, ZIP і кількох файлів).
 
 ## Обмеження й захист
 
@@ -36,11 +38,11 @@ code:
 
 ## Де в коді
 
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `receiveDrop()`, `dropLabel()`, `isZipDrop()`, `isFolderDrop()`, `filesInDrop()`, `wireFolderDrop()`, `collect()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `DROPS`, `clear_drops()`, `_drop_root()`, `_drop_rel()`, `extract_zip()`, `dropped_folder()`, `_drop_file()`, `_drop_zip()`, `_drop_done()`, `MAX_DROP_FILE`, `MAX_DROP_ZIP`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()`, `collect()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `DROPS`, `clear_drops()`, `_drop_root()`, `_drop_rel()`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `_drop_file()`, `_drop_zip()`, `_drop_done()`, `MAX_DROP_FILE`, `MAX_DROP_ZIP`
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `takeDrop()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `dropFolder()`
-- [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `onDrop()`
+- [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `onDrop()`, `importDropped()`
 - Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`DroppedFolders`)
 
 ## Пов'язане

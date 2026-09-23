@@ -1,10 +1,11 @@
 ---
 title: Інтерфейс — будова і спільні помічники
 type: architecture
-updated: 2026-09-20
+updated: 2026-09-23
 code:
   - app/web/index.html
   - app/web/js/app.js
+  - app/web/js/info.js
   - app/web/js/lib.js
   - app/web/js/icons.js
   - app/web/js/handoff.js
@@ -54,7 +55,11 @@ code:
   (її `keep()` віддає false) — і власник опиняється в черзі.
 - Іконка «Замовлення» (і Alt+1) з іншої вкладки веде туди, де власник був у «Замовленнях»: у
   відкриту картку, якщо вона збережена, інакше в чергу (`ordersTarget()`, `lastOrders`).
-- `refreshInfo()` → `/api/app` (стан сервісів, кількість книг) для панелі та сторінок.
+- `refreshInfo()` → `/api/app` (стан сервісів, кількість книг) для панелі та сторінок — в окремому
+  `info.js` разом зі `store`, щоб сторінки не імпортували оболонку, яка їх сама завантажує; панель
+  перемальовується через `whenInfoChanges()`.
+- Тема й «мінімум анімацій» при запуску беруться з налаштувань програми однаково (браузер пам'ятає тему
+  лише для першого кадру); невдале збереження — повідомлення.
 
 ## Спільні помічники — `lib.js`
 
@@ -64,10 +69,10 @@ code:
 | Кнопки-піктограми з підказкою | `ib(icon, tip, attrs, {cls, kbd})`; спільна підказка `showTip()` / `hideTip()` (`.tip`: до 320 px, довша — у два рядки, не за край плашки; 19.09.2026) |
 | Сервер | `api()` (токен, JSON, `ApiError`), `media()` (посилання з токеном), `upload()` (XHR з прогресом), `runJob()` (4-й аргумент `keepGoing()` — перестати опитувати, коли результат уже не потрібен; `job.partial` у `onProgress` — те, що задача вже знайшла) |
 | Зовнішні посилання | `openExternal()` — через сервер, у звичайному браузері (Etsy заблоковано) |
-| Повідомлення | `toast()`, `modal()`, `confirmBox()`, `menu()`, `closeMenu()` |
+| Повідомлення | `toast()`, `modal()`, `confirmBox()` (`extra` — розмітка під текстом, напр. тексти, які буде збережено), `menu()`, `closeMenu()`, `topLayer()` |
 | Сегментований перемикач | `segHtml()`, `syncSeg()`, `setSeg()` |
 | Формати | `money()`, `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
-| Плавність | `fadeImages()` (декодування поза головним потоком), `slide()` (висота), `flip()` (переміщення карток), `perFrame()`, `keepFocus()`, `idle()`, `reducedMotion()` |
+| Плавність | `fadeImages()` (декодування поза головним потоком), `slide()` (висота), `flip()` (переміщення карток), `keepFocus()`, `idle()`, `reducedMotion()` |
 
 ## Інші модулі
 
@@ -105,6 +110,11 @@ code:
   вгорі (`{icon, label, tip, on, run(lb)}`). Повертає `{close, refresh}`: сторінку замінили — той, хто
   відкрив переглядач, перебудовує масив елементів **на місці** і кличе `refresh()`, і переглядач
   малює нову картинку. Колесо, перетягування з інерцією, ← →, Esc.
+- **Шари поверх сторінки** (з 23.09.2026): переглядач і діалоги — в одному шарі (`z-index` 950), тож
+  діалог, відкритий із переглядача («Чернетку вже створено»), стоїть над ним; меню 965, повідомлення 970,
+  підказки 1200. Клавіші (Esc, ← →) обробляє лише верхній (`topLayer()`): Esc спершу закриває діалог,
+  потім переглядач. До того діалоги й повідомлення з'являлися **під** переглядачем, а фокус ішов у
+  невидиму кнопку (аудит 22.09.2026). Тест `SharedNumbers` у `test_orders.py` тримає цей порядок.
 - `folderViewerItems(folder, total, sub, v)` — елементи переглядача для папки друку; `v` росте з кожною
   заміненою сторінкою й потрапляє в адресу картинки, бо прев'ю кешуються в браузері на 10 хвилин.
 
@@ -118,7 +128,9 @@ code:
   перефарбовують акцент у салатовий.
 - Радіуси за роллю: папір гострий (`--r-art`), елементи керування м'які (`--r-ctl`).
 - **60 кадрів/с**: анімуються лише `transform` і `opacity`, без розмиття; `data-motion="reduce"` і
-  `prefers-reduced-motion` вимикають анімації.
+  `prefers-reduced-motion` вимикають анімації однаково (тривалість, затримки й плавна прокрутка).
+- Розміри прев'ю від 1400 px, які просять сторінки, — лише ті, що сервер тримає (`images._LARGER`:
+  1400, 2600, 4096); тест `SharedNumbers` звіряє сторінки з сервером.
 - Групи класів: `.lib-toolbar` (панелі інструментів), `.ord-*` (замовлення), `.proof*`, `.strip*`
   (звірка), `.creator*`, `.spread-*` (Order Creator), `.book-*`, `.slot-*` (бібліотека),
   `.set-*` (налаштування), `.lightbox`, `.lb-*` (переглядач).
@@ -127,13 +139,14 @@ code:
 ## Де в коді
 
 - [app/web/index.html](../../app/web/index.html) — токен `__STUDIO_TOKEN__`, тема до першого кадру
-- [app/web/js/app.js](../../app/web/js/app.js) — `NAV`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `applyTheme()`, `applyMotion()`, `refreshInfo()`, `openThemeMenu()`
-- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`
+- [app/web/js/app.js](../../app/web/js/app.js) — `NAV`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
+- [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`, `finish()`
 - [app/web/js/lightbox.js](../../app/web/js/lightbox.js) — `openLightbox()`, `TAU`, `MAX_ZOOM`
-- [app/web/css/app.css](../../app/web/css/app.css) — токени кольорів на початку файлу
+- [app/web/css/app.css](../../app/web/css/app.css) — токени кольорів на початку файлу; `.lightbox`, `.modal-root`, `.menu`, `.toasts` (шари)
 
 ## Пов'язане
 

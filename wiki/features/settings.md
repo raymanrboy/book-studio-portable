@@ -1,7 +1,7 @@
 ---
 title: Налаштування
 type: feature
-updated: 2026-09-20
+updated: 2026-09-23
 code:
   - app/studio/settings_api.py
   - app/web/js/pages/settings.js
@@ -29,14 +29,24 @@ code:
   які сторінки показувати моделі; вимкнути можна, якщо здасться, що щось пропускається), модель
   (іконка вибору — коли в Ollama їх кілька, що бачать картинки), «у відеокарті», «Перевірити зв'язок»;
   Ollama не запущена → «Запустити» (програма й сама запускає її перед перевіркою). Блок малюється
-  одразу з налаштувань («перевірка стану…»), стан Ollama дотягується окремим запитом — Налаштування
-  не чекають її (на Windows вимкнена Ollama відповідає «ні» лише через 2 с).
+  одразу з налаштувань («перевірка стану…») — з обома вмикачами такими, як збережено (`prescan` приходить
+  у `GET /api/settings`; до 23.09.2026 «швидкий огляд» спершу малювався вимкненим), стан Ollama
+  дотягується окремим запитом — Налаштування не чекають її (на Windows вимкнена Ollama відповідає «ні»
+  лише через 2 с).
   Докладно — [text-check.md](text-check.md).
 - **Дані програми**: шлях до `app/data` і кнопка «Відкрити».
 
 Технічні значення (позиції Master, розміри artwork, product UID, курс EUR→USD, час життя посилання)
 навмисно не показуються і не редагуються з інтерфейсу — рішення власника. Маршрути
-`/api/settings/gelato` і `/api/settings/printify` лишилися, але інтерфейс їх не викликає.
+`/api/settings/gelato` і `/api/settings/printify`, яких інтерфейс не викликав, прибрано 23.09.2026.
+
+- Тема й «мінімум анімацій» збережені в налаштуваннях програми і обидва беруться звідти при запуску
+  (браузер пам'ятає тему лише для першого кадру); не вдалося зберегти — про це повідомлення.
+- Пошук ключів у старих програмах (`legacy_sources()`) розшифровує їхні файли лише тоді, коли ті
+  змінилися, а не при кожному відкритті Налаштувань (`_legacy_names()`).
+- **Тестовий сервер** (`app/tools/dev_server.py`, `core.SAMPLE`) не показує ключі зі старих програм і не
+  зберігає жодного ключа: «Це тестовий сервер на вигаданих даних — ключі тут не зберігаються» (з 23.09.2026;
+  до того його Налаштування пропонували імпортувати справжні ключі власника з Робочого столу).
 
 ## Ключі
 
@@ -51,7 +61,7 @@ cover і page_1…page_N, варіанти, розміри) → «Зробити
 ## Де в коді
 
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `oauthFlow()`, `pickMaster()`, `SECRET_LABELS`
-- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
+- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
 - [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `status()`, `import_session()`
 - [app/studio/textcheck.py](../../app/studio/textcheck.py) — `status()`, `start_ollama()`, `_save_settings()`, `_start()`

@@ -10,28 +10,20 @@ from . import core
 
 CREATE_NO_WINDOW = 0x08000000
 
-_PICKER_SCRIPT = r"""
+# The Windows dialog in a process of its own (Tk wants its own main thread): argv = folder|file, title, start folder.
+_DIALOG_SCRIPT = r"""
 import sys, tkinter as tk
 from tkinter import filedialog
+kind, title, initial = sys.argv[1], sys.argv[2], sys.argv[3] or None
 root = tk.Tk()
 root.withdraw()
 root.attributes('-topmost', True)
 root.update()
-path = filedialog.askdirectory(parent=root, title=sys.argv[1], initialdir=sys.argv[2] or None, mustexist=True)
-root.destroy()
-sys.stdout.write(path or '')
-"""
-
-
-_FILE_SCRIPT = r"""
-import sys, tkinter as tk
-from tkinter import filedialog
-root = tk.Tk()
-root.withdraw()
-root.attributes('-topmost', True)
-root.update()
-path = filedialog.askopenfilename(parent=root, title=sys.argv[1], initialdir=sys.argv[2] or None,
-                                  filetypes=[('PNG', '*.png'), ('Зображення', '*.png *.jpg *.jpeg *.webp')])
+if kind == 'folder':
+    path = filedialog.askdirectory(parent=root, title=title, initialdir=initial, mustexist=True)
+else:
+    path = filedialog.askopenfilename(parent=root, title=title, initialdir=initial,
+                                      filetypes=[('PNG', '*.png'), ('Зображення', '*.png *.jpg *.jpeg *.webp')])
 root.destroy()
 sys.stdout.write(path or '')
 """
@@ -46,30 +38,25 @@ def _console_python() -> str:
     return str(exe)
 
 
-def pick_folder(title: str, initial: str = "") -> str | None:
-    if initial and not Path(initial).is_dir():
-        initial = ""
+def _dialog(kind: str, title: str, initial: str) -> str | None:
+    folder = initial if initial and Path(initial).is_dir() else ""
     result = subprocess.run(
-        [_console_python(), "-c", _PICKER_SCRIPT, title, initial],
+        [_console_python(), "-c", _DIALOG_SCRIPT, kind, title, folder],
         capture_output=True, text=True, encoding="utf-8",
         creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
         timeout=3600,
     )
     path = (result.stdout or "").strip()
     return str(Path(path)) if path else None
+
+
+def pick_folder(title: str, initial: str = "") -> str | None:
+    return _dialog("folder", title, initial)
 
 
 def pick_file(title: str, initial: str = "") -> str | None:
     """One picture from the computer (a page freshly downloaded from Canva), in the usual Windows dialog."""
-    folder = initial if initial and Path(initial).is_dir() else ""
-    result = subprocess.run(
-        [_console_python(), "-c", _FILE_SCRIPT, title, folder],
-        capture_output=True, text=True, encoding="utf-8",
-        creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
-        timeout=3600,
-    )
-    path = (result.stdout or "").strip()
-    return str(Path(path)) if path else None
+    return _dialog("file", title, initial)
 
 
 def open_in_explorer(path: Path) -> None:

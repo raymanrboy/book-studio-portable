@@ -1,7 +1,7 @@
 ---
 title: Printify
 type: integration
-updated: 2026-09-20
+updated: 2026-09-23
 code:
   - app/studio/printify.py
 ---
@@ -45,18 +45,27 @@ code:
 
 ## Кеш завантажень
 
-`data/creator/upload-cache.json`: SHA-256 файлу → ID зображення. Перед повторним використанням
-перевіряється, що зображення ще є в Printify (`upload_exists()`).
+`data/creator/upload-cache.json`: SHA-256 файлу → ID зображення (останні 5000, `UPLOADS_KEPT`). Перед
+повторним використанням перевіряється, що зображення ще є в Printify (`upload_exists()`). Завантаження
+повторюється лише тоді, коли воно точно не дійшло (з'єднання відхилено, 429, 503); після тайм-ауту — ні,
+щоб не лишати в медіатеці Printify дублікати (з 23.09.2026).
 
 ## Синхронізація
 
-`all_orders()` читає всі замовлення магазину (по 50, до 4 сторінок паралельно); `slim_order()` лишає
+`all_orders()` читає всі замовлення магазину (по 50, до 4 сторінок паралельно, не більше
+`MAX_ORDER_PAGES` = 400 сторінок — більший магазин позначається неповним, `httpc.Listing`); `slim_order()` лишає
 тільки поля для зіставлення, статус і (з 17.09.2026) `shipments` — трек-номери після відправки
 (`carrier` кодом, напр. `usps`, `number`, `url`; без номера — не зберігаються). Вони вже є у списку
 замовлень, окремих запитів не треба. Статус `fulfilled`/`partially-fulfilled` або трек-номер переводить
 чек у вкладку з машинкою ([rules/order-stages.md](../rules/order-stages.md)).
 Замовлення з номером чека в назві товару чи `shop_order_id` зіставляється
 з чеком Etsy ([rules/reconciliation.md](../rules/reconciliation.md)).
+
+## Помилки
+
+`_human()` → `httpc.human()`, спільна з Gelato: 401/403 — токен (`code: printify_token`), 404, 429, 4xx,
+5xx; `extra` — `upstream` і `ambiguous` («результат невідомий, не повторювати»).
+`MANUAL_APPROVAL_NEEDED` — один текст «спершу підтвердіть ручне затвердження» для клієнта й відправок.
 
 ## Посилання
 
@@ -65,8 +74,8 @@ code:
 
 ## Де в коді
 
-- [app/studio/printify.py](../../app/studio/printify.py) — `_READ`, `_WRITE`, `_check()`, `call()`, `token()`, `shops()`, `product()`, `upload_exists()`, `all_orders()`, `slim_order()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `analyze_master()`, `_manual_approval()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `create_printify_draft()`, `build_printify_payload()`, `printify_order_payload()`, `matte_variant()`, `_master_fingerprint()`, `_remember_upload()`
+- [app/studio/printify.py](../../app/studio/printify.py) — `_READ`, `_WRITE`, `_check()`, `_human()`, `call()`, `token()`, `MAX_ORDER_PAGES`, `MANUAL_APPROVAL_NEEDED`, `shops()`, `product()`, `upload_exists()`, `all_orders()`, `slim_order()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `analyze_master()`, `_manual_approval()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `create_printify_draft()`, `build_printify_payload()`, `printify_order_payload()`, `matte_variant()`, `_master_fingerprint()`, `_remember_upload()`, `UPLOADS_KEPT`, `_printify_setup()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
 - [app/studio/profit.py](../../app/studio/profit.py) — `carrier_label()`, `CARRIERS`
 - Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`FakePrintify`, `PrintifyDraftFlow`), [app/tests/test_states.py](../../app/tests/test_states.py) (`SentStage`)

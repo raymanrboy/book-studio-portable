@@ -2,19 +2,9 @@
 import { api, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, closeMenu, hideTip } from './lib.js';
 import { isKept, stash, unstash, release } from './keep.js';
 import { waiting } from './handoff.js';
+import { store, refreshInfo, whenInfoChanges } from './info.js';
 
-export const store = { info: null };
-const listeners = new Set();
-export const onInfo = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
-
-export async function refreshInfo() {
-  try {
-    store.info = await api('/api/app');
-    updateSidebar();
-    listeners.forEach((fn) => fn(store.info));
-  } catch { /* offline overlay handles it */ }
-  return store.info;
-}
+whenInfoChanges(() => updateSidebar());
 
 // A minimised window or a newer navigation skips the animation; the DOM update still runs.
 const canTransition = () => !!document.startViewTransition && !reducedMotion() && !document.hidden;
@@ -103,14 +93,16 @@ function openThemeMenu(anchor) {
   const reduce = document.documentElement.dataset.motion === 'reduce';
   const setTheme = async (value) => {
     applyTheme(value);
-    try { await api('/api/settings/ui', { method: 'POST', body: { theme: value } }); } catch {}
+    try { await api('/api/settings/ui', { method: 'POST', body: { theme: value } }); }
+    catch (err) { toast(`Тему не збережено: ${err.message}`, 'error'); }
   };
   menu(anchor, [
     ...THEMES.map((t) => ({ label: t.label, icon: t.icon, on: currentTheme() === t.value, onClick: () => setTheme(t.value) })),
     '-',
     { label: 'Мінімум анімацій', icon: 'motion', on: reduce, onClick: async () => {
       applyMotion(!reduce);
-      try { await api('/api/settings/ui', { method: 'POST', body: { reduceMotion: !reduce } }); } catch {}
+      try { await api('/api/settings/ui', { method: 'POST', body: { reduceMotion: !reduce } }); }
+      catch (err) { toast(`Налаштування не збережено: ${err.message}`, 'error'); }
     } },
   ], { side: 'right' });
 }
@@ -273,7 +265,8 @@ async function boot() {
   await info;
   const ui = store.info?.ui;
   if (ui) {
-    if (!localStorage.getItem('bs-theme') && ui.theme) applyTheme(ui.theme);
+    // The saved settings decide both, the same way; the browser's copy only paints the first frame before they come.
+    if (ui.theme && ui.theme !== currentTheme()) applyTheme(ui.theme);
     applyMotion(!!ui.reduceMotion);
     updateSidebar();
   }

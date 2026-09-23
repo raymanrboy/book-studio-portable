@@ -1,7 +1,7 @@
 ---
 title: Перегляд інтерфейсу під час розробки
 type: dev
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/tools/dev_server.py
 ---
@@ -39,6 +39,9 @@ code:
   могла вказувати на копію, резервну чи перенесену папку даних, а `--sample` перезаписує знімок
   замовлень. До 22.09.2026 перевірявся лише один точний шлях (знайшов аудит). Ключів у тимчасовій
   папці немає, тож синхронізація при запуску не стартує і сервіси не викликаються.
+- **Ключів тут і не буде** (з 23.09.2026): сервер ставить `BOOK_STUDIO_SAMPLE=1`, і програма не показує
+  ключі зі старих програм на Робочому столі й не зберігає жодного («Це тестовий сервер на вигаданих
+  даних…»). Якщо папка все ж має `vault.json`, сервер не запускається й просить видалити папку вручну.
 - Серед вигаданих замовлень є **чек `4100000107` з двома замовленнями друку** (Printify + Gelato): так
   видно чип «+N у друці» і те, як рахується собівартість чека, розбитого між друкарнями
   ([reconciliation.md](../rules/reconciliation.md)).
@@ -68,7 +71,7 @@ code:
 
 ## Де в коді
 
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()`, `claim()`, `MARK`, `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`, `PORT`
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()` (`BOOK_STUDIO_SAMPLE`), `claim()`, `MARK`, `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`, `PORT`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (режим `--no-window`)
 
 ## Пов'язане

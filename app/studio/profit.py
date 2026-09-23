@@ -89,8 +89,24 @@ def normalize_receipt(r: dict) -> dict:
     }
 
 
+_snapshot = {"key": None, "data": None}
+_snapshot_lock = threading.Lock()
+
+
 def load_snapshot() -> dict:
-    return core.read_json(SNAPSHOT, {}) or {}
+    """The last sync's orders, parsed once per change of the file (opening one order card used to parse it
+    four times — 22.09.2026 audit). Callers only read it: a sync builds a new snapshot and saves that."""
+    try:
+        st = SNAPSHOT.stat()
+        # The file's own id too: every write_json() puts a new file in place, while its time of change
+        # moves in ~16 ms ticks — two saves within one tick would otherwise look alike.
+        key = (st.st_ino, st.st_mtime_ns, st.st_size)
+    except FileNotFoundError:
+        return {}
+    with _snapshot_lock:
+        if _snapshot["key"] != key:
+            _snapshot.update(key=key, data=core.read_json(SNAPSHOT, {}) or {})
+        return _snapshot["data"]
 
 
 def load_links() -> dict:
@@ -248,9 +264,18 @@ def _sync(job, full: bool = False) -> dict:
         "printifyShop": prev.get("printifyShop"),
         "etsyCursor": prev.get("etsyCursor"),
         "etsyFullAt": prev.get("etsyFullAt"),
+        # When each list was last loaded whole. A list that failed keeps its old orders and its old time:
+        # the archive must not read an order missing from a stale list as a deleted draft.
+        "loaded": dict(prev.get("loaded") or {}),
     }
     etsy_connected = bool(etsy.tokens())
     changed = None
+
+    def loaded(source: str, items, name: str) -> None:
+        if getattr(items, "complete", True):
+            snap["loaded"][source] = core.now_iso()
+        else:
+            warnings.append(f"{name}: завантажено лише останні {len(items)} — старіші не видно.")
 
     if etsy_connected:
         started = int(time.time())
@@ -276,6 +301,7 @@ def _sync(job, full: bool = False) -> dict:
             snap["etsyFullAt"] = started
         snap["etsyCursor"] = started
         snap["shopId"], snap["shopName"] = shop_id, shop_name
+        loaded("etsy", raw, "Etsy")
     else:
         snap["receipts"] = []
         warnings.append("Etsy не підключено — показано лише замовлення Printify.")
@@ -293,6 +319,7 @@ def _sync(job, full: bool = False) -> dict:
                                                                                f"Printify: сторінка {d} з {t}"))
             snap["printify"] = [printify.slim_order(p) for p in raw_p]
             snap["printifyShop"] = {"id": shop.get("id"), "title": shop.get("title")}
+            loaded("printify", raw_p, "Printify")
         except ApiError as err:
             warnings.append(f"Printify: {err}. Використано попередні дані.")
     else:
@@ -307,6 +334,7 @@ def _sync(job, full: bool = False) -> dict:
             if gelato.attach_shipments(slim_g, snap["gelato"]):
                 warnings.append("Gelato: не всі трек-номери вдалося прочитати — спробую при наступному оновленні.")
             snap["gelato"] = slim_g
+            loaded("gelato", raw_g, "Gelato")
         except ApiError as err:
             warnings.append(f"Gelato: {err}. Використано попередні дані.")
 

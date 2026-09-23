@@ -1,3 +1,4 @@
+# Tested on this computer (23.09.2026): Python 3.14.4, Pillow 12.2.0, img2pdf 0.6.3, cryptography 46.0.7.
 Pillow>=10
 img2pdf>=0.5
 cryptography>=41

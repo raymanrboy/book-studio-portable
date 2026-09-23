@@ -1,7 +1,7 @@
 ---
 title: Назви файлів — друк і бібліотека
 type: rule
-updated: 2026-09-20
+updated: 2026-09-23
 code:
   - app/studio/orders.py
   - app/studio/library.py
@@ -15,8 +15,9 @@ code:
 ## Експорт з Canva → папка для друку (`arrange_pages()`)
 
 1. Беруться PNG у папці (без прихованих).
-2. **Обкладинка** — файл зі словом `cover` у назві; якщо такого немає — єдина широка картинка
-   (ширина ≥ 1,4 × висоти). Кілька обкладинок або жодної → помилка «назвіть її Cover.png».
+2. **Обкладинка** — файл зі словом `cover`, `cober` чи `обкладин` у назві (те саме правило, що в
+   бібліотеці, `COVER_NAME`); якщо такого немає — єдина широка картинка (ширина ≥ 1,4 × висоти). Кілька
+   обкладинок або жодної → помилка «назвіть її Cover.png».
 3. Решта — за **останнім числом у назві** (`page_number()`: «12», «Madelynn - 12»,
    «12_upscayl_4x_ultrasharp» → 12). Немає числа → помилка з назвою файлу.
 4. Сортування за числом; однакові номери → «Сторінка N є двічі».
@@ -33,7 +34,10 @@ code:
 одразу видно як помилку. Для Gelato перевірка сама визначає довжину книги за найбільшим номером файлу
 (`_gelato_page_count()`: є `29.png` чи `30.png` → 30, інакше 28).
 
-## Імпорт у бібліотеку (`scan_folder()` і `mapFiles()` у паспорті)
+## Імпорт у бібліотеку (`scan_folder()`)
+
+Одні правила для кнопки «Імпорт з папки», перетягнутої папки, ZIP і кількох файлів (з 23.09.2026; до того
+перетягування мало власну копію правил у сторінці).
 
 | Назва (без розширення) | Куди |
 |---|---|
@@ -67,9 +71,8 @@ code:
 
 ## Де в коді
 
-- [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()`, `page_options()`, `pages_word()`, `page_number()`, `ranges()`, `_UPSCAYL`, `_LAST_NUMBER`
-- [app/studio/library.py](../../app/studio/library.py) — `scan_folder()`, `_UPSCAYL_TAIL`, `_NUM_RE`, `agent_guide()`
-- [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mapFiles()`, `IMG_RE`
+- [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()`, `page_options()`, `pages_word()`, `page_number()`, `ranges()`, `_LAST_NUMBER`
+- [app/studio/library.py](../../app/studio/library.py) — `scan_folder()`, `UPSCAYL_TAIL`, `COVER_NAME` (спільні з папкою для друку в orders.py), `_NUM_RE`, `agent_guide()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `expected_files()`, `_gelato_page_count()`, `_drop_rel()`, `DROPS`, `replace_page()`, `restore_page()`, `REPLACED`
 - Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`FolderScan`, `GelatoValidation`)
 

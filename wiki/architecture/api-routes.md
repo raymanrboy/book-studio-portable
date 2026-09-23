@@ -1,7 +1,7 @@
 ---
 title: Маршрути сервера
 type: reference
-updated: 2026-09-20
+updated: 2026-09-23
 code:
   - app/studio/archive.py
   - app/studio/server.py
@@ -30,13 +30,11 @@ code:
 | GET | `/api/ping` | none | `_ping` | lib.js (перевірка «зв'язок втрачено»), main.py (друга копія програми) |
 | POST | `/api/app/heartbeat` | token | `_heartbeat` | app.js кожні 20 с |
 | POST | `/api/app/bye` | none | `_bye` | app.js при закритті вікна (токен у тілі) |
-| GET | `/api/jobs/([0-9a-f]{12})` | token | `_job` | lib.js `runJob` |
+| GET | `/api/jobs/([0-9a-f]{12})` | token | `_job` | lib.js `runJob` (помилка задачі несе й `errorExtra` — напр. `code` ключа) |
 | GET | `/api/app` | token | `_app` | app.js `refreshInfo` |
 | GET | `/api/settings` | token | `_settings` | settings.js |
 | POST | `/api/settings/ui` | token | `_ui` | app.js (тема, анімації) |
 | POST | `/api/settings/etsy` | token | `_etsy_settings` | settings.js (адреса повернення) |
-| POST | `/api/settings/gelato` | token | `_gelato_settings` | не викликається з інтерфейсу (лишився після спрощення Налаштувань) |
-| POST | `/api/settings/printify` | token | `_printify_settings` | не викликається з інтерфейсу (лишився після спрощення Налаштувань) |
 | POST | `/api/secrets` | token | `_secret` | settings.js (зберегти / видалити ключ) |
 | POST | `/api/settings/legacy/import` | token | `_legacy_import` | settings.js (ключі зі старих програм) |
 | POST | `/api/app/open-data` | token | `_open_data` | settings.js |
@@ -61,7 +59,7 @@ code:
 | POST | `/api/settings/textcheck` | token | `_save_settings` | settings.js (вмикач, модель) |
 | POST | `/api/textcheck/start` | token | `_start` | settings.js «Запустити» Ollama |
 | POST | `/api/textcheck/warm` | token | `_warm` | orders.js `warmModel` (картка взяла файли — модель вантажиться у відеокарту наперед) |
-| POST | `/api/textcheck/passport` | token | `_passport` | orders.js `learnPassport` (тексти обкладинки й розворотів у паспорт книги — лише кліком власника) |
+| POST | `/api/textcheck/passport` | token | `_passport` | orders.js `learnPassport` (тексти обкладинки й розворотів у паспорт книги — лише кліком власника; з `preview` лише показує, якими вони стануть, нічого не зберігаючи) |
 
 ## Бібліотека — [library.py](../../app/studio/library.py)
 
@@ -102,13 +100,13 @@ code:
 | POST | `/api/creator/printify/create` | token | `_create_printify` | creator.js (фонова задача) |
 | POST | `/api/creator/printify/reprint` | token | `_reprint_printify` | creator.js `create` у режимі передруку з архіву (фонова задача; нове замовлення на ту саму книгу; з відправки, що не стала замовленням, — 409) |
 | POST | `/api/creator/gelato/create` | token | `_create_gelato` | creator.js (фонова задача; з `reprintOf` — чернетка-передрук з файлів архіву, лише з книги, що справді друкувалась) |
-| GET | `/api/creator/gelato/page-counts` | token | `_gelato_page_counts` | creator.js `loadPageCounts` (скільки сторінок Gelato друкує в кожному форматі — з його каталогу) |
+| GET | `/api/creator/gelato/page-counts` | token | `_gelato_page_counts` | creator.js `loadPageCounts` (скільки сторінок Gelato друкує в кожному форматі — з його каталогу; `problems` — готовий текст для кожної довжини, яку він не друкує) |
 | POST | `/api/creator/gelato/close-tunnel` | token | `_close_tunnel` | creator.js |
 | GET | `/api/creator/etsy-orders` | token | `_etsy_orders` | creator.js `fromEtsy` |
 | POST | `/api/creator/open-folder` | token | `_open_folder` | creator.js, book.js |
-| POST | `/api/creator/drop/file` | token | `_drop_file` | order-bits.js `receiveDrop` |
+| POST | `/api/creator/drop/file` | token | `_drop_file` | order-bits.js `receiveDrop` (`text=1` — ще й `.json` для бібліотеки) |
 | POST | `/api/creator/drop/zip` | token | `_drop_zip` | order-bits.js `receiveDrop` |
-| POST | `/api/creator/drop/done` | token | `_drop_done` | order-bits.js `receiveDrop` |
+| POST | `/api/creator/drop/done` | token | `_drop_done` | order-bits.js `receiveDrop` (`whole` — сама перетягнута папка, для бібліотеки) |
 | GET | `/media/folder` | media | `_folder_media` | order-bits.js, creator.js, orders.js (`?path=&file=&w=`) |
 | GET | `/media/folder-spread` | media | `_folder_spread` | order-bits.js `folderViewerItems` (`?path=&left=&right=&h=`) |
 

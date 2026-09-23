@@ -1,7 +1,7 @@
 ---
 title: Запуск і завершення програми
 type: architecture
-updated: 2026-09-19
+updated: 2026-09-23
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -43,7 +43,10 @@ code:
   - процес вікна завершився і 12 с не було серцебиття;
   - запасний браузер без процесу мовчить 10 хвилин.
 - Перед виходом чекає завершення фонових задач (`jobs.any_running()`; перевірку тексту — ні, вона лише читає) і тимчасових посилань Gelato
-  (`tunnel.registry.active()`), потім закриває посилання й сервер.
+  (`tunnel.registry.active()`), потім закриває посилання й сервер. Якщо програму вбито чи вона впала,
+  `cloudflared.exe` однаково зникає разом із нею (Windows job object, `tunnel._ends_with_us()`).
+- Вікна Windows «Оберіть папку» / «Оберіть сторінку» — окремий процес Python з Tk (одна спільна
+  програмка для обох, `_dialog()`), бо Tk хоче власний головний потік.
 
 ## Режим без вікна (розробка)
 
@@ -60,9 +63,9 @@ code:
 
 - [app/Book Studio.pyw](<../../app/Book Studio.pyw>) — `_message()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`, `_running_instance()`
-- [app/studio/desktop.py](../../app/studio/desktop.py) — `open_app_window()`, `find_browser()`
+- [app/studio/desktop.py](../../app/studio/desktop.py) — `open_app_window()`, `find_browser()`, `pick_folder()`, `pick_file()`, `_dialog()`
 - [app/studio/server.py](../../app/studio/server.py) — `start()`, `_heartbeat()`, `_bye()`, `_State`
-- [app/studio/tunnel.py](../../app/studio/tunnel.py) — `cleanup_stale()`
+- [app/studio/tunnel.py](../../app/studio/tunnel.py) — `cleanup_stale()`, `_ends_with_us()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `forget_old_form()`, `clear_drops()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `startup_sync()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `refresh_quietly()`

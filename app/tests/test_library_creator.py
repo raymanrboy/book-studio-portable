@@ -108,6 +108,38 @@ class NothingIsLostWhenAWriteFails(unittest.TestCase):
         self.assertIsNone(library.load(self.book_id)["slots"]["spread2"].get("image"))
 
 
+class JsonFiles(unittest.TestCase):
+    """22.09.2026 audit: the .bak brought a removed file back; a .bak copy that failed was not said."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.path = Path(self.tmp.name) / "states.json"
+
+    def test_a_damaged_file_is_read_from_its_copy_a_removed_one_is_gone(self):
+        core.write_json(self.path, {"n": 1})
+        core.write_json(self.path, {"n": 2})
+        self.path.write_text("{broken", encoding="utf-8")
+        with self.assertLogs("studio", "WARNING"):
+            self.assertEqual(core.read_json(self.path, {}), {"n": 1})
+        self.path.unlink()
+        self.assertEqual(core.read_json(self.path, {}), {})
+
+    def test_a_failed_backup_copy_is_logged_and_the_write_still_happens(self):
+        core.write_json(self.path, {"n": 1})
+        real = core._replace
+
+        def locked(src, dst, copy_only=False):
+            if copy_only:
+                raise PermissionError("the .bak is held by another program")
+            return real(src, dst, copy_only)
+
+        with mock.patch.object(core, "_replace", locked), self.assertLogs("studio", "WARNING") as logged:
+            core.write_json(self.path, {"n": 2})
+        self.assertIn("older state", logged.output[0])
+        self.assertEqual(core.read_json(self.path), {"n": 2})
+
+
 class PrintifyValidation(unittest.TestCase):
     def setUp(self):
         self._saved = core.settings.get()
@@ -127,6 +159,30 @@ class PrintifyValidation(unittest.TestCase):
         res = creator.validate("printify", str(self.root))
         self.assertTrue(res["ok"], res["errors"])
         self.assertEqual(res["found"], 25)
+
+    def test_a_newer_check_of_the_folder_stops_the_older_one(self):
+        """Quick page replacements each start a full check: the older ones stop instead of running side by
+        side (22.09.2026 audit). A send's own check is never stopped."""
+        from studio import images
+        from studio.jobs import Job, JobError
+        real, calls = images.check_png, []
+
+        def check(path, **kw):
+            calls.append(path.name)
+            if len(calls) == 1:   # the page asks again while this check is on its first file
+                creator._validating[("printify", str(self.root.resolve()))] += 1
+            return real(path, **kw)
+
+        with mock.patch.object(images, "check_png", check), self.assertRaises(JobError):
+            creator.validate("printify", str(self.root), Job("t"))
+        self.assertLess(len(calls), 25)
+        with mock.patch.object(images, "check_png", check):
+            self.assertTrue(creator.validate("printify", str(self.root))["ok"])  # no job: a send's check
+
+    def test_the_result_is_the_callers_own(self):
+        first = creator.validate("printify", str(self.root))
+        first["files"].clear()
+        self.assertEqual(creator.validate("printify", str(self.root))["found"], 25)
 
     def test_missing_page_blocks(self):
         (self.root / "17.png").unlink()
@@ -263,6 +319,17 @@ class ReplacePage(unittest.TestCase):
         res = creator.replace_page(str(self.folder), "7.png", str(self.fresh))   # free again once it ends
         self.assertEqual(res["file"], "7.png")
 
+    def test_two_sends_of_one_folder_both_hold_it(self):
+        """The same folder sent to Printify and Gelato at once: the first to finish must not free the folder
+        while the second still reads it (22.09.2026 audit)."""
+        with creator._while_sending([str(self.folder)]):
+            with creator._while_sending([str(self.folder)]):
+                pass                                   # the quicker send is done…
+            with self.assertRaises(ApiError):          # …the other still reads the pages
+                creator.replace_page(str(self.folder), "7.png", str(self.fresh))
+        self.assertEqual(creator.replace_page(str(self.folder), "7.png", str(self.fresh))["file"], "7.png")
+        self.assertEqual(creator._sending, {})
+
     def test_a_page_of_the_wrong_size_is_caught_by_the_usual_check(self):
         """Printify wants 4000x4000 (here 40x40): a page straight from Canva, without Upscayl, must not
         pass quietly — the file check says so right after the replacement."""
@@ -339,6 +406,49 @@ class SafetyRails(unittest.TestCase):
                              ("POST", "shops/1/orders/abc/send_to_production.json")):
             with self.assertRaises(ApiError, msg=f"{method} {path}"):
                 printify._check(method, path)
+
+    def test_a_create_is_never_sent_twice_after_an_unclear_failure(self):
+        """A POST that may have reached the printer (timeout, dropped connection, 500/502/504) is not repeated —
+        a second one would be a second product, image or order. One that certainly did not arrive (refused
+        connection, 503, 429) is; so is every read, and a search sent as a POST."""
+        import socket
+        import urllib.error
+        from studio import httpc
+
+        def attempts(method, failure, **kw):
+            calls = []
+
+            def urlopen(req, timeout=None):
+                calls.append(req.get_method())
+                raise failure
+            with mock.patch("urllib.request.urlopen", urlopen), mock.patch("time.sleep"):
+                with self.assertRaises(httpc.HttpError) as caught:
+                    httpc.request(method, "https://api.example.test/x", json_body={}, retries=3, **kw)
+            return len(calls), caught.exception.ambiguous
+
+        def status(code):
+            return urllib.error.HTTPError("https://api.example.test/x", code, "x", {}, None)
+
+        self.assertEqual(attempts("POST", socket.timeout("timed out")), (1, True))
+        self.assertEqual(attempts("POST", status(500)), (1, True))
+        self.assertEqual(attempts("POST", status(504)), (1, True))
+        self.assertEqual(attempts("POST", status(503)), (3, False))
+        self.assertEqual(attempts("POST", urllib.error.URLError(ConnectionRefusedError())), (3, False))
+        self.assertEqual(attempts("GET", socket.timeout("timed out")), (3, True))
+        self.assertEqual(attempts("POST", socket.timeout("timed out"), idempotent=True), (3, True))
+
+    def test_both_printers_read_a_failure_alike(self):
+        from studio import httpc
+        for err in (httpc.HttpError("x", status=502, ambiguous=True), httpc.HttpError("x", ambiguous=True)):
+            for provider in (printify, gelato):
+                with self.subTest(provider=provider.__name__, status=err.status):
+                    human = provider._human(err, "Створення")
+                    self.assertTrue(human.extra["ambiguous"])
+                    self.assertEqual(human.extra["upstream"], err.status)
+                    self.assertTrue(creator._unknown_outcome(human))
+        refused = gelato._human(httpc.HttpError("x", status=400, body="bad address"), "Створення")
+        self.assertFalse(creator._unknown_outcome(refused))
+        self.assertIn("bad address", str(refused))
 
     def test_gelato_only_drafts(self):
         self.assertTrue(gelato._allowed("POST", f"{gelato.ORDER_API}/orders", {"orderType": "draft"}))

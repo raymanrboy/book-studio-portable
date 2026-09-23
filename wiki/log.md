@@ -3,6 +3,32 @@
 Нові записи — вгорі. Формат заголовка: `## [РРРР-ММ-ДД] вид | що сталося`
 (вид: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Правила — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-23] update | Виправлення за власним аудитом (усе, крім обліку)
+
+- **«Оновити паспорт»** більше не псує тексти: ім'я — лише цілим словом і лише там, де паспорт мав
+  `{Name}`; перед збереженням видно, що саме збережеться.
+- **Архів** вірить лише свіжо завантаженому списку своєї друкарні (`loaded` у знімку); список, що не
+  завантажився чи обрізався на межі, нічого не доводить.
+- **Gelato**: невідомий результат створення чернетки — не «відхилив», посилання лишається. Мережевий клієнт
+  не повторює POST, який міг дійти; Printify і Gelato читають помилки однаково (`httpc.human()`).
+- **Номер чека** — окреме поле книги; `cloudflared` закривається разом із програмою навіть після збою;
+  сервер перегляду не бере ключів; діалоги — поверх переглядача; імпорт у бібліотеку — одні правила;
+  «свій текст» і ім'я дитини — однаково в картці й перевірці (`wording.py`); `.bak` видаленого файлу
+  більше не читається; перевірка вікі звіряє кожну згадку чисел.
+- Відкладене з обліком і свідомо залишене — у [decisions.md](decisions.md).
+- Оновлено: [features/text-check.md](features/text-check.md), [features/archive.md](features/archive.md),
+  [features/order-creator.md](features/order-creator.md), [features/orders.md](features/orders.md),
+  [features/library.md](features/library.md), [features/settings.md](features/settings.md),
+  [flows/book-import.md](flows/book-import.md), [flows/dropped-files.md](flows/dropped-files.md),
+  [rules/file-naming.md](rules/file-naming.md), [rules/sync-policy.md](rules/sync-policy.md),
+  [integrations/gelato.md](integrations/gelato.md), [integrations/printify.md](integrations/printify.md),
+  [integrations/etsy.md](integrations/etsy.md), [architecture/server.md](architecture/server.md),
+  [architecture/data.md](architecture/data.md), [architecture/frontend.md](architecture/frontend.md),
+  [architecture/runtime.md](architecture/runtime.md), [architecture/api-routes.md](architecture/api-routes.md),
+  [security.md](security.md), [dev/testing.md](dev/testing.md), [dev/preview.md](dev/preview.md),
+  [dev/wiki-rules.md](dev/wiki-rules.md), [code-map.md](code-map.md), [decisions.md](decisions.md),
+  [index.md](index.md), [plans/open-questions.md](plans/open-questions.md).
+
 ## [2026-09-22] update | Виправлення за зовнішнім аудитом коду
 
 - Перевірено по коду знахідки аудиту, який передав колега власника, і виправлено те, що справді

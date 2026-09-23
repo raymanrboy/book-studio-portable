@@ -1,7 +1,7 @@
 ---
 title: Замовлення — черга і картка замовлення
 type: feature
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
@@ -43,8 +43,9 @@ code:
   «назад» і Esc у картці, іконка «Замовлення» з іншої сторінки ведуть туди ж, а не на «Нові»; рядки при
   поверненні не «виїжджають» заново (`queueState`). Лише в пам'яті — програма стартує з «Нових».
 - Оновлення: сторінка сама **не** синхронізує. Якщо відкрити її під час синхронізації після запуску,
-  вона дочекається її (`runningSync()` → `watchSync()`). Кнопка запускає нову (`syncOrders()`).
-- Після оновлення рядки, що змістилися, на 0,45 с не клікаються (`inert`) — щоб клік не влучив
+  вона дочекається її; кнопка запускає нову. Це одна спільна з вибором замовлення в Order Creator
+  функція (`orderSync()`), не дві копії.
+- Після оновлення рядки, що змістилися, на 0,45 с не клікаються (`holdClicks()`) — щоб клік не влучив
   в іншого покупця.
 - Етапи, статус і трек-номери рахує сервер — [rules/order-stages.md](../rules/order-stages.md).
 
@@ -82,7 +83,10 @@ code:
 - **Персоналізація**: усі поля рівно так, як їх повертає Etsy (`dl.ord-fields`), значення жирні,
   біля кожного — копіювання. Поле з ім'ям дитини — більшим (`.is-name`). Поле формату обкладинки
   (`isFormatField()`) — без копіювання: воно лише вибирає друкарню. Присвята не `DEFAULT` →
-  позначка «свій текст» (`isCustomText()`). Кілька книг у замовленні → перемикач «Книга 1 / Книга 2»
+  позначка «свій текст» (`isCustomText()`). Що з полів «свій текст» і яке з них — ім'я дитини, вирішує
+  сервер (`custom`, `isName` у `orders.enrich()`, правила з `wording.py`) — тими самими правилами, що й
+  перевірка тексту: «“DEFAULT “» чи «Dedication and Closing Default» — не свій текст; ім'я «Leo.» — це Leo
+  (аудит 22.09.2026: картка й перевірка вирішували по-різному). Кілька книг у замовленні → перемикач «Книга 1 / Книга 2»
   (такий самий є над кроком «Файли з Canva»), кожна проходить шлях окремо — див. нижче.
 - **Повідомлення покупця**, якщо є.
 - **Доставка**: адреса з Etsy.
@@ -118,7 +122,9 @@ code:
      стару), **повторна перевірка файлів** і **перезапуск перевірки тексту** (модель перепитає лише цю
      сторінку), позначки «це не помилка» цієї сторінки забуваються. Поруч з'являється «Повернути» —
      попередня сторінка чекає в прихованій підпапці `.replaced`. Якщо чернетку вже створено — питання,
-     бо в друкарні лежить стара сторінка. Для Printify сторінка має бути 4000×4000: невиправлений
+     бо в друкарні лежить стара сторінка; картка знає це й після перезапуску програми (`atPrinter` з
+     архіву). Питання й будь-яка помилка заміни з'являються **поверх переглядача** (з 23.09.2026; раніше
+     ховалися під ним, а клавіші йшли невидимому вікну). Для Printify сторінка має бути 4000×4000: невиправлений
      розмір покаже перевірка файлів («проженіть через Upscayl»).
      **«Повернути» переживає вихід з картки й перезапуск програми** (з 22.09.2026): чи є що повертати,
      каже перевірка файлів (ознака `replaced` на кожній сторінці), а не пам'ять відкритої сторінки —
@@ -180,8 +186,9 @@ code:
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — спільні з [архівом замовлень](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`, `is_placed()`, `placed_orders()`, `carrier_label()`
-- [app/studio/archive.py](../../app/studio/archive.py) — `earlier_sends()`, `_reuse()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
+- [app/studio/archive.py](../../app/studio/archive.py) — `earlier_sends()`, `at_printer()`, `_reuse()`
+- [app/studio/wording.py](../../app/studio/wording.py) — `custom_text()`, `clean_name()` (поля «свій текст» і ім'я дитини)
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`, `finish()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `guess_child_name()`, `gelato_pages_problem()`

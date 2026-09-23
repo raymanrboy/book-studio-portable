@@ -7,7 +7,7 @@ import {
 import { openLightbox } from '../lightbox.js';
 import {
   STAGE_LABEL, providerName, countryName, addressFromEtsy, spreadsOf, folderViewerItems, smoothWheel, trackChips,
-  statusChip, receiptCopy, copyChip, isCustomText, isNameField, isFormatField,
+  statusChip, receiptCopy, copyChip, isCustomText, isNameField, isFormatField, childOf as childOfTitle,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 
@@ -15,7 +15,7 @@ import { give } from '../handoff.js';
 const THUMB = 360;
 const file = (e, name, w) => media('/media/folder', { path: e.folder, file: name, w });
 /** The child's name from the title "4100000001 - Emma". */
-const childOf = (e) => ((e.title || '').split(' - ').slice(1).join(' - ') || '').trim();
+const childOf = (e) => childOfTitle(e.title);
 const printerChip = (e) => html`<span class="chip svc-${e.provider}">${ic(e.provider, 'icon-s')}${providerName(e.provider)}</span>`;
 
 /** How long the files stay: marked "keep", counting down, or waiting for the order to be shipped. */
@@ -139,7 +139,7 @@ async function mountBook(view, id) {
     const cover = (e.files || []).find((f) => f.file === 'Cover.png') || {};
     const ratio = cover.width ? cover.width / cover.height : 1.9;
     const half = (n) => (n === null ? html`<div class="half blank"></div>` : html`<div class="half"><img data-fade loading="lazy" decoding="async" src="${file(e, `${n}.png`, THUMB)}" alt=""></div>`);
-    const notes = (it.variations || []).filter((v) => !isNameField(v, it) && !isFormatField(v));
+    const notes = (it.variations || []).filter((v) => !isNameField(v) && !isFormatField(v));
     const name = it.childName || child;
     return html`<section class="card card-pad stack-l">
       <div class="row"><h3 class="card-title grow">Що пішло в друк</h3></div>
@@ -202,7 +202,7 @@ async function mountBook(view, id) {
       <div class="row"><h3 class="card-title grow">Персоналізація</h3></div>
       ${vars.length ? html`<dl class="ord-fields">${vars.map((v, i) => html`
         <dt>${v.name}${isCustomText(v) ? html`<span class="chip chip-amber">свій текст</span>` : ''}</dt>
-        <dd class="${isCustomText(v) ? 'custom' : ''} ${isNameField(v, it) ? 'is-name' : ''}"><span>${v.value}</span>${isFormatField(v) ? '' : ib('copy', 'Копіювати', `data-copy="${i}"`, { cls: 'sm' })}</dd>`)}</dl>`
+        <dd class="${isCustomText(v) ? 'custom' : ''} ${isNameField(v) ? 'is-name' : ''}"><span>${v.value}</span>${isFormatField(v) ? '' : ib('copy', 'Копіювати', `data-copy="${i}"`, { cls: 'sm' })}</dd>`)}</dl>`
         : html`<div class="faint">Покупець нічого не вказав.</div>`}
     </section>`;
   }

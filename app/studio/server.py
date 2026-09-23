@@ -272,8 +272,6 @@ class _Handler(BaseHTTPRequestHandler):
             for k, v in headers.items():
                 self.send_header(k, v)
             self.end_headers()
-            if self.command == "HEAD":
-                return
             if response.file is not None:
                 with open(response.file, "rb") as f:
                     shutil.copyfileobj(f, self.wfile, 1024 * 256)

@@ -28,6 +28,7 @@ class Job:
         self.result: Any = None
         self.partial: Any = None  # what is already known while the job runs (the card shows it as it comes)
         self.error: str | None = None
+        self.error_extra: dict = {}  # an ApiError's extras (e.g. {"code": "printify_token"}): the page acts on them
         self.started = time.time()
         self.finished: float | None = None
         self._lock = threading.Lock()
@@ -58,6 +59,7 @@ class Job:
                 "partial": self.partial,
                 "result": self.result,
                 "error": self.error,
+                "errorExtra": self.error_extra,
                 "elapsed": round((self.finished or time.time()) - self.started, 1),
             }
 
@@ -91,6 +93,7 @@ class Jobs:
                 with job._lock:
                     job.status = "error"
                     job.error = str(err)
+                    job.error_extra = dict(getattr(err, "extra", None) or {})
             except Exception as err:  # unexpected — keep details in the log
                 core.log.error("Job %s failed:\n%s", kind, traceback.format_exc())
                 with job._lock:

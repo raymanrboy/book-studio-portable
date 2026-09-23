@@ -13,14 +13,13 @@ import uuid
 from collections import Counter
 from pathlib import Path
 
-from . import archive, core, creator, images, library, profit, reconcile
+from . import archive, core, creator, images, library, profit, reconcile, wording
 from .server import ApiError, Request, route
 
 PRINTIFY_PAGES = 24
 # The small book (14×14 cm): Etsy calls it 5" × 5" (the owner's listings), elsewhere 5.5" or 14 × 14 cm.
 _SMALL = re.compile(r'5[.,]5|(?<![\d.,])5\s*(?:"|″|”|&quot;|in\b\.?|inch(?:es)?)?\s*[x×х*]\s*5(?![\d.,])'
                     r"|14\s*(?:cm|см)?\s*[x×х*]\s*14", re.I)
-_UPSCAYL = re.compile(r"_upscayl.*$", re.I)
 _LAST_NUMBER = re.compile(r"(\d+)(?=\D*$)")
 
 
@@ -85,6 +84,9 @@ def enrich(order: dict, books: dict[str, dict]) -> dict:
         item["book"] = book_brief(books.get(item.get("listingId") or ""))
         item["plan"] = plan_for(item, country)
         item["childName"] = creator.guess_child_name([item])
+        for v in item.get("variations") or []:
+            v["custom"] = wording.custom_text(v)  # «свій текст»: the text check reads it by the same rule
+            v["isName"] = bool(item["childName"]) and wording.clean_name(v.get("value")) == item["childName"]
     first = (order.get("items") or [{}])[0]
     order["book"], order["plan"] = first.get("book"), first.get("plan")
     order["childName"] = creator.guess_child_name(order.get("items") or [])
@@ -96,7 +98,7 @@ def enrich(order: dict, books: dict[str, dict]) -> dict:
 
 def page_number(stem: str) -> int | None:
     """Page number in a file name: "12", "Madelynn - 12", "12_upscayl_4x_ultrasharp" -> 12."""
-    stem = _UPSCAYL.sub("", stem)
+    stem = library.UPSCAYL_TAIL.sub("", stem)
     m = _LAST_NUMBER.search(stem)
     return int(m.group(1)) if m else None
 
@@ -131,7 +133,7 @@ def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
                    and not p.name.startswith(".")), key=lambda p: p.name.lower())
     if not pngs:
         raise ApiError("У папці немає PNG-файлів.")
-    covers = [p for p in pngs if "cover" in p.stem.lower()]
+    covers = [p for p in pngs if library.COVER_NAME.search(library.UPSCAYL_TAIL.sub("", p.stem))]
     if len(covers) > 1:
         raise ApiError(f"Кілька обкладинок: {', '.join(p.name for p in covers)}. Залиште одну.")
     rest = [p for p in pngs if p not in covers]
@@ -208,6 +210,9 @@ def _one(req: Request):
     order["buyerMessage"] = profit.plain(receipt.get("message_from_buyer"))
     # a send of this order that never went to print (cancelled, a deleted draft): its files can be taken again
     order["earlierSends"] = archive.earlier_sends(rid)
+    # a draft or a book of it already at a printer: replacing a page there first asks (the card's own
+    # memory of a send is gone after a restart)
+    order["atPrinter"] = archive.at_printer(rid)
     return enrich(order, books_by_listing())
 
 

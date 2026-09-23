@@ -104,7 +104,9 @@ def prune_cache_quietly() -> None:
         core.log.exception("Preview cache not pruned")
 
 
-_LARGER = (1400, 2600, 4096)  # preview sizes the UI already asks for; a smaller one can be cut from these
+# Preview sizes the UI asks for from 1400 up (a smaller one is cut from these); a test holds the pages to
+# them (tests/test_orders.py SharedNumbers), so a new size is not a new file per picture.
+_LARGER = (1400, 2600, 4096)
 
 
 def _cached(path: Path, stat, max_side: int) -> tuple[str, Path]:

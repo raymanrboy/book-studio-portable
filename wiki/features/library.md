@@ -1,7 +1,7 @@
 ---
 title: Бібліотека книг і паспорт книги
 type: feature
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/studio/library.py
   - app/web/js/pages/library.js
@@ -48,8 +48,11 @@ code:
   скопіювати весь текст або як JSON), «Ще»: оновити з Etsy, фото лістингу як заставка, посилання на Canva,
   експорт файлів у папку, відкрити папку книги, архів, видалити (у кошик).
 - **Перетягування**: файл на місце → туди; широка картинка на половину розвороту → цілий розворот;
-  два файли на розворот → ліва й права; ZIP → розпакування й «Імпорт з папки» (з текстом);
-  папка або кілька файлів → розкладання за назвами (`mapFiles()`); один `.json` → текст.
+  два файли на розворот → ліва й права; один `.json` → текст. **Папка, ZIP або кілька файлів**
+  (перетягнуті чи через «Додати файли») → копія в програму → той самий діалог «Імпорт з папки» і ті самі
+  правила сервера (`scan_folder()`), що й кнопка «Імпорт з папки» (`importDropped()`). До 23.09.2026
+  перетягування мало власну копію правил у сторінці (`mapFiles()`) і розкладало інакше: брало будь-який
+  останній `.json` і картинки з будь-яких підпапок (аудит 22.09.2026).
 - **Частковий набір** — нормально: що є, стає на місце; чого немає, лишається порожнім
   (картинки без тексту, лише частина сторінок, хвости Upscayl у назвах).
 - **Переглядач**: клік по ілюстрації; T — текст сторінки; кнопка — відкрити оригінал у Windows.
@@ -86,9 +89,9 @@ Asset: `{id, file, originalName, width, height, bytes, addedAt, lqip}`. `rev` з
 
 - [app/studio/library.py](../../app/studio/library.py) — `load()`, `save()`, `summary()`, `completeness()`, `all_books()`, `_store_asset()`, `_set_asset()`, `_parse_slot()`, `scan_folder()`, `parse_text_json()`, `export_text_json()`, `export_book()`, `agent_guide()`, `_backfill_lqip()`, `SLOT_KEYS`, `TEXT_KEYS`, `GUIDE_NAME`
 - [app/web/js/pages/library.js](../../app/web/js/pages/library.js) — `mount()`, `card()`, `apply()`, `openAddBook()`, `saveGuide()`, `copyGuide()`, `SORTS`
-- [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mount()`, `renderHero()`, `renderCover()`, `rowHtml()`, `editText()`, `uploadTo()`, `mapFiles()`, `importFiles()`, `importFolder()`, `importTextJson()`, `canvaDialog()`, `lightboxItems()`, `onDrop()`
+- [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mount()`, `renderHero()`, `renderCover()`, `rowHtml()`, `editText()`, `uploadTo()`, `importDropped()`, `importFolder()`, `importTextJson()`, `canvaDialog()`, `lightboxItems()`, `onDrop()`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `lqip()`, `display_size()`, `compose_spread()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `isZipDrop()`, `isFolderDrop()`, `filesInDrop()`, `receiveDrop()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `receiveDrop()` (з `withText`: разом із JSON, назад — сама перетягнута папка)
 - Тести: [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`TextJson`, `FolderScan`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PreparationGuide`, `PartialBookImport`)
 
 ## Пов'язане

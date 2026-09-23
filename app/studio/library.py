@@ -159,7 +159,9 @@ def all_books() -> list[dict]:
             if folder.is_dir() and re.fullmatch(r"[0-9a-f]{32}", folder.name):
                 try:
                     books.append(load(folder.name))
-                except ApiError:
+                except ApiError as err:
+                    # One broken book never hides the others — but it is not dropped silently either.
+                    core.log.warning("Library: book %s not loaded (%s) — it is left out of the list", folder.name, err)
                     continue
     return books
 
@@ -341,7 +343,9 @@ def export_text_json(book: dict) -> dict:
 # ---------------------------------------------------------------- folder import
 
 _NUM_RE = re.compile(r"^(\d+)(?:\s*[-–_]\s*(\d+))?$")
-_UPSCAYL_TAIL = re.compile(r"_upscayl.*$", re.I)
+# File-name rules shared with the order's print folder (orders.arrange_pages): one reading everywhere.
+UPSCAYL_TAIL = re.compile(r"_upscayl.*$", re.I)        # "12_upscayl_4x_ultrasharp" -> "12"
+COVER_NAME = re.compile(r"cover|cober|обкладин", re.I)  # "Cover", the usual slip "Cober", "Обкладинка"
 
 
 def scan_folder(folder: Path) -> dict:
@@ -377,8 +381,8 @@ def scan_folder(folder: Path) -> dict:
     unknown: list[str] = []
     # Later roots (generated/) win over the top folder. Upscayl's "_upscayl_4x_…" name tail is ignored.
     for p in imgs:
-        stem = _UPSCAYL_TAIL.sub("", p.stem).strip().lower()
-        if re.search(r"cover|cober|обкладин", stem):
+        stem = UPSCAYL_TAIL.sub("", p.stem).strip().lower()
+        if COVER_NAME.search(stem):
             if cover is None or p.suffix.lower() == ".png":
                 cover = p
             continue

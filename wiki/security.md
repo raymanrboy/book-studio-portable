@@ -1,7 +1,7 @@
 ---
 title: Безпека — що заборонено програмі й агентам
 type: rule
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -50,6 +50,10 @@ code:
 - **Сервер перегляду** відмовляв лише одному точному шляху, тож копія, резервна чи перенесена папка
   даних проходила. Тепер `claim()` пускає лише власну папку (мітка `.book-studio-sample`), порожню або
   `%TEMP%\bsdev`, і ніколи — папку з `vault.json` ([dev/preview.md](dev/preview.md)).
+- **Сервер перегляду не бере ключів** (з 23.09.2026): його Налаштування пропонували імпортувати
+  справжні ключі власника зі старих програм на Робочому столі — і тоді «безпечний» сервер міг би
+  звертатися до Etsy, Printify й Gelato. Тепер `dev_server.py` ставить `BOOK_STUDIO_SAMPLE=1`
+  (`core.SAMPLE`): старі ключі не показуються, а `Vault.set()` відмовляє зберігати будь-який ключ.
 
 ## Як це забезпечено в коді
 
@@ -69,6 +73,8 @@ code:
   коли в налаштуваннях є `manualApprovalConfirmedAt`; Express і сповіщення покупцю примусово вимкнені.
 - Створення продукту й замовлення — без автоматичного повтору (`retries=1`): повторний POST після
   обірваного зв'язку міг би створити дублікат. Невідомий результат → повідомлення «перевірте Printify».
+  Ширше: `httpc.request()` взагалі не повторює POST, який міг дійти (тайм-аут, обрив, 500/502/504), —
+  зокрема завантаження зображень (з 23.09.2026).
 - Master: перед створенням знімок у `data/creator/master-snapshots/`, після — звірка відбитка
   `_master_fingerprint()`.
 - Кожен запит і кожне блокування — у `data/logs/printify.log`.
@@ -79,6 +85,9 @@ code:
 - `_allowed()`: читання каталогу й замовлень, пошук замовлень, і `POST /orders` лише з
   `orderType == "draft"`; слова `cancel`, `publish`, `production`, `confirm`, `:convert`, `patch` — блок.
 - `create_draft_order()` примусово ставить `orderType: draft`.
+- Невідомий результат створення чернетки (тайм-аут, обрив, 500/502/504) — не «відхилив»: власник бачить
+  «не надсилайте повторно, перевірте Drafts», а посилання на PDF лишається 15 хв (з 23.09.2026; раніше
+  повторна відправка після такої помилки могла дати дві чернетки на один чек).
 - Трек-номери відправлених замовлень (з 17.09.2026) — окремі `GET /v4/orders/{id}`, тобто лише читання
   (`attach_shipments()`); Printify віддає їх у звичайному списку замовлень.
 - Журнал — `data/logs/gelato.log`.
@@ -88,6 +97,9 @@ code:
   (вони лише в заголовках; тести це перевіряють). Лише локально, у git не йде.
 - Перевірка тимчасового посилання питає в публічного DNS (`1.1.1.1`) лише адресу нашого ж
   `*.trycloudflare.com` — жодних даних покупців.
+- `cloudflared.exe` (тимчасове посилання) закривається разом із Book Studio навіть при аварійному
+  завершенні: він у Windows job object (`tunnel._ends_with_us()`, з 23.09.2026; перевірено: процес, чий
+  «батько» вбитий, зникає). Раніше після збою він лишався висіти.
 
 ### Архів замовлень
 - `data/archive/` — файли книг з іменами дітей і `entry.json` з адресою, куди відправлено; лише
@@ -127,9 +139,11 @@ code:
 - [app/studio/gelato.py](../app/studio/gelato.py) — `_allowed()`, `create_draft_order()`
 - [app/studio/vault.py](../app/studio/vault.py) — `protect()`, `unprotect()`, `SECRET_NAMES`
 - [app/studio/server.py](../app/studio/server.py) — `SESSION_TOKEN`, `_host_ok()`, `route()`
-- [app/studio/tunnel.py](../app/studio/tunnel.py) — `TunnelRegistry`, `cleanup_stale()`
+- [app/studio/tunnel.py](../app/studio/tunnel.py) — `TunnelRegistry`, `cleanup_stale()`, `_ends_with_us()`
+- [app/studio/httpc.py](../app/studio/httpc.py) — `request()` (`idempotent`, `ambiguous`), `human()`
+- [app/studio/core.py](../app/studio/core.py) — `SAMPLE`
 - [app/tests/__init__.py](../app/tests/__init__.py) — тимчасова папка даних для тестів (безумовна)
-- [app/tools/dev_server.py](../app/tools/dev_server.py) — `claim()`, `MARK`
+- [app/tools/dev_server.py](../app/tools/dev_server.py) — `claim()`, `MARK`, `main()` (`BOOK_STUDIO_SAMPLE`)
 
 ## Пов'язане
 

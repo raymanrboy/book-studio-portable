@@ -6,7 +6,7 @@ import {
   api, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, openExternal, syncSeg,
   dateTime, sleep, slide, menu,
 } from '../lib.js';
-import { refreshInfo } from '../app.js';
+import { refreshInfo } from '../info.js';
 
 const SECRET_LABELS = {
   etsy_keystring: ['Etsy Keystring', 'Etsy Developers → Your apps → Keystring'],

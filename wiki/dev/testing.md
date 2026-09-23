@@ -1,13 +1,13 @@
 ---
 title: Тести
 type: dev
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/tests/
 ---
 # Тести
 
-> 182 тести на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
+> 209 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
 > дані — **завжди** у новій тимчасовій папці (набір тестів забирає `BOOK_STUDIO_DATA` собі, хай там
 > що було), покупці — вигадані. Запускати після кожної зміни.
 
@@ -53,7 +53,14 @@ python -m unittest discover -s app/tests -t app
 - Лише вигадані імена, адреси, номери чеків (формат `41000000xx`). Справжні дані покупців у репозиторій
   не потрапляють (одного разу справжню адресу знайшли й замінили до першого push).
 - Тест не повинен мережитись; якщо з'явився новий зовнішній виклик — підмініть його.
-- Порядок тестів не має значення; стан налаштувань відновлюється в `tearDown`.
+- Порядок тестів не має значення; стан налаштувань відновлюється в `tearDown`. Щоб скинути файл
+  стану, досить видалити сам файл: `.bak` видаленого файлу більше не читається (з 23.09.2026).
+- Кроки журналу відправки перевіряються «ці кроки в такому порядку» (`assert_steps()`), а не точним
+  списком: новий крок не ламає десяток тестів. Реальних пауз (`time.sleep`) для різного часу немає —
+  час запису підставляється.
+- Порядок шарів інтерфейсу й розміри прев'ю перевіряються прямо з файлів сторінок (`SharedNumbers`):
+  тестів у браузері немає, тож поведінку сторінок перевіряє людина чи агент на
+  [сервері перегляду](preview.md).
 
 ## Набори
 
@@ -61,17 +68,17 @@ python -m unittest discover -s app/tests -t app
 |---|---|
 | [test_profit.py](../../app/tests/test_profit.py) | `ProfitParity`, `FeeRules`, `NameMatching` |
 | [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `SeveralPrintOrdersForOneReceipt` (чек з двома замовленнями друку), `SentStage`, `GelatoTracking`, `IncrementalSync`, `StateApi` |
-| [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation`, `GelatoValidation`, `ReplacePage` (заміна однієї сторінки, «Повернути» після перезапуску, дві заміни за секунду, заборона заміни під час відправки, що саме дозволено записувати), `NothingIsLostWhenAWriteFails`, `SafetyRails` |
-| [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow` (у т. ч. дві книги — одне замовлення з двома позиціями), `GelatoDraftFlow` (у т. ч. дві книги — одна чернетка з двома товарами), `CreatorStartsEmpty`, `DroppedFolders`, `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
-| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand`, `DevToolsKeepOffRealData` (сервер перегляду не пише у справжню папку), `TestsNeverRunOnRealData` |
-| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint` (у т. ч. попередження, коли друкарня прийняла, а облік не записався), `PreviewCache` (прибирання кешу, замки, зум) |
-| [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (модель — імітація: «читає» те, що тест «надрукував»), `WhileItRuns` (розворот іде на звірку, не чекаючи останнього читання; знахідки віддаються під час перевірки), `Prescan` (швидкий огляд сторінок: намальований текст проти намальованої ілюстрації, сторінки-малюнки до моделі не потрапляють, помилка ознаки — перевіряється друга половина розвороту), `Passport`, `BooksOfOneOrder` (дві книги одного чека не глушать перевірок одна одної), `OllamaAndRoutes` |
+| [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation` (у т. ч. новіша перевірка папки зупиняє старішу), `GelatoValidation`, `ReplacePage` (заміна однієї сторінки, «Повернути» після перезапуску, дві заміни за секунду, заборона заміни під час відправки — і коли папку відправляють у дві друкарні одразу, що саме дозволено записувати), `NothingIsLostWhenAWriteFails`, `JsonFiles` (`.bak` і видалений файл), `SafetyRails` (у т. ч. POST, що міг дійти, не повторюється; обидві друкарні читають помилку однаково) |
+| [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow` (у т. ч. дві книги — одне замовлення з двома позиціями; номер чека окремим полем; незаписаний облік — попередження), `GelatoDraftFlow` (у т. ч. дві книги — одна чернетка з двома товарами; невідомий результат лишає посилання; текст про довжину — один), `CreatorStartsEmpty`, `DroppedFolders` (у т. ч. папка для бібліотеки, кожна книга — своя дитина), `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
+| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand`, `DevToolsKeepOffRealData` (сервер перегляду не пише у справжню папку й не бере ключів), `TestsNeverRunOnRealData`, `SharedNumbers` (шари інтерфейсу, розміри прев'ю) |
+| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing` (у т. ч. застарілий список друкарні нічого не доводить), `OnlyWhatWentToPrint` (у т. ч. «вже в друкарні» після перезапуску), `ReprintMark`, `PrintifyReprint`, `GelatoReprint` (у т. ч. попередження, коли друкарня прийняла, а облік не записався), `PreviewCache` (прибирання кешу, замки, зум) |
+| [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (модель — імітація: «читає» те, що тест «надрукував»), `WhileItRuns` (розворот іде на звірку, не чекаючи останнього читання; знахідки віддаються під час перевірки), `Prescan` (швидкий огляд сторінок: намальований текст проти намальованої ілюстрації, сторінки-малюнки до моделі не потрапляють, помилка ознаки — перевіряється друга половина розвороту), `Passport` (ім'я лише цілим словом і лише там, де паспорт мав `{Name}`; попередній показ), `BooksOfOneOrder` (дві книги одного чека не глушать перевірок одна одної), `OllamaAndRoutes` |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode` |
 
 ## Де в коді
 
 - [app/tests/__init__.py](../../app/tests/__init__.py) — тимчасова папка даних
-- [app/tests/test_flows.py](../../app/tests/test_flows.py) — `FakePrintify`, `png()`
+- [app/tests/test_flows.py](../../app/tests/test_flows.py) — `FakePrintify`, `png()`, `assert_steps()`
 - [app/tools/wiki_check.py](../../app/tools/wiki_check.py) — `check()`
 
 ## Пов'язане

@@ -121,7 +121,8 @@ def seed(data: Path) -> None:
         _gelato(4100000107, "printed"),   # Leo's order was split: one book here, one in Printify
     ]
     snapshot = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": printify_orders,
-                "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": []}
+                "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": [],
+                "loaded": {source: core.now_iso() for source in ("etsy", "printify", "gelato")}}
     core.write_json(profit.SNAPSHOT, snapshot, backup=False)
     # One receipt with two print orders: what the queue and the profit row look like when the books of an
     # order went in two goes, or to two printers.
@@ -249,7 +250,10 @@ def claim(data: Path, default: Path) -> str | None:
     if data == (APP / "data").resolve():
         return "це справжня папка даних програми"
     if (data / "vault.json").exists():
-        return "у ній лежать ключі — це не тимчасові дані"
+        # Also when a key was typed into this tool's own Settings: a real key never lives in sample data,
+        # and the tool does not delete keys by itself — the folder is for the owner to remove.
+        return ("у ній лежать ключі (vault.json) — це не тимчасові дані. Якщо ключ зберегли в налаштуваннях "
+                "тестового сервера, видаліть цю папку вручну")
     if not (data / MARK).exists() and data != default and data.exists() and any(data.iterdir()):
         return "вона не порожня й не створена цим інструментом"
     data.mkdir(parents=True, exist_ok=True)
@@ -267,6 +271,7 @@ def main(argv: list[str]) -> int:
               file=sys.stderr)
         return 1
     os.environ["BOOK_STUDIO_DATA"] = str(data)
+    os.environ["BOOK_STUDIO_SAMPLE"] = "1"  # no key is stored or offered here (studio.core.SAMPLE)
     sys.path.insert(0, str(APP))
     if "--sample" in argv:
         seed(data)

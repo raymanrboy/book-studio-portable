@@ -5,7 +5,7 @@ import {
   api, html, ic, ib, setHtml, on, media, modal, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
   raw, flip, debounce, menu, copyText,
 } from '../lib.js';
-import { store, refreshInfo } from '../app.js';
+import { store, refreshInfo } from '../info.js';
 
 const PREF = 'bs-lib-view';
 const SORTS = [

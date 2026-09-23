@@ -1,9 +1,10 @@
 ---
 title: Перевірка тексту (ШІ-валідатор на локальній моделі)
 type: feature
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/studio/textcheck.py
+  - app/studio/wording.py
   - app/tests/test_textcheck.py
   - app/studio/jobs.py
   - app/studio/images.py
@@ -44,6 +45,13 @@ code:
   підтвердження тексти цих сторінок (обкладинка, розвороти; не присвята й не післяслово) стають такими,
   як у друці, ім'я дитини — знову `{Name}`, і перевірка запускається ще раз. Потрібно, бо тексти
   паспортів писались окремо від шаблонів Canva — див. «Перевірено на справжніх книгах».
+  - Вікно підтвердження **показує тексти саме так, як їх буде збережено**, з підсвіченим `{Name}`
+    (сервер рахує їх заздалегідь, нічого не зберігаючи — `preview`).
+  - Ім'я стає `{Name}` **лише цілим словом** і лише там, де в паспорті був `{Name}` (`as_template()`
+    порівнює друк зі старим текстом паспорта слово в слово): «Eve» не зачіпає «every», «Ian» — «giant»,
+    а ім'я, яке є ще й звичайним словом («Hope»/«hope», «Grace»/«grace»), лишається словом там, де
+    паспорт мав саме слово. У нових рядках, яких паспорт ще не знав, таке ім'я стає `{Name}`, лише якщо
+    написане з великої літери. (Аудит 22.09.2026: раніше «Every» ставало «{Name}ry» і так зберігалося.)
 - **Легка перевірка** (сірий рядок під списком): книги немає в бібліотеці, у паспорті немає текстів або
   не знайдено ім'я дитини. Тоді — лише правила програми (шаблони, ім'я, чужі імена) і погляд моделі
   (обрізаний текст, злиплі слова, очевидні одруківки).
@@ -96,7 +104,11 @@ code:
    правила програми (`findings()`): `{…}`, ім'я з помилкою (відстань 1–2 літери, та сама перша літера;
    звичайні слова й слова паспортів — не ім'я, `COMMON`, `_vocabulary()`), злиплі з ім'ям слова, ім'я
    дитини з іншого замовлення (`_other_children()`). Зауваження моделі лише про розділові знаки
-   відкидаються (`_only_punctuation()`).
+   відкидаються (`_only_punctuation()`): модель сама відповідає `only_punctuation` (у `SCHEMA`), а слова
+   її пояснення читаються, лише коли такої відповіді немає; обрізане чи злипле слово показується завжди.
+   Перевірено на Gemma 4 12B на вигаданих сторінках 23.09.2026: кома й лапки → `true`, рядок, обрізаний
+   краєм, → `false`. Правила «свій текст чи DEFAULT» і очищення імені (`"Leo."` → `Leo`) — у
+   `wording.py`, спільні з карткою замовлення.
 7. Очікуваний текст: `fill()` — `{Name}` → ім'я, `{Gifter}` → «від кого»; якщо «від кого» починається
    зі свого «With love…», шаблонний рядок «With love,» перед ним прибирається. `personalization()`:
    ім'я без крапки в кінці («Leo & Mila.»), «від кого» без лапок і пробілів перед комою; `DEFAULT`
@@ -172,12 +184,13 @@ code:
 
 ## Де в коді
 
-- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_saw_nothing()`, `_collect()`, `_ordered()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `_release_model()`, `_cancel()`, `_warm()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
+- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_saw_nothing()`, `_collect()`, `_ordered()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `_release_model()`, `_cancel()`, `_warm()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_passport_texts()`, `_passport_words()`, `_alike()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
+- [app/studio/wording.py](../../app/studio/wording.py) — `words()`, `is_default()`, `clean_name()`, `custom_text()`, `DEDICATION`, `META`
 - [app/studio/images.py](../../app/studio/images.py) — `text_score()`, `_percentile()`, `TEXT_SIDE`
 - [app/studio/jobs.py](../../app/studio/jobs.py) — `Job.share()` (знахідки, готові раніше за всю перевірку)
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `checkTip()`, `markPages()`, `paintCheck()`, `viewerItems()`, `learnable()`, `learnPassport()`, `dropCheck()`, `print()`, `LEVEL_WORDS`, `LIGHT_TIP`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`
-- [app/web/css/app.css](../../app/web/css/app.css) — `.tc-list`, `.tc-issue`, `.tc-where`, `.tc-note`, `.tc-light`, `.tc-error`, `.tc-warn`, `.v-badge.warn`
+- [app/web/css/app.css](../../app/web/css/app.css) — `.tc-list`, `.tc-issue`, `.tc-where`, `.tc-note`, `.tc-light`, `.tc-error`, `.tc-warn`, `.v-badge.warn`, `.tc-passport`, `.tc-slot`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS` (`textcheck`)
 - Тести: [app/tests/test_textcheck.py](../../app/tests/test_textcheck.py) — модель імітується; справжня Ollama не потрібна
 

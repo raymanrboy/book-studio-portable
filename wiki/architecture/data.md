@@ -1,7 +1,7 @@
 ---
 title: Дані програми — папка app/data
 type: architecture
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -22,11 +22,11 @@ code:
 | `library/books/<id>/book.json` | Модель книги ([features/library.md](../features/library.md)) | `library.save()` |
 | `library/books/<id>/assets/<uuid>.png` | Ілюстрації книги (оригінали) | `library._store_asset()` |
 | `library/trash/` | Видалені книги (можна повернути вручну) | `library._delete()` |
-| `profit/snapshot.json` | Знімок останньої синхронізації: чеки Etsy, замовлення Printify і Gelato (скорочені), курсор синхронізації | `profit._sync()` |
+| `profit/snapshot.json` | Знімок останньої синхронізації: чеки Etsy, замовлення Printify і Gelato (скорочені), курсор синхронізації, `loaded` — коли кожен із трьох списків востаннє завантажився повністю (архів вірить лише свіжому). Читається з диска раз на зміну файлу (`load_snapshot()`) | `profit._sync()` |
 | `profit/links.json` | Ручні зв'язки «чек → замовлення друку» або «без собівартості» | `profit._set_link()` |
 | `profit/states.json` | Ручні стани: скасування, повернення, заміна (сюди ж — передруки з архіву замовлень) | `profit._set_state()`, `profit.mark_reprint()` |
 | `profit/print-orders.json` | Які замовлення друку ця програма сама створила для якого чека (книги одного чека можуть піти двома заходами або у дві друкарні) | `profit.remember_print_order()` |
-| `creator/upload-cache.json` | SHA-256 файлу → ID зображення в Printify (щоб не завантажувати двічі) | `creator._remember_upload()` |
+| `creator/upload-cache.json` | SHA-256 файлу → ID зображення в Printify (щоб не завантажувати двічі); тримає останні 5000 (`UPLOADS_KEPT`), старіші забуваються | `creator._remember_upload()` |
 | `creator/master-snapshots/` | Знімки Master-продукту перед кожним створенням книги | `create_printify_draft()` |
 | `cache/thumbs/` | JPEG-прев'ю (ключ — шлях, час зміни, розмір, розмір прев'ю); не потрібні 21 день — видаляються при запуску (з 19.09.2026; прев'ю в роботі раз на добу оновлює дату) | `images.preview()`, `images.prune_cache()` |
 | `tmp/dropped/` | Копії перетягнутих папок і ZIP; стирається при запуску | `creator._drop_file()` |
@@ -39,7 +39,10 @@ code:
 
 ## Правила
 
-- Запис лише через `core.write_json()` (атомарно, з копією `.bak`).
+- Запис лише через `core.write_json()` (атомарно, з копією `.bak`). `.bak` читається лише замість
+  **пошкодженого** файлу, не замість видаленого (`read_json()`).
+- `SAMPLE` (`BOOK_STUDIO_SAMPLE=1`, ставить `app/tools/dev_server.py`): вигадані дані, ключ не
+  зберігається (`Vault.set()` відмовляє).
 - Кеш прев'ю прив'язаний до повного шляху файлу: після перенесення папки даних прев'ю один раз
   створюються заново (старі файли кешу просто лишаються без діла).
 - Order Creator нічого не пам'ятає між відкриттями (рішення власника): `forget_old_form()` прибирає
@@ -48,12 +51,12 @@ code:
 
 ## Де в коді
 
-- [app/studio/core.py](../../app/studio/core.py) — `DATA_DIR`, `data_path()`, `ensure_dirs()`, `write_json()`, `read_json()`, `Settings`
+- [app/studio/core.py](../../app/studio/core.py) — `DATA_DIR`, `SAMPLE`, `data_path()`, `ensure_dirs()`, `write_json()`, `read_json()`, `Settings`
 - [app/studio/vault.py](../../app/studio/vault.py) — `Vault`, `SECRET_NAMES`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `_cached()`
 - [app/studio/library.py](../../app/studio/library.py) — `BOOKS_DIR`, `TRASH_DIR`
-- [app/studio/profit.py](../../app/studio/profit.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `remember_print_order()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `DROPS`, `forget_old_form()`
+- [app/studio/profit.py](../../app/studio/profit.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `load_snapshot()`, `remember_print_order()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `UPLOADS_KEPT`, `DROPS`, `forget_old_form()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `store()`, `refresh()`
 - [app/tests/__init__.py](../../app/tests/__init__.py) — `BOOK_STUDIO_DATA` для тестів
 

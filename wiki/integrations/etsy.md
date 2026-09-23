@@ -1,7 +1,7 @@
 ---
 title: Etsy — лише читання
 type: integration
-updated: 2026-09-17
+updated: 2026-09-23
 code:
   - app/studio/etsy.py
 ---
@@ -30,7 +30,9 @@ code:
 ## Дані
 
 - `fetch_all_receipts()` — усі оплачені чеки (включно зі скасованими/поверненими), новіші першими,
-  по 100, пауза 0,12 с; з `min_last_modified` — лише змінені (інкрементна синхронізація).
+  по 100, пауза 0,12 с; з `min_last_modified` — лише змінені (інкрементна синхронізація). Не більше
+  `MAX_RECEIPTS` = 20 000; більше — список позначається неповним (`httpc.Listing`) і синхронізація
+  попереджає.
 - `normalize_receipt()` ([profit.py](../../app/studio/profit.py)) перетворює чек: комісії, товари з
   варіаціями (персоналізація), адреса, повернення. Текст Etsy приходить з HTML-екрануванням
   (`&quot;`, `&amp;`) — `plain()` розекрановує.
@@ -41,11 +43,12 @@ code:
 ## Помилки
 
 `_human()` перетворює відповіді Etsy на зрозумілі повідомлення з `code: etsy_auth`, коли треба
-заново підключитися. 401 при запиті → одне примусове оновлення токена і повтор.
+заново підключитися. 401 при запиті → одне примусове оновлення токена і повтор. Оновлення токена —
+POST, що лише читає, тож після обриву його можна повторити (`idempotent=True`).
 
 ## Де в коді
 
-- [app/studio/etsy.py](../../app/studio/etsy.py) — `SCOPES`, `keys()`, `api_key_header()`, `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `decode_session_key()`, `encode_session_key()`, `import_session()`, `fetch_listing()`, `fetch_all_receipts()`, `parse_listing_ref()`, `_oauth_callback()`, `port_warning()`, `_human()`
+- [app/studio/etsy.py](../../app/studio/etsy.py) — `SCOPES`, `keys()`, `api_key_header()`, `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `decode_session_key()`, `encode_session_key()`, `import_session()`, `fetch_listing()`, `fetch_all_receipts()`, `MAX_RECEIPTS`, `parse_listing_ref()`, `_oauth_callback()`, `port_warning()`, `_human()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `normalize_receipt()`, `plain()`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `oauthFlow()`, `etsyCard()`
 - Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`EtsyOAuth`, `OpenUrlGuard`)

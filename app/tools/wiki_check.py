@@ -16,6 +16,7 @@ Standard library only.
 """
 from __future__ import annotations
 
+import ast
 import re
 import subprocess
 import sys
@@ -227,26 +228,47 @@ def check() -> list[str]:
 
 
 def test_count() -> int:
-    """How many tests there really are: every `def test_…` in app/tests (what the runner then reports)."""
-    return sum(len(re.findall(r"^\s*def test_", p.read_text(encoding="utf-8"), re.M))
-               for p in sorted((REPO / "app" / "tests").glob("test_*.py")))
+    """How many tests the runner finds: every test_… method of a class in app/tests, read with ast — a
+    `def test_` inside a string or a helper outside a class is not a test (22.09.2026 audit)."""
+    total = 0
+    for path in sorted((REPO / "app" / "tests").glob("test_*.py")):
+        for node in ast.parse(path.read_text(encoding="utf-8")).body:
+            if isinstance(node, ast.ClassDef):
+                total += sum(1 for f in node.body if isinstance(f, ast.FunctionDef) and f.name.startswith("test_"))
+    return total
+
+
+# Where the wiki states how many tests and routes there are, and how: every mention on these pages is checked,
+# not only the first. «117 тестів проти 182» is history (how it was) and is left alone.
+NUMBER_CLAIMS = [
+    ("dev/testing.md", r"(\d+)\s+тест(?:и|ів)?\b(?!\s+проти)", "тестів"),
+    ("index.md", r"усі\s+(\d+)\b", "маршрутів"),
+    ("architecture/api-routes.md", r"(\d+)\s+маршрут\w*\b(?!\s+проти)", "маршрутів"),
+    ("architecture/server.md", r"(\d+)\s+маршрут\w*\b(?!\s+проти)", "маршрутів"),
+]
 
 
 def stale_numbers() -> list[str]:
     """Numbers the wiki states in plain words. Links, names and route tables were always checked; counts
     were not, and they quietly drifted (117 tests against 162, 88 routes against 92 — audit, 22.09.2026)."""
-    claims = [("dev/testing.md", r"(\d+)\s+тест", test_count(), "тестів"),
-              ("index.md", r"усі\s+(\d+)", len(routes_in_code()), "маршрутів")]
-    problems = []
-    for name, pattern, real, what in claims:
+    real = {"тестів": test_count(), "маршрутів": len(routes_in_code())}
+    problems, seen = [], set()
+    for name, pattern, what in NUMBER_CLAIMS:
         page = WIKI / name
         if not page.exists():
             continue
-        found = re.search(pattern, page.read_text(encoding="utf-8"))
-        if not found:
-            problems.append(f"{name}: не знайдено числа «{what}» — перевірка застарілих чисел його не бачить.")
-        elif int(found.group(1)) != real:
-            problems.append(f"{name}: написано {found.group(1)} {what}, а насправді {real}.")
+        lines = page.read_text(encoding="utf-8").splitlines()
+        # index.md: "усі N" counts routes only on the line about the routes
+        found = [(n, m) for n, line in enumerate(lines, 1) for m in re.finditer(pattern, line)
+                 if what != "маршрутів" or name != "index.md" or "маршрут" in line.lower()]
+        if found:
+            seen.add(what)
+        for n, m in found:
+            if int(m.group(1)) != real[what]:
+                problems.append(f"{name}:{n}: написано {m.group(1)} {what}, а насправді {real[what]}.")
+    for what in real:
+        if what not in seen:
+            problems.append(f"Не знайдено числа «{what}» у вікі — перевірка застарілих чисел його не бачить.")
     return problems
 
 

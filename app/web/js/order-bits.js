@@ -77,10 +77,17 @@ export function copyChip(e, el) {
   copyText(el.dataset.text, el.dataset.done);
 }
 
+// The receipt number in front of a title "4100000001 - Emma", and the child's name after it ('' without a
+// number) — read the same way as the server's archive.receipt_of / child_of. A send names its receipt itself.
+const TITLE_RE = /^\s*(\d{6,20})\s*-\s*([\s\S]*)$/;
+export const receiptOfTitle = (title) => /^\s*(\d{6,20})(?!\d)/.exec(title || '')?.[1] || '';
+export const childOf = (title) => (TITLE_RE.exec(title || '')?.[2] || '').trim();
+
 // The buyer's fields: a dedication of their own, the child's name, and the cover format (which only
 // decides the printer — it is never typed into Canva, so it gets no copy button).
-export const isCustomText = (v) => /dedicat|closing|присвят/i.test(v.name || '') && !/^\s*default\s*$/i.test(v.value || '');
-export const isNameField = (v, item) => !!item.childName && (v.value || '').trim() === item.childName;
+// «свій текст»: decided by the server (wording.custom_text), the same rule the text check uses.
+export const isCustomText = (v) => !!v.custom;
+export const isNameField = (v) => !!v.isName; // the field the child's name came from (orders.enrich)
 export const isFormatField = (v) => /cover|size|format|binding|обкладинк|розмір/i.test(v.name || '')
   || /hard\s?cover|soft\s?cover|hardback|paperback/i.test(v.value || '');
 
@@ -101,7 +108,7 @@ export function addressFromEtsy(o) {
   return {
     firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '',
     addressLine1: a.first_line || '', addressLine2: a.second_line || '', city: a.city || '',
-    state: a.state || '', postCode: a.zip || '', country: (a.country_iso || 'US').toUpperCase(),
+    state: a.state || '', postCode: a.zip || '', country: (a.country_iso || '').toUpperCase(),
   };
 }
 
@@ -109,18 +116,53 @@ export function addressFromEtsy(o) {
 // (on the server) and whenever the refresh button is pressed. Pages never start a sync on their own.
 
 /** Pulls the latest orders now (the refresh button; a few seconds). */
-export async function syncOrders(onStep) {
+async function syncOrders(onStep) {
   await runJob(api('/api/profit/sync', { method: 'POST', body: {} }), (j) => { if (j.step) onStep?.(j.step); });
 }
 
 /** The sync already running (usually the start-up one): its job id, or null. */
-export async function runningSync() {
+async function runningSync() {
   try { return (await api('/api/profit/sync')).jobId || null; } catch { return null; }
 }
 
 /** Waits for a running sync to end, reporting its steps. */
-export async function watchSync(jobId, onStep) {
+async function watchSync(jobId, onStep) {
   await runJob(Promise.resolve({ jobId }), (j) => { if (j.step) onStep?.(j.step); });
+}
+
+/** The rows of a list just moved: its clicks are ignored a moment, so a click aimed at one buyer never
+ *  lands on another. */
+export function holdClicks(list) {
+  list.inert = true;
+  clearTimeout(list.holdTimer);
+  list.holdTimer = setTimeout(() => { list.inert = false; }, 450);
+}
+
+/** The refresh of an order list (the queue, the Order Creator's picker): the button pulls the latest orders;
+ *  a page only follows a sync already running (the program's start-up one) and never starts one itself.
+ *  fetch() gives the orders, alive() says the page is still there, onFresh(data) shows them. */
+export function orderSync({ fetch, alive, setSub, syncedText, button, onStart, onFresh }) {
+  const sync = { syncing: false };
+  sync.refresh = async (pull = () => syncOrders(setSub)) => {
+    if (sync.syncing) return;
+    sync.syncing = true;
+    button.disabled = true; button.firstElementChild?.classList.add('spin');
+    setSub('Оновлення…');
+    onStart?.();
+    try {
+      await pull();
+      const next = await fetch();
+      if (!alive()) return;
+      onFresh(next);
+    } catch (err) {
+      if (alive()) setSub(`${syncedText()} · не вдалося оновити: ${err.message}`);
+    } finally {
+      sync.syncing = false;
+      button.disabled = false; button.firstElementChild?.classList.remove('spin');
+    }
+  };
+  sync.follow = () => runningSync().then((jobId) => { if (jobId && alive()) sync.refresh(() => watchSync(jobId, setSub)); });
+  return sync;
 }
 
 /** Pages that still have a previous version on disk, from the files check — so «Повернути» is offered
@@ -174,16 +216,6 @@ async function collect(entry, out, depth = 0, accept = IMG_FILE) {
   if (entry.isDirectory && depth < 4) for (const e of await readEntries(entry)) await collect(e, out, depth + 1, accept);
 }
 
-export const isZipDrop = ({ files }) => files.length === 1 && /\.zip$/i.test(files[0].name);
-export const isFolderDrop = ({ entries }) => entries.some((e) => e.isDirectory);
-
-/** Pictures and text files inside dropped folders (any depth up to four levels), as plain File objects. */
-export async function filesInDrop({ entries }) {
-  const list = [];
-  for (const e of entries) await collect(e, list, 0, IMG_OR_TEXT);
-  return list.map((x) => x.file);
-}
-
 /** What was dropped, read while the drop event still runs (entries expire right after it). */
 export function dropContents(e) {
   const dt = e.dataTransfer;
@@ -200,13 +232,15 @@ export function dropLabel({ entries, files }) {
 }
 
 /** Copies a dropped folder, loose pictures or a ZIP into the program; resolves to the folder path.
- *  withText also keeps the book-text JSON found in a ZIP (the library import reads it). */
+ *  withText — the library's import: the book-text JSON comes too, and the path given back is the dropped
+ *  folder itself (the importer reads its generated/ and pages/ as well), not the one with Cover.png. */
 export async function receiveDrop({ entries, files }, onProgress, { withText = false } = {}) {
   const zip = files.length === 1 && /\.zip$/i.test(files[0].name) ? files[0] : null;
+  const accept = withText ? IMG_OR_TEXT : IMG_FILE;
   const list = [];
   if (!zip) {
-    if (entries.length) { try { for (const e of entries) await collect(e, list); } catch { /* unreadable entry: handled below */ } }
-    else files.filter((f) => IMG_FILE.test(f.name)).forEach((f) => list.push({ name: f.name, file: f }));
+    if (entries.length) { try { for (const e of entries) await collect(e, list, 0, accept); } catch { /* unreadable entry: handled below */ } }
+    else files.filter((f) => accept.test(f.name)).forEach((f) => list.push({ name: f.name, file: f }));
     if (!list.length) throw new Error('Перетягніть папку з Cover.png і сторінками або ZIP-архів');
     if (!entries.some((e) => e.isDirectory)) list.forEach((x) => { x.name = `Файли/${x.name}`; }); // loose pictures get a folder of their own
   }
@@ -221,13 +255,13 @@ export async function receiveDrop({ entries, files }, onProgress, { withText = f
       while (next < list.length) {
         const x = list[next++];
         let done = 0;
-        await upload(`/api/creator/drop/file?${new URLSearchParams({ session, name: x.name })}`, x.file, (p) => { sent += p * x.file.size - done; done = p * x.file.size; report(); });
+        await upload(`/api/creator/drop/file?${new URLSearchParams({ session, name: x.name, ...(withText ? { text: '1' } : {}) })}`, x.file, (p) => { sent += p * x.file.size - done; done = p * x.file.size; report(); });
         sent += x.file.size - done; report();
       }
     };
     await Promise.all([worker(), worker(), worker()]);
   }
-  return (await api('/api/creator/drop/done', { method: 'POST', body: { session } })).path;
+  return (await api('/api/creator/drop/done', { method: 'POST', body: { session, whole: withText } })).path;
 }
 
 /** Lights `input` while files are dragged over `[data-folder-drop]` inside `root`; calls onDrop(contents). */

@@ -1,7 +1,7 @@
 ---
 title: Карта коду
 type: reference
-updated: 2026-09-22
+updated: 2026-09-23
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -20,18 +20,18 @@ code:
 | [app/Запуск з консоллю.bat](<../app/Запуск з консоллю.bat>) | Те саме з консоллю — щоб побачити помилку | — |
 | [app/tools/make_shortcut.py](../app/tools/make_shortcut.py) | Створює ярлик «Book Studio» на робочому столі | `main()` |
 | [app/tools/wiki_check.py](../app/tools/wiki_check.py) | Перевірка вікі проти коду (зокрема застарілих чисел у тексті) | `check()`, `stale_numbers()`, `coverage()`, `changed_files()` |
-| [app/tools/dev_server.py](../app/tools/dev_server.py) | Сервер для перегляду інтерфейсу на тимчасових даних (у т. ч. замовлення на дві книги і чек з двома замовленнями друку); пише лише у власну папку | `main()`, `claim()`, `seed()` |
-| [app/requirements.txt](../app/requirements.txt) | Pillow, img2pdf, cryptography | — |
+| [app/tools/dev_server.py](../app/tools/dev_server.py) | Сервер для перегляду інтерфейсу на тимчасових даних (у т. ч. замовлення на дві книги і чек з двома замовленнями друку); пише лише у власну папку, ключів не бере (`BOOK_STUDIO_SAMPLE`) | `main()`, `claim()`, `seed()` |
+| [app/requirements.txt](../app/requirements.txt) | Pillow, img2pdf, cryptography (перевірені версії — у коментарі) | — |
 
 ## Сервер: `app/studio/`
 
 | Файл | Навіщо | Головне |
 |---|---|---|
 | [main.py](../app/studio/main.py) | Точка входу: сервер, вікно, завершення | `main()`, `_running_instance()` |
-| [core.py](../app/studio/core.py) | Шляхи, атомарний JSON, налаштування, журнал | `ROOT`, `DATA_DIR`, `read_json()`, `write_json()`, `Settings`, `DEFAULT_SETTINGS`, `ensure_dirs()` |
+| [core.py](../app/studio/core.py) | Шляхи, атомарний JSON, налаштування, журнал | `ROOT`, `DATA_DIR`, `SAMPLE`, `read_json()`, `write_json()`, `Settings`, `DEFAULT_SETTINGS`, `ensure_dirs()` |
 | [server.py](../app/studio/server.py) | HTTP-сервер, маршрутизація, токен, статика | `route()`, `Request`, `json_response()`, `file_response()`, `start()`, `SESSION_TOKEN` |
 | [jobs.py](../app/studio/jobs.py) | Фонові задачі з прогресом і проміжними знахідками | `Jobs`, `Job`, `Job.progress()`, `Job.share()`, `UserError`, `JobError` |
-| [httpc.py](../app/studio/httpc.py) | HTTPS-клієнт із повторами | `request()`, `request_json()`, `HttpError` |
+| [httpc.py](../app/studio/httpc.py) | HTTPS-клієнт: повтори без дублікатів, одне читання помилок друкарень, журнали викликів, неповні списки | `request()`, `request_json()`, `human()`, `audit_log()`, `HttpError`, `Listing` |
 | [vault.py](../app/studio/vault.py) | Ключі під Windows DPAPI | `Vault`, `protect()`, `unprotect()`, `unprotect_powershell_securestring()` |
 | [desktop.py](../app/studio/desktop.py) | Вікно програми, вибір папки й файлу, Провідник | `open_app_window()`, `pick_folder()`, `pick_file()`, `open_in_explorer()`, `find_browser()` |
 | [settings_api.py](../app/studio/settings_api.py) | Налаштування, ключі, відкриття посилань, імпорт зі старих програм | `integrations()`, `_open_url()`, `_legacy_values()`, `legacy_sources()` |
@@ -40,11 +40,12 @@ code:
 | [gelato.py](../app/studio/gelato.py) | Безпечний клієнт Gelato | `_allowed()`, `call()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
 | [tunnel.py](../app/studio/tunnel.py) | Тимчасове публічне посилання на PDF для Gelato | `FileTunnel`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()` |
 | [sendlog.py](../app/studio/sendlog.py) | Журнал відправок у Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
+| [wording.py](../app/studio/wording.py) | Що написав покупець, однаково для картки й перевірки тексту: слова, «свій текст чи DEFAULT», ім'я дитини | `words()`, `is_default()`, `custom_text()`, `clean_name()` |
 | [textcheck.py](../app/studio/textcheck.py) | Перевірка тексту локальною моделлю (Ollama): швидкий огляд сторінок, читання, зіставлення з паспортом, звірка, правила для імен | `check_order()`, `check_book()`, `run_key()`, `_passes()`, `page_kinds()`, `_second_half()`, `_collect()`, `assign()`, `diff()`, `findings()`, `page_issues()`, `cancel()`, `warm()`, `status()`, `start_ollama()` |
 | [archive.py](../app/studio/archive.py) | Архів замовлень: файли книг, що пішли в друк, автовидалення, «Не видаляти» | `store()`, `refresh()`, `clock()`, `summary()`, `get()` |
 | [images.py](../app/studio/images.py) | Прев'ю, перевірка PNG, склеювання розвороту, прибирання кешу, швидкий огляд сторінки на текст | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `text_score()`, `image_info()`, `prune_cache()` |
 | [library.py](../app/studio/library.py) | Бібліотека книг: модель, імпорт, експорт, інструкція | `load()`, `save()`, `summary()`, `completeness()`, `scan_folder()`, `parse_text_json()`, `agent_guide()`, `export_book()` |
-| [creator.py](../app/studio/creator.py) | Order Creator: перевірка файлів, Printify, Gelato (одна або кілька книг замовлення), перетягування, заміна однієї сторінки | `validate()`, `replace_page()`, `restore_page()`, `_backups()`, `_while_sending()`, `books_of()`, `joint_title()`, `gelato_page_options()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_product()`, `_printify_order()`, `create_gelato_draft()`, `_gelato_book()`, `build_photobook_pdf()`, `extract_zip()`, `dropped_folder()`, `guess_child_name()` |
+| [creator.py](../app/studio/creator.py) | Order Creator: перевірка файлів, Printify, Gelato (одна або кілька книг замовлення), перетягування, заміна однієї сторінки | `validate()`, `replace_page()`, `restore_page()`, `_backups()`, `_while_sending()`, `books_of()`, `receipt_for()`, `joint_title()`, `gelato_page_options()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_product()`, `_printify_order()`, `create_gelato_draft()`, `_gelato_book()`, `build_photobook_pdf()`, `extract_zip()`, `dropped_folder()`, `guess_child_name()` |
 | [orders.py](../app/studio/orders.py) | Конвеєр замовлень: друкарня, книга, розстановка сторінок | `plan_for()`, `page_options()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()`, `page_number()` |
 | [profit.py](../app/studio/profit.py) | Синхронізація, знімок, етапи, облік | `_sync()`, `startup_sync()`, `remember_print_order()`, `normalize_receipt()`, `build_view()`, `cached_view()`, `order_stage()`, `picker_orders()` |
 | [reconcile.py](../app/studio/reconcile.py) | Зіставлення чеків Etsy із замовленнями друку (один чек може мати кілька замовлень друку) | `match()`, `_further_orders()`, `cover_label()`, `is_name_match()`, `printify_only_rows()` |
@@ -57,13 +58,14 @@ code:
 | Файл | Навіщо | Головне |
 |---|---|---|
 | [index.html](../app/web/index.html) | Оболонка: токен сесії, тема до першого кадру, заглушка «зв'язок втрачено» | — |
-| [js/app.js](../app/web/js/app.js) | Бокова панель, маршрутизація сторінок, тема, серцебиття | `NAV`, `ROUTES`, `navigate()`, `applyTheme()`, `refreshInfo()` |
+| [js/app.js](../app/web/js/app.js) | Бокова панель, маршрутизація сторінок, тема, серцебиття | `NAV`, `ROUTES`, `navigate()`, `applyTheme()` |
+| [js/info.js](../app/web/js/info.js) | Відомості про програму (`/api/app`) для оболонки й сторінок | `store`, `refreshInfo()`, `whenInfoChanges()` |
 | [js/lib.js](../app/web/js/lib.js) | Спільні помічники: шаблони, API, підказки, діалоги, меню, анімації | `html()`, `api()`, `ib()`, `modal()`, `menu()`, `runJob()`, `upload()`, `toast()`, `segHtml()` |
 | [js/icons.js](../app/web/js/icons.js) | Піктограми | `icon()` |
 | [js/lightbox.js](../app/web/js/lightbox.js) | Переглядач зображень | `openLightbox()` |
 | [js/handoff.js](../app/web/js/handoff.js) | Передача даних між сторінками в пам'яті | `give()`, `take()`, `waiting()` |
 | [js/keep.js](../app/web/js/keep.js) | Збережена робота над новим замовленням: сховані картка й Order Creator, «чернетку створено» | `stash()`, `unstash()`, `settle()`, `markSent()`, `sentOf()`, `finish()` |
-| [js/order-bits.js](../app/web/js/order-bits.js) | Спільне для Замовлень, архіву замовлень і Order Creator | `STAGES`, `statusChip()`, `alsoSentChip()`, `restorable()`, `trackChips()`, `receiptCopy()`, `isNameField()`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `spreadsOf()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()` |
+| [js/order-bits.js](../app/web/js/order-bits.js) | Спільне для Замовлень, архіву замовлень і Order Creator | `STAGES`, `statusChip()`, `alsoSentChip()`, `restorable()`, `trackChips()`, `receiptCopy()`, `isNameField()`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `childOf()`, `spreadsOf()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()` |
 | [js/pages/orders.js](../app/web/js/pages/orders.js) | Замовлення: черга і картка (робота над кожною книгою замовлення окремо) | `mountQueue()`, `mountCard()`, `readyBooks()` |
 | [js/pages/library.js](../app/web/js/pages/library.js) | Галерея бібліотеки, нова книга, інструкція | `mount()`, `openAddBook()`, `saveGuide()` |
 | [js/pages/book.js](../app/web/js/pages/book.js) | Паспорт книги | `mount()` |
