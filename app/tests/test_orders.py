@@ -8,7 +8,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import creator, orders
+from studio import drops, orders
 from studio.server import ApiError
 
 
@@ -72,7 +72,7 @@ class ArrangePages(unittest.TestCase):
         # Canva keeps the design's page numbers: 24 chosen pages out of 30, the cover recognised by its shape.
         chosen = [1, 2, 3, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 28, 29, 30]
         d = self.folder([f"{n}.png" for n in chosen], cover="31.png")
-        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
             res = orders.arrange_pages(d, 24)
         out = Path(res["path"])
         self.assertNotEqual(out, d)
@@ -84,7 +84,7 @@ class ArrangePages(unittest.TestCase):
 
     def test_upscayl_names(self):
         d = self.folder([f"{i}_upscayl_4x_ultrasharp-4x.png" for i in range(2, 26)], cover="Cover_upscayl_4x_ultrasharp-4x.png")
-        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
             res = orders.arrange_pages(d, 24)
         self.assertTrue((Path(res["path"]) / "24.png").exists())
         self.assertIn("2–25 → 1–24", res["note"])
@@ -92,7 +92,7 @@ class ArrangePages(unittest.TestCase):
     def test_a_cover_named_in_ukrainian_is_the_cover_here_too(self):
         """The library took «Обкладинка.png» as the cover and the print folder did not (22.09.2026 audit)."""
         d = self.folder([f"{i}.png" for i in range(1, 25)], cover="Обкладинка.png")
-        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
             res = orders.arrange_pages(d, 24)
         self.assertIn("обкладинка — Обкладинка.png", res["note"])
         self.assertTrue((Path(res["path"]) / "Cover.png").exists())
@@ -115,13 +115,13 @@ class ArrangePages(unittest.TestCase):
         self.assertIn("5 є двічі", str(caught.exception))
 
     def test_dropped_copies_are_moved_not_copied(self):
-        drops = self.root / "drops"
-        d = drops / "abc" / "Madelynn"
+        scratch = self.root / "drops"
+        d = scratch / "abc" / "Madelynn"
         d.mkdir(parents=True)
         for i in range(3, 27):
             png(d / f"{i}.png")
         png(d / "Cover.png", (96, 50))
-        with mock.patch.object(creator, "DROPS", drops):
+        with mock.patch.object(drops, "DROPS", scratch):
             res = orders.arrange_pages(d, 24)
         self.assertFalse(any(d.iterdir()))
         self.assertEqual(len(list(Path(res["path"]).iterdir())), 25)
@@ -147,7 +147,7 @@ class GelatoLength(unittest.TestCase):
 
     def test_28_or_30_pages_as_downloaded(self):
         d = self.folder([n for n in range(1, 31) if n not in (8, 9)])       # spread 8–9 left out in Canva
-        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
             res = orders.arrange_pages(d, orders.page_options("gelato"))
         self.assertEqual(res["pageCount"], 28)
         self.assertIn("1–7, 10–30 → 1–28", res["note"])
@@ -246,9 +246,9 @@ class PartialBookImport(unittest.TestCase):
             with zipfile.ZipFile(archive, "w") as zf:
                 zf.writestr("Book/5.png", b"png")
                 zf.writestr("Book/book-text.json", b'{"page1": "Dear {Name}"}')
-            self.assertEqual(creator.extract_zip(archive, root / "out", with_text=True), 2)
+            self.assertEqual(drops.extract_zip(archive, root / "out", with_text=True), 2)
             self.assertTrue((root / "out" / "Book" / "book-text.json").exists())
-            self.assertEqual(creator.extract_zip(archive, root / "out2"), 1)   # the Order Creator takes pictures only
+            self.assertEqual(drops.extract_zip(archive, root / "out2"), 1)   # the Order Creator takes pictures only
 
 
 class SyncOnlyAtStartOrByHand(unittest.TestCase):
@@ -341,6 +341,16 @@ class TestsNeverRunOnRealData(unittest.TestCase):
         self.assertIn("bstests-", os.environ["BOOK_STUDIO_DATA"])
         self.assertTrue(Path(os.environ["BOOK_STUDIO_DATA"]).is_absolute())
         self.assertEqual(core.DATA_DIR, Path(os.environ["BOOK_STUDIO_DATA"]))
+
+    def test_the_suite_writes_nothing_to_drive_c(self):
+        """Windows' temp folder is on drive C, which the owner keeps clean (23.09.2026): the suite's files — and
+        those of whatever it starts — live in <repository>/.tmp and go when it ends."""
+        import os
+        import tempfile
+        repo_tmp = Path(__file__).resolve().parents[2] / ".tmp"
+        self.assertEqual(Path(tempfile.gettempdir()), repo_tmp)
+        self.assertEqual(Path(os.environ["TEMP"]), repo_tmp)
+        self.assertEqual(Path(os.environ["BOOK_STUDIO_DATA"]).parent, repo_tmp)
 
 
 class SharedNumbers(unittest.TestCase):

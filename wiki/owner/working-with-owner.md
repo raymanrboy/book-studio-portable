@@ -1,58 +1,78 @@
 ---
-title: Як працювати з власником
+title: Working with the owner
 type: owner
-updated: 2026-09-19
+updated: 2026-09-23
 code: []
 ---
-# Як працювати з власником
+# Working with the owner
 
-> Власник — не програміст, пише українською (часто швидко, з одруківками), надсилає скриншоти й
-> пачки зауважень. Цінує результат «як для себе»: охайно, продумано, без зайвого.
+> The owner isn't a programmer, and writes in Ukrainian (often quickly, with typos), sending screenshots
+> and batches of notes. He values a result treated "as if it were for oneself": tidy, well thought out,
+> nothing extra.
 
-## Спілкування
+## Communication
 
-- **Відповідати українською**, простими словами, без жаргону й назв функцій у поясненнях. Звіт — що
-  змінилось для нього, що перевірено, що ні і що зробити йому (наприклад, перезапустити програму).
-- Чесно казати, що не вдалося перевірити (справжню плавність у видимому вікні, справжнє перетягування
-  з Провідника, живі замовлення).
-- Не питати зайвого: якщо рішення очевидне — зробити й коротко сказати.
+- **Reply in Ukrainian**, in plain words, with no jargon or function names in explanations. A report
+  should say what changed for him, what was checked, what wasn't, and what he needs to do (e.g. restart
+  the program).
+- Be honest about what couldn't be checked (real smoothness in a visible window, a real drag-and-drop
+  from Explorer, live orders).
+- Don't ask unnecessary questions: if the answer is obvious, just do it and say so briefly.
 
-## Режими роботи
+## Working modes
 
-- **«Аналізуй, але нічого не роби» / «режим обговорення»** — лише аналіз і розмова, жодних змін
-  файлів. Власник може докидати зауваження кількома повідомленнями.
-- **Починати лише за командою**: «Розпочинай», «роби», «приступай», «плануй і приступай».
-- Великі ідеї він любить обговорити **діалогом** (по пунктах), перш ніж будувати.
-- Плани, домовленості і специфікації — **у файли проєкту** (тепер — у цю вікі), а не лише в пам'ять агента.
-- «Добре постарайся» — очікує ретельної перевірки перед звітом.
+- **"Just analyze, don't change anything" / "discussion mode"** — analysis and conversation only, no
+  file changes. The owner may add notes across several messages.
+- **Start only on command**: "Розпочинай" (Start), "roby" (Do it), "приступай" (Get going), "плануй і
+  приступай" (Plan it and get going).
+- He likes to talk through big ideas **as a dialogue** (point by point) before anything gets built.
+- Plans, agreements, and specs go **into the project's files** (now — into this wiki), not just into an
+  agent's memory.
+- "Try hard" means he expects a thorough check before the report.
 
-## Обов'язкові правила
+## Mandatory rules
 
-- Безпека — [security.md](../security.md) (Etsy лише з Києва, лише читання; Printify/Gelato — лише
-  дозволене; ключі не чіпати).
-- Комітити й пушити лише на прохання — і тоді все разом, без поділу на гілки та «чиї зміни»
-  ([dev/setup.md](../dev/setup.md)). Пояснювати git простими словами, без жаргону.
-- Після змін серверної частини — нагадати перезапустити Book Studio.
-- Нічого не кешувати «про запас»: Order Creator щоразу порожній (крім незавершеної роботи над новим
-  замовленням — вона пам'ятається до зникнення замовлення з «Нових»), замовлення оновлюються лише при запуску
-  і кнопкою ([decisions.md](../decisions.md)).
+- Security — [security.md](../security.md) (Etsy only from Kyiv, read-only; Printify/Gelato — only what's
+  allowed; never touch keys).
+- Commit and push only when asked — and then everything together, with no splitting by branch or "whose
+  change it is" ([dev/setup.md](../dev/setup.md)). Explain git in plain words, with no jargon.
+- After changes to the server side, remind him to restart Book Studio.
+- Never cache anything "just in case": the Order Creator is empty every time (except for unfinished work
+  on a new order — that's remembered until the order leaves "New"), orders refresh only on launch and by
+  button ([decisions.md](../decisions.md)).
 
-## Контекст власника
+## About the owner
 
-- Два комп'ютери: вроцлавський (щоденна робота) і віддалений київський (магазин Etsy, вхід в Etsy).
-  **Book Studio працює лише на вроцлавському**; на київському власник програму не запускає взагалі
-  (сказав 18.09.2026) — там лише браузер з Etsy.
-- Магазин: персоналізовані дитячі книги; друк у Printify (магазин CozyCovenant) і Gelato.
-- Старі інструменти: Etsy Profit Calculator, Order Creator Printify, Etsy OS (невдалий конвеєр).
-- Шаблони книг — у Canva; частину сторінок апскейлить в Upscayl; бібліотека поки наповнена не вся.
-- **Програми — лише в `D:\Programs\Regular`; диск C — мінімально, без необхідності ніколи** (19.09.2026).
-  Завантаження й дані програм — теж на D. Системні налаштування Windows (змінні середовища тощо)
-  власник змінює сам за інструкцією агента. Додаткові бібліотеки Python для досліджень агента —
-  у `D:\Programs\Regular\python-libs` (підключати через `PYTHONPATH`; там `psd-tools` 1.19, 19.09.2026).
-- На вроцлавському ПК: RTX 4070 SUPER (12 ГБ), 32 ГБ оперативної; Ollama (`D:\Programs\Regular\Ollama`)
-  з моделлю `gemma4:12b-it-qat` (Qwen власник вирішив прибрати, 19.09.2026); змінні користувача `OLLAMA_MODELS`,
-  `OLLAMA_NUM_PARALLEL=4` ([план перевірки тексту](../plans/roadmap.md)). Ollama запускати з «Пуску».
+- Two computers: the Wrocław one (day-to-day work) and a remote Kyiv one (the Etsy shop, signing in to
+  Etsy). **Book Studio only runs on the Wrocław one**; the owner never runs the program on the Kyiv PC at
+  all (said on 2026-09-18) — only a browser with Etsy lives there.
+- The shop: personalized children's books; printed through Printify (shop CozyCovenant) and Gelato.
+- Older tools: Etsy Profit Calculator, Order Creator Printify, Etsy OS (a failed pipeline).
+- Book templates live in Canva; some pages get upscaled in Upscayl; the library isn't fully filled in
+  yet.
+- **Programs only go on `D:\Programs\Regular`; drive C — kept minimal, never touched unless truly
+  necessary** (2026-09-19). Program downloads and data also go on D. The owner changes Windows system
+  settings (environment variables, etc.) himself, following an agent's instructions. Extra Python
+  libraries an agent needs for research live in `D:\Programs\Regular\python-libs` (add via `PYTHONPATH`;
+  it has `psd-tools` 1.19, as of 2026-09-19).
+- **"Very important to keep drive C clean"** (2026-09-23): any temporary file that appears while a program
+  of his runs must be removed when it's done. So Book Studio and «Мокапи» give themselves — and every
+  program they start (the Edge window, the Windows dialogs, cloudflared, Photoshop) — a temp folder inside
+  their data folder on D and empty it at start and at close ([runtime](../architecture/runtime.md#temporary-files-and-drive-c));
+  the tests and the preview servers write to `.tmp\` in the repository, also on D. An agent's own scratch
+  files on C go at the end of its task.
+- **Photoshop CC 2019 (20.0.5), portable** — `D:\Programs\Portable\Photoshop_Portable` (the program itself:
+  `Portable Adobe Photoshop\App\Photoshop\Photoshop.exe`); used for Etsy listing mockups, the templates
+  are in `D:\Roman\Desktop\Трафарети мастхев` (read-only) — [plans/listing-mockups.md](../plans/listing-mockups.md).
+  `ffmpeg` is on PATH (2026-09-23).
+- **About visuals he's "pixel-perfect"**: the cover sells, so he fits covers himself (2026-09-23).
+  He doesn't want an agent watching videos frame by frame ("too slow and costly") — he writes a text
+  description instead.
+- On the Wrocław PC: an RTX 4070 SUPER (12 GB), 32 GB RAM; Ollama (`D:\Programs\Regular\Ollama`) with the
+  `gemma4:12b-it-qat` model (the owner decided to drop Qwen, 2026-09-19); user variables `OLLAMA_MODELS`,
+  `OLLAMA_NUM_PARALLEL=4` ([the text-check plan](../plans/roadmap.md)). Ollama is started from the Start
+  menu.
 
-## Пов'язане
+## Related
 
-- [Принципи інтерфейсу](ui-principles.md) · [Рішення](../decisions.md) · [Плани](../plans/roadmap.md)
+- [Interface principles](ui-principles.md) · [Decisions](../decisions.md) · [Plans](../plans/roadmap.md)

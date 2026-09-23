@@ -1,84 +1,93 @@
 ---
-title: Вікі Book Studio — зміст
+title: Book Studio wiki — index
 type: index
 updated: 2026-09-23
 code: []
 ---
-# Вікі Book Studio
+# Book Studio wiki
 
-> База знань проєкту. **Агентам:** почніть звідси → відкрийте потрібні сторінки → лише потім код
-> (за розділами «Де в коді»). Після кожної зміни коду вікі оновлюється — [правила](dev/wiki-rules.md).
-> Власнику: сторінки можна читати тут або в Obsidian (папка `wiki`).
+> The project's knowledge base. **Agents:** start here → open the pages you need → only then the code
+> (by the "Where in the code" sections). The wiki is updated after every code change —
+> [rules](dev/wiki-rules.md).
+> Owner: the pages can be read here or in Obsidian (the `wiki` folder).
 
-## Почати тут
+## Start here
 
-- [Огляд](overview.md) — що це за програма, бізнес, з чого складається.
-- [Словник](glossary.md) — слова власника → місця в коді. **Перше, куди дивитись, коли власник щось називає.**
-- [Карта коду](code-map.md) — кожен файл і його головні функції.
-- [Безпека](security.md) — що заборонено програмі й агентам. **Обов'язково.**
-- [Як працювати з власником](owner/working-with-owner.md) — мова, режими «аналіз» / «роби», звіти.
+- [Overview](overview.md) — what this program is, the business, what it's made of.
+- [Glossary](glossary.md) — the owner's words → places in the code. **The first place to look when the
+  owner names something.**
+- [Code map](code-map.md) — every file and its main functions.
+- [Security](security.md) — what's forbidden for the program and for agents. **Mandatory.**
+- [Working with the owner](owner/working-with-owner.md) — language, "analyze" / "do it" modes, reports.
 
-## Розділи програми
+## Parts of the program
 
-- [Замовлення](features/orders.md) — черга і картка замовлення (стартовий екран).
-- [Бібліотека книг](features/library.md) — галерея, нова книга, паспорт книги, модель `book.json`.
-- [Перевірка тексту](features/text-check.md) — локальна модель Gemma читає сторінки, програма звіряє з паспортом книги.
-- [Order Creator](features/order-creator.md) — книга/замовлення On hold у Printify, чернетка Gelato.
-- [Налаштування](features/settings.md) — ключі, Etsy, Master Printify, дані.
-- [Журнал відправок](features/send-journal.md) — що саме пішло в Printify і Gelato при кожній спробі.
-- [Архів замовлень](features/archive.md) — файли книг, що пішли в друк (14 днів після «Відправлених»), і передрук.
-- [Прибуток](features/profit.md) — прихований до 1 жовтня.
+- [Orders](features/orders.md) — the queue and the order card (the start screen).
+- [Book library](features/library.md) — the gallery, a new book, a book's passport, the `book.json` model.
+- [Text check](features/text-check.md) — a local Gemma model reads the pages, the program checks them
+  against the book passport.
+- [Order Creator](features/order-creator.md) — a book/On-hold order in Printify, a Gelato draft.
+- [Settings](features/settings.md) — keys, Etsy, the Printify Master, data.
+- [Send journal](features/send-journal.md) — exactly what went to Printify and Gelato on every attempt.
+- [Order archive](features/archive.md) — files of books that went to print (14 days after "Sent"), and
+  reprints.
+- [Profit](features/profit.md) — hidden until 1 October.
+- [Mockups](features/mockups.md) — a separate utility: a Canva demo book → Etsy listing pictures from the
+  Photoshop templates (the owner fits the front cover by hand).
 
-## Правила предметної області
+## Domain rules
 
-- [Правило друкарні](rules/printer-rule.md) — Hardcover у США → Printify (24), решта → Gelato (28 або 30).
-- [Будова книги](rules/book-structure.md) — 30 сторінок, розвороти, слоти бібліотеки, папка для друку.
-- [Назви файлів](rules/file-naming.md) — розстановка експорту Canva, імпорт у бібліотеку.
-- [Етапи замовлення](rules/order-stages.md) — нове / в роботі / відправлене.
-- [Коли оновлюються замовлення](rules/sync-policy.md) — лише при запуску і кнопкою.
-- [Зіставлення і прибуток](rules/reconciliation.md) — пошук замовлення друку, комісії Etsy, стани.
+- [Printer rule](rules/printer-rule.md) — Hardcover in the US → Printify (24), everything else → Gelato
+  (28 or 30).
+- [Book structure](rules/book-structure.md) — 30 pages, spreads, library slots, the print folder.
+- [File naming](rules/file-naming.md) — laying out a Canva export, importing into the library.
+- [Order stages](rules/order-stages.md) — new / in progress / sent.
+- [When orders are refreshed](rules/sync-policy.md) — only on launch and by button.
+- [Matching and profit](rules/reconciliation.md) — finding the print order, Etsy fees, states.
 
-## Шляхи (покроково)
+## Paths (step by step)
 
-- [Від Etsy до друку](flows/order-to-print.md) — головний робочий процес власника.
-- [Наповнення бібліотеки](flows/book-import.md) — нова книга, інструкція для агента, імпорт.
-- [Перетягування папок і ZIP](flows/dropped-files.md) — як файли потрапляють у програму.
+- [From Etsy to print](flows/order-to-print.md) — the owner's main workflow.
+- [Filling the library](flows/book-import.md) — a new book, the agent's guide, import.
+- [Dragging folders and ZIPs](flows/dropped-files.md) — how files get into the program.
 
-## Будова програми
+## Program structure
 
-- [Запуск і завершення](architecture/runtime.md)
-- [Сервер](architecture/server.md) — маршрути, фонові задачі, помилки, налаштування.
-- [Маршрути сервера](architecture/api-routes.md) — усі 90, з тим, хто їх викликає.
-- [Інтерфейс](architecture/frontend.md) — оболонка, контракт сторінки, помічники, візуальна система.
-- [Дані](architecture/data.md) — що лежить в `app/data`.
+- [Launch and shutdown](architecture/runtime.md)
+- [Server](architecture/server.md) — routes, background jobs, errors, settings.
+- [Server routes](architecture/api-routes.md) — all 105, with who calls them (15 of them — the mockups utility's own).
+- [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
+- [Data](architecture/data.md) — what's in `app/data`.
 
-## Сервіси
+## Services
 
-- [Etsy](integrations/etsy.md) — лише читання; вхід лише з київського ПК.
-- [Printify](integrations/printify.md) — дозволені дії, замовлення On hold, Master.
-- [Gelato](integrations/gelato.md) — чернетки, PDF, тимчасове посилання Cloudflare.
-- [Canva](integrations/canva.md) — шаблони книг і ручна робота власника.
+- [Etsy](integrations/etsy.md) — read-only; sign-in only from the Kyiv PC.
+- [Printify](integrations/printify.md) — allowed actions, On-hold orders, the Master.
+- [Gelato](integrations/gelato.md) — drafts, PDF, the Cloudflare temporary link.
+- [Canva](integrations/canva.md) — book templates and the owner's manual work.
 
-## Власник
+## Owner
 
-- [Як працювати з власником](owner/working-with-owner.md)
-- [Інтерфейс, який хоче власник](owner/ui-principles.md)
+- [Working with the owner](owner/working-with-owner.md)
+- [The interface the owner wants](owner/ui-principles.md)
 
-## Розробка
+## Development
 
-- [Встановлення, запуск, GitHub](dev/setup.md)
-- [Тести](dev/testing.md)
-- [Перегляд інтерфейсу](dev/preview.md) — сервер на тимчасових даних.
-- [Як вести цю вікі](dev/wiki-rules.md) — формат сторінок, перевірка, операції.
+- [Setup, launch, GitHub](dev/setup.md)
+- [Tests](dev/testing.md)
+- [Interface preview](dev/preview.md) — a server on temporary data.
+- [How to run this wiki](dev/wiki-rules.md) — page format, checks, operations.
 
-## Рішення, рецепти, плани
+## Decisions, recipes, plans
 
-- [Рішення](decisions.md) — що і чому вирішили (з датами).
-- [Рецепти](recipes.md) — де міняти код для типових задач.
-- [Плани](plans/roadmap.md) — узгоджені ідеї на потім.
-- [Відкриті питання і технічний борг](plans/open-questions.md)
+- [Decisions](decisions.md) — what was decided and why (with dates).
+- [Recipes](recipes.md) — where to change code for common tasks.
+- [Plans](plans/roadmap.md) — agreed ideas for later.
+- [Listing mockups](plans/listing-mockups.md) — the agreements and the templates' structure behind the
+  [Mockups](features/mockups.md) utility.
+- [Open questions and technical debt](plans/open-questions.md)
 
-## Службове
+## Housekeeping
 
-- [Журнал змін вікі](log.md)
-- [Джерела власника](raw/README.md)
+- [Wiki change log](log.md)
+- [Owner's sources](raw/README.md)

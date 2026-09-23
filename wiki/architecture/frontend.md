@@ -1,5 +1,5 @@
 ---
-title: Інтерфейс — будова і спільні помічники
+title: Interface — structure and shared helpers
 type: architecture
 updated: 2026-09-23
 code:
@@ -13,132 +13,149 @@ code:
   - app/web/js/lightbox.js
   - app/web/css/app.css
 ---
-# Інтерфейс
+# Interface
 
-> Одна HTML-сторінка без збірки: модулі ES з `app/web/js`, стилі в одному `app.css`.
-> Сторінки перемикаються за `#хешем`, кожна — окремий модуль із `mount()`.
+> One HTML page with no build step: ES modules from `app/web/js`, styles in one `app.css`.
+> Pages switch by `#hash`, each one its own module with `mount()`.
 
-## Оболонка і маршрутизація — `app.js`
+## Shell and routing — `app.js`
 
-- **Бокова панель** (`NAV`): Замовлення `#/orders` (Alt+1), Бібліотека `#/library` (Alt+2),
-  Order Creator `#/creator` (Alt+3), Архів замовлень `#/archive` (Alt+4, з 18.09.2026),
-  Налаштування `#/settings` (Alt+5). Стартова — `HOME = '#/orders'`. Поки відкритий діалог чи переглядач,
-  Alt+1…5 сторінку не перемикають; при кожному переході відкрите меню й підказка закриваються
-  (`closeMenu()`, `hideTip()` у `navigate()`) — 19.09.2026: меню «Ще» паспорта книги лишалось над іншою сторінкою.
-  Внизу — меню теми (темна / світла / як у Windows, «мінімум анімацій»). Крапка на Налаштуваннях —
-  коли якомусь сервісу бракує ключа чи входу.
-  Активний пункт позначає «квадратик» (`.nav-pill`, `placeNavPill()`), що переїжджає пружною анімацією.
-  Під час зміни сторінки панель лишається «живою» над переходом (`.vt-running .nav` має власне
-  `view-transition-name`, старий знімок прихований): квадратик їде **під** іконками, іконка плавно
-  змінює колір. Окремим знімком квадратик малювався б поверх іконки — вона зникала, поки він їхав
-  (зауваження власника, 18.09.2026).
-- **Маршрути** (`ROUTES`): `#/orders[/<номер чека>]` → `pages/orders.js`, `#/library` → `library.js`,
+- **Sidebar** (`NAV`): Orders `#/orders` (Alt+1), Library `#/library` (Alt+2), Order Creator `#/creator`
+  (Alt+3), Order archive `#/archive` (Alt+4, since 2026-09-18), Settings `#/settings` (Alt+5). The start
+  page is `HOME = '#/orders'`. While a dialog or the viewer is open, Alt+1…5 doesn't switch pages; every
+  navigation closes any open menu and tooltip (`closeMenu()`, `hideTip()` in `navigate()`) —
+  2026-09-19: the book passport's "More" menu used to stay open over another page. At the bottom — the
+  theme menu (dark / light / follow Windows, "reduce motion"). The dot on Settings — when some service
+  is missing a key or a sign-in. The active item is marked by a "pill" (`.nav-pill`, `placeNavPill()`)
+  that glides with a spring animation. While the page changes, the panel stays "alive" over the
+  transition (`.vt-running .nav` has its own `view-transition-name`, the old snapshot is hidden): the
+  pill travels **under** the icons, and an icon smoothly changes color. As a separate snapshot, the pill
+  would be drawn over the icon — it would vanish while the pill traveled (the owner's note, 2026-09-18).
+- **Routes** (`ROUTES`): `#/orders[/<receipt number>]` → `pages/orders.js`, `#/library` → `library.js`,
   `#/book/<id>` → `book.js`, `#/creator` → `creator.js`, `#/archive[/<id>]` → `archive.js`,
-  `#/settings[/<розділ>]` → `settings.js`.
-  Сторінки **Прибуток немає в маршрутах** — вона прихована до 1 жовтня ([features/profit.md](../features/profit.md)).
-- **Контракт сторінки**: `export async function mount(view, params)` будує вміст у переданому
-  елементі й повертає `{ shown(), unmount() }` (обидва необов'язкові). `navigate()` будує нову
-  сторінку поза екраном і міняє їх одним View Transition — без порожніх кадрів.
-- `unmount()` мусить зняти всі слухачі (`on()` повертає функцію відписки) і таймери.
-- **Збереження роботи над замовленням** (з 18.09.2026, бажання власника; `keep.js`): контролер
-  може мати ще `keep()`, `hidden()`, `revive()` і `receiptId`. Якщо при виході зі сторінки `keep()`
-  повертає true, `navigate()` не знімає її, а ховає: викликає `hidden()` (відпустити глобальні
-  слухачі, як Esc у картці) і кладе вигляд у `keep.js` разом із прокруткою сторінки й прокруткою
-  всередині (стрічка звірки, права колонка). Повернення на той самий хеш — `revive()` (асинхронно
-  питає, чи замовлення ще нове; `false` або помилка → сторінка будується заново) і той самий вигляд
-  повертається, як був: запущені перевірки файлів чи створення чернетки тим часом доходять до кінця.
-  Сторінку, для якої чекає `give()`, завжди будують заново (`waiting()`).
-  Так роблять картка нового замовлення і Order Creator, заповнений із замовлення; черга відпускає
-  все про замовлення, що пішли з «Нових» (`settle()`). Лише в пам'яті — перезапуск усе забуває.
-  **«Завершити» (хрестик, з 20.09.2026):** `finish(receiptId)` відпускає всі збережені сторінки цього
-  замовлення і знімає позначку «чернетку створено»; сторінка, з якої натиснули, більше не зберігається
-  (її `keep()` віддає false) — і власник опиняється в черзі.
-- Іконка «Замовлення» (і Alt+1) з іншої вкладки веде туди, де власник був у «Замовленнях»: у
-  відкриту картку, якщо вона збережена, інакше в чергу (`ordersTarget()`, `lastOrders`).
-- `refreshInfo()` → `/api/app` (стан сервісів, кількість книг) для панелі та сторінок — в окремому
-  `info.js` разом зі `store`, щоб сторінки не імпортували оболонку, яка їх сама завантажує; панель
-  перемальовується через `whenInfoChanges()`.
-- Тема й «мінімум анімацій» при запуску беруться з налаштувань програми однаково (браузер пам'ятає тему
-  лише для першого кадру); невдале збереження — повідомлення.
+  `#/settings[/<section>]` → `settings.js`. **The Profit page isn't in the routes** — it's hidden until
+  1 October ([features/profit.md](../features/profit.md)).
+- **A page's contract**: `export async function mount(view, params)` builds content in the given
+  element and returns `{ shown(), unmount() }` (both optional). `navigate()` builds the new page off
+  screen and swaps them with one View Transition — no empty frames.
+- `unmount()` must remove every listener (`on()` returns an unsubscribe function) and timer.
+- **Saving work on an order** (since 2026-09-18, the owner's wish; `keep.js`): a controller can also
+  have `keep()`, `hidden()`, `revive()` and `receiptId`. If `keep()` returns true when leaving the page,
+  `navigate()` doesn't tear it down but hides it: it calls `hidden()` (release global listeners, like Esc
+  in the card) and stores the view in `keep.js` along with the page's scroll position and any inner
+  scrolling (the proof filmstrip, the right column). Returning to the same hash calls `revive()`
+  (asynchronously asks whether the order is still new; `false` or an error → the page is rebuilt) and the
+  same view comes back as it was: any running file checks or draft creation finish on their own in the
+  meantime. A page that `give()` is waiting for is always rebuilt (`waiting()`). This is how a new
+  order's card and an Order Creator filled from an order behave; the queue releases everything about
+  orders that have left "New" (`settle()`). Memory only — a restart forgets it all.
+  **"Finish" (the ×, since 2026-09-20):** `finish(receiptId)` releases every saved page for this order
+  and clears the "draft created" mark; the page it was clicked from is no longer kept (its `keep()`
+  returns false) — and the owner ends up in the queue.
+- The "Orders" icon (and Alt+1) from another tab goes back to where the owner was in "Orders": an open
+  card if it's kept, otherwise the queue (`ordersTarget()`, `lastOrders`).
+- `refreshInfo()` → `/api/app` (service status, book count) for the panel and the pages — in its own
+  `info.js` together with `store`, so pages don't have to import the shell that loads them; the panel
+  redraws via `whenInfoChanges()`.
+- Theme and "reduce motion" are both taken from the program's settings the same way on launch (the
+  browser only remembers the theme for the first frame); a failed save shows a message.
 
-## Спільні помічники — `lib.js`
+## Shared helpers — `lib.js`
 
-| Що | Функції |
+| What | Functions |
 |---|---|
-| Безпечні шаблони | `` html`…` `` екранує все, крім `raw()`; `setHtml()`, `el()` |
-| Кнопки-піктограми з підказкою | `ib(icon, tip, attrs, {cls, kbd})`; спільна підказка `showTip()` / `hideTip()` (`.tip`: до 320 px, довша — у два рядки, не за край плашки; 19.09.2026) |
-| Сервер | `api()` (токен, JSON, `ApiError`), `media()` (посилання з токеном), `upload()` (XHR з прогресом), `runJob()` (4-й аргумент `keepGoing()` — перестати опитувати, коли результат уже не потрібен; `job.partial` у `onProgress` — те, що задача вже знайшла) |
-| Зовнішні посилання | `openExternal()` — через сервер, у звичайному браузері (Etsy заблоковано) |
-| Повідомлення | `toast()`, `modal()`, `confirmBox()` (`extra` — розмітка під текстом, напр. тексти, які буде збережено), `menu()`, `closeMenu()`, `topLayer()` |
-| Сегментований перемикач | `segHtml()`, `syncSeg()`, `setSeg()` |
-| Формати | `money()`, `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
-| Плавність | `fadeImages()` (декодування поза головним потоком), `slide()` (висота), `flip()` (переміщення карток), `keepFocus()`, `idle()`, `reducedMotion()` |
+| Safe templates | `` html`…` `` escapes everything except `raw()`; `setHtml()`, `el()` |
+| Icon buttons with a tooltip | `ib(icon, tip, attrs, {cls, kbd})`; the shared tooltip `showTip()` / `hideTip()` (`.tip`: up to 320 px, longer wraps to two lines, never past the panel's edge; 2026-09-19) |
+| Server | `api()` (token, JSON, `ApiError`), `media()` (a link with a token), `upload()` (XHR with progress), `runJob()` (4th argument `keepGoing()` — stop polling once the result is no longer needed; `job.partial` in `onProgress` — what the job has already found) |
+| External links | `openExternal()` — through the server, in the regular browser (Etsy is blocked) |
+| Notices | `toast()`, `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `menu()`, `closeMenu()`, `topLayer()` |
+| Segmented switch | `segHtml()`, `syncSeg()`, `setSeg()` |
+| Formatting | `money()`, `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
+| Smoothness | `fadeImages()` (decoding off the main thread), `slide()` (height), `flip()` (moving cards), `keepFocus()`, `idle()`, `reducedMotion()` |
 
-## Інші модулі
+## A second window: the mockups utility (since 2026-09-23)
 
-- `icons.js` — піктограми 24×24, обведення 1,6. **Одна піктограма — одне значення.**
-  Є логотипи сервісів: `etsy`, `canva`, `printify`, `gelato`; `sendLog` — журнал відправок;
-  `orderArchive` — архів замовлень (аркуш із годинником; не `archive`, що означає архів бібліотеки);
-  `pin` — «Не видаляти»;
-  `textScan` — перевірка тексту (рядки тексту з лупою; значок у «Звірці», блок у Налаштуваннях);
-  `truck` — «друкарня відправила» (вкладка й чип трек-номера; з 17.09.2026 окремий малюнок, а не
-  псевдонім коробки `package`, яка означає «відправлено в Etsy»);
-  `plus` — «Ще книга» в Order Creator.
-- Чипи (`.chip`): текст чипа — одним шрифтом (`.chip .num` не перемикає шрифт), `.chip-mono` на 2 px
-  нижче, щоб Consolas стояв на одній лінії з текстом інших чипів.
-- `keep.js` — збережені сторінки (`stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`);
-  сторінки без роботи (контролер каже `idle()`) зберігаються не більше `IDLE_KEPT` = 3 — старші
-  відпускаються (огляд коду 19.09.2026);
-  `settle(orders)` — відпустити те, що стосується вже не нових замовлень; `markSent()` / `sentOf()` —
-  Order Creator повідомляє картці, що чернетку для замовлення створено; `finish(rid)` — власник
-  завершив роботу над замовленням (хрестик).
-- `handoff.js` — `give(to, data)` / `take(to)` / `waiting(to)`: одноразова передача між сторінками лише в пам'яті
-  (картка замовлення → Order Creator; архів замовлень → Order Creator з `reprint`). Передача з картки
-  несе `books: [{folder, label, title, format}]` — усі готові книги замовлення (з 20.09.2026); поля
-  першої книги лежать і в корені, щоб стара форма з однією книгою читалась як раніше.
-- **Сторінка з кількох книг** (картка замовлення і Order Creator, з 20.09.2026): стан — масив, по
-  запису на книгу (`work[]` у картці, `books[]` у Order Creator), а `pick` каже, яку показано.
-  Асинхронна робота (копіювання, перевірка файлів, перевірка тексту) тримається за **свій** запис і свій
-  лічильник `seq`, тож перемикання книг нічого не перериває й не змішує; малюється лише те, що на екрані
-  (`showing()`). `wireFolderDrop()` передає в `onDrop` ще й зону (`[data-folder-drop][data-book]`) —
-  так перетягування потрапляє саме в ту книгу, на яку його кинули.
-- `order-bits.js` — спільне для Замовлень, архіву замовлень і Order Creator: етапи, чипи статусу
-  друкарні й трек-номера, номер чека, поля покупця ([features/orders.md](../features/orders.md),
+The [mockups utility](../features/mockups.md) is its own program with its own window: `mockups.html` (the
+same token and first-frame theme as `index.html`, no sidebar) loads `mockups-shell.js` — the heartbeat,
+the goodbye beacon, Book Studio's theme (from `/api/mockups/state`) — which mounts `pages/mockups.js`
+with the usual page contract (`mount(view)` → `unmount()`). The page uses the shared helpers as they
+are: `receiveDrop()` / `wireFolderDrop()` for the ZIP, `openLightbox()` with an «Обрати» action,
+`runJob()` for the run (reading `job.partial` for every template's row), `modal()` for the sliders window.
+Since the evening of 2026-09-23 it is laid out with the Order Creator's own parts — `.creator-grid`, `.card`
+steps with `.step-no` (green with ✓ when done, `.step-no.done`), `.path-input` + `folderPick`, `.v-badge`,
+`.structure-cover`, `.spread-grid`, `.result-card` — plus its own `.mk-*` (template rows with previews,
+slots, the "Yes" drawing, the result pictures, the veil of the empty structure). Inside the page a spread
+or a slot is dragged with its own data types (`application/x-mk-spread`, `…-slot`), so the file-drop
+highlight (`wireFolderDrop()` — files only) never reacts to it. Moving it into Book Studio later = a route
+in `ROUTES` and an item in `NAV`.
+
+## Other modules
+
+- `icons.js` — 24×24 icons, 1.6 stroke. **One icon — one meaning.** There are service logos: `etsy`,
+  `canva`, `printify`, `gelato`; `sendLog` — the send journal; `orderArchive` — the order archive (a
+  sheet with a clock; not `archive`, which means the library's archive); `pin` — "Keep"; `textScan` —
+  the text check (lines of text with a magnifying glass; the icon in "Proof", the block in Settings);
+  `truck` — "the printer has shipped it" (the tab and the tracking chip; since 2026-09-17 its own
+  picture, not an alias for the `package` box icon, which means "shipped on Etsy"); `plus` — "another
+  book" in the Order Creator; `mockup` — the mockups utility (a book in a picture frame); `hand` — "the
+  owner fits this by hand" (the front cover in a mockup template).
+- Chips (`.chip`): a chip's text is one font (`.chip .num` doesn't switch fonts), `.chip-mono` sits 2 px
+  lower so Consolas lines up with the text of other chips.
+- `keep.js` — saved pages (`stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`); pages with
+  no work (the controller says `idle()`) are kept up to `IDLE_KEPT` = 3 — older ones are released (code
+  review, 2026-09-19); `settle(orders)` — release anything about orders that are no longer new;
+  `markSent()` / `sentOf()` — the Order Creator tells the card that a draft for the order has been
+  created; `finish(rid)` — the owner finished work on the order (the ×).
+- `handoff.js` — `give(to, data)` / `take(to)` / `waiting(to)`: a one-time handoff between pages, memory
+  only (the order card → the Order Creator; the order archive → the Order Creator with `reprint`). A
+  handoff from the card carries `books: [{folder, label, title, format}]` — every ready book of the
+  order (since 2026-09-20); the first book's fields also sit at the root, so an old single-book form
+  still reads as before.
+- **A page with several books** (the order card and the Order Creator, since 2026-09-20): state is an
+  array, one record per book (`work[]` in the card, `books[]` in the Order Creator), and `pick` says
+  which one is shown. Async work (copying, file checking, text checking) is tied to **its own** record
+  and its own `seq` counter, so switching books never interrupts or mixes anything; only what's on
+  screen gets drawn (`showing()`). `wireFolderDrop()` passes the drop zone into `onDrop` too
+  (`[data-folder-drop][data-book]`) — so a drop lands in exactly the book it was dropped on.
+- `order-bits.js` — shared by Orders, the order archive and the Order Creator: stages, printer-status
+  and tracking chips, the receipt number, the buyer's fields ([features/orders.md](../features/orders.md)),
   [features/archive.md](../features/archive.md)).
-- `lightbox.js` — `openLightbox(items, start)`; елемент: `src`, `full` (чіткіша версія при зумі),
-  `title`, `sub`, `text` (клавіша T), `onOriginal`, `files` (які файли показано) і `actions` — кнопки
-  вгорі (`{icon, label, tip, on, run(lb)}`). Повертає `{close, refresh}`: сторінку замінили — той, хто
-  відкрив переглядач, перебудовує масив елементів **на місці** і кличе `refresh()`, і переглядач
-  малює нову картинку. Колесо, перетягування з інерцією, ← →, Esc.
-- **Шари поверх сторінки** (з 23.09.2026): переглядач і діалоги — в одному шарі (`z-index` 950), тож
-  діалог, відкритий із переглядача («Чернетку вже створено»), стоїть над ним; меню 965, повідомлення 970,
-  підказки 1200. Клавіші (Esc, ← →) обробляє лише верхній (`topLayer()`): Esc спершу закриває діалог,
-  потім переглядач. До того діалоги й повідомлення з'являлися **під** переглядачем, а фокус ішов у
-  невидиму кнопку (аудит 22.09.2026). Тест `SharedNumbers` у `test_orders.py` тримає цей порядок.
-- `folderViewerItems(folder, total, sub, v)` — елементи переглядача для папки друку; `v` росте з кожною
-  заміненою сторінкою й потрапляє в адресу картинки, бо прев'ю кешуються в браузері на 10 хвилин.
+- `lightbox.js` — `openLightbox(items, start)`; an item: `src`, `full` (a sharper version when zoomed),
+  `title`, `sub`, `text` (the T key), `onOriginal`, `files` (which files are shown), and `actions` —
+  buttons at the top (`{icon, label, tip, on, run(lb)}`). Returns `{close, refresh}`: when a page is
+  replaced, whoever opened the viewer rebuilds the item array **in place** and calls `refresh()`, and
+  the viewer draws the new picture. Mouse wheel, drag with inertia, ← →, Esc.
+- **Layers over the page** (since 2026-09-23): the viewer and dialogs share one layer (`z-index` 950),
+  so a dialog opened from the viewer ("a draft already exists") sits above it; menus 965, notices 970,
+  tooltips 1200. Keys (Esc, ← →) are only handled by the top one (`topLayer()`): Esc closes a dialog
+  first, then the viewer. Before this, dialogs and notices used to appear **under** the viewer, with
+  focus landing on a hidden button (the 2026-09-22 audit). The `SharedNumbers` test in `test_orders.py`
+  keeps this order in place.
+- `folderViewerItems(folder, total, sub, v)` — viewer items for a print folder; `v` grows with every
+  replaced page and lands in the image address, since previews are cached in the browser for 10 minutes.
 
-## Візуальна система — `app.css` («Prepress»)
+## Visual system — `app.css` ("Prepress")
 
-- Токени кольору на `:root` (світла тема «proofing booth») і `[data-theme="dark"]` («graphite»);
-  тема ставиться до першого кадру скриптом в `index.html` (ключ `bs-theme` у localStorage).
-- Шрифти: Bahnschrift — інтерфейс і заголовки, Segoe UI — текст, Sitka — тексти книг, Consolas — цифри/коди.
-- Акцент — «process cyan»; кольори сервісів: `--printify` (салатовий), `--gelato` (синій),
-  `--etsy`, `--canva`. Printify-режим Order Creator і картка друку Printify (`.tint-printify`)
-  перефарбовують акцент у салатовий.
-- Радіуси за роллю: папір гострий (`--r-art`), елементи керування м'які (`--r-ctl`).
-- **60 кадрів/с**: анімуються лише `transform` і `opacity`, без розмиття; `data-motion="reduce"` і
-  `prefers-reduced-motion` вимикають анімації однаково (тривалість, затримки й плавна прокрутка).
-- Розміри прев'ю від 1400 px, які просять сторінки, — лише ті, що сервер тримає (`images._LARGER`:
-  1400, 2600, 4096); тест `SharedNumbers` звіряє сторінки з сервером.
-- Групи класів: `.lib-toolbar` (панелі інструментів), `.ord-*` (замовлення), `.proof*`, `.strip*`
-  (звірка), `.creator*`, `.spread-*` (Order Creator), `.book-*`, `.slot-*` (бібліотека),
-  `.set-*` (налаштування), `.lightbox`, `.lb-*` (переглядач).
-- Вимоги власника до вигляду — [owner/ui-principles.md](../owner/ui-principles.md).
+- Color tokens on `:root` (the light "proofing booth" theme) and `[data-theme="dark"]` ("graphite"); the
+  theme is set before the first frame by a script in `index.html` (the `bs-theme` key in localStorage).
+- Fonts: Bahnschrift — the interface and headings, Segoe UI — text, Sitka — book texts, Consolas —
+  numbers/codes.
+- Accent — "process cyan"; service colors: `--printify` (lime green), `--gelato` (blue), `--etsy`,
+  `--canva`. The Order Creator's Printify mode and the Printify send card (`.tint-printify`) recolor the
+  accent to lime green.
+- Radii by role: paper is sharp (`--r-art`), controls are soft (`--r-ctl`).
+- **60 fps**: only `transform` and `opacity` animate, no blur; `data-motion="reduce"` and
+  `prefers-reduced-motion` disable animation the same way (duration, delay and smooth scrolling).
+- Preview sizes of 1400 px and up that pages ask for are only the ones the server keeps
+  (`images._LARGER`: 1400, 2600, 4096); the `SharedNumbers` test checks the pages against the server.
+- Class groups: `.lib-toolbar` (toolbars), `.ord-*` (orders), `.proof*`, `.strip*` (proofing),
+  `.creator*`, `.spread-*` (the Order Creator), `.book-*`, `.slot-*` (the library), `.set-*` (settings),
+  `.lightbox`, `.lb-*` (the viewer), `.mk-*` (the mockups utility: `.mk-tpl`, `.mk-slot`, `.mk-spread`, `.mk-run`, `.mk-ask`, `.mk-turn`, `.mk-ghost`).
+- The owner's appearance requirements — [owner/ui-principles.md](../owner/ui-principles.md).
 
-## Де в коді
+## Where in the code
 
-- [app/web/index.html](../../app/web/index.html) — токен `__STUDIO_TOKEN__`, тема до першого кадру
+- [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
 - [app/web/js/app.js](../../app/web/js/app.js) — `NAV`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`
@@ -146,8 +163,9 @@ code:
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`, `finish()`
 - [app/web/js/lightbox.js](../../app/web/js/lightbox.js) — `openLightbox()`, `TAU`, `MAX_ZOOM`
-- [app/web/css/app.css](../../app/web/css/app.css) — токени кольорів на початку файлу; `.lightbox`, `.modal-root`, `.menu`, `.toasts` (шари)
+- [app/web/css/app.css](../../app/web/css/app.css) — color tokens at the top of the file; `.lightbox`, `.modal-root`, `.menu`, `.toasts` (layers); `.mk-shell`, `.mk-slot`
+- [app/web/mockups.html](../../app/web/mockups.html), [app/web/js/mockups-shell.js](../../app/web/js/mockups-shell.js) — `boot()`, `applyTheme()` (the mockups window)
 
-## Пов'язане
+## Related
 
-- [Карта коду](../code-map.md) · [Принципи інтерфейсу](../owner/ui-principles.md) · [Рецепти](../recipes.md)
+- [Code map](../code-map.md) · [Interface principles](../owner/ui-principles.md) · [Recipes](../recipes.md)

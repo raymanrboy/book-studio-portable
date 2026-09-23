@@ -4,8 +4,22 @@
     {
       "name": "book-studio-dev",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-B", "app/tools/dev_server.py", "--sample"],
+      "runtimeArgs": [
+        "-B",
+        "app/tools/dev_server.py",
+        "--sample"
+      ],
       "port": 47890
+    },
+    {
+      "name": "mockups-dev",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-B",
+        "app/tools/dev_server.py",
+        "--mockups"
+      ],
+      "port": 47891
     }
   ]
 }

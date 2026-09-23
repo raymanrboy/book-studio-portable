@@ -1,145 +1,153 @@
 ---
-title: Архів замовлень — що пішло в друк і передрук
+title: Order archive — what went to print, and reprints
 type: feature
 updated: 2026-09-23
 code:
   - app/studio/archive.py
   - app/web/js/pages/archive.js
 ---
-# Архів замовлень
+# Order archive
 
-> Окреме меню зліва. Кожна книга, відправлена в друк **з Book Studio**, чиє замовлення в друкарні
-> **оформлене й оплачене**, лежить тут рівно тими файлами, що пішли в друк, — щоб глянути, що реально
-> надруковано, і **зробити передрук у два кліки**.
-> Файли видаляються самі через **14 днів після того, як замовлення стало «Відправленим»**.
-> Задумано й збудовано 18.09.2026 ([рішення](../decisions.md)).
+> A separate menu on the left. Every book sent to print **from Book Studio**, whose print-shop order is
+> **confirmed and paid**, sits here with exactly the files that went to print — so you can see what was
+> really printed, and **reprint it in two clicks**.
+> Files delete themselves **14 days after the order became "Sent"**.
+> Designed and built on 2026-09-18 ([decision](../decisions.md)).
 
-## Що потрапляє в архів
+## What goes into the archive
 
-- **Кожна успішна відправка** з Order Creator (і з картки замовлення через нього): книга в Printify
-  (з замовленням «On hold» чи без), чернетка в Gelato, передрук. Невдалі спроби — ні (їх видно в
-  [журналі відправок](send-journal.md)).
-- **Рівно відправлені файли**: `Cover.png` + `1…N.png` (24 для Printify, 28 або 30 для Gelato) —
-  **копія**, не посилання: якщо згодом змінити файли у своїй папці, архів лишиться таким, як пішло в
-  друк. Передрук з архіву бере ті самі файли жорстким посиланням (місця не займає).
-- **Опис** (`entry.json`): друкарня, назва (`номер чека - ім'я`), номер чека, коли, скільки сторінок,
-  формат Gelato, Product ID / Order ID, адреса, куди відправлено, назва запису в журналі, чи це передрук
-  і якої книги, «Не видаляти», коли замовлення стало «Відправленим».
-- **Показується лише те, що справді пішло в друк** (рішення власника 18.09.2026, `standing()`): файли
-  зберігаються в момент відправки, але книга з'являється в списку, **коли її замовлення в друкарні
-  оформлене й оплачене** (після «Оновити»): Printify — не «on-hold», не «pending», не
-  «payment-not-received», не скасоване; Gelato — чернетку підтверджено як замовлення, оплачено, не
-  скасовано (`profit.is_placed()`). Чернетка, неоплачене чи скасоване — **не рахуються**: книги в
-  архіві немає, передруку з неї немає. Виняток — «Не видаляти».
-- **Лише нові**: книги, відправлені до 18.09.2026 або створені вручну в Gelato, не підтягуються.
-- Лежить у `app/data/archive/<id>/` (id — `РРРРММДД-ГГХХСС-xxxxxx`); у git не йде. Одна книга —
-  ~200–500 МБ справжніх файлів.
+- **Every successful send** from the Order Creator (and from the order card through it): a book in
+  Printify (with or without an "On hold" order), a draft in Gelato, a reprint. Failed attempts don't —
+  they're visible in the [send journal](send-journal.md).
+- **Exactly the files that were sent**: `Cover.png` + `1…N.png` (24 for Printify, 28 or 30 for Gelato) —
+  a **copy**, not a link: if the files in your own folder change afterward, the archive stays as it went
+  to print. A reprint from the archive takes the same files via a hard link (uses no extra space).
+- **Description** (`entry.json`): the printer, the title (`receipt number - name`), the receipt number,
+  when, how many pages, the Gelato format, Product ID / Order ID, the shipping address, the send
+  journal's record name, whether it's a reprint and of which book, "Keep", when the order became "Sent".
+- **Only what really went to print is shown** (the owner's decision, 2026-09-18, `standing()`): files
+  are stored at the moment they're sent, but a book appears in the list **once its print-shop order is
+  confirmed and paid** (after "Refresh"): Printify — not "on-hold", not "pending", not
+  "payment-not-received", not cancelled; Gelato — the draft confirmed as an order, paid, not cancelled
+  (`profit.is_placed()`). A draft, unpaid, or cancelled order **doesn't count**: the book isn't in the
+  archive, and there's no reprint from it. The exception is "Keep".
+- **New ones only**: books sent before 2026-09-18, or created by hand in Gelato, aren't picked up.
+- Lives in `app/data/archive/<id>/` (id — `YYYYMMDD-HHMMSS-xxxxxx`); never goes into git. One book is
+  ~200–500 MB of real files.
 
-## Коли файли видаляються (`archive.refresh()`)
+## When files get deleted (`archive.refresh()`)
 
-Перевірка — при запуску програми і після кожного оновлення замовлень. Правила (`clock()`):
+Checked on program launch and after every order refresh. Rules (`clock()`):
 
-| Книга | Відлік | Видаляється |
+| Book | Counted from | Deleted |
 |---|---|---|
-| «Не видаляти» | — | ніколи, доки позначку не знято |
-| Звичайна | з моменту, коли програма **вперше побачила замовлення «Відправленим»** (коробка) або закритим (скасування, повне повернення) | через **14 днів** (`KEEP_DAYS`) |
-| Передрук | з моменту, коли **друкарня відправила сам передрук** (трек-номер чи статус відправлено) | через 14 днів |
-| Програма не може простежити замовлення: книга не з замовлення Etsy (номера чека немає) або чек не знайдено серед синхронізованих | від відправки в друк | через **30 днів** (`LOST_DAYS`) |
-| Замовлення ще не «Відправлене» | ще не почався | — |
-| **Не стала замовленням:** скасована в друкарні або чернетку видалено (її немає серед замовлень **своєї** друкарні, завантажених повністю щонайменше через 2 дні після відправки, `VANISH_DAYS`) — у списку не показується | з моменту, коли програма це побачила (`droppedAt`) | через **3 дні** (`DROP_DAYS`); доти файли можна взяти в картці замовлення |
-| Чернетка, «on hold» чи не оплачено — у списку не показується | від відправки | через 30 днів, якщо так і не оформили |
+| "Keep" | — | never, until the mark is removed |
+| Normal | the moment the program **first saw the order as "Sent"** (a box icon) or closed (cancelled, fully refunded) | after **14 days** (`KEEP_DAYS`) |
+| Reprint | the moment **the printer shipped the reprint itself** (tracking number or "shipped" status) | after 14 days |
+| The program can't track the order: the book isn't from an Etsy order (no receipt number), or the receipt wasn't found among the synced ones | from the send to print | after **30 days** (`LOST_DAYS`) |
+| The order isn't "Sent" yet | hasn't started yet | — |
+| **Never became an order:** cancelled at the printer, or a draft was deleted (missing from **its own** printer's list, loaded in full at least 2 days after sending, `VANISH_DAYS`) — not shown in the list | the moment the program noticed (`droppedAt`) | after **3 days** (`DROP_DAYS`); until then the files can be taken from the order card |
+| A draft, "on hold", or unpaid — not shown in the list | from the send | after 30 days, if it never got confirmed |
 
-- Немає даних синхронізації (Etsy не підключено) або їх не вдалося прочитати → **нічого не видаляється**,
-  а список показує все, як раніше.
-- **Лише свіжий список друкарні** (аудит 22.09.2026): синхронізація записує для Etsy, Printify і Gelato
-  окремо, коли їхній список замовлень **востаннє завантажився повністю** (`loaded` у знімку, `_loaded()`).
-  Друкарня, чий список не завантажився (прострочений ключ, збій) або обрізався на межі, нічого не
-  доводить: відсутність замовлення в старому списку не робить книгу «видаленою чернеткою». І «не стала
-  замовленням» (3 дні) та «так і не оформили» (30 днів) видаляють файли, лише якщо список цієї друкарні
-  завантажився **після** настання строку. Раніше досить було свіжого списку будь-якої друкарні — і книга,
-  що пішла в друк у Gelato, губила файли через 5 днів збою Gelato.
-- Передрук, що не став замовленням, знімає свою позначку «заміна» з чека (`profit.unmark_reprint()`).
-- Спершу видаляються картинки, опис — останнім: якщо якийсь файл відкрито в іншій програмі, книга
-  лишається в списку і видаляється при наступній перевірці (`_remove()`).
-- Недокопійовані папки `.tmp-*` (обрив живлення) прибираються через годину.
-- Автовидалення — **свідомий виняток** з правила «дані власника не видаляти» (рішення 18.09.2026).
+- No sync data (Etsy not connected), or it couldn't be read → **nothing gets deleted**, and the list
+  shows everything as before.
+- **Only a fresh printer list** (the 2026-09-22 audit): the sync records, separately for Etsy, Printify
+  and Gelato, when their order list **last loaded in full** (`loaded` in the snapshot, `_loaded()`). A
+  printer whose list failed to load (an expired key, a glitch) or was cut off at its cap proves nothing:
+  an order missing from a stale list doesn't make a book a "deleted draft". Both "never became an order"
+  (3 days) and "never got confirmed" (30 days) only delete files when that printer's list loaded
+  **after** the deadline arrived. Before, a fresh list from any printer was enough — and a book that
+  went to print in Gelato could lose its files after 5 days of Gelato failing to sync.
+- A reprint that never became an order clears its "replacement" mark from the receipt
+  (`profit.unmark_reprint()`).
+- Pictures are deleted first, the description last: if some file is open in another program, the book
+  stays in the list and gets deleted on the next check (`_remove()`).
+- Half-copied `.tmp-*` folders (a power cut) are cleared out after an hour.
+- Auto-deletion is a **deliberate exception** to the "never delete the owner's data" rule (decision,
+  2026-09-18).
 
-## Екран
+## Screen
 
-**Список** (`#/archive`): пошук (ім'я, номер чека, назва; Enter відкриває першу), рядки як у черзі
-замовлень: мініатюра (лицьова половина обкладинки), ім'я покупця, `#номер чека` (клік копіює), чип
-друкарні, «передрук», трек-номер; сірим — «у друці … тому» · ім'я дитини · сторінки · формат;
-праворуч — «ще N дн.» (жовтим, коли ≤ 3) або «не видаляти». Поки відлік не почався — нічого.
+**The list** (`#/archive`): search (name, receipt number, title; Enter opens the first one), rows like
+in the order queue: a thumbnail (the front half of the cover), the buyer's name, `#receipt number` (a
+click copies it), the printer chip, "reprint", a tracking number; in gray — "printed … ago" · the
+child's name · pages · format; on the right — "N days left" (yellow when ≤ 3) or "keep". Before the
+countdown starts — nothing.
 
-**Книга** (`#/archive/<id>`):
-- шапка — ім'я, статус **цього** замовлення друку, номер чека, «у друці …», етап, трек-номер;
-  праворуч піктограми **«Не видаляти»** (шпилька), **папка з файлами**, **журнал відправки** і чип
-  «Printify · 24 стор.»;
-- ліворуч — «Що пішло в друк»: обкладинка, перший розворот із запискою, стрічка всіх розворотів,
-  переглядач (клік); під нею — кнопка **«Передрук у Printify/Gelato»**;
-- праворуч — «Відправка» (друкарня, коли, назва, Product/Order ID з копіюванням, посилання на першу
-  відправку для передруку, коли видаляться файли, «Відкрити в Printify» / «Gelato Dashboard»),
-  персоналізація з Etsy (якщо замовлення ще є в синхронізації), **адреса, куди відправлено**.
-- Esc — назад до списку.
+**A book** (`#/archive/<id>`):
+- header — name, the status of **this** print order, receipt number, "printed …", stage, tracking
+  number; on the right, icons for **"Keep"** (a pin), **the files folder**, **the send journal**, and a
+  chip "Printify · 24 pages";
+- on the left — "What went to print": the cover, the first spread with its note, a filmstrip of every
+  spread, the viewer (click); below it, the **"Reprint in Printify/Gelato"** button;
+- on the right — "The send" (printer, when, title, Product/Order ID with copying, a link to the first
+  send for a reprint, when the files will be deleted, "Open in Printify" / "Gelato Dashboard"),
+  personalization from Etsy (if the order is still in the sync), **the shipping address**.
+- Esc — back to the list.
 
-## Передрук
+## Reprint
 
-«Передрук» відкриває [Order Creator](order-creator.md) уже заповненим: друкарня, файли з архіву, назва,
-адреса, куди відправляли (її можна змінити), формат Gelato. Рядок «Передрук з архіву…», кнопка —
-«Створити замовлення-передрук» / «Створити чернетку-передрук». Інша папка → режим передруку знімається.
+"Reprint" opens the [Order Creator](order-creator.md) already filled in: printer, files from the
+archive, title, the address it was sent to (can be changed), the Gelato format. A line "Reprint from the
+archive…", the button — "Create a reprint order" / "Create a reprint draft". A different folder →
+reprint mode is dropped.
 
-- **Printify** (`create_printify_reprint()`): нове замовлення «On hold» на **ту саму книгу**, що вже є в
-  Printify, — нічого не завантажується, продукт не створюється (секунди). Ті самі запобіжники:
-  адреса обов'язкова, ручне затвердження, матовий варіант, без Express. Книги в Printify вже немає →
-  її створено заново з архівних файлів (картинки, що вже є в Printify, не дублюються) і попереджено.
-- **Gelato**: нова чернетка з архівних файлів (сервер бере саме їх, `reprintOf`); книга з архіву має
-  бути з Gelato.
-- Передрук позначається в обліку як **заміна** цього чека (`profit.mark_reprint()`): зіставлення
-  лишає за чеком перше замовлення друку, тож етап у черзі не стрибає. Чек з іншою ручною позначкою
-  (скасовано, повернення) не чіпається. Облік заморожено — глибше з фінансами не пов'язано.
-- Якщо перше замовлення **скасоване в друкарні** (або його немає), передрук заміною не позначається:
-  він і є єдине живе замовлення друку, зіставляється як звичайне, і чек іде з «Нових» у «В роботі».
-- Передрук — новий запис в архіві (`reprintOf`) і в журналі відправок (`kind: reprint`).
-- **Лише з книги, що справді пішла в друк** (`reprintable()`): з відправки, яка не стала замовленням,
-  сервер передрук не робить (409) — таке замовлення просто відправляють ще раз з його картки.
+- **Printify** (`create_printify_reprint()`): a new "On hold" order for **the same book** already in
+  Printify — nothing is uploaded, no product is created (seconds). The same safeguards: address
+  required, manual approval, matte variant, no Express. The book no longer exists in Printify → it's
+  created again from the archived files (pictures already in Printify aren't duplicated), and a warning
+  is shown.
+- **Gelato**: a new draft from the archived files (the server takes exactly those, `reprintOf`); the
+  archived book has to be from Gelato.
+- A reprint is recorded in the accounting as a **replacement** for this receipt
+  (`profit.mark_reprint()`): matching keeps the first print order attached to the receipt, so its stage
+  in the queue doesn't jump. A receipt with another manual mark (cancelled, refunded) isn't touched.
+  Accounting is frozen — nothing deeper is tied to the finances.
+- If the first order was **cancelled at the printer** (or doesn't exist), the reprint isn't marked as a
+  replacement: it becomes the only live print order, gets matched like a normal one, and the receipt
+  moves from "New" to "In progress".
+- A reprint is a new record in the archive (`reprintOf`) and in the send journal (`kind: reprint`).
+- **Only from a book that really went to print** (`reprintable()`): the server won't make a reprint from
+  a send that never became an order (409) — that order is simply sent again from its card.
 
-## Файли минулої відправки (картка замовлення)
+## Files from an earlier send (the order card)
 
-Якщо відправка **не стала замовленням** (скасовано в друкарні, чернетку видалено чи не підтверджено),
-а її файли ще в архіві, картка цього замовлення в кроці «Файли з Canva» показує кнопку **«Взяти файли
-минулої відправки · … тому»** (лише для обраної друкарні). Кнопка робить робочу копію в `tmp/dropped`
-(жорсткі посилання, `POST /api/archive/<id>/reuse`) і далі все як звичайно: розстановка, звірка,
-«До друку» — це **звичайне замовлення, не передрук**. Список таких відправок — `earlierSends` у
-`GET /api/orders/<чек>` (`earlier_sends()`).
+If a send **never became an order** (cancelled at the printer, a draft was deleted or never confirmed)
+and its files are still in the archive, this order's card shows a **"Take files from an earlier send · …
+ago"** button in the "Files from Canva" step (only for the chosen printer). The button makes a working
+copy in `tmp/dropped` (hard links, `POST /api/archive/<id>/reuse`), and everything else goes as usual:
+laying out pages, proofing, "Print" — this is a **normal order, not a reprint**. The list of such sends
+is `earlierSends` in `GET /api/orders/<receipt>` (`earlier_sends()`).
 
-Та сама картка знає й протилежне — що відправка цього замовлення **вже лежить у друкарні** (книга, чернетка
-чи замовлення, не скасовані й не видалені): `atPrinter` (`at_printer()`). Тоді заміна сторінки спершу
-питає «Чернетку вже створено…», навіть після перезапуску програми (раніше це пам'ятала лише сторінка).
+The same card also knows the opposite — that a send for this order **is already at the printer** (a
+book, draft, or order, not cancelled or deleted): `atPrinter` (`at_printer()`). Then a page replacement
+first asks "A draft already exists…", even after the program has been restarted (previously only the
+page itself remembered this).
 
-## Що віддає сервер
+## What the server returns
 
-- `GET /api/archive` → `{entries, keepDays, lostDays}`; кожен запис — `entry.json` + `folder`, `buyer`,
-  `stage`, `printStatus` і `tracking` **свого** замовлення друку, `clock`, `deleteAt`, `daysLeft`.
-- `GET /api/archive/<id>` → один запис так само (книга, що не пішла в друк, — 404).
-- `POST /api/archive/<id>/keep` `{keep}` → запис.
-- `POST /api/archive/<id>/reuse` → `{path}` робочої копії файлів для картки замовлення.
-- `POST /api/creator/printify/reprint` `{archiveId, title, address}` → фонова задача.
-- `POST /api/creator/gelato/create` з `reprintOf` — чернетка-передрук.
+- `GET /api/archive` → `{entries, keepDays, lostDays}`; each record — `entry.json` + `folder`, `buyer`,
+  `stage`, `printStatus` and `tracking` from **its own** print order, `clock`, `deleteAt`, `daysLeft`.
+- `GET /api/archive/<id>` → one record the same way (a book that never went to print — 404).
+- `POST /api/archive/<id>/keep` `{keep}` → the record.
+- `POST /api/archive/<id>/reuse` → `{path}` of a working copy of the files, for the order card.
+- `POST /api/creator/printify/reprint` `{archiveId, title, address}` → a background job.
+- `POST /api/creator/gelato/create` with `reprintOf` — a reprint draft.
 
-## Де в коді
+## Where in the code
 
 - [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `earlier_sends()`, `at_printer()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
 - [app/studio/creator.py](../../app/studio/creator.py) — `_to_archive()`, `_mark_reprint()`, `_journaled()`, `create_printify_reprint()`, `_printify_reprint()`, `_reprint_printify()`, `_create_gelato()`
-- [app/studio/profit.py](../../app/studio/profit.py) — `is_placed()`, `mark_reprint()`, `unmark_reprint()`, `_sync()` (`loaded` кожного списку; після синхронізації — `archive.refresh_quietly()`)
+- [app/studio/profit.py](../../app/studio/profit.py) — `is_placed()`, `mark_reprint()`, `unmark_reprint()`, `_sync()` (`loaded` for each list; after a sync — `archive.refresh_quietly()`)
 - [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`, `atPrinter`); [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `earlier()`, `takeEarlier()`
-- [app/studio/main.py](../../app/studio/main.py) — `main()` (перевірка архіву при запуску)
+- [app/studio/main.py](../../app/studio/main.py) — `main()` (checking the archive on launch)
 - [app/web/js/pages/archive.js](../../app/web/js/pages/archive.js) — `mountList()`, `mountBook()`, `clockChip()`, `clockText()`, `proofCard()`, `reprintCard()`, `sendCard()`, `fieldsCard()`, `addressCard()`, `toggleKeep()`, `reprint()`
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — режим передруку: `withOrder()`, `createLabel()`, `folderCard()`, `create()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — reprint mode: `withOrder()`, `createLabel()`, `folderCard()`, `create()`
 - [app/web/js/app.js](../../app/web/js/app.js) — `NAV`, `ROUTES`; [app/web/js/icons.js](../../app/web/js/icons.js) — `orderArchive`, `pin`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.arc-thumb`, `.arc-id`, `.arc-clock`, `.cr-reprint`
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `_seed_archive()`, `_sample_book()` (4 вигадані книги для перегляду і чернетка Olivia, що не стала замовленням)
-- Тести: [app/tests/test_archive.py](../../app/tests/test_archive.py) (`Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint`), [app/tests/test_flows.py](../../app/tests/test_flows.py) (архів після відправки)
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `_seed_archive()`, `_sample_book()` (4 made-up books for the preview, and Olivia's draft that never became an order)
+- Tests: [app/tests/test_archive.py](../../app/tests/test_archive.py) (`Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint`), [app/tests/test_flows.py](../../app/tests/test_flows.py) (the archive after a send)
 
-## Пов'язане
+## Related
 
-- [Order Creator](order-creator.md) · [Журнал відправок](send-journal.md) · [Замовлення](orders.md) · [Етапи](../rules/order-stages.md) · [Дані](../architecture/data.md)
+- [Order Creator](order-creator.md) · [Send journal](send-journal.md) · [Orders](orders.md) · [Stages](../rules/order-stages.md) · [Data](../architecture/data.md)

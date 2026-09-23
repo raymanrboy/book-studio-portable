@@ -1,15 +1,16 @@
 # Book Studio
 
-Локальна Windows-програма для магазину персоналізованих дитячих книг на Etsy: черга замовлень,
-бібліотека книг і створення книг/чернеток у Printify та Gelato.
+A local Windows program for a shop selling personalized children's books on Etsy: an order queue, a book
+library, and creating books/drafts in Printify and Gelato.
 
-- **Як користуватися** — [app/README.md](app/README.md)
-- **Як усе влаштовано** — вікі проєкту: [wiki/index.md](wiki/index.md)
-- **Правила для агентів** — [AGENTS.md](AGENTS.md) (Claude Code читає [CLAUDE.md](CLAUDE.md))
+- **How to use it** — [app/README.md](app/README.md)
+- **How it's all built** — the project wiki: [wiki/index.md](wiki/index.md)
+- **Rules for agents** — [AGENTS.md](AGENTS.md) (Claude Code reads [CLAUDE.md](CLAUDE.md))
 
 ```
-app/    програма (запуск: ярлик «Book Studio» або app/Book Studio.pyw)
-wiki/   база знань
+app/    the program (launch: the "Book Studio" shortcut or app/Book Studio.pyw;
+        the listing-mockups utility: the "Мокапи" shortcut or app/Mockups.pyw)
+wiki/   knowledge base
 ```
 
-Тести: `cd app && python -m unittest discover -s tests` · перевірка вікі: `python app/tools/wiki_check.py`
+Tests: `cd app && python -m unittest discover -s tests` · wiki check: `python app/tools/wiki_check.py`

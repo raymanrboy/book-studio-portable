@@ -11,7 +11,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import archive, core, creator, etsy, gelato, httpc, printify, profit, tunnel
+from studio import archive, core, creator, drops, etsy, gelato, httpc, printify, profit, tunnel
 from studio.jobs import Job, JobError
 from studio.vault import vault
 
@@ -673,8 +673,8 @@ class DroppedFolders(unittest.TestCase):
                 zf.writestr("__MACOSX/Madelynn/._Cover.png", b"x")  # macOS litter
                 zf.writestr("../evil.png", b"x")                    # must never leave the folder
             target = root / "out" / "book"
-            self.assertEqual(creator.extract_zip(archive, target), 2)
-            self.assertEqual(creator.dropped_folder(root / "out"), target / "Madelynn")
+            self.assertEqual(drops.extract_zip(archive, target), 2)
+            self.assertEqual(drops.dropped_folder(root / "out"), target / "Madelynn")
             self.assertFalse((root / "out" / "evil.png").exists())
             self.assertFalse((root / "evil.png").exists())
             self.assertEqual(sorted(p.name for p in (target / "Madelynn").iterdir()), ["1.png", "Cover.png"])
@@ -692,13 +692,13 @@ class DroppedFolders(unittest.TestCase):
                 png(book / name, (20, 20), (1, 2, 3))
             (book / "book-text.json").write_text("{}", encoding="utf-8")
             (book / "notes.json").write_text("{}", encoding="utf-8")
-            self.assertEqual(creator.dropped_top(root / "session"), book)
-            self.assertEqual(creator.dropped_folder(root / "session"), book / "generated")
-            scan = library.scan_folder(creator.dropped_top(root / "session"))
+            self.assertEqual(drops.dropped_top(root / "session"), book)
+            self.assertEqual(drops.dropped_folder(root / "session"), book / "generated")
+            scan = library.scan_folder(drops.dropped_top(root / "session"))
             self.assertEqual(sorted(scan["mapping"]), ["cover", "page1", "spread2"])
             self.assertEqual(scan["text"]["name"], "book-text.json")          # not whichever JSON came last
-        self.assertEqual(creator._drop_rel("Planes/book-text.json", with_text=True), Path("Planes", "book-text.json"))
-        self.assertIsNone(creator._drop_rel("Planes/book-text.json"))           # the order card takes pictures only
+        self.assertEqual(drops._drop_rel("Planes/book-text.json", with_text=True), Path("Planes", "book-text.json"))
+        self.assertIsNone(drops._drop_rel("Planes/book-text.json"))           # the order card takes pictures only
 
     def test_every_book_of_a_picked_order_gets_its_own_child(self):
         """23.09.2026: «Заповнити із замовлення Etsy» named both books of a two-book order after the first child."""
@@ -710,12 +710,12 @@ class DroppedFolders(unittest.TestCase):
         self.assertEqual([i["childName"] for i in res["orders"][0]["items"]], ["Sofia", "Jack"])
 
     def test_only_pictures_inside_the_session_folder_are_accepted(self):
-        self.assertEqual(creator._drop_rel("Madelynn/Cover.png"), Path("Madelynn", "Cover.png"))
+        self.assertEqual(drops._drop_rel("Madelynn/Cover.png"), Path("Madelynn", "Cover.png"))
         for bad in ("../x.png", "C:/Windows/x.png", "a/../../x.png", "book/run.exe", "", "._Cover.png"):
             with self.subTest(name=bad):
-                self.assertIsNone(creator._drop_rel(bad))
+                self.assertIsNone(drops._drop_rel(bad))
         with self.assertRaises(Exception):
-            creator._drop_root("../../etc")
+            drops._drop_root("../../etc")
 
     def test_etsy_text_arrives_readable(self):
         r = {"receipt_id": 1, "create_timestamp": 1757000000, "name": "Tom &amp; Ann", "transactions": [{

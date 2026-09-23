@@ -248,20 +248,20 @@ export async function receiveDrop({ entries, files }, onProgress, { withText = f
   const total = (zip ? zip.size : list.reduce((sum, x) => sum + x.file.size, 0)) || 1;
   let sent = 0;
   const report = () => onProgress?.(Math.max(1, Math.min(99, (sent / total) * 100)));
-  if (zip) await upload(`/api/creator/drop/zip?${new URLSearchParams({ session, name: zip.name, ...(withText ? { text: '1' } : {}) })}`, zip, (p) => { sent = p * total; report(); });
+  if (zip) await upload(`/api/drop/zip?${new URLSearchParams({ session, name: zip.name, ...(withText ? { text: '1' } : {}) })}`, zip, (p) => { sent = p * total; report(); });
   else {
     let next = 0;
     const worker = async () => {
       while (next < list.length) {
         const x = list[next++];
         let done = 0;
-        await upload(`/api/creator/drop/file?${new URLSearchParams({ session, name: x.name, ...(withText ? { text: '1' } : {}) })}`, x.file, (p) => { sent += p * x.file.size - done; done = p * x.file.size; report(); });
+        await upload(`/api/drop/file?${new URLSearchParams({ session, name: x.name, ...(withText ? { text: '1' } : {}) })}`, x.file, (p) => { sent += p * x.file.size - done; done = p * x.file.size; report(); });
         sent += x.file.size - done; report();
       }
     };
     await Promise.all([worker(), worker(), worker()]);
   }
-  return (await api('/api/creator/drop/done', { method: 'POST', body: { session, whole: withText } })).path;
+  return (await api('/api/drop/done', { method: 'POST', body: { session, whole: withText } })).path;
 }
 
 /** Lights `input` while files are dragged over `[data-folder-drop]` inside `root`; calls onDrop(contents). */

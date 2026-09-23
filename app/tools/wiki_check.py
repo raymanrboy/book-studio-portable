@@ -26,7 +26,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 APP = REPO / "app"
 WIKI = REPO / "wiki"
-CODE_SUFFIXES = {".py", ".pyw", ".js", ".css", ".html", ".bat"}
+CODE_SUFFIXES = {".py", ".pyw", ".js", ".jsx", ".css", ".html", ".bat"}
 SKIP_DIRS = {"data", "bin", "__pycache__", ".git", "node_modules"}
 TYPES = {"index", "overview", "reference", "architecture", "feature", "integration", "rule", "flow", "owner",
          "decision", "recipe", "dev", "plan"}
@@ -137,7 +137,7 @@ def coverage() -> dict[str, list[str]]:
 def check() -> list[str]:
     problems: list[str] = []
     if not (WIKI / "index.md").exists():
-        return ["Немає wiki/index.md."]
+        return ["Missing wiki/index.md."]
     code_cache: dict[Path, str] = {}
     all_pages = pages()
     index_links: set[Path] = set()
@@ -148,24 +148,24 @@ def check() -> list[str]:
         if name != "log.md":
             fm = front_matter(text)
             if fm is None:
-                problems.append(f"{name}: немає або зіпсована шапка (front matter).")
+                problems.append(f"{name}: missing or broken front matter.")
             else:
                 for key in ("title", "type", "updated"):
                     if not fm.get(key):
-                        problems.append(f"{name}: у шапці немає «{key}».")
+                        problems.append(f"{name}: front matter is missing \"{key}\".")
                 if fm.get("type") and fm["type"] not in TYPES:
-                    problems.append(f"{name}: невідомий type «{fm['type']}».")
+                    problems.append(f"{name}: unknown type \"{fm['type']}\".")
                 if fm.get("updated") and not _DATE.match(str(fm["updated"])):
-                    problems.append(f"{name}: updated має бути у форматі РРРР-ММ-ДД.")
+                    problems.append(f"{name}: updated must be in YYYY-MM-DD format.")
                 if "code" not in fm:
-                    problems.append(f"{name}: у шапці немає «code» (для сторінки без коду — code: []).")
+                    problems.append(f"{name}: front matter is missing \"code\" (for a page with no code — code: []).")
                 for entry in fm.get("code") or []:
                     if not (REPO / entry).exists():
-                        problems.append(f"{name}: у code є неіснуючий шлях {entry}.")
+                        problems.append(f"{name}: code lists a path that doesn't exist: {entry}.")
         else:
             for line in text.splitlines():
                 if line.startswith("## ") and not _LOG_HEAD.match(line):
-                    problems.append(f"log.md: заголовок не за форматом «## [РРРР-ММ-ДД] вид | назва»: {line}")
+                    problems.append(f"log.md: heading doesn't match \"## [YYYY-MM-DD] kind | title\": {line}")
 
         fenced = False
         for no, line in enumerate(text.splitlines(), 1):
@@ -181,7 +181,7 @@ def check() -> list[str]:
                 if target is None:
                     continue
                 if not target.exists():
-                    problems.append(f"{name}:{no}: посилання веде в нікуди: {m.group(1)}")
+                    problems.append(f"{name}:{no}: link leads nowhere: {m.group(1)}")
                     continue
                 if name == "index.md":
                     index_links.add(target)
@@ -202,16 +202,16 @@ def check() -> list[str]:
                     code_cache[target] = target.read_text(encoding="utf-8")
                 ident = func.group(1) if func else token
                 if not defined_in(ident, code_cache[target], bool(const)):
-                    problems.append(f"{name}:{no}: `{token}` не знайдено в {rel(target)}")
+                    problems.append(f"{name}:{no}: `{token}` not found in {rel(target)}")
 
     for page in all_pages:
         if page.name != "index.md" and page.relative_to(WIKI).as_posix() != "index.md" \
                 and page.resolve() not in index_links:
-            problems.append(f"index.md: немає посилання на {page.relative_to(WIKI).as_posix()}")
+            problems.append(f"index.md: no link to {page.relative_to(WIKI).as_posix()}")
 
     for name, described in coverage().items():
         if not described:
-            problems.append(f"{name}: жодна сторінка вікі не описує цей файл (додайте його в code: потрібної сторінки).")
+            problems.append(f"{name}: no wiki page describes this file (add it to the code: of the right page).")
 
     problems += stale_numbers()
 
@@ -219,11 +219,11 @@ def check() -> list[str]:
     if routes_page.exists():
         in_code, in_wiki = routes_in_code(), routes_in_wiki(routes_page.read_text(encoding="utf-8"))
         for method, pattern in sorted(in_code - in_wiki):
-            problems.append(f"{ROUTES_PAGE}: немає маршруту {method} {pattern}")
+            problems.append(f"{ROUTES_PAGE}: missing route {method} {pattern}")
         for method, pattern in sorted(in_wiki - in_code):
-            problems.append(f"{ROUTES_PAGE}: маршруту {method} {pattern} у коді вже немає")
+            problems.append(f"{ROUTES_PAGE}: route {method} {pattern} no longer exists in the code")
     else:
-        problems.append(f"Немає сторінки {ROUTES_PAGE}.")
+        problems.append(f"Missing page {ROUTES_PAGE}.")
     return problems
 
 
@@ -239,36 +239,36 @@ def test_count() -> int:
 
 
 # Where the wiki states how many tests and routes there are, and how: every mention on these pages is checked,
-# not only the first. «117 тестів проти 182» is history (how it was) and is left alone.
+# not only the first. "117 tests against 182" is history (how it used to be) and is left alone.
 NUMBER_CLAIMS = [
-    ("dev/testing.md", r"(\d+)\s+тест(?:и|ів)?\b(?!\s+проти)", "тестів"),
-    ("index.md", r"усі\s+(\d+)\b", "маршрутів"),
-    ("architecture/api-routes.md", r"(\d+)\s+маршрут\w*\b(?!\s+проти)", "маршрутів"),
-    ("architecture/server.md", r"(\d+)\s+маршрут\w*\b(?!\s+проти)", "маршрутів"),
+    ("dev/testing.md", r"(\d+)\s+tests?\b(?!\s+against)", "tests"),
+    ("index.md", r"all\s+(\d+)\b", "routes"),
+    ("architecture/api-routes.md", r"(\d+)\s+routes?\b(?!\s+against)", "routes"),
+    ("architecture/server.md", r"(\d+)\s+routes?\b(?!\s+against)", "routes"),
 ]
 
 
 def stale_numbers() -> list[str]:
     """Numbers the wiki states in plain words. Links, names and route tables were always checked; counts
     were not, and they quietly drifted (117 tests against 162, 88 routes against 92 — audit, 22.09.2026)."""
-    real = {"тестів": test_count(), "маршрутів": len(routes_in_code())}
+    real = {"tests": test_count(), "routes": len(routes_in_code())}
     problems, seen = [], set()
     for name, pattern, what in NUMBER_CLAIMS:
         page = WIKI / name
         if not page.exists():
             continue
         lines = page.read_text(encoding="utf-8").splitlines()
-        # index.md: "усі N" counts routes only on the line about the routes
+        # index.md: "all N" counts routes only on the line about the routes
         found = [(n, m) for n, line in enumerate(lines, 1) for m in re.finditer(pattern, line)
-                 if what != "маршрутів" or name != "index.md" or "маршрут" in line.lower()]
+                 if what != "routes" or name != "index.md" or "route" in line.lower()]
         if found:
             seen.add(what)
         for n, m in found:
             if int(m.group(1)) != real[what]:
-                problems.append(f"{name}:{n}: написано {m.group(1)} {what}, а насправді {real[what]}.")
+                problems.append(f"{name}:{n}: says {m.group(1)} {what}, actually {real[what]}.")
     for what in real:
         if what not in seen:
-            problems.append(f"Не знайдено числа «{what}» у вікі — перевірка застарілих чисел його не бачить.")
+            problems.append(f"No number for \"{what}\" found in the wiki — the stale-number check can't see it.")
     return problems
 
 
@@ -304,18 +304,18 @@ def main(argv: list[str]) -> int:
                 else:
                     loose.append(name)
         if not todo and not loose:
-            print("Змінених файлів програми немає.")
+            print("No changed program files.")
         for page, files in sorted(todo.items()):
-            print(f"wiki/{page}\n    через: {', '.join(files)}")
+            print(f"wiki/{page}\n    because of: {', '.join(files)}")
         for name in loose:
-            print(f"{name}: не описаний жодною сторінкою — додайте його в code: потрібної сторінки")
-        print("Не забудьте: updated у шапці оновлених сторінок і запис у wiki/log.md.")
+            print(f"{name}: not described by any page — add it to the code: of the right page")
+        print("Don't forget: updated in the header of the pages you changed, and an entry in wiki/log.md.")
         return 0
     problems = check()
     if problems:
-        print("Вікі розходиться з кодом:\n" + "\n".join(f"  - {p}" for p in problems))
+        print("The wiki is out of sync with the code:\n" + "\n".join(f"  - {p}" for p in problems))
         return 1
-    print(f"Вікі в порядку: {len(pages())} сторінок, {len(code_files())} файлів коду, {len(routes_in_code())} маршрутів.")
+    print(f"Wiki is in order: {len(pages())} pages, {len(code_files())} code files, {len(routes_in_code())} routes.")
     return 0
 
 

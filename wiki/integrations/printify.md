@@ -7,79 +7,84 @@ code:
 ---
 # Printify
 
-> Друкує **хардкавери для США** (24 сторінки). Магазин CozyCovenant, шаблон «Hardcover 8x8 Template»
-> (Master). API `https://api.printify.com/v1`, токен — Personal Access Token.
+> Prints **hardcovers for the US** (24 pages). Shop CozyCovenant, template "Hardcover 8x8 Template"
+> (the Master). API `https://api.printify.com/v1`, token — a Personal Access Token.
 
-## Що можна
+## What's allowed
 
-| Дія | Шлях API | Коли |
+| Action | API path | When |
 |---|---|---|
-| Читати магазини, продукти, замовлення, завантаження, каталог | `GET shops.json`, `shops/{id}/products…`, `shops/{id}/orders.json`, `uploads/{id}.json`, `catalog/…` | завжди |
-| Завантажити зображення (base64) | `POST uploads/images.json` | створення книги |
-| Створити неопублікований продукт | `POST shops/{id}/products.json` | створення книги |
-| Створити замовлення «On hold» | `POST shops/{id}/orders.json` | лише `create_order_on_hold()`, після підтвердження Manual |
+| Read shops, products, orders, uploads, the catalog | `GET shops.json`, `shops/{id}/products…`, `shops/{id}/orders.json`, `uploads/{id}.json`, `catalog/…` | always |
+| Upload an image (base64) | `POST uploads/images.json` | creating a book |
+| Create an unpublished product | `POST shops/{id}/products.json` | creating a book |
+| Create an "On hold" order | `POST shops/{id}/orders.json` | only via `create_order_on_hold()`, after Manual approval is confirmed |
 
-Усе інше заблоковано в `_check()` ([безпека](../security.md)).
+Everything else is blocked in `_check()` ([security](../security.md)).
 
-## Як працює замовлення з API
+## How an order created via the API works
 
-- Замовлення, створене через API, Printify тримає **«On hold»**. У виробництво (і оплата) воно йде
-  згідно з налаштуванням магазину *Order submission / Order approval*: **Manual** — лише після
-  «Submit order» у Printify; автоматичні варіанти — самі через заданий час. У магазині власника
-  стоїть **Manual** (скриншот від 15.09.2026), і програма один раз просить це підтвердити.
-- Поля: `external_id` (`<чек>-<8 символів>`), `label` (назва книги), `line_items`
-  (`product_id` + `variant_id` матового варіанту + `quantity` 1) — **позиція на кожну книгу чека**:
-  замовлення з двох книг іде одним замовленням на одну адресу (з 20.09.2026), `shipping_method: 1` (стандартна),
-  `is_printify_express: false`, `send_shipping_notification: false`, `address_to` (`first_name`,
-  `last_name`, `address1`, `address2`, `city`, `region`, `zip`, `country`, `phone`).
-- Фініш книги **завжди матовий**.
-- Перше справжнє замовлення On hold ще не спостерігалось — див. [відкриті питання](../plans/open-questions.md).
+- An order created through the API is kept **"On hold"** by Printify. Whether (and when) it goes into
+  production and gets charged depends on the shop's *Order submission / Order approval* setting:
+  **Manual** — only after "Submit order" in Printify; the automatic options go on their own after a set
+  time. The owner's shop is set to **Manual** (a screenshot from 2026-09-15), and the program asks once
+  to confirm this.
+- Fields: `external_id` (`<receipt>-<8 characters>`), `label` (the book's title), `line_items`
+  (`product_id` + the matte variant's `variant_id` + `quantity` 1) — **one line item per book of the
+  receipt**: an order for two books goes as one order to one address (since 2026-09-20),
+  `shipping_method: 1` (standard), `is_printify_express: false`, `send_shipping_notification: false`,
+  `address_to` (`first_name`, `last_name`, `address1`, `address2`, `city`, `region`, `zip`, `country`,
+  `phone`).
+- A book's finish is **always matte**.
+- The first real On-hold order hasn't been observed yet — see [open questions](../plans/open-questions.md).
 
-## Master
+## The Master
 
-- Налаштування `printify.master`: `productId`, `blueprintId` 2737, `printProviderId` 28, варіанти
-  (8x8 Glossy/Matte увімкнені, 11x8.5 вимкнені), `placements` (x/y/scale/angle для `cover` і `page_1…page_24`).
-- Розміри artwork: обкладинка 4672×2464, сторінка 4000×4000 (`coverSize`, `pageSize`).
-- Нова книга = копія конфігурації Master з новими зображеннями (`build_printify_payload()`).
-- Перед кожним створенням — знімок Master, після — перевірка, що він не змінився.
+- Settings `printify.master`: `productId`, `blueprintId` 2737, `printProviderId` 28, variants (8x8
+  Glossy/Matte enabled, 11x8.5 disabled), `placements` (x/y/scale/angle for `cover` and
+  `page_1…page_24`).
+- Artwork sizes: the cover 4672×2464, a page 4000×4000 (`coverSize`, `pageSize`).
+- A new book = a copy of the Master's configuration with new images (`build_printify_payload()`).
+- Before every creation — a snapshot of the Master; after — a check that it hasn't changed.
 
-## Кеш завантажень
+## Upload cache
 
-`data/creator/upload-cache.json`: SHA-256 файлу → ID зображення (останні 5000, `UPLOADS_KEPT`). Перед
-повторним використанням перевіряється, що зображення ще є в Printify (`upload_exists()`). Завантаження
-повторюється лише тоді, коли воно точно не дійшло (з'єднання відхилено, 429, 503); після тайм-ауту — ні,
-щоб не лишати в медіатеці Printify дублікати (з 23.09.2026).
+`data/creator/upload-cache.json`: a file's SHA-256 → its image ID (the last 5000, `UPLOADS_KEPT`).
+Before reusing one, it's checked to still exist in Printify (`upload_exists()`). An upload is only
+retried when it certainly didn't arrive (the connection was refused, 429, 503); never after a timeout,
+so duplicates never pile up in Printify's media library (since 2026-09-23).
 
-## Синхронізація
+## Sync
 
-`all_orders()` читає всі замовлення магазину (по 50, до 4 сторінок паралельно, не більше
-`MAX_ORDER_PAGES` = 400 сторінок — більший магазин позначається неповним, `httpc.Listing`); `slim_order()` лишає
-тільки поля для зіставлення, статус і (з 17.09.2026) `shipments` — трек-номери після відправки
-(`carrier` кодом, напр. `usps`, `number`, `url`; без номера — не зберігаються). Вони вже є у списку
-замовлень, окремих запитів не треба. Статус `fulfilled`/`partially-fulfilled` або трек-номер переводить
-чек у вкладку з машинкою ([rules/order-stages.md](../rules/order-stages.md)).
-Замовлення з номером чека в назві товару чи `shop_order_id` зіставляється
-з чеком Etsy ([rules/reconciliation.md](../rules/reconciliation.md)).
+`all_orders()` reads every order in the shop (50 at a time, up to 4 pages in parallel, no more than
+`MAX_ORDER_PAGES` = 400 pages — a larger shop is marked incomplete, `httpc.Listing`); `slim_order()`
+keeps only the fields needed for matching, the status, and (since 2026-09-17) `shipments` — tracking
+numbers once shipped (`carrier` as a code, e.g. `usps`, `number`, `url`; not stored without a number).
+They're already in the order list, so no separate requests are needed. A `fulfilled`/`partially-fulfilled`
+status or a tracking number moves the receipt to the truck tab
+([rules/order-stages.md](../rules/order-stages.md)). An order with the receipt number in a product's
+title, or in `shop_order_id`, gets matched to the Etsy receipt
+([rules/reconciliation.md](../rules/reconciliation.md)).
 
-## Помилки
+## Errors
 
-`_human()` → `httpc.human()`, спільна з Gelato: 401/403 — токен (`code: printify_token`), 404, 429, 4xx,
-5xx; `extra` — `upstream` і `ambiguous` («результат невідомий, не повторювати»).
-`MANUAL_APPROVAL_NEEDED` — один текст «спершу підтвердіть ручне затвердження» для клієнта й відправок.
+`_human()` → `httpc.human()`, shared with Gelato: 401/403 — the token (`code: printify_token`), 404,
+429, 4xx, 5xx; `extra` carries `upstream` and `ambiguous` ("result unknown, don't retry").
+`MANUAL_APPROVAL_NEEDED` — one shared text, "please confirm manual approval first", for the client and
+for sends.
 
-## Посилання
+## Links
 
-- Продукт: `https://printify.com/app/product-details/<id>?fromProductsPage=1`
-- Замовлення: `https://printify.com/app/orders` (адресу не перевірено на справжньому замовленні).
+- A product: `https://printify.com/app/product-details/<id>?fromProductsPage=1`
+- Orders: `https://printify.com/app/orders` (the address hasn't been checked against a real order).
 
-## Де в коді
+## Where in the code
 
 - [app/studio/printify.py](../../app/studio/printify.py) — `_READ`, `_WRITE`, `_check()`, `_human()`, `call()`, `token()`, `MAX_ORDER_PAGES`, `MANUAL_APPROVAL_NEEDED`, `shops()`, `product()`, `upload_exists()`, `all_orders()`, `slim_order()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `analyze_master()`, `_manual_approval()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `create_printify_draft()`, `build_printify_payload()`, `printify_order_payload()`, `matte_variant()`, `_master_fingerprint()`, `_remember_upload()`, `UPLOADS_KEPT`, `_printify_setup()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
 - [app/studio/profit.py](../../app/studio/profit.py) — `carrier_label()`, `CARRIERS`
-- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`FakePrintify`, `PrintifyDraftFlow`), [app/tests/test_states.py](../../app/tests/test_states.py) (`SentStage`)
+- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`FakePrintify`, `PrintifyDraftFlow`), [app/tests/test_states.py](../../app/tests/test_states.py) (`SentStage`)
 
-## Пов'язане
+## Related
 
-- [Order Creator](../features/order-creator.md) · [Безпека](../security.md) · [Правило друкарні](../rules/printer-rule.md)
+- [Order Creator](../features/order-creator.md) · [Security](../security.md) · [Printer rule](../rules/printer-rule.md)

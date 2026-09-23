@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from . import core, images
+from . import core, drops, images
 from .server import ApiError, Request, route
 
 ROOT = core.data_path("archive")
@@ -449,9 +449,8 @@ _BOOK_FILE = re.compile(r"Cover\.png|\d{1,3}\.png")
 def _reuse(req: Request):
     """The files of an earlier send as a fresh working copy for the order card (hard links: no extra space,
     and the copy stays whole when the archived book goes)."""
-    from . import creator  # late: creator imports this module (it stores every send here)
     entry = get(req.groups[0])
-    source, target = folder(entry["id"]), creator.DROPS / uuid.uuid4().hex
+    source, target = folder(entry["id"]), drops.DROPS / uuid.uuid4().hex
     target.mkdir(parents=True)
     for row in entry.get("files") or []:
         name = str(row.get("file") or "")

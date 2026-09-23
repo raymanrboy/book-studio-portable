@@ -1,50 +1,63 @@
 ---
-title: Перетягування папок і ZIP-архівів
+title: Dragging folders and ZIP archives
 type: flow
 updated: 2026-09-23
 code:
   - app/web/js/order-bits.js
-  - app/studio/creator.py
+  - app/studio/drops.py
 ---
-# Перетягування папок і ZIP
+# Dragging folders and ZIPs
 
-> Вікно програми (браузер) не знає, де на диску лежить перетягнута папка. Тому її картинки (або ZIP)
-> спершу **копіюються в програму**, у тимчасову папку, і далі програма працює з копією.
+> The program's window (a browser) doesn't know where on disk a dragged folder lives. So its pictures
+> (or a ZIP) are **copied into the program** first, into a temp folder, and the program works with the
+> copy from then on.
 
-## Як це відбувається
+## How it happens
 
-1. Під час події `drop` треба одразу прочитати вміст — потім браузер його «забуває»
-   ([order-bits.js](../../app/web/js/order-bits.js) `dropContents()`).
-2. `receiveDrop()` створює сеанс (32 hex) і:
-   - **ZIP** → одним запитом `POST /api/creator/drop/zip?session=&name=[&text=1]`; сервер зберігає
-     архів поруч і розпаковує лише картинки (і `.json`, якщо `text=1`) у `<сеанс>/<назва архіву>/`;
-   - **папка / файли** → кожен файл окремо `POST /api/creator/drop/file?session=&name=<відносний шлях>`,
-     по 3 одночасно, з прогресом; окремі файли без папки кладуться в `Файли/`.
-3. `POST /api/creator/drop/done {session}` → сервер повертає папку для роботи: найменш вкладену папку з
-   `Cover.png`, інакше — єдину папку з картинками, інакше — корінь сеансу (`dropped_folder()`).
-   Для бібліотеки (`receiveDrop(…, { withText: true })` → `text=1` у кожному файлі й `whole: true`) —
-   **саму перетягнуту папку** (`dropped_top()`): імпорт читає й її `generated/`, `pages/` і `book-text.json`.
-   Заодно стираються сеанси, старші за 2 години.
-4. Далі: у картці замовлення — розстановка сторінок; в Order Creator — перевірка; у паспорті книги —
-   «Імпорт з папки» (так само для папки, ZIP і кількох файлів).
+1. During the `drop` event, the contents have to be read right away — the browser "forgets" them right
+   after ([order-bits.js](../../app/web/js/order-bits.js) `dropContents()`).
+2. `receiveDrop()` creates a session (32 hex) and:
+   - **ZIP** → one request `POST /api/drop/zip?session=&name=[&text=1]`; the server saves the
+     archive alongside and unpacks only pictures (and `.json`, if `text=1`) into
+     `<session>/<archive name>/`;
+   - **folder / files** → each file its own `POST /api/drop/file?session=&name=<relative path>`,
+     3 at a time, with progress; loose files with no folder go into `Files/`.
+3. `POST /api/drop/done {session}` → the server returns the working folder: the least-nested
+   folder with `Cover.png`, otherwise the one folder with pictures, otherwise the session's root
+   (`dropped_folder()`). For the library (`receiveDrop(…, { withText: true })` → `text=1` on every file
+   and `whole: true`) — **the dropped folder itself** (`dropped_top()`): import reads its
+   `generated/`, `pages/`, and `book-text.json` too. This also clears sessions older than 2 hours.
+4. Next: in the order card — laying out pages; in the Order Creator — checking; in a book's passport —
+   "Import from folder" (the same way for a folder, a ZIP, and several files); in the
+   [mockups utility](../features/mockups.md) — reading the demo book (`mockups.read_book()`).
 
-## Обмеження й захист
+All of this lives in its own module, [drops.py](../../app/studio/drops.py) (since 2026-09-23; before that in
+creator.py, with the routes `/api/creator/drop/*`): the mockups utility takes it without the rest of Book
+Studio. It runs with its own data folder, so its `tmp/dropped` is `app/data/mockups/tmp/dropped` — Book
+Studio's launch never wipes a book dropped into the mockups window, and the other way round. There it
+keeps **one book at a time** (the one before goes when another comes in, and all go when the window closes —
+`mockups._only_this_book()`), and a ZIP picked with the folder button is unpacked straight from where it
+lies, without going through the window (`drops.archive_folder()` names the folder, `extract_zip()` unpacks).
 
-- Файл до 400 МБ, ZIP до 6 ГБ (розпаковано).
-- Шляхи чистяться (`_drop_rel()`): без `..`, дисків, `__MACOSX`, `._*`, до 6 рівнів.
-- Уся `data/tmp/dropped` стирається при кожному запуску (`clear_drops()`).
-- Поле, над яким тягнуть файли, підсвічується (`drop-hot`); зона — елемент із `data-folder-drop`
+## Limits and protection
+
+- A file up to 400 MB, a ZIP up to 6 GB (unpacked).
+- Paths are sanitized (`_drop_rel()`): no `..`, no drive letters, no `__MACOSX`, no `._*`, up to 6 levels
+  deep.
+- All of `data/tmp/dropped` is wiped on every launch (`clear_drops()`).
+- The field files are dragged over lights up (`drop-hot`); the zone is an element with `data-folder-drop`
   ([order-bits.js](../../app/web/js/order-bits.js) `wireFolderDrop()`).
 
-## Де в коді
+## Where in the code
 
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()`, `collect()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `DROPS`, `clear_drops()`, `_drop_root()`, `_drop_rel()`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `_drop_file()`, `_drop_zip()`, `_drop_done()`, `MAX_DROP_FILE`, `MAX_DROP_ZIP`
+- [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`, `_drop_root()`, `_drop_rel()`, `extract_zip()`, `archive_folder()`, `dropped_folder()`, `dropped_top()`, `_drop_file()`, `_drop_zip()`, `_drop_done()`, `MAX_DROP_FILE`, `MAX_DROP_ZIP`
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `takeDrop()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `dropFolder()`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `onDrop()`, `importDropped()`
-- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`DroppedFolders`)
+- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `takeDrop()`
+- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`DroppedFolders`)
 
-## Пов'язане
+## Related
 
-- [Назви файлів](../rules/file-naming.md) · [Наповнення бібліотеки](book-import.md) · [Order Creator](../features/order-creator.md)
+- [File naming](../rules/file-naming.md) · [Filling the library](book-import.md) · [Order Creator](../features/order-creator.md)

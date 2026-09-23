@@ -1,78 +1,81 @@
 ---
-title: Огляд Book Studio
+title: Book Studio overview
 type: overview
-updated: 2026-09-19
+updated: 2026-09-23
 code:
   - app/studio/main.py
   - app/studio/core.py
 ---
-# Огляд Book Studio
+# Book Studio overview
 
-> Локальна Windows-програма власника магазину персоналізованих дитячих книг на Etsy. Вона веде кожне
-> замовлення від Etsy до друку в Printify або Gelato і тримає еталонну бібліотеку книг.
+> A local Windows program for the owner of an Etsy shop selling personalized children's books. It
+> carries every order from Etsy through to printing in Printify or Gelato, and keeps a reference library
+> of books.
 
-## Бізнес у двох абзацах
+## The business in two paragraphs
 
-Власник продає на Etsy персоналізовані книги: у тексті стоїть ім'я дитини, на першій сторінці —
-присвята, наприкінці — «від кого». Покупець заповнює поля персоналізації в Etsy. Власник робить копію
-шаблону книги в Canva, підставляє ім'я пошуком із заміною `{Name}`, скачує сторінки PNG і відправляє
-книгу в друк: **Printify** (хардкавери в США, 24 сторінки) або **Gelato** (усе інше, 30 сторінок або 28 без одного розвороту) —
-див. [правило друкарні](rules/printer-rule.md).
+The owner sells personalized books on Etsy: the text carries the child's name, the first page has a
+dedication, and the end has a "from whom". The buyer fills in the personalization fields on Etsy. The
+owner makes a copy of the book template in Canva, drops in the name with find-and-replace on `{Name}`,
+downloads the PNG pages, and sends the book to print: **Printify** (hardcovers in the US, 24 pages) or
+**Gelato** (everything else, 30 pages or 28 without one spread) — see the
+[printer rule](rules/printer-rule.md).
 
-Власник не програміст, пише українською і працює з двох комп'ютерів: **вроцлавського** (щоденна робота,
-тут запущена програма) і **віддаленого київського**, де зареєстрований магазин Etsy. Сторінки Etsy
-відкриваються лише на київському — див. [безпеку](security.md). Сама програма на київському ПК не
-запускається.
+The owner is not a programmer, writes in Ukrainian, and works from two computers: the **Wrocław** one
+(day-to-day work, where the program runs) and a **remote Kyiv** one, where the Etsy shop is registered.
+Etsy pages are only opened on the Kyiv one — see [security](security.md). The program itself is not run
+on the Kyiv PC.
 
-## Розділи програми
+## Parts of the program
 
-| Розділ | Що робить | Сторінка вікі |
+| Part | What it does | Wiki page |
 |---|---|---|
-| Замовлення (стартовий екран) | Черга нових замовлень Etsy і картка замовлення: книга, Canva, персоналізація, файли, звірка, передача в друк | [features/orders.md](features/orders.md) |
-| Перевірка тексту | Локальна модель Gemma читає сторінки, програма звіряє з паспортом книги й даними Etsy | [features/text-check.md](features/text-check.md) |
-| Бібліотека книг | Еталон кожної книги: обкладинка, 16 сторінок/розворотів, тексти, посилання на Canva | [features/library.md](features/library.md) |
-| Order Creator | Неопублікована книга (і замовлення On hold) у Printify, чернетка замовлення в Gelato | [features/order-creator.md](features/order-creator.md) |
-| Архів замовлень | Файли книг, що пішли в друк: звірка й передрук; живуть 14 днів після «Відправлених» | [features/archive.md](features/archive.md) |
-| Налаштування | Ключі сервісів, підключення Etsy, шаблон Printify, перевірка тексту, папка даних | [features/settings.md](features/settings.md) |
-| Прибуток (прихований до 1 жовтня) | Аналог Etsy Profit Calculator: Etsy Net мінус собівартість друку | [features/profit.md](features/profit.md) |
+| Orders (start screen) | The queue of new Etsy orders and the order card: the book, Canva, personalization, files, proofing, sending to print | [features/orders.md](features/orders.md) |
+| Text check | A local Gemma model reads the pages, the program checks them against the book passport and Etsy data | [features/text-check.md](features/text-check.md) |
+| Book library | The reference for every book: cover, 16 pages/spreads, texts, a link to Canva | [features/library.md](features/library.md) |
+| Order Creator | An unpublished book (and an On-hold order) in Printify, a draft order in Gelato | [features/order-creator.md](features/order-creator.md) |
+| Order archive | Files of books that went to print: proofing and reprints; live 14 days after "Sent" | [features/archive.md](features/archive.md) |
+| Settings | Service keys, the Etsy connection, the Printify template, the text check, the data folder | [features/settings.md](features/settings.md) |
+| Profit (hidden until 1 October) | An equivalent of the Etsy Profit Calculator: Etsy Net minus print cost | [features/profit.md](features/profit.md) |
+| **«Мокапи»** — a separate utility (its own shortcut and window, since 2026-09-23) | Etsy listing pictures: a Canva demo book → the owner's Photoshop templates; he fits the front cover by hand | [features/mockups.md](features/mockups.md) |
 
-## Як влаштовано
+## How it's built
 
-- **Сервер** — Python (стандартна бібліотека + Pillow, img2pdf, cryptography) слухає лише `127.0.0.1`.
-  Див. [architecture/server.md](architecture/server.md).
-- **Інтерфейс** — HTML/CSS/JS без збірки, відкривається як окреме вікно Edge (`--app`).
-  Див. [architecture/frontend.md](architecture/frontend.md).
-- **Дані** — у `app/data/` (не в git): книги, знімок замовлень, ключі (DPAPI), кеш, журнали.
-  Див. [architecture/data.md](architecture/data.md).
-- **Запуск і завершення** — [architecture/runtime.md](architecture/runtime.md).
-- **Сервіси** — [Etsy](integrations/etsy.md) (лише читання), [Printify](integrations/printify.md),
-  [Gelato](integrations/gelato.md), [Canva](integrations/canva.md) (лише посилання).
+- **Server** — Python (standard library + Pillow, img2pdf, cryptography), listens only on `127.0.0.1`.
+  See [architecture/server.md](architecture/server.md).
+- **Interface** — HTML/CSS/JS with no build step, opens as a separate Edge window (`--app`).
+  See [architecture/frontend.md](architecture/frontend.md).
+- **Data** — in `app/data/` (not in git): books, an order snapshot, keys (DPAPI), cache, logs.
+  See [architecture/data.md](architecture/data.md).
+- **Launch and shutdown** — [architecture/runtime.md](architecture/runtime.md).
+- **Services** — [Etsy](integrations/etsy.md) (read-only), [Printify](integrations/printify.md),
+  [Gelato](integrations/gelato.md), [Canva](integrations/canva.md) (links only).
 
-## Попередні інструменти
+## Earlier tools
 
-Book Studio замінює три старі програми, які лежать поруч на робочому столі:
-- **Etsy Profit Calculator** — формули прибутку перенесено один в один і звірено тестами
+Book Studio replaces three older programs that sit next to it on the desktop:
+- **Etsy Profit Calculator** — its profit formulas were carried over one-to-one and checked by tests
   ([features/profit.md](features/profit.md));
-- **Order Creator Printify** — його логіку створення книги перенесено в Order Creator;
-- **Etsy OS** — невдала спроба конвеєра замовлень; досвід врахований у
-  [рішеннях](decisions.md) («одне замовлення — один екран»).
-Ключі з перших двох можна перенести кнопкою в Налаштуваннях.
+- **Order Creator Printify** — its book-creation logic was carried into the Order Creator;
+- **Etsy OS** — a failed attempt at an order pipeline; its lessons are reflected in the
+  [decisions](decisions.md) ("one order — one screen").
+Keys from the first two can be moved over with one button in Settings.
 
-## Репозиторій
+## Repository
 
 ```
-Book Studio/            ← корінь git (приватний GitHub: raymanrboy/book-studio)
-  AGENTS.md, CLAUDE.md  ← правила для агентів
-  app/                  ← програма (див. карту коду)
-  wiki/                 ← ця вікі
+Book Studio/            ← git root (private GitHub: raymanrboy/book-studio)
+  AGENTS.md, CLAUDE.md  ← rules for agents
+  app/                  ← the program (see the code map)
+  wiki/                 ← this wiki
 ```
 
-## Де в коді
+## Where in the code
 
-- [app/studio/main.py](../app/studio/main.py) — `main()`: точка входу сервера.
+- [app/studio/main.py](../app/studio/main.py) — `main()`: the server's entry point.
 - [app/studio/core.py](../app/studio/core.py) — `APP_NAME`, `DEFAULT_PORT`, `ROOT`, `DATA_DIR`.
-- Повна карта файлів — [code-map.md](code-map.md).
+- The full file map — [code-map.md](code-map.md).
 
-## Пов'язане
+## Related
 
-- [Словник](glossary.md) · [Як працювати з власником](owner/working-with-owner.md) · [Рішення](decisions.md)
+- [Glossary](glossary.md) · [Working with the owner](owner/working-with-owner.md) · [Decisions](decisions.md)

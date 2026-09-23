@@ -1,5 +1,5 @@
 ---
-title: Шлях замовлення від Etsy до друку
+title: The order-to-print path, from Etsy
 type: flow
 updated: 2026-09-20
 code:
@@ -9,68 +9,72 @@ code:
   - app/studio/creator.py
   - app/studio/archive.py
 ---
-# Шлях замовлення від Etsy до друку
+# The order-to-print path, from Etsy
 
-> Кожне замовлення йде одним шляхом: *замовлення → Canva → файли → звірка → друк*, і все потрібне
-> весь час перед очима. Задумано й збудовано 15.09.2026 (першу версію — того ж дня); розкладку картки
-> змінено 16.09.2026. Мета — прибрати помилки ручної роботи в Canva: дані покупця поруч, копіюються,
-> а не передруковуються.
+> Every order follows one path: *order → Canva → files → proofing → print*, with everything needed kept
+> in view the whole time. Designed and built on 2026-09-15 (the first version, that same day); the
+> card's layout changed on 2026-09-16. The goal is to remove mistakes from manual work in Canva: the
+> buyer's data sits right there, to be copied, not retyped.
 
-## Кроки
+## Steps
 
-| # | Що робить власник | Що робить програма | Де в коді |
+| # | What the owner does | What the program does | Where in the code |
 |---|---|---|---|
-| 0 | Запускає програму | Одна синхронізація Etsy + Printify + Gelato | [profit.py](../../app/studio/profit.py) `startup_sync()` |
-| 1 | Відкриває «Замовлення» → «Нові» | Список чеків без замовлення друку, з книгою і друкарнею | [orders.js](../../app/web/js/pages/orders.js) `mountQueue()` |
-| 2 | Відкриває замовлення | Картка: книга з бібліотеки за лістингом, друкарня за правилом, поля покупця | [orders.py](../../app/studio/orders.py) `enrich()` |
-| 3 | «Відкрити шаблон у Canva» | Відкриває посилання з паспорта книги в браузері | [orders.js](../../app/web/js/pages/orders.js) `renderLeft()` |
-| 4 | У Canva: копія шаблону, `{Name}` → ім'я, присвята, скачати PNG (для США — потрібні 24 сторінки; для Gelato — 30 або 28 без одного розвороту) | — (копіювання значень кнопками в картці) | [integrations/canva.md](../integrations/canva.md) |
-| 5 | Перетягує ZIP/папку в «Файли з Canva» | Копіює в програму, розставляє `Cover.png` + `1…N.png`, повна перевірка | [orders.js](../../app/web/js/pages/orders.js) `takeDrop()`; [orders.py](../../app/studio/orders.py) `arrange_pages()` |
-| 6 | Звіряє; дивиться на значок перевірки тексту | Обкладинка, перший розворот із запискою (ім'я, поля), стрічка всіх розворотів, переглядач; локальна модель тим часом читає сторінки й звіряє з паспортом книги (~20–50 с), проблеми — списком і рамками на сторінках ([перевірка тексту](../features/text-check.md)) | [orders.js](../../app/web/js/pages/orders.js) `proofCard()` |
-| 6а | Знайшлася помилка — виправляє сторінку в Canva, качає **саму цю сторінку** | У переглядачі кнопка «Замінити N»: сторінка стає на місце старої, файли й текст перевіряються знову, поруч «Повернути» | [orders.js](../../app/web/js/pages/orders.js) `replacePage()`; [creator.py](../../app/studio/creator.py) `replace_page()` |
-| 7 | «До друку в …» | Order Creator заповнений: режим, папка, назва `чек - ім'я`, адреса, формат | [orders.js](../../app/web/js/pages/orders.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
-| 8 | «Створити чернетку (замовлення)» | Printify: книга + замовлення On hold; Gelato: PDF + чернетка. Копія файлів, що пішли в друк, — в [архів замовлень](../features/archive.md) | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator.py](../../app/studio/creator.py) `create_printify_draft()`, `create_gelato_draft()` |
-| 9 | У Printify — «Submit order»; у Gelato — відкрити чернетку в Dashboard (поки живе посилання), підтвердити й оплатити | До цього замовлення лишається в «Нових» з чипом «Draft» / «On hold»: чернетка не рахується | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
-| 10 | Натискає «Оновити» | Оформлене й оплачене замовлення переходить у «В роботі» (номер чека в reference / назві); праворуч — статус друкарні; книга з'являється в архіві замовлень | [profit.py](../../app/studio/profit.py) `order_stage()`, `is_placed()` |
-| 11 | Коли друкарня відправила — відкриває вкладку з машинкою, копіює трек-номер кліком | Замовлення з трек-номером або статусом «відправлено» — у машинці, з перевізником і номером | [profit.py](../../app/studio/profit.py) `order_stage()`; [orders.js](../../app/web/js/pages/orders.js) `trackChips()` |
-| 12 | Позначає замовлення відправленим в Etsy (на київському ПК), потім «Оновити» | Замовлення переходить у «Відправлені» (коробка); в архіві замовлень пішов відлік 14 днів | [rules/order-stages.md](../rules/order-stages.md); [archive.py](../../app/studio/archive.py) `refresh()` |
-| 13 | Якщо з книгою щось сталося — «Архів замовлень» → книга → «Передрук» | Printify: нове замовлення On hold з тієї ж книги; Gelato: нова чернетка з тих самих файлів; чек позначено заміною | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator.py](../../app/studio/creator.py) `create_printify_reprint()` |
+| 0 | Starts the program | One sync of Etsy + Printify + Gelato | [profit.py](../../app/studio/profit.py) `startup_sync()` |
+| 1 | Opens "Orders" → "New" | A list of receipts with no print order, with book and printer | [orders.js](../../app/web/js/pages/orders.js) `mountQueue()` |
+| 2 | Opens an order | The card: the book from the library by listing, the printer by rule, the buyer's fields | [orders.py](../../app/studio/orders.py) `enrich()` |
+| 3 | "Open template in Canva" | Opens the link from the book's passport in a browser | [orders.js](../../app/web/js/pages/orders.js) `renderLeft()` |
+| 4 | In Canva: a copy of the template, `{Name}` → the name, the dedication, download PNGs (for the US — 24 pages are needed; for Gelato — 30, or 28 without one spread) | — (copying values with buttons in the card) | [integrations/canva.md](../integrations/canva.md) |
+| 5 | Drags the ZIP/folder into "Files from Canva" | Copies it into the program, lays out `Cover.png` + `1…N.png`, a full check | [orders.js](../../app/web/js/pages/orders.js) `takeDrop()`; [orders.py](../../app/studio/orders.py) `arrange_pages()` |
+| 6 | Proofs it; watches the text-check badge | The cover, the first spread with its note (name, fields), a filmstrip of every spread, the viewer; meanwhile the local model reads the pages and checks them against the book passport (~20–50 s), problems as a list and outlines on the pages ([text check](../features/text-check.md)) | [orders.js](../../app/web/js/pages/orders.js) `proofCard()` |
+| 6a | Found a mistake — fixes the page in Canva, downloads **just that page** | A "Replace N" button in the viewer: the page takes the old one's place, files and text are checked again, "Undo" sits next to it | [orders.js](../../app/web/js/pages/orders.js) `replacePage()`; [creator.py](../../app/studio/creator.py) `replace_page()` |
+| 7 | "Send to print in …" | The Order Creator is filled in: mode, folder, title `receipt - name`, address, format | [orders.js](../../app/web/js/pages/orders.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
+| 8 | "Create draft (order)" | Printify: a book + an On-hold order; Gelato: a PDF + a draft. A copy of the files that went to print goes into the [order archive](../features/archive.md) | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator.py](../../app/studio/creator.py) `create_printify_draft()`, `create_gelato_draft()` |
+| 9 | In Printify — "Submit order"; in Gelato — open the draft in the Dashboard (while the link is alive), confirm and pay | Until then the order stays in "New" with a "Draft" / "On hold" chip: a draft doesn't count | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
+| 10 | Clicks "Refresh" | A confirmed and paid order moves to "In progress" (the receipt number is in the reference / title); the printer status shows on the right; the book appears in the order archive | [profit.py](../../app/studio/profit.py) `order_stage()`, `is_placed()` |
+| 11 | Once the printer ships it — opens the truck tab, clicks to copy the tracking number | An order with a tracking number or "shipped" status is on the truck tab, with a carrier and a number | [profit.py](../../app/studio/profit.py) `order_stage()`; [orders.js](../../app/web/js/pages/orders.js) `trackChips()` |
+| 12 | Marks the order shipped on Etsy (on the Kyiv PC), then clicks "Refresh" | The order moves to "Sent" (a box); its 14-day countdown starts in the order archive | [rules/order-stages.md](../rules/order-stages.md); [archive.py](../../app/studio/archive.py) `refresh()` |
+| 13 | If something happened to the book — "Order archive" → the book → "Reprint" | Printify: a new On-hold order for the same book; Gelato: a new draft from the same files; the receipt is marked as a replacement | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator.py](../../app/studio/creator.py) `create_printify_reprint()` |
 
-Поки замовлення в «Нових», картка й Order Creator з ним пам'ятають, де власник зупинився: можна
-перейти на іншу вкладку й повернутися до того самого кроку, навіть до сторінки успішного створення
+While the order is in "New", the card and the Order Creator remember with it where the owner left off:
+he can switch to another tab and come back to the same step, even a page showing a successful creation
 ([features/orders.md](../features/orders.md)).
 
-**Кілька книг в одному замовленні** (з 20.09.2026): кроки 4–6 власник проходить для кожної книги
-окремо — перемикач «Книга 1 / Книга 2» у картці, у кожної своя папка, своя звірка й своя перевірка
-тексту. Крок 7 бере **всі готові книги** разом, крок 8 створює **одну** чернетку на одну адресу
-(Printify — продукт на книгу й одне замовлення з кількома позиціями; Gelato — одна чернетка з кількома
-товарами). Далі шлях звичайний: у черзі, в обліку й в архіві це одне замовлення з кількома книгами.
+**Several books in one order** (since 2026-09-20): the owner goes through steps 4–6 for each book
+separately — a "Book 1 / Book 2" switch in the card, each with its own folder, its own proofing and its
+own text check. Step 7 takes **every ready book** together, step 8 creates **one** draft to one address
+(Printify — a product per book and one order with several line items; Gelato — one draft with several
+items). After that, the path is the same: in the queue, in the accounting and in the archive, it's one
+order with several books.
 
-Окремий Order Creator лишається для ручних випадків (передрук, коли файлів в архіві вже немає, заміна).
+A separate Order Creator remains for manual cases (a reprint when the files are no longer in the
+archive, a replacement).
 
-## Принципи (чому не як в Etsy OS)
+## Principles (why it's not like Etsy OS)
 
-- Одне замовлення — один екран, без блокувань, ревізій, «поколінь файлів» і блокерів.
-- Стан замовлення береться з фактів (Etsy + Printify/Gelato), а не з прихованих збережених станів.
-- Нічого не зберігається про запас; тимчасові копії файлів стираються при запуску. Єдиний виняток —
-  архів замовлень: книги, що пішли в друк, живуть 14 днів після «Відправлених».
-- Будується маленькими кроками, кожен одразу працює і перевіряється власником.
+- One order — one screen, no locks, revisions, "file generations", or blockers.
+- An order's state comes from the facts (Etsy + Printify/Gelato), not from hidden saved states.
+- Nothing is stored "just in case"; temporary file copies are wiped on launch. The one exception is the
+  order archive: books that went to print live for 14 days after "Sent".
+- Built in small steps, each one working and checked by the owner right away.
 
-## Лишається вручну (рішення власника)
+## Left manual (the owner's decision)
 
-- «With love, …» на початку поля «від кого» не прибирається автоматично — дубль видно одразу.
-- Свою присвяту чи післяслово програма не розбирає: випадки рідкісні, з'ясовуються з покупцем.
-- Апскейл через Upscayl — поки вручну.
-- Вибір трьох розворотів, що не йдуть у 24-сторінкову версію, — поки вручну в Canva. Так само —
-  розворот, що не йде в 28-сторінкову книгу Gelato ([рішення](../decisions.md)).
+- "With love, …" at the start of the "from whom" field isn't removed automatically — a duplicate is
+  visible right away.
+- The program doesn't parse a custom dedication or afterword: the cases are rare and get sorted out with
+  the buyer.
+- Upscaling with Upscayl — manual for now.
+- Picking the three spreads that don't fit the 24-page version — still manual, in Canva. The same goes
+  for the spread that doesn't fit a 28-page Gelato book ([decision](../decisions.md)).
 
-## Відомі межі
+## Known limits
 
-- Замовлення на кілька книг: перемикач «Книга 1 / Книга 2», кожна книга проходить шлях окремо;
-  повноцінна підтримка (своя персоналізація кожної копії) — у [планах](../plans/roadmap.md).
-- Книга, створена в Printify без замовлення, не переводить чек у «В роботі».
+- Orders with several books: a "Book 1 / Book 2" switch, each book going through the path separately;
+  full support (each copy's own personalization) is in the [plans](../plans/roadmap.md).
+- A book created in Printify with no order doesn't move the receipt to "In progress".
 
-## Пов'язане
+## Related
 
-- [Замовлення](../features/orders.md) · [Order Creator](../features/order-creator.md) · [Правило друкарні](../rules/printer-rule.md)
-- [Назви файлів](../rules/file-naming.md) · [Етапи](../rules/order-stages.md) · [Плани](../plans/roadmap.md)
+- [Orders](../features/orders.md) · [Order Creator](../features/order-creator.md) · [Printer rule](../rules/printer-rule.md)
+- [File naming](../rules/file-naming.md) · [Stages](../rules/order-stages.md) · [Plans](../plans/roadmap.md)

@@ -19,7 +19,6 @@ import struct
 import threading
 import time
 import uuid
-import zipfile
 import zlib
 from collections import Counter
 from concurrent.futures import CancelledError, ThreadPoolExecutor
@@ -242,127 +241,6 @@ def _warm_previews(paths: list[str]) -> None:
             images.preview(Path(p), STRIP_PREVIEW)
         except Exception:
             pass
-
-
-# ---------------------------------------------------------------- dropped folders and archives
-# The app window never learns where a dragged folder lives on disk, so its pictures (or a ZIP)
-# are copied into a scratch folder first. Everything there is wiped when the program starts.
-DROPS = core.data_path("tmp", "dropped")
-DROP_IMAGE = re.compile(r"\.(png|jpe?g|webp)$", re.I)
-MAX_DROP_FILE = 400 * 1024 * 1024
-MAX_DROP_ZIP = 6 * 1024 * 1024 * 1024
-_DROP_SESSION = re.compile(r"[0-9a-f]{32}")
-
-
-def clear_drops(keep: str | None = None, older_than: float = 0) -> None:
-    if not DROPS.is_dir():
-        return
-    now = time.time()
-    for entry in DROPS.iterdir():
-        if entry.name == keep:
-            continue
-        try:
-            if now - entry.stat().st_mtime >= older_than:
-                shutil.rmtree(entry, ignore_errors=True) if entry.is_dir() else entry.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-
-def _drop_root(session: str | None) -> Path:
-    if not _DROP_SESSION.fullmatch(session or ""):
-        raise ApiError("Некоректний запит.")
-    return DROPS / session
-
-
-def _drop_rel(name: str, with_text: bool = False) -> Path | None:
-    """A relative path from the dropped folder or archive, or None when it is not a picture we can use
-    (with_text also lets the library's book-text JSON through)."""
-    parts = [p for p in re.split(r"[\\/]+", name or "") if p not in ("", ".")]
-    if not parts or len(parts) > 6 or any(p == ".." or ":" in p or p == "__MACOSX" for p in parts):
-        return None
-    usable = DROP_IMAGE.search(parts[-1]) or (with_text and parts[-1].lower().endswith(".json"))
-    if parts[-1].startswith("._") or not usable:
-        return None
-    return Path(*[re.sub(r'[<>"|?*\x00-\x1f]', "_", p).rstrip(" .") or "_" for p in parts])
-
-
-def extract_zip(archive: Path, target: Path, with_text: bool = False) -> int:
-    try:
-        zf = zipfile.ZipFile(archive)
-    except (zipfile.BadZipFile, OSError):
-        raise ApiError("Архів пошкоджений або це не ZIP.") from None
-    count = total = 0
-    with zf:
-        for info in zf.infolist():
-            rel = None if info.is_dir() else _drop_rel(info.filename, with_text)
-            if rel is None:
-                continue
-            total += info.file_size
-            if total > MAX_DROP_ZIP:
-                raise ApiError("Архів завеликий.")
-            dest = target / rel
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            with zf.open(info) as src, open(dest, "wb") as out:
-                shutil.copyfileobj(src, out, 1024 * 1024)
-            count += 1
-    if not count:
-        raise ApiError("В архіві немає зображень PNG." if not with_text else "В архіві немає ні зображень, ні тексту книги.")
-    return count
-
-
-def dropped_top(root: Path) -> Path:
-    """The dropped folder itself (the library's importer reads its generated/ and pages/ too): down through
-    folders that hold nothing but one folder."""
-    folder = root
-    while True:
-        items = list(folder.iterdir())
-        if len(items) != 1 or not items[0].is_dir():
-            return folder
-        folder = items[0]
-
-
-def dropped_folder(root: Path) -> Path:
-    """The folder with Cover.png in what was dropped (the shallowest one), else the folder holding the pictures."""
-    files = [p for p in root.rglob("*") if p.is_file()]
-    covers = sorted({p.parent for p in files if p.name.lower() == "cover.png"}, key=lambda d: len(d.parts))
-    if covers:
-        return covers[0]
-    holders = {p.parent for p in files}
-    return holders.pop() if len(holders) == 1 else root
-
-
-@route("POST", "/api/creator/drop/file")
-def _drop_file(req: Request):
-    root = _drop_root(req.param("session"))
-    rel = _drop_rel(req.param("name") or "", with_text=req.param("text") == "1")
-    if rel is None:
-        raise ApiError("Перетягніть папку з PNG-файлами або ZIP-архів.")
-    req.body_to_file(root / rel, MAX_DROP_FILE)
-    return {"ok": True}
-
-
-@route("POST", "/api/creator/drop/zip")
-def _drop_zip(req: Request):
-    root = _drop_root(req.param("session"))
-    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", Path(req.param("name") or "archive.zip").stem).strip(" .")[:80]
-    archive = DROPS / f"{root.name}.zip"  # beside the folder, never inside it
-    try:
-        req.body_to_file(archive, MAX_DROP_ZIP)
-        extract_zip(archive, root / (stem or "archive"), with_text=req.param("text") == "1")
-    finally:
-        archive.unlink(missing_ok=True)
-    return {"ok": True}
-
-
-@route("POST", "/api/creator/drop/done")
-def _drop_done(req: Request):
-    body = req.json or {}
-    session = str(body.get("session") or "")
-    root = _drop_root(session)
-    if not root.is_dir():
-        raise ApiError("Файли не отримано — перетягніть папку ще раз.")
-    clear_drops(keep=session, older_than=2 * 3600)
-    return {"path": str(dropped_top(root) if body.get("whole") else dropped_folder(root))}
 
 
 # ---------------------------------------------------------------- start empty

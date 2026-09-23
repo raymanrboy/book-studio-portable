@@ -1,5 +1,5 @@
 ---
-title: Etsy — лише читання
+title: Etsy — read-only
 type: integration
 updated: 2026-09-23
 code:
@@ -7,52 +7,57 @@ code:
 ---
 # Etsy
 
-> Etsy Open API v3, **лише читання** (`shops_r transactions_r`): чеки магазину і лістинги.
-> Вхід в Etsy — тільки на київському комп'ютері ([безпека](../security.md)).
+> Etsy Open API v3, **read-only** (`shops_r transactions_r`): the shop's receipts and listings.
+> Signing in to Etsy is done only on the Kyiv computer ([security](../security.md)).
 
-## Ключі й вхід
+## Keys and sign-in
 
-- **Ключі застосунку**: Keystring і Shared Secret (Etsy Developers → Your apps). Заголовок
-  `x-api-key: <keystring>:<secret>`. Лише з ключами вже можна перевіряти лістинги (без входу).
-- **Вхід (OAuth 2.0 + PKCE)**, два шляхи в Налаштуваннях після підтвердження «я на київському ПК»:
-  1. програма запущена на київському ПК — сторінка входу відкривається там, Etsy повертає на
-     `http://localhost:47821/etsy/callback` (власник так не робить: на київському ПК програми немає);
-  2. **основний шлях:** програма тут — посилання копіюється і відкривається на київському ПК; браузер там перейде на
-     `localhost…` (сторінка не відкриється — так і має бути), повну адресу вставляють назад.
-  Адреса повернення має бути додана в Etsy Developers → Callback URLs. Посилання дійсне годину.
-- **Лінк доступу** (`…?sync=<iv:tag:cipher>`) з Etsy Profit Calculator: сесія, зашифрована AES-GCM
-  ключем із Shared Secret (запасний секрет — як у Profit Calculator). Найпростіший спосіб підключитися.
-  Працює і навпаки: «Копіювати ключ сесії» для іншого ПК.
-- **Токени** зберігаються у сховищі (`etsy_tokens`), оновлюються самі за 5 хв до закінчення.
-  Etsy видає **одноразові** ключі оновлення: якщо ту саму сесію оновила інша програма (Profit
-  Calculator), тут вона перестає працювати → «перенесіть сесію знову».
+- **App keys**: Keystring and Shared Secret (Etsy Developers → Your apps). Header
+  `x-api-key: <keystring>:<secret>`. Just the keys are already enough to check listings (no sign-in
+  needed).
+- **Sign-in (OAuth 2.0 + PKCE)**, two paths in Settings, after confirming "I'm on the Kyiv PC":
+  1. the program is running on the Kyiv PC — the sign-in page opens there, and Etsy redirects to
+     `http://localhost:47821/etsy/callback` (the owner doesn't do this — there's no program on the Kyiv
+     PC);
+  2. **the main path:** the program is here — the link is copied and opened on the Kyiv PC; the browser
+     there will navigate to `localhost…` (the page won't load — that's expected), and the full address
+     gets pasted back.
+  The return address has to be added under Etsy Developers → Callback URLs. The link is valid for an
+  hour.
+- **The access link** (`…?sync=<iv:tag:cipher>`) from Etsy Profit Calculator: a session, encrypted with
+  AES-GCM using a key derived from the Shared Secret (a fallback secret, as in Profit Calculator). The
+  simplest way to connect. Works the other way too: "Copy session key" for another PC.
+- **Tokens** are kept in the vault (`etsy_tokens`), and refresh themselves 5 minutes before they expire.
+  Etsy issues **one-time-use** refresh tokens: if another program (Profit Calculator) refreshed the same
+  session, this one stops working → "reconnect the session".
 
-## Дані
+## Data
 
-- `fetch_all_receipts()` — усі оплачені чеки (включно зі скасованими/поверненими), новіші першими,
-  по 100, пауза 0,12 с; з `min_last_modified` — лише змінені (інкрементна синхронізація). Не більше
-  `MAX_RECEIPTS` = 20 000; більше — список позначається неповним (`httpc.Listing`) і синхронізація
-  попереджає.
-- `normalize_receipt()` ([profit.py](../../app/studio/profit.py)) перетворює чек: комісії, товари з
-  варіаціями (персоналізація), адреса, повернення. Текст Etsy приходить з HTML-екрануванням
-  (`&quot;`, `&amp;`) — `plain()` розекрановує.
-- **Немає в API**: власні вкладки продавця (наприклад, «In Production»). Тому етап замовлення
-  виводиться з того, чи є замовлення друку ([rules/order-stages.md](../rules/order-stages.md)).
-- `fetch_listing()` — назва, стан, магазин, головне фото (одним запитом `includes=Images`).
+- `fetch_all_receipts()` — every paid receipt (including cancelled/refunded ones), newest first, 100 at
+  a time, a 0.12 s pause; with `min_last_modified` — only changed ones (an incremental sync). No more
+  than `MAX_RECEIPTS` = 20,000; beyond that, the list is marked incomplete (`httpc.Listing`) and the sync
+  warns.
+- `normalize_receipt()` ([profit.py](../../app/studio/profit.py)) transforms a receipt: fees, items with
+  variations (personalization), address, refunds. Etsy's text arrives HTML-escaped (`&quot;`, `&amp;`) —
+  `plain()` un-escapes it.
+- **Not in the API**: the seller's own tabs (e.g. "In Production"). So an order's stage is worked out
+  from whether it has a print order ([rules/order-stages.md](../rules/order-stages.md)).
+- `fetch_listing()` — title, status, shop, main photo (one request, `includes=Images`).
 
-## Помилки
+## Errors
 
-`_human()` перетворює відповіді Etsy на зрозумілі повідомлення з `code: etsy_auth`, коли треба
-заново підключитися. 401 при запиті → одне примусове оновлення токена і повтор. Оновлення токена —
-POST, що лише читає, тож після обриву його можна повторити (`idempotent=True`).
+`_human()` turns Etsy's responses into understandable messages, with `code: etsy_auth` when the
+connection needs to be re-made. A 401 on a request → one forced token refresh and a retry. The token
+refresh is a POST that only reads, so it can be retried after a dropped connection
+(`idempotent=True`).
 
-## Де в коді
+## Where in the code
 
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `SCOPES`, `keys()`, `api_key_header()`, `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `decode_session_key()`, `encode_session_key()`, `import_session()`, `fetch_listing()`, `fetch_all_receipts()`, `MAX_RECEIPTS`, `parse_listing_ref()`, `_oauth_callback()`, `port_warning()`, `_human()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `normalize_receipt()`, `plain()`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `oauthFlow()`, `etsyCard()`
-- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`EtsyOAuth`, `OpenUrlGuard`)
+- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`EtsyOAuth`, `OpenUrlGuard`)
 
-## Пов'язане
+## Related
 
-- [Безпека](../security.md) · [Синхронізація](../rules/sync-policy.md) · [Налаштування](../features/settings.md)
+- [Security](../security.md) · [Sync](../rules/sync-policy.md) · [Settings](../features/settings.md)

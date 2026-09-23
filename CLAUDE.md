@@ -1,17 +1,18 @@
 @AGENTS.md
 
-# Доповнення для Claude Code
+# Addendum for Claude Code
 
-- **Навички проєкту** (`.claude/skills/`):
-  - `/wiki-update` — актуалізувати вікі після змін у коді (виконувати наприкінці кожної задачі);
-  - `/wiki-ingest` — додати у вікі матеріал від власника (текст, скриншот, документ);
-  - `/wiki-lint` — огляд здоров'я вікі.
-- **Перегляд інтерфейсу**: `preview_start("book-studio-dev")` (`.claude/launch.json`, порт 47890,
-  вигадані дані). Прихована панель браузера не запускає `requestAnimationFrame` — перевіряти DOM і
-  підміняти rAF на `setTimeout`; після `resize_window` повернути `preset: "desktop"`; наприкінці
-  `preview_stop`. Деталі — `wiki/dev/preview.md`.
-- **GitHub CLI** на цьому ПК не в PATH: `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe`
-  (акаунт `raymanrboy`, репозиторій `raymanrboy/book-studio`). Push — командою з `wiki/dev/setup.md`.
-- **Оболонки**: у Bash краще абсолютні шляхи (`cd` змінює робочу папку сесії); кирилиця у виводі
-  Python — з `PYTHONIOENCODING=utf-8`; тести — з `PYTHONDONTWRITEBYTECODE=1`.
-- **Пам'ять агента** — лише для особистих нотаток; усе про проєкт — у вікі.
+- **Project skills** (`.claude/skills/`):
+  - `/wiki-update` — bring the wiki up to date after code changes (run at the end of every task);
+  - `/wiki-ingest` — add material from the owner into the wiki (text, screenshot, document);
+  - `/wiki-lint` — wiki health check.
+- **Interface preview**: `preview_start("book-studio-dev")` (`.claude/launch.json`, port 47890,
+  made-up data); the «Мокапи» utility — `preview_start("mockups-dev")` (port 47891, a pretend
+  Photoshop). The hidden browser pane doesn't run `requestAnimationFrame` — check the DOM and swap
+  rAF for `setTimeout`; after `resize_window`, set it back to `preset: "desktop"`; finish with
+  `preview_stop`. Details — `wiki/dev/preview.md`.
+- **GitHub CLI** on this PC is not on PATH: `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe`
+  (account `raymanrboy`, repository `raymanrboy/book-studio`). Push — the command in `wiki/dev/setup.md`.
+- **Shells**: in Bash, prefer absolute paths (`cd` changes the session's working folder); Cyrillic in
+  Python output needs `PYTHONIOENCODING=utf-8`; tests need `PYTHONDONTWRITEBYTECODE=1`.
+- **Agent memory** — personal notes only; everything about the project lives in the wiki.

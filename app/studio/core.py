@@ -44,7 +44,7 @@ def ensure_dirs() -> None:
 
 
 def setup_logging() -> None:
-    ensure_dirs()
+    data_path("logs").mkdir(parents=True, exist_ok=True)
     root = logging.getLogger()
     if any(isinstance(h, RotatingFileHandler) for h in root.handlers):
         return
@@ -52,6 +52,26 @@ def setup_logging() -> None:
     handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s"))
     root.addHandler(handler)
     root.setLevel(logging.INFO)
+
+
+def own_temp() -> Path:
+    """Windows' temp folder is on drive C, and the programs this one starts write there (the Edge window leaves
+    logs and empty folders behind). The owner keeps drive C clean (23.09.2026): this process and everything it
+    starts — the window, the Windows dialogs, cloudflared, Photoshop — get a temp folder inside the data folder
+    on drive D instead, emptied now and again by clear_own_temp() when the program closes."""
+    import shutil
+    import tempfile
+    folder = data_path("tmp", "system")
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True, exist_ok=True)
+    os.environ["TEMP"] = os.environ["TMP"] = str(folder)
+    tempfile.tempdir = str(folder)
+    return folder
+
+
+def clear_own_temp() -> None:
+    import shutil
+    shutil.rmtree(data_path("tmp", "system"), ignore_errors=True)  # a file still held stays till the next start
 
 
 def new_id() -> str:

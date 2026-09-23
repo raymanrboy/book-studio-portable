@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="uk" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="studio-token" content="__STUDIO_TOKEN__">
+  <meta name="color-scheme" content="dark light">
+  <title>Мокапи</title>
+  <link rel="icon" href="/img/mockups.png" type="image/png">
+  <link rel="stylesheet" href="/css/app.css">
+  <script>
+    // Apply the theme before first paint (no flash); the shell then takes Book Studio's own.
+    try {
+      var t = localStorage.getItem('bs-theme') || 'dark';
+      if (t === 'system') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <main class="main mk-shell" id="main">
+    <div class="view" id="view"></div>
+  </main>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <div class="offline" id="offline" hidden>
+    <div class="offline-card">
+      <div class="offline-icon">!</div>
+      <h2>Зв'язок із програмою втрачено</h2>
+      <p>«Мокапи» закрито або перезапущено. Запустіть їх з ярлика на робочому столі.</p>
+      <button class="btn btn-primary" onclick="location.reload()">Спробувати знову</button>
+    </div>
+  </div>
+  <script type="module" src="/js/mockups-shell.js"></script>
+</body>
+</html>

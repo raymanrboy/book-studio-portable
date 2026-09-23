@@ -1,116 +1,138 @@
 # Book Studio
 
-Локальна Windows-програма для магазину персоналізованих книг на Etsy. Розділи:
+A local Windows program for a shop selling personalized books on Etsy. Sections:
 
-- **Замовлення** (стартовий екран) — черга нових замовлень Etsy і картка кожного: книга й шаблон Canva,
-  персоналізація покупця, файли з Canva, звірка, передача в друк. Див. [шлях замовлення у вікі](../wiki/flows/order-to-print.md).
-- **Бібліотека книг** — еталонна версія кожної книги: обкладинка, 16 сторінок/розворотів, тексти, Canva.
-- **Архів замовлень** — точні файли кожної книги, відправленої в друк, для швидкого передруку; файли
-  видаляються самі через 14 днів після відправлення покупцю. Див. [архів у вікі](../wiki/features/archive.md).
-- **Перевірка тексту** (у картці замовлення) — локальна модель у Ollama читає сторінки з Canva і звіряє їх
-  з паспортом книги; картинки не покидають комп'ютер. Див. [перевірку тексту у вікі](../wiki/features/text-check.md).
-- **Прибуток** (прихований до 1 жовтня) — повний аналог Etsy Profit Calculator: чистий виторг Etsy мінус собівартість Printify/Gelato.
-- **Order Creator** — повний аналог Order Creator Printify: чернетки фотокниг у Printify та Gelato з файлів Canva.
+- **Orders** (start screen) — the queue of new Etsy orders and each one's card: the book and its Canva
+  template, the buyer's personalization, files from Canva, proofing, sending to print. See the
+  [order-to-print path in the wiki](../wiki/flows/order-to-print.md).
+- **Book library** — the reference version of every book: cover, 16 pages/spreads, texts, Canva.
+- **Order archive** — the exact files of every book sent to print, for a quick reprint; the files delete
+  themselves 14 days after the order ships to the buyer. See [the archive in the wiki](../wiki/features/archive.md).
+- **Text check** (in the order card) — a local model in Ollama reads the pages from Canva and checks them
+  against the book passport; the pictures never leave the computer. See [the text check in the wiki](../wiki/features/text-check.md).
+- **Profit** (hidden until 1 October) — a full equivalent of the Etsy Profit Calculator: net Etsy revenue
+  minus Printify/Gelato cost.
+- **Order Creator** — a full equivalent of Printify's Order Creator: photo-book drafts in Printify and
+  Gelato from Canva files.
 
-## Запуск
+## Launch
 
-Двічі клацніть ярлик **Book Studio** на робочому столі. Відкриється окреме вікно програми.
-Коли вікно закрите, програма сама завершує роботу (але спершу дочекається незавершених завантажень
-і тимчасового посилання Gelato).
+Double-click the **Book Studio** shortcut on the desktop. A separate program window opens.
+When the window is closed, the program shuts itself down on its own (but first waits for any unfinished
+uploads and Gelato's temporary link).
 
-Якщо ярлика немає: `python app\tools\make_shortcut.py` (з папки Book Studio). Якщо програма не запускається —
-`Запуск з консоллю.bat` покаже помилку. Потрібен Python 3.11+ з пакетами з `requirements.txt`
-(на цьому ПК вони вже є; перевірено на Python 3.14). Для перевірки тексту — Ollama з моделлю
-`gemma4:12b-it-qat` (~7 ГБ); без неї програма працює, лише без цієї перевірки.
+If there's no shortcut: `python app\tools\make_shortcut.py` (from the Book Studio folder). If the program
+doesn't start — `Запуск з консоллю.bat` (Run with console) will show the error. Needs Python 3.11+ with
+the packages from `requirements.txt` (already present on this PC; tested on Python 3.14). For the text
+check — Ollama with the `gemma4:12b-it-qat` model (~7 GB); without it the program still works, just
+without that check.
 
-## Перше налаштування (1 хвилина)
+## «Мокапи» — pictures for an Etsy listing
 
-1. **Налаштування → Швидкий старт → Імпортувати.** Програма сама знайде ключі в Order Creator
-   Printify та Etsy Profit Calculator і перенесе їх у своє зашифроване сховище.
-2. **Etsy:** найпростіше — у Profit Calculator натисніть «Скопіювати лінк доступу» і вставте
-   посилання в Налаштування → Etsy → «Активувати». Або «Авторизуватися в Etsy (Київ)» — вхід
-   на сторінці Etsy робиться **лише на київському комп'ютері**; програма дає посилання для Києва і
-   приймає назад адресу, на яку перейшов браузер. Callback URL показано в Налаштуваннях — його
-   треба один раз додати в Etsy Developers.
-3. **Printify:** Master-продукт уже налаштований (CozyCovenant, Hardcover 8x8 Template).
+A separate little program with its own shortcut **Мокапи**: drag the demo book's Canva ZIP into its
+window, click the spreads you like (4 for Open 1, 2 for Open 2, one each for Cover & Open 1 and
+All & Open 1), press «Зробити мокапи» and pick a folder. Photoshop asks once whether to run the script —
+answer **Yes**. About half a minute later the folder has 7 pictures, and Photoshop has three templates
+open (1. Cover 1, Cover & Open 1, All & Open 1) — fit the front cover there and save them yourself. The
+templates folder `Трафарети мастхев` is never changed: Photoshop works on copies. More —
+[the wiki](../wiki/features/mockups.md).
 
-## Бібліотека книг
+## First-time setup (1 minute)
 
-Книга = один лістинг Etsy. Структура як у пайплайні: обкладинка, **сторінка 1** (присвята),
-**розвороти 2–15** (сторінки 2–29), **сторінка 30** (післяслово). Розворот — одна картинка `8-9.png`
-або дві сторінки `8.png` + `9.png`.
+1. **Settings → Quick start → Import.** The program finds the keys in Order Creator Printify and Etsy
+   Profit Calculator on its own and moves them into its own encrypted vault.
+2. **Etsy:** the simplest way — in Profit Calculator click "Скопіювати лінк доступу" (Copy access link)
+   and paste it into Settings → Etsy → "Активувати" (Activate). Or "Авторизуватися в Etsy (Київ)" (Sign
+   in to Etsy — Kyiv) — signing in on the Etsy page is done **only on the Kyiv computer**; the program
+   gives a link for Kyiv and accepts back the address the browser was sent to. The callback URL is shown
+   in Settings — it needs to be added to Etsy Developers once.
+3. **Printify:** the Master product is already set up (CozyCovenant, Hardcover 8x8 Template).
 
-- Додати: «Додати книгу» → посилання на лістинг. Усе інше можна додати пізніше.
-- Інструкція для підготовки книги (іконка поруч із сортуванням): правильні назви файлів для пакетного
-  завантаження і формат `book-text.json` — зберегти файлом або скопіювати, щоб віддати агенту.
-- Файли: «Імпорт з папки» (розуміє папку пайплайну: `generated/`, `Cover`, `1.png`, `2-3.png`…`30.png`,
-  `book-text.json`) або просто перетягніть папку, ZIP чи файли у вікно — програма розкладе їх за тими самими
-  правилами і перед імпортом покаже, що куди піде.
-- Текст: JSON `{cover, page1, spreads: {"2"…"15"}, page30}`; редагування прямо на сторінці,
-  `{Name}`/`{Gifter}` підсвічуються; кнопки копіювання для Canva.
-- Перегляд із зумом: клік по будь-якій ілюстрації (колесо миші, перетягування, ← →, Esc).
-- Архів і видалення (файли переносяться в `data/library/trash`, їх можна повернути).
+## Book library
 
-## Прибуток
+A book = one Etsy listing. Structured like the pipeline: cover, **page 1** (dedication), **spreads 2–15**
+(pages 2–29), **page 30** (afterword). A spread is either one picture `8-9.png` or two pages `8.png` +
+`9.png`.
 
-Поки прихований: облік починається з 1 жовтня.
+- To add one: "Додати книгу" (Add book) → a link to the listing. Everything else can be added later.
+- The book-preparation guide (the icon next to sorting): the correct file names for batch upload and the
+  `book-text.json` format — save it to a file or copy it to hand to an agent.
+- Files: "Імпорт з папки" (Import from folder — understands the pipeline folder: `generated/`, `Cover`,
+  `1.png`, `2-3.png`…`30.png`, `book-text.json`), or just drag a folder, ZIP, or files into the window —
+  the program lays them out by the same rules and shows what will go where before importing.
+- Text: JSON `{cover, page1, spreads: {"2"…"15"}, page30}`; edited right on the page, `{Name}`/`{Gifter}`
+  highlighted; copy buttons for Canva.
+- Zoomable viewer: click any picture (mouse wheel, drag, ← →, Esc).
+- Archive and delete (files move to `data/library/trash`, and can be restored).
 
-`Etsy Net = сума з картки − податок США − комісії Etsy (6.5% товар + 6.5% доставка + 6% + $0.30
-еквайринг + $0.20 лістинг, усе + 20% ПДВ)`; `Прибуток = Etsy Net − собівартість Printify/Gelato`;
-`Маржа = Прибуток / Etsy Net`. Формули та правила зіставлення перевірені тестами проти коду
-оригінального Profit Calculator (однакові результати до цента).
+## Profit
 
-Оновлення — лише кнопкою «Update / Sync»; між запусками показується останній знімок.
-Завантажуються **всі** замовлення магазину. Зіставлення: номер чека в Printify, ім'я одержувача
-(найближче за датою), Gelato за reference/іменем; спільні посилки ділять собівартість порівну.
-Будь-яке замовлення можна зв'язати вручну або позначити «без собівартості».
+Still hidden: accounting starts on 1 October.
+
+`Etsy Net = card total − US tax − Etsy fees (6.5% item + 6.5% shipping + 6% + $0.30 payment processing +
+$0.20 listing, all + 20% VAT)`; `Profit = Etsy Net − Printify/Gelato cost`; `Margin = Profit / Etsy Net`.
+The formulas and matching rules are checked by tests against the original Profit Calculator's code
+(identical results to the cent).
+
+Updates only happen via the "Update / Sync" button; between runs, the last snapshot is shown. **All** of
+the shop's orders are loaded. Matching: the receipt number in Printify, the recipient's name (closest by
+date), Gelato by reference/name; shared parcels split the cost evenly. Any order can be linked manually or
+marked "without cost".
 
 ## Order Creator
 
-- **Printify:** папка з `Cover.png` + `1.png`…`24.png` (точні розміри 4672×2464 і 4000×4000) →
-  повна перевірка → завантаження (вже завантажені файли не дублюються) → нова **неопублікована**
-  книга з конфігурацією Master → перевірка позицій і того, що Master не змінився. Якщо заповнена адреса —
-  ще й **чернетка замовлення**: замовлення на цю книгу (матовий варіант, стандартна доставка), яке в Printify
-  чекає «On hold» і йде у виробництво лише після «Submit order». Перед першим таким замовленням програма
-  один раз просить підтвердити, що в магазині Printify стоїть ручне затвердження замовлень (Manual).
-- **Gelato:** формат, папка з `Cover.png` + `1.png`…`30.png` або `1.png`…`28.png` (книга без одного розвороту;
-  котрі формати Gelato друкує на 28 сторінках — каже його каталог), адреса → одна PDF-книга (обкладинка, форзац,
-  сторінки, нахзац) у розмірах з каталогу Gelato, без перестиснення → тимчасове посилання для Gelato (15 хв) →
-  **чернетка** замовлення (draft).
-- Папку можна вибрати або перетягнути в блок разом із ZIP-архівом. Сторінка щоразу відкривається порожньою.
-- «З замовлення Etsy» заповнює назву (`номер чека - ім'я дитини`) і адресу. Замовлення розкладені на
-  «Нові», «В роботі» (уже є замовлення в Printify/Gelato) і «Відправлені».
-- Замовлення з Etsy, Printify і Gelato оновлюються один раз при запуску програми, далі — лише кнопкою оновлення.
+- **Printify:** a folder with `Cover.png` + `1.png`…`24.png` (exact sizes 4672×2464 and 4000×4000) → a
+  full check → upload (already-uploaded files aren't duplicated) → a new **unpublished** book built from
+  the Master's configuration → a check of the positions and that the Master hasn't changed. If the
+  address is filled in — also a **draft order**: an order for this book (matte variant, standard
+  shipping), which in Printify waits "On hold" and only goes into production after "Submit order".
+  Before the first such order, the program asks once to confirm that manual order approval (Manual) is
+  turned on in the Printify shop.
+- **Gelato:** a format, a folder with `Cover.png` + `1.png`…`30.png` or `1.png`…`28.png` (a book without
+  one spread; which formats Gelato prints at 28 pages is decided by its catalog), an address → one PDF
+  book (cover, endpaper, pages, endpaper) at the sizes from Gelato's catalog, with no recompression → a
+  temporary link for Gelato (15 min) → a **draft** order.
+- The folder can be picked or dragged into the block together with a ZIP archive. The page opens empty
+  every time.
+- "З замовлення Etsy" (From an Etsy order) fills in the title (`receipt number - child's name`) and the
+  address. Orders are sorted into "Нові" (New), "В роботі" (In progress — already has an order in
+  Printify/Gelato) and "Відправлені" (Sent).
+- Orders from Etsy, Printify and Gelato refresh once when the program starts, and after that only with
+  the refresh button.
 
-## Плани
+## Plans
 
-- [Плани](../wiki/plans/roadmap.md) і [відкриті питання](../wiki/plans/open-questions.md) — у вікі проєкту.
+- [Plans](../wiki/plans/roadmap.md) and [open questions](../wiki/plans/open-questions.md) — in the
+  project wiki.
 
-## Безпека
+## Security
 
-- Etsy — лише читання. Printify — лише завантаження зображень, створення неопублікованого продукту і
-  замовлення, що чекає «On hold» (тільки після підтвердження ручного затвердження в магазині); відправка у
-  виробництво, скасування, Express, публікація, зміна чи видалення продуктів заблоковані в самому клієнті.
-  Gelato — лише чернетки (`orderType: draft`), усе інше заблоковано.
-- Ключі шифруються Windows DPAPI і працюють лише для вашого користувача Windows; у вікно програми
-  вони ніколи не передаються. Програма слухає лише `127.0.0.1`.
+- Etsy — read-only. Printify — only image uploads, creating an unpublished product, and an order waiting
+  "On hold" (only after manual-approval confirmation in the shop); sending to production, cancelling,
+  Express, publishing, or changing/deleting products are blocked in the client itself. Gelato — drafts
+  only (`orderType: draft`), everything else is blocked.
+- Keys are encrypted with Windows DPAPI and only work for your Windows user; they're never sent to the
+  program window. The program listens only on `127.0.0.1`.
 
-## Дані
+## Data
 
-Усе зберігається в папці `app/data/` поруч із програмою (на 22.09.2026 — близько 6,6 ГБ):
+Everything is stored in the `app/data/` folder next to the program (as of 2026-09-22, about 6.6 GB):
 
-- `archive/` — файли книг, відправлених у друк (найбільша частина, ~4 ГБ; старі видаляються самі);
-- `library/` — книги й ілюстрації бібліотеки (~1,6 ГБ), `library/trash/` — видалені книги, які можна повернути;
-- `profit/` — знімок замовлень, ручні зв'язки й стани, `print-orders.json` (які замовлення друкарень програма
-  створила для якого чека);
-- `creator/` — кеш завантажень Printify; `vault.json` — зашифровані ключі;
-- `logs/` — журнал програми, `logs/sends/` (журнал відправок), `logs/checks/` (журнал перевірок тексту);
-- `cache/` — прев'ю картинок, `tmp/` — тимчасові копії (обидві можна не зберігати: програма відтворить їх сама).
+- `archive/` — files of books sent to print (the largest part, ~4 GB; old ones delete themselves);
+- `library/` — the library's books and illustrations (~1.6 GB), `library/trash/` — deleted books that
+  can be restored;
+- `profit/` — a snapshot of orders, manual links and states, `print-orders.json` (which print orders the
+  program itself created for which receipt);
+- `creator/` — the Printify upload cache; `vault.json` — encrypted keys;
+- `logs/` — the program's log, `logs/sends/` (the send journal), `logs/checks/` (the text-check journal);
+- `cache/` — image previews, `tmp/` — temporary copies (neither needs to be backed up: the program
+  rebuilds them on its own);
+- `mockups/` — the «Мокапи» utility's own folder (its working copies of the templates; no need to back up).
 
-Для резервної копії достатньо скопіювати `app/data/` (без `cache/` і `tmp/`).
+For a backup, it's enough to copy `app/data/` (without `cache/` and `tmp/`).
 
-## Для розробки
+## For development
 
-`studio/` — Python-сервер (стандартна бібліотека + Pillow, img2pdf, cryptography), `web/` — інтерфейс
-(HTML/CSS/JS без збірки). Тести (з папки `app`): `python -m unittest discover -s tests`.
-Як усе влаштовано — [вікі проєкту](../wiki/index.md); правила для агентів — [AGENTS.md](../AGENTS.md).
+`studio/` — the Python server (standard library + Pillow, img2pdf, cryptography), `web/` — the interface
+(HTML/CSS/JS, no build step). Tests (from the `app` folder): `python -m unittest discover -s tests`.
+How it's all built — the [project wiki](../wiki/index.md); rules for agents — [AGENTS.md](../AGENTS.md).

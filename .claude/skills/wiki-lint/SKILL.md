@@ -3,18 +3,19 @@ name: wiki-lint
 description: Health-check the Book Studio wiki against the code and itself - contradictions, stale claims, gaps, orphan pages. Use when the owner asks to review the wiki or periodically before large tasks.
 ---
 
-# Огляд здоров'я вікі
+# Wiki health review
 
-1. `python app/tools/wiki_check.py` і `--map` — механічні проблеми (посилання, функції, маршрути,
-   непокриті файли). Виправ їх.
-2. Прочитай сторінки по черзі разом із кодом, на який вони посилаються. Шукай:
-   - твердження, які код уже не підтверджує (числа, назви, поведінка, дати «з …»);
-   - суперечності між сторінками (наприклад, `rules/` проти `features/`);
-   - поняття, згадані в кількох місцях без власної сторінки;
-   - сторінки без вхідних посилань, крім `index.md`;
-   - місця, де опис переказує код замість пояснювати *що* і *чому*;
-   - застарілі пункти в `plans/` (вже збудовано → перенести в `decisions.md` / відповідну сторінку).
-3. Виправ очевидне; спірне — список питань власнику (у `plans/open-questions.md` і у звіті).
-4. Запропонуй 1–3 нові питання чи джерела, яких бракує вікі.
-5. Запис угорі `wiki/log.md`: `## [РРРР-ММ-ДД] lint | підсумок`.
-6. `python app/tools/wiki_check.py` і тести — без помилок.
+1. `python app/tools/wiki_check.py` and `--map` — mechanical problems (links, functions, routes,
+   uncovered files). Fix them.
+2. Read the pages in turn, together with the code they link to. Look for:
+   - claims the code no longer backs up (numbers, names, behavior, "since …" dates);
+   - contradictions between pages (e.g. `rules/` versus `features/`);
+   - concepts mentioned in several places with no page of their own;
+   - pages with no inbound links other than from `index.md`;
+   - places where the description just retells the code instead of explaining *what* and *why*;
+   - stale items in `plans/` (already built → move into `decisions.md` / the relevant page).
+3. Fix what's obvious; put anything debatable in a list of questions for the owner (in
+   `plans/open-questions.md` and in the report).
+4. Suggest 1–3 new questions or sources the wiki is missing.
+5. An entry at the top of `wiki/log.md`: `## [YYYY-MM-DD] lint | summary`.
+6. `python app/tools/wiki_check.py` and the tests — no errors.

@@ -1,81 +1,90 @@
 ---
-title: Назви файлів — друк і бібліотека
+title: File naming — print and the library
 type: rule
 updated: 2026-09-23
 code:
   - app/studio/orders.py
   - app/studio/library.py
   - app/studio/creator.py
+  - app/studio/drops.py
 ---
-# Назви файлів
+# File naming
 
-> Два різні набори правил: **папка для друку** (суворо `Cover.png` + `1…N.png`) і **імпорт у бібліотеку**
-> (номери сторінок або пари `12-13`). Хвіст Upscayl (`_upscayl…`) ігнорується в обох.
+> Two different rule sets: the **print folder** (strictly `Cover.png` + `1…N.png`) and **importing into
+> the library** (page numbers, or pairs like `12-13`). The Upscayl tail (`_upscayl…`) is ignored in
+> both.
 
-## Експорт з Canva → папка для друку (`arrange_pages()`)
+## Canva export → the print folder (`arrange_pages()`)
 
-1. Беруться PNG у папці (без прихованих).
-2. **Обкладинка** — файл зі словом `cover`, `cober` чи `обкладин` у назві (те саме правило, що в
-   бібліотеці, `COVER_NAME`); якщо такого немає — єдина широка картинка (ширина ≥ 1,4 × висоти). Кілька
-   обкладинок або жодної → помилка «назвіть її Cover.png».
-3. Решта — за **останнім числом у назві** (`page_number()`: «12», «Madelynn - 12»,
-   «12_upscayl_4x_ultrasharp» → 12). Немає числа → помилка з назвою файлу.
-4. Сортування за числом; однакові номери → «Сторінка N є двічі».
-5. Кількість має точно дорівнювати дозволеній: Printify — 24, Gelato — 28 або 30 (`page_options()`),
-   інакше — «Потрібно 24 сторінки, а тут 23 (сторінки 1–23)» / «Потрібно 28 або 30 сторінок, а тут 29».
-   Відповідь містить `pageCount` — скільки сторінок вийшло.
-6. Вже правильно названа папка без зайвих файлів використовується як є.
-7. Інакше — **нова папка** `data/tmp/dropped/<uuid>/<назва>`: `Cover.png`, `1.png…N.png`. Оригінали
-   користувача не перейменовуються: перетягнуті копії переносяться, інші файли — жорстке посилання
-   (на тому ж диску, без зайвого місця) або копія.
-8. Примітка для картки: «сторінки 2–25 → 1–24; обкладинка — design.png».
+Steps 1–4 are `drops.export_files()` — one reading shared with the
+[mockups utility](../features/mockups.md) (since 2026-09-23; it takes JPG/WEBP too and any page count).
 
-Далі — перевірка Order Creator (`validate()`): для Printify точні розміри, тож незаапскейлені сторінки
-одразу видно як помилку. Для Gelato перевірка сама визначає довжину книги за найбільшим номером файлу
-(`_gelato_page_count()`: є `29.png` чи `30.png` → 30, інакше 28).
+1. PNGs in the folder are collected (hidden ones excluded).
+2. **The cover** — a file with `cover`, `cober`, or `обкладин` in its name (the same rule as in the
+   library, `COVER_NAME`); if there's none, the one wide picture (width ≥ 1.4 × height). Several covers,
+   or none at all → an error, "name it Cover.png". Canva's own ZIP of a book needs no renaming: its
+   `1.png` is the wide cover, `2.png…31.png` become pages 1–30.
+3. The rest, by the **last number in the name** (`page_number()`: "12", "Madelynn - 12",
+   "12_upscayl_4x_ultrasharp" → 12). No number → an error naming the file.
+4. Sorted by number; matching numbers → "Page N appears twice".
+5. The count has to exactly match what's allowed: Printify — 24, Gelato — 28 or 30 (`page_options()`),
+   otherwise — "24 pages needed, found 23 (pages 1–23)" / "28 or 30 pages needed, found 29". The
+   response includes `pageCount` — how many pages there were.
+6. An already correctly named folder with no extra files is used as-is.
+7. Otherwise — a **new folder** `data/tmp/dropped/<uuid>/<name>`: `Cover.png`, `1.png…N.png`. The user's
+   originals are never renamed: dropped copies are moved, other files get a hard link (same drive, no
+   extra space) or a copy.
+8. A note for the card: "pages 2–25 → 1–24; cover — design.png".
 
-## Імпорт у бібліотеку (`scan_folder()`)
+Next comes the Order Creator's check (`validate()`): for Printify, exact sizes, so un-upscaled pages
+show up as an error right away. For Gelato, the check works out the book's length from the highest file
+number itself (`_gelato_page_count()`: `29.png` or `30.png` present → 30, otherwise 28).
 
-Одні правила для кнопки «Імпорт з папки», перетягнутої папки, ZIP і кількох файлів (з 23.09.2026; до того
-перетягування мало власну копію правил у сторінці).
+## Importing into the library (`scan_folder()`)
 
-| Назва (без розширення) | Куди |
+One set of rules for the "Import from folder" button, a dropped folder, a ZIP, and several files (since
+2026-09-23; before that, dropping had its own copy of the rules in the page).
+
+| Name (no extension) | Where |
 |---|---|
-| містить `cover` / `cober` / `обкладин` | обкладинка (PNG має перевагу) |
-| містить `thumb` / `заставк` / `preview` / `gallery` | заставка |
-| `1` | присвята |
-| `30` | післяслово |
-| `2-3`, `2–3`, `2_3` (пара розвороту) | цілий розворот |
-| `2`, `3` (окремі) | ліва / права сторінка розвороту |
-| `book-text.json`, `text.json`, `book.json` (або будь-який `.json`) | текст книги |
-| інше | пропускається (показується список) |
+| contains `cover` / `cober` / `обкладин` | the cover (PNG takes priority) |
+| contains `thumb` / `заставк` / `preview` / `gallery` | the thumbnail |
+| `1` | the dedication |
+| `30` | the afterword |
+| `2-3`, `2–3`, `2_3` (a spread pair) | a whole spread |
+| `2`, `3` (separate) | the left / right page of a spread |
+| `book-text.json`, `text.json`, `book.json` (or any `.json`) | the book's text |
+| anything else | skipped (shown in a list) |
 
-- Папка може містити підпапки `generated/` або `pages/` — їх файли мають перевагу.
-- Дозволені формати: PNG, JPG, WEBP.
-- Частковий набір — норма.
-- Правила для людини чи агента, що готує файли, — у «інструкції для агента» (`agent_guide()`),
-  побудованій з цих самих правил.
+- A folder may contain `generated/` or `pages/` subfolders — their files take priority.
+- Allowed formats: PNG, JPG, WEBP.
+- A partial set is normal.
+- The rules for a person or agent preparing files live in the "agent guide" (`agent_guide()`), built
+  from these same rules.
 
-## Замінена сторінка
+## A replaced page
 
-Коли власник міняє одну сторінку з переглядача (`replace_page()`), стара лягає поруч у **приховану**
-підпапку `.replaced` під ім'ям `7.png.20260920-142530`. Перевірки, підрахунок сторінок і архів дивляться
-лише на файли в самій папці (`_files_by_lower()`, `_signature()` беруть `is_file()`), тож ця підпапка їм
-не заважає; «Повернути» (`restore_page()`) бере найсвіжішу копію звідти.
+When the owner replaces a single page from the viewer (`replace_page()`), the old one lands next to it
+in a **hidden** `.replaced` subfolder, named `7.png.20260920-142530`. Checks, page counting, and the
+archive only look at the files in the folder itself (`_files_by_lower()`, `_signature()` use
+`is_file()`), so this subfolder doesn't get in their way; "Undo" (`restore_page()`) takes the newest
+copy from there.
 
-## Перетягнуті файли (`_drop_rel()`)
+## Dropped files (`_drop_rel()`)
 
-Приймаються лише картинки (і `.json` для бібліотеки), до 6 рівнів вкладення; `..`, `:`, `__MACOSX`,
-`._*` відкидаються; заборонені символи в назвах замінюються на `_`. Детальніше —
+Only pictures (and `.json` for the library) are accepted, up to 6 levels deep; `..`, `:`, `__MACOSX`,
+`._*` are all rejected; forbidden characters in names are replaced with `_`. More detail —
 [flows/dropped-files.md](../flows/dropped-files.md).
 
-## Де в коді
+## Where in the code
 
-- [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()`, `page_options()`, `pages_word()`, `page_number()`, `ranges()`, `_LAST_NUMBER`
-- [app/studio/library.py](../../app/studio/library.py) — `scan_folder()`, `UPSCAYL_TAIL`, `COVER_NAME` (спільні з папкою для друку в orders.py), `_NUM_RE`, `agent_guide()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `expected_files()`, `_gelato_page_count()`, `_drop_rel()`, `DROPS`, `replace_page()`, `restore_page()`, `REPLACED`
-- Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`FolderScan`, `GelatoValidation`)
+- [app/studio/drops.py](../../app/studio/drops.py) — `export_files()`, `page_number()`, `_LAST_NUMBER`, `UPSCAYL_TAIL`, `COVER_NAME` (one set for the print folder, the library and the mockups), `_drop_rel()`, `DROPS`
+- [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()`, `page_options()`, `pages_word()`, `ranges()`
+- [app/studio/library.py](../../app/studio/library.py) — `scan_folder()`, `_NUM_RE`, `agent_guide()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `expected_files()`, `_gelato_page_count()`, `replace_page()`, `restore_page()`, `REPLACED`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `read_book()` (a demo book: any page count)
+- Tests: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`FolderScan`, `GelatoValidation`)
 
-## Пов'язане
+## Related
 
-- [Будова книги](book-structure.md) · [Шлях замовлення до друку](../flows/order-to-print.md) · [Наповнення бібліотеки](../flows/book-import.md)
+- [Book structure](book-structure.md) · [The order-to-print path](../flows/order-to-print.md) · [Filling the library](../flows/book-import.md)

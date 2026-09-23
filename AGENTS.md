@@ -1,74 +1,81 @@
-# Book Studio — правила для агентів
+# Book Studio — rules for agents
 
-Локальна Windows-програма власника магазину персоналізованих дитячих книг на Etsy: черга замовлень,
-бібліотека книг, створення книг/чернеток у Printify і Gelato. Власник — не програміст, пише українською.
+A local Windows program for the owner of an Etsy shop selling personalized children's books: an order
+queue, a book library, creating books/drafts in Printify and Gelato. The owner is not a programmer and
+writes in Ukrainian.
 
-## 1. Спершу вікі, потім код
+## 1. Wiki first, then code
 
-1. Прочитай [`wiki/index.md`](wiki/index.md).
-2. Відкрий сторінки, що стосуються задачі. Власник назвав щось своїми словами — шукай у
-   [`wiki/glossary.md`](wiki/glossary.md). Файли й функції — [`wiki/code-map.md`](wiki/code-map.md).
-3. Лише тоді йди в код — за розділами «Де в коді» (файл + назва функції).
-4. Перед зміною поведінки перевір [`wiki/decisions.md`](wiki/decisions.md): можливо, це свідомий вибір власника.
+1. Read [`wiki/index.md`](wiki/index.md).
+2. Open the pages relevant to the task. If the owner named something in his own words, look it up in
+   [`wiki/glossary.md`](wiki/glossary.md). Files and functions — [`wiki/code-map.md`](wiki/code-map.md).
+3. Only then go into the code — by the "Where in the code" sections (file + function name).
+4. Before changing behavior, check [`wiki/decisions.md`](wiki/decisions.md): it may be a deliberate
+   choice the owner made.
 
-Якщо вікі суперечить коду — правда в коді; виправ вікі в межах тієї ж задачі.
+If the wiki contradicts the code — the code is the truth; fix the wiki within the same task.
 
-## 2. Безпека — завжди
+## 2. Security — always
 
-Повністю — [`wiki/security.md`](wiki/security.md). Коротко:
-- **Etsy не відкривати з цього (вроцлавського) ПК** ні в якому браузері; вхід в Etsy — лише на київському ПК.
-- Etsy — **лише читання**. Gelato — **лише чернетки**. Printify — лише завантаження зображень,
-  неопублікований продукт і замовлення «On hold» після підтвердження ручного затвердження; ніколи —
-  відправка у виробництво, скасування, Express, публікація, зміна/видалення продуктів; Master не змінюється.
-- **Жодних живих записів** в акаунти власника без його прямого дозволу в чаті. Перевірки — тестами з імітаціями.
-- **Ключі й токени** не читати, не друкувати, не копіювати в код/документи/URL/журнали; `app/data/vault.json`
-  не відкривати. Файл `.secrets.txt` у корені репозиторію (ключі у відкритому вигляді, git його ігнорує)
-  не читати, не друкувати, не комітити, не змінювати й не видаляти без прямого прохання власника саме
-  про це. Не просити власника вставляти ключі в чат.
-- Дані власника не видаляти остаточно.
-- **Комітити й пушити лише коли власник попросить.** У git не потрапляють `app/data/`, `app/bin/` і
-  справжні дані покупців (у тестах — лише вигадані).
-- Перегляд інтерфейсу — лише на тимчасових даних (`app/tools/dev_server.py`), не на справжній програмі.
+In full — [`wiki/security.md`](wiki/security.md). Briefly:
+- **Never open Etsy from this (Wrocław) PC**, in any browser; sign in to Etsy only on the Kyiv PC.
+- Etsy — **read-only**. Gelato — **drafts only**. Printify — only image uploads, an unpublished
+  product, and "On hold" orders after manual-approval confirmation; never send to production, cancel,
+  use Express, publish, or change/delete products; the Master is never changed.
+- **No live writes** to the owner's accounts without his direct permission in chat. Checks are done with
+  tests and fakes.
+- **Keys and tokens**: never read, print, or copy into code/docs/URLs/logs; never open
+  `app/data/vault.json`. The file `.secrets.txt` in the repo root (keys in plain text, ignored by git) —
+  never read, print, commit, change or delete it without the owner's direct request for exactly that.
+  Never ask the owner to paste keys into chat.
+- Never permanently delete the owner's data. The mockup templates `D:\Roman\Desktop\Трафарети мастхев`
+  are read-only — never edit, save over or delete them; work on copies.
+- **Commit and push only when the owner asks.** `app/data/`, `app/bin/` and real customer data never go
+  into git (tests use made-up data only).
+- Preview the interface only on temporary data (`app/tools/dev_server.py`), never on the real program.
 
-## 3. Як працювати з власником
+## 3. Working with the owner
 
-Повністю — [`wiki/owner/working-with-owner.md`](wiki/owner/working-with-owner.md),
-вимоги до вигляду — [`wiki/owner/ui-principles.md`](wiki/owner/ui-principles.md).
-- Відповідати українською, простими словами; у звіті — що змінилось, що перевірено, що ні, що зробити йому.
-- «Аналізуй, нічого не роби» / «режим обговорення» → жодних змін файлів. Починати лише за командою
-  («розпочинай», «роби»).
-- Плани й домовленості записувати у вікі, а не лише в пам'ять.
-- Після змін у `app/studio/` нагадати перезапустити Book Studio.
+In full — [`wiki/owner/working-with-owner.md`](wiki/owner/working-with-owner.md), appearance
+requirements — [`wiki/owner/ui-principles.md`](wiki/owner/ui-principles.md).
+- Reply in Ukrainian, in plain words; a report should say what changed, what was checked, what wasn't,
+  and what he needs to do.
+- "Just analyze, don't change anything" / "discussion mode" → no file changes. Start only on command
+  ("go ahead", "do it").
+- Record plans and agreements in the wiki, not only in memory.
+- After changes under `app/studio/`, remind him to restart Book Studio.
 
-## 4. Репозиторій
-
-```
-AGENTS.md, CLAUDE.md    правила для агентів (цей файл і доповнення для Claude Code)
-README.md               коротко для людей
-app/                    програма: studio/ (Python-сервер), web/ (інтерфейс), tests/, tools/
-                        data/ і bin/ — локально, не в git
-wiki/                   база знань (index.md — вхід, log.md — журнал, raw/ — джерела власника)
-.claude/                перегляд інтерфейсу і навички Claude Code
-```
-
-## 5. Команди
+## 4. Repository
 
 ```
-python app/tools/wiki_check.py                          # вікі відповідає коду?
-python app/tools/wiki_check.py --changed                # які сторінки вікі оновити після змін
-cd app && python -m unittest discover -s tests          # тести (включно з перевіркою вікі)
-python app/tools/dev_server.py --sample                 # інтерфейс на вигаданих даних, порт 47890
-python app/tools/make_shortcut.py                       # ярлик на робочому столі
+AGENTS.md, CLAUDE.md    rules for agents (this file and the Claude Code addendum)
+README.md               short intro for people
+app/                    the program: studio/ (Python server), web/ (interface), tests/, tools/
+                        data/ and bin/ — local only, not in git
+wiki/                   knowledge base (index.md — entry point, log.md — change log, raw/ — owner's sources)
+.claude/                interface preview and Claude Code skills
 ```
 
-## 6. Кожна задача з кодом закінчується так (обов'язково)
+## 5. Commands
 
-1. Тести проходять.
-2. `python app/tools/wiki_check.py --changed` → оновлено перелічені сторінки вікі (зміст, «Де в коді», `updated:`).
-3. Нове рішення → `wiki/decisions.md`; нове слово власника → `wiki/glossary.md`; новий маршрут →
-   `wiki/architecture/api-routes.md`; новий файл → `wiki/code-map.md` і `code:` потрібної сторінки.
-4. Запис у `wiki/log.md` (`## [РРРР-ММ-ДД] вид | що сталося`, нові — вгорі).
-5. `python app/tools/wiki_check.py` — без помилок.
+```
+python app/tools/wiki_check.py                          # does the wiki match the code?
+python app/tools/wiki_check.py --changed                # which wiki pages to update after changes
+cd app && python -m unittest discover -s tests          # tests (including the wiki check)
+python app/tools/dev_server.py --sample                 # interface on made-up data, port 47890
+python app/tools/dev_server.py --mockups                # the «Мокапи» utility, made-up templates, port 47891
+python app/tools/make_shortcut.py                       # desktop shortcuts (Book Studio, Мокапи)
+```
 
-Формат сторінок і операції з вікі (додавання джерела, питання, огляд) —
+## 6. Every task that touches code ends like this (mandatory)
+
+1. Tests pass.
+2. `python app/tools/wiki_check.py --changed` → the listed wiki pages are updated (content, "Where in
+   the code", `updated:`).
+3. A new decision → `wiki/decisions.md`; a new word from the owner → `wiki/glossary.md`; a new route →
+   `wiki/architecture/api-routes.md`; a new file → `wiki/code-map.md` and the `code:` of the relevant page.
+4. An entry in `wiki/log.md` (`## [YYYY-MM-DD] kind | what happened`, newest on top).
+5. `python app/tools/wiki_check.py` — no errors.
+
+Page format and wiki operations (adding a source, questions, review) —
 [`wiki/dev/wiki-rules.md`](wiki/dev/wiki-rules.md).

@@ -2,6 +2,8 @@
 app/data/
 # Downloaded helper binary (cloudflared)
 app/bin/
+# Test runs and the preview servers' made-up data (on drive D, never in Windows' temp on C)
+.tmp/
 __pycache__/
 *.pyc
 # Plaintext credential ledger, if one ever appears here

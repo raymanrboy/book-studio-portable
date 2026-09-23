@@ -114,6 +114,10 @@ const P = {
 
   // ---- shipping: the printer has sent the book (tracking number)
   truck: '<path d="M4.6 17H2.5V6h11.5v11H8.4"/><path d="M14 9.5h4l3.5 3.8V17h-2.6M15.1 17H14"/><circle cx="6.5" cy="17.2" r="1.9"/><circle cx="17" cy="17.2" r="1.9"/>',
+
+  // ---- listing mockups: the utility (a book in a picture frame); "the owner fits this by hand" (a hand)
+  mockup: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 9.3c-1.6-.9-3.4-1.1-5.2-.8v7.3c1.8-.3 3.6-.1 5.2.8 1.6-.9 3.4-1.1 5.2-.8V8.5c-1.8-.3-3.6-.1-5.2.8z"/><path d="M12 9.3v7.3"/>',
+  hand: '<path d="M8.5 12.5V6.2a1.5 1.5 0 0 1 3 0V11"/><path d="M11.5 10.5V4.8a1.5 1.5 0 0 1 3 0v5.7"/><path d="M14.5 10.5V6.5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.6-2.2l-2.7-3.4a1.6 1.6 0 0 1 2.4-2.1l2 1.9"/>',
 };
 
 // Older names still used by the (hidden) profit page map onto the same meanings.

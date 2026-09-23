@@ -1,64 +1,65 @@
 ---
-title: Журнал відправок у Printify і Gelato
+title: Send journal for Printify and Gelato
 type: feature
 updated: 2026-09-20
 code:
   - app/studio/sendlog.py
 ---
-# Журнал відправок
+# Send journal
 
-> Кожна спроба щось відправити в друкарню — книга/замовлення в Printify, чернетка в Gelato —
-> записується окремим файлом: що пішло, які файли й PDF, що відповів сервіс, де зламалось.
-> Попросив власник 17.09.2026, щоб «налаштувати механізм в ідеал». Ключів у журналі немає.
+> Every attempt to send something to a printer — a book/order in Printify, a draft in Gelato — is
+> recorded as its own file: what went out, which files and PDF, what the service answered, where it
+> broke. The owner asked for this on 2026-09-17, to "make the mechanism ideal". There are no keys in the
+> journal.
 
-## Де
+## Where
 
-`app/data/logs/sends/РРРР-ММ-ДД_ГГХХСС_<printify|gelato>_<назва>.json`, останні 400 файлів
-(`KEEP`). Відкрити — піктограма списку з крапками в Order Creator:
-- **завжди** — у шапці, ліворуч від перемикача Printify/Gelato («Журнал відправок»): Провідник
-  виділяє найновіший запис (`latest()`; власник не знайшов кнопку, коли вона була лише в картках);
-- у картці результату — виділяє запис саме цієї відправки; у картці помилки — найновіший.
+`app/data/logs/sends/YYYY-MM-DD_HHMMSS_<printify|gelato>_<title>.json`, the last 400 files (`KEEP`). To
+open it — the dotted-list icon in the Order Creator:
+- **always** — in the header, left of the Printify/Gelato switch ("Send journal"): Explorer highlights
+  the newest record (`latest()`; the owner couldn't find the button when it only lived on result cards);
+- on the result card — highlights the record for exactly that send; on an error card — the newest one.
 
-## Що в записі
+## What's in a record
 
-| Поле | Що |
+| Field | What it is |
 |---|---|
-| `provider`, `kind`, `title`, `at`, `seconds` | куди (`printify` / `gelato`), що (`book`, `book+order`, `draft`), назва, час, тривалість |
-| `ok`, `error`, `errorType` | чи вдалося; текст помилки, яку побачив власник |
-| `folder`, `format`, `books` | папка з файлами і формат Gelato (першої книги); `books` — усі книги відправки (назва, папка, формат) |
-| `steps` | кроки по порядку (нижче) |
-| `request`, `response` | тіло запиту на створення і відповідь сервісу повністю (з адресою) |
-| `orderRequest`, `orderResponse`, `orderError` | Printify: замовлення On hold |
-| `result` | те, що побачив власник у картці результату |
+| `provider`, `kind`, `title`, `at`, `seconds` | where (`printify` / `gelato`), what (`book`, `book+order`, `draft`), title, time, duration |
+| `ok`, `error`, `errorType` | whether it worked; the error text the owner saw |
+| `folder`, `format`, `books` | the folder of files and the Gelato format (of the first book); `books` — every book of the send (title, folder, format) |
+| `steps` | the steps, in order (below) |
+| `request`, `response` | the full request body for the creation, and the service's full response (with the address) |
+| `orderRequest`, `orderResponse`, `orderError` | Printify: the On-hold order |
+| `result` | what the owner saw on the result card |
 
-Кроки: **Gelato** — `files` (кожен PNG: розмір у px, байти, помилки) → `catalog` (товар, кількість
-сторінок, розміри з каталогу) → `pdf` (сторінок у PDF, байти, розмір обкладинки в px, на скільки мм
-обріжеться) → `link` (адреси всіх PDF, `reachable`) → `readback` (що Gelato записав у чернетці: товар,
-сторінки, файл і чи вже забраний — `fileFetched`). **Printify** — `files` (з SHA-256) → `master` →
-`uploads` (перевикористані / нові, ID зображень за позиціями) → `product` (запит і відповідь на
-створення) → `verify` (позиції) → `masterSafe` (Master не змінився).
+Steps: **Gelato** — `files` (every PNG: size in px, bytes, errors) → `catalog` (the product, page count,
+sizes from the catalog) → `pdf` (pages in the PDF, bytes, the cover's size in px, how many mm it will be
+trimmed) → `link` (every PDF's address, `reachable`) → `readback` (what Gelato recorded in the draft: the
+item, pages, the file, and whether it's already been fetched — `fileFetched`). **Printify** — `files`
+(with SHA-256) → `master` → `uploads` (reused / new, image IDs by position) → `product` (the creation
+request and response) → `verify` (positions) → `masterSafe` (the Master hasn't changed).
 
-**Замовлення з кількох книг** (з 20.09.2026) — один запис на всю відправку: покнижкові кроки
-повторюються, і в кожного є поле `book` з назвою книги (`files`, `uploads`, `product`, `verify`,
-`catalog`, `pdf`, `archive`); `orderRequest` один — замовлення спільне.
+**An order with several books** (since 2026-09-20) — one record for the whole send: the per-book steps
+repeat, each carrying a `book` field with the book's title (`files`, `uploads`, `product`, `verify`,
+`catalog`, `pdf`, `archive`); `orderRequest` is a single one — the order is shared.
 
-Запис робиться й тоді, коли відправка зупинилась на перевірці — тоді кроків менше, а `request` немає
-(нічого не пішло). Якщо журнал не вдалося записати, відправка все одно відбувається.
+A record is also made when the send stopped at the file check — then there are fewer steps and no
+`request` (nothing went out). If the journal fails to write, the send still happens anyway.
 
-## Безпека
+## Security
 
-- Ключі й токени в журнал не потрапляють: вони лише в заголовках запитів (перевіряють тести).
-- Адреси покупців — так, тому журнал лише в `app/data` (не в git, [security.md](../security.md)).
+- Keys and tokens never make it into the journal: they only exist in request headers (tests check this).
+- Buyer addresses do, so the journal lives only in `app/data` (not in git, [security.md](../security.md)).
 
-## Де в коді
+## Where in the code
 
 - [app/studio/sendlog.py](../../app/studio/sendlog.py) — `SENDS`, `KEEP`, `write()`, `attempt()`, `step()`, `latest()`, `_open()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `create_printify_draft()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderSwitch()` (піктограма в шапці), `sendLogButton()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderSwitch()` (the icon in the header), `sendLogButton()`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.cr-tools`, `.mode-switch`
-- [app/web/js/icons.js](../../app/web/js/icons.js) — піктограма `sendLog`
-- Тести: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow` — у т. ч. `test_journal_button_shows_the_newest_record`)
+- [app/web/js/icons.js](../../app/web/js/icons.js) — the `sendLog` icon
+- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow` — including `test_journal_button_shows_the_newest_record`)
 
-## Пов'язане
+## Related
 
-- [Order Creator](order-creator.md) · [Gelato](../integrations/gelato.md) · [Printify](../integrations/printify.md) · [Дані](../architecture/data.md)
+- [Order Creator](order-creator.md) · [Gelato](../integrations/gelato.md) · [Printify](../integrations/printify.md) · [Data](../architecture/data.md)

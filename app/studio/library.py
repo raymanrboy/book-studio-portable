@@ -20,7 +20,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from . import core, desktop, etsy, images
+from . import core, desktop, drops, etsy, images
 from .jobs import jobs
 from .server import ApiError, Request, file_response, route
 
@@ -343,9 +343,8 @@ def export_text_json(book: dict) -> dict:
 # ---------------------------------------------------------------- folder import
 
 _NUM_RE = re.compile(r"^(\d+)(?:\s*[-–_]\s*(\d+))?$")
-# File-name rules shared with the order's print folder (orders.arrange_pages): one reading everywhere.
-UPSCAYL_TAIL = re.compile(r"_upscayl.*$", re.I)        # "12_upscayl_4x_ultrasharp" -> "12"
-COVER_NAME = re.compile(r"cover|cober|обкладин", re.I)  # "Cover", the usual slip "Cober", "Обкладинка"
+# File-name rules shared with the order's print folder and the listing mockups: one reading everywhere.
+UPSCAYL_TAIL, COVER_NAME = drops.UPSCAYL_TAIL, drops.COVER_NAME
 
 
 def scan_folder(folder: Path) -> dict:

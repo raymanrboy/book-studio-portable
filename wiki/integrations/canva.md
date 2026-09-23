@@ -1,39 +1,48 @@
 ---
-title: Canva — шаблони книг
+title: Canva — book templates
 type: integration
-updated: 2026-09-17
+updated: 2026-09-23
 code: []
 ---
 # Canva
 
-> З Canva програма не працює через API: у паспорті кожної книги зберігається лише **посилання на
-> шаблон** (`canvaUrl`), а картка замовлення відкриває його кнопкою.
+> The program doesn't work with Canva through an API: a book's passport only keeps a **link to the
+> template** (`canvaUrl`), and the order card opens it with a button.
 
-## Як власник працює в Canva
+## How the owner works in Canva
 
-1. Для кожної книги є **один шаблон**: обкладинка + 30 сторінок. По всьому тексту стоять плейсхолдери
-   `{Name}` (ім'я дитини); «від кого» власник дописує в кінці присвяти.
-2. На замовлення робиться **копія** шаблону; ім'я підставляється пошуком із заміною (Ctrl+F). Якщо
-   ім'я замінилось у присвяті — майже напевно й на решті розворотів.
-3. Присвята: якщо покупець не писав свою (поле `DEFAULT`), лишається стандартна. «With love, …» на
-   початку поля «від кого» власник прибирає руками — дубль видно одразу.
-4. Скачування — PNG (ZIP). **Для Printify (США)** скачуються не перші 24 сторінки, а **конкретні**:
-   з 30 прибираються рівно 3 розвороти (6 сторінок), у кожної книги свої — найменш вдалі.
-   **Для Gelato** — усі 30 або 28 (без одного розвороту, на вибір власника); програма сама розуміє,
-   яку книгу друкувати, за кількістю файлів ([integrations/gelato.md](gelato.md)).
-5. Деякі шаблони вже в потрібній якості; частину сторінок після Canva проганяють через **Upscayl**
-   (хвіст `_upscayl…` у назвах програма ігнорує).
-6. ZIP кладеться в картку замовлення — далі [розстановка сторінок](../rules/file-naming.md).
+1. Every book has **one template**: a cover + 30 pages. Placeholders `{Name}` (the child's name) sit
+   throughout the text; the owner adds "from whom" at the end of the dedication by hand.
+2. A **copy** of the template is made for each order; the name is filled in with find-and-replace
+   (Ctrl+F). If the name got replaced in the dedication, it almost certainly got replaced everywhere
+   else too.
+3. Dedication: if the buyer didn't write their own (the field says `DEFAULT`), the standard one stays.
+   "With love, …" at the start of the "from whom" field is removed by hand — a duplicate is visible
+   right away.
+4. Downloading — PNG (a ZIP). **For Printify (the US)**, it's not the first 24 pages that get
+   downloaded, but **specific** ones: exactly 3 spreads (6 pages) are dropped out of 30 — different ones
+   for each book, whichever work least well. **For Gelato** — all 30, or 28 (without one spread, the
+   owner's choice); the program figures out which version to print from the file count
+   ([integrations/gelato.md](gelato.md)).
+5. Some templates are already the right quality; some pages get run through **Upscayl** after Canva (the
+   program ignores the `_upscayl…` tail in file names).
+6. The ZIP gets dropped into the order card — then [laying out the pages](../rules/file-naming.md).
 
-Це найризикованіший ручний етап, тому картка тримає всі дані покупця поруч і дає копіювати їх, а не
-передруковувати ([decisions.md](../decisions.md)).
+This is the riskiest manual step, which is why the card keeps all the buyer's data close by and lets it
+be copied instead of retyped ([decisions.md](../decisions.md)).
 
-## Де в коді
+**A demo book for the listing** (a new book in the shop): the same template with a sample name on the
+cover ("Oliver") and a literal `{Name}` in the pages, downloaded as a ZIP; its cover and chosen spreads
+go into Photoshop mockups — by hand for now, a utility is planned ([listing-mockups.md](../plans/listing-mockups.md)).
 
-- Посилання в книзі: `canvaUrl` у [features/library.md](../features/library.md) (діалог `canvaDialog()` у паспорті).
-- Кнопка в картці замовлення: `renderLeft()` у [features/orders.md](../features/orders.md).
-- Відкривається через сервер у звичайному браузері — `openExternal()` ([frontend](../architecture/frontend.md)).
+## Where in the code
 
-## Пов'язане
+- The link in a book: `canvaUrl` in [features/library.md](../features/library.md) (the `canvaDialog()`
+  dialog in the passport).
+- The button in the order card: `renderLeft()` in [features/orders.md](../features/orders.md).
+- Opens through the server, in the regular browser — `openExternal()` ([frontend](../architecture/frontend.md)).
 
-- [Шлях замовлення до друку](../flows/order-to-print.md) · [Плани](../plans/roadmap.md) (сторінки з бібліотеки замість Canva, розпізнавання тексту)
+## Related
+
+- [The order-to-print path](../flows/order-to-print.md) · [Plans](../plans/roadmap.md) (pages from the
+  library instead of Canva, text recognition)

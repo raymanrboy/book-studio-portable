@@ -1,86 +1,99 @@
 ---
-title: Тести
+title: Tests
 type: dev
 updated: 2026-09-23
 code:
   - app/tests/
 ---
-# Тести
+# Tests
 
-> 209 тестів на стандартному `unittest`. Жодних справжніх запитів і акаунтів: сервіси підмінені,
-> дані — **завжди** у новій тимчасовій папці (набір тестів забирає `BOOK_STUDIO_DATA` собі, хай там
-> що було), покупці — вигадані. Запускати після кожної зміни.
+> 247 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
+> **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
+> whatever it was before) in `.tmp\` of the repository on drive D, wiped at the end; buyers are made up.
+> Run after every change.
 
-## Запуск
+## Running them
 
-З папки `app`:
+From the `app` folder:
 ```
 python -m unittest discover -s tests
 ```
-З кореня репозиторію:
+From the repository root:
 ```
 python -m unittest discover -s app/tests -t app
 ```
-Змінна `PYTHONDONTWRITEBYTECODE=1` не дає засмічувати папки `__pycache__`.
-Перевірка вікі входить у тести (`test_wiki.py`), але її можна запускати й окремо:
+The `PYTHONDONTWRITEBYTECODE=1` variable keeps `__pycache__` folders from piling up.
+The wiki check is part of the tests (`test_wiki.py`), but it can also be run on its own:
 `python app/tools/wiki_check.py`.
 
-## Як влаштовано
+## How it's built
 
-- `tests/__init__.py` до будь-якого імпорту ставить `BOOK_STUDIO_DATA` у нову тимчасову папку і стирає
-  її після тестів — справжня `app/data` не зачіпається. Кожен тестовий модуль починає з
+- `tests/__init__.py` sets `BOOK_STUDIO_DATA` to a fresh temp folder before any import, and wipes it
+  after the tests — the real `app/data` is never touched. Every test module starts with
   `from tests import __init__`.
-  **Безумовно** (з 22.09.2026): раніше вже задану `BOOK_STUDIO_DATA` тести приймали як є — а вони
-  чистять цілі папки (`shutil.rmtree(archive.ROOT)`), тож запуск з налаштованої оболонки міг стерти
-  справжній архів. Знайшов аудит; перевіряє `TestsNeverRunOnRealData` у `test_orders.py`.
-- **Printify** підмінюється `FakePrintify` (у пам'яті: завантаження, продукти, Master, замовлення) через
-  `mock.patch.object(printify, "call", …)`; справжній `_check()` при цьому працює — тест ловить
-  заборонені шляхи.
-- **Gelato** — підміна `gelato.call`, тунель — `FileTunnel.start`, `registry.keep`.
-- **Etsy** — підміна `etsy.tokens`, `etsy.fetch_all_receipts`, `httpc.request_json`.
-- **Архів замовлень** — час підставляється параметром `now` у `archive.refresh()`, факти про
-  замовлення — підміною `archive._facts`; фонове готування прев'ю (`_warm_previews`) вимкнене, щоб
-  не тримало файли відкритими під час видалення.
-- Відкриття браузера — `mock.patch("webbrowser.open")`.
-- `golden_profit.json` — вигадані чеки й замовлення з результатами оригінального Profit Calculator
-  (паритет до цента).
-- Зображення створюються на льоту (Pillow, маленькі розміри), розміри Printify у тестах підмінено.
+  **On drive D** (since 2026-09-23): Python's temp folder and `TEMP`/`TMP` (for node too) point to
+  `<repository>\.tmp`, not Windows' temp folder on drive C, which the owner keeps clean; `.tmp` goes when
+  the run ends (unless a preview server's folder lives there). Before that, the wipe also failed quietly:
+  the program's log file was still open and Windows deletes no open file, so 177 `bstests-*` folders with a
+  lone `logs\app.log` piled up in `%TEMP%` — now the log is closed first (`logging.shutdown()`). Checked by
+  `test_the_suite_writes_nothing_to_drive_c` in `test_orders.py`.
+  **Unconditionally** (since 2026-09-22): tests used to accept an already-set `BOOK_STUDIO_DATA` as-is
+  — and they clear whole folders (`shutil.rmtree(archive.ROOT)`), so running from a configured shell
+  could wipe the real archive. Found by the audit; checked by `TestsNeverRunOnRealData` in
+  `test_orders.py`.
+- **Printify** is swapped for `FakePrintify` (in memory: uploads, products, Master, orders) via
+  `mock.patch.object(printify, "call", …)`; the real `_check()` still runs underneath — the test catches
+  forbidden paths.
+- **Gelato** — `gelato.call` is swapped; the tunnel — `FileTunnel.start`, `registry.keep`.
+- **Etsy** — `etsy.tokens`, `etsy.fetch_all_receipts`, `httpc.request_json` are swapped.
+- **Order archive** — time is supplied via the `now` argument to `archive.refresh()`, order facts via
+  swapping `archive._facts`; background preview preparation (`_warm_previews`) is turned off so it
+  doesn't hold files open during deletion.
+- Opening the browser — `mock.patch("webbrowser.open")`.
+- **Photoshop** — never started by the tests: `mockups.launch` is swapped for a stand-in that writes the
+  status file; the Photoshop script itself (ExtendScript is plain old JavaScript) runs under **Node.js**
+  against a small pretend Photoshop — layers, visibility, "Replace Contents", saving that takes the active
+  document (`HARNESS` in `test_mockups.py`). Node.js is on the Wrocław PC; without it these tests are skipped.
+- `golden_profit.json` — made-up receipts and orders with the results from the original Profit
+  Calculator (parity to the cent).
+- Images are generated on the fly (Pillow, small sizes), Printify sizes are swapped in the tests.
 
-## Правила
+## Rules
 
-- Нова поведінка — новий тест; назва тесту описує поведінку англійською
+- New behavior — a new test; the test's name describes the behavior, in English
   (`test_dropped_copies_are_moved_not_copied`).
-- Лише вигадані імена, адреси, номери чеків (формат `41000000xx`). Справжні дані покупців у репозиторій
-  не потрапляють (одного разу справжню адресу знайшли й замінили до першого push).
-- Тест не повинен мережитись; якщо з'явився новий зовнішній виклик — підмініть його.
-- Порядок тестів не має значення; стан налаштувань відновлюється в `tearDown`. Щоб скинути файл
-  стану, досить видалити сам файл: `.bak` видаленого файлу більше не читається (з 23.09.2026).
-- Кроки журналу відправки перевіряються «ці кроки в такому порядку» (`assert_steps()`), а не точним
-  списком: новий крок не ламає десяток тестів. Реальних пауз (`time.sleep`) для різного часу немає —
-  час запису підставляється.
-- Порядок шарів інтерфейсу й розміри прев'ю перевіряються прямо з файлів сторінок (`SharedNumbers`):
-  тестів у браузері немає, тож поведінку сторінок перевіряє людина чи агент на
-  [сервері перегляду](preview.md).
+- Only made-up names, addresses, receipt numbers (format `41000000xx`). Real customer data never goes
+  into the repository (a real address was found once and replaced before the first push).
+- A test must never hit the network; if a new external call shows up, fake it.
+- Test order doesn't matter; settings state is restored in `tearDown`. To reset a state file, it's
+  enough to delete the file itself: the `.bak` of a deleted file is no longer read (since 2026-09-23).
+- Send-journal steps are checked as "these steps in this order" (`assert_steps()`), not an exact list: a
+  new step doesn't break a dozen tests. There are no real pauses (`time.sleep`) for timing — the
+  record's time is supplied instead.
+- The order of interface layers and preview sizes are checked straight from the page files
+  (`SharedNumbers`): there are no browser tests, so a human or an agent checks page behavior on the
+  [preview server](preview.md).
 
-## Набори
+## Suites
 
-| Файл | Класи |
+| File | Classes |
 |---|---|
 | [test_profit.py](../../app/tests/test_profit.py) | `ProfitParity`, `FeeRules`, `NameMatching` |
-| [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `SeveralPrintOrdersForOneReceipt` (чек з двома замовленнями друку), `SentStage`, `GelatoTracking`, `IncrementalSync`, `StateApi` |
-| [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation` (у т. ч. новіша перевірка папки зупиняє старішу), `GelatoValidation`, `ReplacePage` (заміна однієї сторінки, «Повернути» після перезапуску, дві заміни за секунду, заборона заміни під час відправки — і коли папку відправляють у дві друкарні одразу, що саме дозволено записувати), `NothingIsLostWhenAWriteFails`, `JsonFiles` (`.bak` і видалений файл), `SafetyRails` (у т. ч. POST, що міг дійти, не повторюється; обидві друкарні читають помилку однаково) |
-| [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow` (у т. ч. дві книги — одне замовлення з двома позиціями; номер чека окремим полем; незаписаний облік — попередження), `GelatoDraftFlow` (у т. ч. дві книги — одна чернетка з двома товарами; невідомий результат лишає посилання; текст про довжину — один), `CreatorStartsEmpty`, `DroppedFolders` (у т. ч. папка для бібліотеки, кожна книга — своя дитина), `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
-| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand`, `DevToolsKeepOffRealData` (сервер перегляду не пише у справжню папку й не бере ключів), `TestsNeverRunOnRealData`, `SharedNumbers` (шари інтерфейсу, розміри прев'ю) |
-| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing` (у т. ч. застарілий список друкарні нічого не доводить), `OnlyWhatWentToPrint` (у т. ч. «вже в друкарні» після перезапуску), `ReprintMark`, `PrintifyReprint`, `GelatoReprint` (у т. ч. попередження, коли друкарня прийняла, а облік не записався), `PreviewCache` (прибирання кешу, замки, зум) |
-| [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (модель — імітація: «читає» те, що тест «надрукував»), `WhileItRuns` (розворот іде на звірку, не чекаючи останнього читання; знахідки віддаються під час перевірки), `Prescan` (швидкий огляд сторінок: намальований текст проти намальованої ілюстрації, сторінки-малюнки до моделі не потрапляють, помилка ознаки — перевіряється друга половина розвороту), `Passport` (ім'я лише цілим словом і лише там, де паспорт мав `{Name}`; попередній показ), `BooksOfOneOrder` (дві книги одного чека не глушать перевірок одна одної), `OllamaAndRoutes` |
+| [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `SeveralPrintOrdersForOneReceipt` (a receipt with two print orders), `SentStage`, `GelatoTracking`, `IncrementalSync`, `StateApi` |
+| [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation` (including: a newer folder check stops an older one), `GelatoValidation`, `ReplacePage` (replacing a single page, "Undo" after a restart, two replacements within a second, replacement blocked during a send — and when a folder is sent to two printers at once, exactly what's allowed to be written), `NothingIsLostWhenAWriteFails`, `JsonFiles` (`.bak` and a deleted file), `SafetyRails` (including: a POST that may have gone through is not retried; both printers read errors the same way) |
+| [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow` (including: two books — one order with two line items; the receipt number as its own field; an unrecorded cost — a warning), `GelatoDraftFlow` (including: two books — one draft with two items; an unclear result keeps the link; one shared length-problem text), `CreatorStartsEmpty`, `DroppedFolders` (including: a folder for the library, each book its own child), `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
+| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand`, `DevToolsKeepOffRealData` (the preview server doesn't write to the real folder and doesn't take keys), `TestsNeverRunOnRealData` (and nothing on drive C), `SharedNumbers` (interface layers, preview sizes) |
+| [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing` (including: a stale printer list proves nothing), `OnlyWhatWentToPrint` (including: "already at the printer" after a restart), `ReprintMark`, `PrintifyReprint`, `GelatoReprint` (including: a warning when the printer accepted it but the accounting wasn't recorded), `PreviewCache` (cache cleanup, locks, zoom) |
+| [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (the model is faked: it "reads" what the test "printed"), `WhileItRuns` (a spread goes to checking without waiting for the last read; findings are handed over while the check runs), `Prescan` (a quick page scan: drawn text vs. a drawn illustration, picture-only pages never reach the model, a false positive — the second half of the spread is checked), `Passport` (a name only as a whole word, and only where the passport had `{Name}`; a preview before saving), `BooksOfOneOrder` (two books of one receipt don't block each other's checks), `OllamaAndRoutes` |
+| [test_mockups.py](../../app/tests/test_mockups.py) | `ReadingTheDemoBook`, `Pictures` (the back/front/spine cuts by colour, sizes, 300 dpi), `RunPlan` (every layer, the front cover never touched, names never overwrite, wrong picks, nothing points into the templates folder), `Run` (a pretend Photoshop: the templates untouched, the prepared pictures gone after it, stop, Photoshop closing, a script error), `SaidInTheLog` (the folder dialog and a failed run in the log), `Cleaning` (earlier runs with Photoshop closed / open, a copy the owner saved, Photoshop's temp folder, one demo book at a time, a picked ZIP only read, the program's own temp folder on D), `SaveTheOpenOnes` («Зберегти відкриті»: names, offered after a reload, the run gone, a template the owner closed, Photoshop closed), `Progress` (every template's row), `PhotoshopScript` — **the real `mockups.jsx` run by Node.js against a pretend Photoshop**, the second script («Зберегти відкриті») too (skipped without `node`) |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode` |
 
-## Де в коді
+## Where in the code
 
-- [app/tests/__init__.py](../../app/tests/__init__.py) — тимчасова папка даних
+- [app/tests/__init__.py](../../app/tests/__init__.py) — the temporary data folder
 - [app/tests/test_flows.py](../../app/tests/test_flows.py) — `FakePrintify`, `png()`, `assert_steps()`
 - [app/tools/wiki_check.py](../../app/tools/wiki_check.py) — `check()`
 
-## Пов'язане
+## Related
 
-- [Безпека](../security.md) · [Перегляд інтерфейсу](preview.md) · [Правила вікі](wiki-rules.md)
+- [Security](../security.md) · [Interface preview](preview.md) · [Wiki rules](wiki-rules.md)

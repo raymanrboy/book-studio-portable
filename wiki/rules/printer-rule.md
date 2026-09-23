@@ -1,56 +1,59 @@
 ---
-title: Правило друкарні — Printify чи Gelato
+title: The printer rule — Printify or Gelato
 type: rule
 updated: 2026-09-18
 code:
   - app/studio/orders.py
   - app/studio/reconcile.py
 ---
-# Правило друкарні
+# The printer rule
 
-> **Hardcover з доставкою в США → Printify, 24 сторінки. Усе інше → Gelato, 28 або 30 сторінок.**
+> **A hardcover shipping to the US → Printify, 24 pages. Everything else → Gelato, 28 or 30 pages.**
 
-| Замовлення | Друкарня | Сторінок | Формат Gelato |
+| Order | Printer | Pages | Gelato format |
 |---|---|---|---|
-| Hardcover, США | Printify | 24 | — |
-| Hardcover, будь-яка інша країна | Gelato | 28 / 30 | `hardcover_8x8` |
-| Softcover 5.5×5.5 (у полях — `5" × 5"`, як це називає Etsy у власника, або «5.5», «5,5», «14 × 14»), будь-куди | Gelato | 28 / 30 | `softcover_5x5` |
-| Softcover, будь-куди | Gelato | 28 / 30 | `softcover_8x8` |
-| Тип обкладинки не прочитався | вирішує власник (перемикач у картці) | 24 / 28–30 | — |
+| Hardcover, US | Printify | 24 | — |
+| Hardcover, any other country | Gelato | 28 / 30 | `hardcover_8x8` |
+| Softcover 5.5×5.5 (in the fields — `5" × 5"`, how Etsy labels it for this owner, or "5.5", "5,5", "14 × 14"), anywhere | Gelato | 28 / 30 | `softcover_5x5` |
+| Softcover, anywhere | Gelato | 28 / 30 | `softcover_8x8` |
+| The cover type couldn't be read | the owner decides (a switch in the card) | 24 / 28–30 | — |
 
-Для Gelato довжину визначають скачані файли (28 чи 30), а чи друкує Gelato 28 у цьому форматі —
-його каталог ([integrations/gelato.md](../integrations/gelato.md)). У відповіді сервера `plan.pages` —
-список: `[24]` або `[28, 30]` (`page_options()`).
+For Gelato, the downloaded files decide the length (28 or 30), and whether Gelato prints 28 pages in
+that format is decided by its catalog ([integrations/gelato.md](../integrations/gelato.md)). In the
+server's response, `plan.pages` is a list: `[24]` or `[28, 30]` (`page_options()`).
 
-## Чому так (слова власника)
+## Why it's this way (in the owner's words)
 
-- Printify швидкий і надійний у США, у нього гарні хардкавери; софткавери в Printify погані.
-- Gelato чомусь із затримками робить хардкавери в США, а в інші країни і софткавери — вчасно й якісно.
-- Кількість сторінок — це просто тип товару: Printify робить лише 24, Gelato — 30, а з 17.09.2026 і 28
-  (без одного розвороту), якщо формат це дозволяє.
+- Printify is fast and reliable in the US, and its hardcovers are good; its softcovers are poor.
+- Gelato, for some reason, is slow with hardcovers in the US, but on-time and good for other countries
+  and for softcovers.
+- The page count is just a product type: Printify only makes 24 pages, Gelato makes 30, and since
+  2026-09-17 also 28 (without one spread), when the format allows it.
 
-## Як визначається тип обкладинки
+## How the cover type is decided
 
-`binding_of()` бере мітку з `cover_label()`: спершу варіації покупця (hardcover / hard cover / hardback /
-тверд…, softcover / soft cover / paperback / м'як…), потім SKU (`hard`, `-hc`, `soft`, `-sc`, `pb`…),
-потім назву товару. Змішане або невідоме → `None` → друкарню обирає власник.
+`binding_of()` takes the label from `cover_label()`: first the buyer's variations (hardcover / hard
+cover / hardback / тверд…, softcover / soft cover / paperback / м'як…), then the SKU (`hard`, `-hc`,
+`soft`, `-sc`, `pb`…), then the product's title. Mixed or unknown → `None` → the owner picks the
+printer.
 
-Країна — `country_iso` адреси доставки з чека Etsy.
+The country comes from `country_iso` in the shipping address on the Etsy receipt.
 
-## Відкрите питання
+## Open question
 
-Правило збігається з 51 із 54 минулих замовлень. Винятки: 2 софткавери в США і 1 хардкавер у Канаду
-друкувались у Printify. Свідомі винятки чи правило ширше — [open-questions.md](../plans/open-questions.md).
+The rule matches 51 of the last 54 orders. Exceptions: 2 softcovers in the US and 1 hardcover to Canada
+were printed in Printify. Whether these are deliberate exceptions, or the rule needs to be broader — see
+[open-questions.md](../plans/open-questions.md).
 
-## Де в коді
+## Where in the code
 
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `binding_of()`, `page_options()`, `PRINTIFY_PAGES`, `_SMALL`
 - [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `cover_label()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `planText()` (пояснення «Hardcover · США → Printify · 24 стор.», «… → Gelato · 28 або 30 стор.»), `pagesText()`
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `renderPlan()` (перемикач, коли тип невідомий)
-- Тест: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PrinterRule`)
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `planText()` (the explanation "Hardcover · US → Printify · 24 pages", "… → Gelato · 28 or 30 pages"), `pagesText()`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `renderPlan()` (the switch, when the type is unknown)
+- Test: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PrinterRule`)
 
-## Пов'язане
+## Related
 
-- [Замовлення](../features/orders.md) · [Printify](../integrations/printify.md) · [Gelato](../integrations/gelato.md) · [Рецепти](../recipes.md)
+- [Orders](../features/orders.md) · [Printify](../integrations/printify.md) · [Gelato](../integrations/gelato.md) · [Recipes](../recipes.md)

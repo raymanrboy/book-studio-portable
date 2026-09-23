@@ -13,7 +13,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import archive, core, creator, gelato, images, printify, profit, tunnel
+from studio import archive, core, creator, drops, gelato, images, printify, profit, tunnel
 from studio.jobs import Job, JobError
 from studio.server import ApiError
 from studio.vault import vault
@@ -299,7 +299,7 @@ class OnlyWhatWentToPrint(ArchiveCase):
             offered = archive.earlier_sends("4100000001")
             self.assertEqual([(e["id"], e["provider"], e["pageCount"]) for e in offered], [(eid, "gelato", 30)])
             copy = Path(archive._reuse(SimpleNamespace(groups=[eid]))["path"])
-        self.assertEqual(copy.parent, creator.DROPS)                         # a working copy for the order card
+        self.assertEqual(copy.parent, drops.DROPS)                         # a working copy for the order card
         self.assertEqual(sorted(p.name for p in copy.iterdir()), sorted(["Cover.png"] + [f"{i}.png" for i in range(1, 31)]))
         self.assertEqual(self.refresh(t0 + 3 * DAY + 60, placed=cancelled), [eid])
         self.assertTrue((copy / "1.png").exists())                          # the copy outlives the archived book
