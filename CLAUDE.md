@@ -7,8 +7,7 @@
   - `/wiki-ingest` — add material from the owner into the wiki (text, screenshot, document);
   - `/wiki-lint` — wiki health check.
 - **Interface preview**: `preview_start("book-studio-dev")` (`.claude/launch.json`, port 47890,
-  made-up data); the «Мокапи» utility — `preview_start("mockups-dev")` (port 47891, a pretend
-  Photoshop). The hidden browser pane doesn't run `requestAnimationFrame` — check the DOM and swap
+  made-up data; both modes — the Workshop and the Mockups with a pretend Photoshop too). The hidden browser pane doesn't run `requestAnimationFrame` — check the DOM and swap
   rAF for `setTimeout`; after `resize_window`, set it back to `preset: "desktop"`; finish with
   `preview_stop`. Details — `wiki/dev/preview.md`.
 - **GitHub CLI** on this PC is not on PATH: `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe`

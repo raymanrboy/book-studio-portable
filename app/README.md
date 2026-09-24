@@ -27,10 +27,17 @@ the packages from `requirements.txt` (already present on this PC; tested on Pyth
 check — Ollama with the `gemma4:12b-it-qat` model (~7 GB); without it the program still works, just
 without that check.
 
+## Two modes: Orders and Listings
+
+A click on the Book Studio icon at the top left (or Alt+0) switches between **Orders** (everything below,
+blue) and **Listings** (magenta): the **Workshop** — new books in development, a prompt, a 2:1 spread and a
+text for every row, passed to the library with their Etsy listing — and the **Mockups**. Book Studio always
+opens in Orders. More — [the wiki](../wiki/features/modes.md).
+
 ## «Мокапи» — pictures for an Etsy listing
 
-A separate little program with its own shortcut **Мокапи**: drag the demo book's Canva ZIP into its
-window, click the spreads you like (4 for Open 1, 2 for Open 2, one each for Cover & Open 1 and
+In the Listings mode (until 2026-09-24 it was a separate program with its own shortcut — delete the old
+**Мокапи** shortcut): drag the demo book's Canva ZIP onto the page, click the spreads you like (4 for Open 1, 2 for Open 2, one each for Cover & Open 1 and
 All & Open 1), press «Зробити мокапи» and pick a folder. Photoshop asks once whether to run the script —
 answer **Yes**. About half a minute later the folder has 7 pictures, and Photoshop has three templates
 open (1. Cover 1, Cover & Open 1, All & Open 1) — fit the front cover there and save them yourself. The
@@ -127,7 +134,8 @@ Everything is stored in the `app/data/` folder next to the program (as of 2026-0
 - `logs/` — the program's log, `logs/sends/` (the send journal), `logs/checks/` (the text-check journal);
 - `cache/` — image previews, `tmp/` — temporary copies (neither needs to be backed up: the program
   rebuilds them on its own);
-- `mockups/` — the «Мокапи» utility's own folder (its working copies of the templates; no need to back up).
+- `mockups/` — the Mockups' folder (where the templates are, working copies of the templates, the unpacked
+  demo book; no need to back up).
 
 For a backup, it's enough to copy `app/data/` (without `cache/` and `tmp/`).
 

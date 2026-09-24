@@ -79,8 +79,24 @@ class ReadingTheDemoBook(unittest.TestCase):
         inside = demo_book(drops.DROPS / ("a" * 32) / "Goose")
         try:
             self.assertEqual(mockups._open_book(SimpleNamespace(json={"path": str(inside)}))["pageCount"], 30)
+            # The dropped book moved into the mockups' own folder: Book Studio's cleaning of dropped files (an
+            # order's card) can't take it away mid-run, and its own cleaning never reaches an order's files.
+            self.assertFalse((drops.DROPS / ("a" * 32)).exists())
+            self.assertTrue((mockups.BOOKS / ("a" * 32) / "Goose" / "1.png").is_file())
         finally:
-            shutil.rmtree(drops.DROPS / ("a" * 32), ignore_errors=True)
+            mockups.clear_books()
+
+    def test_a_dropped_folder_that_is_no_book_is_not_kept(self):
+        folder = drops.DROPS / ("d" * 32) / "Holiday"
+        folder.mkdir(parents=True)
+        Image.new("RGB", (60, 60)).save(folder / "1.png")
+        try:
+            with self.assertRaises(ApiError):
+                mockups._open_book(SimpleNamespace(json={"path": str(folder)}))
+            self.assertFalse((mockups.BOOKS / ("d" * 32)).exists())
+        finally:
+            shutil.rmtree(drops.DROPS / ("d" * 32), ignore_errors=True)
+            mockups.clear_books()
 
 
 class Pictures(unittest.TestCase):
@@ -397,17 +413,43 @@ class Cleaning(unittest.TestCase):
         self.assertEqual(env["TMP"], str(self.root / "ps-temp"))
 
     def test_a_new_book_takes_the_place_of_the_last_one(self):
-        first = mockups.read_book(demo_book(drops.DROPS / ("b" * 32) / "Goose"))
+        order = drops.DROPS / ("e" * 32) / "Emma"                         # files just dropped into an order's card
+        order.mkdir(parents=True)
+        (order / "1.png").write_bytes(b"x")
+        first = mockups.read_book(demo_book(mockups.BOOKS / ("b" * 32) / "Goose"))
         mockups._only_this_book(first)
-        second = mockups.read_book(demo_book(drops.DROPS / ("c" * 32) / "Swan"))
+        second = mockups.read_book(demo_book(mockups.BOOKS / ("c" * 32) / "Swan"))
         try:
             mockups._only_this_book(second)
-            self.assertFalse((drops.DROPS / ("b" * 32)).exists())          # ~200 MB of a 4K book, gone at once
-            self.assertTrue((drops.DROPS / ("c" * 32)).exists())
+            self.assertFalse((mockups.BOOKS / ("b" * 32)).exists())        # ~200 MB of a 4K book, gone at once
+            self.assertTrue((mockups.BOOKS / ("c" * 32)).exists())
+            self.assertTrue((order / "1.png").is_file())                    # the order's files are not the mockups'
             with self.assertRaises(ApiError):
                 mockups._book(first["id"])
         finally:
-            shutil.rmtree(drops.DROPS / ("c" * 32), ignore_errors=True)
+            mockups.clear_books()
+            shutil.rmtree(drops.DROPS / ("e" * 32), ignore_errors=True)
+
+    def test_the_orders_cleaning_never_takes_the_demo_book(self):
+        book = mockups.read_book(demo_book(mockups.BOOKS / ("f" * 32) / "Goose"))
+        try:
+            drops.clear_drops()                                             # Book Studio's start, /api/drop/done
+            self.assertTrue(book["cover"].is_file())
+        finally:
+            mockups.clear_books()
+
+    def test_the_old_utility_leaves_only_its_places_runs_and_logs(self):
+        root = core.data_path("mockups")
+        for name in (*mockups.OLD_UTILITY, "work", "logs"):
+            (root / name).mkdir(parents=True, exist_ok=True)
+            (root / name / "x.txt").write_text("x", encoding="utf-8")
+        try:
+            mockups.forget_old_utility()
+            self.assertEqual(sorted(p.name for p in root.iterdir() if p.name in (*mockups.OLD_UTILITY, "work", "logs")),
+                             ["logs", "work"])
+        finally:
+            for name in ("work", "logs"):
+                shutil.rmtree(root / name, ignore_errors=True)
 
     def test_a_picked_zip_is_unpacked_straight_from_where_it_lies(self):
         import zipfile
@@ -420,12 +462,12 @@ class Cleaning(unittest.TestCase):
         try:
             view = mockups._open_zip(SimpleNamespace(json={"path": str(archive)}))
             self.assertEqual(view["pageCount"], 30)
-            self.assertEqual(len(list(drops.DROPS.iterdir())), 1)
+            self.assertEqual(len(list(mockups.BOOKS.iterdir())), 1)        # unpacked into the mockups' own folder
             self.assertTrue(archive.exists())                               # the owner's ZIP is only read
             with self.assertRaises(ApiError):
                 mockups._open_zip(SimpleNamespace(json={"path": str(pages / "1.png")}))
         finally:
-            drops.clear_drops()
+            mockups.clear_books()
 
     def test_the_program_puts_its_temp_files_on_drive_d_and_wipes_them(self):
         """The Edge window left its logs in Windows' temp folder on drive C: every program this one starts gets a

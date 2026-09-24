@@ -21,6 +21,7 @@ export async function mount(view, [id]) {
       <div class="empty"><div class="empty-icon">${ic('book')}</div><h3>Книгу не знайдено</h3><p>${err.message}</p></div>`);
     return null;
   }
+  if (book.stage === 'workshop') { location.replace(`#/workshop/${id}`); return null; } // still in development
   const busy = new Set();
 
   const assetUrl = (a, w) => media(`/media/book/${id}/${a.file}`, w ? { w } : {});

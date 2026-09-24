@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -18,10 +18,9 @@ code:
 |---|---|---|
 | [app/Book Studio.pyw](<../app/Book Studio.pyw>) | A double-click: checks packages, starts the server with no console, shows a launch error | `_message()` |
 | [app/Запуск з консоллю.bat](<../app/Запуск з консоллю.bat>) | The same, with a console — to see the error | — |
-| [app/Mockups.pyw](<../app/Mockups.pyw>) | A double-click: the [listing-mockups utility](features/mockups.md), its own data folder `app/data/mockups` | `_message()` |
-| [app/tools/make_shortcut.py](../app/tools/make_shortcut.py) | Creates the "Book Studio" and "Мокапи" shortcuts on the desktop | `main()`, `SHORTCUTS` |
+| [app/tools/make_shortcut.py](../app/tools/make_shortcut.py) | Creates the "Book Studio" shortcut on the desktop (the «Мокапи» one until 2026-09-24) | `main()`, `SHORTCUTS` |
 | [app/tools/wiki_check.py](../app/tools/wiki_check.py) | Checks the wiki against the code (including stale numbers in the text) | `check()`, `stale_numbers()`, `coverage()`, `changed_files()` |
-| [app/tools/dev_server.py](../app/tools/dev_server.py) | A server for previewing the interface on temporary data (including a two-book order and a receipt with two print orders); writes only to its own folder, never takes keys (`BOOK_STUDIO_SAMPLE`); `--mockups` — the mockups utility with made-up templates and a pretend Photoshop | `main()`, `claim()`, `seed()`, `main_mockups()`, `pretend_photoshop()` |
+| [app/tools/dev_server.py](../app/tools/dev_server.py) | A server for previewing the interface on temporary data (including a two-book order, a receipt with two print orders, a Workshop book, the mockups' made-up templates and a pretend Photoshop); writes only to its own folder, never takes keys (`BOOK_STUDIO_SAMPLE`) | `main()`, `claim()`, `seed()`, `seed_workshop()`, `seed_mockups()`, `pretend_photoshop()` |
 | [app/requirements.txt](../app/requirements.txt) | Pillow, img2pdf, cryptography (the tested versions are in a comment) | — |
 
 ## Server: `app/studio/`
@@ -45,13 +44,13 @@ code:
 | [textcheck.py](../app/studio/textcheck.py) | Text check with a local model (Ollama): a quick page scan, reading, matching against the passport, checking, name rules | `check_order()`, `check_book()`, `run_key()`, `_passes()`, `page_kinds()`, `_second_half()`, `_collect()`, `assign()`, `diff()`, `findings()`, `page_issues()`, `cancel()`, `warm()`, `status()`, `start_ollama()` |
 | [archive.py](../app/studio/archive.py) | Order archive: files of books that went to print, auto-deletion, "Keep" | `store()`, `refresh()`, `clock()`, `summary()`, `get()` |
 | [images.py](../app/studio/images.py) | Previews, PNG checking, gluing a spread together, cache cleanup, a quick text scan of a page | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `text_score()`, `image_info()`, `prune_cache()` |
-| [library.py](../app/studio/library.py) | Book library: model, import, export, the guide | `load()`, `save()`, `summary()`, `completeness()`, `scan_folder()`, `parse_text_json()`, `agent_guide()`, `export_book()` |
+| [library.py](../app/studio/library.py) | Book library: model (with the Workshop's `stage` and `prompts`), import, export, the guide | `load()`, `save()`, `all_books()`, `is_workshop()`, `summary()`, `completeness()`, `scan_folder()`, `parse_book_json()`, `parse_text_json()`, `export_book_json()`, `agent_guide()`, `export_book()` |
+| [workshop.py](../app/studio/workshop.py) | [The Workshop](features/workshop.md): a new book by its title, prompts and texts from one JSON, the agent's instruction, passing a book to the library | `create()`, `import_json()`, `to_library()`, `guide()` |
 | [creator.py](../app/studio/creator.py) | Order Creator: file checking, Printify, Gelato (one or several books of an order), replacing a single page | `validate()`, `replace_page()`, `restore_page()`, `_backups()`, `_while_sending()`, `books_of()`, `receipt_for()`, `joint_title()`, `gelato_page_options()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_product()`, `_printify_order()`, `create_gelato_draft()`, `_gelato_book()`, `build_photobook_pdf()`, `guess_child_name()` |
 | [orders.py](../app/studio/orders.py) | Order pipeline: printer, book, laying out pages | `plan_for()`, `page_options()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()` |
-| [drops.py](../app/studio/drops.py) | Dragged-in files (saving, unpacking a ZIP, the book folder) and how a Canva export names its files — shared by Book Studio and the mockups | `export_files()`, `page_number()`, `COVER_NAME`, `UPSCAYL_TAIL`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `clear_drops()`, `DROPS` |
-| [mockups.py](../app/studio/mockups.py) | [Listing mockups](features/mockups.md): the demo book, pictures for the smart objects, the run plan, Photoshop | `TEMPLATES`, `read_book()`, `cover_pictures()`, `page_picture()`, `plan()`, `script()`, `launch()`, `watch()`, `make()` |
+| [drops.py](../app/studio/drops.py) | Dragged-in files (saving, unpacking a ZIP, the book folder) and how a Canva export names its files — shared by the orders, the library and the mockups | `export_files()`, `page_number()`, `COVER_NAME`, `UPSCAYL_TAIL`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `clear_drops()`, `DROPS` |
+| [mockups.py](../app/studio/mockups.py) | [Listing mockups](features/mockups.md): the demo book (in its own folder), pictures for the smart objects, the run plan, Photoshop | `TEMPLATES`, `BOOKS`, `read_book()`, `clear_books()`, `_take_dropped()`, `forget_old_utility()`, `cover_pictures()`, `page_picture()`, `plan()`, `script()`, `launch()`, `watch()`, `make()` |
 | [mockups.jsx](../app/studio/mockups.jsx) | The Photoshop script (ExtendScript, CC 2019) the mockups run: fills copies of the templates, saves PNGs | `findLayer()`, `replaceContents()`, `runTemplate()` |
-| [mockups_app.py](../app/studio/mockups_app.py) | The mockups utility as a program of its own: port 47831, its own data folder, only its routes | `main()` |
 | [profit.py](../app/studio/profit.py) | Sync, snapshot, stages, accounting | `_sync()`, `startup_sync()`, `remember_print_order()`, `normalize_receipt()`, `build_view()`, `cached_view()`, `order_stage()`, `picker_orders()` |
 | [reconcile.py](../app/studio/reconcile.py) | Matching Etsy receipts to print orders (one receipt can have several print orders) | `match()`, `_further_orders()`, `cover_label()`, `is_name_match()`, `printify_only_rows()` |
 | [outcomes.py](../app/studio/outcomes.py) | Cancellations, refunds, replacements | `apply()`, `auto_state()`, `pod_order_info()` |
@@ -63,9 +62,7 @@ code:
 | File | Purpose | Main |
 |---|---|---|
 | [index.html](../app/web/index.html) | The shell: the session token, the theme before the first frame, the "connection lost" placeholder | — |
-| [mockups.html](../app/web/mockups.html) | The mockups utility's window: the same, with no sidebar | — |
-| [js/mockups-shell.js](../app/web/js/mockups-shell.js) | The mockups window's shell: heartbeat, closing, Book Studio's theme, mounts the page | `boot()`, `applyTheme()` |
-| [js/app.js](../app/web/js/app.js) | Sidebar, page routing, theme, heartbeat | `NAV`, `ROUTES`, `navigate()`, `applyTheme()` |
+| [js/app.js](../app/web/js/app.js) | The rail and the [two modes](features/modes.md), page routing, theme, heartbeat | `MODES`, `ROUTES`, `navigate()`, `buildNav()`, `switchMode()`, `applyTheme()` |
 | [js/info.js](../app/web/js/info.js) | Info about the program (`/api/app`) for the shell and the pages | `store`, `refreshInfo()`, `whenInfoChanges()` |
 | [js/lib.js](../app/web/js/lib.js) | Shared helpers: templates, API, tooltips, dialogs, menus, animations | `html()`, `api()`, `ib()`, `modal()`, `menu()`, `runJob()`, `upload()`, `toast()`, `segHtml()` |
 | [js/icons.js](../app/web/js/icons.js) | Icons | `icon()` |
@@ -79,10 +76,12 @@ code:
 | [js/pages/creator.js](../app/web/js/pages/creator.js) | The Order Creator (one draft for every book of an order) | `mount()`, `folderBlock()` |
 | [js/pages/archive.js](../app/web/js/pages/archive.js) | Order archive: the list, a book, reprinting | `mount()`, `mountList()`, `mountBook()` |
 | [js/pages/settings.js](../app/web/js/pages/settings.js) | Settings | `mount()` |
-| [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups: the dropped demo book, spreads, template slots, the run | `mount()` |
+| [js/pages/workshop.js](../app/web/js/pages/workshop.js) | The Workshop's gallery, a new book, the agent's instruction | `mount()`, `newBook()`, `guideMenu()` |
+| [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: 17 rows of prompt, 2:1 frame and text; the JSON; «Передати в бібліотеку» | `mount()` |
+| [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups (the Listings mode): the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
 | [js/pages/profit.js](../app/web/js/pages/profit.js) | Profit (hidden) | `mount()` |
 | [css/app.css](../app/web/css/app.css) | The whole "Prepress" visual system | — |
-| `img/` | Program icons (`icon.ico`, `icon.png`, `icon-512.png`; the mockups' `mockups.ico`, `mockups.png`) | — |
+| `img/` | Program icons (`icon.ico`, `icon.png`, `icon-512.png`) | — |
 
 ## Tests: `app/tests/`
 
@@ -96,7 +95,8 @@ code:
 | [test_archive.py](../app/tests/test_archive.py) | Order archive: file copies, 14/30 days, "Keep", Printify/Gelato reprints, the replacement mark |
 | [test_textcheck.py](../app/tests/test_textcheck.py) | Text check: comparison, name rules, matching pages (24 and 30), a full check with a fake model, updating the passport, 127.0.0.1 only |
 | [test_orders.py](../app/tests/test_orders.py) | The printer rule, laying out pages, Gelato book length, the guide, partial import, the sync rule |
-| [test_mockups.py](../app/tests/test_mockups.py) | Mockups: the demo book, the cuts, the run plan, following Photoshop, the Photoshop script run by Node.js against a pretend Photoshop |
+| [test_mockups.py](../app/tests/test_mockups.py) | Mockups: the demo book (its own folder, apart from an order's dropped files), the cuts, the run plan, following Photoshop, the Photoshop script run by Node.js against a pretend Photoshop |
+| [test_workshop.py](../app/tests/test_workshop.py) | The Workshop: a book by its title, never in the orders, prompts, one JSON (dry run, what's missing), the agent's instruction, passing a book to the library |
 | [test_wiki.py](../app/tests/test_wiki.py) | The wiki matches the code |
 
 More detail — [dev/testing.md](dev/testing.md).

@@ -1,7 +1,7 @@
 ---
 title: Book structure — pages, spreads, slots
 type: rule
-updated: 2026-09-18
+updated: 2026-09-24
 code:
   - app/studio/library.py
   - app/web/js/order-bits.js
@@ -28,6 +28,10 @@ A book is "complete" once it has the cover, all 16 illustrations, and all 17 tex
 Every spread has one page with text and one that's just a picture (matters for the
 [plans](../plans/roadmap.md)).
 
+**The Workshop** (since 2026-09-24) has the same 17 rows — the cover, page 1, spreads 2–15, page 30 — each with
+a prompt (`PROMPT_KEYS`, the same keys as the texts) beside its text; its pictures are whole 2:1 spreads (the
+cover too), pages 1 and 30 a square beside the empty endpaper ([workshop](../features/workshop.md)).
+
 ## Print (the Order Creator's folder)
 
 - Files: `Cover.png` + `1.png … N.png`, where N = 24 (Printify) or 28 or 30 (Gelato — however many were
@@ -46,7 +50,7 @@ Every spread has one page with text and one that's just a picture (matters for t
 
 ## Where in the code
 
-- [app/studio/library.py](../../app/studio/library.py) — `SLOT_KEYS`, `TEXT_KEYS`, `SPREAD_NUMBERS`, `spread_pages()`, `slot_label()`, `_empty_slots()`, `completeness()`
+- [app/studio/library.py](../../app/studio/library.py) — `SLOT_KEYS`, `TEXT_KEYS`, `PROMPT_KEYS`, `SPREAD_NUMBERS`, `spread_pages()`, `slot_label()`, `_empty_slots()`, `completeness()`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `SPREADS`, `SLOT_KEYS`, `pagesOf()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `spreadsOf()`, `folderViewerItems()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `expected_files()`, `build_photobook_pdf()`

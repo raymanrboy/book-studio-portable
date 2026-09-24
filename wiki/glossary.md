@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-09-23
+updated: 2026-09-24
 code: []
 ---
 # Glossary
@@ -91,7 +91,21 @@ Code paths below are relative to the repository root.
 | Кошик | `data/library/trash` — where a deleted book goes | [library.py](../app/studio/library.py) `_delete()` |
 | Переглядач (лайтбокс) | The full-screen zoomable viewer | [lightbox.js](../app/web/js/lightbox.js) `openLightbox()` |
 
-## Listing mockups (the «Мокапи» utility, built 2026-09-23)
+## The Listings mode (since 2026-09-24)
+
+| Owner's word (Ukrainian) | What it is | Where |
+|---|---|---|
+| Два режими; режим роботи з замовленнями / режим створення лістингів | Orders (cyan) and Listings (magenta) — each with its own rail; the address says which | [features/modes.md](features/modes.md); [app.js](../app/web/js/app.js) `MODES` |
+| Перемикач по кліку на головну іконку Бук Студіо | The brand icon at the top of the rail (Alt+0) goes to the other mode | [app.js](../app/web/js/app.js) `switchMode()`, `entryOf()` |
+| Пурпуровий колір (режиму лістингів) | Magenta, the logo's second ink: the `--accent*` tokens under `[data-mode="listings"]` | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |
+| Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library, a prompt, a 2:1 spread and a text per row | [features/workshop.md](features/workshop.md); [workshop.py](../app/studio/workshop.py) |
+| Промпт (для розвороту) | The picture's description for an image generator, in every row above the frame | [workshop-book.js](../app/web/js/pages/workshop-book.js); [library.py](../app/studio/library.py) `PROMPT_KEYS` |
+| Плейсхолдер, рамка під картинку (розворот 2:1) | An empty frame in a Workshop row: a picture is dropped (or picked) in, one at a time; not 2:1 → the amber mark | [workshop-book.js](../app/web/js/pages/workshop-book.js) `OFF`; [features/workshop.md](features/workshop.md) |
+| Промпти й тексти з JSON | One JSON from an agent fills every prompt and text of a Workshop book; the program gives the agent's instruction | [workshop.py](../app/studio/workshop.py) `import_json()`, `guide()`; [library.py](../app/studio/library.py) `parse_book_json()` |
+| Відправити (передати) в бібліотеку з замовленнями | «Передати в бібліотеку»: the book gets its Etsy listing and leaves the Workshop for the library | [workshop.py](../app/studio/workshop.py) `to_library()`; [library.js](../app/web/js/pages/library.js) `openAddBook()` |
+| Фотошоп модуль | The Mockups, moved into the Listings mode (2026-09-24) | [features/mockups.md](features/mockups.md) |
+
+## Listing mockups (the «Мокапи» utility, built 2026-09-23; in the Listings mode since 2026-09-24)
 
 | Owner's word (Ukrainian) | What it is | Where |
 |---|---|---|
@@ -114,7 +128,7 @@ Code paths below are relative to the repository root.
 
 | Owner's word (Ukrainian) | What it is | Where in the code |
 |---|---|---|
-| Бокова панель, піктограми зліва | Navigation | [app.js](../app/web/js/app.js) `NAV`, `buildSidebar()` |
+| Бокова панель, піктограми зліва | Navigation — each mode its own items | [app.js](../app/web/js/app.js) `MODES`, `buildSidebar()`, `buildNav()` |
 | Тримати диск C в чистоті | No temp files of the programs on drive C: their own temp folder on D, emptied on launch and close | [core.py](../app/studio/core.py) `own_temp()`; [runtime](architecture/runtime.md#temporary-files-and-drive-c) |
 | Панель інструментів (пошук, сортування, «+») | `.lib-toolbar` | [library.js](../app/web/js/pages/library.js) `mount()`; [app.css](../app/web/css/app.css) |
 | Підказка при наведенні | The shared tooltip | [lib.js](../app/web/js/lib.js) `showTip()`, `ib()` |

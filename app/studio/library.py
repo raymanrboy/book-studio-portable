@@ -7,6 +7,10 @@ Book structure (30 physical pages, same as the production pipeline):
   page30                     — afterword (single left-hand page)
 A spread image is either one combined picture or separate left/right pages.
 Everything except the listing is optional and can be added any time.
+
+A book still in development lives here too, marked "stage": "workshop" (the Listings mode's Workshop,
+workshop.py): no listing yet, and a prompt beside every text. It never reaches the orders — all_books()
+leaves it out unless asked for — and passing it to the library only removes the mark and writes the listing.
 """
 from __future__ import annotations
 
@@ -31,6 +35,8 @@ FIRST_SPREAD, LAST_SPREAD = 2, 15
 SPREAD_NUMBERS = list(range(FIRST_SPREAD, LAST_SPREAD + 1))
 SLOT_KEYS = ["page1"] + [f"spread{n}" for n in SPREAD_NUMBERS] + ["page30"]
 TEXT_KEYS = ["cover"] + SLOT_KEYS
+PROMPT_KEYS = list(TEXT_KEYS)   # a Workshop book: the prompt for every picture, beside its text
+WORKSHOP = "workshop"           # book["stage"] of a book still in development
 
 _lock = threading.RLock()
 
@@ -78,7 +84,15 @@ def load(book_id: str) -> dict:
     text = {k: "" for k in TEXT_KEYS}
     text.update({k: v for k, v in (data.get("text") or {}).items() if k in TEXT_KEYS})
     data["text"] = text
+    if is_workshop(data) or "prompts" in data:  # a library book never gains empty prompts it didn't have
+        prompts = {k: "" for k in PROMPT_KEYS}
+        prompts.update({k: v for k, v in (data.get("prompts") or {}).items() if k in PROMPT_KEYS and isinstance(v, str)})
+        data["prompts"] = prompts
     return data
+
+
+def is_workshop(book: dict) -> bool:
+    return book.get("stage") == WORKSHOP
 
 
 def save(book: dict) -> dict:
@@ -108,6 +122,7 @@ def completeness(book: dict) -> dict:
         if s.get("image") or (s.get("left") and s.get("right")):
             illustrated += 1
     texts = sum(1 for k in TEXT_KEYS if (book["text"].get(k) or "").strip())
+    prompts = sum(1 for k in PROMPT_KEYS if ((book.get("prompts") or {}).get(k) or "").strip())
     return {
         "cover": bool(book.get("cover")),
         "thumbnail": bool(book.get("thumbnail")),
@@ -115,16 +130,32 @@ def completeness(book: dict) -> dict:
         "illustrationsTotal": len(SLOT_KEYS),
         "texts": texts,
         "textsTotal": len(TEXT_KEYS),
+        "prompts": prompts,
+        "promptsTotal": len(PROMPT_KEYS),
+        # The Workshop counts the cover among the pictures: one frame per row, 17 rows.
+        "pictures": illustrated + (1 if book.get("cover") else 0),
+        "picturesTotal": len(SLOT_KEYS) + 1,
         "canva": bool((book.get("canvaUrl") or "").strip()),
         "complete": bool(book.get("cover")) and illustrated == len(SLOT_KEYS) and texts == len(TEXT_KEYS),
     }
 
 
+def _first_picture(book: dict) -> dict | None:
+    """A Workshop card without a cover yet shows its first finished spread."""
+    for key in SLOT_KEYS:
+        s = book["slots"][key]
+        if s.get("image") or s.get("left"):
+            return s.get("image") or s.get("left")
+    return None
+
+
 def summary(book: dict) -> dict:
-    card = book.get("thumbnail") or book.get("cover")
+    workshop = is_workshop(book)
+    card = book.get("thumbnail") or book.get("cover") or (_first_picture(book) if workshop else None)
     return {
         "id": book["id"],
         "title": book.get("title") or (book.get("listing") or {}).get("title") or "Без назви",
+        "stage": WORKSHOP if workshop else "library",
         "listingId": (book.get("listing") or {}).get("id"),
         "verified": bool((book.get("listing") or {}).get("verifiedAt")),
         "archived": bool(book.get("archived")),
@@ -152,17 +183,21 @@ def update_texts(book_id: str, texts: dict[str, str]) -> dict:
         return save(book)
 
 
-def all_books() -> list[dict]:
+def all_books(stage: str = "library") -> list[dict]:
+    """The library's books — the ones orders are matched against. The Workshop asks for its own
+    (stage="workshop"): a book still in development never reaches an order, the book counter or the text check."""
     books = []
     if BOOKS_DIR.exists():
         for folder in BOOKS_DIR.iterdir():
             if folder.is_dir() and re.fullmatch(r"[0-9a-f]{32}", folder.name):
                 try:
-                    books.append(load(folder.name))
+                    book = load(folder.name)
                 except ApiError as err:
                     # One broken book never hides the others — but it is not dropped silently either.
                     core.log.warning("Library: book %s not loaded (%s) — it is left out of the list", folder.name, err)
                     continue
+                if is_workshop(book) == (stage == WORKSHOP):
+                    books.append(book)
     return books
 
 
@@ -294,10 +329,12 @@ def _set_asset(book: dict, slot: str, asset: dict | None) -> list[dict]:
 
 # ---------------------------------------------------------------- text import
 
-def parse_text_json(raw: str) -> tuple[dict, list[str], list[str]]:
-    """Parses the book-text JSON: {cover, page1, spreads: {"2".."15"}, page30}.
+def parse_book_json(raw: str) -> tuple[dict, dict, list[str], list[str], list[str]]:
+    """Parses the book's JSON: {cover, page1, spreads: {"2".."15"}, page30}, every value either the text
+    itself (the library's book-text format) or {"prompt": …, "text": …} (the Workshop's).
 
-    Lenient: imports every valid field, reports the rest.
+    Lenient: takes every valid field and reports the rest — (text, prompts, texts missing, prompts missing,
+    notes); a missing piece is named like "«cover»" or "розвороту 5".
     """
     try:
         data = json.loads(raw.lstrip("﻿"))
@@ -306,28 +343,50 @@ def parse_text_json(raw: str) -> tuple[dict, list[str], list[str]]:
     if not isinstance(data, dict):
         raise ApiError("JSON має бути об'єктом із полями cover, page1, spreads, page30.")
     text: dict[str, str] = {}
-    problems: list[str] = []
-    for key in ("cover", "page1", "page30"):
-        value = data.get(key)
-        if isinstance(value, str) and value.strip():
-            text[key] = value.strip()
+    prompts: dict[str, str] = {}
+    no_text: list[str] = []
+    no_prompt: list[str] = []
+    notes: list[str] = []
+
+    def take(key: str, value: Any, name: str) -> None:
+        body, prompt = (value, None) if isinstance(value, str) else \
+            (value.get("text"), value.get("prompt")) if isinstance(value, dict) else (None, None)
+        if isinstance(body, str) and body.strip():
+            text[key] = body.strip()
         else:
-            problems.append(f"Немає тексту «{key}»")
+            no_text.append(name)
+        if isinstance(prompt, str) and prompt.strip():
+            prompts[key] = prompt.strip()
+        else:
+            no_prompt.append(name)
+
+    for key in ("cover", "page1", "page30"):
+        take(key, data.get(key), f"«{key}»")
     spreads = data.get("spreads")
     if not isinstance(spreads, dict):
-        problems.append("Немає об'єкта «spreads» з текстами розворотів 2–15")
+        notes.append("Немає об'єкта «spreads» з розворотами 2–15")
         spreads = {}
     for n in SPREAD_NUMBERS:
-        value = spreads.get(str(n))
-        if isinstance(value, str) and value.strip():
-            text[f"spread{n}"] = value.strip()
-        else:
-            problems.append(f"Немає тексту розвороту {n}")
+        take(f"spread{n}", spreads.get(str(n)), f"розвороту {n}")
     extra = [k for k in spreads.keys() if not (k.isdigit() and FIRST_SPREAD <= int(k) <= LAST_SPREAD)]
-    notes = [f"Пропущено невідомі ключі spreads: {', '.join(extra)}"] if extra else []
+    if extra:
+        notes.append(f"Пропущено невідомі ключі spreads: {', '.join(extra)}")
+    return text, prompts, no_text, no_prompt, notes
+
+
+def parse_text_json(raw: str) -> tuple[dict, list[str], list[str]]:
+    """The library's book-text JSON: only the texts are taken (a Workshop JSON's prompts are left out).
+
+    Lenient: imports every valid field, reports the rest.
+    """
+    text, _, no_text, _, notes = parse_book_json(raw)
     if not text:
         raise ApiError("У JSON не знайдено жодного тексту книги.")
-    return text, problems, notes
+    no_spreads = [n for n in notes if n.startswith("Немає об'єкта")]
+    singles = [f"Немає тексту {name}" for name in no_text if name.startswith("«")]
+    spreads = [f"Немає тексту {name}" for name in no_text if not name.startswith("«")]
+    problems = singles + (["Немає об'єкта «spreads» з текстами розворотів 2–15"] if no_spreads else []) + spreads
+    return text, problems, [n for n in notes if n not in no_spreads]
 
 
 def export_text_json(book: dict) -> dict:
@@ -338,6 +397,14 @@ def export_text_json(book: dict) -> dict:
         "spreads": {str(n): t.get(f"spread{n}", "") for n in SPREAD_NUMBERS},
         "page30": t.get("page30", ""),
     }
+
+
+def export_book_json(book: dict) -> dict:
+    """The Workshop's JSON of a book — the prompt and the text of every row; parse_book_json() reads it back."""
+    t, p = book["text"], book.get("prompts") or {}
+    pair = lambda key: {"prompt": p.get(key, ""), "text": t.get(key, "")}  # noqa: E731
+    return {"cover": pair("cover"), "page1": pair("page1"),
+            "spreads": {str(n): pair(f"spread{n}") for n in SPREAD_NUMBERS}, "page30": pair("page30")}
 
 
 # ---------------------------------------------------------------- folder import
@@ -583,7 +650,7 @@ def _book_response(book: dict) -> dict:
 
 @route("GET", "/api/library/books")
 def _list(req: Request):
-    books = [summary(b) for b in all_books()]
+    books = [summary(b) for b in all_books(WORKSHOP if req.param("stage") == WORKSHOP else "library")]
     books.sort(key=lambda b: b.get("updatedAt") or "", reverse=True)
     return {"books": books}
 
@@ -669,6 +736,10 @@ def _patch(req: Request):
             for key, value in body["text"].items():
                 if key in TEXT_KEYS and isinstance(value, str):
                     book["text"][key] = value
+        if isinstance(body.get("prompts"), dict) and isinstance(book.get("prompts"), dict):
+            for key, value in body["prompts"].items():
+                if key in PROMPT_KEYS and isinstance(value, str):
+                    book["prompts"][key] = value
         if book.get("title", "").strip() == "":
             raise ApiError("Назва книги не може бути порожньою.")
         save(book)

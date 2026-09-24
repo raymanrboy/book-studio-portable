@@ -1,4 +1,4 @@
-"""Creates (or refreshes) the desktop shortcuts: "Book Studio" and "Мокапи" (the listing-mockups utility).
+"""Creates (or refreshes) the desktop shortcut "Book Studio" (the mockups live inside it since 24.09.2026).
 
 Run:  python tools\\make_shortcut.py
 """
@@ -12,8 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # only the ANSI code page: a Cyrillic tooltip or path turns into "?????" — the tooltips are Latin, the scripts
 # have Latin names, and a Cyrillic shortcut name is given by renaming the saved file.
 SHORTCUTS = [
-    ("Book Studio", "Book Studio.pyw", "icon.ico", "Book Studio - orders, book library, Order Creator"),
-    ("Мокапи", "Mockups.pyw", "mockups.ico", "Mockups - Etsy listing pictures from a Canva demo book"),
+    ("Book Studio", "Book Studio.pyw", "icon.ico", "Book Studio - orders and listings: library, Workshop, mockups"),
 ]
 
 

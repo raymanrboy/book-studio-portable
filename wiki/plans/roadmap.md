@@ -1,7 +1,7 @@
 ---
 title: Plans — what's next
 type: plan
-updated: 2026-09-23
+updated: 2026-09-24
 code: []
 ---
 # Plans
@@ -234,8 +234,8 @@ The owner wants a real program feature — a "check button", a strong one — no
 
 - **Mockups for a listing — the "Mockups" utility — BUILT on 2026-09-23** ([features/mockups.md](../features/mockups.md);
   agreed the same day, the idea dates from 2026-09-19; plan and templates — [listing-mockups.md](listing-mockups.md)).
-  Left: the owner tries it on a real demo book (the back/spine crop by eye, the file names), and later —
-  moving it into Book Studio. Right now, for every new book, the
+  **Moved into Book Studio on 2026-09-24** — the Listings mode ([plan](listings-mode.md)). Left: the owner
+  tries it on a real demo book (the back/spine crop by eye, the file names). Right now, for every new book, the
   owner makes a demo book in Canva (a cover with a sample name, pages with `{Name}`), then fills 6 mockup
   templates in Photoshop by hand (~10 pictures: `2. Open 1` four times and `3. Open 2` twice with
   different spreads).
@@ -258,6 +258,12 @@ The owner wants a real program feature — a "check button", a strong one — no
     a diffusion model).
   - Later, together with "Pages without Canva": the program draws the demo book itself, the utility makes
     the mockups.
+- **Two modes and the Workshop — BUILT on 2026-09-24** ([plan and agreements](listings-mode.md),
+  [modes](../features/modes.md), [workshop](../features/workshop.md)): the brand icon switches between Orders
+  and Listings (magenta); the Workshop holds books in development — a prompt, a 2:1 spread and a text per row,
+  prompts and texts from one JSON, pictures dropped one per frame — and passes a finished book to the library
+  with its Etsy listing. The owner said the Listings mode's library "will be modified a bit" later; next steps
+  are his to name (e.g. a way back from the library to the Workshop, the listing's own texts).
 
 ## Accounting
 

@@ -1,7 +1,7 @@
 ---
 title: Server — routes, jobs, errors
 type: architecture
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/studio/server.py
   - app/studio/jobs.py
@@ -27,11 +27,10 @@ code:
   (`file_response()`, `html_response()`, `redirect()`).
 - `Request`: `req.json` (up to 25 MB), `req.param(name)`, `req.body_to_file(path, max)` for uploads.
 - Static files: `/css`, `/js`, `/img`, `/fonts` from `app/web`, `/` — `index.html`.
-- **One server, two programs** (since 2026-09-23): `state.page` is the window's page (`index.html`; the
-  [mockups utility](../features/mockups.md) sets `mockups.html`) and `state.app` — what `/api/ping`
-  answers ("Book Studio" / "Book Studio · Мокапи"), so each program recognises only its own running copy.
-  A program serves only the routes of the modules it imports: the mockups process has no Book Studio
-  routes at all.
+- `state.app` — what `/api/ping` answers ("Book Studio"), so a second launch recognises the running copy
+  and only opens another window. (From 2026-09-23 to 24 the [mockups](../features/mockups.md) were a second
+  program on the same server code, with its own `state.page` and answer; now their routes are Book
+  Studio's own.)
 - The full table — [api-routes.md](api-routes.md).
 
 ## Errors

@@ -11,17 +11,17 @@ from typing import Callable
 from . import core
 
 
-def _running_instance(port: int, app: str = core.APP_NAME) -> bool:
+def _running_instance(port: int) -> bool:
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/ping", timeout=1.5) as resp:
-            return json.loads(resp.read().decode("utf-8")).get("app") == app
+            return json.loads(resp.read().decode("utf-8")).get("app") == core.APP_NAME
     except Exception:
         return False
 
 
 def run_until_closed(proc, busy: Callable[[], bool]) -> None:
     """Returns once the app window is gone for good (a reload is not a close) and busy() says nothing is left
-    to finish. Shared with the listing-mockups utility (mockups_app.py)."""
+    to finish."""
     from . import server
     started = time.time()
     try:
@@ -66,17 +66,20 @@ def main(argv: list[str] | None = None) -> int:
     core.own_temp()  # the window, the dialogs and cloudflared keep their temp files on drive D, not C
 
     # Register all API routes.
-    from . import archive, creator, drops, etsy, gelato, images, library, orders, printify, profit, sendlog, settings_api, textcheck, tunnel  # noqa: F401
+    from . import archive, creator, drops, etsy, gelato, images, library, mockups, orders, printify, profit, sendlog, settings_api, textcheck, tunnel, workshop  # noqa: F401
 
     tunnel.cleanup_stale()
     creator.forget_old_form()
     drops.clear_drops()
+    mockups.clear_books()
+    mockups.forget_old_utility()
     httpd = server.start(args.port)
     profit.startup_sync()  # the one automatic refresh of orders; afterwards only the refresh button
     # The order archive tidies up on its own (again after every sync): books whose 14 days are over go.
     import threading
     threading.Thread(target=archive.refresh_quietly, daemon=True).start()
     threading.Thread(target=images.prune_cache_quietly, daemon=True).start()  # old previews go
+    threading.Thread(target=mockups.clean_runs, daemon=True).start()  # runs Photoshop no longer needs go
     url = f"{server.base_url()}/"
     if args.no_window:
         print(f"Book Studio: {url}", flush=True)
@@ -91,12 +94,16 @@ def main(argv: list[str] | None = None) -> int:
 
     proc = desktop.open_app_window(url)
     from .jobs import jobs
-    # Finish background work first: uploads, drafts, and Gelato file links still in use
-    # (a text check only reads — it is not waited for).
+    # Finish background work first: uploads, drafts, Gelato file links still in use and a mockup run still
+    # watching Photoshop (a text check only reads — it is not waited for).
     run_until_closed(proc, lambda: jobs.any_running(ignore=("textcheck",)) or bool(tunnel.registry.active()))
     core.log.info("Shutting down")
     tunnel.registry.close_all()
     httpd.shutdown()
+    # The unpacked demo book goes, and so do the mockup runs Photoshop can no longer have open (the copies of
+    # templates still open in it wait for the next launch or a day).
+    mockups.clear_books()
+    mockups.clean_runs()
     core.clear_own_temp()
     return 0
 

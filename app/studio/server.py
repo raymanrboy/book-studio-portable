@@ -144,7 +144,6 @@ class Request:
 
 class _State:
     app = core.APP_NAME       # what /api/ping answers: a second launch of the same program opens a window only
-    page = "index.html"       # the window's page (the listing-mockups utility has its own, mockups.html)
     port = core.DEFAULT_PORT
     wanted_port = core.DEFAULT_PORT  # differs from `port` when another program held it at start-up
     last_heartbeat = 0.0
@@ -155,7 +154,7 @@ state = _State()
 
 
 def _index_html() -> bytes:
-    text = (core.WEB_DIR / state.page).read_text(encoding="utf-8")
+    text = (core.WEB_DIR / "index.html").read_text(encoding="utf-8")
     return text.replace("__STUDIO_TOKEN__", SESSION_TOKEN).encode("utf-8")
 
 

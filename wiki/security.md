@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -134,7 +134,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - The `Vault` store encrypts with Windows DPAPI (only works for this Windows user).
 - Keys never reach the interface: `status()` only returns "present/absent" and the last 4 characters.
 
-### The mockups utility (since 2026-09-23)
+### The Mockups (a utility since 2026-09-23, inside Book Studio since 2026-09-24)
 - The templates folder is **only read**: `copy_templates()` copies the six templates into the run's own
   folder (`app/data/mockups/work/…`) and refuses a copy that would land inside the templates folder;
   Photoshop opens only the copies. The script never names the templates folder (a test checks it, in the
@@ -142,12 +142,14 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   without saving.
 - The output folder may **not** be the templates folder — refused in the dialog (`_pick_out()`) and in the
   run (`make()`). An existing picture is never overwritten (`_free_name()`).
-- A process of its own with its own data folder `app/data/mockups`: no keys, orders or library there, and
-  it refuses to run on Book Studio's folder. Its unpacked demo book, old runs and temp folders are the only
-  things it deletes (`clear_drops()`, `_only_this_book()`, `clean_runs()`, `core.clear_own_temp()` — only
-  inside its own folder). A copy of a template the owner saved himself (Ctrl+S) is kept a week.
+- Its files live in `app/data/mockups`. The unpacked demo book has a folder of its own there
+  (`mockups/book/`, `BOOKS`), so the mockups never delete the files dropped into an order's card and Book
+  Studio's cleaning of dropped files never deletes the demo book. The demo book, old runs and Photoshop's temp
+  folder are the only things it deletes (`_only_this_book()`, `clear_books()`, `clean_runs()`), and once, after
+  the move, the separate utility's own temp files, previews and window profile (`forget_old_utility()`, never
+  `places.json`, the runs or the logs). A copy of a template the owner saved himself (Ctrl+S) is kept a week.
 - A ZIP picked with the folder button is **only read** where it lies (`_open_zip()`), unpacked into the
-  utility's own folder.
+  mockups' own folder.
 - Photoshop gets one script per run; a stop leaves a mark the script checks first, so a late "Yes" does
   nothing. Photoshop's "show dialogs" setting is put back after the run.
 - **«Зберегти відкриті»** (a second script, only when the owner presses it): finds the run's own copies
@@ -176,8 +178,8 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - [app/studio/core.py](../app/studio/core.py) — `SAMPLE`
 - [app/tests/__init__.py](../app/tests/__init__.py) — a temporary data folder for tests (unconditional)
 - [app/tools/dev_server.py](../app/tools/dev_server.py) — `claim()`, `MARK`, `main()` (`BOOK_STUDIO_SAMPLE`)
-- [app/studio/mockups.py](../app/studio/mockups.py) — `copy_templates()`, `_inside()`, `_free_name()`, `_pick_out()`, `make()`, `clean_runs()`, `finish()`, `_open_zip()`, `_only_this_book()`
-- [app/studio/mockups_app.py](../app/studio/mockups_app.py) — `main()` (refuses Book Studio's data folder)
+- [app/studio/mockups.py](../app/studio/mockups.py) — `copy_templates()`, `_inside()`, `_free_name()`, `_pick_out()`, `make()`, `clean_runs()`, `finish()`, `_open_zip()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `forget_old_utility()`
+- [app/studio/workshop.py](../app/studio/workshop.py) — `to_library()` (the Etsy listing only read, through the API; nothing is sent anywhere)
 
 ## Related
 

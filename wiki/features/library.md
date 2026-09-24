@@ -1,7 +1,7 @@
 ---
 title: Book library and a book's passport
 type: feature
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/studio/library.py
   - app/web/js/pages/library.js
@@ -12,7 +12,9 @@ code:
 
 > The reference version of every book in the shop: one book = one Etsy listing. A cover, 16 illustration
 > slots, texts, a link to the Canva template. The order card finds a book by its listing number.
-> A book's structure — [rules/book-structure.md](../rules/book-structure.md).
+> A book's structure — [rules/book-structure.md](../rules/book-structure.md). A new book can also be made
+> in the Listings mode's [Workshop](workshop.md) and passed here with its listing (since 2026-09-24).
+> The library is the Orders mode's; it never lists a Workshop book.
 
 ## Gallery (`#/library`)
 
@@ -30,6 +32,12 @@ The `openAddBook()` dialog: a listing link or ID → checked via the Etsy API (k
 isn't) → title, photo, status, shop; a warning if the listing belongs to another shop. Without keys, or
 on an error — a book can still be added without checking, by giving a title. Optional: a Canva link, the
 listing's photo as a thumbnail. A duplicate by listing isn't created (the existing book opens instead).
+
+The same dialog, with a book given to it (`openAddBook(existing, transfer)`), is the Workshop's **«Передати в
+бібліотеку»** (since 2026-09-24): no title or Canva fields, what the book still lacks on top, the listing field
+and its check as here, «Передати в бібліотеку» → `POST /api/workshop/books/<id>/to-library`
+([workshop](workshop.md#передати-в-бібліотеку)). A Workshop book opened at `#/book/<id>` goes to its Workshop
+page.
 
 ## A book's passport (`#/book/<id>`)
 
@@ -70,8 +78,15 @@ illustration filters, opening the Etsy listing. See [decisions](../decisions.md)
   "canvaUrl": "", "notes": "", "archived": false, "archivedAt": null,
   "cover": <asset|null>, "thumbnail": <asset|null>,
   "slots": { "page1": {"image"}, "spread2": {"image", "left", "right"}, …, "page30": {"image"} },
-  "text":  { "cover", "page1", "spread2" … "spread15", "page30" } }
+  "text":  { "cover", "page1", "spread2" … "spread15", "page30" },
+  "stage": "workshop", "prompts": { "cover", "page1", "spread2" … "spread15", "page30" },
+  "fromWorkshopAt": "…" }
 ```
+`stage` and `prompts` only on a book made in the [Workshop](workshop.md) (since 2026-09-24): `"stage":
+"workshop"` while it's there (no listing yet; `all_books()` leaves it out unless asked for
+`stage="workshop"`, so orders, the book counter and the text check never see it); passed to the library, the
+mark goes, the listing and `fromWorkshopAt` are written, the prompts stay (unseen here). A library book never
+gains empty prompts (`load()` fills them in only for a book that has them).
 Asset: `{id, file, originalName, width, height, bytes, addedAt, lqip}`. `rev` guards against two windows
 changing the same book at once (a `PATCH` with a stale `rev` → 409).
 
@@ -89,12 +104,12 @@ A test guarantees the guide and the importer never drift apart.
 
 ## Where in the code
 
-- [app/studio/library.py](../../app/studio/library.py) — `load()`, `save()`, `summary()`, `completeness()`, `all_books()`, `_store_asset()`, `_set_asset()`, `_parse_slot()`, `scan_folder()`, `parse_text_json()`, `export_text_json()`, `export_book()`, `agent_guide()`, `_backfill_lqip()`, `SLOT_KEYS`, `TEXT_KEYS`, `GUIDE_NAME`
+- [app/studio/library.py](../../app/studio/library.py) — `load()`, `save()`, `summary()`, `completeness()`, `all_books()`, `is_workshop()`, `_store_asset()`, `_set_asset()`, `_parse_slot()`, `scan_folder()`, `parse_book_json()`, `parse_text_json()`, `export_text_json()`, `export_book_json()`, `export_book()`, `agent_guide()`, `_backfill_lqip()`, `SLOT_KEYS`, `TEXT_KEYS`, `PROMPT_KEYS`, `WORKSHOP`, `GUIDE_NAME`
 - [app/web/js/pages/library.js](../../app/web/js/pages/library.js) — `mount()`, `card()`, `apply()`, `openAddBook()`, `saveGuide()`, `copyGuide()`, `SORTS`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mount()`, `renderHero()`, `renderCover()`, `rowHtml()`, `editText()`, `uploadTo()`, `importDropped()`, `importFolder()`, `importTextJson()`, `canvaDialog()`, `lightboxItems()`, `onDrop()`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `lqip()`, `display_size()`, `compose_spread()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `receiveDrop()` (with `withText`: the JSON comes along too, and the return value is the dropped folder itself)
-- Tests: [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`TextJson`, `FolderScan`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PreparationGuide`, `PartialBookImport`)
+- Tests: [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`TextJson`, `FolderScan`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PreparationGuide`, `PartialBookImport`), [app/tests/test_workshop.py](../../app/tests/test_workshop.py) (a Workshop book never in the library's list)
 
 ## Related
 

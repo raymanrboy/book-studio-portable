@@ -113,6 +113,26 @@
   color-scheme: dark;
 }
 
+/* ---------- the Listings mode: the second process ink, magenta (owner, 24.09.2026) ----------
+   The same tokens as the cyan above, so every button, focus ring and switch follows the mode. Contrast:
+   the accent against its text 5.8 (light) / 6.5 (dark), the ink against the surface 7.5 / 8.3. */
+[data-mode="listings"] {
+  --accent: #c0137a;
+  --accent-hover: #a8106b;
+  --accent-soft: rgba(192, 19, 122, .1);
+  --accent-line: rgba(192, 19, 122, .32);
+  --accent-ink: #9c0f63;
+  --on-accent: #ffffff;
+}
+[data-theme="dark"][data-mode="listings"] {
+  --accent: #f06aae;
+  --accent-hover: #f488bf;
+  --accent-soft: rgba(240, 106, 174, .13);
+  --accent-line: rgba(240, 106, 174, .36);
+  --accent-ink: #f59ac6;
+  --on-accent: #2a0619;
+}
+
 /* ------------------------------------------------------------------ base */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -170,12 +190,25 @@ p { margin: 0; }
   display: flex; flex-direction: column; align-items: center;
   padding: 12px 0; gap: 14px; min-height: 0; user-select: none;
 }
-/* Brand: a book spread over a CMYK control strip — the printer's colour bar. */
+/* Brand: a book spread over a CMYK control strip — the printer's colour bar. It is also the switch between
+   the two modes (a click, Alt+0): in the Listings mode it wears the magenta ink and the listing's tag. */
 .brand-mark {
-  position: relative; width: 36px; height: 36px; border-radius: 9px; overflow: hidden;
-  display: grid; place-items: center; background: var(--text); color: var(--bg);
+  position: relative; width: 36px; height: 36px; border-radius: 9px; overflow: hidden; border: 0; padding: 0;
+  display: grid; place-items: center; background: var(--text); color: var(--bg); cursor: pointer; flex: none;
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) ease;
 }
+.brand-mark:hover { transform: translateY(-1px); box-shadow: 0 4px 10px -4px rgba(0, 0, 0, .45); }
+.brand-mark:active { transform: scale(.96); }
+[data-mode="listings"] .brand-mark { background: var(--accent); color: var(--on-accent); }
 .brand-mark .icon { width: 20px; height: 20px; margin-top: -3px; }
+/* A mockups run going on in the other mode: a small magenta dot, breathing. */
+.brand-busy, .nav-item .badge.busy {
+  position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-m);
+  box-shadow: 0 0 0 2px var(--bg-2); animation: busy-dot 1.6s ease-in-out infinite;
+}
+.brand-busy { top: 4px; right: 4px; box-shadow: 0 0 0 2px var(--text); }
+[data-mode="listings"] .brand-busy { box-shadow: 0 0 0 2px var(--accent); }
+@keyframes busy-dot { 50% { opacity: .35; } }
 .brand-mark::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
   background: linear-gradient(90deg, var(--ink-c) 0 25%, var(--ink-m) 25% 50%, var(--ink-y) 50% 75%, var(--text-3) 75%);
@@ -209,6 +242,16 @@ p { margin: 0; }
 ::view-transition-new(main) { animation: vt-in 260ms var(--ease) both; }
 @keyframes vt-out { to { opacity: 0; transform: translateY(-3px); } }
 @keyframes vt-in { from { opacity: 0; transform: translateY(8px); } }
+/* Switching the mode: one mode's rail slides away, the other's slides in, the brand turns over to its new ink. */
+.vt-mode .brand-mark { view-transition-name: brand; }
+html.vt-mode::view-transition-old(nav) { opacity: 1; animation: vt-rail-out 170ms var(--ease-in-out) both; }
+html.vt-mode::view-transition-new(nav) { animation: vt-rail-in 360ms var(--ease) 60ms both; }
+::view-transition-old(brand) { animation: vt-flip-out 150ms var(--ease-in-out) both; }
+::view-transition-new(brand) { animation: vt-flip-in 300ms var(--ease) 110ms both; }
+@keyframes vt-rail-out { to { opacity: 0; transform: translateY(-16px); } }
+@keyframes vt-rail-in { from { opacity: 0; transform: translateY(20px); } }
+@keyframes vt-flip-out { to { transform: perspective(160px) rotateY(90deg); } }
+@keyframes vt-flip-in { from { transform: perspective(160px) rotateY(-90deg); } }
 /* Loading strip: the four process inks, as on a press sheet's colour bar. */
 .topbar {
   position: fixed; left: 0; top: 0; height: 2px; width: 100%; z-index: 999; pointer-events: none;
@@ -921,9 +964,76 @@ button.set-head:hover { background: var(--surface-hover); }
 .offline-card p { color: var(--text-3); margin-bottom: 18px; }
 .offline-icon { width: 48px; height: 48px; margin: 0 auto; border-radius: 12px; display: grid; place-items: center; background: var(--amber-soft); color: var(--amber); font-weight: 800; font-size: 22px; }
 
-/* ================================================================== LISTING MOCKUPS (its own window for now) */
+/* ================================================================== THE WORKSHOP (the Listings mode) */
+/* Books in development (owner, 24.09.2026): one column of moderate width — "not the full width" — and every row a
+   card of three, top to bottom: the prompt, the 2:1 frame, the text. */
+.ws-card .book-id .icon { color: var(--text-4); }
+.ws-page { max-width: 820px; margin: 0 auto; }
+.ws-head { flex-wrap: nowrap; align-items: center; gap: 10px; }
+.ws-title { flex: 1; min-width: 0; font-size: 25px; margin-left: 0; }
+.ws-head-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.ws-rows { display: flex; flex-direction: column; gap: 18px; }
+.ws-row { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); }
+.ws-row-head { display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.ws-dots { display: inline-flex; gap: 4px; }
+.ws-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); transition: background var(--t) ease; }
+.ws-dots i.ok { background: var(--accent); }
+
+/* The prompt and the text: a quiet box each; a click writes, the field grows with what's typed. */
+.ws-block { border-radius: var(--r-ctl); background: var(--surface-2); padding: 7px 10px 10px; }
+.ws-block-head { display: flex; align-items: center; gap: 6px; min-height: 28px; }
+.ws-block-head > .icon-s { color: var(--accent-ink); }
+.ws-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.55; color: var(--text); cursor: text; }
+.ws-text .ws-body { font-family: var(--font-book-text); font-size: 14.5px; line-height: 1.62; }
+.ws-body.empty-text { color: var(--text-4); font-family: var(--font); font-size: 12.5px; }
+.ws-edit { width: 100%; min-height: 76px; field-sizing: content; resize: vertical; font-size: 13.5px; line-height: 1.55; }
+.ws-text .ws-edit { font-family: var(--font-book-text); font-size: 14.5px; line-height: 1.62; }
+.ws-edit-foot { display: flex; align-items: center; gap: 6px; padding-top: 6px; font-size: 11.5px; }
+.ws-json { width: 100%; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; resize: vertical; }
+
+/* The 2:1 frame: empty — dashed, the fold in the middle, the page numbers on its halves; a single page (1, 30) —
+   the endpaper half hatched. A frame that files are dragged over lights up in the mode's ink. */
+.ws-frame { position: relative; aspect-ratio: 2 / 1; border-radius: var(--r-art); }
+.ws-frame.ws-single { display: grid; grid-template-columns: 1fr 1fr; }
+.ws-pagehalf { position: relative; min-width: 0; }
+.ws-endpaper {
+  display: grid; place-items: center; color: var(--text-4); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase;
+  background: repeating-linear-gradient(135deg, var(--surface-2) 0 7px, var(--surface-3) 7px 8px); border-radius: var(--r-art);
+}
+.ws-ph {
+  position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; width: 100%; height: 100%; padding: 0; border: 0;
+  border-radius: var(--r-art); background: var(--surface); color: var(--text-3); cursor: pointer;
+  outline: 1.5px dashed var(--border-strong); outline-offset: -1.5px;
+  transition: background var(--t-fast) ease, color var(--t-fast) ease, outline-color var(--t-fast) ease;
+}
+/* The fold: dashed, broken around the words in the middle. */
+.ws-ph::after {
+  content: ""; position: absolute; left: 50%; top: 9%; bottom: 9%; width: 1px;
+  background: repeating-linear-gradient(to bottom, var(--border-strong) 0 4px, transparent 4px 8px);
+  mask: linear-gradient(#000 0 33%, transparent 33% 67%, #000 67%);
+}
+.ws-pagehalf .ws-ph { grid-template-columns: 1fr; }
+.ws-pagehalf .ws-ph::after { display: none; }
+.ws-half { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--text-4); }
+.ws-ph-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 12px; pointer-events: none; }
+.ws-ph-text .icon { width: 24px; height: 24px; margin-bottom: 2px; }
+.ws-ph-text b { color: var(--text-2); font-size: 13px; font-weight: 600; }
+.ws-ph:hover, .drop-hot > .ws-ph { background: var(--accent-soft); color: var(--accent-ink); outline-color: var(--accent); }
+.ws-ph:hover .ws-ph-text b, .drop-hot > .ws-ph .ws-ph-text b { color: var(--accent-ink); }
+.drop-hot > .ws-art, .drop-hot > .ws-pair { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-art); }
+.ws-art { position: absolute; inset: 0; border-radius: var(--r-art); background-color: var(--paper); box-shadow: var(--art-shadow); }
+.ws-art img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; opacity: 0; transition: opacity 400ms ease; cursor: zoom-in; }
+.ws-art img.loaded { opacity: 1; }
+.ws-art:hover .img-actions, .ws-art:focus-within .img-actions, .ws-art:hover .crops { opacity: 1; transform: none; }
+.ws-pair { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+.ws-pair .ws-art, .ws-pair .ws-endpaper { position: relative; inset: auto; }
+.ws-art.lqip.lqip { background-size: contain; } /* a picture of another shape shows its margins, not a blur */
+.ws-mark { position: absolute; left: 8px; bottom: 8px; z-index: 2; background: var(--surface); box-shadow: var(--shadow); }
+.ws-up { width: 56%; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.ws-up > i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 200ms var(--ease); }
+
+/* ================================================================== LISTING MOCKUPS (the Listings mode) */
 /* The Order Creator's layout: numbered steps on the left (.creator-grid), the demo book's structure on the right. */
-.mk-shell { min-height: 100vh; }
 .mk { border-radius: var(--r-card); }
 .mk .card-title { font-size: 14.5px; }
 .mk-lost { margin-bottom: 12px; align-items: center; }

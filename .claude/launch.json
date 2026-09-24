@@ -10,16 +10,6 @@
         "--sample"
       ],
       "port": 47890
-    },
-    {
-      "name": "mockups-dev",
-      "runtimeExecutable": "python",
-      "runtimeArgs": [
-        "-B",
-        "app/tools/dev_server.py",
-        "--mockups"
-      ],
-      "port": 47891
     }
   ]
 }

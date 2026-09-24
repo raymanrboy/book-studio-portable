@@ -1,7 +1,7 @@
 ---
 title: Filling the library — a new book and its files
 type: flow
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/web/js/pages/book.js
   - app/web/js/pages/library.js
@@ -9,7 +9,9 @@ code:
 # Filling the library
 
 > A book is added by its Etsy listing, and its files can come in at any time, in any pieces. Files can
-> be prepared by an assistant or an AI agent, following the "agent guide".
+> be prepared by an assistant or an AI agent, following the "agent guide". A book made from scratch can
+> instead start in the Listings mode's [Workshop](../features/workshop.md) — prompts and texts, then the
+> pictures one per frame — and come here whole with «Передати в бібліотеку» (since 2026-09-24).
 
 ## Steps
 

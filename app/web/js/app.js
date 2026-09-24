@@ -32,34 +32,86 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
   if ((localStorage.getItem('bs-theme') || 'dark') === 'system') applyTheme('system');
 });
 
-// ------------------------------------------------------------------ rail (built once, then patched)
+// ------------------------------------------------------------------ the two modes and their rails
+// Book Studio has two modes (owner, 24.09.2026): «Замовлення» — the orders, and «Лістинги» — making new books
+// and their listing pictures, "like another program, separated from everything". A click on the brand icon
+// (Alt+0) switches; each mode has its own rail items and its own ink (cyan / magenta, html[data-mode]).
 // «Прибуток» is hidden until bookkeeping starts (the page itself is kept in pages/profit.js).
-const NAV = [
-  { hash: '#/orders', label: 'Замовлення', icon: 'inbox', kbd: 'Alt+1', match: /^#\/orders/ },
-  { hash: '#/library', label: 'Бібліотека книг', icon: 'shelf', kbd: 'Alt+2', match: /^#\/(library|book)/ },
-  { hash: '#/creator', label: 'Order Creator', icon: 'printer', kbd: 'Alt+3', match: /^#\/creator/ },
-  { hash: '#/archive', label: 'Архів замовлень', icon: 'orderArchive', kbd: 'Alt+4', match: /^#\/archive/ },
-  { hash: '#/settings', label: 'Налаштування', icon: 'sliders', kbd: 'Alt+5', match: /^#\/settings/ },
-];
-const HOME = '#/orders';
+const MODES = {
+  orders: {
+    title: 'Book Studio', icon: 'spread', other: 'listings', tip: 'Перейти до лістингів',
+    nav: [
+      { hash: '#/orders', label: 'Замовлення', icon: 'inbox', match: /^#\/orders/ },
+      { hash: '#/library', label: 'Бібліотека книг', icon: 'shelf', match: /^#\/(library|book)/ },
+      { hash: '#/creator', label: 'Order Creator', icon: 'printer', match: /^#\/creator/ },
+      { hash: '#/archive', label: 'Архів замовлень', icon: 'orderArchive', match: /^#\/archive/ },
+      { hash: '#/settings', label: 'Налаштування', icon: 'sliders', match: /^#\/settings/ },
+    ],
+  },
+  listings: {
+    title: 'Book Studio · Лістинги', icon: 'listing', other: 'orders', tip: 'Перейти до замовлень',
+    nav: [
+      { hash: '#/workshop', label: 'Майстерня', icon: 'workshop', match: /^#\/workshop/ },
+      { hash: '#/mockups', label: 'Мокапи', icon: 'mockup', match: /^#\/mockups/ },
+    ],
+  },
+};
+const HOME = '#/orders'; // Book Studio always starts in the orders (owner, 24.09.2026)
 const THEMES = [
   { value: 'dark', label: 'Темна', icon: 'moon' },
   { value: 'light', label: 'Світла', icon: 'sun' },
   { value: 'system', label: 'Як у Windows', icon: 'monitor' },
 ];
 const currentTheme = () => localStorage.getItem('bs-theme') || 'dark';
+let mode = 'orders';                                   // the mode on screen
+const last = { orders: HOME, listings: '#/workshop' };  // where the owner was in each mode (until a restart)
+const nav = () => MODES[mode].nav;
 
 function buildSidebar() {
   setHtml(document.getElementById('sidebar'), html`
-    <div class="brand-mark" data-tip="Book Studio" data-tip-side="right">${ic('spread')}</div>
-    <nav class="nav" id="nav">
-      <span class="nav-pill" id="nav-pill" style="opacity:0"></span>
-      ${NAV.map((n) => html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}" aria-label="${n.label}" data-tip="${n.label}" data-kbd="${n.kbd}" data-tip-side="right">
-        ${ic(n.icon)}${n.hash === '#/settings' ? html`<span class="badge" id="nav-badge" hidden></span>` : ''}</a>`)}
-    </nav>
+    <button class="brand-mark" id="brand" type="button"></button>
+    <nav class="nav" id="nav"></nav>
     <div class="sidebar-foot">
       <button class="ib lg" id="theme-btn" aria-label="Вигляд" data-tip="Вигляд" data-tip-side="right"></button>
     </div>`);
+  buildNav();
+}
+
+/** The rail of the mode on screen: its items (Alt+1…) and the brand icon that leads to the other mode. */
+function buildNav() {
+  const m = MODES[mode];
+  const brand = document.getElementById('brand');
+  setHtml(brand, html`${ic(m.icon)}<span class="brand-busy" id="brand-busy" hidden></span>`);
+  brand.setAttribute('aria-label', m.tip);
+  Object.assign(brand.dataset, { tip: m.tip, kbd: 'Alt+0', tipSide: 'right' });
+  setHtml(document.getElementById('nav'), html`
+    <span class="nav-pill" id="nav-pill" style="opacity:0"></span>
+    ${m.nav.map((n, i) => html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}" aria-label="${n.label}" data-tip="${n.label}" data-kbd="Alt+${i + 1}" data-tip-side="right">
+      ${ic(n.icon)}${n.hash === '#/settings' ? html`<span class="badge" id="nav-badge" hidden></span>` : ''}${n.hash === '#/mockups' ? html`<span class="badge busy" id="nav-busy" hidden></span>` : ''}</a>`)}`);
+  document.documentElement.dataset.mode = mode;
+  document.title = m.title;
+  paintBusy();
+}
+
+/** Where a mode is entered: the page the owner left there — an order's card only while it is kept. */
+function entryOf(m) {
+  if (m === 'orders' && /^#\/orders\/\d/.test(last.orders) && !isKept(last.orders)) return HOME;
+  return last[m];
+}
+function switchMode() {
+  hideTip();
+  location.hash = entryOf(MODES[mode].other);
+}
+
+// A mockups run going on while the owner is elsewhere: a small magenta dot on the brand icon (in the orders) or
+// on «Мокапи» (in the listings). pages/mockups.js tells it through the 'bs:busy' event.
+const busy = { mockups: false };
+window.addEventListener('bs:busy', (e) => { Object.assign(busy, e.detail || {}); paintBusy(); });
+function paintBusy() {
+  const brandDot = document.getElementById('brand-busy');
+  const navDot = document.getElementById('nav-busy');
+  if (brandDot) brandDot.hidden = !(busy.mockups && mode === 'orders');
+  if (navDot) navDot.hidden = !(busy.mockups && !/^#\/mockups/.test(location.hash));
 }
 
 function placeNavPill() {
@@ -67,7 +119,7 @@ function placeNavPill() {
   const pill = document.getElementById('nav-pill');
   let active = null;
   document.querySelectorAll('[data-nav]').forEach((a) => {
-    const on = NAV.find((n) => n.hash === a.dataset.nav).match.test(hash);
+    const on = !!nav().find((n) => n.hash === a.dataset.nav)?.match.test(hash);
     a.classList.toggle('active', on);
     if (on) active = a;
   });
@@ -110,10 +162,12 @@ function openThemeMenu(anchor) {
 function wireSidebar() {
   const side = document.getElementById('sidebar');
   on(side, 'click', '#theme-btn', (e, b) => { hideTip(); openThemeMenu(b); });
+  on(side, 'click', '#brand', switchMode);
   document.addEventListener('keydown', (e) => {
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
     if (document.querySelector('.modal-root, .lightbox')) return; // a dialog or the viewer first; the page stays under it
-    const n = NAV[Number(e.key) - 1];
+    if (e.key === '0') { e.preventDefault(); switchMode(); return; }
+    const n = nav()[Number(e.key) - 1];
     if (n) { e.preventDefault(); location.hash = n.hash === '#/orders' ? ordersTarget() : n.hash; }
   });
 }
@@ -133,13 +187,17 @@ function topbarDone() {
 }
 
 // ------------------------------------------------------------------ router
+// Every page belongs to one mode: the address alone says which mode is on screen (back/forward just work).
 const ROUTES = [
-  [/^#\/orders(?:\/(\d{5,20}))?\/?$/, () => import('./pages/orders.js')],
-  [/^#\/library\/?$/, () => import('./pages/library.js')],
-  [/^#\/book\/([0-9a-f]{32})$/, () => import('./pages/book.js')],
-  [/^#\/creator\/?$/, () => import('./pages/creator.js')],
-  [/^#\/archive(?:\/(\d{8}-\d{6}-[0-9a-f]{6}))?\/?$/, () => import('./pages/archive.js')],
-  [/^#\/settings(?:\/(\w+))?$/, () => import('./pages/settings.js')],
+  [/^#\/orders(?:\/(\d{5,20}))?\/?$/, () => import('./pages/orders.js'), 'orders'],
+  [/^#\/library\/?$/, () => import('./pages/library.js'), 'orders'],
+  [/^#\/book\/([0-9a-f]{32})$/, () => import('./pages/book.js'), 'orders'],
+  [/^#\/creator\/?$/, () => import('./pages/creator.js'), 'orders'],
+  [/^#\/archive(?:\/(\d{8}-\d{6}-[0-9a-f]{6}))?\/?$/, () => import('./pages/archive.js'), 'orders'],
+  [/^#\/settings(?:\/(\w+))?$/, () => import('./pages/settings.js'), 'orders'],
+  [/^#\/workshop\/?$/, () => import('./pages/workshop.js'), 'listings'],
+  [/^#\/workshop\/([0-9a-f]{32})$/, () => import('./pages/workshop-book.js'), 'listings'],
+  [/^#\/mockups\/?$/, () => import('./pages/mockups.js'), 'listings'],
 ];
 
 let current = null;
@@ -167,7 +225,7 @@ async function navigate() {
   const my = ++navToken;
   hideTip();
   closeMenu(); // a menu or a tip of the page being left never stays over the next one
-  const [re, loader] = found;
+  const [re, loader, pageMode] = found;
   const params = hash.match(re).slice(1);
   topbarStart();
 
@@ -219,7 +277,9 @@ async function navigate() {
     current = ctrl;
     currentHash = hash;
     if (/^#\/orders/.test(hash)) lastOrders = hash;
-    placeNavPill();
+    last[pageMode] = hash;
+    if (pageMode !== mode) { mode = pageMode; buildNav(); updateSidebar(); } else placeNavPill();
+    paintBusy();
   };
   const shown = () => {
     document.querySelectorAll('.seg').forEach(syncSeg);
@@ -227,11 +287,13 @@ async function navigate() {
     topbarDone();
   };
   if (!firstPage && canTransition()) {
-    document.documentElement.classList.add('vt-running');
+    const root = document.documentElement;
+    root.classList.add('vt-running');
+    root.classList.toggle('vt-mode', pageMode !== mode); // the rails swap: their own animation (app.css)
     const vt = transition(swap);
     pageTransition = vt;
-    // A quicker second click skips this transition; only the latest one clears the class.
-    const done = () => { if (pageTransition === vt) { pageTransition = null; document.documentElement.classList.remove('vt-running'); } };
+    // A quicker second click skips this transition; only the latest one clears the classes.
+    const done = () => { if (pageTransition === vt) { pageTransition = null; root.classList.remove('vt-running', 'vt-mode'); } };
     vt.updateCallbackDone.then(shown, shown);
     vt.finished.then(done, done);
   } else {

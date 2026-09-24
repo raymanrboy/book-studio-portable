@@ -1,7 +1,7 @@
 ---
 title: Recipes — how to change common things
 type: recipe
-updated: 2026-09-23
+updated: 2026-09-24
 code: []
 ---
 # Recipes
@@ -35,13 +35,13 @@ code: []
   [rules/book-structure.md](rules/book-structure.md).
 
 ## Show the "Profit" page
-- [app/web/js/app.js](../app/web/js/app.js) — add an entry to `NAV` (icon `chart`) and the route
+- [app/web/js/app.js](../app/web/js/app.js) — add an entry to `MODES.orders.nav` (icon `chart`) and the route
   `#/profit` in `ROUTES`; shift the hotkeys.
 - Wiki: [features/profit.md](features/profit.md), [architecture/frontend.md](architecture/frontend.md).
 
 ## A new interface page
 - File `app/web/js/pages/<name>.js` with `export async function mount(view, params)` → `{ shown?, unmount }`.
-- [app/web/js/app.js](../app/web/js/app.js) — `ROUTES` (and `NAV`, if it needs an icon in the panel).
+- [app/web/js/app.js](../app/web/js/app.js) — `ROUTES` with the page's mode (and its mode's `nav` in `MODES`, if it needs an icon in the panel).
 - Styles — in [app/web/css/app.css](../app/web/css/app.css), colors from tokens only.
 - Wiki: a new page under `features/`, a row in [code-map.md](code-map.md) and `index.md`.
 

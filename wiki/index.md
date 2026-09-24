@@ -1,7 +1,7 @@
 ---
 title: Book Studio wiki — index
 type: index
-updated: 2026-09-23
+updated: 2026-09-24
 code: []
 ---
 # Book Studio wiki
@@ -32,7 +32,11 @@ code: []
 - [Order archive](features/archive.md) — files of books that went to print (14 days after "Sent"), and
   reprints.
 - [Profit](features/profit.md) — hidden until 1 October.
-- [Mockups](features/mockups.md) — a separate utility: a Canva demo book → Etsy listing pictures from the
+- [Two modes](features/modes.md) — Orders and Listings: the brand icon switches, each mode its rail and ink
+  (cyan / magenta).
+- [Workshop](features/workshop.md) — the Listings mode: books in development, a prompt, a 2:1 spread and a
+  text per row; passed to the library with their Etsy listing.
+- [Mockups](features/mockups.md) — the Listings mode: a Canva demo book → Etsy listing pictures from the
   Photoshop templates (the owner fits the front cover by hand).
 
 ## Domain rules
@@ -55,7 +59,7 @@ code: []
 
 - [Launch and shutdown](architecture/runtime.md)
 - [Server](architecture/server.md) — routes, background jobs, errors, settings.
-- [Server routes](architecture/api-routes.md) — all 105, with who calls them (15 of them — the mockups utility's own).
+- [Server routes](architecture/api-routes.md) — all 111, with who calls them.
 - [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
 - [Data](architecture/data.md) — what's in `app/data`.
 
@@ -84,7 +88,9 @@ code: []
 - [Recipes](recipes.md) — where to change code for common tasks.
 - [Plans](plans/roadmap.md) — agreed ideas for later.
 - [Listing mockups](plans/listing-mockups.md) — the agreements and the templates' structure behind the
-  [Mockups](features/mockups.md) utility.
+  [Mockups](features/mockups.md).
+- [Two modes: Orders and Listings](plans/listings-mode.md) — the agreements of 2026-09-24: the mode switch
+  on the brand icon, the Workshop, the mockups inside Book Studio.
 - [Open questions and technical debt](plans/open-questions.md)
 
 ## Housekeeping

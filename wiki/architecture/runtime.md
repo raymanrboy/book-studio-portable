@@ -1,15 +1,13 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
   - app/studio/main.py
   - app/studio/desktop.py
   - app/tools/make_shortcut.py
-  - app/studio/mockups_app.py
-  - app/Mockups.pyw
 ---
 # Launch and shutdown
 
@@ -24,18 +22,22 @@ code:
 2. **`main()`**: creates the data folders, turns on logging (`data/logs/app.log`).
 3. If the program is already running (answers `/api/ping`) — it just opens another window and exits.
    Otherwise it takes its own temp folder on drive D (`core.own_temp()`, [below](#temporary-files-and-drive-c)).
-4. Imports every module with routes (`archive`, `creator`, `drops`, `etsy`, `gelato`, `library`, `orders`,
-   `printify`, `profit`, `sendlog`, `settings_api`, `textcheck`, `tunnel`) — the import itself registers
-   the routes. (`mockups` is not among them: it belongs to the second program, below.)
+4. Imports every module with routes (`archive`, `creator`, `drops`, `etsy`, `gelato`, `images`, `library`,
+   `mockups`, `orders`, `printify`, `profit`, `sendlog`, `settings_api`, `textcheck`, `tunnel`, `workshop`) —
+   the import itself registers the routes. (`mockups` joined on 2026-09-24, when the separate «Мокапи»
+   program moved in, and `workshop` came with the [Listings mode](../features/modes.md).)
 5. Cleanup: old Gelato temp folders (`cleanup_stale()`), leftovers from the old Order Creator form
-   (`forget_old_form()`), dropped files from the previous session (`drops.clear_drops()`).
+   (`forget_old_form()`), dropped files from the previous session (`drops.clear_drops()`), the mockups' unpacked
+   demo book (`mockups.clear_books()`), once — what the separate «Мокапи» left in `data/mockups`
+   (`mockups.forget_old_utility()`: its temp files, previews, window profile).
 6. **Server** on port 47821 (`DEFAULT_PORT`). Port taken → a random free port and a warning in Etsy
    Settings (the OAuth return address contains the port).
 7. **One automatic order sync** — `startup_sync()` (after that, only by button, see the
    [rule](../rules/sync-policy.md)). In parallel, in the background — an
    [order archive](../features/archive.md) check (`archive.refresh_quietly()`: books whose 14 days are
    up get deleted); it also runs again after every sync. Also in the background — preview cache cleanup
-   (`images.prune_cache_quietly()`: unneeded after 21 days).
+   (`images.prune_cache_quietly()`: unneeded after 21 days) and the mockup runs Photoshop no longer needs
+   (`mockups.clean_runs()`).
 8. **Window**: Edge or Chrome with `--app=<address>`, its own profile `data/window-profile`, sized
    1480×940. Neither Edge nor Chrome present — opens the regular browser.
 
@@ -46,25 +48,23 @@ code:
   - there was a "bye" and no new heartbeat arrived within 6 s (a page reload isn't a close);
   - the window process ended and there was no heartbeat for 12 s;
   - the fallback browser with no process stays silent for 10 minutes.
-- The loop itself is `run_until_closed(proc, busy)` — shared with the mockups utility (below); `busy()`
-  says what must finish first.
-- Before exiting, it waits for background jobs to finish (`jobs.any_running()`; not the text check — it
-  only reads) and for Gelato's temporary links (`tunnel.registry.active()`), then closes the links and
-  the server and empties its temp folder (`core.clear_own_temp()`). If the program is killed or crashes, `cloudflared.exe` disappears along with it too (a
+- The loop itself is `run_until_closed(proc, busy)`; `busy()` says what must finish first.
+- Before exiting, it waits for background jobs to finish (`jobs.any_running()` — a mockup run still copying or
+  watching Photoshop too; not the text check — it only reads) and for Gelato's temporary links
+  (`tunnel.registry.active()`), then closes the links and the server, lets the mockups' demo book and the runs
+  Photoshop can no longer have open go (`mockups.clear_books()`, `mockups.clean_runs()`) and empties its temp
+  folder (`core.clear_own_temp()`). If the program is killed or crashes, `cloudflared.exe` disappears along with it too (a
   Windows job object, `tunnel._ends_with_us()`).
 - The Windows "Choose a folder" / "Choose a page" dialogs run as a separate Python process with Tk (one
   shared script for both, `_dialog()`), because Tk wants its own main thread.
 
-## The second program: «Мокапи» (since 2026-09-23)
+## «Мокапи» — no longer a program of its own (2026-09-24)
 
-The [listing-mockups utility](../features/mockups.md) starts the same way, but on its own:
-`app/Mockups.pyw` sets the data folder `app/data/mockups` **before anything loads**, then
-`mockups_app.main()` — port **47831**, its own window (`mockups.html`), only the mockups, the dropped
-files and the lifecycle routes (no keys, orders, library, sync, archive). `/api/ping` answers
-"Book Studio · Мокапи", so a second double-click only opens another window. Started with Book Studio's
-own data folder, it refuses to run (it would wipe Book Studio's dropped files). It waits for a run that
-is still copying or watching Photoshop before it exits; then the unpacked demo book goes, and so do the
-runs Photoshop can no longer have open (`clean_runs()`). Both programs can run side by side.
+From 2026-09-23 to 2026-09-24 the [listing-mockups utility](../features/mockups.md) was a second program
+(`Mockups.pyw`, `mockups_app.py`, port 47831, its own window and data folder `app/data/mockups`). It is now a
+page of Book Studio's [Listings mode](../features/modes.md); its data stays in `app/data/mockups` (places, runs),
+the utility's own temp files, previews and window profile there go on the first launch. The desktop shortcut
+«Мокапи» points at a file that is gone — the owner deletes it.
 
 ## Temporary files and drive C
 
@@ -74,7 +74,7 @@ and empty folders in `%TEMP%`. So after the single-instance check each program s
 Python's `tempfile`) to **`<data folder>\tmp\system`** on D (`core.own_temp()`): everything it starts
 from then on — the Edge window, the Windows dialogs (their Python runs with `-B`, no `.pyc`), cloudflared —
 inherits it. The folder is emptied on launch and when the program closes (`core.clear_own_temp()`; a file
-still held stays till the next launch). A Photoshop started by «Мокапи» gets `data\mockups\tmp\photoshop`,
+still held stays till the next launch). A Photoshop started by the Mockups gets `data\tmp\photoshop`,
 emptied only once Photoshop is closed. The tests and the preview servers write to `.tmp\` in the
 repository ([testing](../dev/testing.md), [preview](../dev/preview.md)). What «Мокапи» leaves and when it
 goes — [features/mockups.md](../features/mockups.md#temporary-files--what-is-left-and-when-it-goes).
@@ -82,25 +82,23 @@ goes — [features/mockups.md](../features/mockups.md#temporary-files--what-is-l
 ## Windowless mode (development)
 
 `main(["--no-window", "--port", "47890"])` — server only; this is how
-[app/tools/dev_server.py](../../app/tools/dev_server.py) runs ([dev/preview.md](../dev/preview.md)); the
-mockups utility the same way on port 47891 (`dev_server.py --mockups`).
+[app/tools/dev_server.py](../../app/tools/dev_server.py) runs ([dev/preview.md](../dev/preview.md)).
 
 ## Shortcuts
 
-[make_shortcut.py](../../app/tools/make_shortcut.py) creates `Book Studio.lnk` and `Мокапи.lnk` on the real
-desktop (it asks Windows for the path): `pythonw.exe "…\app\Book Studio.pyw"` / `"…\app\Mockups.pyw"`,
-working folder `app`, icons `app/web/img/icon.ico` / `mockups.ico` (`SHORTCUTS`). After moving the
-program, the shortcuts have to be recreated. Windows' shortcut maker (WScript) keeps only the ANSI code
-page — Cyrillic in a path or tooltip turns into "?????" (checked 2026-09-23): so the scripts have Latin
-names, the tooltips are Latin, and «Мокапи.lnk» is saved under a Latin name and then renamed.
+[make_shortcut.py](../../app/tools/make_shortcut.py) creates `Book Studio.lnk` on the real desktop (it asks
+Windows for the path): `pythonw.exe "…\app\Book Studio.pyw"`, working folder `app`, the icon
+`app/web/img/icon.ico` (`SHORTCUTS`; «Мокапи.lnk» until 2026-09-24). After moving the program, the shortcut
+has to be recreated. Windows' shortcut maker (WScript) keeps only the ANSI code page — Cyrillic in a path or
+tooltip turns into "?????" (checked 2026-09-23): so the scripts have Latin names, the tooltips are Latin, and a
+Cyrillic shortcut name is saved under a Latin one and then renamed.
 
 ## Where in the code
 
 - [app/Book Studio.pyw](<../../app/Book Studio.pyw>) — `_message()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`, `_running_instance()`, `run_until_closed()`
 - [app/studio/core.py](../../app/studio/core.py) — `own_temp()`, `clear_own_temp()`
-- [app/studio/mockups_app.py](../../app/studio/mockups_app.py) — `main()`, `APP`, `PORT`
-- [app/Mockups.pyw](<../../app/Mockups.pyw>) — the data folder `app/data/mockups`, `_message()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `clear_books()`, `forget_old_utility()`, `clean_runs()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `open_app_window()`, `find_browser()`, `pick_folder()`, `pick_file()`, `_dialog()`
 - [app/studio/server.py](../../app/studio/server.py) — `start()`, `_heartbeat()`, `_bye()`, `_State`
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `cleanup_stale()`, `_ends_with_us()`

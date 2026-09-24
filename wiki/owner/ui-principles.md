@@ -1,7 +1,7 @@
 ---
 title: The interface the owner wants
 type: owner
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/web/css/app.css
 ---
@@ -19,6 +19,11 @@ code:
   watches another program meanwhile (Photoshop), so the result card alone isn't enough — the window's
   taskbar button flashes, Windows plays its sound and the title says how it ended. Show the results
   themselves (the saved pictures), not just a count.
+- **Two modes, two inks** (2026-09-24): Orders stay cyan, Listings are magenta — the logo's second ink, the
+  owner's pick; the brand icon at the top of the rail switches them ([modes](../features/modes.md)).
+- **The Workshop's rows are of moderate width**, not the full window (2026-09-24): the prompt, the 2:1 frame
+  and the text one under another, the frames empty until the pictures are generated
+  ([workshop](../features/workshop.md)).
 - **A tool of the family looks like Book Studio** (2026-09-23, «Мокапи»: "exactly like Book Studio"):
   numbered step cards, the path field with the folder-and-magnifier button, status badges, the structure
   of the book on the right — the same parts, not look-alikes.

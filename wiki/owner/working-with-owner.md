@@ -1,7 +1,7 @@
 ---
 title: Working with the owner
 type: owner
-updated: 2026-09-23
+updated: 2026-09-24
 code: []
 ---
 # Working with the owner
@@ -56,7 +56,7 @@ code: []
   libraries an agent needs for research live in `D:\Programs\Regular\python-libs` (add via `PYTHONPATH`;
   it has `psd-tools` 1.19, as of 2026-09-19).
 - **"Very important to keep drive C clean"** (2026-09-23): any temporary file that appears while a program
-  of his runs must be removed when it's done. So Book Studio and «Мокапи» give themselves — and every
+  of his runs must be removed when it's done. So Book Studio (with its Mockups) gives itself — and every
   program they start (the Edge window, the Windows dialogs, cloudflared, Photoshop) — a temp folder inside
   their data folder on D and empty it at start and at close ([runtime](../architecture/runtime.md#temporary-files-and-drive-c));
   the tests and the preview servers write to `.tmp\` in the repository, also on D. An agent's own scratch

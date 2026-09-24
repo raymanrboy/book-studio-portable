@@ -1,12 +1,12 @@
 """Book Studio server for looking at the interface during development — never on the real data.
 
   python app/tools/dev_server.py            empty program on http://127.0.0.1:47890/
-  python app/tools/dev_server.py --sample   plus made-up orders and one library book to click through
-  python app/tools/dev_server.py --mockups  the listing-mockups utility on http://127.0.0.1:47891/
+  python app/tools/dev_server.py --sample   plus made-up orders, one library book, one Workshop book and the
+                                            mockups' made-up templates to click through
 
 The data folder is .tmp\\bsdev in the repository, on drive D (or BOOK_STUDIO_DATA when it is set): no keys
-there, so nothing reaches Etsy, Printify or Gelato. The mockups get .tmp\\bsdev-mockups, made-up templates and a pretend
-Photoshop: nothing real is opened, and no Windows dialog comes up. Stop it with Ctrl+C (or preview_stop).
+there, so nothing reaches Etsy, Printify or Gelato. The mockups get made-up templates and a pretend Photoshop:
+nothing real is opened, and their Windows dialogs answer by themselves. Stop it with Ctrl+C (or preview_stop).
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]
 PORT = 47890
-MOCKUPS_PORT = 47891
+WORKSHOP_BOOK = "0" * 31 + "2"   # the Workshop's sample book: the same id on every start
 
 # The sample book's texts (made up): the library passport and what Olivia's printed book carries — with
 # one misspelt name and one forgotten {Name}, for the text check to find.
@@ -154,7 +154,50 @@ def seed(data: Path) -> None:
     from studio import archive
     if not archive.entries():
         _seed_archive(data)
-    print(f"Sample data: {len(receipts)} orders, 1 book, {len(archive.entries())} archived books", flush=True)
+    seed_workshop()
+    seed_mockups(data / "sample-mockups")
+    print(f"Sample data: {len(receipts)} orders, 1 library book, 1 Workshop book, {len(archive.entries())} archived"
+          " books, made-up mockup templates", flush=True)
+
+
+# The Workshop's sample book (made up): a prompt and a text for every row, pictures only in a few frames — the
+# way a book looks while the owner is still generating them; one of them isn't 2:1.
+WORKSHOP_PROMPTS = {
+    "cover": "Watercolor wide cover 2:1: a little gosling in a meadow, soft morning light, pastel palette",
+    "page1": "A cosy nest with a sleeping gosling, warm sunrise, children's book watercolor",
+    "page30": "A gosling asleep under the stars, calm night palette",
+    **{f"spread{n}": f"Wide 2:1 spread: the gosling's day, scene {n - 1}, soft watercolor, room for the text on one side"
+       for n in range(2, 16)},
+}
+
+
+def seed_workshop() -> None:
+    from PIL import Image, ImageDraw
+    from studio import core, library
+    if (library._book_dir(WORKSHOP_BOOK) / "book.json").exists():
+        return
+    book = {"id": WORKSHOP_BOOK, "schema": 1, "rev": 0, "createdAt": core.now_iso(), "stage": library.WORKSHOP,
+            "title": "Silly Goose (Workshop sample)", "listing": {}, "canvaUrl": "", "notes": "", "archived": False,
+            "cover": None, "thumbnail": None, "slots": library._empty_slots(),
+            "text": {**SAMPLE_TEXTS, "page30": ""},                  # one text still to write
+            "prompts": {**WORKSHOP_PROMPTS, "spread9": ""}}          # and one prompt
+    library._book_dir(WORKSHOP_BOOK).mkdir(parents=True, exist_ok=True)
+    library.save(book)
+    tmp = core.data_path("tmp")
+    tmp.mkdir(parents=True, exist_ok=True)
+    for slot, size, colour in [("cover", (1600, 800), (236, 196, 80)), ("spread2", (1600, 800), (140, 190, 150)),
+                               ("spread3", (1600, 800), (150, 170, 210)), ("spread5", (1792, 1024), (210, 160, 150))]:
+        im = Image.new("RGB", size, colour)
+        d = ImageDraw.Draw(im)
+        w, h = size
+        d.ellipse([w * 0.18, h * 0.3, w * 0.36, h * 0.72], fill=(250, 244, 226))
+        d.line([w // 2, 0, w // 2, h], fill=tuple(c - 30 for c in colour), width=4)
+        path = tmp / f"workshop-{slot}.png"
+        im.save(path)
+        with library._lock:
+            fresh = library.load(WORKSHOP_BOOK)
+            library._set_asset(fresh, slot, library._store_asset(WORKSHOP_BOOK, path, f"{slot}.png", move=True))
+            library.save(fresh)
 
 
 def _sample_book(folder: Path, name: str, pages: int, hue: int, story: bool = False) -> list:
@@ -266,7 +309,7 @@ def claim(data: Path, default: Path) -> str | None:
     return None
 
 
-# ---------------------------------------------------------------- the listing-mockups utility
+# ---------------------------------------------------------------- the mockups (the Listings mode)
 
 def _scene(size: tuple[int, int], shade: tuple[int, int, int], book: tuple[int, int, int, int]):
     """A made-up "template preview": a tinted table with a pale open book on it (the preview's own PSD stand-in)."""
@@ -282,10 +325,21 @@ def _scene(size: tuple[int, int], shade: tuple[int, int, int], book: tuple[int, 
 
 def seed_mockups(data: Path) -> None:
     """Made-up templates (small pictures under the owner's file names — the page shows their previews), a
-    made-up Canva demo book as a ZIP, and a folder for the pictures."""
+    made-up Canva demo book as a ZIP, a folder for the pictures, and a pretend Photoshop."""
+    import types
     import zipfile
     from PIL import Image, ImageDraw, ImageFont
-    from studio import core, mockups
+    from studio import core, desktop, mockups
+    mockups.find_photoshop = lambda base: {"exe": Path("Photoshop.exe"), "launcher": Path("Photoshop.exe")}
+    mockups.running = lambda: True
+    mockups.launch = pretend_photoshop
+    # The mockups' Windows dialogs answer by themselves and no window flashes or sounds — only theirs: the rest of
+    # the program keeps its own dialogs.
+    fake = types.SimpleNamespace(**{k: getattr(desktop, k) for k in dir(desktop) if not k.startswith("__")})
+    fake.pick_folder = lambda title, initial="": str(data / "out")
+    fake.pick_zip = lambda title, initial="": str(data / "Goose demo.zip")
+    fake.attention = lambda title_part: False
+    mockups.desktop = fake
     templates = data / "templates"
     templates.mkdir(parents=True, exist_ok=True)
     shades = [(196, 202, 214), (214, 206, 196), (200, 212, 204), (220, 214, 222), (206, 206, 206), (224, 210, 200)]
@@ -377,23 +431,9 @@ def pretend_photoshop(script: Path) -> None:
     threading.Thread(target=run, daemon=True).start()
 
 
-def main_mockups(data: Path) -> int:
-    from studio import desktop, mockups
-    seed_mockups(data)
-    mockups.find_photoshop = lambda base: {"exe": Path("Photoshop.exe"), "launcher": Path("Photoshop.exe")}
-    mockups.running = lambda: True
-    mockups.launch = pretend_photoshop
-    # no Windows dialog, no flashing window or sound in the preview
-    desktop.pick_folder = lambda title, initial="": str(data / "out")
-    desktop.pick_zip = lambda title, initial="": str(data / "Goose demo.zip")
-    desktop.attention = lambda title_part: False
-    from studio.mockups_app import main as run
-    return run(["--no-window", "--port", str(MOCKUPS_PORT)])
-
-
 def main(argv: list[str]) -> int:
     # On drive D beside the code, not in Windows' temp folder on drive C (the owner keeps drive C clean).
-    default = (APP.parent / ".tmp" / ("bsdev-mockups" if "--mockups" in argv else "bsdev")).resolve()
+    default = (APP.parent / ".tmp" / "bsdev").resolve()
     data = Path(os.environ.get("BOOK_STUDIO_DATA") or default).resolve()
     stop = claim(data, default)
     if stop:
@@ -403,8 +443,6 @@ def main(argv: list[str]) -> int:
     os.environ["BOOK_STUDIO_DATA"] = str(data)
     os.environ["BOOK_STUDIO_SAMPLE"] = "1"  # no key is stored or offered here (studio.core.SAMPLE)
     sys.path.insert(0, str(APP))
-    if "--mockups" in argv:
-        return main_mockups(data)
     if "--sample" in argv:
         seed(data)
     from studio.main import main as run

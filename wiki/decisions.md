@@ -9,6 +9,33 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-24 — Two modes: Orders and Listings; the Workshop; the mockups move into Book Studio
+
+The owner: "Book Studio will have two modes — working with orders and creating listings", switched "by a
+click on the main Book Studio icon", the second one "like another program, separated from everything".
+The agent's plan was approved without changes ([plan](plans/listings-mode.md), his words in
+[raw/](raw/2026-09-24-listings-mode-owner-answers.md)).
+- **The Listings mode is magenta**, its own icon and rail items (Майстерня, Мокапи). Reason: the owner
+  picked it; magenta is the logo's second ink, and neither the Etsy orange (already a service colour,
+  close to the amber warnings) nor the same cyan would tell the modes apart at a glance.
+- **Book Studio always starts in Orders** (the owner's answer); each mode remembers its last page until a
+  restart. The mode comes from the page's address, so back/forward just work.
+- **The Workshop, not a second library**: "a place where I create books before sending them to the library
+  with orders". A book there is a row of cards — prompt, 2:1 spread, text — of moderate width; pictures come
+  last, one at a time into placeholders. Reason: the owner's own words and layout choice.
+- **A Workshop book is a library book with `"stage": "workshop"`**, and passing it to the library only
+  removes the mark and writes the listing. Reason: nothing is copied (hundreds of MB), the library's tested
+  machinery serves both, and the order side never sees Workshop books because the book list excludes them by
+  default.
+- **Passing a book on needs its Etsy listing** (checked read-only through the API; unchecked without keys) —
+  the owner's answer: the library is what orders match against. One way for now; the prompts stay in the book
+  so a way back can be added later.
+- **A picture that isn't 2:1 is taken and marked**, not refused (the agent's call: the owner said 2:1 is
+  important; a mark shows a mistake at once, while an intended other shape isn't thrown away).
+- **The mockups stay as they are** ("Ні, як зараз" — not tied to library books) and move inside Book Studio;
+  the separate utility and its shortcut go. **Its demo book gets a folder of its own**: the utility wiped all
+  dropped files when a new book came in — inside Book Studio that would remove an order's dropped files.
+
 ## 2026-09-23 (evening) — Drive C stays clean; «Мокапи» cleans up after itself and looks like Book Studio
 
 The owner, after his first real run: "are there many temporary files, is there a message when it's done?",

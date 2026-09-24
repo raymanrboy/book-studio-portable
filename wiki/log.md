@@ -3,6 +3,41 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-24] update | Two modes: Orders and Listings — the Workshop, the mockups inside Book Studio
+
+- The owner: Book Studio gets a second mode for making listings, switched by a click on the brand icon, "like
+  another program". Two rounds of questions, the plan approved without changes (his words —
+  [raw/2026-09-24-listings-mode-owner-answers.md](raw/2026-09-24-listings-mode-owner-answers.md), the
+  agreements — [plans/listings-mode.md](plans/listings-mode.md), [decisions](decisions.md)). Branch
+  `photoshop-module` (from `audit-fixes`).
+- **Two modes** ([features/modes.md](features/modes.md)): `MODES` and a mode per route in `app.js`; the brand
+  icon (Alt+0) switches; Listings in magenta (`[data-mode="listings"]` tokens, both themes), its own rail
+  (Майстерня, Мокапи) and title; each mode remembers its last page; always starts in Orders; the rails' own
+  switch animation; a magenta dot while a mockup run goes on elsewhere. New icons `listing`, `workshop`,
+  `prompt`.
+- **The Workshop** ([features/workshop.md](features/workshop.md)): books in development — a library book with
+  `"stage": "workshop"` and `"prompts"`, never in the orders (`all_books()` leaves it out); a new book by its
+  title; 17 row cards (prompt, 2:1 frame, text) of moderate width; pictures one per frame, not-2:1 marked;
+  prompts and texts from one JSON (a dry run asks before replacing), the agent's instruction; «Передати в
+  бібліотеку» — the library's «Нова книга» dialog in its passing-on form. New `workshop.py`, `workshop.js`,
+  `workshop-book.js`, 6 routes (111 in all).
+- **The Mockups moved in** ([features/mockups.md](features/mockups.md)): a page of the Listings mode, working as
+  before, kept when left; its files stay in `app/data/mockups`; the demo book gets a folder of its own
+  (`mockups/book/`) — the utility wiped all dropped files, which inside Book Studio would have taken an order's;
+  the utility's leftovers (~300 MB) go once. Removed: `Mockups.pyw`, `mockups_app.py`, `mockups.html`,
+  `mockups-shell.js`, its icons, the «Мокапи» shortcut, `dev_server.py --mockups` (now part of `--sample`,
+  with a Workshop book).
+- Checked: tests (264, `test_workshop.py` new, `test_mockups.py` for the own folder); the preview — both modes,
+  light and dark, the Workshop (edit, JSON with the replace question, drops incl. not 2:1 and two files,
+  passing on with the duplicate refused), a whole mockup run with the owner in the orders meanwhile. Not
+  checked live: the real Photoshop inside Book Studio, a real Etsy listing check.
+- Pages: features/modes.md, features/workshop.md (new), features/mockups.md, features/library.md,
+  architecture/frontend.md, runtime.md, server.md, api-routes.md, data.md, code-map.md, glossary.md,
+  overview.md, security.md, recipes.md, dev/preview.md, setup.md, testing.md, owner/ui-principles.md,
+  working-with-owner.md, rules/book-structure.md, flows/book-import.md, plans/roadmap.md,
+  plans/listing-mockups.md, plans/listings-mode.md (new), index.md; README.md, app/README.md, AGENTS.md,
+  CLAUDE.md.
+
 ## [2026-09-23] update | Mockups look like Book Studio, clean up after themselves; nothing on drive C
 
 - «Мокапи» laid out like the Order Creator: four numbered steps (book field with the folder button and a

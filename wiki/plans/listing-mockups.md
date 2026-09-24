@@ -1,7 +1,7 @@
 ---
 title: Listing mockups — a Photoshop utility (plan and templates)
 type: plan
-updated: 2026-09-23
+updated: 2026-09-24
 code: []
 ---
 # Listing mockups (plan and templates)
@@ -10,7 +10,8 @@ code: []
 > book's cover and spreads into purchased mockup templates. **Agreed on 2026-09-23:** a **separate
 > utility** first (moved into Book Studio later) — drop the Canva ZIP, click the "presentable" spreads,
 > and a Photoshop script fills everything **except the front cover**, which the owner fits himself.
-> **Built on 2026-09-23** at the owner's command — how it works now: [features/mockups.md](../features/mockups.md).
+> **Built on 2026-09-23** at the owner's command, **moved into Book Studio's Listings mode on 2026-09-24**
+> ([plan](listings-mode.md)) — how it works now: [features/mockups.md](../features/mockups.md).
 > This page keeps the agreements, the templates' structure and the Photoshop findings.
 
 ## Sources

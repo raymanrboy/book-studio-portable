@@ -1,7 +1,8 @@
 # Book Studio — rules for agents
 
-A local Windows program for the owner of an Etsy shop selling personalized children's books: an order
-queue, a book library, creating books/drafts in Printify and Gelato. The owner is not a programmer and
+A local Windows program for the owner of an Etsy shop selling personalized children's books. Two modes
+(the brand icon switches): **Orders** — the order queue, the book library, creating books/drafts in Printify
+and Gelato; **Listings** — the Workshop (new books in development) and the Photoshop mockups for listings. The owner is not a programmer and
 writes in Ukrainian.
 
 ## 1. Wiki first, then code
@@ -62,9 +63,8 @@ wiki/                   knowledge base (index.md — entry point, log.md — cha
 python app/tools/wiki_check.py                          # does the wiki match the code?
 python app/tools/wiki_check.py --changed                # which wiki pages to update after changes
 cd app && python -m unittest discover -s tests          # tests (including the wiki check)
-python app/tools/dev_server.py --sample                 # interface on made-up data, port 47890
-python app/tools/dev_server.py --mockups                # the «Мокапи» utility, made-up templates, port 47891
-python app/tools/make_shortcut.py                       # desktop shortcuts (Book Studio, Мокапи)
+python app/tools/dev_server.py --sample                 # interface on made-up data (both modes, a pretend Photoshop), port 47890
+python app/tools/make_shortcut.py                       # the desktop shortcut
 ```
 
 ## 6. Every task that touches code ends like this (mandatory)

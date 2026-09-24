@@ -2,7 +2,9 @@
 // script fills the owner's templates — pages, back cover and spine everywhere; the front cover he fits himself in
 // the three templates left open, and «Зберегти відкриті» saves those too (wiki/features/mockups.md).
 // Laid out like Book Studio's Order Creator: numbered steps on the left, the book's structure on the right.
-// Its own window for now (mockups.html + mockups-shell.js); the same mount() can become a Book Studio page later.
+// A page of the Listings mode (#/mockups; until 24.09.2026 a window of its own). It is kept when the owner steps
+// away (keep()): the book, the picks and a run going on in Photoshop wait for him; a small dot on the rail says a
+// run is on, and a notice says when it ends.
 import { api, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../order-bits.js';
@@ -17,11 +19,11 @@ const TYPE_SPREAD = 'application/x-mk-spread';
 const TYPE_SLOT = 'application/x-mk-slot';
 const SPREADS = ['розворот', 'розвороти', 'розворотів'];
 const PICTURES = ['картинка', 'картинки', 'картинок'];
-const TITLE = 'Мокапи';
+const busy = (on) => window.dispatchEvent(new CustomEvent('bs:busy', { detail: { mockups: on } })); // the rail's dot
 
-export async function mount(view, { state } = {}) {
+export async function mount(view) {
   const st = {
-    meta: state || await api('/api/mockups/state'),
+    meta: await api('/api/mockups/state'),
     book: null,         // {id, name, pageCount, cover: [w, h], spreads}
     label: '',          // what the book came as: the ZIP's or the dropped folder's name
     picks: {},          // template key -> [first page of the spread | null, …]
@@ -88,7 +90,6 @@ export async function mount(view, { state } = {}) {
   function render() {
     setHtml(view, html`<div class="mk" data-folder-drop>
       <header class="page-head">
-        <div class="brand-mark mk-brand">${ic('mockup')}</div>
         <div class="grow">
           <h1 class="page-title">Мокапи</h1>
           <div class="page-sub">Демо-книга з Canva → картинки для лістингу Etsy</div>
@@ -604,6 +605,7 @@ export async function mount(view, { state } = {}) {
 
   async function follow(request) {
     let jobId = null;
+    busy(true);
     try {
       ({ jobId } = await request);
       const res = await runJob(Promise.resolve({ jobId }), (job) => {
@@ -628,19 +630,25 @@ export async function mount(view, { state } = {}) {
       if (gone) return;
       if (err.message === 'Скасовано.') toast('Зупинено', 'info'); // the owner's own stop is no error
       else { st.runError = err.message; tellDone('Не вдалося'); }
+    } finally {
+      if (!gone) busy(false);
     }
     st.run = null;
     if (!gone) { paintAction(); paintPicks(); paintTiles(); }
   }
 
   // The owner watches Photoshop while it works: the window's title says how it ended, its taskbar button
-  // flashes and Windows plays its sound (only when the window is not the one in front).
+  // flashes and Windows plays its sound (only when the window is not the one in front). Elsewhere in Book
+  // Studio (this page is kept hidden) a notice says it too.
+  let titled = null; // the window's own title, given back when the owner comes to it
   function tellDone(text) {
+    if (!view.isConnected) toast(`Мокапи: ${text.toLowerCase()}`, text === 'Не вдалося' ? 'error' : 'success');
     if (document.hasFocus()) return;
-    document.title = `${text} · ${TITLE}`;
+    titled = titled || document.title;
+    document.title = `${text} · ${titled}`;
     setTimeout(() => api('/api/mockups/attention', { method: 'POST', body: {} }).catch(() => {}), 250);
   }
-  const onFocus = () => { document.title = TITLE; };
+  const onFocus = () => { if (titled) { document.title = titled; titled = null; } };
   window.addEventListener('focus', onFocus);
   offs.push(() => window.removeEventListener('focus', onFocus));
 
@@ -771,5 +779,10 @@ export async function mount(view, { state } = {}) {
     follow(Promise.resolve({ jobId: st.meta.jobId }));
   }
 
-  return { unmount() { gone = true; offs.forEach((off) => off()); } };
+  return {
+    // Kept when the owner steps away while there is something to come back to: a book, a run, its result.
+    keep: () => !!(st.book || st.run || st.result || st.finished || st.receiving !== null),
+    revive: () => true,
+    unmount() { gone = true; offs.forEach((off) => off()); if (st.run) busy(false); },
+  };
 }

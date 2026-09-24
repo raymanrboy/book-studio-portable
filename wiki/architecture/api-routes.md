@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/studio/archive.py
   - app/studio/server.py
@@ -17,6 +17,7 @@ code:
   - app/studio/textcheck.py
   - app/studio/drops.py
   - app/studio/mockups.py
+  - app/studio/workshop.py
 ---
 # Server routes
 
@@ -67,27 +68,41 @@ code:
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/library/books` | token | `_list` | library.js |
+| GET | `/api/library/books` | token | `_list` | library.js, workshop.js (`?stage=workshop` — the Workshop's books; without it only the library's, never a Workshop book), workshop-book.js (the passing-on dialog's duplicate check) |
 | POST | `/api/library/books` | token | `_create` | library.js `openAddBook` |
 | GET | `/api/library/guide` | token | `_guide` | library.js `copyGuide` |
 | POST | `/api/library/guide/save` | token | `_guide_save` | library.js `saveGuide` |
-| GET | `/api/library/books/([0-9a-f]{32})` | token | `_get` | book.js |
-| PATCH | `/api/library/books/([0-9a-f]{32})` | token | `_patch` | book.js (title, Canva, texts; checks `rev`) |
-| DELETE | `/api/library/books/([0-9a-f]{32})` | token | `_delete` | book.js (moves it to trash) |
+| GET | `/api/library/books/([0-9a-f]{32})` | token | `_get` | book.js, workshop-book.js |
+| PATCH | `/api/library/books/([0-9a-f]{32})` | token | `_patch` | book.js (title, Canva, texts; checks `rev`), workshop-book.js (title, texts, `prompts` — only a book that has them) |
+| DELETE | `/api/library/books/([0-9a-f]{32})` | token | `_delete` | book.js, workshop-book.js (moves it to trash) |
 | POST | `/api/library/books/([0-9a-f]{32})/archive` | token | `_archive` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/refresh-listing` | token | `_refresh_listing` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/thumbnail-from-listing` | token | `_thumb_from_listing` | book.js |
-| POST | `/api/library/books/([0-9a-f]{32})/assets` | token | `_upload_asset` | book.js (`?slot=&name=&auto=`, body — the file) |
-| DELETE | `/api/library/books/([0-9a-f]{32})/assets` | token | `_remove_asset` | book.js |
+| POST | `/api/library/books/([0-9a-f]{32})/assets` | token | `_upload_asset` | book.js (`?slot=&name=&auto=`, body — the file), workshop-book.js (one picture per frame) |
+| DELETE | `/api/library/books/([0-9a-f]{32})/assets` | token | `_remove_asset` | book.js, workshop-book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/swap` | token | `_swap_halves` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/text` | token | `_import_text` | book.js |
 | GET | `/api/library/books/([0-9a-f]{32})/text.json` | token | `_text_json` | book.js ("copy as JSON") |
 | POST | `/api/library/books/([0-9a-f]{32})/folder-scan` | token | `_folder_scan` | book.js `importFolder` |
 | POST | `/api/library/books/([0-9a-f]{32})/folder-import` | token | `_folder_import` | book.js `importFolder` (background job) |
 | POST | `/api/library/books/([0-9a-f]{32})/export` | token | `_export` | book.js (background job) |
-| POST | `/api/library/books/([0-9a-f]{32})/open-folder` | token | `_open_folder` | book.js |
-| POST | `/api/library/books/([0-9a-f]{32})/open-original` | token | `_open_original` | lightbox.js via book.js |
-| GET | `/media/book/([0-9a-f]{32})/([0-9a-f]{32}\.(?:png\|jpg\|jpeg\|webp))` | media | `_media` | library.js, book.js, orders.js (`?w=` — preview) |
+| POST | `/api/library/books/([0-9a-f]{32})/open-folder` | token | `_open_folder` | book.js, workshop-book.js |
+| POST | `/api/library/books/([0-9a-f]{32})/open-original` | token | `_open_original` | lightbox.js via book.js and workshop-book.js |
+| GET | `/media/book/([0-9a-f]{32})/([0-9a-f]{32}\.(?:png\|jpg\|jpeg\|webp))` | media | `_media` | library.js, book.js, orders.js, workshop.js, workshop-book.js (`?w=` — preview) |
+
+## The Workshop — [workshop.py](../../app/studio/workshop.py)
+
+The Listings mode's books in development ([features/workshop.md](../features/workshop.md)); their pictures,
+title, texts and prompts go through the library's routes above.
+
+| Method | Pattern | Access | Function | Who calls it |
+|---|---|---|---|---|
+| POST | `/api/workshop/books` | token | `_create` | workshop.js `newBook` (`{title}` — no listing) |
+| POST | `/api/workshop/books/([0-9a-f]{32})/json` | token | `_import` | workshop-book.js (`{json, dryRun}` — prompts and texts from one JSON; `dryRun` only counts what would be replaced) |
+| GET | `/api/workshop/books/([0-9a-f]{32})/json` | token | `_export` | workshop-book.js ("copy the prompts and texts as JSON") |
+| POST | `/api/workshop/books/([0-9a-f]{32})/to-library` | token | `_to_library` | library.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage`; a listing another library book has → 409 with its `bookId`) |
+| GET | `/api/workshop/guide` | token | `_guide` | workshop.js `copyGuide` (the agent's instruction for prompts and texts) |
+| POST | `/api/workshop/guide/save` | token | `_guide_save` | workshop.js `saveGuide` |
 
 ## Order Creator and files — [creator.py](../../app/studio/creator.py)
 
@@ -111,7 +126,7 @@ code:
 
 ## Dropped files — [drops.py](../../app/studio/drops.py)
 
-Book Studio and the mockups utility alike (until 2026-09-23 — `/api/creator/drop/*` in creator.py).
+Every page that takes dropped files, the Mockups too (until 2026-09-23 — `/api/creator/drop/*` in creator.py).
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
@@ -121,15 +136,15 @@ Book Studio and the mockups utility alike (until 2026-09-23 — `/api/creator/dr
 
 ## Listing mockups — [mockups.py](../../app/studio/mockups.py)
 
-Served only by the mockups utility's own server ([mockups_app.py](../../app/studio/mockups_app.py), port
-47831), not by Book Studio — see [features/mockups.md](../features/mockups.md).
+Book Studio's own since 2026-09-24 (until then only the separate utility's server, port 47831, served
+them) — see [features/mockups.md](../features/mockups.md).
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/mockups/state` | token | `_state` | mockups-shell.js, pages/mockups.js (templates found, Photoshop found, a run in progress, Book Studio's theme, the last folder, a run whose templates wait for the front cover — `pending`) |
-| POST | `/api/mockups/book` | token | `_open_book` | mockups.js `takeDrop` (a folder from `tmp/dropped` only → the book's pages and spreads; the book before it is dropped) |
+| GET | `/api/mockups/state` | token | `_state` | pages/mockups.js (templates found, Photoshop found, a run in progress, the last folder, a run whose templates wait for the front cover — `pending`) |
+| POST | `/api/mockups/book` | token | `_open_book` | mockups.js `takeDrop` (a folder from `tmp/dropped` only → moved into `mockups/book/` → the book's pages and spreads; the book before it goes) |
 | POST | `/api/mockups/pick-zip` | token | `_pick_zip` | mockups.js `pickZip` (the book field's folder button: the Windows dialog for a ZIP, from Downloads / the last ZIP's folder) |
-| POST | `/api/mockups/open-zip` | token | `_open_zip` | mockups.js `pickZip` (`{path}` of a `.zip` → unpacked into `tmp/dropped`, the ZIP itself only read → the book) |
+| POST | `/api/mockups/open-zip` | token | `_open_zip` | mockups.js `pickZip` (`{path}` of a `.zip` → unpacked into `mockups/book/`, the ZIP itself only read → the book) |
 | POST | `/api/mockups/place` | token | `_place` | mockups.js (the sliders window or the yellow line: where the templates / Photoshop are) |
 | POST | `/api/mockups/pick-folder` | token | `_pick_out` | mockups.js `askFolder` (where to save; never the templates folder) |
 | POST | `/api/mockups/make` | token | `_make` | mockups.js `make` (background job `mockups`; `{book, picks, folder}`; the job shares every template's progress) |
@@ -137,7 +152,7 @@ Served only by the mockups utility's own server ([mockups_app.py](../../app/stud
 | POST | `/api/mockups/cancel` | token | `_stop` | mockups.js (the × while it runs) |
 | POST | `/api/mockups/open-folder` | token | `_open_folder` | mockups.js (the result's folder button) |
 | POST | `/api/mockups/open-picture` | token | `_open_picture` | mockups.js, the viewer's "original" button (`{job, i}` — only a picture that job saved) |
-| POST | `/api/mockups/attention` | token | `_attention` | mockups.js `tellDone` (a run ended while the window was behind: the taskbar button flashes, Windows' sound) |
+| POST | `/api/mockups/attention` | token | `_attention` | mockups.js `tellDone` (a run ended while Book Studio's window was behind: the taskbar button flashes, Windows' sound) |
 | GET | `/media/mockups/template/([a-zA-Z0-9]+)` | media | `_template_media` | mockups.js (`?w=` — a template's own preview, read from the PSD) |
 | GET | `/media/mockups/out/([0-9a-f]{12})/([0-9]+)` | media | `_out_media` | mockups.js (`?w=` — a picture a job saved, by its number) |
 | GET | `/media/mockups/([0-9a-f]{16})/(cover\|page\|spread)` | media | `_media` | mockups.js (`?n=&w=` / `?n=&h=` — a page, the cover, a spread glued together) |

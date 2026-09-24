@@ -7,8 +7,9 @@ the spine everywhere, and the front cover's thin rim in the open-book templates.
 PNG into the folder he picks; the three templates where the front cover really shows are left open in
 Photoshop, because he fits the front cover himself ("the cover sells", 23.09.2026).
 
-A program of its own for now (mockups_app.py: its own window, port and data folder), built from Book
-Studio's parts so it can move into Book Studio later. Plan and agreements: wiki/plans/listing-mockups.md.
+Since 24.09.2026 a page of Book Studio's Listings mode (it was a program of its own, with its own window).
+Its places and runs stay in app/data/mockups; the demo book it unpacks lives there too (BOOKS), apart from
+the files dropped for orders. Plan and agreements: wiki/plans/listing-mockups.md, wiki/plans/listings-mode.md.
 """
 from __future__ import annotations
 
@@ -30,12 +31,17 @@ from .server import ApiError, Request, file_response, route
 # Where things are on the owner's PC; places.json overrides them when he points somewhere else.
 TEMPLATES_DIR = Path(r"D:\Roman\Desktop\Трафарети мастхев")      # read-only: only ever read and copied
 PHOTOSHOP_DIR = Path(r"D:\Programs\Portable\Photoshop_Portable")  # Photoshop CC 2019, portable
-PLACES = core.data_path("places.json")
-WORK = core.data_path("work")        # one folder per run: template copies, prepared pictures, the script
+# app/data/mockups — the same files the separate utility kept (its data folder), so they carry over.
+PLACES = core.data_path("mockups", "places.json")
+WORK = core.data_path("mockups", "work")   # one folder per run: template copies, prepared pictures, the script
+# The unpacked demo book: its own folder, never among the files dropped for orders (drops.DROPS) — clearing one
+# must not touch the other.
+BOOKS = core.data_path("mockups", "book")
 PHOTOSHOP_TEMP = core.data_path("tmp", "photoshop")  # a Photoshop started from here keeps its temp files on D
+# What the separate utility (until 24.09.2026) left in its data folder: its temp files, previews, window profile.
+OLD_UTILITY = ("tmp", "cache", "window-profile")
 KEEP_RUNS = 24 * 3600                # with Photoshop open, a run's copies left open in it stay a day at most
 KEEP_SAVED = 7 * 24 * 3600           # a copy the owner saved himself (Ctrl+S lands in the run folder): a week
-BOOK_SETTINGS: Path | None = None    # Book Studio's settings.json: the window follows its theme (mockups_app)
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 DPI = 300                            # the smart objects are 300 ppi; another dpi would change the placed size
 PNG_COMPRESSION = 3                  # Photoshop's PNG level: tested on 23.09.2026 (4000×3000 ≈ 17 MB, ~1.5 s)
@@ -146,17 +152,49 @@ def _book(book_id: str) -> dict:
 
 def _only_this_book(book: dict) -> None:
     """One demo book at a time: the unpacked copy of the one before it goes at once (a 4K book is ~200 MB),
-    not only at the next launch. Never while a run still reads its pictures."""
+    not only at the next launch. Never while a run still reads its pictures. Only the mockups' own folder is
+    touched — the files dropped into an order's card stay."""
     if jobs.running("mockups"):
         return
     try:
-        session = Path(book["folder"]).resolve().relative_to(drops.DROPS.resolve()).parts[0]
+        own = Path(book["folder"]).resolve().relative_to(BOOKS.resolve()).parts[0]
     except (ValueError, IndexError):
         return
-    drops.clear_drops(keep=session)
+    clear_books(keep=own)
     with _lock:
         for other in [k for k in _books if k != book["id"]]:
             del _books[other]
+
+
+def clear_books(keep: str = "") -> None:
+    """The unpacked demo books go (on launch, when Book Studio closes, when another book comes in)."""
+    if not BOOKS.is_dir():
+        return
+    for entry in BOOKS.iterdir():
+        if entry.name != keep:
+            shutil.rmtree(entry, ignore_errors=True) if entry.is_dir() else entry.unlink(missing_ok=True)
+
+
+def _take_dropped(folder: Path) -> Path:
+    """A demo book dropped into the window arrives among the files dropped for orders (drops.DROPS/<session>):
+    its session moves into the mockups' own folder (the same drive — at once), so the cleaning of one never
+    reaches the other."""
+    session = folder.resolve().relative_to(drops.DROPS.resolve()).parts[0]
+    target = BOOKS / session
+    BOOKS.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(target, ignore_errors=True)
+    shutil.move(str(drops.DROPS / session), str(target))
+    return target / folder.resolve().relative_to((drops.DROPS / session).resolve())
+
+
+def forget_old_utility() -> None:
+    """Once, after the move into Book Studio: the separate utility's own temp files, previews and window profile
+    in app/data/mockups (~300 MB on the owner's PC) — never places.json, the runs or the logs."""
+    for name in OLD_UTILITY:
+        folder = core.data_path("mockups", name)
+        if folder.is_dir():
+            shutil.rmtree(folder, ignore_errors=True)
+            core.log.info("Mockups: the old utility's %s removed", name)
 
 
 # ---------------------------------------------------------------- pictures for the smart objects
@@ -576,11 +614,6 @@ def pending() -> dict | None:
 
 # ---------------------------------------------------------------- routes
 
-def _theme() -> str:
-    ui = (core.read_json(BOOK_SETTINGS, {}) or {}).get("ui") if BOOK_SETTINGS else None
-    return (ui or {}).get("theme") or "dark"
-
-
 def state() -> dict:
     where = places()
     ps = find_photoshop(where["photoshop"])
@@ -591,7 +624,7 @@ def state() -> dict:
                       for t in TEMPLATES],
         "templatesDir": str(where["templates"]), "templatesFound": where["templates"].is_dir(),
         "photoshopDir": str(where["photoshop"]), "photoshopFound": bool(ps),
-        "jobId": busy.id if busy else None, "theme": _theme(), "lastOut": where["lastOut"],
+        "jobId": busy.id if busy else None, "lastOut": where["lastOut"],
         "pending": None if busy else pending(),
     }
 
@@ -604,9 +637,14 @@ def _state(req: Request):
 @route("POST", "/api/mockups/book")
 def _open_book(req: Request):
     folder = Path(str((req.json or {}).get("path") or ""))
-    if not _inside(folder, drops.DROPS):
+    if not _inside(folder, drops.DROPS) or folder.resolve() == drops.DROPS.resolve() or not folder.is_dir():
         raise ApiError("Перетягніть ZIP-архів із Canva у вікно.")
-    return _opened(read_book(folder))
+    moved = _take_dropped(folder)
+    try:
+        return _opened(read_book(moved))
+    except Exception:
+        shutil.rmtree(BOOKS / moved.relative_to(BOOKS).parts[0], ignore_errors=True)  # not a book: nothing kept
+        raise
 
 
 def _opened(book: dict) -> dict:
@@ -636,7 +674,7 @@ def _open_zip(req: Request):
         raise ApiError("Оберіть ZIP-архів із Canva.")
     if jobs.running("mockups"):
         raise ApiError("Зачекайте, поки Photoshop закінчить.")
-    root = drops.DROPS / core.new_id()
+    root = BOOKS / core.new_id()
     try:
         drops.extract_zip(archive, root / drops.archive_folder(archive.name))
         return _opened(read_book(drops.dropped_folder(root)))
@@ -739,7 +777,7 @@ def _open_picture(req: Request):
 @route("POST", "/api/mockups/attention")
 def _attention(req: Request):
     """The page asks for it when a run finishes while the owner is in Photoshop."""
-    return {"ok": desktop.attention("Мокапи")}
+    return {"ok": desktop.attention(core.APP_NAME)}
 
 
 def _width(req: Request, default: int) -> int:

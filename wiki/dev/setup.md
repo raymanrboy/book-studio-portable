@@ -1,7 +1,7 @@
 ---
 title: Setup, launch, GitHub
 type: dev
-updated: 2026-09-23
+updated: 2026-09-24
 code:
   - app/tools/make_shortcut.py
   - app/requirements.txt
@@ -18,9 +18,10 @@ code:
 
 ## Launch
 
-- The **Book Studio** shortcut on the desktop; the listing-mockups utility — the **Мокапи** shortcut
-  ([features/mockups.md](../features/mockups.md); it also needs Photoshop CC 2019 and the templates folder).
-  No shortcut, or the program was moved — `python app/tools/make_shortcut.py` (makes both).
+- The **Book Studio** shortcut on the desktop. The [Mockups](../features/mockups.md) live inside it since
+  2026-09-24 (the Listings mode; they need Photoshop CC 2019 and the templates folder) — the old **Мокапи**
+  shortcut points at a removed file, the owner deletes it. No shortcut, or the program was moved —
+  `python app/tools/make_shortcut.py`.
 - Won't start — `app/Запуск з консоллю.bat` (Run with console) will show the error; also
   `app/data/logs/startup-error.txt`.
 - In detail — [architecture/runtime.md](../architecture/runtime.md).
