@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = ROOT / "web"
 BIN_DIR = ROOT / "bin"
 DATA_DIR = Path(os.environ.get("BOOK_STUDIO_DATA") or (ROOT / "data")).resolve()
+# app/tools/dev_server.py: made-up data for looking at the pages — a real key is never stored or offered there.
+SAMPLE = os.environ.get("BOOK_STUDIO_SAMPLE") == "1"
 
 log = logging.getLogger("studio")
 
@@ -42,7 +44,7 @@ def ensure_dirs() -> None:
 
 
 def setup_logging() -> None:
-    ensure_dirs()
+    data_path("logs").mkdir(parents=True, exist_ok=True)
     root = logging.getLogger()
     if any(isinstance(h, RotatingFileHandler) for h in root.handlers):
         return
@@ -50,6 +52,26 @@ def setup_logging() -> None:
     handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s"))
     root.addHandler(handler)
     root.setLevel(logging.INFO)
+
+
+def own_temp() -> Path:
+    """Windows' temp folder is on drive C, and the programs this one starts write there (the Edge window leaves
+    logs and empty folders behind). The owner keeps drive C clean (23.09.2026): this process and everything it
+    starts — the window, the Windows dialogs, cloudflared, Photoshop — get a temp folder inside the data folder
+    on drive D instead, emptied now and again by clear_own_temp() when the program closes."""
+    import shutil
+    import tempfile
+    folder = data_path("tmp", "system")
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True, exist_ok=True)
+    os.environ["TEMP"] = os.environ["TMP"] = str(folder)
+    tempfile.tempdir = str(folder)
+    return folder
+
+
+def clear_own_temp() -> None:
+    import shutil
+    shutil.rmtree(data_path("tmp", "system"), ignore_errors=True)  # a file still held stays till the next start
 
 
 def new_id() -> str:
@@ -63,13 +85,15 @@ def now_iso() -> str:
 # ---------------------------------------------------------------- JSON files
 
 def read_json(path: Path, default: Any = None) -> Any:
-    """Reads JSON; falls back to the .bak copy when the main file is damaged."""
+    """Reads JSON; falls back to the .bak copy when the main file is damaged. A main file that is not there
+    means no data: write_json never leaves it missing, so the .bak of a removed file stays unread (it brought
+    back state the program or a test had cleared — 22.09.2026 audit)."""
     for candidate in (path, path.with_name(path.name + ".bak")):
         try:
             with open(candidate, "r", encoding="utf-8-sig") as f:
                 return json.load(f)
         except FileNotFoundError:
-            continue
+            break
         except (json.JSONDecodeError, UnicodeDecodeError):
             log.warning("Damaged JSON file skipped: %s", candidate)
             continue
@@ -89,7 +113,8 @@ def write_json(path: Path, obj: Any, backup: bool = True) -> None:
         try:
             _replace(path, path.with_name(path.name + ".bak"), copy_only=True)
         except OSError:
-            pass
+            # The write goes on (the new data matters more); the .bak is now older than one write.
+            log.warning("Backup copy of %s not made; the .bak keeps an older state", path.name, exc_info=True)
     _replace(tmp, path)
 
 

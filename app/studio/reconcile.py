@@ -208,7 +208,7 @@ def _g_dead(g: dict) -> bool:
 
 
 def match(etsy_orders: list, printify_orders: list, gelato_orders: list, links: dict, eur_rate: float = 1.085,
-          reserved: frozenset | set = frozenset()) -> list:
+          reserved: frozenset | set = frozenset(), sent: dict | None = None) -> list:
     printify_by_id = {str(p.get("id")): p for p in printify_orders}
     gelato_by_id = {str(g.get("id")): g for g in gelato_orders}
     p_free = [f"printify:{p.get('id')}" not in reserved for p in printify_orders]
@@ -223,6 +223,11 @@ def match(etsy_orders: list, printify_orders: list, gelato_orders: list, links: 
     etsy_to_g: dict[str, dict] = {}
     etsy_g_type: dict[str, str] = {}
     blocked: set[str] = set()
+    # One receipt can honestly have more than one print order: books of one order sent in two goes, or
+    # split between the printers. Only this program's own record of what it sent says so for certain —
+    # see profit.remember_print_order().
+    claimed = {str(rid): [(str(r.get("provider")), str(r.get("orderId"))) for r in refs or []]
+               for rid, refs in (sent or {}).items()}
 
     def bind_p(rid: str, p: dict, kind: str) -> None:
         etsy_to_p[rid] = p
@@ -314,6 +319,10 @@ def match(etsy_orders: list, printify_orders: list, gelato_orders: list, links: 
                 bind_g(rid, gelato_orders[idx[0]], "auto")
 
     # 5. results with fair cost allocation
+    shared: dict[tuple[str, str], int] = {}     # one print order covering two receipts is split between them
+    for owned in claimed.values():
+        for key in owned:
+            shared[key] = shared.get(key, 0) + 1
     rows = []
     for eo in etsy_orders:
         rid = str(eo["receipt_id"])
@@ -400,9 +409,42 @@ def match(etsy_orders: list, printify_orders: list, gelato_orders: list, links: 
                 "is_bundle": False,
                 "bundle_count": None,
             })
+        _further_orders(row, claimed.get(rid, []), shared, printify_by_id, gelato_by_id, reserved, eur_rate, net)
         row["cover_label"] = cover_label(row["items"], row.get("gelato_order_reference"))
         rows.append(row)
     return rows
+
+
+def _further_orders(row: dict, owned: list, shared: dict, printify_by_id: dict, gelato_by_id: dict,
+                    reserved: frozenset | set, eur_rate: float, net: float) -> None:
+    """Print orders of this receipt besides the one the row is built around: the rest of a part-sent
+    order, or the books that went to the other printer. Their cost belongs to this sale as much as the
+    first one's — counting only the first understates what the books cost and overstates the profit."""
+    first = (row.get("pod_provider"), str(row.get("printify_order_id") or row.get("gelato_order_id") or ""))
+    further = []
+    for provider, order_id in owned:
+        if (provider, order_id) == first or f"{provider}:{order_id}" in reserved:
+            continue
+        order = (printify_by_id if provider == "printify" else gelato_by_id).get(order_id)
+        if not order or (_p_dead(order) if provider == "printify" else _g_dead(order)):
+            continue    # cancelled, or a Gelato draft the owner has not confirmed yet: nothing is owed
+        share = max(1, shared.get((provider, order_id), 1))
+        if provider == "printify":
+            cost = _js_round(_num(order.get("total_price")) + _num(order.get("total_shipping"))
+                             + _num(order.get("total_tax"))) / 100
+            further.append({"provider": "printify", "order_id": order_id, "status": order.get("status"),
+                            "app_order_id": order.get("app_order_id"), "cost": r2(cost / share)})
+        else:
+            cost = gelato_cost_to_usd(_num(order.get("totalInclVat")), order.get("currency"), eur_rate)
+            further.append({"provider": "gelato", "order_id": order_id,
+                            "status": order.get("fulfillmentStatus"),
+                            "app_order_id": order.get("orderReferenceId"), "cost": r2(cost / share)})
+    row["further_orders"] = further
+    if not further:
+        return
+    total = r2((row.get("pod_total_cost") or 0) + sum(f["cost"] for f in further))
+    row.update({"pod_total_cost": total, "printify_total_cost": total, "profit": r2(net - total)})
+    row["profit_margin"] = r1(row["profit"] / net * 100) if net > 0 else 0
 
 
 def printify_only_rows(printify_orders: list) -> list:

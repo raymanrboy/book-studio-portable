@@ -6,9 +6,8 @@ as a query). The only write is creating an order whose orderType is forced to
 """
 from __future__ import annotations
 
-import logging
-import threading
-from logging.handlers import RotatingFileHandler
+import hashlib
+import time
 from typing import Any
 
 from . import core, httpc
@@ -19,19 +18,9 @@ ORDER_API = "https://order.gelatoapis.com/v4"
 PRODUCT_API = "https://product.gelatoapis.com/v3"
 _FORBIDDEN = ("cancel", "publish", "production", "confirm", ":convert", "patch")
 
-audit = logging.getLogger("studio.gelato")
-_audit_ready = threading.Lock()
 
-
-def _audit_log() -> logging.Logger:
-    with _audit_ready:
-        if not audit.handlers:
-            core.data_path("logs").mkdir(parents=True, exist_ok=True)
-            h = RotatingFileHandler(core.data_path("logs", "gelato.log"), maxBytes=2_000_000, backupCount=3,
-                                    encoding="utf-8")
-            h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
-            audit.addHandler(h)
-    return audit
+def _audit_log():
+    return httpc.audit_log("studio.gelato", "gelato.log")
 
 
 class GelatoError(ApiError):
@@ -61,22 +50,11 @@ def _allowed(method: str, url: str, body: Any) -> bool:
 
 
 def _human(err: httpc.HttpError, action: str) -> GelatoError:
-    body = httpc.short_body(err.body)
-    if err.status == 401:
-        return GelatoError(f"{action}: API-ключ Gelato недійсний.", 400, {"code": "gelato_key"})
-    if err.status == 403:
-        return GelatoError(f"{action}: ключ Gelato не має прав для цієї дії.", 400, {"code": "gelato_key"})
-    if err.status == 404:
-        return GelatoError(f"{action}: Gelato не знайшов об'єкт (404).", 404)
-    if err.status is None:
-        return GelatoError(f"{action}: немає з'єднання з Gelato. Перевірте інтернет.", 502)
-    if err.status == 400:
-        return GelatoError(f"{action}: Gelato відхилив дані. {body}", 400)
-    return GelatoError(f"{action}: помилка Gelato {err.status}. {body}", 502)
+    return GelatoError(*httpc.human(err, "Gelato", action, "API-ключ", "gelato_key"))
 
 
 def call(method: str, url: str, body: Any = None, action: str = "Запит до Gelato", timeout: float = 60,
-         retries: int = 3) -> Any:
+         retries: int = 3, idempotent: bool | None = None) -> Any:
     method = method.upper()
     if not _allowed(method, url, body):
         _audit_log().error("BLOCKED %s %s", method, url)
@@ -84,7 +62,7 @@ def call(method: str, url: str, body: Any = None, action: str = "Запит до
     _audit_log().info("%s %s", method, url)
     try:
         return httpc.request_json(method, url, headers={"X-API-KEY": api_key()}, json_body=body,
-                                  timeout=timeout, retries=retries)
+                                  timeout=timeout, retries=retries, idempotent=idempotent)
     except httpc.HttpError as err:
         _audit_log().warning("%s %s -> %s %s", method, url, err.status, httpc.short_body(err.body, 300))
         raise _human(err, action) from None
@@ -93,14 +71,19 @@ def call(method: str, url: str, body: Any = None, action: str = "Запит до
 def search_orders(offset: int = 0, limit: int = 100) -> list:
     # Drafts are asked for by name: a draft made from Book Studio moves its receipt to "in work".
     body = {"limit": limit, "offset": offset, "orderTypes": ["order", "draft"]}
-    data = call("POST", f"{ORDER_API}/orders:search", body, action="Замовлення Gelato")
+    data = call("POST", f"{ORDER_API}/orders:search", body, action="Замовлення Gelato", idempotent=True)  # a query
     return list((data or {}).get("orders") or [])
 
 
-def all_orders(progress=None, cap: int = 5000) -> list:
-    orders: list = []
+def all_orders(progress=None, cap: int = 5000) -> httpc.Listing:
+    """Every order and draft, newest first; a list that stopped at `cap` says so (Listing.complete)."""
+    orders = httpc.Listing()
     offset = 0
-    while offset < cap:
+    while True:
+        if offset >= cap:
+            orders.complete = False
+            core.log.warning("Gelato orders: stopped at %s — older orders are not loaded", cap)
+            break
         batch = search_orders(offset)
         orders.extend(batch)
         offset += len(batch)
@@ -119,10 +102,23 @@ def slim_order(g: dict) -> dict:
 
 _products: dict = {}
 _geometry: dict = {}
+CATALOG_HOURS = 6  # the catalogue is read again after this long, or at once with another API key
+_catalog = {"since": time.monotonic(), "key": None}
+
+
+def _fresh_catalog() -> None:
+    """What Gelato's catalogue said is kept for a few hours, not for the whole run: Gelato may change a
+    product's page counts or sizes, and another key may see other products (22.09.2026 audit)."""
+    key = hashlib.sha256((vault.get("gelato_api_key") or "").encode()).hexdigest()  # which key, not the key
+    if time.monotonic() - _catalog["since"] > CATALOG_HOURS * 3600 or key != _catalog["key"]:
+        _products.clear()
+        _geometry.clear()
+        _catalog.update(since=time.monotonic(), key=key)
 
 
 def product(product_uid: str) -> dict:
-    """One product's catalog card (sizes, allowed page counts); read once per program run."""
+    """One product's catalog card (sizes, allowed page counts); read once in CATALOG_HOURS."""
+    _fresh_catalog()
     if product_uid not in _products:
         _products[product_uid] = call("GET", f"{PRODUCT_API}/products/{product_uid}",
                                       action="Параметри продукту Gelato", timeout=20, retries=2) or {}
@@ -141,6 +137,7 @@ def photobook_geometry(product_uid: str, page_count: int) -> dict:
     pageMm    — one inner page including bleed;
     marginMm  — how far the visible cover starts from the sheet edge (wrap for hardcover, bleed for softcover).
     """
+    _fresh_catalog()
     key = (product_uid, int(page_count))
     if key in _geometry:
         return _geometry[key]

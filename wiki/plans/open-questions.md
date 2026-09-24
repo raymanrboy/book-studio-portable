@@ -1,90 +1,121 @@
 ---
-title: Відкриті питання і технічний борг
+title: Open questions and technical debt
 type: plan
-updated: 2026-09-20
+updated: 2026-09-23
 code: []
 ---
-# Відкриті питання
+# Open questions
 
-## Питання до власника
+## External code audit 2026-09-22 — what remains
 
-- **Винятки з правила друкарні.** Правило збігається з 51 з 54 минулих замовлень; 2 софткавери в США
-  і 1 хардкавер у Канаду друкувались у Printify. Свідомі винятки (тоді правило лишається) чи правило
-  ширше? ([rules/printer-rule.md](../rules/printer-rule.md))
+The owner's colleague sent over a code audit (17 findings) and interface recommendations. What was
+fixed and what was deliberately left alone — [decisions.md](../decisions.md), entry 2026-09-22. Still
+to discuss:
 
-## Не перевірено наживо
+- **A receipt's stage is computed from a single print order.** One book is sent, the other isn't — the
+  receipt is already off "New". The "+N in print" chip shows this, but doesn't change the stage. Is a
+  "partly sent" stage needed?
+- **A "receipt → books → print batches" model** (the interface document's main recommendation).
+  Deliberately deferred: for the 10% of orders with several books, where it's usually the same book for
+  different children, the current model is correct. Revisit if mixed receipts (two printers) become
+  noticeably more common.
+- **Sends before 2026-09-22 aren't recorded** in `profit/print-orders.json`, so for old receipts the
+  accounting still sees one print order, as before.
+- **Fully finishing the local work after a successful send** (the journal entry, the accounting, the
+  archive) — right now each step can fail on its own, and it's only a warning. The audit recommends
+  showing a list of steps.
+- **No automated interface tests** (no test brings up the HTTP server and clicks through a page) — every
+  new defect the audit found lived exactly at these seams.
 
-- **Перше справжнє замовлення Printify «On hold»** — ще не створювалось; перевірити, що воно справді
-  чекає «Submit order» і нічого не списано.
-- **Посилання «Замовлення в Printify»** (`https://printify.com/app/orders`) — не перевірено.
-- **Перетягування з Провідника** (папка, ZIP) у справжньому вікні — перевірено лише імітацією.
-- **Плавність стрічки** у видимому вікні — перевірено імітацією кадрів; оцінює власник.
-- **Замовлення з кількох книг наживо** (з 20.09.2026): перевірено лише тестами з імітаціями і на
-  вигаданих даних. Перше справжнє таке замовлення варто зробити уважно — і переконатися, що в
-  Printify це **одне** замовлення з двома позиціями (а не два), а в Gelato — одна чернетка з двома
-  товарами, і що доставка порахована одна.
-- **Софткавер 28 сторінок наживо** — тестовою чернеткою перевірено лише хардкавер 20×20 (без зсуву,
-  17.09.2026); каталог дозволяє 28 і для софткаверів. Перша справжня 28-сторінкова книга ще не друкувалась.
-- **Посилання можна закривати раніше**: Gelato забирає PDF сам, приблизно за хвилину після створення
-  чернетки; 15 хв очікування, мабуть, зайві — вирішити, коли в журналі відправок назбирається статистика.
+## Questions for the owner
 
-## Огляд коду 19.09.2026 (власник: «стала працювати не так плавно»)
+- **Exceptions to the printer rule.** The rule matches 51 of the last 54 orders; 2 softcovers in the US
+  and 1 hardcover to Canada were printed in Printify. Deliberate exceptions (then the rule stays as is)
+  or does the rule need to be broader? ([rules/printer-rule.md](../rules/printer-rule.md))
 
-Аналіз без змін коду; вимірювання — на копії даних. **Сервер не винен**: найдовша відповідь — картка
-замовлення, 34 мс (`/api/orders` 25 мс, `/api/app` 3 мс, архів 12 мс); витоків слухачів подій немає;
-у журналі справжньої програми помилок немає. Сьогодні перевірка тексту в програмі власника не запускалась.
+- **Listing mockups** (2026-09-23): output file names; the back/spine/rim crop rule on the first real
+  book; a "save the open ones" script; Photoshop's "run this script?" dialog — one click per batch, or
+  the owner turns it off himself — details in [listing-mockups.md](listing-mockups.md#open-questions).
 
-**Ймовірні причини (за порядком):**
-1. **Модель займає відеокарту** — під час перевірки 90–100 % і 9,2 ГБ з 12 ГБ, і ще 5 хв після
-   (`KEEP_ALIVE`); вікно Book Studio малює та сама відеокарта. 19.09.2026 модель після тестів агента
-   займала пам'ять до ~21:46, а власник запустив програму о 21:43.
-2. **Картки нових замовлень тримаються в пам'яті всі**, навіть без роботи (`keep.js`, `keep()` у
-   картці). *Уточнення після перевірки:* браузер сам звільняє розпаковані картинки прихованих карток,
-   тож кожна коштує кілька МБ — це запобіжник, а не головна причина.
-3. **Одразу після перетягування файлів** сервер розпаковує 4000-піксельні сторінки в мініатюри (3 одночасно),
-   а вікно шле до програми не більше 6 запитів разом — решта чекає. Перевірка тексту в ці ж секунди
-   просить ті самі прев'ю і ще окремо велику обкладинку (2600 px).
+## Not tested live
 
-**Знахідки в перевірці тексту (19.09.2026):**
-- закриття картки, нові файли чи інша книга не зупиняють перевірку — модель працює до кінця даремно,
-  картка ще опитує її стан;
-- «Це не помилка» перемальовує весь список — рядки заново «виїжджають» (блимання);
-- `JUDGE_TOKENS` = 700 може обрізати відповідь на довгій сторінці з кількома проблемами;
-- вимкнена Ollama: на Windows кожна спроба з'єднання чекає 2 с (виміряно) — блок у Налаштуваннях
-  з'являється із запізненням;
-- `check_book()` — 168 рядків; користується приватними `creator._files_by_lower`, `library._lock`.
+- **A first real Printify "On hold" order** — not yet created; check that it really is waiting for
+  "Submit order" and nothing has been charged.
+- **The "Orders in Printify" link** (`https://printify.com/app/orders`) — not checked.
+- **Dragging from Explorer** (a folder, a ZIP) in a real window — checked only with a simulation.
+- **How smooth the filmstrip is** in a visible window — checked with simulated frames; the owner is the
+  judge.
+- **A live order with several books** (since 2026-09-20): checked only with simulated tests and on
+  made-up data. The first real order like this is worth doing carefully — and confirming that in
+  Printify it's **one** order with two line items (not two), and in Gelato — one draft with two
+  products, with shipping charged once.
+- **A 28-page softcover live** — a test draft checked only a 20×20 hardcover (no offset, 2026-09-17);
+  the catalog allows 28 for softcovers too. The first real 28-page book hasn't been printed yet.
+- **Drafts might be closeable sooner**: Gelato fetches the PDF itself, about a minute after the draft is
+  created; the 15-minute wait is probably more than needed — decide once the send journal has built up
+  some statistics.
 
-**Решта програми:**
-- кеш прев'ю `data/cache/thumbs` не чиститься ніколи: за 5 днів 152 МБ / 1527 файлів, зокрема прев'ю
-  тимчасових копій, яких уже немає;
-- зум розвороту в переглядачі (`compose_spread()`, висота 2400) щоразу розпаковує обидві повні сторінки —
-  розміру 2400 немає серед готових більших прев'ю;
-- `images._key_locks` росте без меж (по замку на кожне прев'ю за сеанс);
-- дрібне: при виході з картки перебираються всі її елементи заради прокрутки (`swap()` в app.js);
-  `smoothWheel()` читає `scrollLeft` одразу після запису; невикористані імпорти (`HTTPStatus` у
-  server.py, `json` у dev_server.py) і експорти (`onInfo`, `perFrame`).
+## Code review 2026-09-19 (the owner: "stopped feeling as smooth")
 
-**Якість коду (для обговорення, не чіпалось):** найдовші функції — `reconcile.match()` 196 рядків,
+Analysis with no code changes; measurements on a copy of the data. **The server isn't at fault**: the
+longest response — the order card, 34 ms (`/api/orders` 25 ms, `/api/app` 3 ms, the archive 12 ms); no
+event-listener leaks; no errors in the real program's log. The owner's text check wasn't running today.
+
+**Likely causes (in order):**
+1. **The model occupies the graphics card** — during a check, 90–100% and 9.2 of 12 GB, and for another
+   5 min after (`KEEP_ALIVE`); the Book Studio window is drawn by the same card. On 2026-09-19, the
+   model held memory until ~21:46 after the agent's tests, and the owner started the program at 21:43.
+2. **New-order cards all stay in memory**, even doing nothing (`keep.js`, `keep()` in the card).
+   *Clarified after checking:* the browser itself frees the unpacked pictures of hidden cards, so each
+   one only costs a few MB — a safeguard, not the main cause.
+3. **Right after dropping files**, the server unpacks the 4000-pixel pages into thumbnails (3 at a
+   time), and the window sends the program no more than 6 requests at once — the rest wait. The text
+   check, in those same seconds, asks for those same previews plus a large cover (2600 px) on its own.
+
+**Findings in the text check (2026-09-19):**
+- closing the card, new files, or another book don't stop the check — the model keeps working for
+  nothing, and the card keeps polling its state;
+- "Not an error" redraws the whole list — the rows "slide in" again (flicker);
+- `JUDGE_TOKENS` = 700 can cut off the answer on a long page with several problems;
+- Ollama turned off: on Windows every connection attempt waits 2 s (measured) — the block in Settings
+  shows up late;
+- `check_book()` — 168 lines; uses the private `creator._files_by_lower`, `library._lock`.
+
+**The rest of the program:**
+- the preview cache `data/cache/thumbs` is never cleared: 152 MB / 1527 files after 5 days, including
+  previews of temporary copies that no longer exist;
+- zooming a spread in the viewer (`compose_spread()`, height 2400) unpacks both full pages every time —
+  there's no ready-made larger preview at size 2400;
+- `images._key_locks` grows without bound (one lock per preview per session);
+- minor: leaving a card walks all of its elements for scrolling's sake (`swap()` in app.js);
+  `smoothWheel()` reads `scrollLeft` right after writing it; unused imports (`HTTPStatus` in server.py,
+  `json` in dev_server.py) and exports (`onInfo`, `perFrame`).
+
+**Code quality (for discussion, not touched):** the longest functions — `reconcile.match()` 196 lines,
 `creator._printify_draft()` 171, `textcheck.check_book()` 168, `creator._gelato_draft()` 111,
-`outcomes.apply()` 107; `creator.py` (1100 рядків) змішує перевірку файлів, Printify, Gelato, PDF і
-перетягування; картка замовлення — одна функція ~430 рядків; розпізнавання полів покупця (ім'я /
-присвята / «від кого») написане тричі (order-bits.js, `creator.guess_child_name()`,
-`textcheck.personalization()`); автоматичних тестів інтерфейсу немає.
+`outcomes.apply()` 107; `creator.py` (1100 lines) mixes file checking, Printify, Gelato, PDF, and
+drag-and-drop; the order card is one function ~430 lines long; recognizing the buyer's fields (name /
+dedication / "from whom") is written three times (order-bits.js, `creator.guess_child_name()`,
+`textcheck.personalization()`); no automated interface tests.
 
-**Виправлено того ж дня** ([рішення](../decisions.md)): відеокарта звільняється одразу після перевірки;
-перевірка зупиняється, коли вже не потрібна; картки без роботи — не більше трьох; кеш прев'ю чиститься
-(21 день); замки прев'ю не накопичуються; зум розвороту бере прев'ю 2600; обкладинка для моделі — з
-прев'ю 1400; `JUDGE_TOKENS` = 1000; перевірка «чи жива Ollama» — 1 с, блок Налаштувань — одразу;
-список проблем не блимає; `check_book()` розбито на частини, приватні `creator`/`library` більше не
-потрібні; невикористані імпорти прибрано. **Лишилось** — «Якість коду» вище (для обговорення) і ліміт
-6 одночасних запитів вікна (потребує іншого сервера).
+**Fixed the same day** ([decisions](../decisions.md)): the graphics card is freed right after a check;
+a check stops once it's no longer needed; idle cards — no more than three; the preview cache is cleared
+(21 days); preview locks no longer accumulate; the spread zoom uses the 2600 preview; the cover for the
+model comes from the 1400 preview; `JUDGE_TOKENS` = 1000; the "is Ollama alive" check — 1 s, the
+Settings block appears right away; the problem list no longer flickers; `check_book()` split into
+parts, the private `creator`/`library` fields are no longer needed; unused imports removed. **Still
+open** — "Code quality" above (for discussion) and the window's 6-concurrent-request limit (needs a
+different server).
 
-## Технічний борг
+## Technical debt
 
-- Маршрути `/api/settings/gelato` і `/api/settings/printify` більше не викликаються з інтерфейсу.
-- Поле `notes` книги лишилося в моделі, `PATCH` і `summary()`, хоча нотатки прибрано з інтерфейсу.
-- `pages/profit.js` не підключена до маршрутів до 1 жовтня.
+- The book's `notes` field is still in the model, `PATCH`, and `summary()`, even though notes were
+  removed from the interface.
+- `pages/profit.js` isn't wired into the routes until October 1.
+- **Accounting — before October 1** (deferred by the owner on 2026-09-23): five findings from the
+  owner's own audit about money (a second print order, the three-stage computation, CZK, the cover
+  type, the "live order" rules) — listed in [decisions.md](../decisions.md), 2026-09-23.
 
-## Пов'язане
+## Related
 
-- [Плани](roadmap.md) · [Рішення](../decisions.md)
+- [Plans](roadmap.md) · [Decisions](../decisions.md)

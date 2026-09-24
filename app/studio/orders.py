@@ -10,18 +10,15 @@ import os
 import re
 import shutil
 import uuid
-from collections import Counter
 from pathlib import Path
 
-from . import archive, core, creator, images, library, profit, reconcile
+from . import archive, core, creator, drops, library, profit, reconcile, wording
 from .server import ApiError, Request, route
 
 PRINTIFY_PAGES = 24
 # The small book (14×14 cm): Etsy calls it 5" × 5" (the owner's listings), elsewhere 5.5" or 14 × 14 cm.
 _SMALL = re.compile(r'5[.,]5|(?<![\d.,])5\s*(?:"|″|”|&quot;|in\b\.?|inch(?:es)?)?\s*[x×х*]\s*5(?![\d.,])'
                     r"|14\s*(?:cm|см)?\s*[x×х*]\s*14", re.I)
-_UPSCAYL = re.compile(r"_upscayl.*$", re.I)
-_LAST_NUMBER = re.compile(r"(\d+)(?=\D*$)")
 
 
 # ---------------------------------------------------------------- where a book is printed
@@ -85,6 +82,9 @@ def enrich(order: dict, books: dict[str, dict]) -> dict:
         item["book"] = book_brief(books.get(item.get("listingId") or ""))
         item["plan"] = plan_for(item, country)
         item["childName"] = creator.guess_child_name([item])
+        for v in item.get("variations") or []:
+            v["custom"] = wording.custom_text(v)  # «свій текст»: the text check reads it by the same rule
+            v["isName"] = bool(item["childName"]) and wording.clean_name(v.get("value")) == item["childName"]
     first = (order.get("items") or [{}])[0]
     order["book"], order["plan"] = first.get("book"), first.get("plan")
     order["childName"] = creator.guess_child_name(order.get("items") or [])
@@ -94,11 +94,7 @@ def enrich(order: dict, books: dict[str, dict]) -> dict:
 
 # ---------------------------------------------------------------- Canva export -> Cover.png + 1..N.png
 
-def page_number(stem: str) -> int | None:
-    """Page number in a file name: "12", "Madelynn - 12", "12_upscayl_4x_ultrasharp" -> 12."""
-    stem = _UPSCAYL.sub("", stem)
-    m = _LAST_NUMBER.search(stem)
-    return int(m.group(1)) if m else None
+page_number = drops.page_number  # the one reading of a page's number (drops.py)
 
 
 def ranges(numbers: list[int]) -> str:
@@ -125,55 +121,25 @@ def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
     from (the original one when it is already named that way), N and a note on what was renumbered.
     """
     counts = sorted([counts] if isinstance(counts, int) else counts)
-    if not folder.is_dir():
-        raise ApiError("Папку не знайдено.")
-    pngs = sorted((p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == ".png"
-                   and not p.name.startswith(".")), key=lambda p: p.name.lower())
-    if not pngs:
-        raise ApiError("У папці немає PNG-файлів.")
-    covers = [p for p in pngs if "cover" in p.stem.lower()]
-    if len(covers) > 1:
-        raise ApiError(f"Кілька обкладинок: {', '.join(p.name for p in covers)}. Залиште одну.")
-    rest = [p for p in pngs if p not in covers]
-    if not covers:
-        wide = []
-        for p in rest:
-            try:
-                info = images.image_info(p)
-            except Exception:
-                raise ApiError(f"Файл «{p.name}» не читається як зображення.") from None
-            if info["width"] >= 1.4 * info["height"]:
-                wide.append(p)
-        if len(wide) != 1:
-            raise ApiError("Не знайшов обкладинку: назвіть її Cover.png.")
-        covers, rest = wide, [p for p in rest if p != wide[0]]
-    numbered = []
-    for p in rest:
-        n = page_number(p.stem)
-        if n is None:
-            raise ApiError(f"У назві «{p.name}» немає номера сторінки.")
-        numbered.append((n, p))
-    numbered.sort(key=lambda x: (x[0], x[1].name.lower()))
+    cover, numbered = drops.export_files(folder)
     source = [n for n, _ in numbered]
-    twice = sorted(n for n, c in Counter(source).items() if c > 1)
-    if twice:
-        raise ApiError(f"Сторінка {', '.join(map(str, twice))} є двічі.")
     count = len(numbered)
     if count not in counts:
         need = " або ".join(map(str, counts))
         raise ApiError(f"Потрібно {need} {pages_word(counts[-1])}, а тут {count}"
                        + (f" (сторінки {ranges(source)})." if source else "."))
 
-    plan = [(covers[0], "Cover.png")] + [(p, f"{i}.png") for i, (_, p) in enumerate(numbered, 1)]
+    plan = [(cover, "Cover.png")] + [(p, f"{i}.png") for i, (_, p) in enumerate(numbered, 1)]
     renumbered = source != list(range(1, count + 1))
+    pngs = [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == ".png" and not p.name.startswith(".")]
     if all(p.name == name for p, name in plan) and len(pngs) == count + 1:
         return {"path": str(folder), "note": "", "renumbered": False, "pageCount": count}
 
     # A fresh folder, so the user's own files are never renamed: our dropped copies are moved,
     # anything else is linked (same disk) or copied.
-    target = creator.DROPS / uuid.uuid4().hex / folder.name
+    target = drops.DROPS / uuid.uuid4().hex / folder.name
     target.mkdir(parents=True)
-    ours = creator.DROPS.resolve() in folder.resolve().parents
+    ours = drops.DROPS.resolve() in folder.resolve().parents
     for src, name in plan:
         dest = target / name
         if ours:
@@ -184,8 +150,8 @@ def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
         except OSError:
             shutil.copy2(src, dest)
     note = f"сторінки {ranges(source)} → 1–{count}" if renumbered else ""
-    if covers[0].name != "Cover.png":
-        note = (note + "; " if note else "") + f"обкладинка — {covers[0].name}"
+    if cover.name != "Cover.png":
+        note = (note + "; " if note else "") + f"обкладинка — {cover.name}"
     return {"path": str(target), "note": note, "renumbered": renumbered, "pageCount": count}
 
 
@@ -208,6 +174,9 @@ def _one(req: Request):
     order["buyerMessage"] = profit.plain(receipt.get("message_from_buyer"))
     # a send of this order that never went to print (cancelled, a deleted draft): its files can be taken again
     order["earlierSends"] = archive.earlier_sends(rid)
+    # a draft or a book of it already at a printer: replacing a page there first asks (the card's own
+    # memory of a send is gone after a restart)
+    order["atPrinter"] = archive.at_printer(rid)
     return enrich(order, books_by_listing())
 
 

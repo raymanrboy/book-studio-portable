@@ -1,4 +1,5 @@
 """Order pipeline: which printer an order goes to, and turning a Canva export into Cover.png + 1..N.png."""
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,7 +8,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import creator, orders
+from studio import drops, orders
 from studio.server import ApiError
 
 
@@ -71,7 +72,7 @@ class ArrangePages(unittest.TestCase):
         # Canva keeps the design's page numbers: 24 chosen pages out of 30, the cover recognised by its shape.
         chosen = [1, 2, 3, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 28, 29, 30]
         d = self.folder([f"{n}.png" for n in chosen], cover="31.png")
-        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
             res = orders.arrange_pages(d, 24)
         out = Path(res["path"])
         self.assertNotEqual(out, d)
@@ -83,10 +84,18 @@ class ArrangePages(unittest.TestCase):
 
     def test_upscayl_names(self):
         d = self.folder([f"{i}_upscayl_4x_ultrasharp-4x.png" for i in range(2, 26)], cover="Cover_upscayl_4x_ultrasharp-4x.png")
-        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
             res = orders.arrange_pages(d, 24)
         self.assertTrue((Path(res["path"]) / "24.png").exists())
         self.assertIn("2–25 → 1–24", res["note"])
+
+    def test_a_cover_named_in_ukrainian_is_the_cover_here_too(self):
+        """The library took «Обкладинка.png» as the cover and the print folder did not (22.09.2026 audit)."""
+        d = self.folder([f"{i}.png" for i in range(1, 25)], cover="Обкладинка.png")
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
+            res = orders.arrange_pages(d, 24)
+        self.assertIn("обкладинка — Обкладинка.png", res["note"])
+        self.assertTrue((Path(res["path"]) / "Cover.png").exists())
 
     def test_wrong_count_says_what_is_there(self):
         d = self.folder([f"{i}.png" for i in range(1, 23)], cover="Cover.png")
@@ -106,13 +115,13 @@ class ArrangePages(unittest.TestCase):
         self.assertIn("5 є двічі", str(caught.exception))
 
     def test_dropped_copies_are_moved_not_copied(self):
-        drops = self.root / "drops"
-        d = drops / "abc" / "Madelynn"
+        scratch = self.root / "drops"
+        d = scratch / "abc" / "Madelynn"
         d.mkdir(parents=True)
         for i in range(3, 27):
             png(d / f"{i}.png")
         png(d / "Cover.png", (96, 50))
-        with mock.patch.object(creator, "DROPS", drops):
+        with mock.patch.object(drops, "DROPS", scratch):
             res = orders.arrange_pages(d, 24)
         self.assertFalse(any(d.iterdir()))
         self.assertEqual(len(list(Path(res["path"]).iterdir())), 25)
@@ -138,7 +147,7 @@ class GelatoLength(unittest.TestCase):
 
     def test_28_or_30_pages_as_downloaded(self):
         d = self.folder([n for n in range(1, 31) if n not in (8, 9)])       # spread 8–9 left out in Canva
-        with mock.patch.object(creator, "DROPS", self.root / "drops"):
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
             res = orders.arrange_pages(d, orders.page_options("gelato"))
         self.assertEqual(res["pageCount"], 28)
         self.assertIn("1–7, 10–30 → 1–28", res["note"])
@@ -237,9 +246,9 @@ class PartialBookImport(unittest.TestCase):
             with zipfile.ZipFile(archive, "w") as zf:
                 zf.writestr("Book/5.png", b"png")
                 zf.writestr("Book/book-text.json", b'{"page1": "Dear {Name}"}')
-            self.assertEqual(creator.extract_zip(archive, root / "out", with_text=True), 2)
+            self.assertEqual(drops.extract_zip(archive, root / "out", with_text=True), 2)
             self.assertTrue((root / "out" / "Book" / "book-text.json").exists())
-            self.assertEqual(creator.extract_zip(archive, root / "out2"), 1)   # the Order Creator takes pictures only
+            self.assertEqual(drops.extract_zip(archive, root / "out2"), 1)   # the Order Creator takes pictures only
 
 
 class SyncOnlyAtStartOrByHand(unittest.TestCase):
@@ -270,6 +279,102 @@ class SyncOnlyAtStartOrByHand(unittest.TestCase):
         with mock.patch.object(etsy, "tokens", lambda: None):
             profit.startup_sync()
         self.assertIsNone(profit._sync_state(None)["jobId"])
+
+
+class DevToolsKeepOffRealData(unittest.TestCase):
+    """The sample server writes its own orders and books into the data folder it is given. It must refuse
+    anything that could be the owner's real data — not only the one exact path of the real folder."""
+
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "dev_server", Path(__file__).resolve().parents[1] / "tools" / "dev_server.py")
+        self.dev = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.dev)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_it_refuses_a_folder_that_is_not_its_own(self):
+        looks_real = self.root / "backup"
+        looks_real.mkdir()
+        (looks_real / "settings.json").write_text("{}", encoding="utf-8")
+        self.assertIsNotNone(self.dev.claim(looks_real, self.root / "bsdev"))
+        self.assertFalse((looks_real / self.dev.MARK).exists())
+
+    def test_it_refuses_a_folder_with_keys(self):
+        keys = self.root / "copy"
+        keys.mkdir()
+        (keys / "vault.json").write_text("{}", encoding="utf-8")
+        self.assertIsNotNone(self.dev.claim(keys, keys))
+
+    def test_it_refuses_the_real_data_folder(self):
+        self.assertIsNotNone(self.dev.claim((self.dev.APP / "data").resolve(), self.root / "bsdev"))
+
+    def test_an_empty_folder_becomes_its_own_and_stays_usable(self):
+        mine = self.root / "bsdev"
+        self.assertIsNone(self.dev.claim(mine, mine))
+        self.assertTrue((mine / self.dev.MARK).exists())
+        (mine / "settings.json").write_text("{}", encoding="utf-8")
+        self.assertIsNone(self.dev.claim(mine, self.root / "elsewhere"))   # marked once, used again
+
+    def test_the_sample_server_neither_offers_nor_keeps_a_real_key(self):
+        """23.09.2026: its Settings offered to import the owner's real keys from the old programs on the Desktop
+        — and a preview server holding them could reach Etsy, Printify and Gelato."""
+        from studio import core, settings_api
+        from studio.jobs import JobError
+        from studio.vault import vault
+        with mock.patch.object(core, "SAMPLE", True):
+            self.assertEqual(settings_api.legacy_sources()["items"], [])
+            with self.assertRaises(JobError):
+                vault.set("printify_token", "real-looking-token")
+            vault.set("printify_token", None)                                 # clearing is always allowed
+        self.assertIn('os.environ["BOOK_STUDIO_SAMPLE"] = "1"', (self.dev.APP / "tools" / "dev_server.py").read_text(encoding="utf-8"))
+
+
+class TestsNeverRunOnRealData(unittest.TestCase):
+    def test_the_data_folder_is_a_throw_away_one(self):
+        """Whatever BOOK_STUDIO_DATA said before, the suite took a fresh temporary folder: tests below
+        empty whole folders, so this may not depend on how the program was started."""
+        import os
+        from studio import core
+        self.assertIn("bstests-", os.environ["BOOK_STUDIO_DATA"])
+        self.assertTrue(Path(os.environ["BOOK_STUDIO_DATA"]).is_absolute())
+        self.assertEqual(core.DATA_DIR, Path(os.environ["BOOK_STUDIO_DATA"]))
+
+    def test_the_suite_writes_nothing_to_drive_c(self):
+        """Windows' temp folder is on drive C, which the owner keeps clean (23.09.2026): the suite's files — and
+        those of whatever it starts — live in <repository>/.tmp and go when it ends."""
+        import os
+        import tempfile
+        repo_tmp = Path(__file__).resolve().parents[2] / ".tmp"
+        self.assertEqual(Path(tempfile.gettempdir()), repo_tmp)
+        self.assertEqual(Path(os.environ["TEMP"]), repo_tmp)
+        self.assertEqual(Path(os.environ["BOOK_STUDIO_DATA"]).parent, repo_tmp)
+
+
+class SharedNumbers(unittest.TestCase):
+    """Numbers the pages and the server must agree on, read from the page files themselves."""
+    WEB = Path(__file__).resolve().parents[1] / "web"
+
+    def js(self) -> str:
+        return "\n".join(p.read_text(encoding="utf-8") for p in sorted((self.WEB / "js").rglob("*.js")))
+
+    def test_the_pages_ask_for_the_preview_sizes_the_server_keeps(self):
+        """22.09.2026 audit: the viewer asked for 2400 px — a fourth file per picture, decoded from the original."""
+        from studio import images
+        asked = {int(n) for n in re.findall(r"assetUrl\([^,()]+, (\d+)\)|[{,]\s*w: (\d+)", self.js()) for n in n if n}
+        self.assertTrue(asked)
+        self.assertEqual(sorted(n for n in asked if n >= 1400 and n not in images._LARGER), [])
+
+    def test_a_dialog_opened_from_the_page_viewer_shows_over_it(self):
+        """22.09.2026 audit: «Чернетку вже створено» and every error of a page replacement opened under the viewer."""
+        css = (self.WEB / "css" / "app.css").read_text(encoding="utf-8")
+        z = {name: int(re.search(rf"^\.{name} \{{[^}}]*z-index: (\d+)", css, re.M).group(1))
+             for name in ("lightbox", "modal-root", "menu", "toasts")}
+        self.assertEqual(z["modal-root"], z["lightbox"])   # the one opened later is on top
+        self.assertGreater(z["menu"], z["modal-root"])
+        self.assertGreater(z["toasts"], z["menu"])
 
 
 if __name__ == "__main__":

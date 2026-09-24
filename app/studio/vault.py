@@ -14,6 +14,7 @@ from ctypes import wintypes
 from typing import Any
 
 from . import core
+from .jobs import JobError
 
 _IS_WINDOWS = sys.platform == "win32"
 
@@ -100,6 +101,10 @@ class Vault:
             return value
 
     def set(self, name: str, value: str | None) -> None:
+        if core.SAMPLE and value:
+            # The preview server must stay unable to reach Etsy, Printify or Gelato (23.09.2026: its Settings
+            # offered to import the owner's real keys from the old programs on the Desktop).
+            raise JobError("Це тестовий сервер на вигаданих даних — ключі тут не зберігаються.")
         with self._lock:
             data = self._load()
             value = (value or "").strip()

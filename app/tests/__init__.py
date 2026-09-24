@@ -3,9 +3,31 @@ import atexit
 import os
 import shutil
 import tempfile
+from pathlib import Path
 
-# Tests never touch real data: point the app at a throw-away folder before any import.
-if "BOOK_STUDIO_DATA" not in os.environ:
-    _folder = tempfile.mkdtemp(prefix="bstests-")
-    os.environ["BOOK_STUDIO_DATA"] = _folder
-    atexit.register(shutil.rmtree, _folder, True)
+# Everything the tests write goes to <repository>/.tmp on drive D instead of Windows' temp folder on drive C (the
+# owner keeps drive C clean, 23.09.2026) — the child processes they start (node) included — and goes at the end.
+_ROOT = Path(__file__).resolve().parents[2] / ".tmp"
+_ROOT.mkdir(exist_ok=True)
+tempfile.tempdir = str(_ROOT)
+os.environ["TEMP"] = os.environ["TMP"] = str(_ROOT)
+
+# Tests never touch real data: they make their own throw-away folder before any import and take it over,
+# whatever BOOK_STUDIO_DATA said. The tests below empty whole folders, so this may not be left to chance.
+_folder = tempfile.mkdtemp(prefix="bstests-")
+os.environ["BOOK_STUDIO_DATA"] = _folder
+
+
+def _wipe() -> None:
+    import logging
+    # The program's log file is still open, and Windows deletes no open file: folders holding a lone
+    # logs/app.log piled up in the temp folder until 23.09.2026.
+    logging.shutdown()
+    shutil.rmtree(_folder, True)
+    try:
+        _ROOT.rmdir()  # only when nothing else lives there (a preview server's folder may)
+    except OSError:
+        pass
+
+
+atexit.register(_wipe)

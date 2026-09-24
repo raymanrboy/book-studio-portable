@@ -4,8 +4,8 @@ import {
   openExternal, fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
-import { refreshInfo } from '../app.js';
-import { dropContents, isZipDrop, isFolderDrop, filesInDrop, receiveDrop } from '../order-bits.js';
+import { refreshInfo } from '../info.js';
+import { dropContents, receiveDrop } from '../order-bits.js';
 
 const SPREADS = Array.from({ length: 14 }, (_, i) => i + 2);
 const SLOT_KEYS = ['page1', ...SPREADS.map((n) => `spread${n}`), 'page30'];
@@ -21,6 +21,7 @@ export async function mount(view, [id]) {
       <div class="empty"><div class="empty-icon">${ic('book')}</div><h3>Книгу не знайдено</h3><p>${err.message}</p></div>`);
     return null;
   }
+  if (book.stage === 'workshop') { location.replace(`#/workshop/${id}`); return null; } // still in development
   const busy = new Set();
 
   const assetUrl = (a, w) => media(`/media/book/${id}/${a.file}`, w ? { w } : {});
@@ -316,36 +317,6 @@ export async function mount(view, [id]) {
     } catch (err) { toast(err.message, 'error'); }
   }
 
-  // ---------------------------------------------------------------- smart multi-file mapping
-  // Any subset works: whatever is there goes to its place, the rest of the book stays as it is.
-  function mapFiles(files) {
-    const mapping = {}; const ignored = []; let text = null;
-    const singles = {}, pairs = {};
-    let cover = null, thumb = null;
-    for (const f of files) {
-      const stem = f.name.replace(/\.[^.]+$/, '').replace(/_upscayl.*$/i, '').trim().toLowerCase(); // Upscayl's name tail
-      if (/\.json$/i.test(f.name)) { text = f; continue; }
-      if (!IMG_RE.test(f.name)) { ignored.push(f.name); continue; }
-      if (/cover|cober|обкладин/.test(stem)) { if (!cover || /\.png$/i.test(f.name)) cover = f; continue; }
-      if (/thumb|заставк|preview|gallery/.test(stem)) { thumb = f; continue; }
-      const m = stem.match(/^(\d+)(?:\s*[-–_]\s*(\d+))?$/);
-      if (!m) { ignored.push(f.name); continue; }
-      if (m[2]) pairs[`${+m[1]}-${+m[2]}`] = f; else singles[+m[1]] = f;
-    }
-    if (cover) mapping.cover = cover;
-    if (thumb) mapping.thumbnail = thumb;
-    if (singles[1]) mapping.page1 = singles[1];
-    if (singles[30]) mapping.page30 = singles[30];
-    for (const n of SPREADS) {
-      const [a, b] = pagesOf(n);
-      if (pairs[`${a}-${b}`]) mapping[`spread${n}`] = pairs[`${a}-${b}`];
-      else { if (singles[a]) mapping[`spread${n}:left`] = singles[a]; if (singles[b]) mapping[`spread${n}:right`] = singles[b]; }
-    }
-    const used = new Set(Object.values(mapping));
-    for (const f of files) if (IMG_RE.test(f.name) && !used.has(f) && !ignored.includes(f.name)) ignored.push(f.name);
-    return { mapping, ignored, text };
-  }
-
   function slotName(slot) {
     const [base, part] = slot.split(':');
     if (base === 'cover') return 'Обкладинка';
@@ -361,60 +332,13 @@ export async function mount(view, [id]) {
     return +base.slice(6) * 3 + (s.endsWith(':right') ? 1 : 0);
   };
 
-  async function importFiles(files) {
-    const { mapping, ignored, text } = mapFiles(files);
-    const slots = Object.keys(mapping).sort((a, b) => slotOrder(a) - slotOrder(b));
-    if (!slots.length && !text) {
-      toast('Не вдалося розпізнати файли. Назвіть їх як 1.png, 2-3.png … 30.png, Cover.png', 'error', 6000);
-      return;
-    }
-    const m = modal({
-      title: 'Розкласти файли по книзі',
-      sub: `${slots.length} ${slots.length === 1 ? 'зображення' : 'зображень'}${text ? ' + текст' : ''}`,
-      size: 'l',
-      body: html`<div class="stack">
-        ${slots.length ? html`<div class="card-soft" style="max-height:340px;overflow:auto;padding:4px 12px">${slots.map((s) => html`<div class="row" style="padding:7px 0;border-bottom:1px solid var(--border)">
-          <span class="grow">${slotName(s)}</span><span class="mono faint">${mapping[s].name}</span>${hasAsset(s) ? html`<span class="chip chip-amber">замінить</span>` : ''}</div>`)}</div>` : ''}
-        ${text ? html`<div class="notice notice-info">${ic('text')}<div>Текст книги з <b>${text.name}</b> буде імпортовано (замінить наявні тексти).</div></div>` : ''}
-        ${ignored.length ? html`<div class="faint" style="font-size:12.5px">Пропущено: ${ignored.sort(naturalCompare).join(', ')}</div>` : ''}
-        <div id="imp-progress" hidden><div class="row" style="margin-bottom:6px"><span id="imp-step" class="grow" style="font-weight:600;font-size:13px"></span><span id="imp-pct" class="mono faint"></span></div><div class="progress"><i id="imp-bar"></i></div></div>
-      </div>`,
-      foot: html`<button class="btn btn-ghost" data-c>Скасувати</button><button class="btn btn-primary" data-go>${ic('upload', 'icon-s')}Імпортувати</button>`,
-    });
-    m.foot.querySelector('[data-c]').onclick = () => m.close();
-    m.foot.querySelector('[data-go]').onclick = async () => {
-      m.foot.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-      m.el.querySelector('#imp-progress').hidden = false;
-      const total = slots.length + (text ? 1 : 0);
-      let done = 0; const errors = [];
-      const step = (label) => {
-        m.el.querySelector('#imp-step').textContent = label;
-        m.el.querySelector('#imp-pct').textContent = `${done}/${total}`;
-        m.el.querySelector('#imp-bar').style.width = `${(done / total) * 100}%`;
-      };
-      for (const s of slots) {
-        step(`Завантаження: ${slotName(s)}`);
-        try {
-          const q = new URLSearchParams({ slot: s, name: mapping[s].name });
-          book = await upload(`/api/library/books/${id}/assets?${q}`, mapping[s], (p) => {
-            m.el.querySelector('#imp-bar').style.width = `${((done + p) / total) * 100}%`;
-          });
-        } catch (err) { errors.push(`${mapping[s].name}: ${err.message}`); }
-        done++;
-      }
-      if (text) {
-        step('Імпорт тексту…');
-        try { const res = await api(`/api/library/books/${id}/text`, { method: 'POST', body: { json: await text.text() } }); book = res.book; }
-        catch (err) { errors.push(`${text.name}: ${err.message}`); }
-        done++;
-      }
-      step('Готово');
-      m.close();
-      renderAll();
-      refreshInfo();
-      if (errors.length) toast(`Імпортовано з помилками:\n${errors.slice(0, 4).join('\n')}`, 'error', 9000);
-      else toast('Файли розкладено по книзі', 'success');
-    };
+  // Several files, a folder or a ZIP: copied into the program, then laid out by the same rules as «Імпорт
+  // з папки» (library.scan_folder) — one reading of file names for every way in (22.09.2026 audit: the drop
+  // had rules of its own and took another JSON or a picture from an old sub-folder).
+  async function importDropped(dropped) {
+    toast('Отримую файли…', 'info', 2500);
+    try { importFolder(await receiveDrop(dropped, null, { withText: true })); }
+    catch (err) { toast(err.message, 'error', 6000); }
   }
   function hasAsset(slot) {
     const [base, part] = slot.split(':');
@@ -537,7 +461,7 @@ export async function mount(view, [id]) {
     const items = [];
     const orig = (a) => () => api(`/api/library/books/${id}/open-original`, { method: 'POST', body: { file: a.file } }).catch((e) => toast(e.message, 'error'));
     const push = (key, a, title, text) => items.push({
-      key, src: assetUrl(a, 2400), full: Math.max(a.width, a.height) > 2400 ? assetUrl(a, 4096) : null,
+      key, src: assetUrl(a, 2600), full: Math.max(a.width, a.height) > 2600 ? assetUrl(a, 4096) : null,
       title, sub: `${book.title} · ${a.width}×${a.height}`, text, onOriginal: orig(a),
     });
     if (book.cover) push('cover', book.cover, 'Обкладинка', book.text.cover);
@@ -679,7 +603,7 @@ export async function mount(view, [id]) {
   });
   $('#bk-many').addEventListener('change', (e) => {
     const files = [...e.target.files]; e.target.value = '';
-    if (files.length) importFiles(files);
+    if (files.length) importDropped({ entries: [], files });
   });
 
   // Drag & drop: onto a slot = that slot; several files anywhere = smart mapping.
@@ -697,14 +621,6 @@ export async function mount(view, [id]) {
     const target = e.target.closest('[data-drop]');
     setHot(null);
     const dropped = dropContents(e); // must be read while the drop event runs
-    // A whole folder or a ZIP: whatever it holds goes to its place, missing parts stay empty.
-    if (isZipDrop(dropped)) {
-      toast('Розпаковую архів…', 'info', 2500);
-      try { importFolder(await receiveDrop(dropped, null, { withText: true })); }
-      catch (err) { toast(err.message, 'error', 6000); }
-      return;
-    }
-    if (isFolderDrop(dropped)) { importFiles(await filesInDrop(dropped)); return; }
     const files = [...e.dataTransfer.files];
     if (files.length === 1 && /\.json$/i.test(files[0].name)) { importTextJson(await files[0].text()); return; }
     if (target && files.length === 1) { uploadTo(target.dataset.drop, files[0], !!target.dataset.auto); return; }
@@ -714,7 +630,7 @@ export async function mount(view, [id]) {
       await uploadTo(`${base}:left`, a); await uploadTo(`${base}:right`, b);
       return;
     }
-    importFiles(files);
+    importDropped(dropped); // a folder, a ZIP or several files: whatever they hold goes to its place
   };
   view.addEventListener('dragover', onDragOver);
   view.addEventListener('dragleave', onDragLeave);

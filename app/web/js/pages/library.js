@@ -5,7 +5,7 @@ import {
   api, html, ic, ib, setHtml, on, media, modal, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
   raw, flip, debounce, menu, copyText,
 } from '../lib.js';
-import { store, refreshInfo } from '../app.js';
+import { store, refreshInfo } from '../info.js';
 
 const PREF = 'bs-lib-view';
 const SORTS = [
@@ -194,15 +194,20 @@ async function copyGuide() {
 }
 
 // ------------------------------------------------------------------ add book dialog
-export function openAddBook(existing = []) {
+/** «Нова книга» — and, with `transfer`, the Workshop's «Передати в бібліотеку»: the same Etsy listing field and
+ *  check (read only), for a book that already has its title and pictures. transfer = {book, summary, done(book)}. */
+export function openAddBook(existing = [], transfer = null) {
   const keysReady = !!store.info?.integrations?.etsy?.keysConfigured;
   let listing = null;
   let unverified = !keysReady;
+  const noCheck = transfer ? 'Книгу можна передати без перевірки' : 'Книгу можна додати без перевірки — вкажіть назву вручну';
 
   const m = modal({
-    title: 'Нова книга',
-    sub: 'Книга прив’язується до лістингу Etsy. Усе інше можна додати пізніше.',
+    title: transfer ? 'Передати в бібліотеку' : 'Нова книга',
+    sub: transfer ? 'Книга переходить у бібліотеку замовлень: за лістингом Etsy її знаходитимуть замовлення.'
+      : 'Книга прив’язується до лістингу Etsy. Усе інше можна додати пізніше.',
     body: html`<div class="stack">
+      ${transfer ? transfer.summary : ''}
       <div class="field">
         <label class="field-label">Посилання на лістинг Etsy або його ID</label>
         <div class="input-group">
@@ -212,16 +217,17 @@ export function openAddBook(existing = []) {
       </div>
       <div id="nb-result"></div>
       <div id="nb-manual" ${unverified ? '' : 'hidden'}>
-        <div class="notice notice-warn" style="margin-bottom:12px">${ic('alert')}<div>${keysReady
-          ? 'Лістинг не вдалося перевірити. Можна додати книгу без перевірки — вкажіть назву вручну, а перевірити пізніше.'
-          : raw('Ключі Etsy ще не налаштовано (Налаштування → Etsy). Книгу можна додати без перевірки — вкажіть назву вручну.')}</div></div>
-        <div class="field"><label class="field-label">Назва книги</label><input class="input" id="nb-title" placeholder="Напр.: Personalized Baptism Storybook"></div>
+        <div class="notice notice-warn" ${transfer ? '' : raw('style="margin-bottom:12px"')}>${ic('alert')}<div>${keysReady
+          ? `Лістинг не вдалося перевірити. ${noCheck}, а перевірити пізніше.`
+          : raw(`Ключі Etsy ще не налаштовано (Налаштування → Etsy). ${noCheck}.`)}</div></div>
+        ${transfer ? '' : html`<div class="field"><label class="field-label">Назва книги</label><input class="input" id="nb-title" placeholder="Напр.: Personalized Baptism Storybook"></div>`}
       </div>
-      <div class="field"><label class="field-label">Посилання на макет Canva <span class="faint">(необов'язково)</span></label>
-        <input class="input" id="nb-canva" placeholder="https://www.canva.com/design/…" autocomplete="off"></div>
+      ${transfer ? '' : html`<div class="field"><label class="field-label">Посилання на макет Canva <span class="faint">(необов'язково)</span></label>
+        <input class="input" id="nb-canva" placeholder="https://www.canva.com/design/…" autocomplete="off"></div>`}
       <label class="check" id="nb-photo-wrap" hidden><input type="checkbox" id="nb-photo" checked><span>Взяти головне фото лістингу як заставку книги</span></label>
     </div>`,
-    foot: html`<button class="btn btn-ghost" data-close2>Скасувати</button><button class="btn btn-primary" id="nb-create" disabled>${ic('plus')}Створити книгу</button>`,
+    foot: html`<button class="btn btn-ghost" data-close2>Скасувати</button><button class="btn btn-primary" id="nb-create" disabled>${transfer
+      ? html`${ic('shelf')}Передати в бібліотеку` : html`${ic('plus')}Створити книгу`}</button>`,
   });
   const $ = (s) => m.el.querySelector(s);
   const ref = $('#nb-ref'), result = $('#nb-result'), create = $('#nb-create');
@@ -233,13 +239,13 @@ export function openAddBook(existing = []) {
     const id = listingIdOf(ref.value);
     const dup = id && existing.find((b) => String(b.listingId) === id);
     if (dup) {
-      setHtml(result, html`<div class="notice notice-info">${ic('info')}<div>Ця книга вже є в бібліотеці${dup.archived ? ' (в архіві)' : ''}: <b>${dup.title}</b>.
-        <div style="margin-top:8px"><button class="btn btn-sm" data-open-dup="${dup.id}">Відкрити книгу</button></div></div></div>`);
+      setHtml(result, html`<div class="notice notice-info">${ic('info')}<div>${transfer ? 'Цей лістинг уже має книга в бібліотеці' : 'Ця книга вже є в бібліотеці'}${dup.archived ? ' (в архіві)' : ''}: <b>${dup.title}</b>.
+        <div style="margin-top:8px"><button class="btn btn-sm" data-open-dup="${dup.id}">${transfer ? 'Відкрити ту книгу' : 'Відкрити книгу'}</button></div></div></div>`);
       create.disabled = true;
       return;
     }
     if (listing) create.disabled = false;
-    else create.disabled = !(unverified && id && $('#nb-title').value.trim());
+    else create.disabled = !(unverified && id && (transfer || $('#nb-title').value.trim()));
   }
 
   async function verify() {
@@ -276,19 +282,30 @@ export function openAddBook(existing = []) {
   }
 
   ref.addEventListener('input', () => { listing = null; result.innerHTML = ''; $('#nb-photo-wrap').hidden = true; refresh(); });
-  ref.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); keysReady ? verify() : $('#nb-title').focus(); } });
+  ref.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); keysReady ? verify() : $('#nb-title')?.focus(); } });
   ref.addEventListener('paste', () => setTimeout(() => { if (keysReady && listingIdOf(ref.value)) verify(); }, 30));
   if ($('#nb-verify')) $('#nb-verify').onclick = verify;
-  $('#nb-title').addEventListener('input', refresh);
+  $('#nb-title')?.addEventListener('input', refresh);
   m.el.addEventListener('click', (e) => {
     const d = e.target.closest('[data-open-dup]');
     if (d) { m.close(); location.hash = `#/book/${d.dataset.openDup}`; }
   });
 
+  const label = create.innerHTML;
   create.onclick = async () => {
     create.disabled = true;
-    create.innerHTML = '<span class="spinner"></span>Створення…';
+    create.innerHTML = `<span class="spinner"></span>${transfer ? 'Передаю…' : 'Створення…'}`;
     try {
+      if (transfer) {
+        const book = await api(`/api/workshop/books/${transfer.book.id}/to-library`, {
+          method: 'POST',
+          body: listing ? { listing, useListingImage: !!(listing.imageUrl && $('#nb-photo').checked) } : { listingRef: ref.value },
+        });
+        m.close();
+        refreshInfo();
+        transfer.done(book);
+        return;
+      }
       const book = await api('/api/library/books', {
         method: 'POST',
         body: listing
@@ -301,9 +318,9 @@ export function openAddBook(existing = []) {
       location.hash = `#/book/${book.id}`;
     } catch (err) {
       toast(err.message, 'error');
-      if (err.data?.bookId) { m.close(); location.hash = `#/book/${err.data.bookId}`; }
+      if (err.data?.bookId && !transfer) { m.close(); location.hash = `#/book/${err.data.bookId}`; }
       create.disabled = false;
-      create.innerHTML = `${ic('plus')}Створити книгу`;
+      create.innerHTML = label;
     }
   };
 }

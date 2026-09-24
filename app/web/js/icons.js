@@ -114,6 +114,16 @@ const P = {
 
   // ---- shipping: the printer has sent the book (tracking number)
   truck: '<path d="M4.6 17H2.5V6h11.5v11H8.4"/><path d="M14 9.5h4l3.5 3.8V17h-2.6M15.1 17H14"/><circle cx="6.5" cy="17.2" r="1.9"/><circle cx="17" cy="17.2" r="1.9"/>',
+
+  // ---- listing mockups: the utility (a book in a picture frame); "the owner fits this by hand" (a hand)
+  mockup: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 9.3c-1.6-.9-3.4-1.1-5.2-.8v7.3c1.8-.3 3.6-.1 5.2.8 1.6-.9 3.4-1.1 5.2-.8V8.5c-1.8-.3-3.6-.1-5.2.8z"/><path d="M12 9.3v7.3"/>',
+  hand: '<path d="M8.5 12.5V6.2a1.5 1.5 0 0 1 3 0V11"/><path d="M11.5 10.5V4.8a1.5 1.5 0 0 1 3 0v5.7"/><path d="M14.5 10.5V6.5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.6-2.2l-2.7-3.4a1.6 1.6 0 0 1 2.4-2.1l2 1.9"/>',
+
+  // ---- the Listings mode: its sign (an Etsy listing's tag), the Workshop (a book being written), a prompt for a
+  // picture (a wand — not `sparkle`, which means a new order)
+  listing: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.3 6.3a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8.2" cy="8.2" r="1.6"/>',
+  workshop: '<path d="M15 12.5V4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H11"/><path d="M4 17.5A1.5 1.5 0 0 1 5.5 16H11"/><path d="M18.6 11.6l2.3 2.3-6.2 6.2-3 .7.7-3z"/>',
+  prompt: '<path d="M4.5 19.5l10.5-10.5"/><path d="M13 7l4 4"/><path d="M17.5 3v3.5M15.75 4.75h3.5"/><path d="M20.5 10.5v2.5M19.25 11.75h2.5"/><path d="M8.5 3.5V6M7.25 4.75h2.5"/>',
 };
 
 // Older names still used by the (hidden) profit page map onto the same meanings.

@@ -1,7 +1,7 @@
 ---
-title: Замовлення — черга і картка замовлення
+title: Orders — the queue and the order card
 type: feature
-updated: 2026-09-20
+updated: 2026-09-23
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
@@ -9,177 +9,212 @@ code:
   - app/web/js/handoff.js
   - app/web/js/keep.js
 ---
-# Замовлення
+# Orders
 
-> Стартовий екран. Черга замовлень Etsy за етапами і картка, яка проводить одне замовлення шляхом
-> *книга і Canva → файли → звірка → друк*. Нічого не зберігає на диск: усе виводиться зі знімка
-> синхронізації і бібліотеки (незавершена робота над новим замовленням живе лише в пам'яті). Покроково — [flows/order-to-print.md](../flows/order-to-print.md).
+> The start screen. The queue of Etsy orders by stage, and a card that carries one order through
+> *book and Canva → files → proofing → print*. Saves nothing to disk: everything is drawn from the sync
+> snapshot and the library (unfinished work on a new order lives only in memory). Step by step —
+> [flows/order-to-print.md](../flows/order-to-print.md).
 
-## Черга (`#/orders`)
+## Queue (`#/orders`)
 
-- Панель: пошук (ім'я покупця або номер чека; Enter відкриває перше), перемикач етапів з лічильниками
-  **Нові (іскра) / В роботі (годинник) / машинка / Відправлені (коробка)**, кнопка «Оновити замовлення».
-  Машинка — друкарня вже відправила, а в Etsy ще не позначено: звідси власник знає, що можна
-  позначати відправленим в Etsy ([rules/order-stages.md](../rules/order-stages.md)).
-- **«В роботі» — лише оформлене й оплачене** замовлення в друкарні (з 18.09.2026): чернетка Gelato чи
-  «On hold» у Printify лишає замовлення в «Нових» з чипом статусу друкарні (`Draft`, `On hold`), доки
-  власник не підтвердить і не оплатить його та не натисне «Оновити». Скасоване — знову в «Нових» без чипа.
-- Рядок (з 17.09.2026 — за побажаннями власника):
-  - верхній рядок: ім'я покупця, `#номер чека` (**клік копіює номер без «#»**, `receiptCopy()`),
-    кількість книг (якщо > 1), чип друкарні (для «Нових» — за правилом, з поясненням у підказці; далі —
-    де вже замовлено; «друкарня?» — якщо тип обкладинки не прочитався), **чип трек-номера**
-    (`trackChips()`): іконка машинки, перевізник | номер, розділені тонкою рискою; **клік копіює
-    номер**; на вузькому вікні чип переходить на свій рядок. Копіювання (`copyChip()`, `data-act="copy-text"`)
-    картку не відкриває;
-  - назва друкарні, перевізник і номер — **одного м'якого тону** кольору друкарні (80 % кольору, середня
-    вага): власник попросив однакову контрастність і обрав найм'якший варіант (17.09.2026);
-  - сірий рядок: час · **ім'я дитини жирно** · назва книги або «книги немає в бібліотеці» · місто, країна;
-  - праворуч — **статус друкарні** (`statusChip()`): слово Printify/Gelato англійською, але по-людськи
-    (`statusText()`: `in_transit` → «In transit», `has-issues` → «Has issues») з крапкою кольору за змістом
-    (`statusTone()`: проблема — жовтий, відправлено/доставлено — зелений, чернетка/on hold/очікує —
-    сірий, решта — голубий). Для «Нових» статусу ще немає.
-  - Усі тексти верхнього рядка стоять на одній лінії (не по верхньому краю чипів) — вимога власника.
-- **Черга пам'ятає, де був власник** (з 19.09.2026, його прохання): вкладку, пошук і прокрутку. Стрілка
-  «назад» і Esc у картці, іконка «Замовлення» з іншої сторінки ведуть туди ж, а не на «Нові»; рядки при
-  поверненні не «виїжджають» заново (`queueState`). Лише в пам'яті — програма стартує з «Нових».
-- Оновлення: сторінка сама **не** синхронізує. Якщо відкрити її під час синхронізації після запуску,
-  вона дочекається її (`runningSync()` → `watchSync()`). Кнопка запускає нову (`syncOrders()`).
-- Після оновлення рядки, що змістилися, на 0,45 с не клікаються (`inert`) — щоб клік не влучив
-  в іншого покупця.
-- Етапи, статус і трек-номери рахує сервер — [rules/order-stages.md](../rules/order-stages.md).
+- Toolbar: search (buyer name or receipt number; Enter opens the first one), a stage switch with
+  counters **New (a spark) / In progress (a clock) / the truck / Sent (a box)**, an "Update orders"
+  button. The truck — the printer has already shipped it, but Etsy hasn't marked it yet: this is how the
+  owner knows it can be marked shipped on Etsy
+  ([rules/order-stages.md](../rules/order-stages.md)).
+- **"In progress" only means a confirmed and paid** order at the printer (since 2026-09-18): a Gelato
+  draft or Printify "On hold" leaves the order in "New" with a printer-status chip (`Draft`, `On hold`),
+  until the owner confirms and pays for it and clicks "Refresh". A cancelled one goes back to "New" with
+  no chip.
+- A row (since 2026-09-17 — per the owner's wishes):
+  - top row: the buyer's name, `#receipt number` (**a click copies the number without "#"**,
+    `receiptCopy()`), the number of books (if > 1), the printer chip (for "New" — from the rule, with an
+    explanation in the tooltip; after that — where it was actually ordered; "printer?" — if the cover
+    type couldn't be read), the **tracking chip** (`trackChips()`): a truck icon, carrier | number,
+    separated by a thin line; **a click copies the number**; on a narrow window the chip wraps to its
+    own line. Copying (`copyChip()`, `data-act="copy-text"`) doesn't open the card;
+  - the printer name, carrier and number are all **one soft shade** of the printer's color (80% of the
+    color, medium weight): the owner asked for equal contrast and picked the softest option
+    (2026-09-17);
+  - the gray row: the time · **the child's name, bold** · the book's title or "book not in the library" ·
+    city, country;
+  - on the right — the **printer status** (`statusChip()`): the Printify/Gelato word in English, but in
+    plain language (`statusText()`: `in_transit` → "In transit", `has-issues` → "Has issues") with a
+    dot colored by meaning (`statusTone()`: a problem — yellow, shipped/delivered — green, draft/on
+    hold/pending — gray, everything else — light blue). "New" orders don't have a status yet.
+  - Every text in the top row sits on one baseline (not aligned to the top edge of the chips) — the
+    owner's requirement.
+- **The queue remembers where the owner was** (since 2026-09-19, his request): the tab, the search, and
+  the scroll position. The "back" arrow and Esc in the card, and the "Orders" icon from another page, all
+  go back to the same place, not to "New"; rows don't "slide in" again on return (`queueState`). Memory
+  only — the program starts on "New".
+- Refresh: the page itself **never** syncs on its own. Opening it while a sync is running (after launch)
+  just waits for it; the button starts a new one. This is one shared function with picking an order in
+  the Order Creator (`orderSync()`), not two separate copies.
+- After a refresh, rows that moved don't respond to clicks for 0.45 s (`holdClicks()`) — so a click
+  doesn't land on a different buyer.
+- Stages, status, and tracking numbers are computed by the server —
+  [rules/order-stages.md](../rules/order-stages.md).
 
-## Картка (`#/orders/<номер чека>`)
+## Card (`#/orders/<receipt number>`)
 
-**Хрестик «Завершити роботу над замовленням»** біля стрілки «назад» з'являється, коли для замовлення вже
-створено чернетку (`sentOf()`, `renderFinish()`). Клік — картка й Order Creator забувають це замовлення
-(`keep.finish()`), і відкривається черга. Бажання власника 20.09.2026: «відправив — і закрив».
+**An "× Finish work on this order"** next to the "back" arrow appears once a draft has been created for
+the order (`sentOf()`, `renderFinish()`). Clicking it — the card and the Order Creator forget this order
+(`keep.finish()`), and the queue opens. The owner's wish, 2026-09-20: "sent it — and closed it."
 
-Шапка: ім'я покупця і поруч, по центру імені, — чип статусу друкарні (`.ord-title`, прохання власника
-17.09.2026); під ними сірим номер чека (клік копіює), час, етап (`STAGE_LABEL`), чип трек-номера (той
-самий, що в черзі, клік копіює); праворуч чип «Printify · 24 стор.» (того ж м'якого тону) /
-«Gelato · 28 або 30 стор.» (після розстановки файлів — точне число, напр. «Gelato · 28 стор.»; увесь
-текст чипа одним шрифтом, щоб цифри не «стрибали» — зауваження власника 17.09.2026) або, якщо тип
-обкладинки невідомий, перемикач друкарні (варіанти сторінок — `pageOptions` замовлення). Для
-«В роботі» / машинки / «Відправлених» — попередження «друкуйте ще раз лише для передруку» (для машинки —
-ще й «позначте відправленим в Etsy»). Esc — назад до черги.
+Header: the buyer's name and, centered next to it, a printer-status chip (`.ord-title`, the owner's
+request, 2026-09-17); below them, in gray, the receipt number (a click copies it), the time, the stage
+(`STAGE_LABEL`), the tracking chip (the same one as in the queue, a click copies it); on the right, a
+chip "Printify · 24 pages" (the same soft shade) / "Gelato · 28 or 30 pages" (once the files are laid
+out — the exact number, e.g. "Gelato · 28 pages"; the whole chip's text is one font, so the digits don't
+"jump" — the owner's note, 2026-09-17), or, if the cover type is unknown, a printer switch (page options
+from the order's `pageOptions`). For "In progress" / the truck / "Sent" — a warning "only print again for
+a reprint" (for the truck — also "mark it shipped on Etsy"). Esc — back to the queue.
 
-**Картка пам'ятає, де зупинився власник** (з 18.09.2026, його прохання): поки замовлення в «Нових»,
-картка при переході на іншу вкладку не знищується, а ховається — і повертається рівно такою (файли,
-звірка, прокрутка стрічки й сторінки), чи то з черги, чи іконкою «Замовлення» (вона з іншої вкладки
-веде в останню відкриту картку). Після «До друку» і створення чернетки в Order Creator крок «Друк»
-показує «Чернетку … створено» і кнопку «Результат в Order Creator» (той самий збережений Order Creator
-із результатом); «Надіслати ще раз» — маленька кнопка поруч. Картки без роботи (без файлів і чернетки)
-зберігаються лише три останні (з 19.09.2026, огляд коду). Усе це відпускається, щойно замовлення
-піде з «Нових» (наступне оновлення знайде його в друкарні) або після перезапуску програми.
-Як влаштовано — [architecture/frontend.md](../architecture/frontend.md) (`keep.js`).
+**The card remembers where the owner left off** (since 2026-09-18, his request): while the order is in
+"New", the card isn't destroyed when switching to another tab, it's hidden — and comes back exactly as
+it was (files, proofing, the filmstrip's and page's scroll position), whether from the queue or the
+"Orders" icon (which, from another tab, leads to the last opened card). After "Print" and creating a
+draft in the Order Creator, the "Print" step shows "Draft … created" and a "Result in Order Creator"
+button (the same saved Order Creator, with its result); "Send again" is a small button next to it. Cards
+with no work (no files, no draft) are only kept for the last three (since 2026-09-19, a code review).
+All of this is released as soon as the order leaves "New" (the next refresh finds it at the printer), or
+after the program restarts. How this is built —
+[architecture/frontend.md](../architecture/frontend.md) (`keep.js`).
 
-**Розкладка** (з 16.09.2026, за проханням власника): ліворуч — робота, праворуч — дані; права колонка
-«липка» (лишається на екрані, коли гортаєш звірку). На вузькому вікні (< 1100 px) — одна колонка.
+**Layout** (since 2026-09-16, per the owner's request): work on the left, data on the right; the right
+column is "sticky" (stays on screen while scrolling through proofing). On a narrow window (< 1100 px) —
+one column.
 
-### Праворуч — дані (`#oc-data`, `renderLeft()`)
-- **Книга**: обкладинка й назва з бібліотеки (посилання на паспорт), кнопка «Відкрити шаблон у Canva».
-  Немає посилання на Canva → «Додати посилання на Canva» (у паспорт); немає книги → «До бібліотеки».
-- **Персоналізація**: усі поля рівно так, як їх повертає Etsy (`dl.ord-fields`), значення жирні,
-  біля кожного — копіювання. Поле з ім'ям дитини — більшим (`.is-name`). Поле формату обкладинки
-  (`isFormatField()`) — без копіювання: воно лише вибирає друкарню. Присвята не `DEFAULT` →
-  позначка «свій текст» (`isCustomText()`). Кілька книг у замовленні → перемикач «Книга 1 / Книга 2»
-  (такий самий є над кроком «Файли з Canva»), кожна проходить шлях окремо — див. нижче.
-- **Повідомлення покупця**, якщо є.
-- **Доставка**: адреса з Etsy.
+### Right — data (`#oc-data`, `renderLeft()`)
+- **Book**: the cover and title from the library (a link to the passport), an "Open template in Canva"
+  button. No Canva link → "Add a Canva link" (into the passport); no book → "Go to library".
+- **Personalization**: every field exactly as Etsy returns it (`dl.ord-fields`), values in bold, a copy
+  button next to each. The field with the child's name — larger (`.is-name`). The cover-format field
+  (`isFormatField()`) — no copy button: it only picks the printer. A dedication that isn't `DEFAULT` →
+  a "custom text" tag (`isCustomText()`). Which fields are "custom text", and which one is the child's
+  name, is decided by the server (`custom`, `isName` in `orders.enrich()`, rules from `wording.py`) —
+  the same rules the text check uses: "“DEFAULT “" or "Dedication and Closing Default" is not custom
+  text; the name "Leo." is Leo (the 2026-09-22 audit: the card and the check used to decide differently).
+  Several books in an order → a "Book 1 / Book 2" switch (the same one sits above the "Files from
+  Canva" step), each going through its own path — see below.
+- **Buyer's message**, if any.
+- **Shipping**: the address from Etsy.
 
-### Ліворуч — робота (`#oc-flow`, `renderRight()`)
-1. **Файли з Canva** (`filesCard()`): перетягнути ZIP/папку або обрати папку. Кинуті одна-дві окремі
-   картинки на вже підготовлену книгу **нічого не стирають** — програма підказує, що одну сторінку
-   міняють у переглядачі (до 20.09.2026 такий кидок знищував усю роботу над книгою). Сервер розставляє сторінки
-   (`arrange_pages()`: обкладинка + 24 сторінки для Printify, 28 або 30 для Gelato — скільки скачано,
-   див. [rules/file-naming.md](../rules/file-naming.md)), показує, що перейменував («сторінки 2–25 → 1–24»),
-   далі — повна перевірка, як в Order Creator. Для Gelato сервер одразу питає каталог, чи друкує він
-   стільки сторінок у форматі замовлення; ні → помилка в цьому ж блоці
-   ([integrations/gelato.md](../integrations/gelato.md)).
-   Якщо це замовлення вже відправлялось, але **не стало замовленням у друкарні** (скасовано, чернетку
-   видалено), під полем — кнопка **«Взяти файли минулої відправки · … тому»** (`earlier()`,
-   `takeEarlier()`): файли з [архіву](archive.md) підставляються, і далі все як звичайно — це нове
-   звичайне замовлення, не передрук.
-2. **Звірка** (`proofCard()`, з'являється після успішної перевірки; сторінка сама прокручується до неї):
-   - обкладинка на всю ширину;
-   - під нею перший розворот на всю ширину: ліва (у друці порожня) половина — **записка**: ім'я дитини
-     великим (`.proof-name`) і поля покупця жирно, розміри масштабуються з розворотом (одиниці `cqw`);
-     формату обкладинки й поля з іменем у записці немає; довгий текст (присвята) не обрізається —
-     записка прокручується всередині (з 18.09.2026); права половина — справжня сторінка 1;
-   - **стрічка** всіх розворотів (`#oc-strip`): колесо миші гортає її плавно (`smoothWheel()`,
-     без «примагнічування»), до останнього розвороту; мініатюри 360 px сервер готує заздалегідь
-     (`STRIP_THUMB` = `STRIP_PREVIEW`);
-   - клік по будь-чому — переглядач розворотами (`folderViewerItems()`; клавіша T — що прочитала
-     перевірка тексту й що мало бути, `viewerItems()`);
-   - **заміна однієї сторінки просто в переглядачі** (з 20.09.2026): угорі — кнопка на кожну сторінку
-     розвороту («Замінити 6», «Замінити 7»; на обкладинці й крайніх розворотах одна). Клік відкриває
-     звичайне вікно Windows, власник обирає сторінку, яку щойно виправив у Canva й скачав. Далі
-     програма сама: нова картинка в переглядачі (адреса з новим номером `v`, щоб браузер не показав
-     стару), **повторна перевірка файлів** і **перезапуск перевірки тексту** (модель перепитає лише цю
-     сторінку), позначки «це не помилка» цієї сторінки забуваються. Поруч з'являється «Повернути» —
-     попередня сторінка чекає в прихованій підпапці `.replaced`. Якщо чернетку вже створено — питання,
-     бо в друкарні лежить стара сторінка. Для Printify сторінка має бути 4000×4000: невиправлений
-     розмір покаже перевірка файлів («проженіть через Upscayl»);
-   - **перевірка тексту** (з 19.09.2026): стартує сама, щойно файли перевірено (`startCheck()`); значок
-     праворуч від заголовка «Звірка» (відсотки → «Текст збігається» / «N помилок» / «N питань», ↻),
-     список проблем під заголовком (клік — переглядач на тій сторінці, ✓ «Це не помилка»), червоні й
-     жовті рамки на сторінках (`markPages()`), «Оновити паспорт» для розбіжностей із паспортом книги.
-     Закрили картку, перетягнули інші файли чи обрали іншу книгу — перевірка зупиняється (`dropCheck()`);
-     прибрана «Це не помилка» позначка не змушує решту рядків «виїжджати» знову.
-     Докладно — [text-check.md](text-check.md).
-3. **Друк** (`printCard()`, `#oc-print`): «До друку в Printify/Gelato» → Order Creator, заповнений номером чека, назвою
-   `номер чека - ім'я`, адресою, форматом і файлами (`print()` → `give('creator', …)`).
-   Картка Printify — у салатовому акценті. Якщо перевірка тексту ще йде або знайшла червоне —
-   спершу питання («Відправити, не дочекавшись?» / «Все одно до друку?»), друк не блокується.
+### Left — work (`#oc-flow`, `renderRight()`)
+1. **Files from Canva** (`filesCard()`): drag a ZIP/folder, or pick a folder. Dropping one or two loose
+   pictures onto an already-prepared book **destroys nothing** — the program suggests replacing one page
+   in the viewer instead (before 2026-09-20, such a drop used to wipe out all the work on the book). The
+   server lays out the pages (`arrange_pages()`: cover + 24 pages for Printify, 28 or 30 for Gelato —
+   however many were downloaded, see [rules/file-naming.md](../rules/file-naming.md)), shows what it
+   renamed ("pages 2–25 → 1–24"), then runs a full check, just like in the Order Creator. For Gelato the
+   server immediately asks the catalog whether it prints that many pages in the order's format; if not —
+   an error in the same block ([integrations/gelato.md](../integrations/gelato.md)).
+   If this order was sent before but **never became a print-shop order** (cancelled, a draft was
+   deleted), a **"Take files from an earlier send · … ago"** button appears under the field (`earlier()`,
+   `takeEarlier()`): files from the [archive](archive.md) get substituted in, and everything else
+   follows as normal — this is a new, ordinary order, not a reprint.
+2. **Proofing** (`proofCard()`, appears after a successful check; the page scrolls to it on its own):
+   - the cover, full width;
+   - below it, the first spread, full width: the left half (blank in print) is the **note**: the child's
+     name in large type (`.proof-name`) and the buyer's fields in bold, scaling with the spread (`cqw`
+     units); the cover format and the name field aren't in the note; long text (a dedication) isn't
+     truncated — the note scrolls internally (since 2026-09-18); the right half is the real page 1;
+   - a **filmstrip** of every spread (`#oc-strip`): the mouse wheel scrolls it smoothly
+     (`smoothWheel()`, no "snapping"), all the way to the last spread; the server prepares 360 px
+     thumbnails ahead of time (`STRIP_THUMB` = `STRIP_PREVIEW`);
+   - clicking anything opens the viewer, by spreads (`folderViewerItems()`; the T key shows what the
+     text check read versus what should have been there, `viewerItems()`);
+   - **replacing a single page right from the viewer** (since 2026-09-20): buttons at the top, one per
+     page of a spread ("Replace 6", "Replace 7"; the cover and outer spreads have one). A click opens
+     the regular Windows dialog, and the owner picks the page they just fixed in Canva and downloaded.
+     Then the program handles the rest itself: a new picture in the viewer (the address gets a new
+     version number `v`, so the browser doesn't show the old one), **a fresh file check**, and
+     **restarting the text check** (the model re-checks just this page), and any "not an error" marks
+     on this page are forgotten. "Undo" appears next to it — the previous page waits in a hidden
+     `.replaced` subfolder. If a draft has already been created — a question first, since the old page
+     is sitting at the printer; the card knows this even after the program restarts (`atPrinter` from
+     the archive). The question, and any replacement error, appear **above the viewer** (since
+     2026-09-23; they used to be hidden underneath it, with keystrokes going to the invisible window).
+     For Printify the page has to be 4000×4000: an un-upscaled size will be caught by the file check
+     ("run it through Upscayl").
+     **"Undo" survives leaving the card and restarting the program** (since 2026-09-22): whether there's
+     anything to undo is decided by the file check (a `replaced` flag on each page), not by the open
+     page's memory — before this, a copy sat on disk but the button disappeared (found by the audit).
+     Replace a page twice — "Undo" rolls it back one step at a time. **While the book is being sent to
+     the printer, replacing and undoing are refused** ("wait for the send to finish"): otherwise the
+     printer would get files the check never saw;
+   - **the text check** (since 2026-09-19): starts on its own as soon as the files are checked
+     (`startCheck()`); a badge to the right of the "Proofing" heading (a percentage → "Text matches" /
+     "N errors" / "N questions", ↻), a list of problems under the heading (a click opens the viewer on
+     that page, ✓ "Not an error"), red and yellow outlines on pages (`markPages()`), "Update passport"
+     for differences from the book's passport. Closing the card, dropping other files, or picking
+     another book stops the check (`dropCheck()`); clearing a "Not an error" mark doesn't make the rest
+     of the rows "slide in" again.
+     In detail — [text-check.md](text-check.md).
+3. **Print** (`printCard()`, `#oc-print`): "Send to print in Printify/Gelato" → the Order Creator,
+   filled in with the receipt number, the title `receipt number - name`, the address, the format, and
+   the files (`print()` → `give('creator', …)`). The Printify card uses the lime-green accent. If the
+   text check is still running, or found something red — a question first ("Send without waiting?" /
+   "Print anyway?"), printing is never blocked.
 
-## Замовлення на кілька книг (з 20.09.2026)
+## Orders with several books (since 2026-09-20)
 
-> Один чек — кілька книг (10 % замовлень власника: 2–5 книг, зазвичай та сама книга для різних дітей).
-> Вони йдуть в одну **спільну чернетку на одну адресу**, а не окремими замовленнями.
+> One receipt — several books (10% of the owner's orders: 2–5 books, usually the same book for
+> different children). They go as one **shared draft to one address**, not as separate orders.
 
-- **Кожна книга має власну роботу** (`work[]`, по одній на позицію замовлення): свою папку, свою
-  перевірку файлів, свою звірку й свою перевірку тексту. Перемикач «Книга 1 / Книга 2» (над кроком
-  «Файли з Canva» і в «Персоналізації») лише показує іншу — **нічого не втрачається**, і перевірка
-  тексту прихованої книги спокійно дороблює своє.
-- **Крок «Друк»** для такого замовлення показує список: яка книга готова, а яка ще ні («немає файлів»,
-  «перевіряються файли», «файли не пройшли перевірку», «друкується в Gelato» — якщо тип обкладинки
-  інший). Кнопка — «До друку в … · N книги».
-- **«До друку» бере всі готові книги тієї самої друкарні** (`readyBooks()`) і передає їх Order Creator
-  списком. Якщо готові не всі — питає: «Відправити лише їх? Решту можна надіслати пізніше — це буде
-  окреме замовлення в друкарні». Питання про перевірку тексту рахують помилки всіх книг, що йдуть.
-- **Назви** — `номер чека - ім'я дитини`; двох дітей з однаковим ім'ям розрізняє номер: `… - Emma (2)`.
-- Далі — [Order Creator](order-creator.md): Printify робить продукт на кожну книгу й **одне** замовлення
-  з кількома позиціями, Gelato — одну чернетку з кількома товарами.
+- **Every book has its own work record** (`work[]`, one per line item of the order): its own folder, its
+  own file check, its own proofing, and its own text check. The "Book 1 / Book 2" switch (above "Files
+  from Canva" and in "Personalization") just shows a different one — **nothing is lost**, and a hidden
+  book's text check keeps finishing on its own (before 2026-09-22 the code didn't keep this promise:
+  the second book used to cut off the first one — found by the audit, see [the text check](text-check.md)).
+- **The "Print" step** for such an order shows a list: which book is ready and which isn't ("no files",
+  "checking files", "files failed the check", "printing in Gelato" — if the cover type differs). The
+  button reads "Send to print in … · N books".
+- **"Print" takes every ready book of the same printer** (`readyBooks()`) and hands them to the Order
+  Creator as a list. If not all are ready, it asks: "Send just these? The rest can be sent later — that
+  will be a separate order at the printer." The text-check question counts the errors of every book
+  being sent.
+- **Titles** — `receipt number - child's name`; a number tells apart two children with the same name:
+  `… - Emma (2)`.
+- **"+N more in print"** (since 2026-09-22) — a gray chip next to the printer status in a queue row and
+  in the card's header: this receipt has N more print orders besides the one whose status is shown. The
+  tooltip says which printers. Where the program learns this, and how it counts the money — see
+  [Profit](profit.md).
+- Next — the [Order Creator](order-creator.md): Printify makes a product for every book and **one**
+  order with several line items; Gelato — one draft with several items.
 
-## Що віддає сервер
+## What the server returns
 
-- `GET /api/orders` → `{orders, syncedAt}`; кожне замовлення з `picker_orders()` (`stage`: `new` /
-  `work` / `sent` / `shipped`, `provider`, `printStatus`, `tracking`), доповнене
-  `enrich()`: для кожної книги `book` (з бібліотеки за номером лістингу), `plan` (правило друкарні;
-  `plan.pages` — список дозволених довжин: `[24]` або `[28, 30]`), `childName`; для замовлення —
-  `pageOptions` (довжини для кожної друкарні, коли її обирають вручну).
-- `GET /api/orders/<чек>` → те саме для одного + `buyerMessage` і `earlierSends` (відправки, що не стали
-  замовленням у друкарні, чиї файли ще в архіві — `archive.earlier_sends()`).
-- `POST /api/orders/<чек>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount}`.
-- `POST /api/orders/<чек>/textcheck` `{folder, pages, pick}` → `{jobId}` (або `{off: true}`, коли
-  перевірку вимкнено); результат задачі — `{mode, issues, pages, skipped, …}` ([text-check.md](text-check.md)).
+- `GET /api/orders` → `{orders, syncedAt}`; every order from `picker_orders()` (`stage`: `new` /
+  `work` / `sent` / `shipped`, `provider`, `printStatus`, `tracking`), extended by
+  `enrich()`: for every book — `book` (from the library, by listing number), `plan` (the printer rule;
+  `plan.pages` — the list of allowed lengths: `[24]` or `[28, 30]`), `childName`; for the order —
+  `pageOptions` (the lengths for each printer, when it's picked by hand).
+- `GET /api/orders/<receipt>` → the same, for one order, plus `buyerMessage` and `earlierSends` (sends
+  that never became a print-shop order, whose files are still in the archive — `archive.earlier_sends()`).
+- `POST /api/orders/<receipt>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount}`.
+- `POST /api/orders/<receipt>/textcheck` `{folder, pages, pick}` → `{jobId}` (or `{off: true}`, when the
+  check is turned off); the job's result — `{mode, issues, pages, skipped, …}` ([text-check.md](text-check.md)).
 
-## Де в коді
+## Where in the code
 
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `openViewer()`, `pageActions()`, `replacePage()`, `restorePage()`, `pageChanged()`, `revalidate()`, `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `readyBooks()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `queueState`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — спільні з [архівом замовлень](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — shared with the [order archive](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`, `is_placed()`, `placed_orders()`, `carrier_label()`
-- [app/studio/archive.py](../../app/studio/archive.py) — `earlier_sends()`, `_reuse()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
+- [app/studio/archive.py](../../app/studio/archive.py) — `earlier_sends()`, `at_printer()`, `_reuse()`
+- [app/studio/wording.py](../../app/studio/wording.py) — `custom_text()`, `clean_name()` ("custom text" fields, and the child's name)
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`, `finish()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `guess_child_name()`, `gelato_pages_problem()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `truck`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.ord-chips`, `.ord-child`, `.ord-copy`, `.ord-title`, `.ord-track`, `.ord-track-text`, `.ord-carrier`, `.ord-track-sep`, `.ord-track-no`, `.ord-sub`, `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`
-- Тести: [app/tests/test_orders.py](../../app/tests/test_orders.py) (у т. ч. `GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages`, `SentStage`)
+- Tests: [app/tests/test_orders.py](../../app/tests/test_orders.py) (including `GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages`, `SentStage`)
 
-## Пов'язане
+## Related
 
-- [Шлях замовлення до друку](../flows/order-to-print.md) · [Правило друкарні](../rules/printer-rule.md) · [Етапи](../rules/order-stages.md)
-- [Order Creator](order-creator.md) · [Перевірка тексту](text-check.md) · [Canva](../integrations/canva.md) · [Відкриті питання](../plans/open-questions.md)
+- [The order-to-print path](../flows/order-to-print.md) · [Printer rule](../rules/printer-rule.md) · [Stages](../rules/order-stages.md)
+- [Order Creator](order-creator.md) · [Text check](text-check.md) · [Canva](../integrations/canva.md) · [Open questions](../plans/open-questions.md)

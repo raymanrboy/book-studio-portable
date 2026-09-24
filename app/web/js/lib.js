@@ -178,7 +178,7 @@ export async function runJob(startPromise, onProgress, interval = 420, keepGoing
     const job = await api(`/api/jobs/${jobId}`);
     onProgress?.(job);
     if (job.status === 'done') return job.result;
-    if (job.status === 'error') throw new ApiError(job.error || 'Помилка', 0, job);
+    if (job.status === 'error') throw new ApiError(job.error || 'Помилка', 0, { ...job, ...job.errorExtra }); // err.data.code as for a request
   }
 }
 
@@ -215,11 +215,17 @@ export function toast(message, type = 'info', ms = 3800) {
 }
 
 // ------------------------------------------------------------------ modal
+/** The dialog or page viewer on top (the one opened last) — only it answers the keyboard. */
+export function topLayer() {
+  const open = document.querySelectorAll('.modal-root:not(.closing), .lightbox:not(.closing)');
+  return open[open.length - 1] || null;
+}
+
 const modalStack = [];
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && modalStack.length && !document.querySelector('.lightbox')) {
+  if (e.key === 'Escape' && modalStack.length) {
     const top = modalStack[modalStack.length - 1];
-    if (top.dismissible) { e.preventDefault(); top.close(); }
+    if (top.root === topLayer() && top.dismissible) { e.preventDefault(); top.close(); }
   }
 });
 
@@ -256,12 +262,13 @@ export function modal({ title, sub = '', body = '', foot = null, size = '', dism
   return api_;
 }
 
-export function confirmBox({ title, text = '', confirm = 'Підтвердити', cancel = 'Скасувати', danger = false } = {}) {
+// `extra` — markup under the text (built with html``), e.g. what exactly is about to be saved.
+export function confirmBox({ title, text = '', extra = '', confirm = 'Підтвердити', cancel = 'Скасувати', danger = false } = {}) {
   return new Promise((resolve) => {
     let result = false;
     const m = modal({
       title,
-      body: html`<p class="muted" style="white-space:pre-line">${text}</p>`,
+      body: html`<p class="muted" style="white-space:pre-line">${text}</p>${extra}`,
       foot: html`<button class="btn btn-ghost" data-no>${cancel}</button>
         <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-yes autofocus>${confirm}</button>`,
       onClose: () => resolve(result),
@@ -422,17 +429,6 @@ export function flip(container, mutate, duration = 380) {
     if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
     node.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration, easing: EASE });
   });
-}
-
-// Runs fn at most once per animation frame (for input/wheel/resize bursts).
-export function perFrame(fn) {
-  let scheduled = false, args;
-  return (...a) => {
-    args = a;
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => { scheduled = false; fn(...args); });
-  };
 }
 
 // Re-render a region without stealing the caret from the field the user is typing in.

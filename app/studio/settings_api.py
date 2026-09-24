@@ -50,7 +50,7 @@ def _settings(req: Request):
         "etsy": {**data["etsy"], **etsy.status()},
         "printify": data["printify"],
         "gelato": data["gelato"],
-        "textcheck": {k: data["textcheck"].get(k) for k in ("enabled", "model")},  # Ollama's state: /api/textcheck/status
+        "textcheck": {k: data["textcheck"].get(k) for k in ("enabled", "prescan", "model")},  # Ollama: /api/textcheck/status
         "secrets": {name: vault.status(name) for name in EDITABLE_SECRETS},
         "dataDir": str(core.DATA_DIR),
         "legacy": legacy_sources(),
@@ -75,40 +75,6 @@ def _etsy_settings(req: Request):
         raise ApiError("Redirect URI має починатися з http:// або https://")
     core.settings.update({"etsy": {"redirectUri": redirect}})
     return etsy.status()
-
-
-@route("POST", "/api/settings/gelato")
-def _gelato_settings(req: Request):
-    body = req.json or {}
-    patch: dict = {}
-    if "eurUsdRate" in body:
-        try:
-            rate = float(body["eurUsdRate"])
-        except (TypeError, ValueError):
-            raise ApiError("Курс має бути числом.")
-        if not 0.5 < rate < 3:
-            raise ApiError("Курс EUR→USD виглядає некоректно.")
-        patch["eurUsdRate"] = rate
-    if "tunnelKeepAliveSeconds" in body:
-        minutes = int(body["tunnelKeepAliveSeconds"]) // 60
-        patch["tunnelKeepAliveSeconds"] = max(5, min(60, minutes)) * 60
-    return core.settings.update({"gelato": patch})["gelato"]
-
-
-@route("POST", "/api/settings/printify")
-def _printify_settings(req: Request):
-    body = req.json or {}
-    patch: dict = {}
-    for key in ("coverSize", "pageSize"):
-        if key in body:
-            value = body[key]
-            if not (isinstance(value, list) and len(value) == 2 and all(isinstance(v, int) and 100 < v < 20000 for v in value)):
-                raise ApiError("Розмір має бути парою цілих чисел (ширина, висота).")
-            patch[key] = value
-    if "shopId" in body:
-        patch["shopId"] = int(body["shopId"])
-        patch["shopTitle"] = body.get("shopTitle")
-    return core.settings.update({"printify": patch})["printify"]
 
 
 @route("POST", "/api/secrets")
@@ -195,16 +161,32 @@ def _legacy_values() -> dict[str, tuple[str, str]]:
     return found
 
 
+_legacy_seen: dict = {"files": None, "found": {}}
+
+
+def _legacy_names() -> dict[str, str]:
+    """name -> where an old key was found. The old files are decrypted again only when one of them changed:
+    Settings asks on every opening (22.09.2026 audit), and the values themselves are not kept here."""
+    files = [ORDER_CREATOR_LOCAL / "printify-token.dpapi", ORDER_CREATOR_LOCAL / "gelato-api-key.dpapi",
+             PROFIT_CALC_DIR / ".env.local", PROFIT_CALC_DIR / ".env"]
+    stamp = tuple(p.stat().st_mtime_ns if p.exists() else None for p in files)
+    if _legacy_seen["files"] != stamp:
+        _legacy_seen.update(files=stamp, found={name: source for name, (_, source) in _legacy_values().items()})
+    return _legacy_seen["found"]
+
+
 def legacy_sources() -> dict:
+    if core.SAMPLE:  # the preview server never offers the owner's real keys
+        return {"items": [], "uploadCache": 0}
     items = []
     try:
-        values = _legacy_values()
+        found = _legacy_names()
     except Exception:
         core.log.exception("Legacy scan failed")
-        values = {}
+        found = {}
     labels = {"printify_token": "Printify токен", "gelato_api_key": "Gelato API-ключ",
               "etsy_keystring": "Etsy Keystring", "etsy_shared_secret": "Etsy Shared Secret"}
-    for name, (_, source) in values.items():
+    for name, source in found.items():
         items.append({"name": name, "label": labels[name], "source": source,
                       "alreadySet": vault.status(name)["configured"]})
     cache = ORDER_CREATOR_LOCAL / "upload_cache.json"

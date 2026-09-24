@@ -1,64 +1,68 @@
 ---
-title: Встановлення, запуск, GitHub
+title: Setup, launch, GitHub
 type: dev
-updated: 2026-09-17
+updated: 2026-09-24
 code:
   - app/tools/make_shortcut.py
   - app/requirements.txt
 ---
-# Встановлення, запуск, GitHub
+# Setup, launch, GitHub
 
-## Що потрібно
+## What's needed
 
-- Windows 10/11, Microsoft Edge (або Chrome).
-- Python 3.11+ (на вроцлавському ПК — 3.14, `C:\Users\Roman\AppData\Local\Programs\Python\Python314`).
-- Пакети: `python -m pip install -r app/requirements.txt` (Pillow, img2pdf, cryptography).
-- `app/bin/cloudflared.exe` — для тимчасових посилань Gelato; **не в git**, на новому ПК його треба
-  покласти вручну (офіційний реліз Cloudflare).
+- Windows 10/11, Microsoft Edge (or Chrome).
+- Python 3.11+ (on the Wrocław PC — 3.14, `C:\Users\Roman\AppData\Local\Programs\Python\Python314`).
+- Packages: `python -m pip install -r app/requirements.txt` (Pillow, img2pdf, cryptography).
+- `app/bin/cloudflared.exe` — for Gelato's temporary links; **not in git**, on a new PC it has to be put
+  there by hand (the official Cloudflare release).
 
-## Запуск
+## Launch
 
-- Ярлик **Book Studio** на робочому столі. Немає ярлика або програму перенесли —
+- The **Book Studio** shortcut on the desktop. The [Mockups](../features/mockups.md) live inside it since
+  2026-09-24 (the Listings mode; they need Photoshop CC 2019 and the templates folder) — the old **Мокапи**
+  shortcut points at a removed file, the owner deletes it. No shortcut, or the program was moved —
   `python app/tools/make_shortcut.py`.
-- Не запускається — `app/Запуск з консоллю.bat` покаже помилку; також `app/data/logs/startup-error.txt`.
-- Докладно — [architecture/runtime.md](../architecture/runtime.md).
+- Won't start — `app/Запуск з консоллю.bat` (Run with console) will show the error; also
+  `app/data/logs/startup-error.txt`.
+- In detail — [architecture/runtime.md](../architecture/runtime.md).
 
-## Інший комп'ютер
+## Another computer
 
-- Код — з GitHub (див. нижче). Дані — скопіювати `app/data`.
-- Ключі у `vault.json` зашифровані DPAPI для конкретного користувача Windows: на іншому ПК вони не
-  розшифруються → ввести ключі заново в Налаштуваннях, Etsy підключити «лінком доступу».
-- **Після перенесення 17.09.2026** (код переїхав у `app/`): у старій копії проєкту перенести `data/` і
-  `bin/` у `app/` і заново створити ярлик.
+- Code — from GitHub (see below). Data — copy `app/data`.
+- Keys in `vault.json` are DPAPI-encrypted for one specific Windows user: they won't decrypt on another
+  PC → enter the keys again in Settings, connect Etsy with an "access link".
+- **After the 2026-09-17 move** (the code moved into `app/`): in the old copy of the project, move
+  `data/` and `bin/` into `app/` and recreate the shortcut.
 
 ## GitHub
 
-- Приватний репозиторій **raymanrboy/book-studio**, гілка `main`, remote `origin`.
-- GitHub CLI на вроцлавському ПК розпакований без інсталятора і **не в PATH**:
-  `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe` (вхід — `raymanrboy`).
-- Git не налаштований глобально на gh; push з Git Bash:
+- The private repository **raymanrboy/book-studio**, branch `main`, remote `origin`.
+- The GitHub CLI on the Wrocław PC was unpacked without an installer and **is not on PATH**:
+  `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe` (sign-in — `raymanrboy`).
+- Git isn't configured globally for gh; push from Git Bash:
   ```
   git -c credential.helper= -c "credential.helper=!'/c/Users/Roman/AppData/Local/Programs/GitHubCLI/bin/gh.exe' auth git-credential" push
   ```
-  (без цього відкриється вікно Git Credential Manager).
-- Комітити й пушити — **лише коли власник попросить**. Повідомлення комітів — англійською.
-- **Коли просить — комітити все, що є в робочій папці, разом** (і зміни інших сесій), без розділення
-  на «свої / чужі»: власнику так простіше, а історія версій однаково в git (прохання 17.09.2026).
-  Перед комітом лише перевірити, що не потрапляють ключі й справжні дані покупців.
-- У репозиторій не потрапляють `app/data/`, `app/bin/`, `__pycache__`, `.obsidian/`, локальні
-  налаштування Claude Code.
+  (without this, a Git Credential Manager window opens).
+- Commit and push — **only when the owner asks.** Commit messages — in English.
+- **When he asks — commit everything in the working folder together** (including other sessions'
+  changes), without splitting into "mine / someone else's": it's simpler for the owner, and the version
+  history is all in git either way (his request, 2026-09-17). Before committing, only check that no keys
+  or real customer data get in.
+- `app/data/`, `app/bin/`, `__pycache__`, `.obsidian/`, and local Claude Code settings never go into the
+  repository.
 
-## Obsidian (необов'язково)
+## Obsidian (optional)
 
-Вікі — звичайні Markdown-файли. Якщо відкрити папку `wiki` як сховище Obsidian, працюють посилання між
-сторінками і граф; посилання на код (`../app/...`) Obsidian не відкриває — вони для агентів.
+The wiki is plain Markdown files. Opening the `wiki` folder as an Obsidian vault makes the links between
+pages and the graph work; Obsidian doesn't open links to code (`../app/...`) — those are for agents.
 
-## Де в коді
+## Where in the code
 
 - [app/tools/make_shortcut.py](../../app/tools/make_shortcut.py) — `main()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `find_browser()`
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`
 
-## Пов'язане
+## Related
 
-- [Запуск](../architecture/runtime.md) · [Тести](testing.md) · [Дані](../architecture/data.md)
+- [Launch](../architecture/runtime.md) · [Tests](testing.md) · [Data](../architecture/data.md)

@@ -1,60 +1,70 @@
 ---
-title: Дані програми — папка app/data
+title: Program data — the app/data folder
 type: architecture
-updated: 2026-09-19
+updated: 2026-09-24
 code:
   - app/studio/core.py
   - app/studio/vault.py
   - app/studio/images.py
 ---
-# Дані програми
+# Program data
 
-> Усе, що програма пам'ятає, лежить у `app/data/` (≈1,4 ГБ, не в git). Для резервної копії достатньо
-> скопіювати цю папку. Змінна середовища `BOOK_STUDIO_DATA` підміняє папку (тести, перегляд).
+> Everything the program remembers lives in `app/data/` (≈6.6 GB as of 2026-09-22: the order archive
+> 4.0 GB, the library 1.6 GB, the preview cache 364 MB; not in git). For a backup it's enough to copy
+> this folder. The `BOOK_STUDIO_DATA` environment variable swaps in a different folder (tests, preview).
 
-## Що де лежить
+## What lives where
 
-| Шлях у `app/data/` | Що це | Хто пише |
+| Path in `app/data/` | What it is | Who writes it |
 |---|---|---|
-| `settings.json` (+`.bak`) | Несекретні налаштування: тема, Etsy (магазин, адреса повернення), Printify (магазин, Master, розміри, `manualApprovalConfirmedAt`), Gelato (формати, курс EUR→USD, `pageCounts` 28 і 30; при запуску `_upgrade()` прибирає старе `pageCount` і міняє «дюймові» товари Gelato на метричні), `textcheck` (увімкнено, модель, адреса Ollama — лише 127.0.0.1) | `core.settings` |
-| `vault.json` (+`.bak`) | Ключі Etsy/Printify/Gelato, токени Etsy і ключ Gemini (`gemini_api_key`, для запланованої перевірки тексту — поки не використовується), зашифровані DPAPI. **Не читати й не друкувати** | `Vault` |
-| `library/books/<id>/book.json` | Модель книги ([features/library.md](../features/library.md)) | `library.save()` |
-| `library/books/<id>/assets/<uuid>.png` | Ілюстрації книги (оригінали) | `library._store_asset()` |
-| `library/trash/` | Видалені книги (можна повернути вручну) | `library._delete()` |
-| `profit/snapshot.json` | Знімок останньої синхронізації: чеки Etsy, замовлення Printify і Gelato (скорочені), курсор синхронізації | `profit._sync()` |
-| `profit/links.json` | Ручні зв'язки «чек → замовлення друку» або «без собівартості» | `profit._set_link()` |
-| `profit/states.json` | Ручні стани: скасування, повернення, заміна (сюди ж — передруки з архіву замовлень) | `profit._set_state()`, `profit.mark_reprint()` |
-| `creator/upload-cache.json` | SHA-256 файлу → ID зображення в Printify (щоб не завантажувати двічі) | `creator._remember_upload()` |
-| `creator/master-snapshots/` | Знімки Master-продукту перед кожним створенням книги | `create_printify_draft()` |
-| `cache/thumbs/` | JPEG-прев'ю (ключ — шлях, час зміни, розмір, розмір прев'ю); не потрібні 21 день — видаляються при запуску (з 19.09.2026; прев'ю в роботі раз на добу оновлює дату) | `images.preview()`, `images.prune_cache()` |
-| `tmp/dropped/` | Копії перетягнутих папок і ZIP; стирається при запуску | `creator._drop_file()` |
-| `tmp/gelato/<сеанс>/` | PDF для Gelato, поки працює тимчасове посилання | `create_gelato_draft()` |
-| `logs/` | `app.log`, `printify.log`, `gelato.log`, `startup-error.txt` | журнали |
-| `logs/sends/` | по одному JSON на кожну відправку в Printify/Gelato (останні 400; з адресами, без ключів) | [журнал відправок](../features/send-journal.md) |
-| `logs/checks/` | по одному JSON на кожну перевірку тексту: що прочитала модель, що мало бути, проблеми (останні 400; з іменами дітей) | [перевірка тексту](../features/text-check.md) |
-| `archive/<id>/` | Архів замовлень: `Cover.png` + сторінки, що пішли в друк, і `entry.json` (що, куди, коли, адреса). **Видаляється сама** через 14 днів після «Відправлених» (30 — якщо замовлення не простежити), крім «Не видаляти» | [архів замовлень](../features/archive.md) |
-| `window-profile/` | Профіль вікна Edge (≈0,5 ГБ) | Edge |
+| `settings.json` (+`.bak`) | Non-secret settings: theme, Etsy (shop, return address), Printify (shop, Master, sizes, `manualApprovalConfirmedAt`), Gelato (formats, the EUR→USD rate, `pageCounts` 28 and 30; on launch `_upgrade()` removes the old `pageCount` and switches Gelato's "inch" products to metric), `textcheck` (enabled, model, Ollama address — 127.0.0.1 only) | `core.settings` |
+| `vault.json` (+`.bak`) | Etsy/Printify/Gelato keys, Etsy tokens, and a Gemini key (`gemini_api_key`, for a planned text check — not used yet), DPAPI-encrypted. **Never read or print** | `Vault` |
+| `library/books/<id>/book.json` | The book model ([features/library.md](../features/library.md)); a book still in the [Workshop](../features/workshop.md) is here too, marked `"stage": "workshop"`, with `"prompts"` | `library.save()` |
+| `library/books/<id>/assets/<uuid>.png` | The book's illustrations (originals) | `library._store_asset()` |
+| `library/trash/` | Deleted books (can be restored by hand) | `library._delete()` |
+| `profit/snapshot.json` | A snapshot of the last sync: Etsy receipts, Printify and Gelato orders (slim), the sync cursor, `loaded` — when each of the three lists last loaded in full (the archive only trusts a fresh one). Read from disk once per file change (`load_snapshot()`) | `profit._sync()` |
+| `profit/links.json` | Manual links: "receipt → print order" or "no cost" | `profit._set_link()` |
+| `profit/states.json` | Manual states: cancellation, refund, replacement (reprints from the order archive go here too) | `profit._set_state()`, `profit.mark_reprint()` |
+| `profit/print-orders.json` | Which print orders this program itself created for which receipt (a receipt's books can go in two batches, or to two printers) | `profit.remember_print_order()` |
+| `creator/upload-cache.json` | A file's SHA-256 → its Printify image ID (so it isn't uploaded twice); keeps the last 5000 (`UPLOADS_KEPT`), older ones are forgotten | `creator._remember_upload()` |
+| `creator/master-snapshots/` | Snapshots of the Master product before every book creation | `create_printify_draft()` |
+| `cache/thumbs/` | JPEG previews (keyed by path, modified time, size, preview size); unneeded after 21 days — deleted on launch (since 2026-09-19; a preview used while working refreshes its date once a day) | `images.preview()`, `images.prune_cache()` |
+| `tmp/dropped/` | Copies of dragged folders and ZIPs; wiped on launch | `drops._drop_file()` |
+| `tmp/gelato/<session>/` | PDFs for Gelato while the temporary link is up | `create_gelato_draft()` |
+| `tmp/system/` | The temp folder of the program and everything it starts (the Edge window, the Windows dialogs, cloudflared) instead of Windows' `%TEMP%` on drive C (since 2026-09-23, the owner keeps C clean); emptied on launch and on close | `core.own_temp()`, `core.clear_own_temp()` |
+| `logs/` | `app.log`, `printify.log`, `gelato.log`, `startup-error.txt` | logs |
+| `logs/sends/` | One JSON per send to Printify/Gelato (last 400; with addresses, no keys) | [send journal](../features/send-journal.md) |
+| `logs/checks/` | One JSON per text check: what the model read, what should have been there, problems (last 400; with children's names) | [text check](../features/text-check.md) |
+| `archive/<id>/` | Order archive: `Cover.png` + the pages that went to print, and `entry.json` (what, where, when, address). **Deletes itself** 14 days after "Sent" (30 if the order can't be tracked), except "Keep" | [order archive](../features/archive.md) |
+| `window-profile/` | The Edge window profile (≈0.5 GB) | Edge |
+| `mockups/` | **The [Mockups](../features/mockups.md)' files** (the separate utility's data folder 2026-09-23…24, now Book Studio's `data_path("mockups", …)`): `book/<id>/` (the unpacked demo book, `BOOKS` — one at a time, apart from the orders' `tmp/dropped/`, gone on launch and close), `places.json` (where the templates / Photoshop are when not in the usual place, the last output folder `lastOut`, the last ZIP's folder `lastZip`), `work/<time>-<id>/` — one run: `templates/` (copies of the six templates; the three left open in Photoshop stay, the rest go right after the run), `pictures/` (gone right after the script), `mockups.jsx`, `job.json`, `status.json`, `finish.jsx`, `finish.json`, `finish-status.json`. A run folder goes after «Зберегти відкриті», at once when Photoshop is closed, else after a day (a copy the owner saved himself — a week). Left from the separate utility: `logs/` (its log; Book Studio's own is `logs/app.log` above); its `tmp/`, `cache/`, `window-profile/` go on the first launch (`forget_old_utility()`). A Photoshop started from here keeps its temp files in `tmp/photoshop/` (emptied once Photoshop is closed) | [mockups](../features/mockups.md) |
 
-## Правила
+## Rules
 
-- Запис лише через `core.write_json()` (атомарно, з копією `.bak`).
-- Кеш прев'ю прив'язаний до повного шляху файлу: після перенесення папки даних прев'ю один раз
-  створюються заново (старі файли кешу просто лишаються без діла).
-- Order Creator нічого не пам'ятає між відкриттями (рішення власника): `forget_old_form()` прибирає
-  залишки старих версій (`settings.creator`, `creator/history.json`).
-- Папка тестів створюється в системній тимчасовій теці й видаляється після тестів.
+- Writes only go through `core.write_json()` (atomic, with a `.bak` copy). `.bak` is only read in place
+  of a **damaged** file, not a deleted one (`read_json()`).
+- `SAMPLE` (`BOOK_STUDIO_SAMPLE=1`, set by `app/tools/dev_server.py`): made-up data, no key gets saved
+  (`Vault.set()` refuses).
+- The preview cache is keyed to a file's full path: after moving the data folder, previews are rebuilt
+  once (the old cache files just sit there unused).
+- The Order Creator remembers nothing between visits (the owner's decision): `forget_old_form()` clears
+  leftovers from older versions (`settings.creator`, `creator/history.json`).
+- The test folder is created in the system temp directory and deleted after the tests.
 
-## Де в коді
+## Where in the code
 
-- [app/studio/core.py](../../app/studio/core.py) — `DATA_DIR`, `data_path()`, `ensure_dirs()`, `write_json()`, `read_json()`, `Settings`
+- [app/studio/core.py](../../app/studio/core.py) — `DATA_DIR`, `SAMPLE`, `data_path()`, `ensure_dirs()`, `write_json()`, `read_json()`, `Settings`
 - [app/studio/vault.py](../../app/studio/vault.py) — `Vault`, `SECRET_NAMES`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `_cached()`
 - [app/studio/library.py](../../app/studio/library.py) — `BOOKS_DIR`, `TRASH_DIR`
-- [app/studio/profit.py](../../app/studio/profit.py) — `SNAPSHOT`, `LINKS`, `STATES`
-- [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `DROPS`, `forget_old_form()`
+- [app/studio/profit.py](../../app/studio/profit.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `load_snapshot()`, `remember_print_order()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `UPLOADS_KEPT`, `forget_old_form()`
+- [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `PLACES`, `WORK`, `BOOKS`, `PHOTOSHOP_TEMP`, `KEEP_RUNS`, `clean_runs()`, `clear_books()`, `forget_old_utility()`
+- [app/studio/library.py](../../app/studio/library.py) — `WORKSHOP`, `PROMPT_KEYS`, `is_workshop()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `store()`, `refresh()`
-- [app/tests/__init__.py](../../app/tests/__init__.py) — `BOOK_STUDIO_DATA` для тестів
+- [app/tests/__init__.py](../../app/tests/__init__.py) — `BOOK_STUDIO_DATA` for tests
 
-## Пов'язане
+## Related
 
-- [Сервер](server.md) · [Безпека](../security.md) · [Бібліотека](../features/library.md)
+- [Server](server.md) · [Security](../security.md) · [Library](../features/library.md)

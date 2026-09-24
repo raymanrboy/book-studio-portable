@@ -4,7 +4,7 @@ import {
   api, html, ic, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, signedMoney, menu,
   dateTime, relTime, plural, slide, debounce, reducedMotion, idle, keepFocus,
 } from '../lib.js';
-import { refreshInfo, store } from '../app.js';
+import { refreshInfo, store } from '../info.js';
 
 const PAGE_SIZE = 50;
 const PERIODS = [

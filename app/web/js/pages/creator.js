@@ -1,12 +1,13 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
-  api, html, ic, ib, raw, setHtml, on, media, modal, toast, runJob, segHtml, syncSeg, setSeg, bytes, dateTime,
+  api, html, ic, ib, setHtml, on, media, modal, toast, runJob, segHtml, syncSeg, setSeg, bytes, dateTime,
   relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, confirmBox,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
-  COUNTRIES, STAGES, STAGE_EMPTY, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf, folderViewerItems, receiveDrop, dropLabel,
-  wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText,
+  COUNTRIES, STAGES, STAGE_EMPTY, addressFromEtsy, spreadsOf, folderViewerItems, receiveDrop, dropLabel,
+  wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText, restorable, childOf, receiptOfTitle,
+  holdClicks, orderSync,
 } from '../order-bits.js';
 import { take } from '../handoff.js';
 import { markSent, finish } from '../keep.js';
@@ -25,8 +26,10 @@ export async function mount(view) {
   // reprint: set only by the order archive's "Передрук" ({archiveId, productId}); another folder cancels it.
   // A book of the send: its own folder, name, format and file check. An Etsy order of two or three books
   // sends them all at once — one draft, one address (owner, 20.09.2026).
+  // receiptId: the Etsy order the book was taken from (its card or «Заповнити із замовлення Etsy") — the
+  // server keeps records by it, not by the number typed in the title.
   const newBook = (extra = {}) => ({
-    folder: '', label: null, title: '', validation: null, validating: 0, seq: 0,
+    folder: '', label: null, title: '', receiptId: '', validation: null, validating: 0, seq: 0,
     stamp: 0,            // grows with every replaced page, so its pictures are fetched anew
     replaced: new Set(), // pages a new file was put over — they can be put back
     format: status.gelato.defaultFormat || status.gelato.formats[0]?.key, ...extra,
@@ -43,7 +46,7 @@ export async function mount(view) {
     st.mode = handed.mode;
     const list = handed.books?.length ? handed.books : [handed];
     Object.assign(st[handed.mode], {
-      books: list.map((h) => newBook({ folder: h.folder, label: h.label, title: h.title, ...(h.format ? { format: h.format } : {}) })),
+      books: list.map((h) => newBook({ folder: h.folder, label: h.label, title: h.title, receiptId: st.receiptId, ...(h.format ? { format: h.format } : {}) })),
       pick: 0, address: { ...handed.address }, reprint: handed.reprint || null,
     });
   }
@@ -55,31 +58,31 @@ export async function mount(view) {
     : st.printify.reprint ? 'Створити замовлення-передрук'
       : withOrder() ? 'Створити чернетку замовлення' : 'Створити книгу без замовлення');
   let tunnelTimer = null;
+  let gone = false; // the page was let go: its polls stop (runJob keepGoing)
   const cur = () => st[st.mode];
   const bk = (i = cur().pick) => cur().books[i] || cur().books[0];   // the book being shown / edited
   const many = () => cur().books.length > 1;
-  const bookName = (i) => cur().books[i].title.split(' - ').slice(1).join(' - ').trim() || `Книга ${i + 1}`;
+  const bookName = (i) => childOf(cur().books[i].title) || `Книга ${i + 1}`;
 
   // Pages: Printify takes exactly its template's 24; Gelato as many as the folder holds (28 or 30), and
   // its catalog says which of those each format is printed with (asked once, when Gelato is shown).
   const pageTotal = (i = cur().pick) => (st.mode === 'printify' ? status.printify.pageCount : bk(i).validation?.pageCount || 0);
-  let pageCounts = null;
+  let pageCounts = null, pageProblems = {};
   let countsAsked = false;
   function loadPageCounts() {
     if (countsAsked || !status.gelato.keyConfigured) return;
     countsAsked = true;
     api('/api/creator/gelato/page-counts').then((r) => {
       pageCounts = r.formats || null;
+      pageProblems = r.problems || {};
       if (st.mode === 'gelato') renderLeft();
     }).catch(() => {});
   }
-  /** Why Gelato would not print the chosen folder in this format; '' when fine or not known. */
+  /** Why Gelato would not print the chosen folder in this format; '' when fine or not known. The words come
+   *  from the server — the same the order card and the send itself use. */
   function formatProblem(key = bk().format, i = cur().pick) {
-    const valid = pageCounts?.[key];
     const n = bk(i).validation?.pageCount;
-    if (!valid?.length || !n || valid.includes(n)) return '';
-    const label = status.gelato.formats.find((f) => f.key === key)?.label || key;
-    return `Gelato не друкує ${label} на ${n} сторінках (можна від ${valid[0]}).`;
+    return (n && pageProblems[key]?.[n]) || '';
   }
 
   setHtml(view, html`<div class="creator" id="cr">
@@ -405,19 +408,27 @@ export async function mount(view) {
     if (cur().result && !(await confirmBox({ title: 'Чернетку вже створено',
       text: 'У друкарні лежить стара сторінка. Замінити її тут і створити чернетку ще раз?',
       confirm: 'Замінити', cancel: 'Не чіпати' }))) return;
+    let res;
     try {
-      await api('/api/creator/replace-page', { method: 'POST', body: { folder: b.folder, file, path } });
+      res = await api('/api/creator/replace-page', { method: 'POST', body: { folder: b.folder, file, path } });
     } catch (err) { toast(err.message, 'error'); return; }
-    b.replaced.add(file.toLowerCase());
+    setRestorable(b, file, res.canRestore);
     pageChanged(b, i, lb, again, `Замінено ${pageWord(file)}`);
   }
 
   async function restorePage(b, i, file, lb, again) {
+    let res;
     try {
-      await api('/api/creator/restore-page', { method: 'POST', body: { folder: b.folder, file } });
+      res = await api('/api/creator/restore-page', { method: 'POST', body: { folder: b.folder, file } });
     } catch (err) { toast(err.message, 'error'); return; }
-    b.replaced.delete(file.toLowerCase());
+    setRestorable(b, file, res.canRestore);   // an older version may still be there
     pageChanged(b, i, lb, again, `Повернено ${pageWord(file)}`);
+  }
+
+  /** The server says whether this page still has a previous version; the page only repeats it. */
+  function setRestorable(b, file, can) {
+    if (can) b.replaced.add(file.toLowerCase());
+    else b.replaced.delete(file.toLowerCase());
   }
 
   function pageChanged(b, i, lb, again, message) {
@@ -446,9 +457,10 @@ export async function mount(view) {
         b.validating = Math.max(1, j.percent);
         const badge = view.querySelector(`[data-book="${i}"] .v-badge.run, #cr-left .v-badge.run`);
         if (badge) badge.lastChild.textContent = `Перевірка… ${Math.round(b.validating)}%`;
-      }, 300);
+      }, 300, () => my === b.seq && !gone);
       if (my !== b.seq) return;
       b.validation = res;
+      b.replaced = restorable(res);
     } catch (err) {
       if (my !== b.seq) return;
       b.validation = { ok: false, errors: [err.message], warnings: [], files: [], found: 0, expected: 0 };
@@ -495,7 +507,7 @@ export async function mount(view) {
     renderLeft();
     const reprint = s.reprint;
     const url = mode === 'gelato' ? '/api/creator/gelato/create' : reprint ? '/api/creator/printify/reprint' : '/api/creator/printify/create';
-    const books = s.books.map((b) => ({ folder: b.folder, title: b.title, format: b.format }));
+    const books = s.books.map((b) => ({ folder: b.folder, title: b.title, format: b.format, receiptId: b.receiptId || null }));
     const body = mode === 'gelato'
       ? { books, address: s.address, ...(reprint ? { reprintOf: reprint.archiveId } : {}) }
       : reprint ? { archiveId: reprint.archiveId, title: bk().title, address: s.address }
@@ -582,7 +594,7 @@ export async function mount(view) {
   async function fromEtsy() {
     let data;
     try { data = await api('/api/creator/etsy-orders'); } catch (err) { toast(err.message, 'error'); return; }
-    let term = '', stage = 'new', syncing = false, shown = [], unfreeze = 0;
+    let term = '', stage = 'new', shown = [];
     const syncedText = () => (data.syncedAt ? `Оновлено ${relTime(data.syncedAt)}` : 'Ще не завантажено');
     const m = modal({
       title: 'Замовлення Etsy',
@@ -628,7 +640,7 @@ export async function mount(view) {
       const before = shown;
       shown = rows.map((o) => o.receiptId);
       if (!rows.length) {
-        if (!data.orders.length && syncing) setHtml(list, html`<div class="empty" style="padding:30px"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
+        if (!data.orders.length && sync.syncing) setHtml(list, html`<div class="empty" style="padding:30px"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
         else if (t) setHtml(list, html`<div class="empty" style="padding:30px">Нічого не знайдено</div>`);
         else {
           const [icon, title, text] = STAGE_EMPTY[stage];
@@ -637,37 +649,15 @@ export async function mount(view) {
         return;
       }
       setHtml(list, rows.map((o) => rowHtml(o, fresh && !before.includes(o.receiptId))));
-      if (fresh && before.join() !== shown.join()) {
-        // The rows just moved: ignore clicks for a moment so a click aimed at one buyer never lands on another.
-        list.inert = true;
-        clearTimeout(unfreeze);
-        unfreeze = setTimeout(() => { list.inert = false; }, 450);
-      }
+      if (fresh && before.join() !== shown.join()) holdClicks(list);
     };
 
-    // The refresh button pulls the latest orders; opening the picker only follows a sync already
-    // running (the program's start-up one) and never starts one itself.
-    async function refresh(pull = () => syncOrders(setSub)) {
-      if (syncing) return;
-      syncing = true;
-      syncBtn.disabled = true; syncBtn.firstElementChild?.classList.add('spin');
-      setSub('Оновлення…');
-      if (!data.orders.length) render();
-      try {
-        await pull();
-        const next = await api('/api/creator/etsy-orders');
-        if (!m.el.isConnected) return;
-        data = next;
-        setSub(syncedText());
-        render({ fresh: true });
-      } catch (err) {
-        if (m.el.isConnected) setSub(`${syncedText()} · не вдалося оновити: ${err.message}`);
-      } finally {
-        syncing = false;
-        syncBtn.disabled = false; syncBtn.firstElementChild?.classList.remove('spin');
-      }
-    }
-    syncBtn.addEventListener('click', () => refresh());
+    const sync = orderSync({
+      fetch: () => api('/api/creator/etsy-orders'), alive: () => m.el.isConnected, setSub, syncedText, button: syncBtn,
+      onStart: () => { if (!data.orders.length) render(); },
+      onFresh: (next) => { data = next; setSub(syncedText()); render({ fresh: true }); },
+    });
+    syncBtn.addEventListener('click', () => sync.refresh());
     seg.addEventListener('click', (e) => {
       const b = e.target.closest('button[data-value]');
       if (!b || b.dataset.value === stage) return;
@@ -676,7 +666,7 @@ export async function mount(view) {
       render();
     });
     render();
-    runningSync().then((jobId) => { if (jobId && m.el.isConnected) refresh(() => watchSync(jobId, setSub)); });
+    sync.follow();
     requestAnimationFrame(() => syncSeg(seg));
     m.el.querySelector('#eo-q').addEventListener('input', (e) => { term = e.target.value; render(); });
     list.addEventListener('click', (e) => {
@@ -701,7 +691,10 @@ export async function mount(view) {
       // An order of several books gives a name to each of them (a folder is still chosen for each by hand).
       const names = (o.items || []).map((it) => it.childName || o.childName || '');
       while (s.books.length < Math.max(1, names.length)) s.books.push(newBook({ format: bk(0).format }));
-      s.books.forEach((b, i) => { b.title = `${o.receiptId} - ${names[i] || names[0] || ''}`.trim().replace(/-$/, '- '); });
+      s.books.forEach((b, i) => {
+        b.receiptId = String(o.receiptId);
+        b.title = `${o.receiptId} - ${names[i] || names[0] || ''}`.trim().replace(/-$/, '- ');
+      });
       s.address = { ...s.address, ...addressFromEtsy(o) };
       renderLeft();
       const ti = $('#cr-title-0');
@@ -764,7 +757,11 @@ export async function mount(view) {
       } else if (a === 'finish') { finished = true; finish(st.receiptId); location.hash = '#/orders'; }
       else if (a === 'revalidate') validate(i);
       else if (a === 'show-book') { s.pick = i; renderLeft(); renderRight(); }
-      else if (a === 'add-book') { s.books.push(newBook({ format: bk(0).format, title: bk(0).title.split(' - ')[0] ? `${bk(0).title.split(' - ')[0]} - ` : '' })); s.pick = s.books.length - 1; renderLeft(); renderRight(); }
+      else if (a === 'add-book') {
+        const receipt = bk(0).receiptId || receiptOfTitle(bk(0).title);
+        s.books.push(newBook({ format: bk(0).format, receiptId: bk(0).receiptId, title: receipt ? `${receipt} - ` : '' }));
+        s.pick = s.books.length - 1; renderLeft(); renderRight();
+      }
       else if (a === 'drop-book' && s.books.length > 1) { s.books.splice(i, 1); s.pick = Math.min(s.pick, s.books.length - 1); renderLeft(); renderRight(); }
       else if (a === 'open-folder') api('/api/creator/open-folder', { method: 'POST', body: { path: b.folder } }).catch((er) => toast(er.message, 'error'));
       else if (a === 'from-etsy') fromEtsy();
@@ -829,7 +826,10 @@ export async function mount(view) {
       const o = await api(`/api/orders/${st.receiptId}`);
       return o.stage === 'new';
     },
-    unmount() { offs.forEach((f) => f()); clearInterval(tunnelTimer); },
+    // A kept page out of sight does not tick; back in sight, the countdown goes on from the same moment (_until).
+    hidden() { clearInterval(tunnelTimer); },
+    shown() { if (st.gelato.result && $('#cr-countdown')) startCountdown(); },
+    unmount() { gone = true; offs.forEach((f) => f()); clearInterval(tunnelTimer); },
   };
 }
 

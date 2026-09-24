@@ -1,61 +1,75 @@
 ---
-title: Налаштування
+title: Settings
 type: feature
-updated: 2026-09-20
+updated: 2026-09-23
 code:
   - app/studio/settings_api.py
   - app/web/js/pages/settings.js
 ---
-# Налаштування
+# Settings
 
-> Мінімальна сторінка: ключі сервісів, підключення Etsy, шаблон Printify, перевірка тексту, папка даних.
-> Кожен блок згорнутий в один рядок зі станом; блок, якому щось потрібно, відкривається сам.
-> Тема — не тут, а в меню внизу бокової панелі.
+> A minimal page: service keys, the Etsy connection, the Printify template, the text check, the data
+> folder. Every block is collapsed to one line with its status; a block that needs something opens on
+> its own.
+> The theme isn't here — it's in the menu at the bottom of the sidebar.
 
-## Блоки (`#/settings[/<блок>]`)
+## Blocks (`#/settings[/<block>]`)
 
-- **Знайдено ключі з попередніх програм** (лише якщо є що переносити) — «Перенести»: ключі з
-  Order Creator Printify (`.local/*.dpapi`) і Etsy Profit Calculator (`.env.local`/`.env`), кеш
-  завантажень Printify. Шукаються на робочому столі поруч із папкою Book Studio.
-- **Etsy**: бракує ключа → поля Keystring / Shared Secret. Не підключено → «лінк доступу» з Profit
-  Calculator (`…/?sync=…`) або «Увійти в Etsy (лише з київського ПК)» — див. [integrations/etsy.md](../integrations/etsy.md).
-  Підключено → назва магазину і «Відключити». «Подробиці»: збережені ключі, адреса повернення
-  (Callback URL), копіювання ключа сесії для іншого ПК.
-- **Printify**: токен; шаблон (Master) і «24 стор.»; кнопка вибору шаблону — лише коли його ще немає;
-  перевірка зв'язку.
-- **Gelato**: ключ; три формати і «28 або 30 стор.»; перевірка зв'язку.
-- **Перевірка тексту** (з 19.09.2026): вмикач «Перевіряти текст сторінок у картці замовлення», вмикач
-  «Спершу швидко дивитися, на яких сторінках узагалі є текст» (з 20.09.2026 — програма сама вирішує,
-  які сторінки показувати моделі; вимкнути можна, якщо здасться, що щось пропускається), модель
-  (іконка вибору — коли в Ollama їх кілька, що бачать картинки), «у відеокарті», «Перевірити зв'язок»;
-  Ollama не запущена → «Запустити» (програма й сама запускає її перед перевіркою). Блок малюється
-  одразу з налаштувань («перевірка стану…»), стан Ollama дотягується окремим запитом — Налаштування
-  не чекають її (на Windows вимкнена Ollama відповідає «ні» лише через 2 с).
-  Докладно — [text-check.md](text-check.md).
-- **Дані програми**: шлях до `app/data` і кнопка «Відкрити».
+- **Keys found from earlier programs** (only if there's something to move) — "Move over": keys from
+  Order Creator Printify (`.local/*.dpapi`) and Etsy Profit Calculator (`.env.local`/`.env`), the
+  Printify upload cache. Looked for on the desktop, next to the Book Studio folder.
+- **Etsy**: a key missing → Keystring / Shared Secret fields. Not connected → an "access link" from
+  Profit Calculator (`…/?sync=…`), or "Sign in to Etsy (Kyiv PC only)" — see
+  [integrations/etsy.md](../integrations/etsy.md). Connected → the shop name and "Disconnect".
+  "Details": the saved keys, the return address (Callback URL), copying the session key for another PC.
+- **Printify**: the token; the template (Master) and "24 pages"; the template-picker button — only when
+  there isn't one yet; a connection check.
+- **Gelato**: the key; three formats and "28 or 30 pages"; a connection check.
+- **Text check** (since 2026-09-19): a "Check page text in the order card" switch, a "First take a quick
+  look at which pages even have text" switch (since 2026-09-20 — the program decides on its own which
+  pages to show the model; can be turned off if something seems to be getting skipped), the model (a
+  picker icon — when Ollama has more than one that can see pictures), "on the GPU", "Check connection";
+  Ollama not running → "Start" (the program can also start it itself before a check). The block is drawn
+  right away, from the settings ("checking status…") — with both switches shown as saved (`prescan`
+  comes in `GET /api/settings`; before 2026-09-23 the "quick scan" switch was drawn off at first),
+  Ollama's status is fetched by a separate request — Settings doesn't wait for it (on Windows, a
+  disabled Ollama only answers "no" after 2 s).
+  In detail — [text-check.md](text-check.md).
+- **Program data**: the path to `app/data` and an "Open" button.
 
-Технічні значення (позиції Master, розміри artwork, product UID, курс EUR→USD, час життя посилання)
-навмисно не показуються і не редагуються з інтерфейсу — рішення власника. Маршрути
-`/api/settings/gelato` і `/api/settings/printify` лишилися, але інтерфейс їх не викликає.
+Technical values (Master positions, artwork sizes, the product UID, the EUR→USD rate, how long a link
+lives) are deliberately not shown or editable from the interface — the owner's decision. The
+`/api/settings/gelato` and `/api/settings/printify` routes, which the interface never called, were
+removed on 2026-09-23.
 
-## Ключі
+- The theme and "reduce motion" are both saved in the program's settings, and both come from there on
+  launch (the browser only remembers the theme for the first frame); a failed save shows a message.
+- Looking for keys in the old programs (`legacy_sources()`) only decrypts their files when those files
+  have changed, not every time Settings is opened (`_legacy_names()`).
+- **The preview server** (`app/tools/dev_server.py`, `core.SAMPLE`) doesn't show keys from the old
+  programs, and doesn't save any key: "This is a preview server on made-up data — keys aren't stored
+  here" (since 2026-09-23; before that its Settings used to offer to import the owner's real keys from
+  the desktop).
 
-Поле пароля → `POST /api/secrets` → `Vault` (DPAPI). Назад приходить лише «збережено» і останні
-4 символи. Імена: `etsy_keystring`, `etsy_shared_secret`, `printify_token`, `gelato_api_key`.
+## Keys
 
-## Вибір Master (Printify)
+A password field → `POST /api/secrets` → `Vault` (DPAPI). Only "saved" and the last 4 characters come
+back. Names: `etsy_keystring`, `etsy_shared_secret`, `printify_token`, `gelato_api_key`.
 
-`pickMaster()`: магазин → список продуктів або ID/посилання → аналіз (`analyze_master()`: позиції
-cover і page_1…page_N, варіанти, розміри) → «Зробити Master» (підтвердження). Master лише читається.
+## Picking the Master (Printify)
 
-## Де в коді
+`pickMaster()`: shop → a list of products, or an ID/link → an analysis (`analyze_master()`: the cover
+and page_1…page_N positions, variants, sizes) → "Make it the Master" (confirmation). The Master is only
+ever read.
+
+## Where in the code
 
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `oauthFlow()`, `pickMaster()`, `SECRET_LABELS`
-- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
+- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
 - [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `status()`, `import_session()`
 - [app/studio/textcheck.py](../../app/studio/textcheck.py) — `status()`, `start_ollama()`, `_save_settings()`, `_start()`
 
-## Пов'язане
+## Related
 
-- [Безпека](../security.md) · [Etsy](../integrations/etsy.md) · [Printify](../integrations/printify.md) · [Gelato](../integrations/gelato.md)
+- [Security](../security.md) · [Etsy](../integrations/etsy.md) · [Printify](../integrations/printify.md) · [Gelato](../integrations/gelato.md)

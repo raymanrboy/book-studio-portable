@@ -1,84 +1,87 @@
 ---
-title: Етапи замовлення — нове, в роботі, відправлено друкарнею, відправлене
+title: Order stages — new, in progress, shipped by the printer, sent
 type: rule
 updated: 2026-09-18
 code:
   - app/studio/profit.py
 ---
-# Етапи замовлення
+# Order stages
 
-> Etsy API не віддає власні вкладки продавця (у власника це «In Production»), тому етап виводиться
-> з фактів: **«нове» — для чека ще немає оформленого й оплаченого замовлення в Printify або Gelato.**
-> Чернетка, «on hold», неоплачене чи скасоване **не рахуються** (рішення власника 18.09.2026).
-> Шлях: **Нові → В роботі (годинник) → машинка → Відправлені (коробка)**.
+> The Etsy API doesn't return the seller's own tabs (the owner calls this "In Production"), so a stage
+> is worked out from the facts: **"new" — the receipt has no confirmed, paid order in Printify or
+> Gelato yet.** A draft, "on hold", unpaid, or cancelled order **doesn't count** (the owner's decision,
+> 2026-09-18).
+> Path: **New → In progress (a clock) → the truck → Sent (a box)**.
 
-## Правило (`order_stage()`)
+## The rule (`order_stage()`)
 
-Спершу `print_order()` знаходить «живе» замовлення друку для чека: зіставлене, **оформлене**
-(`is_placed()`: Printify — не `on-hold`, не `pending`, не `payment-not-received`, не скасоване; Gelato —
-`orderType: order`, не чернетка, `financialStatus` не `draft` / `pending` / `canceled` / `refused`) і не
-старе замовлення покупця, що повернувся (зіставлене **за іменем** і створене більш ніж на годину раніше
-за чек). Далі:
+First, `print_order()` finds a "live" print order for the receipt: matched, **confirmed**
+(`is_placed()`: Printify — not `on-hold`, not `pending`, not `payment-not-received`, not cancelled;
+Gelato — `orderType: order`, not a draft, `financialStatus` isn't `draft` / `pending` / `canceled` /
+`refused`), and not an old order from a returning buyer (matched **by name** and created more than an
+hour before the receipt). Then:
 
-| Умова (по порядку) | Етап | У черзі |
+| Condition (in order) | Stage | In the queue |
 |---|---|---|
-| Стан у обліку «скасовано» або «повне повернення» | `closed` | не показується |
-| Etsy: відправлено (`is_shipped`) | `shipped` (+ друкарня, якщо є) | Відправлені (коробка) |
-| Немає живого замовлення друку | `new` (або `work`, якщо вручну позначено «без собівартості») | Нові |
-| Друкарня відправила: є трек-номер **або** статус із `SENT_STATUSES` | `sent` (+ друкарня) | машинка |
-| Інакше | `work` (+ друкарня) | В роботі (годинник) |
+| The accounting state is "cancelled" or "full refund" | `closed` | not shown |
+| Etsy: shipped (`is_shipped`) | `shipped` (+ the printer, if any) | Sent (a box) |
+| No live print order | `new` (or `work`, if manually marked "no cost") | New |
+| The printer shipped it: a tracking number **or** a status from `SENT_STATUSES` | `sent` (+ the printer) | the truck |
+| Otherwise | `work` (+ the printer) | In progress (a clock) |
 
 `SENT_STATUSES`: Printify — `fulfilled`, `partially-fulfilled`; Gelato — `shipped`, `in_transit`,
 `delivered`, `returned` (`gelato.SHIPPED`).
 
-## Машинка (`sent`) — з 17.09.2026
+## The truck (`sent`) — since 2026-09-17
 
-Навіщо: бачити замовлення, які **вже можна позначати відправленими в Etsy** (рішення власника).
-Власник позначає їх в Etsy вручну (на київському ПК) → після наступного оновлення Etsy віддає
-`is_shipped` → замовлення йде в коробку. Статус `delivered` у друкарні з машинки **не** забирає —
-лише позначка в Etsy.
+Why it exists: to see which orders **can already be marked shipped on Etsy** (the owner's decision). The
+owner marks them on Etsy by hand (on the Kyiv PC) → after the next refresh, Etsy returns `is_shipped` →
+the order moves to the box. A `delivered` status at the printer does **not** move it off the truck tab —
+only the mark on Etsy does.
 
-## Як замовлення стає «в роботі»
+## How an order becomes "in progress"
 
-- Gelato: `orderReferenceId` чернетки містить номер чека. Printify: номер чека в назві книги
-  (`номер чека - ім'я`) і в `external_id` замовлення.
-- Створена чернетка (Gelato) чи замовлення «On hold» (Printify) **ще не переводить** чек: він лишається
-  в «Нових» з чипом статусу друкарні (`Draft`, `On hold`, `Created`…) — видно, що книгу вже відправлено
-  і її треба підтвердити (`waiting_order()`). Скасоване в друкарні чипа не має.
-- Власник підтверджує й оплачує в Printify («Submit order») чи Gelato → «Оновити»
-  ([sync-policy.md](sync-policy.md)) → зіставлення ([reconciliation.md](reconciliation.md)) знаходить
-  оформлене замовлення — і чек переходить у «В роботі».
+- Gelato: the draft's `orderReferenceId` contains the receipt number. Printify: the receipt number is in
+  the book's title (`receipt number - name`) and in the order's `external_id`.
+- A created draft (Gelato) or "On hold" order (Printify) **doesn't move** the receipt yet: it stays in
+  "New" with a printer-status chip (`Draft`, `On hold`, `Created`…) — showing that the book has already
+  been sent and needs confirming (`waiting_order()`). One cancelled at the printer has no chip.
+- The owner confirms and pays in Printify ("Submit order") or Gelato → "Refresh"
+  ([sync-policy.md](sync-policy.md)) → matching ([reconciliation.md](reconciliation.md)) finds the
+  confirmed order — and the receipt moves to "In progress".
 
-Відомий пробіл: книга, створена в Printify **без** замовлення, чек не переводить. Ідея позначки
-«товар уже створено» — у [планах](../plans/roadmap.md).
+A known gap: a book created in Printify **without** an order doesn't move the receipt. The idea of a
+"product already created" mark is in the [plans](../plans/roadmap.md).
 
-## Передрук етап не змінює (з 18.09.2026)
+## A reprint doesn't change the stage (since 2026-09-18)
 
-Передрук з [архіву замовлень](../features/archive.md) записується як заміна (`mark_reprint()`), а
-замовлення-заміни не беруть участі в автоматичному зіставленні (`reserved_orders()`). Тому чек лишається
-на своєму етапі (зазвичай «Відправлені» — книга вже була в покупця), а друге замовлення друку не
-займає місце першого. Виняток — перше замовлення скасоване в друкарні: тоді передрук заміною не
-позначається, зіставляється як звичайне, і чек переходить з «Нових» у «В роботі».
+A reprint from the [order archive](../features/archive.md) is recorded as a replacement
+(`mark_reprint()`), and replacement orders take no part in automatic matching (`reserved_orders()`). So
+the receipt stays at its own stage (usually "Sent" — the book was already with the buyer), and the second
+print order doesn't take the first one's place. The exception is when the first order was cancelled at
+the printer: then the reprint isn't marked as a replacement, gets matched normally, and the receipt moves
+from "New" to "In progress".
 
-## Статус і трек-номер для черги
+## Status and tracking number for the queue
 
-`picker_orders()` віддає для кожного замовлення з живим замовленням друку (а в «Нових» — для чернетки
-чи неоплаченого, що чекає підтвердження в друкарні):
-- `printStatus` — статус **рівно так, як його пише Printify чи Gelato**, англійською, без перекладу
-  (бажання власника); окремих позначок для чернеток немає (Gelato `draft`, Printify `on-hold` — як є);
-- `tracking` — `[{carrier, number, url}]`; перевізник Printify приходить кодом (`usps`) і
-  перетворюється на назву (`carrier_label()`: USPS, FedEx, Royal Mail…), у Gelato це назва способу
-  доставки («UPS Surepost»). Звідки береться — [Printify](../integrations/printify.md),
-  [Gelato](../integrations/gelato.md).
+`picker_orders()` returns, for every order with a live print order (and for "New" ones — for a draft or
+an unpaid order waiting for confirmation at the printer):
+- `printStatus` — the status **exactly as Printify or Gelato writes it**, in English, untranslated (the
+  owner's wish); there's no separate label for drafts (Gelato's `draft`, Printify's `on-hold` — shown
+  as-is);
+- `tracking` — `[{carrier, number, url}]`; Printify's carrier comes as a code (`usps`) and gets turned
+  into a name (`carrier_label()`: USPS, FedEx, Royal Mail…); in Gelato it's already the shipping
+  method's name ("UPS Surepost"). Where this comes from —
+  [Printify](../integrations/printify.md), [Gelato](../integrations/gelato.md).
 
-## Де в коді
+## Where in the code
 
 - [app/studio/profit.py](../../app/studio/profit.py) — `order_stage()`, `print_order()`, `waiting_order()`, `_matched_order()`, `is_placed()`, `PRINTIFY_NOT_PLACED`, `GELATO_NOT_PAID`, `placed_orders()`, `picker_orders()`, `carrier_label()`, `SENT_STATUSES`, `CARRIERS`, `HOUR_MS`, `mark_reprint()`, `reserved_orders()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `SHIPPED`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`
 - [app/studio/creator.py](../../app/studio/creator.py) — `printify_order_payload()`, `create_gelato_draft()`
-- Тести: [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages` — чернетки, «on hold», неоплачене, `SentStage`)
+- Tests: [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages` — drafts, "on hold", unpaid, `SentStage`)
 
-## Пов'язане
+## Related
 
-- [Замовлення](../features/orders.md) · [Зіставлення](reconciliation.md) · [Синхронізація](sync-policy.md)
+- [Orders](../features/orders.md) · [Matching](reconciliation.md) · [Sync](sync-policy.md)

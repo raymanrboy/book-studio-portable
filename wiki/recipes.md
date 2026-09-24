@@ -1,84 +1,119 @@
 ---
-title: Рецепти — як змінити типові речі
+title: Recipes — how to change common things
 type: recipe
-updated: 2026-09-17
+updated: 2026-09-24
 code: []
 ---
-# Рецепти
+# Recipes
 
-> Де саме міняти код для типових завдань і що не забути. Після кожного — тести, `wiki_check.py`,
-> оновлені сторінки й запис у журналі ([правила](dev/wiki-rules.md)).
+> Exactly where to change code for common tasks, and what not to forget. After each one — tests,
+> `wiki_check.py`, updated pages, and an entry in the log ([rules](dev/wiki-rules.md)).
 
-## Змінити правило друкарні
-- [app/studio/orders.py](../app/studio/orders.py) — `plan_for()` (і `binding_of()`, якщо змінюється розпізнавання обкладинки)
-- Тест `PrinterRule` у [app/tests/test_orders.py](../app/tests/test_orders.py).
-- Пояснення в інтерфейсі — [app/web/js/order-bits.js](../app/web/js/order-bits.js) `planText()`.
-- Вікі: [rules/printer-rule.md](rules/printer-rule.md), [decisions.md](decisions.md).
+## Change the printer rule
+- [app/studio/orders.py](../app/studio/orders.py) — `plan_for()` (and `binding_of()`, if cover
+  recognition changes)
+- Test `PrinterRule` in [app/tests/test_orders.py](../app/tests/test_orders.py).
+- The explanation in the interface — [app/web/js/order-bits.js](../app/web/js/order-bits.js) `planText()`.
+- Wiki: [rules/printer-rule.md](rules/printer-rule.md), [decisions.md](decisions.md).
 
-## Додати формат Gelato (новий розмір)
-- [app/studio/core.py](../app/studio/core.py) — `DEFAULT_SETTINGS` (`gelato.formats`: `label`, `productUid`); збережені налаштування зливаються з типовими, тож новий ключ з'явиться сам.
-- [app/studio/orders.py](../app/studio/orders.py) — `plan_for()`: коли вибирати формат.
-- Order Creator показує формати зі статусу сам (`formatCard()`); скільки сторінок друкує новий формат,
-  програма спитає в каталогу Gelato сама.
+## Add a Gelato format (a new size)
+- [app/studio/core.py](../app/studio/core.py) — `DEFAULT_SETTINGS` (`gelato.formats`: `label`,
+  `productUid`); saved settings are merged with the defaults, so the new key appears on its own.
+- [app/studio/orders.py](../app/studio/orders.py) — `plan_for()`: when to pick the format.
+- The Order Creator shows formats from status on its own (`formatCard()`); how many pages the new format
+  prints, the program will ask Gelato's catalog itself.
 
-## Інша довжина книги Gelato (крім 28 і 30)
-- [app/studio/core.py](../app/studio/core.py) — `DEFAULT_SETTINGS` `gelato.pageCounts`. Але `_merge()` не
-  змінює список, уже збережений у `settings.json` власника, — потрібна міграція в `_upgrade()`.
-- Перевірити тестовою чернеткою з пронумерованими сторінками (Page 0 порожня, далі 1…N).
-- Решта рахується з цього списку: [app/studio/creator.py](../app/studio/creator.py) `gelato_page_options()`, `_gelato_page_count()`; [app/studio/orders.py](../app/studio/orders.py) `page_options()`.
-- Вікі: [integrations/gelato.md](integrations/gelato.md), [rules/printer-rule.md](rules/printer-rule.md), [rules/book-structure.md](rules/book-structure.md).
+## A different Gelato book length (besides 28 and 30)
+- [app/studio/core.py](../app/studio/core.py) — `DEFAULT_SETTINGS` `gelato.pageCounts`. But `_merge()`
+  doesn't change a list already saved in the owner's `settings.json` — a migration in `_upgrade()` is
+  needed.
+- Check with a test draft with numbered pages (Page 0 blank, then 1…N).
+- The rest is computed from this list: [app/studio/creator.py](../app/studio/creator.py)
+  `gelato_page_options()`, `_gelato_page_count()`; [app/studio/orders.py](../app/studio/orders.py)
+  `page_options()`.
+- Wiki: [integrations/gelato.md](integrations/gelato.md), [rules/printer-rule.md](rules/printer-rule.md),
+  [rules/book-structure.md](rules/book-structure.md).
 
-## Показати сторінку «Прибуток»
-- [app/web/js/app.js](../app/web/js/app.js) — додати пункт у `NAV` (піктограма `chart`) і маршрут `#/profit` у `ROUTES`; зсунути гарячі клавіші.
-- Вікі: [features/profit.md](features/profit.md), [architecture/frontend.md](architecture/frontend.md).
+## Show the "Profit" page
+- [app/web/js/app.js](../app/web/js/app.js) — add an entry to `MODES.orders.nav` (icon `chart`) and the route
+  `#/profit` in `ROUTES`; shift the hotkeys.
+- Wiki: [features/profit.md](features/profit.md), [architecture/frontend.md](architecture/frontend.md).
 
-## Нова сторінка інтерфейсу
-- Файл `app/web/js/pages/<назва>.js` з `export async function mount(view, params)` → `{ shown?, unmount }`.
-- [app/web/js/app.js](../app/web/js/app.js) — `ROUTES` (і `NAV`, якщо потрібна піктограма в панелі).
-- Стилі — у [app/web/css/app.css](../app/web/css/app.css), кольори лише з токенів.
-- Вікі: нова сторінка в `features/`, рядок у [code-map.md](code-map.md) і `index.md`.
+## A new interface page
+- File `app/web/js/pages/<name>.js` with `export async function mount(view, params)` → `{ shown?, unmount }`.
+- [app/web/js/app.js](../app/web/js/app.js) — `ROUTES` with the page's mode (and its mode's `nav` in `MODES`, if it needs an icon in the panel).
+- Styles — in [app/web/css/app.css](../app/web/css/app.css), colors from tokens only.
+- Wiki: a new page under `features/`, a row in [code-map.md](code-map.md) and `index.md`.
 
-## Новий маршрут сервера
-- `@route("METHOD", r"/api/...")` у потрібному модулі ([app/studio/server.py](../app/studio/server.py) `route()`).
-- Новий модуль — додати в імпорт у [app/studio/main.py](../app/studio/main.py) `main()`, інакше маршрут не зареєструється.
-- Довга дія — через `jobs.start()`, в інтерфейсі `runJob()`.
-- Вікі: рядок у [architecture/api-routes.md](architecture/api-routes.md) (перевірка вимагає).
+## A new server route
+- `@route("METHOD", r"/api/...")` in the right module ([app/studio/server.py](../app/studio/server.py)
+  `route()`).
+- A new module — add it to the import in [app/studio/main.py](../app/studio/main.py) `main()`, or the
+  route won't register.
+- A long-running action — through `jobs.start()`, `runJob()` in the interface.
+- Wiki: a row in [architecture/api-routes.md](architecture/api-routes.md) (the check requires it).
 
-## Нова піктограма
-- [app/web/js/icons.js](../app/web/js/icons.js) — додати шлях у мапу `P` (сітка 24×24, обведення 1,6); `icon()` її віддасть.
-- Правило: одна піктограма — одне значення; не перевикористовувати наявну для іншого сенсу.
+## A new icon
+- [app/web/js/icons.js](../app/web/js/icons.js) — add a path to the `P` map (24×24 grid, 1.6 stroke);
+  `icon()` will return it.
+- Rule: one icon — one meaning; don't reuse an existing one for something else.
 
-## Новий етап замовлення
+## A new order stage
 - [app/studio/profit.py](../app/studio/profit.py) — `order_stage()`
 - [app/web/js/order-bits.js](../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`
 - [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) — `STAGE_LABEL`
-- Тест `PickerStages` у [app/tests/test_states.py](../app/tests/test_states.py); вікі [rules/order-stages.md](rules/order-stages.md).
+- Test `PickerStages` in [app/tests/test_states.py](../app/tests/test_states.py); wiki
+  [rules/order-stages.md](rules/order-stages.md).
 
-## Що показувати в записці звірки
-- [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) — `proofCard()` (фільтр `notes`), `isFormatField()`, `isNameField()`; розміри — `.proof-name`, `.proof-note` в app.css.
+## What to show in the proof's note
+- [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) — `proofCard()` (the `notes` filter),
+  `isFormatField()`, `isNameField()`; sizes — `.proof-name`, `.proof-note` in app.css.
 
-## Розмір мініатюр стрічки
-- Змінювати **разом**: [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) `STRIP_THUMB` і [app/studio/creator.py](../app/studio/creator.py) `STRIP_PREVIEW` (інакше сервер готуватиме не той розмір).
+## Filmstrip thumbnail size
+- Change **together**: [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) `STRIP_THUMB` and
+  [app/studio/creator.py](../app/studio/creator.py) `STRIP_PREVIEW` (otherwise the server will prepare
+  the wrong size).
 
-## Новий ключ сервісу
-- [app/studio/vault.py](../app/studio/vault.py) `SECRET_NAMES`; [app/studio/settings_api.py](../app/studio/settings_api.py) `EDITABLE_SECRETS`; [app/web/js/pages/settings.js](../app/web/js/pages/settings.js) `SECRET_LABELS`.
+## A new service key
+- [app/studio/vault.py](../app/studio/vault.py) `SECRET_NAMES`;
+  [app/studio/settings_api.py](../app/studio/settings_api.py) `EDITABLE_SECRETS`;
+  [app/web/js/pages/settings.js](../app/web/js/pages/settings.js) `SECRET_LABELS`.
 
-## Нове налаштування
-- [app/studio/core.py](../app/studio/core.py) `DEFAULT_SETTINGS` → маршрут у [app/studio/settings_api.py](../app/studio/settings_api.py) → поле в [app/web/js/pages/settings.js](../app/web/js/pages/settings.js) `mount()`.
-- Пам'ятати: власник хоче мінімальні Налаштування ([owner/ui-principles.md](owner/ui-principles.md)).
+## A new setting
+- [app/studio/core.py](../app/studio/core.py) `DEFAULT_SETTINGS` → a route in
+  [app/studio/settings_api.py](../app/studio/settings_api.py) → a field in
+  [app/web/js/pages/settings.js](../app/web/js/pages/settings.js) `mount()`.
+- Remember: the owner wants Settings kept minimal ([owner/ui-principles.md](owner/ui-principles.md)).
 
-## Дозволити новий виклик Printify або Gelato
-- **Лише з прямого дозволу власника** і з оглядом безпеки.
-- [app/studio/printify.py](../app/studio/printify.py) `_check()` (списки `_READ`, `_WRITE`); [app/studio/gelato.py](../app/studio/gelato.py) `_allowed()`.
-- Тести `SafetyRails` у [app/tests/test_library_creator.py](../app/tests/test_library_creator.py); вікі [security.md](security.md).
+## Allow a new Printify or Gelato call
+- **Only with the owner's direct permission** and a security review.
+- [app/studio/printify.py](../app/studio/printify.py) `_check()` (the `_READ`, `_WRITE` lists);
+  [app/studio/gelato.py](../app/studio/gelato.py) `_allowed()`.
+- Tests `SafetyRails` in [app/tests/test_library_creator.py](../app/tests/test_library_creator.py);
+  wiki [security.md](security.md).
 
-## Розібратися, чому книга в Printify/Gelato вийшла не такою
-- Відкрити запис у `app/data/logs/sends/` (піктограма «Журнал відправки» в Order Creator): кроки `files`, `catalog`, `pdf`, `link`, `readback`, тіло запиту й відповідь — [features/send-journal.md](features/send-journal.md).
-- Будову PDF для Gelato не міняти без тестової чернетки з пронумерованими сторінками ([integrations/gelato.md](integrations/gelato.md)).
+## Figure out why a book came out wrong in Printify/Gelato
+- Open the record in `app/data/logs/sends/` (the "Send journal" icon in the Order Creator): steps
+  `files`, `catalog`, `pdf`, `link`, `readback`, the request body and the response —
+  [features/send-journal.md](features/send-journal.md).
+- Don't change the Gelato PDF layout without a test draft with numbered pages
+  ([integrations/gelato.md](integrations/gelato.md)).
 
-## Змінити перевірку файлів Printify/Gelato
-- [app/studio/creator.py](../app/studio/creator.py) — `expected_files()`, `validate()`; розміри Printify — у налаштуваннях (`coverSize`, `pageSize`) з аналізу Master.
+## Change the Printify/Gelato file check
+- [app/studio/creator.py](../app/studio/creator.py) — `expected_files()`, `validate()`; Printify sizes
+  are in settings (`coverSize`, `pageSize`) from the Master analysis.
 
-## Пов'язане
+## Mockups: a new template, a renamed layer, another number of spreads
+- [app/studio/mockups.py](../app/studio/mockups.py) — `TEMPLATES` (file, `slots`, the layer path of each
+  role, `hand` for the owner's front cover, `size`), `RUN_ORDER`; the smart objects' inner sizes — `HARD`,
+  `SOFT` (read them from the template with psd-tools, read-only: [plan](plans/listing-mockups.md)).
+- The page takes the slots from `/api/mockups/state` on its own.
+- Tests: `trees()` in [app/tests/test_mockups.py](../app/tests/test_mockups.py) — the pretend layer tree of
+  each template. Wiki: [features/mockups.md](features/mockups.md).
 
-- [Карта коду](code-map.md) · [Словник](glossary.md)
+## Mockups: a different crop of the back, spine or rim
+- [app/studio/mockups.py](../app/studio/mockups.py) — `cover_pictures()` (and `_fill()`); test `Pictures`.
+
+## Related
+
+- [Code map](code-map.md) · [Glossary](glossary.md)

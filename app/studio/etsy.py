@@ -199,7 +199,7 @@ def refresh_tokens(force: bool = False) -> dict:
                 "grant_type": "refresh_token",
                 "client_id": keystring,
                 "refresh_token": t["refresh_token"],
-            }, retries=2, timeout=30)
+            }, retries=2, timeout=30, idempotent=True)  # a new token only: safe to ask again
         except httpc.HttpError as err:
             # Etsy answers a dead refresh token with 400 (often with an empty body), not 401.
             if err.status in (400, 401, 403):
@@ -391,13 +391,16 @@ def fetch_listing(listing_id: str) -> dict:
 
 # ---------------------------------------------------------------- receipts
 
+MAX_RECEIPTS = 20000
+
+
 def fetch_all_receipts(progress=None, min_last_modified: int | None = None) -> tuple[list, Any, str]:
     """Paid receipts (cancelled and refunded ones included — they stay was_paid), newest first.
 
     With min_last_modified only receipts changed since then (epoch seconds) are returned.
     """
     shop_id, shop_name = ensure_shop()
-    receipts: list = []
+    receipts = httpc.Listing()  # complete=False when the loop stops at MAX_RECEIPTS
     offset, total = 0, None
     while True:
         params = {"limit": 100, "offset": offset, "was_paid": "true", "sort_on": "created", "sort_order": "desc"}
@@ -410,7 +413,11 @@ def fetch_all_receipts(progress=None, min_last_modified: int | None = None) -> t
         offset += len(batch)
         if progress:
             progress(len(receipts), total)
-        if not batch or len(batch) < 100 or (total is not None and offset >= total) or offset >= 20000:
+        if not batch or len(batch) < 100 or (total is not None and offset >= total):
+            break
+        if offset >= MAX_RECEIPTS:
+            receipts.complete = False
+            core.log.warning("Etsy receipts: stopped at %s — older ones are not loaded", MAX_RECEIPTS)
             break
         time.sleep(0.12)  # stay far below Etsy's rate limit
     return receipts, shop_id, shop_name

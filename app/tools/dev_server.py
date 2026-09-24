@@ -1,21 +1,25 @@
 """Book Studio server for looking at the interface during development — never on the real data.
 
   python app/tools/dev_server.py            empty program on http://127.0.0.1:47890/
-  python app/tools/dev_server.py --sample   plus made-up orders and one library book to click through
+  python app/tools/dev_server.py --sample   plus made-up orders, one library book, one Workshop book and the
+                                            mockups' made-up templates to click through
 
-The data folder is %TEMP%\\bsdev (or BOOK_STUDIO_DATA when it is set): no keys there, so nothing
-reaches Etsy, Printify or Gelato. Stop it with Ctrl+C (or preview_stop).
+The data folder is .tmp\\bsdev in the repository, on drive D (or BOOK_STUDIO_DATA when it is set): no keys
+there, so nothing reaches Etsy, Printify or Gelato. The mockups get made-up templates and a pretend Photoshop:
+nothing real is opened, and their Windows dialogs answer by themselves. Stop it with Ctrl+C (or preview_stop).
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
-import tempfile
+import threading
 import time
 from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]
 PORT = 47890
+WORKSHOP_BOOK = "0" * 31 + "2"   # the Workshop's sample book: the same id on every start
 
 # The sample book's texts (made up): the library passport and what Olivia's printed book carries — with
 # one misspelt name and one forgotten {Name}, for the text check to find.
@@ -118,10 +122,18 @@ def seed(data: Path) -> None:
     gelato_orders = [
         _gelato(4100000102, "in_transit", "Canada Post Tracked Packet", "7023210000000003"),  # sent
         _gelato(4100000103, "draft"),
+        _gelato(4100000107, "printed"),   # Leo's order was split: one book here, one in Printify
     ]
     snapshot = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": printify_orders,
-                "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": []}
+                "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": [],
+                "loaded": {source: core.now_iso() for source in ("etsy", "printify", "gelato")}}
     core.write_json(profit.SNAPSHOT, snapshot, backup=False)
+    # One receipt with two print orders: what the queue and the profit row look like when the books of an
+    # order went in two goes, or to two printers.
+    core.write_json(profit.SENDS, {"4100000107": [
+        {"provider": "printify", "orderId": f"{4100000107:024x}", "at": core.now_iso()},
+        {"provider": "gelato", "orderId": f"00000000-0000-4000-8000-{4100000107:012d}", "at": core.now_iso()},
+    ]}, backup=False)
     book_id = "0" * 31 + "1"
     folder = data / "library" / "books" / book_id
     if not (folder / "book.json").exists():
@@ -142,7 +154,50 @@ def seed(data: Path) -> None:
     from studio import archive
     if not archive.entries():
         _seed_archive(data)
-    print(f"Sample data: {len(receipts)} orders, 1 book, {len(archive.entries())} archived books", flush=True)
+    seed_workshop()
+    seed_mockups(data / "sample-mockups")
+    print(f"Sample data: {len(receipts)} orders, 1 library book, 1 Workshop book, {len(archive.entries())} archived"
+          " books, made-up mockup templates", flush=True)
+
+
+# The Workshop's sample book (made up): a prompt and a text for every row, pictures only in a few frames — the
+# way a book looks while the owner is still generating them; one of them isn't 2:1.
+WORKSHOP_PROMPTS = {
+    "cover": "Watercolor wide cover 2:1: a little gosling in a meadow, soft morning light, pastel palette",
+    "page1": "A cosy nest with a sleeping gosling, warm sunrise, children's book watercolor",
+    "page30": "A gosling asleep under the stars, calm night palette",
+    **{f"spread{n}": f"Wide 2:1 spread: the gosling's day, scene {n - 1}, soft watercolor, room for the text on one side"
+       for n in range(2, 16)},
+}
+
+
+def seed_workshop() -> None:
+    from PIL import Image, ImageDraw
+    from studio import core, library
+    if (library._book_dir(WORKSHOP_BOOK) / "book.json").exists():
+        return
+    book = {"id": WORKSHOP_BOOK, "schema": 1, "rev": 0, "createdAt": core.now_iso(), "stage": library.WORKSHOP,
+            "title": "Silly Goose (Workshop sample)", "listing": {}, "canvaUrl": "", "notes": "", "archived": False,
+            "cover": None, "thumbnail": None, "slots": library._empty_slots(),
+            "text": {**SAMPLE_TEXTS, "page30": ""},                  # one text still to write
+            "prompts": {**WORKSHOP_PROMPTS, "spread9": ""}}          # and one prompt
+    library._book_dir(WORKSHOP_BOOK).mkdir(parents=True, exist_ok=True)
+    library.save(book)
+    tmp = core.data_path("tmp")
+    tmp.mkdir(parents=True, exist_ok=True)
+    for slot, size, colour in [("cover", (1600, 800), (236, 196, 80)), ("spread2", (1600, 800), (140, 190, 150)),
+                               ("spread3", (1600, 800), (150, 170, 210)), ("spread5", (1792, 1024), (210, 160, 150))]:
+        im = Image.new("RGB", size, colour)
+        d = ImageDraw.Draw(im)
+        w, h = size
+        d.ellipse([w * 0.18, h * 0.3, w * 0.36, h * 0.72], fill=(250, 244, 226))
+        d.line([w // 2, 0, w // 2, h], fill=tuple(c - 30 for c in colour), width=4)
+        path = tmp / f"workshop-{slot}.png"
+        im.save(path)
+        with library._lock:
+            fresh = library.load(WORKSHOP_BOOK)
+            library._set_asset(fresh, slot, library._store_asset(WORKSHOP_BOOK, path, f"{slot}.png", move=True))
+            library.save(fresh)
 
 
 def _sample_book(folder: Path, name: str, pages: int, hue: int, story: bool = False) -> list:
@@ -232,15 +287,163 @@ def _seed_archive(data: Path) -> None:
     archive.update(olivia, sentAt=archive._iso(time.time() - 2 * day))
 
 
-def main(argv: list[str]) -> int:
-    data = Path(os.environ.get("BOOK_STUDIO_DATA") or Path(tempfile.gettempdir()) / "bsdev").resolve()
+MARK = ".book-studio-sample"    # this folder was made by this tool and may be written over
+
+
+def claim(data: Path, default: Path) -> str | None:
+    """Sample data goes only into this tool's own folder or one it made itself. Any other folder may be
+    the owner's real data — a copy, a backup, a moved folder — and refusing one exact path is not enough.
+    Returns the reason to stop, or None when the folder may be used (and is marked as ours)."""
     if data == (APP / "data").resolve():
-        print("Refusing to run on the real data folder.", file=sys.stderr)
+        return "це справжня папка даних програми"
+    if (data / "vault.json").exists():
+        # Also when a key was typed into this tool's own Settings: a real key never lives in sample data,
+        # and the tool does not delete keys by itself — the folder is for the owner to remove.
+        return ("у ній лежать ключі (vault.json) — це не тимчасові дані. Якщо ключ зберегли в налаштуваннях "
+                "тестового сервера, видаліть цю папку вручну")
+    if not (data / MARK).exists() and data != default and data.exists() and any(data.iterdir()):
+        return "вона не порожня й не створена цим інструментом"
+    data.mkdir(parents=True, exist_ok=True)
+    (data / MARK).write_text("Sample data for app/tools/dev_server.py. Delete this folder any time.\n",
+                             encoding="utf-8")
+    return None
+
+
+# ---------------------------------------------------------------- the mockups (the Listings mode)
+
+def _scene(size: tuple[int, int], shade: tuple[int, int, int], book: tuple[int, int, int, int]):
+    """A made-up "template preview": a tinted table with a pale open book on it (the preview's own PSD stand-in)."""
+    from PIL import Image, ImageDraw
+    im = Image.new("RGB", size, shade)
+    d = ImageDraw.Draw(im)
+    x0, y0, x1, y1 = book
+    d.rectangle([x0 + 14, y0 + 18, x1 + 14, y1 + 18], fill=tuple(max(0, c - 28) for c in shade))  # shadow
+    d.rectangle([x0, y0, x1, y1], fill=(246, 244, 238))
+    d.line([(x0 + x1) // 2, y0, (x0 + x1) // 2, y1], fill=(210, 206, 198), width=6)
+    return im
+
+
+def seed_mockups(data: Path) -> None:
+    """Made-up templates (small pictures under the owner's file names — the page shows their previews), a
+    made-up Canva demo book as a ZIP, a folder for the pictures, and a pretend Photoshop."""
+    import types
+    import zipfile
+    from PIL import Image, ImageDraw, ImageFont
+    from studio import core, desktop, mockups
+    mockups.find_photoshop = lambda base: {"exe": Path("Photoshop.exe"), "launcher": Path("Photoshop.exe")}
+    mockups.running = lambda: True
+    mockups.launch = pretend_photoshop
+    # The mockups' Windows dialogs answer by themselves and no window flashes or sounds — only theirs: the rest of
+    # the program keeps its own dialogs.
+    fake = types.SimpleNamespace(**{k: getattr(desktop, k) for k in dir(desktop) if not k.startswith("__")})
+    fake.pick_folder = lambda title, initial="": str(data / "out")
+    fake.pick_zip = lambda title, initial="": str(data / "Goose demo.zip")
+    fake.attention = lambda title_part: False
+    mockups.desktop = fake
+    templates = data / "templates"
+    templates.mkdir(parents=True, exist_ok=True)
+    shades = [(196, 202, 214), (214, 206, 196), (200, 212, 204), (220, 214, 222), (206, 206, 206), (224, 210, 200)]
+    for t, shade in zip(mockups.TEMPLATES, shades):
+        _scene((900, 600), shade, (170, 150, 730, 450)).save(templates / t["file"], "PNG")  # read by content
+    (data / "out").mkdir(exist_ok=True)
+    core.write_json(mockups.PLACES, {"templates": str(templates), "photoshop": str(data / "photoshop")}, backup=False)
+    demo = data / "Goose demo.zip"
+    if not demo.exists():
+        font = ImageFont.load_default(size=150)
+        with zipfile.ZipFile(demo, "w") as zf:
+            cover = Image.new("RGB", (1400, 700), (70, 120, 90))
+            d = ImageDraw.Draw(cover)
+            d.rectangle([700, 0, 1400, 700], fill=(236, 196, 80))
+            d.rectangle([690, 0, 709, 700], fill=(40, 50, 70))
+            d.text((1050, 350), "Goose", font=font, fill=(60, 40, 20), anchor="mm")
+            zf.writestr("1.png", _png(cover))
+            for n in range(1, 25):
+                page = Image.new("RGB", (700, 700), ((n * 53) % 200 + 40, (n * 97) % 160 + 60, (n * 31) % 180 + 60))
+                ImageDraw.Draw(page).text((350, 350), str(n), font=font, fill=(250, 250, 245), anchor="mm")
+                zf.writestr(f"{n + 1}.png", _png(page))
+
+
+def _png(im) -> bytes:
+    import io
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def pretend_photoshop(script: Path) -> None:
+    """Plays Photoshop running the script: reports progress into the status file the way mockups.jsx does and
+    saves each picture as the template's made-up scene with the prepared pages laid on it (enough to see the
+    page work). The second script («Зберегти відкриті») saves the templates it was given and "closes" them."""
+    from PIL import Image
+    finish = script.name == "finish.jsx"
+    work = json.loads((script.parent / ("finish.json" if finish else "job.json")).read_text(encoding="utf-8"))
+    status = {"state": "running", "step": 0, "title": "", "saved": [], "opened": [], "closed": [], "problems": [],
+              "total": len(work["templates"]) if finish else sum(1 + len(t["shots"]) for t in work["templates"])}
+
+    def report():
+        Path(work["status"]).write_text(json.dumps(status), encoding="utf-8")
+
+    def mockup(template: dict, fills: list, save: str) -> None:
+        source = Path(template.get("source") or "")
+        with Image.open(source if source.is_file() else next(Path(work["run"]).glob("templates/*"))) as scene:
+            sheet = scene.convert("RGB").resize((1500, 1000))
+        for i, f in enumerate(fills[:2]):
+            with Image.open(f["image"]) as im:
+                im = im.convert("RGB").resize((460, 460))
+                sheet.paste(im, (290 + i * 460, 270))
+        sheet.save(save)
+
+    def run():
+        time.sleep(2.5)  # the owner answers "run this script?"
+        if finish:
+            for t in work["templates"]:
+                status["title"] = t["title"]
+                report()
+                time.sleep(0.6)
+                Image.new("RGB", (1500, 1000), (120, 132, 150)).save(t["shots"][0]["save"])
+                status["saved"].append(t["shots"][0]["save"])
+                status["closed"].append(t["name"])
+                status["step"] += 1
+                report()
+            status["state"] = "done"
+            return report()
+        for t in work["templates"]:
+            if Path(work["cancel"]).exists():
+                status["state"] = "cancelled"
+                return report()
+            status["title"] = t["title"]
+            status["step"] += 1
+            report()
+            time.sleep(0.4)
+            for shot in t["shots"]:
+                status["title"] = shot["title"]
+                report()
+                mockup(t, shot["fills"] or t["fills"][-1:], shot["save"])
+                status["saved"].append(shot["save"])
+                status["step"] += 1
+                report()
+                time.sleep(0.4)
+            if t["keepOpen"]:
+                status["opened"].append(t["name"])
+        status["state"] = "done"
+        report()
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+def main(argv: list[str]) -> int:
+    # On drive D beside the code, not in Windows' temp folder on drive C (the owner keeps drive C clean).
+    default = (APP.parent / ".tmp" / "bsdev").resolve()
+    data = Path(os.environ.get("BOOK_STUDIO_DATA") or default).resolve()
+    stop = claim(data, default)
+    if stop:
+        print(f"Не чіпаю {data}: {stop}.\nВиберіть іншу папку в BOOK_STUDIO_DATA або видаліть цю.",
+              file=sys.stderr)
         return 1
     os.environ["BOOK_STUDIO_DATA"] = str(data)
+    os.environ["BOOK_STUDIO_SAMPLE"] = "1"  # no key is stored or offered here (studio.core.SAMPLE)
     sys.path.insert(0, str(APP))
     if "--sample" in argv:
-        data.mkdir(parents=True, exist_ok=True)
         seed(data)
     from studio.main import main as run
     return run(["--no-window", "--port", str(PORT)])

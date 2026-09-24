@@ -5,7 +5,7 @@
 // inertia. Images are decoded off the main thread before they are shown and cross-fade.
 // Items may carry `full` — a sharper version fetched once the user zooms past the preview's pixels
 // and swapped in while nothing is moving (same box size, so the picture does not jump).
-import { html, ic, el, setHtml, highlightTokens, reducedMotion } from './lib.js';
+import { html, ic, el, setHtml, highlightTokens, reducedMotion, topLayer } from './lib.js';
 
 const TAU = 85;           // ms — smoothing time constant for zoom/pan
 const FRICTION = 260;     // ms — inertia decay after a drag
@@ -182,6 +182,7 @@ export function openLightbox(items, start = 0) {
   }
   const onResize = () => { const atFit = Math.abs(tgt.s - fit) < fit * 0.01; if (atFit) { fitTarget(); jump(); } else keepInView(); };
   function onKey(e) {
+    if (topLayer() !== root) return; // a dialog asked from the viewer is on top: the keys are its own
     const k = e.key;
     if (k === 'Escape') { e.stopPropagation(); close(); }
     else if (k === 'ArrowRight') show(index + 1, 1);

@@ -38,6 +38,8 @@ from PIL import Image
 
 from . import core, creator, images, library, orders, profit
 from .jobs import UserError, jobs
+from .wording import DASHES as _DASHES, DEDICATION as _DEDICATION, META as _META, QUOTES as _QUOTES
+from .wording import clean_name, is_default, words
 from .server import ApiError, Request, route
 
 DEFAULT_MODEL = "gemma4:12b-it-qat"
@@ -71,6 +73,8 @@ STRICT_PROMPT = """You check a page of a personalized children's book before it 
    placeholder in curly braces, a missing, extra or changed word, text cut off. Different line breaks, quote or dash
    styles are NOT problems.
 3. Verdict: ok (identical words) or error. Explain every problem in Ukrainian.
+4. only_punctuation: true when every problem is only about punctuation, quotes, spaces or capital letters (all the
+   words themselves are right), otherwise false.
 
 EXPECTED:
 {expected}"""
@@ -80,11 +84,14 @@ LOOSE_PROMPT = """You check a page of a personalized children's book before it i
 2. Report only clear mistakes: the child's name misspelled or missing an accent, a different child's name, a leftover
    placeholder in curly braces, a word cut off at the edge of the page, words stuck together without a space, an
    obvious typo.{extra} Different line breaks, quote or dash styles and small edits by the designer are NOT problems.
-3. Verdict: ok or error. Explain every problem in Ukrainian."""
+3. Verdict: ok or error. Explain every problem in Ukrainian.
+4. only_punctuation: true when every problem is only about punctuation, quotes, spaces or capital letters (all the
+   words themselves are right), otherwise false."""
 
 SCHEMA = {"type": "object", "properties": {
     "transcript": {"type": "string"}, "verdict": {"type": "string", "enum": ["ok", "error"]},
-    "problems": {"type": "array", "items": {"type": "string"}}}, "required": ["transcript", "verdict", "problems"]}
+    "problems": {"type": "array", "items": {"type": "string"}}, "only_punctuation": {"type": "boolean"}},
+    "required": ["transcript", "verdict", "problems", "only_punctuation"]}
 
 
 class ModelError(UserError):
@@ -279,19 +286,8 @@ def picture(path: Path, part: str | None = None) -> str:
 
 
 # ---------------------------------------------------------------- words
-
-_QUOTES = str.maketrans({"’": "'", "‘": "'", "ʼ": "'", "`": "'", "´": "'", "“": '"', "”": '"', "„": '"',
-                         "«": '"', "»": '"'})
-_DASHES = re.compile("[‐-―−]")
-_TOKEN = re.compile(r"[\w{}\[\]'\-]+")
-
-
-def words(text: str) -> list[str]:
-    """Printed words without punctuation; quotes, apostrophes and dashes of every style made alike.
-    Capitals and accents stay: «Zoe» is not «Zoë»."""
-    text = _DASHES.sub("-", unicodedata.normalize("NFC", text or "").translate(_QUOTES))
-    return [w for w in (t.strip("-'") for t in _TOKEN.findall(text)) if w]
-
+# words() — the printed words, quotes and dashes made alike — is in wording.py: the order card reads the
+# buyer's fields by the same rules.
 
 def _caps(word: str) -> bool:
     return len(word) > 1 and word.isupper()  # set in capitals by the design: FLOWER GIRL OLIVIA
@@ -356,10 +352,7 @@ year years yes yet you young your yours""".split())
 
 # ---------------------------------------------------------------- what the buyer asked for
 
-_DEDICATION = re.compile(r"dedicat|closing|присвят", re.I)
 _GIFTER = re.compile(r"\bfrom\b|від кого|gift", re.I)
-_META = {"dedication", "closing", "message", "messages", "and", "default", "defaults", "please", "use", "the",
-         "standard", "both", "is", "fine", "ok", "okay", "keep", "as", "one"}
 _CLOSING = re.compile(r"\bclosing(?:\s+message)?\s*:", re.I)
 _DEDICATION_HEAD = re.compile(r"^\s*dedication(?:\s+message)?\s*:\s*", re.I)
 _NAME_SLOT = re.compile(r"\{\s*name\s*\}", re.I)
@@ -370,16 +363,9 @@ _GREETING = re.compile(r"^\s*(?:with\s+(?:(?:all\s+)?(?:of\s+)?(?:my|our)\s+)?lo
 _TEMPLATE_GREETING = re.compile(r"(?im)^[^\n{]{1,30},[ \t]*\n(?=[ \t]*\{\s*gifter\s*\})")
 
 
-def is_default(value: str) -> bool:
-    """«DEFAULT», "“DEFAULT “", «Dedication and Closing   Default» — the book's own text is wanted."""
-    ws = [w.casefold() for w in words(value)]
-    return not ws or (("default" in ws or "defaults" in ws) and all(w in _META for w in ws))
-
-
 def personalization(item: dict) -> dict:
     """The child's name, who the book is from, and the buyer's own dedication / closing when there is one."""
-    child = (item.get("childName") or creator.guess_child_name([item]) or "").strip()
-    child = child.strip("\"'“”‘’«» ").rstrip(".,;:!").strip()  # «Leo & Mila.» — the full stop is not printed
+    child = clean_name(item.get("childName") or creator.guess_child_name([item]))  # «Leo & Mila.» -> «Leo & Mila»
     gifter, raw = "", ""
     for v in item.get("variations") or []:
         name, value = str(v.get("name") or ""), str(v.get("value") or "").strip()
@@ -498,7 +484,7 @@ def findings(printed: list[str], child: str, vocab: set[str], others: set[str]) 
 
 _cache: dict[str, str] = {}
 _cache_lock = threading.Lock()
-_runs: dict[str, tuple[threading.Event, str | None]] = {}  # order -> (stop, job id) of its running check
+_runs: dict[str, tuple[threading.Event, str | None]] = {}  # book of an order -> (stop, job id) of its check
 _runs_lock = threading.Lock()
 _active = 0  # checks running now
 _active_lock = threading.Lock()
@@ -602,7 +588,8 @@ def page_issues(target: dict, answer: dict, pers: dict, vocab: set[str], others:
         if out:
             out[0]["note"] = " ".join(problems[:3])
         else:  # the model saw what the words alone do not show — a word cut off at the edge, say
-            out += [_issue(target, "warn", p, kind="model") for p in problems[:3] if not _only_punctuation(p)]
+            flagged = answer.get("only_punctuation") is True
+            out += [_issue(target, "warn", p, kind="model") for p in problems[:3] if not _only_punctuation(p, flagged)]
     return out
 
 
@@ -613,11 +600,15 @@ _SUBSTANCE = re.compile(r"обріз|обірв|зрізан|за кра|зли�
                         r"пропущ|відсутн\S* слов|зайв\S* слов|cut|missing word", re.I)
 
 
-def _only_punctuation(problem: str) -> bool:
+def _only_punctuation(problem: str, flagged: bool = False) -> bool:
     """«Відсутні лапки», «пробіл після коми», «FIRST великими літерами»: the words compare equal, so this is
     the page's punctuation or lettering — the owner's to shape (a name in small letters the program catches
-    itself). A cut-off or stuck word is never just punctuation."""
-    return bool(_PUNCTUATION.search(problem)) and not _SUBSTANCE.search(problem)
+    itself). The model says so itself (only_punctuation), so its wording need not match the words below
+    (22.09.2026 audit: another model or prompt would word it differently); without that answer the wording
+    is read. A cut-off or stuck word is never just punctuation, whatever the flag says."""
+    if _SUBSTANCE.search(problem):
+        return False
+    return flagged or bool(_PUNCTUATION.search(problem))
 
 
 def book_issues(targets: list[dict], answers: dict[int, dict], pers: dict, count: int) -> list[dict]:
@@ -674,6 +665,11 @@ def _parse(content: str) -> dict:
     return data
 
 
+def run_key(receipt_id: str, pick: int = 0) -> str:
+    """Which check is which: one per book of an order, so books of the same order do not stop each other."""
+    return f"{receipt_id}#{max(0, pick)}"
+
+
 def check_order(job, receipt_id: str, folder_raw: str, count: int, pick: int = 0) -> dict:
     """The whole check of one order's print folder (Cover.png + 1..count.png), for its book number `pick`."""
     order = next((o for o in profit.picker_orders() if str(o["receiptId"]) == str(receipt_id)), None)
@@ -681,10 +677,12 @@ def check_order(job, receipt_id: str, folder_raw: str, count: int, pick: int = 0
         raise UserError("Замовлення не знайдено.")
     orders.enrich(order, orders.books_by_listing())
     items = order.get("items") or [{}]
-    return check_book(job, str(receipt_id), items[pick] if 0 <= pick < len(items) else items[0], folder_raw, count)
+    if not 0 <= pick < len(items):
+        pick = 0
+    return check_book(job, str(receipt_id), items[pick], folder_raw, count, pick)
 
 
-def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) -> dict:
+def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int, pick: int = 0) -> dict:
     """One book of an order (an enriched order item: variations, childName, book) against its print folder."""
     started = time.monotonic()
     files = _print_files(folder_raw, count)
@@ -695,7 +693,7 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) ->
     full = bool(pers["child"]) and any(refs.get(f"spread{n}") for n in library.SPREAD_NUMBERS)
     target = _targets(files, count, refs, pers)
     rules = (_vocabulary(pers), _other_children(receipt_id))  # the program's own call on names and placeholders
-    with _Run(job, receipt_id, _settings()["model"]) as run:
+    with _Run(job, receipt_id, _settings()["model"], pick) as run:
         targets, answers, layout = _passes(run, target, files, count, refs, pers, full, rules)
         run.say("Підсумок…")
     issues = _all_issues(targets, answers, layout, files, pers, count, rules)
@@ -716,7 +714,7 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int) ->
         "skipped": [n for n in library.SPREAD_NUMBERS if refs.get(f"spread{n}") and f"spread{n}" not in found] if full else [],
         "issues": issues,
     }
-    _journal(receipt_id, result, pers)
+    _journal(receipt_id, result, pers, pick)
     return result
 
 
@@ -937,10 +935,12 @@ def _learnable(targets: list, issues: list) -> dict[int, str]:
 
 class _Run:
     """One check's model calls: four at a time, cached, counted for the progress bar, stoppable. A newer check
-    of the same order stops this one; the model leaves the graphics card when the last running check ends."""
+    of the same book stops this one; other books of the same order carry on. The model leaves the graphics
+    card when the last running check ends."""
 
-    def __init__(self, job, receipt_id: str, model: str):
+    def __init__(self, job, receipt_id: str, model: str, pick: int = 0):
         self.job, self.receipt_id, self.model = job, receipt_id, model
+        self.key = run_key(receipt_id, pick)
         self.cancel = threading.Event()
         self.lock = threading.Lock()
         self.done, self.total = 0, 1
@@ -949,10 +949,10 @@ class _Run:
     def __enter__(self) -> "_Run":
         global _active
         with _runs_lock:
-            old = _runs.get(self.receipt_id)
+            old = _runs.get(self.key)
             if old:
                 old[0].set()
-            _runs[self.receipt_id] = (self.cancel, getattr(self.job, "id", None))
+            _runs[self.key] = (self.cancel, getattr(self.job, "id", None))
         with _active_lock:
             _active += 1
         self.pool = ThreadPoolExecutor(PARALLEL, thread_name_prefix="textcheck")
@@ -964,8 +964,8 @@ class _Run:
             self.cancel.set()  # the queued pages give up at once
         self.pool.shutdown(wait=True, cancel_futures=True)
         with _runs_lock:
-            if _runs.get(self.receipt_id, (None,))[0] is self.cancel:
-                del _runs[self.receipt_id]
+            if _runs.get(self.key, (None,))[0] is self.cancel:
+                del _runs[self.key]
         with _active_lock:
             _active -= 1
             last = _active == 0
@@ -1020,14 +1020,14 @@ class _Run:
 
 
 def cancel(receipt_id: str, job_id: str | None = None) -> bool:
-    """Stops the running check of an order (only the one of that job, when given): the card was closed or
-    got other files. Pages already with the model finish; the rest are not asked."""
+    """Stops running checks of an order: the one of that job when given, otherwise every book of the order
+    (the whole card was closed). Pages already with the model finish; the rest are not asked."""
+    prefix = f"{receipt_id}#"
     with _runs_lock:
-        run = _runs.get(str(receipt_id))
-        if not run or (job_id and run[1] != job_id):
-            return False
-        run[0].set()
-        return True
+        keys = [k for k in _runs if k.startswith(prefix) and (not job_id or _runs[k][1] == job_id)]
+        for key in keys:
+            _runs[key][0].set()
+        return bool(keys)
 
 
 def _release_model(model: str) -> None:
@@ -1055,13 +1055,14 @@ def has_text(read: str | None) -> bool:
     return len(words(read or "")) >= 4 and not _REFUSAL.match(read or "")
 
 
-def _journal(receipt_id: str, result: dict, pers: dict) -> None:
-    """Every check, with what the model read — to see later why something was (not) flagged. Local only."""
+def _journal(receipt_id: str, result: dict, pers: dict, pick: int = 0) -> None:
+    """Every check, with what the model read — to see later why something was (not) flagged. Local only.
+    The book number is in the name: two books of one order can finish within the same second."""
     try:
         CHECKS.mkdir(parents=True, exist_ok=True)
-        path = CHECKS / f"{time.strftime('%Y-%m-%d_%H%M%S')}_{receipt_id}.json"
-        core.write_json(path, {"receiptId": receipt_id, "at": core.now_iso(), "personalization": pers, **result},
-                        backup=False)
+        path = CHECKS / f"{time.strftime('%Y-%m-%d_%H%M%S')}_{receipt_id}-{pick + 1}.json"
+        core.write_json(path, {"receiptId": receipt_id, "book": pick + 1, "at": core.now_iso(),
+                               "personalization": pers, **result}, backup=False)
         for old in sorted(CHECKS.glob("*.json"))[:-KEEP]:
             old.unlink(missing_ok=True)
     except Exception:
@@ -1101,28 +1102,83 @@ def _start(req: Request):
     return status()
 
 
-def as_template(text: str, child: str) -> str:
-    """A printed page as a library text: the child's name becomes {Name} again (in any capitals)."""
-    text = re.sub(r"\n{3,}", "\n\n", text.strip())
-    return re.sub(re.escape(child), "{Name}", text, flags=re.I) if child else text
+def _alike(text: str) -> str:
+    """The text with quotes and dashes of every style made alike, letter for letter (the same length)."""
+    return _DASHES.sub("-", text.translate(_QUOTES))
 
 
-@route("POST", "/api/textcheck/passport")
-def _passport(req: Request):
-    """«Так у шаблоні Canva»: the book's texts for these pages become what was printed (owner's click only)."""
-    body = req.json or {}
+def _passport_words(text: str, template: str, child: str) -> dict[int, bool]:
+    """Where a printed word stands in the passport text: word start -> True when it stands in the place of
+    {Name}, False when it is the passport's own word. Words the passport does not have are left out."""
+    name = [w.casefold() for w in re.findall(r"\w+", _alike(child))]
+    ref, slot = [], []
+    for n, part in enumerate(_NAME_SLOT.split(_alike(template))):
+        if n:
+            ref += name
+            slot += [True] * len(name)
+        found = [w.casefold() for w in re.findall(r"\w+", part)]
+        ref += found
+        slot += [False] * len(found)
+    printed = list(re.finditer(r"\w+", text))
+    matcher = difflib.SequenceMatcher(a=ref, b=[m.group().casefold() for m in printed], autojunk=False)
+    out = {}
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            out.update({printed[j].start(): slot[i] for i, j in zip(range(i1, i2), range(j1, j2))})
+    return out
+
+
+def as_template(text: str, child: str, template: str = "") -> str:
+    """A printed page as a library text: the child's name becomes {Name} again — only as a whole word
+    («Eve», not the «eve» of «every»), and only where the passport had {Name}: where it had the same word
+    of its own («Hope» the girl, «hope» the word), the word stays. In lines the passport does not have yet,
+    a name that is also an everyday word becomes {Name} only when it starts with a capital."""
+    text = re.sub(r"\n{3,}", "\n\n", unicodedata.normalize("NFC", text.strip()))
+    child = unicodedata.normalize("NFC", child.strip())
+    if not child:
+        return text
+    alike = _alike(text)
+    pattern = r"\s+".join(re.escape(part) for part in _alike(child).split())
+    hits = [m.span() for m in re.finditer(rf"(?<!\w){pattern}(?!\w)", alike, re.I)]
+    known = _passport_words(alike, template, child)
+    own = {w.casefold() for w in re.findall(r"\w+", _NAME_SLOT.sub(" ", template or ""))}
+    everyday = child.casefold() in COMMON or child.casefold() in own
+    out = text
+    for start, end in reversed(hits):
+        where = [known.get(m.start() + start) for m in re.finditer(r"\w+", alike[start:end])]
+        if False in where:
+            continue  # the passport's own word
+        if None in where and everyday and not text[start].isupper():
+            continue  # «hope» in a new line: a word, not the girl
+        out = out[:start] + "{Name}" + out[end:]
+    return out
+
+
+def _passport_texts(book: dict, pages: list, child: str) -> dict[str, str]:
     allowed = {"cover"} | {f"spread{n}" for n in library.SPREAD_NUMBERS}
-    child = str(body.get("child") or "").strip()
-    pages = body.get("pages") or []
-    if not child or not isinstance(pages, list) or not pages:
-        raise ApiError("Немає що оновлювати.")
     texts = {}
     for page in pages:
         key, text = str((page or {}).get("key") or ""), str((page or {}).get("text") or "").strip()
         if key not in allowed or not text or len(text) > 4000:
             raise ApiError("Некоректний текст сторінки.")
-        texts[key] = as_template(text, child)
-    book = library.update_texts(str(body.get("bookId") or ""), texts)
+        texts[key] = as_template(text, child, (book.get("text") or {}).get(key) or "")
+    return texts
+
+
+@route("POST", "/api/textcheck/passport")
+def _passport(req: Request):
+    """«Так у шаблоні Canva»: the book's texts for these pages become what was printed (owner's click only).
+    With "preview" nothing is saved: the owner first sees the texts as they would be kept."""
+    body = req.json or {}
+    child = str(body.get("child") or "").strip()
+    pages = body.get("pages") or []
+    if not child or not isinstance(pages, list) or not pages:
+        raise ApiError("Немає що оновлювати.")
+    book_id = str(body.get("bookId") or "")
+    texts = _passport_texts(library.load(book_id), pages, child)
+    if body.get("preview"):
+        return {"texts": texts}
+    book = library.update_texts(book_id, texts)
     core.log.info("Passport texts of %s updated from a print: %s", book["id"], ", ".join(texts))
     return {"updated": sorted(texts)}
 

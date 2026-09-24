@@ -1,5 +1,5 @@
 ---
-title: Прибуток (прихований до 1 жовтня)
+title: Profit (hidden until 1 October)
 type: feature
 updated: 2026-09-18
 code:
@@ -9,50 +9,50 @@ code:
   - app/studio/outcomes.py
   - app/studio/fees.py
 ---
-# Прибуток
+# Profit
 
-> Повний аналог Etsy Profit Calculator: для кожного чека Etsy — чистий виторг Etsy мінус собівартість
-> друку. **Сторінка прихована**: облік починається з 1 жовтня 2026. Модуль `profit.py` при цьому
-> працює щодня — він синхронізує замовлення для черги.
+> A full equivalent of the Etsy Profit Calculator: for every Etsy receipt — net Etsy revenue minus the
+> print cost. **The page is hidden**: accounting starts on 1 October 2026. The `profit.py` module still
+> runs every day, though — it syncs orders for the queue.
 
-## Стан
+## Status
 
-- `pages/profit.js` існує, але його немає ні в `NAV`, ні в `ROUTES` ([app.js](../../app/web/js/app.js)).
-  Щоб показати: додати пункт у `NAV` і маршрут `#/profit` у `ROUTES` ([рецепт](../recipes.md)).
-- Формули і правила зіставлення перевірені тестом проти коду оригіналу (`golden_profit.json`,
-  результати до цента) — [rules/reconciliation.md](../rules/reconciliation.md).
+- `pages/profit.js` exists, but it's in neither `NAV` nor `ROUTES` ([app.js](../../app/web/js/app.js)).
+  To show it: add an entry to `NAV` and the route `#/profit` to `ROUTES` ([recipe](../recipes.md)).
+- The formulas and matching rules are checked by a test against the original's code
+  (`golden_profit.json`, results to the cent) — [rules/reconciliation.md](../rules/reconciliation.md).
 
-## Що вміє сторінка
+## What the page can do
 
-- Періоди (сьогодні, 7 днів, 30 днів, увесь час, свій), показники, таблиця по 50 рядків, пошук.
-- Рядок розгортається: розбивка комісій, собівартість, стан.
-- Ручне зіставлення з замовленням Printify/Gelato або «без собівартості».
-- Стани: скасовано, повне/часткове повернення (сума), заміна (замовлення-передрук і/або сума).
-- Кнопка синхронізації (і повна — з перечитуванням усіх чеків).
+- Periods (today, 7 days, 30 days, all time, custom), metrics, a table of 50 rows at a time, search.
+- A row expands: a breakdown of fees, cost, state.
+- Manual matching to a Printify/Gelato order, or "no cost".
+- States: cancelled, full/partial refund (amount), replacement (a reprint order and/or an amount).
+- A sync button (and a full one — re-reading every receipt).
 
-## Що працює й без сторінки
+## What works even without the page
 
-- **Передрук з [архіву замовлень](archive.md)** сам записує стан «заміна» для чека (`mark_reprint()`):
-  нове замовлення друку додається в `replacementOrders`, тож зіставлення лишає за чеком перше
-  замовлення (етап у черзі не стрибає), а передрук не рахується новим продажем. Чек зі станом
-  «скасовано» чи «повернення» не чіпається; чек, чиє замовлення друку скасоване в друкарні, — теж
-  (передрук тоді зіставляється як звичайне замовлення). Передрук, що так і не став замовленням
-  (чернетку видалено чи скасовано), позначку знімає (`unmark_reprint()`); стан «заміна», який зробив
-  архів і в якому більше нічого немає, зникає.
-- Для черги й архіву рахується лише **оформлене** замовлення друку (`is_placed()`): не чернетка, не
-  «on hold», оплачене, не скасоване. Зіставлення для обліку (`reconcile.match()`) це не змінює.
-- Після кожної синхронізації (`_sync()`) програма перевіряє архів замовлень —
-  `archive.refresh_quietly()` видаляє книги, чиї 14 днів минули.
+- **A reprint from the [order archive](archive.md)** records a "replacement" state for the receipt on
+  its own (`mark_reprint()`): the new print order is added to `replacementOrders`, so matching keeps the
+  first print order attached to the receipt (its stage in the queue doesn't jump), and the reprint isn't
+  counted as a new sale. A receipt with a "cancelled" or "refund" state isn't touched; neither is a
+  receipt whose print order was cancelled at the printer (then the reprint gets matched as a normal
+  order instead). A reprint that never became an order clears the mark (`unmark_reprint()`); a
+  "replacement" state the archive made, once nothing is left in it, disappears.
+- For the queue and the archive, only a **confirmed** print order counts (`is_placed()`): not a draft,
+  not "on hold", paid, not cancelled. Matching for accounting (`reconcile.match()`) doesn't change this.
+- After every sync (`_sync()`), the program checks the order archive — `archive.refresh_quietly()`
+  deletes books whose 14 days are up.
 
-## Де в коді
+## Where in the code
 
 - [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `renderTable()`, `detailHtml()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
 - [app/studio/profit.py](../../app/studio/profit.py) — `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`, `mark_reprint()`, `unmark_reprint()`, `is_placed()`, `reserved_orders()`, `_sync()`
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `match()`, `printify_only_rows()`
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `apply()`
 - [app/studio/fees.py](../../app/studio/fees.py) — `calculate_ukrainian_etsy_fees()`
-- Тести: [app/tests/test_profit.py](../../app/tests/test_profit.py), [app/tests/test_states.py](../../app/tests/test_states.py), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`ReprintMark`)
+- Tests: [app/tests/test_profit.py](../../app/tests/test_profit.py), [app/tests/test_states.py](../../app/tests/test_states.py), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`ReprintMark`)
 
-## Пов'язане
+## Related
 
-- [Зіставлення і прибуток](../rules/reconciliation.md) · [Синхронізація](../rules/sync-policy.md) · [Відкриті питання](../plans/open-questions.md)
+- [Matching and profit](../rules/reconciliation.md) · [Sync](../rules/sync-policy.md) · [Open questions](../plans/open-questions.md)

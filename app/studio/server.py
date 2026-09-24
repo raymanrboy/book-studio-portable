@@ -143,6 +143,7 @@ class Request:
 
 
 class _State:
+    app = core.APP_NAME       # what /api/ping answers: a second launch of the same program opens a window only
     port = core.DEFAULT_PORT
     wanted_port = core.DEFAULT_PORT  # differs from `port` when another program held it at start-up
     last_heartbeat = 0.0
@@ -272,8 +273,6 @@ class _Handler(BaseHTTPRequestHandler):
             for k, v in headers.items():
                 self.send_header(k, v)
             self.end_headers()
-            if self.command == "HEAD":
-                return
             if response.file is not None:
                 with open(response.file, "rb") as f:
                     shutil.copyfileobj(f, self.wfile, 1024 * 256)
@@ -309,7 +308,7 @@ def base_url() -> str:
 
 @route("GET", "/api/ping", auth="none")
 def _ping(req: Request):
-    return {"app": core.APP_NAME, "version": core.APP_VERSION}
+    return {"app": state.app, "version": core.APP_VERSION}
 
 
 @route("POST", "/api/app/heartbeat")

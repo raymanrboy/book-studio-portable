@@ -9,9 +9,9 @@ import {
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
-  STAGES, STAGE_EMPTY, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, syncOrders, runningSync, watchSync, spreadsOf,
+  STAGES, STAGE_EMPTY, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, spreadsOf,
   folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel, trackChips, statusChip, receiptCopy, copyChip,
-  isCustomText, isNameField, isFormatField,
+  isCustomText, isNameField, isFormatField, restorable, alsoSentChip, holdClicks, orderSync,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 import { settle, sentOf, keptOrder, finish } from '../keep.js';
@@ -48,7 +48,7 @@ async function mountQueue(view) {
   catch (err) { setHtml(view, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`); return null; }
   settle(data.orders); // kept cards of orders that are no longer new are let go
   let { stage, term } = queueState;
-  let syncing = false, shown = [], unfreeze = 0;
+  let shown = [];
   const returning = queueState.visited; // coming back: the rows stand where they were, no entrance
   queueState.visited = true;
 
@@ -79,7 +79,7 @@ async function mountQueue(view) {
         ${o.book?.image ? html`<img data-fade loading="lazy" decoding="async" src="${bookImage(o.book, 160)}" alt="">` : ic('book')}</span>
       <span class="ord-main">
         <span class="row ord-chips"><b class="truncate">${o.name}</b>${receiptCopy(o, 'chip chip-mono')}
-          ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}${printerChip(o)}${trackChips(o)}</span>
+          ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}${printerChip(o)}${alsoSentChip(o)}${trackChips(o)}</span>
         <span class="ord-meta faint truncate"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> ·
           ${o.childName ? html`<b class="ord-child">${o.childName}</b> · ` : ''}${o.book ? o.book.title : html`<span class="ord-miss">книги немає в бібліотеці</span>`} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</span>
       </span>
@@ -97,7 +97,7 @@ async function mountQueue(view) {
     const before = shown;
     shown = rows.map((o) => o.receiptId);
     if (!rows.length) {
-      if (!data.orders.length && syncing) setHtml(list, html`<div class="empty"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
+      if (!data.orders.length && sync.syncing) setHtml(list, html`<div class="empty"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
       else if (t) setHtml(list, html`<div class="empty">Нічого не знайдено</div>`);
       else {
         const [icon, title, text] = STAGE_EMPTY[stage];
@@ -107,40 +107,18 @@ async function mountQueue(view) {
     }
     setHtml(list, rows.map((o) => rowHtml(o, (!before.length && !returning) || (fresh && !before.includes(o.receiptId)))));
     fadeImages(list);
-    if (fresh && before.join() !== shown.join()) {
-      // The rows just moved: ignore clicks for a moment so a click aimed at one buyer never lands on another.
-      list.inert = true;
-      clearTimeout(unfreeze);
-      unfreeze = setTimeout(() => { list.inert = false; }, 450);
-    }
+    if (fresh && before.join() !== shown.join()) holdClicks(list);
   };
 
-  // pull: the refresh button starts a sync; on opening the page we only follow one already running
-  // (the one the program does at start-up) — pages never start a sync by themselves.
-  async function refresh(pull = () => syncOrders(setSub)) {
-    if (syncing) return;
-    syncing = true;
-    syncBtn.disabled = true; syncBtn.firstElementChild?.classList.add('spin');
-    setSub('Оновлення…');
-    if (!data.orders.length) render();
-    try {
-      await pull();
-      const next = await api('/api/orders');
-      settle(next.orders);
-      if (!view.isConnected) return;
-      data = next;
-      setSub(syncedText());
-      render({ fresh: true });
-    } catch (err) {
-      if (view.isConnected) setSub(`${syncedText()} · не вдалося оновити: ${err.message}`);
-    } finally {
-      syncing = false;
-      syncBtn.disabled = false; syncBtn.firstElementChild?.classList.remove('spin');
-    }
-  }
+  const sync = orderSync({
+    fetch: async () => { const next = await api('/api/orders'); settle(next.orders); return next; },
+    alive: () => view.isConnected, setSub, syncedText, button: syncBtn,
+    onStart: () => { if (!data.orders.length) render(); },
+    onFresh: (next) => { data = next; setSub(syncedText()); render({ fresh: true }); },
+  });
 
   const offs = [
-    on(view, 'click', '[data-act="sync"]', () => refresh()),
+    on(view, 'click', '[data-act="sync"]', () => sync.refresh()),
     on(view, 'click', '[data-act="copy-text"]', copyChip),
     on(view, 'click', '[data-seg="stage"] button', (e, b) => {
       if (b.dataset.value === stage) return;
@@ -156,14 +134,14 @@ async function mountQueue(view) {
 
   setSub(syncedText());
   render();
-  runningSync().then((jobId) => { if (jobId && view.isConnected) refresh(() => watchSync(jobId, setSub)); });
+  sync.follow();
   const main = document.getElementById('main');
   return {
     shown() {
       syncSeg(seg);
       if (returning) main.scrollTo({ top: queueState.scroll, behavior: 'instant' }); // .main scrolls smoothly otherwise
     },
-    unmount() { queueState.scroll = main.scrollTop; offs.forEach((f) => f()); clearTimeout(unfreeze); },
+    unmount() { queueState.scroll = main.scrollTop; offs.forEach((f) => f()); clearTimeout(list.holdTimer); },
   };
 }
 
@@ -210,7 +188,7 @@ async function mountCard(view, rid) {
       <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
       <span id="oc-finish"></span>
       <div class="grow" style="min-width:0">
-        <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1>${statusChip(o)}</div>
+        <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1>${statusChip(o)}${alsoSentChip(o)}</div>
         <div class="page-sub ord-sub">${receiptCopy(o, 'mono')} · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}${trackChips(o)}</div>
       </div>
       <div id="oc-plan"></div>
@@ -259,7 +237,7 @@ async function mountCard(view, rid) {
           ${o.items.length > 1 ? segHtml(o.items.map((x, i) => ({ value: String(i), label: `Книга ${i + 1}`, tip: x.title })), String(pick), { name: 'book' }) : ''}</div>
         ${vars.length ? html`<dl class="ord-fields">${vars.map((v, i) => html`
           <dt>${v.name}${isCustomText(v) ? html`<span class="chip chip-amber">свій текст</span>` : ''}</dt>
-          <dd class="${isCustomText(v) ? 'custom' : ''} ${isNameField(v, it) ? 'is-name' : ''}"><span>${v.value}</span>${isFormatField(v) ? '' : ib('copy', 'Копіювати', `data-copy="${i}"`, { cls: 'sm' })}</dd>`)}</dl>`
+          <dd class="${isCustomText(v) ? 'custom' : ''} ${isNameField(v) ? 'is-name' : ''}"><span>${v.value}</span>${isFormatField(v) ? '' : ib('copy', 'Копіювати', `data-copy="${i}"`, { cls: 'sm' })}</dd>`)}</dl>`
           : html`<div class="faint">Покупець нічого не вказав.</div>`}
         ${o.buyerMessage ? html`<div class="ord-message"><span class="eyebrow">Повідомлення покупця</span><div>${o.buyerMessage}</div></div>` : ''}
       </section>
@@ -306,7 +284,7 @@ async function mountCard(view, rid) {
     const cover = f.validation.files.find((r) => r.position === 'cover') || {};
     const ratio = cover.width ? cover.width / cover.height : 1.9;
     const half = (n) => (n === null ? html`<div class="half blank"></div>` : html`<div class="half" data-page="${n}"><img data-fade loading="lazy" decoding="async" src="${thumb(`${n}.png`, STRIP_THUMB)}" alt=""></div>`);
-    const notes = (it.variations || []).filter((v) => !isNameField(v, it) && !isFormatField(v)); // only what the page itself says
+    const notes = (it.variations || []).filter((v) => !isNameField(v) && !isFormatField(v)); // only what the page itself says
     return html`<section class="card card-pad stack-l" id="oc-proof">
       <div class="row"><span class="step-no">2</span><h3 class="card-title grow">Звірка</h3><span class="row tc-head" id="oc-check-badge">${checkBadge()}</span></div>
       <div id="oc-check">${checkBody()}</div>
@@ -399,13 +377,20 @@ async function mountCard(view, rid) {
 
   async function learnPassport() {
     const r = f.check.result, pages = learnable();
+    const body = { bookId: r.bookId, child: r.child, pages: pages.map((p) => ({ key: p.learn, text: p.text })) };
+    let texts;
+    try { ({ texts } = await api('/api/textcheck/passport', { method: 'POST', body: { ...body, preview: true } })); }
+    catch (err) { toast(err.message, 'error'); return; }
+    // What exactly the passport will keep: {Name} stands out, so a name caught inside a word would show.
+    const shownText = (t) => html`${t.split(/(\{Name\})/).map((part) => part === '{Name}' ? html`<b class="tc-slot">{Name}</b>` : part)}`;
     const ok = await confirmBox({
       title: 'Оновити паспорт книги?', confirm: 'Оновити паспорт',
-      text: `Тексти ${pages.length} ${plural(pages.length, ['сторінки', 'сторінок', 'сторінок'])} (${pages.map((p) => p.label).join(', ')}) у паспорті книги стануть такими, як у цьому друці; ім'я дитини — знову {Name}.\n\nРобіть це, лише якщо ці сторінки в шаблоні Canva правильні — тоді наступні замовлення цієї книги звірятимуться вже з ними.`,
+      text: `Тексти ${pages.length} ${plural(pages.length, ['сторінки', 'сторінок', 'сторінок'])} у паспорті книги стануть такими, як нижче: як у цьому друці, а ім'я дитини — знову {Name}.\n\nРобіть це, лише якщо ці сторінки в шаблоні Canva правильні — тоді наступні замовлення цієї книги звірятимуться вже з ними.`,
+      extra: html`<div class="tc-passport">${pages.map((p) => html`<div class="tc-where">${p.label}</div><div class="tc-text">${shownText(texts[p.learn] || '')}</div>`)}</div>`,
     });
     if (!ok) return;
     try {
-      await api('/api/textcheck/passport', { method: 'POST', body: { bookId: r.bookId, child: r.child, pages: pages.map((p) => ({ key: p.learn, text: p.text })) } });
+      await api('/api/textcheck/passport', { method: 'POST', body });
       toast('Паспорт книги оновлено', 'success');
       startCheck();
     } catch (err) { toast(err.message, 'error'); }
@@ -560,9 +545,9 @@ async function mountCard(view, rid) {
     Object.assign(w, { folder: res.path, note: res.note, pages: res.pageCount });
     if (showing(w)) renderPlan();
     const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(i), folder: w.folder } }),
-      (j) => { if (my === w.seq && showing(w)) setBusy(60 + (j.percent || 0) * 0.4); }, 300);
+      (j) => { if (my === w.seq && showing(w)) setBusy(60 + (j.percent || 0) * 0.4); }, 300, () => my === w.seq);
     if (my !== w.seq) return;
-    Object.assign(w, { validation: v, busy: 0, check: null });
+    Object.assign(w, { validation: v, busy: 0, check: null, replaced: restorable(v) });
     if (showing(w)) renderRight();
     if (v.ok) {
       if (showing(w)) requestAnimationFrame(() => $('#oc-proof')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -656,22 +641,30 @@ async function mountCard(view, rid) {
         body: { title: `Оберіть ${pageWord(file)} (${file})`, initial: w.folder } })).path;
     } catch (err) { toast(err.message, 'error'); return; }
     if (!path) return;
-    if (sentOf(o.receiptId) && !(await confirmBox({ title: 'Чернетку вже створено',
+    if ((sentOf(o.receiptId) || o.atPrinter) && !(await confirmBox({ title: 'Чернетку вже створено',
       text: 'У друкарні лежить стара сторінка. Замінити її тут і надіслати замовлення ще раз?',
       confirm: 'Замінити', cancel: 'Не чіпати' }))) return;
+    let res;
     try {
-      await api('/api/creator/replace-page', { method: 'POST', body: { folder: w.folder, file, path } });
+      res = await api('/api/creator/replace-page', { method: 'POST', body: { folder: w.folder, file, path } });
     } catch (err) { toast(err.message, 'error'); return; }
-    w.replaced.add(file.toLowerCase());
+    setRestorable(w, file, res.canRestore);
     pageChanged(w, file, lb, again, `Замінено ${pageWord(file)}`);
   }
 
   async function restorePage(w, file, lb, again) {
+    let res;
     try {
-      await api('/api/creator/restore-page', { method: 'POST', body: { folder: w.folder, file } });
+      res = await api('/api/creator/restore-page', { method: 'POST', body: { folder: w.folder, file } });
     } catch (err) { toast(err.message, 'error'); return; }
-    w.replaced.delete(file.toLowerCase());
+    setRestorable(w, file, res.canRestore);   // an older version may still be there
     pageChanged(w, file, lb, again, `Повернено ${pageWord(file)}`);
+  }
+
+  /** The server says whether this page still has a previous version; the card only repeats it. */
+  function setRestorable(w, file, can) {
+    if (can) w.replaced.add(file.toLowerCase());
+    else w.replaced.delete(file.toLowerCase());
   }
 
   /** After a page changed: new picture everywhere, files checked again, text checked again — and the
@@ -694,9 +687,9 @@ async function mountCard(view, rid) {
     w.error = '';
     try {
       const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(work.indexOf(w)), folder: w.folder } }),
-        null, 300);
+        null, 300, () => my === w.seq); // other files or the card closed (w.seq moves on): the poll stops
       if (my !== w.seq) return;
-      Object.assign(w, { validation: v, busy: 0, check: null });
+      Object.assign(w, { validation: v, busy: 0, check: null, replaced: restorable(v) });
       if (showing(w)) renderRight();
       if (v.ok) startCheck(w, my);
     } catch (err) { failed(w, my, err); }

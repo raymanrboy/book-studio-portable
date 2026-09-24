@@ -9,6 +9,8 @@ Nothing is ever published, ordered or sent to production.
 """
 from __future__ import annotations
 
+import contextlib
+import copy
 import math
 import os
 import re
@@ -17,19 +19,23 @@ import struct
 import threading
 import time
 import uuid
-import zipfile
 import zlib
+from collections import Counter
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 
-from . import archive, core, desktop, gelato, images, printify, profit, sendlog, tunnel
+from . import archive, core, desktop, gelato, images, printify, profit, sendlog, tunnel, wording
 from .jobs import JobError, jobs
 from .server import ApiError, Request, file_response, route
 from .vault import vault
 
 UPLOAD_CACHE = core.data_path("creator", "upload-cache.json")
+REPLACED = ".replaced"          # the pages a new one was put over, kept here so «Повернути» can work
 _cache_lock = threading.Lock()
 _validation_cache: dict[tuple, dict] = {}
+# (mode, folder) -> the number of the newest check the page asked for: an older one of the same folder stops
+# (new files or a replaced page start a new check; two full checks of one folder need not run side by side).
+_validating: dict[tuple, int] = {}
 
 REQUIRED_ADDRESS = ("firstName", "lastName", "addressLine1", "city", "postCode", "country")
 STATE_REQUIRED = {"US", "CA", "AU"}
@@ -46,7 +52,45 @@ def _files_by_lower(folder: Path) -> dict[str, Path]:
 
 
 def _signature(folder: Path) -> tuple:
-    return tuple(sorted((p.name, p.stat().st_size, p.stat().st_mtime_ns) for p in folder.iterdir() if p.is_file()))
+    return tuple(sorted((p.name, st.st_size, st.st_mtime_ns) for p in folder.iterdir() if p.is_file()
+                        for st in [p.stat()]))
+
+
+def _backups(folder: Path, name: str) -> list[Path]:
+    """The previous versions of one page, oldest first: what «Повернути» can put back."""
+    keep = folder / REPLACED
+    return sorted(keep.glob(f"{name}.*")) if keep.is_dir() else []
+
+
+_sending: Counter[str] = Counter()  # print folder -> sends reading it right now (two printers at once: 2)
+_sending_lock = threading.Lock()
+
+
+@contextlib.contextmanager
+def _while_sending(folders):
+    """A send checks the files, then uploads them, builds the PDF and copies them to the archive — all by
+    reading the same paths again. While that runs, the pages must not change under it, or what the printer
+    gets is not what passed the check. Replacing a page waits for the send to finish."""
+    mine = {str(Path(f).resolve()) for f in folders if f}
+    with _sending_lock:
+        _sending.update(mine)
+    try:
+        yield
+    finally:
+        with _sending_lock:
+            _sending.subtract(mine)
+            for key in mine:
+                if _sending[key] <= 0:
+                    del _sending[key]
+
+
+@contextlib.contextmanager
+def _not_while_sending(folder: Path):
+    """A page changes only while no send reads its folder — and no send starts until the change is done."""
+    with _sending_lock:
+        if _sending.get(str(folder.resolve())):
+            raise ApiError("Книга саме відправляється в друкарню — зачекайте, поки відправка завершиться.")
+        yield
 
 
 def gelato_page_options() -> list[int]:
@@ -75,7 +119,18 @@ def expected_files(mode: str, count: int | None = None) -> list[dict]:
     return out
 
 
+def _forget_validation(folder: Path) -> None:
+    """A page of this folder changed: its earlier results go (other folders' stay)."""
+    here = str(folder.resolve())
+    with _cache_lock:
+        for key in [k for k in _validation_cache if k[1] == here]:
+            del _validation_cache[key]
+
+
 def validate(mode: str, folder_raw: str, job=None) -> dict:
+    """The full check of a print folder. The result is the caller's own copy (a send keeps using its rows).
+    With a job (the page asked): a newer check of the same folder stops this one; a send's own check
+    (no job) is never stopped."""
     folder = Path((folder_raw or "").strip().strip('"'))
     if not folder_raw or not folder.is_dir():
         expected = expected_files(mode)
@@ -85,8 +140,17 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
     expected = expected_files(mode, _gelato_page_count(present) if mode == "gelato" else None)
     key = (mode, str(folder.resolve()), _signature(folder),
            tuple((e["file"], tuple(e["size"] or ())) for e in expected))
-    if key in _validation_cache:
-        return _validation_cache[key]
+    with _cache_lock:
+        if key in _validation_cache:
+            return copy.deepcopy(_validation_cache[key])
+        ticket = None
+        if job is not None:
+            slot = key[:2]
+            _validating[slot] = _validating.get(slot, 0) + 1
+            ticket = (slot, _validating[slot])
+
+    def superseded() -> bool:
+        return ticket is not None and _validating.get(ticket[0]) != ticket[1]
 
     errors: list[str] = []
     warnings: list[str] = []
@@ -105,6 +169,8 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
     todo = [e for e in expected if e["file"].lower() in present]
 
     def check(entry: dict) -> dict:
+        if superseded():
+            raise JobError("Цю перевірку замінила новіша.")
         path = present[entry["file"].lower()]
         info, err = images.check_png(path, full_decode=True)
         row = {"file": entry["file"], "position": entry["position"], "path": str(path), "ok": err is None,
@@ -119,6 +185,8 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
                 row["error"] = (f"розмір {info['width']}×{info['height']} px, очікується рівно {size[0]}×{size[1]} px")
         if row["ok"] and mode == "printify":
             row["sha256"] = images.sha256_file(path)
+        # «Повернути» is offered from what is on disk, so it survives leaving the card and a restart.
+        row["replaced"] = bool(_backups(folder, entry["file"]))
         return row
 
     done = [0]
@@ -153,9 +221,10 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
         "pageCount": len(expected) - 1,
         "totalBytes": sum(r.get("bytes", 0) for r in rows),
     }
-    if len(_validation_cache) > 40:
-        _validation_cache.clear()
-    _validation_cache[key] = result
+    with _cache_lock:
+        if len(_validation_cache) > 40:
+            _validation_cache.pop(next(iter(_validation_cache)))  # the oldest goes
+        _validation_cache[key] = copy.deepcopy(result)
     threading.Thread(target=_warm_previews, args=([r["path"] for r in rows],), daemon=True).start()
     return result
 
@@ -172,115 +241,6 @@ def _warm_previews(paths: list[str]) -> None:
             images.preview(Path(p), STRIP_PREVIEW)
         except Exception:
             pass
-
-
-# ---------------------------------------------------------------- dropped folders and archives
-# The app window never learns where a dragged folder lives on disk, so its pictures (or a ZIP)
-# are copied into a scratch folder first. Everything there is wiped when the program starts.
-DROPS = core.data_path("tmp", "dropped")
-DROP_IMAGE = re.compile(r"\.(png|jpe?g|webp)$", re.I)
-MAX_DROP_FILE = 400 * 1024 * 1024
-MAX_DROP_ZIP = 6 * 1024 * 1024 * 1024
-_DROP_SESSION = re.compile(r"[0-9a-f]{32}")
-
-
-def clear_drops(keep: str | None = None, older_than: float = 0) -> None:
-    if not DROPS.is_dir():
-        return
-    now = time.time()
-    for entry in DROPS.iterdir():
-        if entry.name == keep:
-            continue
-        try:
-            if now - entry.stat().st_mtime >= older_than:
-                shutil.rmtree(entry, ignore_errors=True) if entry.is_dir() else entry.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-
-def _drop_root(session: str | None) -> Path:
-    if not _DROP_SESSION.fullmatch(session or ""):
-        raise ApiError("Некоректний запит.")
-    return DROPS / session
-
-
-def _drop_rel(name: str, with_text: bool = False) -> Path | None:
-    """A relative path from the dropped folder or archive, or None when it is not a picture we can use
-    (with_text also lets the library's book-text JSON through)."""
-    parts = [p for p in re.split(r"[\\/]+", name or "") if p not in ("", ".")]
-    if not parts or len(parts) > 6 or any(p == ".." or ":" in p or p == "__MACOSX" for p in parts):
-        return None
-    usable = DROP_IMAGE.search(parts[-1]) or (with_text and parts[-1].lower().endswith(".json"))
-    if parts[-1].startswith("._") or not usable:
-        return None
-    return Path(*[re.sub(r'[<>"|?*\x00-\x1f]', "_", p).rstrip(" .") or "_" for p in parts])
-
-
-def extract_zip(archive: Path, target: Path, with_text: bool = False) -> int:
-    try:
-        zf = zipfile.ZipFile(archive)
-    except (zipfile.BadZipFile, OSError):
-        raise ApiError("Архів пошкоджений або це не ZIP.") from None
-    count = total = 0
-    with zf:
-        for info in zf.infolist():
-            rel = None if info.is_dir() else _drop_rel(info.filename, with_text)
-            if rel is None:
-                continue
-            total += info.file_size
-            if total > MAX_DROP_ZIP:
-                raise ApiError("Архів завеликий.")
-            dest = target / rel
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            with zf.open(info) as src, open(dest, "wb") as out:
-                shutil.copyfileobj(src, out, 1024 * 1024)
-            count += 1
-    if not count:
-        raise ApiError("В архіві немає зображень PNG." if not with_text else "В архіві немає ні зображень, ні тексту книги.")
-    return count
-
-
-def dropped_folder(root: Path) -> Path:
-    """The folder with Cover.png in what was dropped (the shallowest one), else the folder holding the pictures."""
-    files = [p for p in root.rglob("*") if p.is_file()]
-    covers = sorted({p.parent for p in files if p.name.lower() == "cover.png"}, key=lambda d: len(d.parts))
-    if covers:
-        return covers[0]
-    holders = {p.parent for p in files}
-    return holders.pop() if len(holders) == 1 else root
-
-
-@route("POST", "/api/creator/drop/file")
-def _drop_file(req: Request):
-    root = _drop_root(req.param("session"))
-    rel = _drop_rel(req.param("name") or "")
-    if rel is None:
-        raise ApiError("Перетягніть папку з PNG-файлами або ZIP-архів.")
-    req.body_to_file(root / rel, MAX_DROP_FILE)
-    return {"ok": True}
-
-
-@route("POST", "/api/creator/drop/zip")
-def _drop_zip(req: Request):
-    root = _drop_root(req.param("session"))
-    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", Path(req.param("name") or "archive.zip").stem).strip(" .")[:80]
-    archive = DROPS / f"{root.name}.zip"  # beside the folder, never inside it
-    try:
-        req.body_to_file(archive, MAX_DROP_ZIP)
-        extract_zip(archive, root / (stem or "archive"), with_text=req.param("text") == "1")
-    finally:
-        archive.unlink(missing_ok=True)
-    return {"ok": True}
-
-
-@route("POST", "/api/creator/drop/done")
-def _drop_done(req: Request):
-    session = str((req.json or {}).get("session") or "")
-    root = _drop_root(session)
-    if not root.is_dir():
-        raise ApiError("Файли не отримано — перетягніть папку ще раз.")
-    clear_drops(keep=session, older_than=2 * 3600)
-    return {"path": str(dropped_folder(root))}
 
 
 # ---------------------------------------------------------------- start empty
@@ -300,10 +260,16 @@ def _load_upload_cache() -> dict:
     return core.read_json(UPLOAD_CACHE, {}) or {}
 
 
+UPLOADS_KEPT = 5000  # pictures whose Printify id is remembered (~40 books a month for a year); the oldest go
+
+
 def _remember_upload(sha: str, image_id: str) -> None:
     with _cache_lock:
         cache = _load_upload_cache()
-        cache[sha] = image_id
+        cache.pop(sha, None)
+        cache[sha] = image_id  # newest last
+        for old in list(cache)[:max(0, len(cache) - UPLOADS_KEPT)]:
+            del cache[old]      # an old picture sent again is simply uploaded again
         core.write_json(UPLOAD_CACHE, cache, backup=False)
 
 
@@ -353,17 +319,16 @@ def matte_variant(master: dict) -> int | None:
     return None
 
 
-def printify_order_payload(title: str, lines: list[tuple[str, int]], address: dict) -> dict:
+def printify_order_payload(title: str, lines: list[tuple[str, int]], address: dict, receipt: str | None = None) -> dict:
     """One order for the whole receipt: a line item per book of it, all to the same address."""
     a = {k: str(v or "").strip() for k, v in (address or {}).items()}
-    receipt = re.match(r"\s*(\d{6,20})\b", title)  # the Etsy receipt number from "4100000001 - Emma"
     to = {"first_name": a.get("firstName", ""), "last_name": a.get("lastName", ""), "address1": a.get("addressLine1", ""),
           "address2": a.get("addressLine2", ""), "city": a.get("city", ""), "region": a.get("state", ""),
           "zip": a.get("postCode", ""), "country": a.get("country", "").upper()}
     if a.get("phone"):
         to["phone"] = a["phone"]
     return {
-        "external_id": f"{receipt.group(1) if receipt else 'book'}-{uuid.uuid4().hex[:8]}",
+        "external_id": f"{receipt or 'book'}-{uuid.uuid4().hex[:8]}",
         "label": title[:100],
         "line_items": [{"product_id": pid, "variant_id": vid, "quantity": 1} for pid, vid in lines],
         "shipping_method": 1,  # standard
@@ -374,9 +339,23 @@ def printify_order_payload(title: str, lines: list[tuple[str, int]], address: di
     }
 
 
+def receipt_for(title: str, given=None) -> str | None:
+    """The Etsy receipt a send belongs to: the one the page names (the order it came from), else the number
+    in front of the title typed by hand. A title that names another receipt than its order is refused —
+    the printer's reference, the archive and the local records must not tell two different orders."""
+    given = str(given or "").strip()
+    if given and not re.fullmatch(r"\d{6,20}", given):
+        raise JobError("Некоректний номер замовлення Etsy.")
+    typed = archive.receipt_of(title)
+    if given and typed and typed != given:
+        raise JobError(f"Назва «{title}» починається з номера {typed}, а книга із замовлення {given}. "
+                       f"Виправте номер у назві.")
+    return given or typed
+
+
 def books_of(raw) -> list[dict]:
-    """The books of one Etsy order as the page sends them — a folder, a name and (Gelato) a format each.
-    An order with two or three books goes to the printer as one order to one address (owner, 20.09.2026)."""
+    """The books of one Etsy order as the page sends them — a folder, a name, its receipt and (Gelato) a format
+    each. An order with two or three books goes to the printer as one order to one address (owner, 20.09.2026)."""
     books = []
     for item in raw if isinstance(raw, list) else [raw]:
         item = item if isinstance(item, dict) else {}
@@ -384,7 +363,8 @@ def books_of(raw) -> list[dict]:
         if not title:
             raise JobError("Введіть назву книги.")
         books.append({"folder": str(item.get("folder") or "").strip().strip('"'), "title": title,
-                      "format": str(item.get("format") or "").strip()})
+                      "format": str(item.get("format") or "").strip(),
+                      "receipt": receipt_for(title, item.get("receiptId"))})
     if not books:
         raise JobError("Немає жодної книги для відправки.")
     return books
@@ -395,8 +375,8 @@ def joint_title(books: list[dict]) -> str:
     so the print order still finds its Etsy receipt at the next sync."""
     if len(books) == 1:
         return books[0]["title"]
-    receipt = archive.receipt_of(books[0]["title"])
-    names = [b["title"].split(" - ", 1)[1].strip() if " - " in b["title"] else b["title"] for b in books]
+    receipt = books[0].get("receipt")
+    names = [archive.child_of(b["title"]) for b in books]
     return (f"{receipt} - {', '.join(names)}" if receipt else " + ".join(b["title"] for b in books))[:100]
 
 
@@ -404,7 +384,8 @@ def create_printify_draft(books, job, address: dict | None = None) -> dict:
     """Unpublished Printify books, one per book of the order; with an address also a single order for all
     of them that waits "On hold". Every attempt is written to the send journal."""
     books = books_of(books)
-    with sendlog.attempt("printify", "book+order" if address else "book", joint_title(books)) as log:
+    with sendlog.attempt("printify", "book+order" if address else "book", joint_title(books)) as log, \
+            _while_sending(b["folder"] for b in books):
         result = _printify_draft(books, job, address, log)
         log["result"] = result
     return _journaled(result, log)
@@ -434,13 +415,34 @@ def _to_archive(log: dict, job, warnings: list[str], provider: str, files: list[
     return eid
 
 
-def _mark_reprint(log: dict, title: str, provider: str, order_id: str | None) -> None:
-    """A reprint is recorded as a replacement of its Etsy order (the queue keeps the first print order)."""
+def _remember_sent(log: dict, warnings: list[str], books: list, provider: str, order_id: str | None) -> None:
+    """Which print order this program made for which receipt. The books of one order can go in two goes,
+    or to two printers, and then one receipt really has two print orders; nothing else proves it, because
+    a receipt number in the printer's own text also appears on reprints. Never fails a finished send —
+    but a record that could not be written is said, like the reprint mark's."""
+    receipts = {b.get("receipt") for b in books}
     try:
-        marked = profit.mark_reprint(archive.receipt_of(title), provider, order_id)
+        written = [r for r in receipts if r and profit.remember_print_order(r, provider, order_id)]
+    except Exception as err:
+        core.log.exception("Print order not remembered")
+        sendlog.step(log, "printOrderRemembered", ok=False, error=str(err))
+        warnings.append(f"Замовлення вже створено в {provider.capitalize()}, але програма не записала, до якого "
+                        f"замовлення Etsy воно належить: {err}. Не надсилайте ще раз.")
+        return
+    sendlog.step(log, "printOrderRemembered", ok=bool(written), receipts=sorted(r for r in receipts if r))
+
+
+def _mark_reprint(log: dict, warnings: list[str], receipt: str | None, provider: str, order_id: str | None) -> None:
+    """A reprint is recorded as a replacement of its Etsy order (the queue keeps the first print order).
+    A failure here never undoes the send — but it must not be quiet either: the order is already in the
+    printer, so the owner has to know that only the local record is missing, and not send it again."""
+    try:
+        marked = profit.mark_reprint(receipt, provider, order_id)
     except Exception as err:
         core.log.exception("Reprint mark failed")
         sendlog.step(log, "reprintMarked", ok=False, error=str(err))
+        warnings.append(f"Замовлення вже створено в {provider.capitalize()}, але програма не записала його "
+                        f"як передрук: {err}. Не надсилайте ще раз — перевірте собівартість вручну.")
         return
     sendlog.step(log, "reprintMarked", ok=marked)
 
@@ -530,8 +532,7 @@ def _printify_product(book: dict, job, log: dict, cfg: dict, shop_id: int, span)
         sendlog.step(log, "product", book=book["title"], request=payload, response=created)
     except ApiError as err:
         sendlog.step(log, "product", book=book["title"], request=payload, error=str(err))
-        upstream = (err.extra or {}).get("upstream")
-        if (err.extra or {}).get("ambiguous") or (upstream or 0) >= 500:
+        if _unknown_outcome(err):
             raise JobError("Зв'язок обірвався під час створення — результат невідомий. НЕ запускайте повторно одразу: "
                            "спершу перевірте Printify → My Products, чи з'явилась книга «" + book["title"] + "».") from None
         raise JobError(f"Printify відхилив створення книги: {err}") from None
@@ -567,44 +568,63 @@ def _printify_order(books: list[dict], made: list[dict], variant_id: int, addres
     master = cfg.get("master") or {}
     job.progress("Чернетка замовлення в Printify…", 96,
                  f"{'Книги' if len(made) > 1 else 'Замовлення'} на утриманні — без відправки у виробництво")
-    payload = printify_order_payload(joint_title(books), [(m["productId"], variant_id) for m in made], address)
+    payload = printify_order_payload(joint_title(books), [(m["productId"], variant_id) for m in made], address,
+                                     books[0].get("receipt"))
     log["orderRequest"] = payload
     try:
         placed = printify.create_order_on_hold(shop_id, payload)
     except ApiError as err:
         log["orderError"] = str(err)
         # The books themselves exist; the order is what failed — say which, so nothing is placed twice.
-        if (err.extra or {}).get("ambiguous") or ((err.extra or {}).get("upstream") or 0) >= 500:
+        if _unknown_outcome(err):
             return None, ("Зв'язок обірвався під час створення замовлення — результат невідомий. Спершу перевірте "
                           "Printify → Orders; якщо замовлення там немає — оформіть його вручну з цих книг.")
         return None, (f"{'Книги' if len(made) > 1 else 'Книгу'} створено, але Printify відхилив замовлення: {err}. "
                       f"Його можна оформити вручну з них.")
     log["orderResponse"] = placed
-    variant = next((v.get("title") for v in master.get("variants") or [] if int(v.get("id") or 0) == variant_id), "Matte")
-    return {"id": placed.get("id"), "variant": variant, "books": len(made)}, None
+    return {"id": placed.get("id"), "variant": _variant_title(master, variant_id), "books": len(made)}, None
 
 
-def _printify_draft(books: list[dict], job, address: dict | None, log: dict, reprint_of: str | None = None) -> dict:
+def _unknown_outcome(err: ApiError) -> bool:
+    """The printer may have done it anyway: the connection dropped after sending, or it failed on its own
+    side. Then nothing may be sent again until the owner has looked — a second send makes a second one."""
+    extra = err.extra or {}
+    return bool(extra.get("ambiguous")) or (extra.get("upstream") or 0) >= 500
+
+
+def _printify_setup(address: dict | None) -> tuple[dict, int, int | None]:
+    """What every Printify send checks before a single file is uploaded: shop, Master and token; for an order
+    also the address, the manual approval and the matte variant. Returns (settings, shop id, variant id)."""
     cfg = core.settings.section("printify")
     master = cfg.get("master") or {}
     shop_id = int(cfg.get("shopId") or 0)
     if not shop_id or not master.get("productId"):
         raise JobError("Не налаштовано магазин або Master-продукт Printify (Налаштування → Printify).")
     printify.token()
+    if not address:
+        return cfg, shop_id, None
+    problems = validate_address(address)
+    if problems:
+        raise JobError("\n".join(problems))
+    if not printify.manual_approval_confirmed():
+        raise JobError(printify.MANUAL_APPROVAL_NEEDED)
+    variant_id = matte_variant(master)
+    if not variant_id:
+        raise JobError("У шаблоні Printify (Master) немає увімкненого матового варіанту — замовлення не створено.")
+    return cfg, shop_id, variant_id
+
+
+def _variant_title(master: dict, variant_id: int) -> str:
+    return next((v.get("title") for v in master.get("variants") or [] if int(v.get("id") or 0) == variant_id), "Matte")
+
+
+def _printify_draft(books: list[dict], job, address: dict | None, log: dict, reprint_of: str | None = None) -> dict:
     for book in books:
         book["mark"] = f" · {book['title']}" if len(books) > 1 else ""
     log["folder"] = str(books[0]["folder"])
     log["books"] = [{"title": b["title"], "folder": str(b["folder"])} for b in books]
-    variant_id = None
-    if address:  # everything about the order is checked before a single file is uploaded
-        problems = validate_address(address)
-        if problems:
-            raise JobError("\n".join(problems))
-        if not printify.manual_approval_confirmed():
-            raise JobError("Спершу підтвердіть, що в Printify увімкнене ручне затвердження замовлень.")
-        variant_id = matte_variant(master)
-        if not variant_id:
-            raise JobError("У шаблоні Printify (Master) немає увімкненого матового варіанту — замовлення не створено.")
+    cfg, shop_id, variant_id = _printify_setup(address)
+    master = cfg.get("master") or {}
 
     for book in books:  # no book of an order is made while another one's files are still wrong
         book["checked"] = _printify_files(book, job, log, 2)
@@ -642,12 +662,16 @@ def _printify_draft(books: list[dict], job, address: dict | None, log: dict, rep
         order, order_error = _printify_order(books, made, variant_id, address, job, log, cfg, shop_id)
 
     # The books are in Printify now (with or without their order): keep exactly these files in the archive.
-    if reprint_of and order:
-        _mark_reprint(log, books[0]["title"], "printify", order["id"])
+    if order:
+        if reprint_of:
+            _mark_reprint(log, warnings, books[0].get("receipt"), "printify", order["id"])
+        else:
+            _remember_sent(log, warnings, books, "printify", order["id"])
     for book, m in zip(books, made):
         m["archiveId"] = _to_archive(log, job, warnings, "printify",
                                      [(Path(r["path"]), r["file"]) for r in book["checked"]["files"]],
-                                     {"title": m["title"], "productId": m["productId"], "url": m["url"],
+                                     {"title": m["title"], "receiptId": book.get("receipt"),
+                                      "productId": m["productId"], "url": m["url"],
                                       "orderId": order["id"] if order else None,
                                       "variant": order["variant"] if order else None,
                                       "address": address or None, "reprintOf": reprint_of})
@@ -666,7 +690,8 @@ def create_printify_reprint(archive_id: str, title: str, address: dict | None, j
     nothing is uploaded and no product is made. If the book is gone from Printify, it is made again
     from the archived files (images already in Printify are reused). Journaled like every send."""
     title = (title or "").strip()
-    with sendlog.attempt("printify", "reprint", title) as log:
+    with sendlog.attempt("printify", "reprint", title) as log, \
+            _while_sending([archive.folder(archive_id)]):
         result = _printify_reprint(archive_id, title, address, job, log)
         log["result"] = result
     return _journaled(result, log)
@@ -681,20 +706,9 @@ def _printify_reprint(archive_id: str, title: str, address: dict | None, job, lo
         raise JobError("Введіть назву книги.")
     if not address:
         raise JobError("Для передруку потрібна адреса отримувача.")
-    cfg = core.settings.section("printify")
+    receipt = receipt_for(title, entry.get("receiptId"))
+    cfg, shop_id, variant_id = _printify_setup(address)
     master = cfg.get("master") or {}
-    shop_id = int(cfg.get("shopId") or 0)
-    if not shop_id or not master.get("productId"):
-        raise JobError("Не налаштовано магазин або Master-продукт Printify (Налаштування → Printify).")
-    printify.token()
-    problems = validate_address(address)
-    if problems:
-        raise JobError("\n".join(problems))
-    if not printify.manual_approval_confirmed():
-        raise JobError("Спершу підтвердіть, що в Printify увімкнене ручне затвердження замовлень.")
-    variant_id = matte_variant(master)
-    if not variant_id:
-        raise JobError("У шаблоні Printify (Master) немає увімкненого матового варіанту — замовлення не створено.")
 
     product_id = entry["productId"]
     job.progress("Книга в Printify…", 15, product_id)
@@ -707,32 +721,32 @@ def _printify_reprint(archive_id: str, title: str, address: dict | None, job, lo
     sendlog.step(log, "product", productId=product_id, found=product is not None,
                  title=(product or {}).get("title"))
     if product is None:  # deleted in Printify meanwhile: the archived files make it again
-        result = _printify_draft(books_of([{"folder": str(archive.folder(archive_id)), "title": title}]),
+        result = _printify_draft(books_of([{"folder": str(archive.folder(archive_id)), "title": title,
+                                            "receiptId": receipt}]),
                                  job, address, log, reprint_of=archive_id)
         result["reprint"] = True
         result["warnings"].insert(0, "Книги в Printify вже не було — її створено заново з файлів архіву.")
         return result
 
     job.progress("Замовлення-передрук у Printify…", 60, "На утриманні — без відправки у виробництво")
-    order_payload = printify_order_payload(title, [(product_id, variant_id)], address)
+    order_payload = printify_order_payload(title, [(product_id, variant_id)], address, receipt)
     log["orderRequest"] = order_payload
     try:
         placed = printify.create_order_on_hold(shop_id, order_payload)
     except ApiError as err:
-        if (err.extra or {}).get("ambiguous") or ((err.extra or {}).get("upstream") or 0) >= 500:
+        if _unknown_outcome(err):
             raise JobError("Зв'язок обірвався під час створення замовлення — результат невідомий. НЕ запускайте "
                            "повторно одразу: спершу перевірте Printify → Orders.") from None
         raise JobError(f"Printify відхилив замовлення-передрук: {err}") from None
     log["orderResponse"] = placed
-    order = {"id": placed.get("id"), "variant": next((v.get("title") for v in master.get("variants") or []
-                                                     if int(v.get("id") or 0) == variant_id), "Matte")}
+    order = {"id": placed.get("id"), "variant": _variant_title(master, variant_id)}
     warnings: list[str] = []
-    _mark_reprint(log, title, "printify", order["id"])
+    _mark_reprint(log, warnings, receipt, "printify", order["id"])
     url = entry.get("url") or f"https://printify.com/app/product-details/{product_id}?fromProductsPage=1"
     kept = archive.folder(archive_id)
     new_id = _to_archive(log, job, warnings, "printify", [(kept / r["file"], r["file"]) for r in entry.get("files") or []], {
-        "title": title, "productId": product_id, "url": url, "orderId": order["id"], "variant": order["variant"],
-        "address": address, "reprintOf": archive_id})
+        "title": title, "receiptId": receipt, "productId": product_id, "url": url, "orderId": order["id"],
+        "variant": order["variant"], "address": address, "reprintOf": archive_id})
     return {"reprint": True, "archiveId": new_id, "productId": product_id, "url": url, "title": title,
             "order": order, "orderError": None, "warnings": warnings, "total": len(entry.get("files") or [])}
 
@@ -866,6 +880,16 @@ def gelato_page_counts() -> dict[str, list[int] | None]:
         return dict(zip(formats, pool.map(one, formats.values())))
 
 
+def _pages_problem(label: str, valid: list[int] | None, count: int) -> str | None:
+    """The one wording of "Gelato does not print this length" — the order card and the Order Creator both show
+    it (the page gets it ready-made from the page-counts route, 22.09.2026 audit)."""
+    if not valid or count in valid:
+        return None
+    text = f"Gelato не друкує {label} на {count} сторінках (можна від {valid[0]})."
+    other = next((n for n in gelato_page_options() if n in valid), None)
+    return text + (f" Скачайте з Canva {other} сторінок." if other else "")
+
+
 def gelato_pages_problem(format_key: str, count: int) -> str | None:
     """Why Gelato would refuse a book of `count` pages in this format; None when it is fine or unknown."""
     fmt = (core.settings.section("gelato").get("formats") or {}).get(format_key)
@@ -875,11 +899,7 @@ def gelato_pages_problem(format_key: str, count: int) -> str | None:
         valid = gelato.page_counts(fmt["productUid"])
     except ApiError:
         return None
-    if not valid or count in valid:
-        return None
-    text = f"Gelato не друкує {fmt.get('label') or format_key} на {count} сторінках (можна від {valid[0]})."
-    other = next((n for n in gelato_page_options() if n in valid), None)
-    return text + (f" Скачайте з Canva {other} сторінок." if other else "")
+    return _pages_problem(fmt.get("label") or format_key, valid, count)
 
 
 def _journal_readback(log: dict, order_id: str, sizes: list[int]) -> None:
@@ -902,7 +922,8 @@ def create_gelato_draft(books, address: dict, job, reprint_of: str | None = None
     one address. Every attempt is written to the send journal.
     reprint_of: the archived book this draft reprints (then the folder is that book's archive folder)."""
     books = books_of(books)
-    with sendlog.attempt("gelato", "reprint" if reprint_of else "draft", joint_title(books)) as log:
+    with sendlog.attempt("gelato", "reprint" if reprint_of else "draft", joint_title(books)) as log, \
+            _while_sending(b["folder"] for b in books):
         result = _gelato_draft(books, address, job, log, reprint_of)
         log["result"] = result
     return _journaled(result, log)
@@ -1005,25 +1026,37 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
         }
         log["request"] = payload
         job.progress("Створення чернетки в Gelato…", 70, "Очікування відповіді")
+        keep = int(cfg.get("tunnelKeepAliveSeconds") or 900)
         try:
             created = gelato.create_draft_order(payload)
         except ApiError as err:
-            raise JobError(f"Gelato відхилив створення чернетки: {err}") from None
+            if not _unknown_outcome(err):
+                raise JobError(f"Gelato відхилив створення чернетки: {err}") from None
+            # Gelato may have made the draft all the same and fetch its PDF in a moment: the link stays up
+            # as for a made one, and the owner looks before sending again (22.09.2026 audit).
+            log["outcome"] = "unknown"
+            tunnel.registry.keep(f"unknown-{session}", link, session_dir, keep)
+            link = None
+            raise JobError("Зв'язок з Gelato обірвався під час створення чернетки — результат невідомий. НЕ надсилайте "
+                           "повторно одразу: спершу перевірте Gelato → Orders → Drafts, чи з'явилась чернетка "
+                           f"«{title}». Файли для неї доступні ще {max(1, keep // 60)} хв.") from None
         log["response"] = created
         order_id = created.get("id")
         if not order_id:
             raise JobError("Gelato не повернув ID чернетки.")
         _journal_readback(log, order_id, [b["pdf"]["pdfBytes"] for b in ready])
-        keep = int(cfg.get("tunnelKeepAliveSeconds") or 900)
         tunnel.registry.keep(order_id, link, session_dir, keep)
         link = None  # owned by the registry now
         warnings = [f"{b['title']}: {w}" if b["mark"] else w for b in ready for w in b["pdf"]["warnings"]]
         if reprint_of:
-            _mark_reprint(log, books[0]["title"], "gelato", order_id)
+            _mark_reprint(log, warnings, books[0].get("receipt"), "gelato", order_id)
+        else:
+            _remember_sent(log, warnings, ready, "gelato", order_id)
         for book in ready:
             book["archiveId"] = _to_archive(log, job, warnings, "gelato",
                                             [(Path(r["path"]), r["file"]) for r in book["files"]],
-                                            {"title": book["title"], "format": book["format"],
+                                            {"title": book["title"], "receiptId": book.get("receipt"),
+                                             "format": book["format"],
                                              "formatLabel": book["fmt"].get("label"),
                                              "productUid": book["fmt"]["productUid"], "orderId": order_id,
                                              "orderReferenceId": payload["orderReferenceId"], "address": address,
@@ -1043,7 +1076,6 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
 
 # ---------------------------------------------------------------- one page replaced by hand
 
-REPLACED = ".replaced"          # the pages a new one was put over, kept here so «Повернути» can work
 _PAGE_NAME = re.compile(r"(?:cover|\d{1,3})\.png", re.I)
 
 
@@ -1073,14 +1105,20 @@ def replace_page(folder_raw: str, file: str, source_raw: str) -> dict:
     info, error = images.check_png(source)
     if error or not info:
         raise ApiError(f"Це не придатний PNG: {error or 'файл не читається'}.")
-    keep = folder / REPLACED
-    keep.mkdir(exist_ok=True)
-    kept = keep / f"{page.name}.{time.strftime('%Y%m%d-%H%M%S')}"
-    shutil.copy2(page, kept)
-    tmp = page.with_name(page.name + ".new")
-    shutil.copy2(source, tmp)
-    os.replace(tmp, page)   # the page is never half-written: it changes in one step
-    _validation_cache.clear()
+    with _not_while_sending(folder):
+        keep = folder / REPLACED
+        keep.mkdir(exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        kept = keep / f"{page.name}.{stamp}"
+        for n in range(2, 100):     # two replacements of one page within the same second keep both
+            if not kept.exists():
+                break
+            kept = keep / f"{page.name}.{stamp}-{n}"
+        shutil.copy2(page, kept)
+        tmp = page.with_name(page.name + ".new")
+        shutil.copy2(source, tmp)
+        os.replace(tmp, page)   # the page is never half-written: it changes in one step
+    _forget_validation(folder)
     core.log.info("Page %s replaced from %s", page.name, source.name)
     return {"file": page.name, "width": info["width"], "height": info["height"], "bytes": info["bytes"],
             "canRestore": True}
@@ -1089,14 +1127,14 @@ def replace_page(folder_raw: str, file: str, source_raw: str) -> dict:
 def restore_page(folder_raw: str, file: str) -> dict:
     """«Повернути»: the page that was there before the last replacement comes back."""
     folder, page = _print_page(folder_raw, file)
-    kept = sorted((folder / REPLACED).glob(f"{page.name}.*")) if (folder / REPLACED).is_dir() else []
-    if not kept:
-        raise ApiError("Немає чого повертати.", 404)
-    last = kept[-1]
-    os.replace(last, page)
-    _validation_cache.clear()
+    with _not_while_sending(folder):
+        kept = _backups(folder, page.name)
+        if not kept:
+            raise ApiError("Немає чого повертати.", 404)
+        os.replace(kept[-1], page)
+    _forget_validation(folder)
     core.log.info("Page %s restored", page.name)
-    return {"file": page.name, "canRestore": bool(sorted((folder / REPLACED).glob(f"{page.name}.*")))}
+    return {"file": page.name, "canRestore": bool(_backups(folder, page.name))}
 
 
 # ---------------------------------------------------------------- personalization helpers
@@ -1109,12 +1147,12 @@ def guess_child_name(items: list) -> str:
         for v in item.get("variations") or []:
             name, value = (v.get("name") or ""), (v.get("value") or "").strip()
             if _NAME_HINT.search(name) and value and len(value) <= 40 and "\n" not in value:
-                return value
+                return wording.clean_name(value)
         for v in item.get("variations") or []:
             value = (v.get("value") or "")
             m = re.search(r"(?:child'?s?\s*name|name)\s*[:\-–]\s*([^\n,;]{2,40})", value, re.I)
             if m:
-                return m.group(1).strip()
+                return wording.clean_name(m.group(1))
     return ""
 
 
@@ -1195,9 +1233,12 @@ def _create_gelato(req: Request):
         {"folder": body.get("folder"), "title": body.get("title"), "format": body.get("format")}]
     reprint_of = str(body.get("reprintOf") or "") or None
     if reprint_of:  # a reprint always uses the archived files, whatever folder the page holds
-        if archive.reprintable(reprint_of).get("provider") != "gelato":
+        entry = archive.reprintable(reprint_of)
+        if entry.get("provider") != "gelato":
             raise ApiError("Ця книга з архіву надрукована не в Gelato — передрук робиться в тій самій друкарні.")
-        books = [{**(books[0] or {}), "folder": str(archive.folder(reprint_of))}]
+        first = books[0] if books and isinstance(books[0], dict) else {}
+        books = [{**first, "folder": str(archive.folder(reprint_of)),
+                  "receiptId": entry.get("receiptId") or first.get("receiptId")}]
     address = body.get("address") or {}
     job = jobs.start("gelato-create", lambda j: create_gelato_draft(books, address, j, reprint_of=reprint_of),
                      exclusive="gelato-create")
@@ -1206,7 +1247,14 @@ def _create_gelato(req: Request):
 
 @route("GET", "/api/creator/gelato/page-counts")
 def _gelato_page_counts(req: Request):
-    return {"formats": gelato_page_counts()}
+    """Page counts per format, and for every book length the folder can have, what to tell when Gelato does not
+    print that format at that length (the same words the send itself refuses with)."""
+    counts = gelato_page_counts()
+    formats = core.settings.section("gelato").get("formats") or {}
+    problems = {key: {str(n): text for n in gelato_page_options()
+                      if (text := _pages_problem((formats.get(key) or {}).get("label") or key, valid, n))}
+                for key, valid in counts.items()}
+    return {"formats": counts, "problems": problems}
 
 
 @route("POST", "/api/creator/gelato/close-tunnel")
@@ -1219,6 +1267,8 @@ def _etsy_orders(req: Request):
     orders = profit.picker_orders()
     for o in orders:
         o["childName"] = guess_child_name(o["items"])
+        for item in o["items"]:  # each book of the order its own child (the page names every book by it)
+            item["childName"] = guess_child_name([item])
     return {"orders": orders, "syncedAt": profit.load_snapshot().get("syncedAt")}
 
 

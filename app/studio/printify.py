@@ -9,10 +9,8 @@ updates and deletes are blocked by an allowlist.
 from __future__ import annotations
 
 import base64
-import logging
 import re
 import threading
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 
@@ -35,19 +33,9 @@ _WRITE = [
     re.compile(r"^shops/\d+/products\.json$"),
 ]
 
-audit = logging.getLogger("studio.printify")
-_audit_ready = threading.Lock()
 
-
-def _audit_log() -> logging.Logger:
-    with _audit_ready:
-        if not audit.handlers:
-            core.data_path("logs").mkdir(parents=True, exist_ok=True)
-            h = RotatingFileHandler(core.data_path("logs", "printify.log"), maxBytes=2_000_000, backupCount=3,
-                                    encoding="utf-8")
-            h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
-            audit.addHandler(h)
-    return audit
+def _audit_log():
+    return httpc.audit_log("studio.printify", "printify.log")
 
 
 class PrintifySecurityError(ApiError):
@@ -82,23 +70,11 @@ def _check(method: str, path: str, order: bool = False) -> None:
 
 
 def _human(err: httpc.HttpError, action: str) -> PrintifyError:
-    body = httpc.short_body(err.body)
-    if err.status == 401:
-        return PrintifyError(f"{action}: токен Printify недійсний або прострочений.", 400, {"code": "printify_token"})
-    if err.status == 403:
-        return PrintifyError(f"{action}: токен Printify не має потрібних прав.", 400, {"code": "printify_token"})
-    if err.status == 404:
-        return PrintifyError(f"{action}: Printify не знайшов об'єкт (404).", 404)
-    if err.status == 429:
-        return PrintifyError(f"{action}: перевищено ліміт запитів Printify, спробуйте пізніше.", 429)
-    if err.status is None:
-        return PrintifyError(f"{action}: немає з'єднання з Printify. Перевірте інтернет.", 502,
-                             {"ambiguous": err.ambiguous, "upstream": None})
-    return PrintifyError(f"{action}: Printify повернув помилку {err.status}. {body}", 502, {"upstream": err.status})
+    return PrintifyError(*httpc.human(err, "Printify", action, "токен", "printify_token"))
 
 
 def call(method: str, path: str, body: Any = None, action: str = "Запит до Printify", timeout: float = 60,
-         retries: int = 3, params: str = "", order: bool = False) -> Any:
+         retries: int = 3, params: str = "", order: bool = False, idempotent: bool | None = None) -> Any:
     method = method.upper()
     path = path.lstrip("/")
     _check(method, path, order)
@@ -106,7 +82,7 @@ def call(method: str, path: str, body: Any = None, action: str = "Запит д�
     _audit_log().info("%s /%s%s", method, path, f"?{params}" if params else "")
     try:
         return httpc.request_json(method, url, headers={"Authorization": f"Bearer {token()}"},
-                                  json_body=body, timeout=timeout, retries=retries)
+                                  json_body=body, timeout=timeout, retries=retries, idempotent=idempotent)
     except httpc.HttpError as err:
         _audit_log().warning("%s /%s -> %s %s", method, path, err.status, httpc.short_body(err.body, 300))
         raise _human(err, action) from None
@@ -138,27 +114,36 @@ def upload_exists(image_id: str) -> bool:
         raise
 
 
-def all_orders(shop_id: int, progress=None) -> list:
+MAX_ORDER_PAGES = 400  # 50 orders each
+
+
+def all_orders(shop_id: int, progress=None) -> httpc.Listing:
+    """Every order of the shop; a shop with more than MAX_ORDER_PAGES pages is cut and says so (Listing.complete)."""
     from concurrent.futures import ThreadPoolExecutor
 
     first = call("GET", f"shops/{shop_id}/orders.json", action="Замовлення Printify", params="page=1&limit=50")
-    orders = list(first.get("data") or [])
+    orders = httpc.Listing(first.get("data") or [])
     last_page = int(first.get("last_page") or 1)
     if progress:
         progress(1, last_page)
+    if last_page > MAX_ORDER_PAGES:
+        orders.complete = False
+        core.log.warning("Printify orders: %s pages, only the first %s are loaded", last_page, MAX_ORDER_PAGES)
     if last_page > 1:
         done = [1]
+        lock = threading.Lock()
 
         def fetch(page: int) -> list:
             data = call("GET", f"shops/{shop_id}/orders.json", action="Замовлення Printify",
                         params=f"page={page}&limit=50")
-            done[0] += 1
-            if progress:
-                progress(done[0], last_page)
+            with lock:
+                done[0] += 1
+                if progress:
+                    progress(done[0], last_page)
             return list(data.get("data") or [])
 
         with ThreadPoolExecutor(max_workers=4) as pool:
-            for batch in pool.map(fetch, range(2, min(last_page, 400) + 1)):
+            for batch in pool.map(fetch, range(2, min(last_page, MAX_ORDER_PAGES) + 1)):
                 orders.extend(batch)
     return orders
 
@@ -191,6 +176,8 @@ def slim_order(p: dict) -> dict:
 
 def upload_image(path: Path, file_name: str) -> dict:
     contents = base64.b64encode(Path(path).read_bytes()).decode("ascii")
+    # Tried again only when the upload certainly did not arrive (httpc): after a timeout Printify may
+    # already keep the picture, and a second one would only clutter its media library.
     return call("POST", "uploads/images.json", {"file_name": file_name, "contents": contents},
                 action=f"Завантаження {file_name}", timeout=240, retries=3)
 
@@ -198,6 +185,9 @@ def upload_image(path: Path, file_name: str) -> dict:
 def create_product(shop_id: int, payload: dict) -> dict:
     # No automatic retry: a repeated POST after an unclear failure could duplicate the book.
     return call("POST", f"shops/{shop_id}/products.json", payload, action="Створення продукту", timeout=180, retries=1)
+
+
+MANUAL_APPROVAL_NEEDED = "Спершу підтвердіть, що в Printify увімкнене ручне затвердження замовлень."
 
 
 def manual_approval_confirmed() -> bool:
@@ -209,7 +199,7 @@ def create_order_on_hold(shop_id: int, payload: dict) -> dict:
     approval, neither produces nor charges it until "Submit order" is pressed in Printify. Nothing here
     can send it on: send_to_production is blocked by the allowlist."""
     if not manual_approval_confirmed():
-        raise PrintifySecurityError("Спершу підтвердіть, що в Printify увімкнене ручне затвердження замовлень.", 403,
+        raise PrintifySecurityError(MANUAL_APPROVAL_NEEDED, 403,
                                     {"code": "manual_approval"})
     safe = dict(payload)
     safe.update({"is_printify_express": False, "send_shipping_notification": False})

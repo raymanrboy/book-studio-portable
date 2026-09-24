@@ -83,6 +83,17 @@ class BuyerFields(unittest.TestCase):
                 self.assertTrue(tc.is_default(value))
         self.assertFalse(tc.is_default("May you always fly high and soar among the stars."))
 
+    def test_the_card_marks_own_text_by_the_same_rule(self):
+        """22.09.2026 audit: the card called "“DEFAULT “" the buyer's own text while the check expected the book's."""
+        from studio import orders
+        order = {"items": [{"variations": [
+            {"name": "Dedication and Closing", "value": "“DEFAULT “"},
+            {"name": "Personalized Dedication", "value": "Dedication and Closing   Default"},
+            {"name": "Dedication", "value": "Sweet dreams, Mia."},
+            {"name": "Child's name", "value": "DEFAULT"}]}]}
+        orders.enrich(order, {})
+        self.assertEqual([v["custom"] for v in order["items"][0]["variations"]], [False, False, True, False])
+
     def test_own_dedication_and_closing_are_split(self):
         p = tc.personalization(item(dedication="Dedication:  Welcome to the world, Little Mia.\nClosing:  Sweet dreams, Mia."))
         self.assertEqual((p["dedication"], p["closing"]), ("Welcome to the world, Little Mia.", "Sweet dreams, Mia."))
@@ -176,6 +187,19 @@ class PageIssues(unittest.TestCase):
         self.assertEqual([i["level"] for i in cut], ["warn"])
         quotes = self.issues(self.target(), "Wave hello, sweet Olivia.", "error", ["Відсутні лапки навколо тексту", "Пробіл після коми"])
         self.assertEqual(quotes, [])
+
+    def test_the_models_own_word_on_punctuation_is_taken(self):
+        """22.09.2026 audit: whether a remark was shown hung on Ukrainian word stems in the model's wording. The
+        model now also answers only_punctuation (Gemma 4 12B on made-up pages, 23.09.2026: true for a missing
+        comma and for quotes, false for a line cut off at the edge); a cut-off word is shown whatever it says."""
+        def issues(problem, flag):
+            return tc.page_issues(self.target(), {"transcript": "Wave hello, sweet Olivia.", "verdict": "error",
+                                                  "problems": [problem], "only_punctuation": flag},
+                                  self.pers, set(tc.COMMON), set())
+        self.assertEqual(issues("Інакше оформлено звертання", True), [])            # wording no rule knows
+        self.assertEqual(len(issues("Інакше оформлено звертання", False)), 1)
+        self.assertEqual(len(issues("Слово «Olivia» обрізане краєм сторінки", True)), 1)
+        self.assertEqual(issues("Відсутні лапки навколо тексту", False), [])        # the words still decide too
 
     def test_a_misspelt_name_is_red_even_on_the_owners_own_pages(self):
         found = self.issues(self.target("personal", "Dear Olivia, with love, Grandma", 1), "Dear Ollivia, with love, Grandma")
@@ -277,7 +301,7 @@ class WholeCheck(unittest.TestCase):
         learn = {p["key"]: p["learn"] for p in res["pages"] if p["key"]}
         self.assertIsNone(learn["spread7"])        # a misspelt name never teaches the passport
         self.assertFalse(any(learn.values()))      # clean pages have nothing to teach
-        journal = sorted(tc.CHECKS.glob("*_4100000101.json"))
+        journal = sorted(tc.CHECKS.glob("*_4100000101-1.json"))
         self.assertTrue(journal)
         self.assertNotIn("key", json.loads(journal[-1].read_text(encoding="utf-8"))["pages"][0].get("prompt", ""))
 
@@ -320,6 +344,39 @@ class Passport(unittest.TestCase):
         for bad in ({"key": "page1", "text": "Dear Jasper"}, {"key": "cover", "text": ""}):  # the owner's own pages stay his
             with self.subTest(bad=bad), self.assertRaises(Exception):
                 tc._passport(SimpleNamespace(json={"bookId": book_id, "child": "Jasper", "pages": [bad]}))
+
+    def test_the_name_inside_other_words_stays(self):
+        """22.09.2026 audit: «Eve» turned «Every» into «{Name}ry» and the passport kept it."""
+        for child, printed, kept in (
+                ("Eve", "Every night, Eve counts the stars. Never forget, Eve.",
+                 "Every night, {Name} counts the stars. Never forget, {Name}."),
+                ("Ian", "A giant hug for Ian.", "A giant hug for {Name}."),
+                ("Leo", "Leo met a leopard.", "{Name} met a leopard."),
+                ("Ann", "Ann planned a picnic with Joanna.", "{Name} planned a picnic with Joanna."),
+                ("Leo & Mila", "Leo & Mila went out.", "{Name} went out.")):
+            with self.subTest(child=child):
+                self.assertEqual(tc.as_template(printed, child), kept)
+
+    def test_a_name_that_is_also_a_word_follows_the_passport(self):
+        """«Hope» the girl becomes {Name} where the passport had {Name}; «hope» the passport's own word stays."""
+        self.assertEqual(tc.as_template("Hope never lost hope.\nHope smiled.", "Hope", "{Name} never lost hope."),
+                         "{Name} never lost hope.\n{Name} smiled.")
+        self.assertEqual(tc.as_template("Grace sang. By grace, Grace flew.", "Grace", "{Name} sang. By grace, {Name} flew."),
+                         "{Name} sang. By grace, {Name} flew.")
+        self.assertEqual(tc.as_template("Grace sang with grace.", "Grace", "{Name} sang."),
+                         "{Name} sang with grace.")  # a new line: the everyday word stays a word
+
+    def test_the_owner_sees_the_texts_before_they_are_kept(self):
+        book_id = "c" * 32
+        library.save({"id": book_id, "schema": 1, "rev": 0, "title": "Stars", "listing": {"id": "4100000902"},
+                      "slots": library._empty_slots(), "text": {**TEXTS, "spread3": "Every night, {Name} counts."},
+                      "cover": None, "thumbnail": None})
+        body = {"bookId": book_id, "child": "Eve", "pages": [{"key": "spread3", "text": "Every night, Eve counts stars."}]}
+        res = tc._passport(SimpleNamespace(json={**body, "preview": True}))
+        self.assertEqual(res, {"texts": {"spread3": "Every night, {Name} counts stars."}})
+        self.assertEqual(library.load(book_id)["text"]["spread3"], "Every night, {Name} counts.")  # nothing saved yet
+        tc._passport(SimpleNamespace(json=body))
+        self.assertEqual(library.load(book_id)["text"]["spread3"], "Every night, {Name} counts stars.")
 
 
 class WhileItRuns(unittest.TestCase):
@@ -384,6 +441,48 @@ class WhileItRuns(unittest.TestCase):
         self.assertTrue(shared, "the check shares its findings while it runs")
         self.assertTrue(any(s["issues"] for s in shared[:-1]), "a mistake reaches the card before the end")
         self.assertEqual([i["id"] for i in shared[-1]["issues"]], [i["id"] for i in res["issues"]])
+
+
+class BooksOfOneOrder(unittest.TestCase):
+    """Two books of one order are two checks: starting the second must not stop the first (the card says
+    a hidden book's check carries on). Only a new check of the same book replaces it."""
+
+    def job(self, job_id):
+        return SimpleNamespace(id=job_id, progress=lambda *a, **k: None, share=lambda data: None)
+
+    def test_a_second_book_does_not_stop_the_first(self):
+        with mock.patch.object(tc, "_release_model"):
+            with tc._Run(self.job("job1"), "4100000108", "m", 0) as first:
+                with tc._Run(self.job("job2"), "4100000108", "m", 1) as second:
+                    self.assertFalse(first.cancel.is_set(), "book 1 keeps checking while book 2 starts")
+                    self.assertEqual(sorted(tc._runs), ["4100000108#0", "4100000108#1"])
+                    self.assertTrue(tc.cancel("4100000108", "job2"))      # only the job that was named
+                    self.assertTrue(second.cancel.is_set())
+                    self.assertFalse(first.cancel.is_set())
+        self.assertEqual(tc._runs, {})
+
+    def test_the_same_book_again_stops_the_older_check(self):
+        with mock.patch.object(tc, "_release_model"):
+            with tc._Run(self.job("job1"), "4100000108", "m", 1) as older:
+                with tc._Run(self.job("job2"), "4100000108", "m", 1):
+                    self.assertTrue(older.cancel.is_set())
+        self.assertEqual(tc._runs, {})
+
+    def test_closing_the_card_stops_every_book(self):
+        with mock.patch.object(tc, "_release_model"):
+            with tc._Run(self.job("job1"), "4100000108", "m", 0) as first, \
+                    tc._Run(self.job("job2"), "4100000108", "m", 1) as second, \
+                    tc._Run(self.job("job3"), "4100000109", "m", 0) as other_order:
+                self.assertTrue(tc.cancel("4100000108"))                  # no job named: the whole card
+                self.assertTrue(first.cancel.is_set() and second.cancel.is_set())
+                self.assertFalse(other_order.cancel.is_set())
+        self.assertFalse(tc.cancel("4100000108"))                         # nothing left to stop
+
+    def test_each_book_writes_its_own_journal(self):
+        tc._journal("4100000108", {"issues": []}, {"child": "Sofia"}, 0)
+        tc._journal("4100000108", {"issues": []}, {"child": "Jack"}, 1)
+        names = sorted(p.name.split("_")[-1] for p in tc.CHECKS.glob("*_4100000108-*.json"))
+        self.assertEqual(names, ["4100000108-1.json", "4100000108-2.json"])
 
 
 class Prescan(unittest.TestCase):
