@@ -43,11 +43,13 @@
   --text-2: #45484d;
   --text-3: #6d7076;
   --text-4: #9b9ea3;
-  --accent: #0a74a3;
-  --accent-hover: #08658f;
-  --accent-soft: rgba(10, 116, 163, .1);
-  --accent-line: rgba(10, 116, 163, .32);
-  --accent-ink: #075c83;
+  /* The Orders mode's ink — orange, "like Etsy and Claude" (owner, 24.09.2026; cyan until then, now the
+     Listings mode's). Contrast: the accent against its text 4.8, the ink against the surface 6.6. */
+  --accent: #bf4f1a;
+  --accent-hover: #a8440f;
+  --accent-soft: rgba(191, 79, 26, .1);
+  --accent-line: rgba(191, 79, 26, .32);
+  --accent-ink: #9a3d10;
   --on-accent: #ffffff;
   --green: #1d7a4c; --green-soft: rgba(29, 122, 76, .09); --green-line: rgba(29, 122, 76, .3);
   --red: #bf3a2c; --red-soft: rgba(191, 58, 44, .08); --red-line: rgba(191, 58, 44, .3);
@@ -85,12 +87,12 @@
   --text-2: #b4b6bb;
   --text-3: #85888e;
   --text-4: #5d6066;
-  --accent: #47b5e3;
-  --accent-hover: #64c2ea;
-  --accent-soft: rgba(71, 181, 227, .13);
-  --accent-line: rgba(71, 181, 227, .36);
-  --accent-ink: #7dccee;
-  --on-accent: #062230;
+  --accent: #f0874d;         /* contrast: against its text 7.0, the ink against the surface 8.5 */
+  --accent-hover: #f39c6a;
+  --accent-soft: rgba(240, 135, 77, .13);
+  --accent-line: rgba(240, 135, 77, .36);
+  --accent-ink: #f5a577;
+  --on-accent: #2a1204;
   --green: #5cc88e; --green-soft: rgba(92, 200, 142, .11); --green-line: rgba(92, 200, 142, .3);
   --red: #f07a6e; --red-soft: rgba(240, 122, 110, .11); --red-line: rgba(240, 122, 110, .32);
   --amber: #e2b650; --amber-soft: rgba(226, 182, 80, .11); --amber-line: rgba(226, 182, 80, .3);
@@ -113,24 +115,24 @@
   color-scheme: dark;
 }
 
-/* ---------- the Listings mode: the second process ink, magenta (owner, 24.09.2026) ----------
-   The same tokens as the cyan above, so every button, focus ring and switch follows the mode. Contrast:
-   the accent against its text 5.8 (light) / 6.5 (dark), the ink against the surface 7.5 / 8.3. */
+/* ---------- the Listings mode: process cyan — the Studio's ink until 24.09.2026 (owner, 24.09.2026) ----------
+   The same tokens as the orange above, so every button, focus ring and switch follows the mode. Contrast:
+   the accent against its text 5.2 (light) / 7.0 (dark), the ink against the surface 7.0 / 9.4. */
 [data-mode="listings"] {
-  --accent: #c0137a;
-  --accent-hover: #a8106b;
-  --accent-soft: rgba(192, 19, 122, .1);
-  --accent-line: rgba(192, 19, 122, .32);
-  --accent-ink: #9c0f63;
+  --accent: #0a74a3;
+  --accent-hover: #08658f;
+  --accent-soft: rgba(10, 116, 163, .1);
+  --accent-line: rgba(10, 116, 163, .32);
+  --accent-ink: #075c83;
   --on-accent: #ffffff;
 }
 [data-theme="dark"][data-mode="listings"] {
-  --accent: #f06aae;
-  --accent-hover: #f488bf;
-  --accent-soft: rgba(240, 106, 174, .13);
-  --accent-line: rgba(240, 106, 174, .36);
-  --accent-ink: #f59ac6;
-  --on-accent: #2a0619;
+  --accent: #47b5e3;
+  --accent-hover: #64c2ea;
+  --accent-soft: rgba(71, 181, 227, .13);
+  --accent-line: rgba(71, 181, 227, .36);
+  --accent-ink: #7dccee;
+  --on-accent: #062230;
 }
 
 /* ------------------------------------------------------------------ base */
@@ -191,7 +193,7 @@ p { margin: 0; }
   padding: 12px 0; gap: 14px; min-height: 0; user-select: none;
 }
 /* Brand: a book spread over a CMYK control strip — the printer's colour bar. It is also the switch between
-   the two modes (a click, Alt+0): in the Listings mode it wears the magenta ink and the listing's tag. */
+   the two modes (a click, Alt+0): in the Listings mode it wears the cyan ink and the listing's tag. */
 .brand-mark {
   position: relative; width: 36px; height: 36px; border-radius: 9px; overflow: hidden; border: 0; padding: 0;
   display: grid; place-items: center; background: var(--text); color: var(--bg); cursor: pointer; flex: none;
@@ -201,9 +203,9 @@ p { margin: 0; }
 .brand-mark:active { transform: scale(.96); }
 [data-mode="listings"] .brand-mark { background: var(--accent); color: var(--on-accent); }
 .brand-mark .icon { width: 20px; height: 20px; margin-top: -3px; }
-/* A mockups run going on in the other mode: a small magenta dot, breathing. */
+/* A mockups run going on in the other mode: a small dot in the Listings' cyan, breathing. */
 .brand-busy, .nav-item .badge.busy {
-  position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-m);
+  position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-c);
   box-shadow: 0 0 0 2px var(--bg-2); animation: busy-dot 1.6s ease-in-out infinite;
 }
 .brand-busy { top: 4px; right: 4px; box-shadow: 0 0 0 2px var(--text); }

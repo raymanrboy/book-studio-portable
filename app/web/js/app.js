@@ -35,7 +35,7 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
 // ------------------------------------------------------------------ the two modes and their rails
 // Book Studio has two modes (owner, 24.09.2026): «Замовлення» — the orders, and «Лістинги» — making new books
 // and their listing pictures, "like another program, separated from everything". A click on the brand icon
-// (Alt+0) switches; each mode has its own rail items and its own ink (cyan / magenta, html[data-mode]).
+// (Alt+0) switches; each mode has its own rail items and its own ink (orange / cyan, html[data-mode]).
 // «Прибуток» is hidden until bookkeeping starts (the page itself is kept in pages/profit.js).
 const MODES = {
   orders: {
@@ -103,7 +103,7 @@ function switchMode() {
   location.hash = entryOf(MODES[mode].other);
 }
 
-// A mockups run going on while the owner is elsewhere: a small magenta dot on the brand icon (in the orders) or
+// A mockups run going on while the owner is elsewhere: a small cyan dot on the brand icon (in the orders) or
 // on «Мокапи» (in the listings). pages/mockups.js tells it through the 'bs:busy' event.
 const busy = { mockups: false };
 window.addEventListener('bs:busy', (e) => { Object.assign(busy, e.detail || {}); paintBusy(); });

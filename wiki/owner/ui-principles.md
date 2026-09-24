@@ -19,8 +19,8 @@ code:
   watches another program meanwhile (Photoshop), so the result card alone isn't enough — the window's
   taskbar button flashes, Windows plays its sound and the title says how it ended. Show the results
   themselves (the saved pictures), not just a count.
-- **Two modes, two inks** (2026-09-24): Orders stay cyan, Listings are magenta — the logo's second ink, the
-  owner's pick; the brand icon at the top of the rail switches them ([modes](../features/modes.md)).
+- **Two modes, two inks** (2026-09-24): Orders are orange, "like Etsy and Claude"; Listings wear the cyan the
+  whole program had before (the owner's swap; magenta for a few hours first); the brand icon at the top of the rail switches them ([modes](../features/modes.md)).
 - **The Workshop's rows are of moderate width**, not the full window (2026-09-24): the prompt, the 2:1 frame
   and the text one under another, the frames empty until the pictures are generated
   ([workshop](../features/workshop.md)).

@@ -260,7 +260,7 @@ The owner wants a real program feature — a "check button", a strong one — no
     the mockups.
 - **Two modes and the Workshop — BUILT on 2026-09-24** ([plan and agreements](listings-mode.md),
   [modes](../features/modes.md), [workshop](../features/workshop.md)): the brand icon switches between Orders
-  and Listings (magenta); the Workshop holds books in development — a prompt, a 2:1 spread and a text per row,
+  and Listings (cyan; Orders turned orange the same day); the Workshop holds books in development — a prompt, a 2:1 spread and a text per row,
   prompts and texts from one JSON, pictures dropped one per frame — and passes a finished book to the library
   with its Etsy listing. The owner said the Listings mode's library "will be modified a bit" later; next steps
   are his to name (e.g. a way back from the library to the Workshop, the listing's own texts).

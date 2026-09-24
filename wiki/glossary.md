@@ -95,9 +95,9 @@ Code paths below are relative to the repository root.
 
 | Owner's word (Ukrainian) | What it is | Where |
 |---|---|---|
-| Два режими; режим роботи з замовленнями / режим створення лістингів | Orders (cyan) and Listings (magenta) — each with its own rail; the address says which | [features/modes.md](features/modes.md); [app.js](../app/web/js/app.js) `MODES` |
+| Два режими; режим роботи з замовленнями / режим створення лістингів | Orders (orange) and Listings (cyan) — each with its own rail; the address says which | [features/modes.md](features/modes.md); [app.js](../app/web/js/app.js) `MODES` |
 | Перемикач по кліку на головну іконку Бук Студіо | The brand icon at the top of the rail (Alt+0) goes to the other mode | [app.js](../app/web/js/app.js) `switchMode()`, `entryOf()` |
-| Пурпуровий колір (режиму лістингів) | Magenta, the logo's second ink: the `--accent*` tokens under `[data-mode="listings"]` | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |
+| Кольори режимів: студія — оранжева, «як у Etsy і Claude»; майстерня — як була студія (блакитна) | The `--accent*` tokens: orange by default (Orders), cyan under `[data-mode="listings"]`; magenta for a few hours before the owner swapped them | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |
 | Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library, a prompt, a 2:1 spread and a text per row | [features/workshop.md](features/workshop.md); [workshop.py](../app/studio/workshop.py) |
 | Промпт (для розвороту) | The picture's description for an image generator, in every row above the frame | [workshop-book.js](../app/web/js/pages/workshop-book.js); [library.py](../app/studio/library.py) `PROMPT_KEYS` |
 | Плейсхолдер, рамка під картинку (розворот 2:1) | An empty frame in a Workshop row: a picture is dropped (or picked) in, one at a time; not 2:1 → the amber mark | [workshop-book.js](../app/web/js/pages/workshop-book.js) `OFF`; [features/workshop.md](features/workshop.md) |

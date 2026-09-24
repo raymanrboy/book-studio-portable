@@ -1,7 +1,7 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-09-23
+updated: 2026-09-24
 code: []
 ---
 # Decisions
@@ -9,15 +9,26 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-24 (later) — The inks swapped: Orders orange, Listings cyan
+
+The owner, after the modes were merged: "make the Workshop's colours what the Studio has now, and the Studio's
+like Etsy and Claude — orange". So the **Listings mode wears the cyan** the whole program had until now, and
+**the Orders mode is orange** (`#bf4f1a` light / `#f0874d` dark; Etsy's own `#F1641E` and Claude's `#D97757` are
+too light for white text on a button — 3.2:1 — so a deeper shade of the same orange: 4.8:1 and 7.0:1). The dot
+of a mockups run going on elsewhere is cyan now (the Listings' ink). This replaces "The Listings mode is
+magenta" below; the orange sits close to the Etsy chips and a little closer to the amber warnings — the owner's
+choice, the warnings stay amber.
+
 ## 2026-09-24 — Two modes: Orders and Listings; the Workshop; the mockups move into Book Studio
 
 The owner: "Book Studio will have two modes — working with orders and creating listings", switched "by a
 click on the main Book Studio icon", the second one "like another program, separated from everything".
 The agent's plan was approved without changes ([plan](plans/listings-mode.md), his words in
 [raw/](raw/2026-09-24-listings-mode-owner-answers.md)).
-- **The Listings mode is magenta**, its own icon and rail items (Майстерня, Мокапи). Reason: the owner
-  picked it; magenta is the logo's second ink, and neither the Etsy orange (already a service colour,
-  close to the amber warnings) nor the same cyan would tell the modes apart at a glance.
+- **The Listings mode is magenta** (changed the same day — see above: Orders orange, Listings cyan), its own
+  icon and rail items (Майстерня, Мокапи). Reason: the owner picked it; magenta is the logo's second ink, and
+  neither the Etsy orange (already a service colour, close to the amber warnings) nor the same cyan would tell
+  the modes apart at a glance.
 - **Book Studio always starts in Orders** (the owner's answer); each mode remembers its last page until a
   restart. The mode comes from the page's address, so back/forward just work.
 - **The Workshop, not a second library**: "a place where I create books before sending them to the library

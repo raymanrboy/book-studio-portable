@@ -145,9 +145,9 @@ code:
   theme is set before the first frame by a script in `index.html` (the `bs-theme` key in localStorage).
 - Fonts: Bahnschrift — the interface and headings, Segoe UI — text, Sitka — book texts, Consolas —
   numbers/codes.
-- Accent — "process cyan"; **in the Listings mode — "process magenta"** (`[data-mode="listings"]` and
-  `[data-theme="dark"][data-mode="listings"]` redefine `--accent*`; contrast 5.8/6.5 with the text on it,
-  7.5/8.3 for the ink on a surface). Service colors: `--printify` (lime green), `--gelato` (blue), `--etsy`,
+- Accent — **orange in the Orders mode** (since 2026-09-24, "like Etsy and Claude": `#bf4f1a` / `#f0874d`,
+  contrast 4.8/7.0 with the text on it), **"process cyan" in the Listings mode** (`[data-mode="listings"]` and
+  `[data-theme="dark"][data-mode="listings"]` redefine `--accent*`; the whole program's colour until then). Service colors: `--printify` (lime green), `--gelato` (blue), `--etsy`,
   `--canva`. The Order Creator's Printify mode and the Printify send card (`.tint-printify`) recolor the
   accent to lime green.
 - Radii by role: paper is sharp (`--r-art`), controls are soft (`--r-ctl`).

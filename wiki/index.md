@@ -33,7 +33,7 @@ code: []
   reprints.
 - [Profit](features/profit.md) — hidden until 1 October.
 - [Two modes](features/modes.md) — Orders and Listings: the brand icon switches, each mode its rail and ink
-  (cyan / magenta).
+  (orange / cyan).
 - [Workshop](features/workshop.md) — the Listings mode: books in development, a prompt, a 2:1 spread and a
   text per row; passed to the library with their Etsy listing.
 - [Mockups](features/mockups.md) — the Listings mode: a Canva demo book → Etsy listing pictures from the

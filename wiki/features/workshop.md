@@ -18,7 +18,7 @@ code:
 
 ## The gallery (`#/workshop`)
 
-- Like the [library's](library.md), in the Listings mode's magenta: search by title (Ctrl+F or `/`), sorting
+- Like the [library's](library.md), in the Listings mode's cyan: search by title (Ctrl+F or `/`), sorting
   (recently changed, added, by title, least ready first — remembered in `bs-workshop-view`), the agent's
   instruction (copy / save to a file), "+" (key N).
 - **A new book needs only a title** — no Etsy listing yet (the dialog says the listing comes when the book is

@@ -17,9 +17,11 @@ code: []
 
 ## The two modes
 
-- **Orders** — everything as it is: cyan accent, the spread icon, five rail items (Alt+1…5).
-- **Listings** — its own "ink": **magenta** (the second colour of the CMYK strip in the logo; the owner's
-  pick over Etsy orange and "same colour"). Its own icon at the top, two rail items: **Майстерня**
+- **Orders** — everything as it is: cyan accent, the spread icon, five rail items (Alt+1…5). **Changed the same
+  day** (the owner, after trying it): Orders are **orange** "like Etsy and Claude", and Listings take the cyan —
+  [decisions](../decisions.md).
+- **Listings** — its own "ink": **magenta** at first (the second colour of the CMYK strip in the logo; the
+  owner's pick over Etsy orange and "same colour"), cyan since the swap. Its own icon at the top, two rail items: **Майстерня**
   (Alt+1) and **Мокапи** (Alt+2); the theme button at the bottom as in Orders.
 - **The switch:** a click on the brand icon (or **Alt+0**) goes to the other mode. The switch is animated
   (transform/opacity only): the rail items of one mode slide out, the other's slide in, the icon turns

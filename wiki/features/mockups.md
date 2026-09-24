@@ -24,7 +24,7 @@ The page looks like Book Studio's Order Creator (the owner's request, 2026-09-23
 Book Studio, with the search", i.e. the path field with the folder-and-magnifier button): **four numbered
 steps on the left**, the **demo book's structure on the right**. A step's number turns into a green ✓ when
 it is done. **The page is kept when the owner steps away** (another page, the orders): the book, the picks, a
-run in Photoshop and its result wait for him; while a run goes on elsewhere, a magenta dot sits on the rail,
+run in Photoshop and its result wait for him; while a run goes on elsewhere, a cyan dot sits on the rail,
 and a notice says when it ends («Мокапи: готово · 7 картинок»).
 
 1. **Демо-книга з Canva.** Drag the ZIP anywhere onto the window (the book field lights up), or press the

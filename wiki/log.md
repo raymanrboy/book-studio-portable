@@ -3,6 +3,16 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-24] decision | The inks swapped: Orders orange, Listings cyan
+
+- The owner: the Workshop takes the colours the Studio has now, the Studio turns orange "like Etsy and Claude".
+  `app.css`: the default `--accent*` tokens are orange (`#bf4f1a` / `#f0874d`, a deeper shade than Etsy's so white
+  text on a button stays readable), `[data-mode="listings"]` — the former cyan; the dot of a mockup run going on
+  elsewhere is cyan. Checked on the preview: both modes, dark and light.
+- Pages: decisions.md, features/modes.md, features/workshop.md, features/mockups.md, architecture/frontend.md,
+  glossary.md, index.md, overview.md, owner/ui-principles.md, plans/listings-mode.md, plans/roadmap.md;
+  app/README.md.
+
 ## [2026-09-24] update | Two modes: Orders and Listings — the Workshop, the mockups inside Book Studio
 
 - The owner: Book Studio gets a second mode for making listings, switched by a click on the brand icon, "like

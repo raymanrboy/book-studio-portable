@@ -30,7 +30,7 @@ without that check.
 ## Two modes: Orders and Listings
 
 A click on the Book Studio icon at the top left (or Alt+0) switches between **Orders** (everything below,
-blue) and **Listings** (magenta): the **Workshop** — new books in development, a prompt, a 2:1 spread and a
+orange, like Etsy) and **Listings** (blue): the **Workshop** — new books in development, a prompt, a 2:1 spread and a
 text for every row, passed to the library with their Etsy listing — and the **Mockups**. Book Studio always
 opens in Orders. More — [the wiki](../wiki/features/modes.md).
 
