@@ -150,7 +150,8 @@ code:
   contrast 4.8/7.0 with the text on it), **"process cyan" in the Listings mode** (`[data-mode="listings"]` and
   `[data-theme="dark"][data-mode="listings"]` redefine `--accent*`; the whole program's colour until then). Service colors: `--printify` (lime green), `--gelato` (blue), `--etsy`,
   `--canva`. The Order Creator's Printify mode and the Printify send card (`.tint-printify`) recolor the
-  accent to lime green.
+  accent to lime green; its Gelato mode (`.creator.mode-gelato`) — to the old blue, the same "process
+  cyan" (the owner, 2026-09-25: once Orders turned orange, Gelato in the Order Creator became orange too — "як було").
 - Radii by role: paper is sharp (`--r-art`), controls are soft (`--r-ctl`).
 - **60 fps**: only `transform` and `opacity` animate, no blur; `data-motion="reduce"` and
   `prefers-reduced-motion` disable animation the same way (duration, delay and smooth scrolling).

@@ -1,7 +1,7 @@
 ---
 title: The order-to-print path, from Etsy
 type: flow
-updated: 2026-09-20
+updated: 2026-09-25
 code:
   - app/web/js/pages/orders.js
   - app/studio/orders.py
@@ -24,7 +24,7 @@ code:
 | 1 | Opens "Orders" → "New" | A list of receipts with no print order, with book and printer | [orders.js](../../app/web/js/pages/orders.js) `mountQueue()` |
 | 2 | Opens an order | The card: the book from the library by listing, the printer by rule, the buyer's fields | [orders.py](../../app/studio/orders.py) `enrich()` |
 | 3 | "Open template in Canva" | Opens the link from the book's passport in a browser | [orders.js](../../app/web/js/pages/orders.js) `renderLeft()` |
-| 4 | In Canva: a copy of the template, `{Name}` → the name, the dedication, download PNGs (for the US — 24 pages are needed; for Gelato — 30, or 28 without one spread) | — (copying values with buttons in the card) | [integrations/canva.md](../integrations/canva.md) |
+| 4 | In Canva: a copy of the template, `{Name}` → the name, the dedication, download PNGs (for Printify — 24 pages; for Gelato — 30, or 28 without one spread). A hardcover, for now (since 2026-09-25): the owner picks the printer by what he downloads — 24 → Printify, 28/30 → Gelato ([printer rule](../rules/printer-rule.md)) | — (copying values with buttons in the card) | [integrations/canva.md](../integrations/canva.md) |
 | 5 | Drags the ZIP/folder into "Files from Canva" | Copies it into the program, lays out `Cover.png` + `1…N.png`, a full check | [orders.js](../../app/web/js/pages/orders.js) `takeDrop()`; [orders.py](../../app/studio/orders.py) `arrange_pages()` |
 | 6 | Proofs it; watches the text-check badge | The cover, the first spread with its note (name, fields), a filmstrip of every spread, the viewer; meanwhile the local model reads the pages and checks them against the book passport (~20–50 s), problems as a list and outlines on the pages ([text check](../features/text-check.md)) | [orders.js](../../app/web/js/pages/orders.js) `proofCard()` |
 | 6a | Found a mistake — fixes the page in Canva, downloads **just that page** | A "Replace N" button in the viewer: the page takes the old one's place, files and text are checked again, "Undo" sits next to it | [orders.js](../../app/web/js/pages/orders.js) `replacePage()`; [creator.py](../../app/studio/creator.py) `replace_page()` |

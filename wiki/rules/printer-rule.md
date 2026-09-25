@@ -1,7 +1,7 @@
 ---
 title: The printer rule — Printify or Gelato
 type: rule
-updated: 2026-09-18
+updated: 2026-09-25
 code:
   - app/studio/orders.py
   - app/studio/reconcile.py
@@ -9,6 +9,30 @@ code:
 # The printer rule
 
 > **A hardcover shipping to the US → Printify, 24 pages. Everything else → Gelato, 28 or 30 pages.**
+
+## For now (since 2026-09-25): a hardcover goes where its files say
+
+Printify started printing faulty books, so the owner decides every **hardcover** himself — by how many
+pages he downloads from Canva:
+
+| Hardcover, any country, files with | Printer |
+|---|---|
+| 24 pages | Printify |
+| 28 or 30 pages | Gelato (`hardcover_8x8`) |
+| any other number | an error "24, 28 or 30 pages are needed" |
+
+- **Softcovers (the small 5.5×5.5 too) are only Gelato's**, as always; unknown cover type — the switch,
+  as always.
+- The rule below stays as **the suggestion**: in the queue a US hardcover still has the green "Printify"
+  chip, the tooltip says "usually Printify; the files decide". In the card the header chip shows
+  "Printify · 24 pages" (no question mark — the owner asked to remove it) until the files are in, then the printer the files picked ("Gelato · 30 pages").
+- No switch in Settings (the owner, 2026-09-25): going back to the rule is a small code change —
+  remove `choice` in `plan_for()`.
+- Technically: the plan of a hardcover carries `choice` (`{"printify": [24], "gelato": [28, 30]}`) and
+  `pages: [24, 28, 30]`; the card sends the files with `provider: "files"`, the server lays out any of
+  those lengths and answers with the printer (`provider_by_pages()`).
+
+## The rule itself (the suggestion while the files decide)
 
 | Order | Printer | Pages | Gelato format |
 |---|---|---|---|
@@ -47,12 +71,12 @@ were printed in Printify. Whether these are deliberate exceptions, or the rule n
 
 ## Where in the code
 
-- [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `binding_of()`, `page_options()`, `PRINTIFY_PAGES`, `_SMALL`
+- [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()` (`choice`), `provider_by_pages()`, `binding_of()`, `page_options()`, `PRINTIFY_PAGES`, `_SMALL`, `_files()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `cover_label()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `planText()` (the explanation "Hardcover · US → Printify · 24 pages", "… → Gelato · 28 or 30 pages"), `pagesText()`
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `renderPlan()` (the switch, when the type is unknown)
-- Test: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PrinterRule`)
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `planText()` (the explanation "Hardcover · US → Printify · 24 pages", "… → usually Printify. The files decide…"), `pagesText()`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `renderPlan()` (the switch, when the type is unknown), `byFiles()`, `providerOf()`, `arrange()` (`decided`)
+- Test: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PrinterRule`, `GelatoLength.test_24_pages_of_a_hardcover_go_to_printify`)
 
 ## Related
 

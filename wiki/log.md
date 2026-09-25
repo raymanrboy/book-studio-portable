@@ -3,6 +3,51 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-25] update | The flaky test fixed: a send's folder check no longer warms previews in the background
+
+- About one full test run in five ended with `PermissionError` in
+  `GelatoDraftFlow.test_an_unclear_draft_keeps_its_files_reachable` and left `.tmp\tmpXXXX` (Cover.png, 5–9.png…):
+  `creator.validate()` started the background preview warm-up, which was still reading a page when the test
+  removed its folder (Windows can't delete an open file).
+- A real race, not only the test's: a send's own check (no job) is followed by the PDF or the uploads reading
+  every file anyway. Now only the check the page asks for warms previews (`_warm_in_background()`); the
+  order card's strip and viewer are as fast as before. Test `test_only_the_pages_check_warms_the_previews`.
+- Checked: 10 full runs in a row (284 tests) — no error, nothing left in `.tmp`.
+- Pages: dev/testing.md, features/orders.md.
+
+## [2026-09-25] update | Gelato blue again in the Order Creator
+
+- Since Orders turned orange (2026-09-24) the Order Creator's Gelato mode had taken the orange too; the owner
+  asked for the blue "як було". `app.css`: `.creator.mode-gelato` sets the old accent (light and dark).
+- Pages: [architecture/frontend.md](architecture/frontend.md), [features/order-creator.md](features/order-creator.md).
+
+## [2026-09-25] update | No "?" on the card's printer chip; carrier and tracking number copy separately
+
+- The owner: the "Printify? · 24 стор." question mark was needless — removed (`renderPlan()`).
+- The tracking chip: a click on the carrier copies the carrier, on the number — the number (`trackChips()`,
+  `.ord-track` hover underline in `app.css`). Pages: [features/orders.md](features/orders.md),
+  [rules/printer-rule.md](rules/printer-rule.md).
+
+## [2026-09-25] update | Gelato draft with a dead file link: a refused Cloudflare tunnel was taken for the address
+
+- A real order's Gelato draft (its number and the child's name stay out of the repository): cloudflared failed
+  to get a quick tunnel, its error line with
+  `https://api.trycloudflare.com` matched the address pattern, the draft went out with
+  `https://api.trycloudflare.com/book.pdf` — Gelato could never load it.
+- `tunnel.py`: `_URL_RE` skips `api.`; no address → `TunnelError` at once (also when cloudflared exits),
+  cloudflared's last lines in `app.log`; no draft is created. Test in `test_flows.py`.
+- Page: [integrations/gelato.md](integrations/gelato.md).
+
+## [2026-09-25] update | A hardcover's printer is decided by its files (24 → Printify, 28/30 → Gelato)
+
+- The owner, because of Printify's faulty prints: for now every hardcover goes where its files say;
+  softcovers (and the small one) stay Gelato's; the US rule is only the suggestion in the queue.
+- Code: `orders.py` (`plan_for()` → `choice`, `provider_by_pages()`, `_files()` takes `provider: "files"`),
+  `orders.js` (`byFiles()`, `decided`, the "Printify?" chip), `order-bits.js` (`planText()`, `pagesText()`
+  "24, 28 або 30"); tests in `test_orders.py`.
+- Pages: [rules/printer-rule.md](rules/printer-rule.md), [features/orders.md](features/orders.md),
+  [flows/order-to-print.md](flows/order-to-print.md), [decisions.md](decisions.md), api-routes, testing.
+
 ## [2026-09-25] update | The text check calibrated; another book's pages raise a big red alarm
 
 - The owner asked to calibrate what the text check shows. On the journal (30 checks, 10 orders): 103 rows →

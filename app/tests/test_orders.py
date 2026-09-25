@@ -22,12 +22,23 @@ def png(path: Path, size=(40, 40)):
 
 class PrinterRule(unittest.TestCase):
     def test_owner_rule(self):
-        self.assertEqual(orders.plan_for(item(), "US")["provider"], "printify")            # hardcover to the US
-        self.assertEqual(orders.plan_for(item(), "US")["pages"], [24])
+        us = orders.plan_for(item(), "US")                                                 # hardcover to the US
+        self.assertEqual(us["provider"], "printify")                                       # the suggestion the queue shows
         uk = orders.plan_for(item(), "GB")                                                 # hardcover elsewhere
-        self.assertEqual((uk["provider"], uk["format"], uk["pages"]), ("gelato", "hardcover_8x8", [28, 30]))
+        self.assertEqual((uk["provider"], uk["format"]), ("gelato", "hardcover_8x8"))
         soft = orders.plan_for(item("8\" × 8\" Softcover"), "US")                           # softcover anywhere
-        self.assertEqual((soft["provider"], soft["format"]), ("gelato", "softcover_8x8"))
+        self.assertEqual((soft["provider"], soft["format"], soft["pages"]), ("gelato", "softcover_8x8", [28, 30]))
+        self.assertNotIn("choice", soft)                                                   # softcovers are only Gelato's
+
+    def test_for_now_a_hardcover_goes_where_its_files_say(self):
+        """Owner, 25.09.2026: Printify prints faulty books — every hardcover, wherever it goes, is decided by
+        the pages he downloads: 24 → Printify, 28 or 30 → Gelato."""
+        for country in ("US", "GB"):
+            with self.subTest(country=country):
+                plan = orders.plan_for(item(), country)
+                self.assertEqual(plan["choice"], {"printify": [24], "gelato": [28, 30]})
+                self.assertEqual((plan["pages"], plan["format"]), ([24, 28, 30], "hardcover_8x8"))
+        self.assertEqual([orders.provider_by_pages(n) for n in (24, 28, 30)], ["printify", "gelato", "gelato"])
         small = orders.plan_for(item("5.5\" × 5.5\" Softcover"), "CA")
         self.assertEqual(small["format"], "softcover_5x5")
         for label in ('5" × 5" Softcover', "5&quot; × 5&quot; Softcover", "Softcover 14 x 14 cm"):  # as Etsy names it
@@ -178,6 +189,19 @@ class GelatoLength(unittest.TestCase):
             self.assertEqual(files("gelato", "hardcover_8x8")["pageCount"], 28)
             self.assertEqual(files("gelato", "softcover_5x5")["pageCount"], 28)  # catalog not reachable: checked again at the draft
             self.assertEqual(files("gelato", None)["pageCount"], 28)             # printer picked by hand, format not known yet
+            got = files("files", "hardcover_8x8")                                 # a hardcover the files decide
+            self.assertEqual((got["pageCount"], got["provider"]), (28, "gelato"))
+
+    def test_24_pages_of_a_hardcover_go_to_printify(self):
+        from types import SimpleNamespace
+        d = self.folder(range(1, 25))
+        with mock.patch.object(drops, "DROPS", self.root / "drops"):
+            got = orders._files(SimpleNamespace(json={"folder": str(d), "provider": "files", "format": "hardcover_8x8"}))
+        self.assertEqual((got["pageCount"], got["provider"]), (24, "printify"))
+        (d / "25.png").write_bytes((d / "24.png").read_bytes())                   # 25: no printer takes it
+        with self.assertRaises(ApiError) as caught:
+            orders._files(SimpleNamespace(json={"folder": str(d), "provider": "files", "format": "hardcover_8x8"}))
+        self.assertIn("Потрібно 24, 28 або 30 сторінок, а тут 25", str(caught.exception))
 
     def test_old_single_page_count_setting_is_dropped(self):
         from studio import core

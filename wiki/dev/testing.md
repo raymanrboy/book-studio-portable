@@ -7,7 +7,7 @@ code:
 ---
 # Tests
 
-> 280 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
+> 284 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
 > **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
 > whatever it was before) in `.tmp\` of the repository on drive D, wiped at the end; buyers are made up.
 > Run after every change.
@@ -49,6 +49,11 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 - **Order archive** — time is supplied via the `now` argument to `archive.refresh()`, order facts via
   swapping `archive._facts`; background preview preparation (`_warm_previews`) is turned off so it
   doesn't hold files open during deletion.
+- **A file still open blocks its folder's removal on Windows**: a test that leaves a background thread reading
+  its temporary folder fails now and then with `PermissionError … being used by another process` and leaves
+  a `.tmp\tmpXXXX` folder behind. That was `GelatoDraftFlow.test_an_unclear_draft_keeps_its_files_reachable`
+  (1 run in 5, until 2026-09-25): a send's own folder check started the preview warm-up. Now only the page's
+  check warms previews (`creator._warm_in_background()`); `PrintifyValidation` keeps it that way.
 - Opening the browser — `mock.patch("webbrowser.open")`.
 - **Photoshop** — never started by the tests: `mockups.launch` is swapped for a stand-in that writes the
   status file; the Photoshop script itself (ExtendScript is plain old JavaScript) runs under **Node.js**
@@ -80,7 +85,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 |---|---|
 | [test_profit.py](../../app/tests/test_profit.py) | `ProfitParity`, `FeeRules`, `NameMatching` |
 | [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `SeveralPrintOrdersForOneReceipt` (a receipt with two print orders), `SentStage`, `GelatoTracking`, `IncrementalSync`, `StateApi` |
-| [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation` (including: a newer folder check stops an older one), `GelatoValidation`, `ReplacePage` (replacing a single page, "Undo" after a restart, two replacements within a second, replacement blocked during a send — and when a folder is sent to two printers at once, exactly what's allowed to be written), `NothingIsLostWhenAWriteFails`, `JsonFiles` (`.bak` and a deleted file), `SafetyRails` (including: a POST that may have gone through is not retried; both printers read errors the same way) |
+| [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation` (including: a newer folder check stops an older one; only the page's check warms the previews), `GelatoValidation`, `ReplacePage` (replacing a single page, "Undo" after a restart, two replacements within a second, replacement blocked during a send — and when a folder is sent to two printers at once, exactly what's allowed to be written), `NothingIsLostWhenAWriteFails`, `JsonFiles` (`.bak` and a deleted file), `SafetyRails` (including: a POST that may have gone through is not retried; both printers read errors the same way) |
 | [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow` (including: two books — one order with two line items; the receipt number as its own field; an unrecorded cost — a warning), `GelatoDraftFlow` (including: two books — one draft with two items; an unclear result keeps the link; one shared length-problem text), `CreatorStartsEmpty`, `DroppedFolders` (including: a folder for the library, each book its own child), `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
 | [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand`, `DevToolsKeepOffRealData` (the preview server doesn't write to the real folder and doesn't take keys), `TestsNeverRunOnRealData` (and nothing on drive C), `SharedNumbers` (interface layers, preview sizes) |
 | [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing` (including: a stale printer list proves nothing), `OnlyWhatWentToPrint` (including: "already at the printer" after a restart), `ReprintMark`, `PrintifyReprint`, `GelatoReprint` (including: a warning when the printer accepted it but the accounting wasn't recorded), `PreviewCache` (cache cleanup, locks, zoom) |

@@ -630,8 +630,17 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .mode-switch { display: flex; } /* no text-line gap under the switch, so the icon beside it lines up */
 .mode-switch .seg button { height: 32px; }
 .mode-switch .seg button .icon { width: 19px; height: 19px; }
-/* Printify mode wears salad green; Gelato keeps the app's blue. Everything accent-coloured on the page
-   (create button, progress, badges, focus rings) follows. */
+/* Printify mode wears salad green; Gelato its blue — the Studio's ink before Orders turned orange (owner,
+   25.09.2026: "як було"). Everything accent-coloured on the page (create button, progress, badges, focus
+   rings) follows. */
+.creator.mode-gelato {
+  --accent: #0a74a3; --accent-hover: #08658f; --on-accent: #ffffff;
+  --accent-soft: rgba(10, 116, 163, .1); --accent-line: rgba(10, 116, 163, .32); --accent-ink: #075c83;
+}
+[data-theme="dark"] .creator.mode-gelato {
+  --accent: #47b5e3; --accent-hover: #64c2ea; --on-accent: #062230;
+  --accent-soft: rgba(71, 181, 227, .13); --accent-line: rgba(71, 181, 227, .36); --accent-ink: #7dccee;
+}
 .creator:not(.mode-gelato), .tint-printify {
   --accent: #86bc3a; --accent-hover: #79ad30; --on-accent: #132409;
   --accent-soft: rgba(134, 188, 58, .15); --accent-line: rgba(104, 158, 36, .45); --accent-ink: #3f6f12;
@@ -788,6 +797,8 @@ button.set-head:hover { background: var(--surface-hover); }
 .ord-sub .mono.ord-copy { margin: 0 -3px; padding: 1px 3px; border-radius: 4px; }
 .ord-sub .mono.ord-copy:hover { color: var(--text); }
 .ord-track-text { display: block; white-space: nowrap; }
+/* carrier and number copy separately: the part under the cursor is underlined */
+.ord-track .ord-carrier:hover, .ord-track .ord-track-no:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .ord-track-sep { display: inline-block; width: 1px; height: 11px; margin: 0 6px; vertical-align: -2px; background: currentColor; opacity: .3; }
 .ord-track-no { font-family: var(--font-mono); font-size: 12px; line-height: 0; font-variant-numeric: tabular-nums; }
 /* One contrast for everything printer-coloured in a row (owner, 17.09.2026, chose the softer tone):

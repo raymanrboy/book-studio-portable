@@ -30,9 +30,11 @@ code:
 - A row (since 2026-09-17 — per the owner's wishes):
   - top row: the buyer's name, `#receipt number` (**a click copies the number without "#"**,
     `receiptCopy()`), the number of books (if > 1), the printer chip (for "New" — from the rule, with an
-    explanation in the tooltip; after that — where it was actually ordered; "printer?" — if the cover
+    explanation in the tooltip; for a hardcover, for now, only the suggestion — the files decide; after that — where it was actually ordered; "printer?" — if the cover
     type couldn't be read), the **tracking chip** (`trackChips()`): a truck icon, carrier | number,
-    separated by a thin line; **a click copies the number**; on a narrow window the chip wraps to its
+    separated by a thin line; **a click on the carrier copies the carrier, on the number (or the truck)
+    — the number** (the owner, 2026-09-25: two separate fields in Etsy; the part under the cursor is
+    underlined); on a narrow window the chip wraps to its
     own line. Copying (`copyChip()`, `data-act="copy-text"`) doesn't open the card;
   - the printer name, carrier and number are all **one soft shade** of the printer's color (80% of the
     color, medium weight): the owner asked for equal contrast and picked the softest option
@@ -68,7 +70,10 @@ request, 2026-09-17); below them, in gray, the receipt number (a click copies it
 (`STAGE_LABEL`), the tracking chip (the same one as in the queue, a click copies it); on the right, a
 chip "Printify · 24 pages" (the same soft shade) / "Gelato · 28 or 30 pages" (once the files are laid
 out — the exact number, e.g. "Gelato · 28 pages"; the whole chip's text is one font, so the digits don't
-"jump" — the owner's note, 2026-09-17), or, if the cover type is unknown, a printer switch (page options
+"jump" — the owner's note, 2026-09-17). **A hardcover, for now (since 2026-09-25):** "Printify · 24
+pages" / "Gelato · 28 or 30 pages" — the rule's suggestion (no question mark, the owner's wish) — until the files are
+in; then the printer the files decided (24 pages → Printify, 28/30 → Gelato;
+[rules/printer-rule.md](../rules/printer-rule.md)). If the cover type is unknown — a printer switch (page options
 from the order's `pageOptions`). For "In progress" / the truck / "Sent" — a warning "only print again for
 a reprint" (for the truck — also "mark it shipped on Etsy"). Esc — back to the queue.
 
@@ -107,7 +112,8 @@ one column.
    pictures onto an already-prepared book **destroys nothing** — the program suggests replacing one page
    in the viewer instead (before 2026-09-20, such a drop used to wipe out all the work on the book). The
    server lays out the pages (`arrange_pages()`: cover + 24 pages for Printify, 28 or 30 for Gelato —
-   however many were downloaded, see [rules/file-naming.md](../rules/file-naming.md)), shows what it
+   however many were downloaded, see [rules/file-naming.md](../rules/file-naming.md); a hardcover, for
+   now, takes any of 24/28/30 and the length picks the printer — `w.decided`), shows what it
    renamed ("pages 2–25 → 1–24"), then runs a full check, just like in the Order Creator. For Gelato the
    server immediately asks the catalog whether it prints that many pages in the order's format; if not —
    an error in the same block ([integrations/gelato.md](../integrations/gelato.md)).
@@ -123,7 +129,8 @@ one column.
      truncated — the note scrolls internally (since 2026-09-18); the right half is the real page 1;
    - a **filmstrip** of every spread (`#oc-strip`): the mouse wheel scrolls it smoothly
      (`smoothWheel()`, no "snapping"), all the way to the last spread; the server prepares 360 px
-     thumbnails ahead of time (`STRIP_THUMB` = `STRIP_PREVIEW`);
+     thumbnails ahead of time (`STRIP_THUMB` = `STRIP_PREVIEW`) — after the check the page asked for; a
+     send's own check doesn't (since 2026-09-25: the PDF or the uploads read every file anyway);
    - clicking anything opens the viewer, by spreads (`folderViewerItems()`; the T key shows what the
      text check read versus what should have been there, `viewerItems()`);
    - **replacing a single page right from the viewer** (since 2026-09-20): buttons at the top, one per
@@ -193,11 +200,13 @@ one column.
 - `GET /api/orders` → `{orders, syncedAt}`; every order from `picker_orders()` (`stage`: `new` /
   `work` / `sent` / `shipped`, `provider`, `printStatus`, `tracking`), extended by
   `enrich()`: for every book — `book` (from the library, by listing number), `plan` (the printer rule;
-  `plan.pages` — the list of allowed lengths: `[24]` or `[28, 30]`), `childName`; for the order —
+  `plan.pages` — the list of allowed lengths: `[24]` or `[28, 30]`; a hardcover for now — `[24, 28, 30]`
+  and `plan.choice`), `childName`; for the order —
   `pageOptions` (the lengths for each printer, when it's picked by hand).
 - `GET /api/orders/<receipt>` → the same, for one order, plus `buyerMessage` and `earlierSends` (sends
   that never became a print-shop order, whose files are still in the archive — `archive.earlier_sends()`).
-- `POST /api/orders/<receipt>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount}`.
+- `POST /api/orders/<receipt>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount, provider}`;
+  `provider: "files"` — a hardcover whose printer the length decides (the answer's `provider`).
 - `POST /api/orders/<receipt>/textcheck` `{folder, pages, pick}` → `{jobId}` (or `{off: true}`, when the
   check is turned off); the job's result — `{mode, issues, pages, skipped, …}` ([text-check.md](text-check.md)).
 
@@ -212,7 +221,7 @@ one column.
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`, `finish()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `guess_child_name()`, `gelato_pages_problem()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `_warm_in_background()`, `guess_child_name()`, `gelato_pages_problem()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `truck`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.ord-chips`, `.ord-child`, `.ord-copy`, `.ord-title`, `.ord-track`, `.ord-track-text`, `.ord-carrier`, `.ord-track-sep`, `.ord-track-no`, `.ord-sub`, `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`
 - Tests: [app/tests/test_orders.py](../../app/tests/test_orders.py) (including `GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages`, `SentStage`)

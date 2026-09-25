@@ -50,7 +50,7 @@ code:
 |---|---|---|---|---|
 | GET | `/api/orders` | token | `_list` | orders.js (the queue) |
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (the card; `earlierSends` — sends of this order that never became a print-shop order) |
-| POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (laying out pages; for Gelato — also whether it prints that many pages in this format) |
+| POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (laying out pages; for Gelato — also whether it prints that many pages in this format; `provider: "files"` — a hardcover, the length picks the printer) |
 
 ## Text check — [textcheck.py](../../app/studio/textcheck.py)
 

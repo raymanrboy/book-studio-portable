@@ -225,11 +225,19 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
         if len(_validation_cache) > 40:
             _validation_cache.pop(next(iter(_validation_cache)))  # the oldest goes
         _validation_cache[key] = copy.deepcopy(result)
-    threading.Thread(target=_warm_previews, args=([r["path"] for r in rows],), daemon=True).start()
+    if job is not None:
+        # Only the page's check: the owner is about to look at the pages. A send's own check (no job) is followed
+        # by the PDF or the uploads reading every file anyway — a second reader only competed with them, and on
+        # Windows it kept a page open while its folder was being removed (a flaky test, 25.09.2026).
+        _warm_in_background([r["path"] for r in rows])
     return result
 
 
 STRIP_PREVIEW = 360  # page thumbnails in the order card's strip (web/js/pages/orders.js asks for this size)
+
+
+def _warm_in_background(paths: list[str]) -> None:
+    threading.Thread(target=_warm_previews, args=(paths,), daemon=True).start()
 
 
 def _warm_previews(paths: list[str]) -> None:

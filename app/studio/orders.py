@@ -32,25 +32,37 @@ def binding_of(item: dict) -> str | None:
 
 def plan_for(item: dict, country_iso: str | None) -> dict:
     """Owner's rule: a hardcover going to the US is printed by Printify (24 pages, reliable there);
-    everything else by Gelato (28 or 30 pages; its US hardcovers are slow, the rest is on time)."""
+    everything else by Gelato (28 or 30 pages; its US hardcovers are slow, the rest is on time).
+
+    For now (owner, 25.09.2026 — Printify prints faulty books) the owner decides every hardcover himself,
+    by the files he downloads: 24 pages → Printify, 28 or 30 → Gelato (`choice`, `provider_by_pages()`).
+    The rule's printer stays as the suggestion the queue shows. Softcovers, the small one included, are Gelato's.
+    """
     binding = binding_of(item)
     country = (country_iso or "").upper()
     if binding is None:
         return {"provider": None, "binding": None, "country": country, "pages": None, "format": None}
-    if binding == "hardcover" and country == "US":
-        return {"provider": "printify", "binding": binding, "country": country, "pages": page_options("printify"),
-                "format": None}
     text = " ".join(f"{v.get('name')} {v.get('value')}" for v in item.get("variations") or []) + " " + (item.get("title") or "")
     fmt = "hardcover_8x8" if binding == "hardcover" else ("softcover_5x5" if _SMALL.search(text) else "softcover_8x8")
     gelato = core.settings.section("gelato")
-    return {"provider": "gelato", "binding": binding, "country": country, "format": fmt,
+    plan = {"provider": "gelato", "binding": binding, "country": country, "format": fmt,
             "formatLabel": ((gelato.get("formats") or {}).get(fmt) or {}).get("label"),
             "pages": page_options("gelato")}
+    if binding == "hardcover":
+        choice = {p: page_options(p) for p in ("printify", "gelato")}
+        plan.update(choice=choice, pages=sorted({n for pages in choice.values() for n in pages}),
+                    provider="printify" if country == "US" else "gelato")
+    return plan
 
 
 def page_options(provider: str) -> list[int]:
     """How many pages a book may have: Printify exactly 24; Gelato as many as were downloaded, 28 or 30."""
     return [PRINTIFY_PAGES] if provider == "printify" else creator.gelato_page_options()
+
+
+def provider_by_pages(count: int) -> str:
+    """A hardcover the owner decides by its files: 24 pages are Printify's, 28 or 30 Gelato's."""
+    return "printify" if count == PRINTIFY_PAGES else "gelato"
 
 
 def pages_word(n: int) -> str:
@@ -125,7 +137,7 @@ def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
     source = [n for n, _ in numbered]
     count = len(numbered)
     if count not in counts:
-        need = " або ".join(map(str, counts))
+        need = ", ".join(map(str, counts[:-1])) + " або " + str(counts[-1]) if len(counts) > 1 else str(counts[0])
         raise ApiError(f"Потрібно {need} {pages_word(counts[-1])}, а тут {count}"
                        + (f" (сторінки {ranges(source)})." if source else "."))
 
@@ -184,9 +196,14 @@ def _one(req: Request):
 def _files(req: Request):
     body = req.json or {}
     provider = body.get("provider")
-    if provider not in ("printify", "gelato"):
+    if provider not in ("printify", "gelato", "files"):
         raise ApiError("Невідомий постачальник.")
-    res = arrange_pages(Path(str(body.get("folder") or "").strip().strip('"')), page_options(provider))
+    # "files": a hardcover whose printer the downloaded files decide (plan_for's `choice`).
+    counts = sorted({*page_options("printify"), *page_options("gelato")}) if provider == "files" else page_options(provider)
+    res = arrange_pages(Path(str(body.get("folder") or "").strip().strip('"')), counts)
+    if provider == "files":
+        provider = provider_by_pages(res["pageCount"])
+    res["provider"] = provider
     # Told at once when Gelato does not print this length in the order's format (its catalog decides).
     problem = creator.gelato_pages_problem(str(body.get("format") or ""), res["pageCount"]) if provider == "gelato" else None
     if problem:

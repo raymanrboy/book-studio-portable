@@ -20,7 +20,9 @@ from pathlib import Path
 from . import core
 
 CLOUDFLARED = core.BIN_DIR / "cloudflared.exe"
-_URL_RE = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
+# The tunnel's own address. Not api.trycloudflare.com: cloudflared names that service in its error when a
+# quick tunnel is refused, and on 25.09.2026 that line was taken for the address — Gelato got a dead link.
+_URL_RE = re.compile(r"https://(?!api\.)[a-z0-9-]+\.trycloudflare\.com")
 CREATE_NO_WINDOW = 0x08000000
 
 
@@ -114,19 +116,25 @@ class FileTunnel:
         )
         _ends_with_us(self._proc)
         found = threading.Event()
+        said: list[str] = []  # cloudflared's last lines: why no address came, for the log
 
         def reader() -> None:
             assert self._proc and self._proc.stdout
             for line in self._proc.stdout:
+                said[:] = (said + [line.strip()])[-15:]
                 m = _URL_RE.search(line)
                 if m and not self.public_url:
                     self.public_url = m.group(0)
                     found.set()
+            found.set()  # cloudflared ended without an address: no need to wait out the timeout
 
         threading.Thread(target=reader, daemon=True).start()
-        if not found.wait(timeout):
+        found.wait(timeout)
+        if not self.public_url:
             self.stop()
-            raise TunnelError("Cloudflare не видав тимчасову адресу за відведений час. Перевірте інтернет і спробуйте ще раз.")
+            core.log.warning("cloudflared gave no address:\n%s", "\n".join(said))
+            raise TunnelError("Cloudflare не видав тимчасову адресу для файлів — чернетку не створено. "
+                              "Зачекайте хвилину-дві і надішліть ще раз.")
         # The address is announced slightly before it starts routing — verify it actually serves a file.
         self._wait_reachable()
         return self.public_url

@@ -161,6 +161,7 @@ async function mountCard(view, rid) {
   // check: null (none yet / switched off) | {state:'run', percent, step} | {state:'done', result} | {state:'error', message}
   const blank = () => ({ folder: '', label: '', note: '', pages: 0, validation: null, busy: 0, error: '', check: null,
     chosen: null,        // printer picked by hand when the cover type could not be read
+    decided: null,       // a hardcover's printer, as its files decided it (24 pages → Printify, 28/30 → Gelato)
     seq: 0, checkSeq: 0, // a flow whose number moved on is no longer this book's newest
     fresh: false,        // the next paint of the findings is a new result: they slide in (once)
     stamp: 0,            // grows with every replaced page, so pictures are fetched anew
@@ -171,7 +172,10 @@ async function mountCard(view, rid) {
   const showing = (w) => w === f;
   const item = () => o.items[pick] || {};
   const plan = (i = pick) => o.items[i]?.plan || {};
-  const providerOf = (i) => plan(i).provider || work[i].chosen;
+  // A hardcover's printer is decided by its files for now (owner, 25.09.2026 — Printify prints faulty books):
+  // until they are in, the rule's printer is only the suggestion.
+  const byFiles = (i = pick) => !!plan(i).choice;
+  const providerOf = (i) => work[i].decided || plan(i).provider || work[i].chosen;
   const provider = () => providerOf(pick);
   // Printify takes 24 pages; Gelato as many as were downloaded (28 or 30) — known once the files are in (f.pages).
   const pageOptions = () => (plan().provider ? plan().pages : (o.pageOptions || {})[provider()]) || [];
@@ -181,7 +185,7 @@ async function mountCard(view, rid) {
     const same = o.items.filter((x, j) => j < i && (x.childName || '') === (o.items[i]?.childName || ''));
     return (name ? `${o.receiptId} - ${name}` : String(o.receiptId)) + (same.length ? ` (${same.length + 1})` : '');
   };
-  const pagesLabel = () => (f.pages ? String(f.pages) : pagesText(pageOptions()));
+  const pagesLabel = () => (f.pages ? String(f.pages) : pagesText(byFiles() ? plan().choice[provider()] : pageOptions()));
 
   setHtml(view, html`
     <div class="page-head">
@@ -206,8 +210,9 @@ async function mountCard(view, rid) {
   // ---------------------------------------------------------------- header: where it is printed
   function renderPlan() {
     const p = provider();
+    const tip = f.decided ? `Файли вирішили: ${f.pages} стор. — ${providerName(p)}` : planText(plan());
     setHtml($('#oc-plan'), plan().provider
-      ? html`<span class="chip chip-lg svc-${p}" data-tip="${planText(plan())}">${ic(p, 'icon-s')}<span>${providerName(p)} · ${pagesLabel()} стор.</span></span>`
+      ? html`<span class="chip chip-lg svc-${p}" data-tip="${tip}">${ic(p, 'icon-s')}<span>${providerName(p)} ·${pagesLabel()} стор.</span></span>`
       : html`<div class="row" style="gap:10px"><span class="faint" style="font-size:12.5px">Друкарня</span>${segHtml([
         { value: 'printify', icon: 'printify', tip: `Printify · ${pagesText(o.pageOptions?.printify)} стор.` },
         { value: 'gelato', icon: 'gelato', tip: `Gelato · ${pagesText(o.pageOptions?.gelato)} стор.` }], f.chosen, { name: 'provider' })}</div>`);
@@ -254,7 +259,7 @@ async function mountCard(view, rid) {
   const thumb = (name, w) => media('/media/folder', { path: f.folder, file: name, w, ...(f.stamp ? { v: f.stamp } : {}) });
   // The newest send of this order to the chosen printer that never went to print (a cancelled order, a
   // deleted or unconfirmed draft): its archived files can be taken instead of downloading them again.
-  const earlier = () => (o.earlierSends || []).find((e) => e.provider === provider());
+  const earlier = () => (o.earlierSends || []).find((e) => byFiles() || e.provider === provider());
 
   function filesCard() {
     const v = f.validation;
@@ -569,9 +574,10 @@ async function mountCard(view, rid) {
   // Put the export in page order (Cover.png + 1..N.png), then run the same full check as the Order Creator.
   async function arrange(path, w, my) {
     const i = work.indexOf(w);
-    const res = await api(`/api/orders/${o.receiptId}/files`, { method: 'POST', body: { folder: path, provider: providerOf(i), format: plan(i).format || null } });
+    const res = await api(`/api/orders/${o.receiptId}/files`, { method: 'POST',
+      body: { folder: path, provider: byFiles(i) ? 'files' : providerOf(i), format: plan(i).format || null } });
     if (my !== w.seq) return;
-    Object.assign(w, { folder: res.path, note: res.note, pages: res.pageCount });
+    Object.assign(w, { folder: res.path, note: res.note, pages: res.pageCount, decided: byFiles(i) ? res.provider : null });
     if (showing(w)) renderPlan();
     const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(i), folder: w.folder } }),
       (j) => { if (my === w.seq && showing(w)) setBusy(60 + (j.percent || 0) * 0.4); }, 300, () => my === w.seq);
@@ -585,7 +591,7 @@ async function mountCard(view, rid) {
   }
   const failed = (w, my, err) => {
     if (my !== w.seq) return;
-    Object.assign(w, { busy: 0, error: err.message, validation: null, pages: 0 });
+    Object.assign(w, { busy: 0, error: err.message, validation: null, pages: 0, decided: null });
     if (showing(w)) { renderPlan(); renderRight(); }
   };
 
@@ -604,7 +610,7 @@ async function mountCard(view, rid) {
     warmModel();
     const my = ++w.seq;
     Object.assign(w, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
-      stamp: 0, replaced: new Set(), dismissed: new Set() });
+      decided: null, stamp: 0, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
       const path = await receiveDrop(dropped, (pct) => { if (my === w.seq && showing(w)) setBusy(pct * 0.6); });
@@ -622,7 +628,7 @@ async function mountCard(view, rid) {
     dropCheck(w);
     const my = ++w.seq;
     Object.assign(w, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
-      stamp: 0, replaced: new Set(), dismissed: new Set() });
+      decided: null, stamp: 0, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try { await arrange(path, w, my); } catch (err) { failed(w, my, err); }
   }
@@ -635,7 +641,7 @@ async function mountCard(view, rid) {
     warmModel();
     const my = ++w.seq;
     Object.assign(w, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
-      stamp: 0, replaced: new Set(), dismissed: new Set() });
+      decided: null, stamp: 0, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
       const { path } = await api(`/api/archive/${e.id}/reuse`, { method: 'POST', body: {} });
@@ -742,7 +748,7 @@ async function mountCard(view, rid) {
     const errors = wrong.length ? 0 : ready.reduce((n, { w }) => n + (w.check?.state === 'done' ? countOf('error', w) : 0), 0);
     if (errors && !(await confirmBox({ title: 'У тексті є помилки', danger: true, confirm: 'Все одно до друку', cancel: 'Повернутись',
       text: `Перевірка знайшла ${errors} ${plural(errors, LEVEL_WORDS.error)} у тексті сторінок.` }))) return;
-    const books = ready.map(({ w, i }) => ({ folder: w.folder, label: w.label, title: titleOf(i), format: plan(i).format || null }));
+    const books = ready.map(({ w, i }) => ({ folder: w.folder, label: w.label, title: titleOf(i), format: (p === 'gelato' && plan(i).format) || null }));
     give('creator', {
       receiptId: String(o.receiptId), // the Order Creator keeps its work (and result) for this order
       mode: p, books, ...books[0], address: addressFromEtsy(o),

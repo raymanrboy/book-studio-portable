@@ -1,7 +1,7 @@
 // Pieces shared by the order pipeline page, the order archive and the Order Creator: order stages,
 // countries, the printer's status and tracking chips, the buyer's fields, the Etsy → Gelato address
 // mapping, the sync, dropped folders/ZIPs and the page viewer of a print folder.
-import { api, runJob, upload, media, html, ic, copyText } from './lib.js';
+import { api, runJob, upload, media, html, raw, ic, copyText } from './lib.js';
 
 export const COUNTRIES = [
   ['US', 'США'], ['CA', 'Канада'], ['GB', 'Велика Британія'], ['AU', 'Австралія'], ['NZ', 'Нова Зеландія'], ['IE', 'Ірландія'],
@@ -47,10 +47,12 @@ const statusTone = (s) => (STATUS_TONE.find(([re]) => re.test(s)) || [0, 'chip-a
 const statusText = (s) => String(s).replace(/[-_]+/g, ' ').trim().replace(/^./, (c) => c.toUpperCase());
 
 /** Tracking numbers in the printer's colour, after its chip: carrier | number (one text line, so both sit
- * on the same baseline); a click copies the number. o: { provider, tracking }. */
+ * on the same baseline). A click on the carrier copies the carrier, anywhere else — the number (the owner,
+ * 25.09.2026: he pastes them into Etsy's two fields). o: { provider, tracking }. */
+const NUMBER_COPY = 'data-act="copy-text" data-done="Трек-номер скопійовано" data-tip="Копіювати трек-номер"';
 export const trackChips = (o) => (o.tracking || []).map((t) => html`<span class="chip svc-${o.provider} ord-track ord-copy" role="button"
-    data-act="copy-text" data-text="${t.number}" data-done="Трек-номер скопійовано" data-tip="Копіювати трек-номер">${ic('truck', 'icon-s')}<span class="ord-track-text">${t.carrier
-      ? html`<span class="ord-carrier">${t.carrier}</span><span class="ord-track-sep"></span>` : ''}<span class="ord-track-no">${t.number}</span></span></span>`);
+    ${raw(NUMBER_COPY)} data-text="${t.number}">${ic('truck', 'icon-s')}<span class="ord-track-text">${t.carrier
+      ? html`<span class="ord-carrier" data-act="copy-text" data-text="${t.carrier}" data-done="Перевізника скопійовано" data-tip="Копіювати перевізника">${t.carrier}</span><span class="ord-track-sep"></span>` : ''}<span class="ord-track-no" ${raw(NUMBER_COPY)} data-text="${t.number}">${t.number}</span></span></span>`);
 
 /** The printer's status (its own word, in English, as the owner asked); nothing before the book is ordered. */
 export const statusChip = (o) => (o.printStatus
@@ -91,13 +93,21 @@ export const isNameField = (v) => !!v.isName; // the field the child's name came
 export const isFormatField = (v) => /cover|size|format|binding|обкладинк|розмір/i.test(v.name || '')
   || /hard\s?cover|soft\s?cover|hardback|paperback/i.test(v.value || '');
 
-/** [28, 30] → "28 або 30": the book lengths a printer takes (Gelato: as many pages as were downloaded). */
-export const pagesText = (options) => [].concat(options || []).join(' або ');
+/** [28, 30] → "28 або 30", [24, 28, 30] → "24, 28 або 30": the book lengths a printer takes (Gelato: as many pages as were downloaded). */
+export const pagesText = (options) => {
+  const list = [].concat(options || []);
+  return list.length > 1 ? `${list.slice(0, -1).join(', ')} або ${list.at(-1)}` : list.join('');
+};
 
-/** "Hardcover · США → Printify · 24 стор." — why this printer was chosen. */
+/** "Hardcover · США → Printify · 24 стор." — why this printer was chosen. A hardcover's printer is decided
+ *  by its files for now (owner, 25.09.2026): the rule's one is only the suggestion. */
 export function planText(plan) {
   if (!plan?.provider) return 'Тип обкладинки не вдалося визначити — оберіть друкарню';
   const binding = plan.binding === 'hardcover' ? 'Hardcover' : 'Softcover';
+  if (plan.choice) {
+    return `${binding} · ${countryName(plan.country)} → зазвичай ${providerName(plan.provider)}. Друкарню визначать файли: `
+      + `${pagesText(plan.choice.printify)} стор. — Printify, ${pagesText(plan.choice.gelato)} — Gelato`;
+  }
   return `${binding} · ${countryName(plan.country)} → ${providerName(plan.provider)} · ${pagesText(plan.pages)} стор.`;
 }
 

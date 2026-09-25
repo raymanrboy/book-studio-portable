@@ -9,6 +9,18 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-25 — For now a hardcover's printer is decided by its files, not by the country
+
+- **Decision (the owner):** Printify started printing faulty books, so for a while he wants the choice
+  between Printify and Gelato himself. For a **hardcover** (any country) the printer follows the files he
+  gives the program: **24 pages → Printify, 28 or 30 → Gelato**. **Softcovers, the small one included,
+  stay only Gelato's.** In the queue a US hardcover is still marked green "Printify", as usual — as a hint;
+  he decides.
+- **No switch in Settings** (the owner): when Printify is fine again, bringing back the rule is a small
+  code change (`choice` in `orders.plan_for()`).
+- The owner: an order with books going to different printers "will never happen" — nothing is built for it.
+- Details — [rules/printer-rule.md](rules/printer-rule.md).
+
 ## 2026-09-25 — The text check calibrated on its journal; another book's pages — a loud guard
 
 The owner: calibrate "the machine validator that decides what to show me in errors and what not" (not Gemma),

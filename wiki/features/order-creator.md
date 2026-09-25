@@ -17,7 +17,8 @@ code:
 ## Screen (`#/creator`)
 
 - Header: the service name, the **"Send journal"** icon ([send-journal.md](send-journal.md)), and the
-  **Printify / Gelato** switch (Printify mode uses a lime-green accent, Gelato — blue). Below it, a line
+  **Printify / Gelato** switch (Printify mode uses a lime-green accent, Gelato — blue, `.creator.mode-gelato`; since 2026-09-25 set
+  explicitly, because the Orders mode's own accent is orange). Below it, a line
   appears only when something is missing (a key, the template, `cloudflared.exe`), with a link to
   Settings. For Gelato — active temporary links, if any.
 - Left column — the steps:

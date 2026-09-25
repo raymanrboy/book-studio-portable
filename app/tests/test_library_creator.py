@@ -179,6 +179,18 @@ class PrintifyValidation(unittest.TestCase):
         with mock.patch.object(images, "check_png", check):
             self.assertTrue(creator.validate("printify", str(self.root))["ok"])  # no job: a send's check
 
+    def test_only_the_pages_check_warms_the_previews(self):
+        """A send's own check (no job) starts no background reader of every page: it competed with the PDF, and
+        on Windows it kept a page open while a test removed its folder (flaky 1 run in 5, 25.09.2026)."""
+        from studio.jobs import Job
+        with mock.patch.object(creator, "_warm_in_background") as warm:
+            self.assertTrue(creator.validate("printify", str(self.root))["ok"])
+            warm.assert_not_called()
+            creator._validation_cache.clear()
+            self.assertTrue(creator.validate("printify", str(self.root), Job("t"))["ok"])
+            warm.assert_called_once()
+            self.assertEqual(len(warm.call_args.args[0]), 25)
+
     def test_the_result_is_the_callers_own(self):
         first = creator.validate("printify", str(self.root))
         first["files"].clear()

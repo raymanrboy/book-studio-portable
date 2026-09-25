@@ -537,6 +537,24 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertTrue(link.reachable)
         self.assertEqual(asked[0], "https://brand-new.trycloudflare.com/book.pdf")
 
+    def test_a_refused_tunnel_is_an_error_not_a_dead_link(self):
+        """25.09.2026: Cloudflare refused a quick tunnel; its error line names api.trycloudflare.com, that was taken
+        for the address, and Gelato got a draft whose file never loads. Now the send stops before the draft."""
+        from types import SimpleNamespace
+        said = ['2026-09-25T16:55:30Z ERR Error unmarshaling QuickTunnel response: ... '
+                'failed to request quick Tunnel: Post "https://api.trycloudflare.com/tunnel": EOF\n']
+        fake = SimpleNamespace(stdout=iter(said), terminate=lambda: None, wait=lambda timeout=None: 0)
+        link = tunnel.FileTunnel(Path("."), ("book.pdf",))
+        with mock.patch.object(tunnel, "CLOUDFLARED", Path(__file__)), \
+                mock.patch.object(tunnel.subprocess, "Popen", lambda *a, **kw: fake), \
+                mock.patch.object(tunnel, "_ends_with_us", lambda proc: None), \
+                self.assertRaises(tunnel.TunnelError) as caught:
+            link.start(timeout=5)
+        self.assertIsNone(link.public_url)
+        self.assertIn("чернетку не створено", str(caught.exception))
+        self.assertEqual(tunnel._URL_RE.search("| https://calm-river-boat.trycloudflare.com |").group(0),
+                         "https://calm-river-boat.trycloudflare.com")
+
     def test_journal_button_shows_the_newest_record(self):
         from studio import desktop, sendlog
         import os
