@@ -319,6 +319,9 @@ async function mountCard(view, rid) {
   const openIssues = (w = f) => (w.check?.state === 'done' ? w.check.result.issues
     : w.check?.state === 'run' ? (w.check.partial?.issues || []) : []).filter((i) => !w.dismissed.has(i.id));
   const countOf = (level, w = f) => openIssues(w).filter((i) => i.level === level).length;
+  // Most story pages unlike the book's passport: the pages of another book (the owner once laid out the order's
+  // other book from its Canva template). One alarm instead of a row per page — a red banner nobody can miss.
+  const alarmOf = (w = f) => openIssues(w).find((i) => i.kind === 'book');
 
   function checkTip(r) {
     const lettered = r.pages.filter((p) => p.text).length;
@@ -337,6 +340,7 @@ async function mountCard(view, rid) {
     if (c.state === 'error') return html`<span class="v-badge" data-tip="${c.message}">${ic('textScan')}Текст не перевірено</span>`;
     const tip = checkTip(c.result);
     const errors = countOf('error'), warns = countOf('warn');
+    if (alarmOf()) return html`<span class="v-badge bad" data-tip="${tip}">${ic('alertCircle')}Не та книга</span>${again}`;
     if (errors) return html`<span class="v-badge bad" data-tip="${tip}">${ic('textScan')}<span class="num">${errors}</span>${plural(errors, LEVEL_WORDS.error)}</span>${again}`;
     if (warns) return html`<span class="v-badge warn" data-tip="${tip}">${ic('textScan')}<span class="num">${warns}</span>${plural(warns, LEVEL_WORDS.warn)}</span>${again}`;
     return html`<span class="v-badge ok" data-tip="${tip}">${ic('textScan')}Текст збігається</span>${again}`;
@@ -348,13 +352,30 @@ async function mountCard(view, rid) {
       ${ib('check', 'Це не помилка', `data-dismiss="${i.id}"`, { cls: 'sm' })}
     </div>`;
 
+  function wrongBook(i) {
+    const fresh = f.alarmSeen !== f.checkSeq; // it shakes once, not on every repaint of the list
+    f.alarmSeen = f.checkSeq;
+    const cover = (b, what) => html`<figure class="tc-alarm-book">${b.image ? html`<img decoding="async" src="${bookImage(b, 160)}" alt="">` : ic('book')}
+      <figcaption><span>${what}</span>${b.title}</figcaption></figure>`;
+    const mine = item().book;
+    return html`<div class="tc-alarm ${fresh ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}" role="alert">
+      <div class="tc-alarm-head">${ic('alertCircle')}<span class="grow">Це не та книга!</span>
+        <button class="btn btn-sm tc-alarm-dismiss" data-dismiss="${i.id}" data-tip="Сторінки правильні — прибрати попередження">Це та книга</button></div>
+      <div>Сторінки не з книги, яку замовили: ${i.note}. Мабуть, у Canva відкрито шаблон іншої книги.</div>
+      ${i.like && mine ? html`<div class="tc-alarm-books">${cover(mine, 'Замовлено')}${cover(i.like, 'А сторінки схожі на')}</div>` : ''}
+    </div>`;
+  }
+
+  // The alarm first, then a row per finding.
+  const findingsHtml = (list) => {
+    const alarm = list.find((i) => i.kind === 'book'), rows = list.filter((i) => i.kind !== 'book');
+    return html`${alarm ? wrongBook(alarm) : ''}${rows.length ? html`<div class="tc-list">${rows.map(issueRow)}</div>` : ''}`;
+  };
+
   function checkBody() {
     const c = f.check;
     // The pages already checked are shown at once, without waiting for the rest of the book.
-    if (c?.state === 'run') {
-      const running = openIssues();
-      return running.length ? html`<div class="tc-list">${running.map(issueRow)}</div>` : '';
-    }
+    if (c?.state === 'run') return findingsHtml(openIssues());
     if (c?.state === 'error') {
       return html`<div class="notice notice-warn">${ic('alert')}<div class="grow">Текст не перевірено: ${c.message}</div>${ib('sync', 'Перевірити ще раз', 'data-act="recheck"', { cls: 'sm' })}</div>`;
     }
@@ -363,7 +384,7 @@ async function mountCard(view, rid) {
     const light = r.mode === 'light' ? html`<div class="row faint tc-light">${ic('info', 'icon-s')}<span>${LIGHT_TIP[r.light]}${r.bookId && r.light === 'noTexts' ? html` · <a href="#/book/${r.bookId}">паспорт книги</a>` : ''}</span></div>` : '';
     const list = openIssues();
     const learn = learnable();
-    return html`${list.length ? html`<div class="tc-list">${list.map(issueRow)}</div>` : ''}${learn.length ? html`<div class="row tc-light faint">${ic('book', 'icon-s')}<span class="grow">Якщо в шаблоні Canva саме так — паспорт книги застарів</span>
+    return html`${findingsHtml(list)}${learn.length ? html`<div class="row tc-light faint">${ic('book', 'icon-s')}<span class="grow">Якщо в шаблоні Canva саме так — паспорт книги застарів</span>
         <button class="btn btn-sm" data-act="learn">Оновити паспорт · <span class="num">${learn.length}</span> ${plural(learn.length, ['сторінка', 'сторінки', 'сторінок'])}</button></div>` : ''}${light}`;
   }
 
@@ -399,7 +420,7 @@ async function mountCard(view, rid) {
   // Red / amber outline on the pages with findings: the big cover and page 1, and the strip.
   function markPages() {
     const worst = {};
-    for (const i of openIssues()) if (worst[i.page] !== 'error') worst[i.page] = i.level;
+    for (const i of openIssues()) for (const p of i.pages || [i.page]) if (worst[p] !== 'error') worst[p] = i.level;
     view.querySelectorAll('#oc-proof [data-page]').forEach((el) => {
       el.classList.toggle('tc-error', worst[el.dataset.page] === 'error');
       el.classList.toggle('tc-warn', worst[el.dataset.page] === 'warn');
@@ -422,6 +443,13 @@ async function mountCard(view, rid) {
     if (c?.state === 'run' && c.jobId) {
       api(`/api/orders/${o.receiptId}/textcheck/cancel`, { method: 'POST', body: { jobId: c.jobId } }).catch(() => {});
     }
+  }
+
+  // «Це не помилка» also goes into that check's journal: the next calibration of what the check shows is then
+  // made on the owner's own answers (25.09.2026).
+  function keepMark(w, id) {
+    const journal = w.check?.state === 'done' && w.check.result.journal;
+    if (journal) api('/api/textcheck/mark', { method: 'POST', body: { journal, id } }).catch(() => {});
   }
 
   // The model takes ~4 s to reach the graphics card (~70 s when it comes from disk): it is asked for while
@@ -451,6 +479,7 @@ async function mountCard(view, rid) {
       if (!live()) return;
       w.check = { state: 'done', result };
       w.fresh = true;
+      for (const i of result.issues) if (w.dismissed.has(i.id)) keepMark(w, i.id); // marked while it still ran
     } catch (err) {
       if (!live()) return;
       w.check = { state: 'error', message: err.message };
@@ -707,7 +736,10 @@ async function mountCard(view, rid) {
       confirm: 'Відправити готові', cancel: 'Повернутись' }))) return;
     if (ready.some(({ w }) => w.check?.state === 'run') && !(await confirmBox({ title: 'Текст ще перевіряється',
       text: 'Відправити до друку, не дочекавшись перевірки тексту?', confirm: 'До друку', cancel: 'Зачекати' }))) return;
-    const errors = ready.reduce((n, { w }) => n + (w.check?.state === 'done' ? countOf('error', w) : 0), 0);
+    const wrong = ready.filter(({ w }) => w.check && alarmOf(w));
+    if (wrong.length && !(await confirmBox({ title: 'Це не та книга!', danger: true, confirm: 'Все одно до друку', cancel: 'Повернутись',
+      text: `${work.length > 1 ? `Книга ${wrong.map(({ i }) => i + 1).join(', ')}: с` : 'С'}торінки не схожі на тексти книги, яку замовили — мабуть, у Canva відкрито шаблон іншої книги.\n\nПеревірте, що саме замовив покупець.` }))) return;
+    const errors = wrong.length ? 0 : ready.reduce((n, { w }) => n + (w.check?.state === 'done' ? countOf('error', w) : 0), 0);
     if (errors && !(await confirmBox({ title: 'У тексті є помилки', danger: true, confirm: 'Все одно до друку', cancel: 'Повернутись',
       text: `Перевірка знайшла ${errors} ${plural(errors, LEVEL_WORDS.error)} у тексті сторінок.` }))) return;
     const books = ready.map(({ w, i }) => ({ folder: w.folder, label: w.label, title: titleOf(i), format: plan(i).format || null }));
@@ -734,7 +766,7 @@ async function mountCard(view, rid) {
       else if (a === 'learn') learnPassport();
     }),
     on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
-    on(view, 'click', '[data-dismiss]', (e, b) => { f.dismissed.add(b.dataset.dismiss); paintCheck(); }),
+    on(view, 'click', '[data-dismiss]', (e, b) => { f.dismissed.add(b.dataset.dismiss); keepMark(f, b.dataset.dismiss); paintCheck(); }),
     on(view, 'click', '[data-lb]', (e, c) => {
       if (e.target.closest('[data-dismiss]') || !f.folder || !f.pages) return;
       openViewer(+c.dataset.lb);

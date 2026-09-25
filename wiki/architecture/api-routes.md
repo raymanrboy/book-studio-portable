@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-09-24
+updated: 2026-09-25
 code:
   - app/studio/archive.py
   - app/studio/server.py
@@ -62,6 +62,7 @@ code:
 | POST | `/api/settings/textcheck` | token | `_save_settings` | settings.js (the switch, the model) |
 | POST | `/api/textcheck/start` | token | `_start` | settings.js "Start" Ollama |
 | POST | `/api/textcheck/warm` | token | `_warm` | orders.js `warmModel` (the card took files — the model loads onto the GPU ahead of time) |
+| POST | `/api/textcheck/mark` | token | `_mark` | orders.js `keepMark` (the owner's "Not an error" into that check's journal, `{journal, id}` → `{kept}`; for the next calibration) |
 | POST | `/api/textcheck/passport` | token | `_passport` | orders.js `learnPassport` (the cover's and spreads' texts into the book passport — only on the owner's click; with `preview` it only shows what they'd become, without saving anything) |
 
 ## Library — [library.py](../../app/studio/library.py)
@@ -79,7 +80,7 @@ code:
 | POST | `/api/library/books/([0-9a-f]{32})/refresh-listing` | token | `_refresh_listing` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/thumbnail-from-listing` | token | `_thumb_from_listing` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/assets` | token | `_upload_asset` | book.js (`?slot=&name=&auto=`, body — the file), workshop-book.js (one picture per frame) |
-| DELETE | `/api/library/books/([0-9a-f]{32})/assets` | token | `_remove_asset` | book.js, workshop-book.js |
+| DELETE | `/api/library/books/([0-9a-f]{32})/assets` | token | `_remove_asset` | book.js, workshop-book.js (a spread's two pages one by one; an empty spread forgets the Workshop's `mirrored`, `source`) |
 | POST | `/api/library/books/([0-9a-f]{32})/swap` | token | `_swap_halves` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/text` | token | `_import_text` | book.js |
 | GET | `/api/library/books/([0-9a-f]{32})/text.json` | token | `_text_json` | book.js ("copy as JSON") |
@@ -99,6 +100,8 @@ title, texts and prompts go through the library's routes above.
 |---|---|---|---|---|
 | POST | `/api/workshop/books` | token | `_create` | workshop.js `newBook` (`{title}` — no listing) |
 | POST | `/api/workshop/books/([0-9a-f]{32})/json` | token | `_import` | workshop-book.js (`{json, dryRun}` — prompts and texts from one JSON; `dryRun` only counts what would be replaced) |
+| POST | `/api/workshop/books/([0-9a-f]{32})/spread` | token | `_spread` | workshop-book.js `uploadTo` (`?slot=spreadN&name=`, body — the file: cut to 2:1, mirrored if it's one of the flipper's, cut into two pages → `{book, mirrored, cut, source}`) |
+| POST | `/api/workshop/books/([0-9a-f]{32})/flip` | token | `_flip` | workshop-book.js ⇄ (`{slot}` — the spread's two pages mirrored and traded) |
 | GET | `/api/workshop/books/([0-9a-f]{32})/json` | token | `_export` | workshop-book.js ("copy the prompts and texts as JSON") |
 | POST | `/api/workshop/books/([0-9a-f]{32})/to-library` | token | `_to_library` | library.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage`; a listing another library book has → 409 with its `bookId`) |
 | GET | `/api/workshop/guide` | token | `_guide` | workshop.js `copyGuide` (the agent's instruction for prompts and texts) |

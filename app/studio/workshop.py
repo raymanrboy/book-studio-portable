@@ -12,13 +12,20 @@ is copied. Plan and agreements: wiki/plans/listings-mode.md.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
+
+from PIL import Image, ImageOps
 
 from . import core, desktop, etsy, library
 from .server import ApiError, Request, route
 
 GUIDE_NAME = "Book Studio — промпти й тексти книги.md"
 LISTING_FIELDS = ("id", "title", "state", "shopId", "url", "imageUrl", "verifiedAt")
+# The owner's flipper (Etsy-Book-Pipeline, tools/mirror-alternate.py): every other spread is mirrored — the ones
+# whose left page divides by 4: 4–5, 8–9 … 28–29.
+MIRRORED = frozenset(n for n in library.SPREAD_NUMBERS if library.spread_pages(n)[0] % 4 == 0)
+PICTURE_FORMATS = ("PNG", "JPEG", "WEBP")
 
 
 def create(title: str) -> dict:
@@ -66,6 +73,103 @@ def import_json(book_id: str, raw: str, dry_run: bool = False) -> dict:
         library.save(book)
     result["book"] = library._book_response(book)
     return result
+
+
+# ---------------------------------------------------------------- a spread becomes its two pages
+
+def _spread_number(key: str) -> int:
+    m = re.fullmatch(r"spread(\d+)", key or "")
+    if not m or int(m.group(1)) not in library.SPREAD_NUMBERS:
+        raise ApiError("Двома сторінками стають лише розвороти 2–3 … 28–29.")
+    return int(m.group(1))
+
+
+def two_squares(im: Image.Image) -> tuple[Image.Image, Image.Image, str]:
+    """A spread cut into its two pages, each a square as high as the picture (the owner's slice-spreads.py): a
+    wider picture loses its sides, a narrower one its top and bottom (the owner, 24.09.2026) — centred either
+    way. Returns the left page, the right page and what went ('', 'sides', 'top-bottom')."""
+    w, h = im.size
+    side = min(h, w // 2)
+    x0, y0 = (w - 2 * side) // 2, (h - side) // 2
+    cut = "top-bottom" if h > side else "sides" if w > 2 * side + 1 else ""
+    return im.crop((x0, y0, x0 + side, y0 + side)), im.crop((x0 + side, y0, x0 + 2 * side, y0 + side)), cut
+
+
+def _put_pages(book_id: str, key: str, pages: tuple[Image.Image, Image.Image], labels: tuple[str, str],
+               dpi, **marks) -> dict:
+    """The two pages into the spread's left and right halves (a whole picture there goes), as PNG — mirroring
+    them again later loses nothing. `marks` are kept on the slot (mirrored, source)."""
+    tmp = core.data_path("tmp")
+    tmp.mkdir(parents=True, exist_ok=True)
+    files = []
+    try:
+        for page in pages:
+            path = tmp / f"page-{core.new_id()}.png"
+            page.save(path, "PNG", compress_level=4, **({"dpi": dpi} if dpi else {}))
+            files.append(path)
+        with library._lock:
+            book = _workshop_book(book_id)
+            gone = []
+            for part, path, label in zip(("left", "right"), files, labels):
+                gone += library._set_asset(book, f"{key}:{part}", library._store_asset(book_id, path, label, move=True))
+            book["slots"][key].update(marks)
+            library.save(book)      # the record first: if the write fails, the old pictures are still there
+            for old in gone:
+                library._delete_asset_file(book_id, old)
+    finally:
+        for path in files:
+            path.unlink(missing_ok=True)
+    return book
+
+
+def place_spread(book_id: str, key: str, source: Path, name: str) -> dict:
+    """A spread dropped into its frame (the owner, 24.09.2026): cut to 2:1 around its centre, mirrored when it is
+    one of the flipper's spreads (MIRRORED), and cut into the two square pages the passport shows. Only the two
+    pages are kept, not the panorama (his answer)."""
+    n = _spread_number(key)
+    _workshop_book(book_id)
+    try:
+        with Image.open(source) as im:
+            if (im.format or "").upper() not in PICTURE_FORMATS:
+                raise ApiError(f"Формат {im.format or 'невідомий'} не підтримується. Використовуйте PNG, JPG або WEBP.")
+            dpi = im.info.get("dpi")
+            im = ImageOps.exif_transpose(im)
+            if im.mode not in ("RGB", "RGBA"):   # a see-through picture stays see-through
+                im = im.convert("RGBA" if im.mode in ("LA", "PA") or "transparency" in im.info else "RGB")
+            im.load()
+    except (OSError, Image.DecompressionBombError):
+        raise ApiError(f"Файл «{name}» не є зображенням або пошкоджений.") from None
+    size = list(im.size)
+    mirrored = n in MIRRORED
+    if mirrored:
+        im = ImageOps.mirror(im)
+    left, right, cut = two_squares(im)
+    a, b = library.spread_pages(n)
+    stem = Path(name).stem[:120]
+    book = _put_pages(book_id, key, (left, right), (f"{stem} · {a}.png", f"{stem} · {b}.png"), dpi,
+                      mirrored=mirrored, source=size)
+    core.log.info("Workshop: spread %d–%d from %s (%d×%d)%s%s", a, b, name, *size, ", mirrored" if mirrored else "",
+                  f", cut at the {cut}" if cut else "")
+    return {"book": library._book_response(book), "mirrored": mirrored, "cut": cut, "source": size}
+
+
+def flip_spread(book_id: str, key: str) -> dict:
+    """⇄ on a frame: the spread mirrored — the right page, mirrored, becomes the left one and the other way round
+    (the same as mirroring the whole panorama). Twice gives back what was there."""
+    _spread_number(key)
+    with library._lock:
+        slot = _workshop_book(book_id)["slots"][key]
+        left, right = slot.get("left"), slot.get("right")
+        if not (left and right):
+            raise ApiError("У розвороті немає двох сторінок — перетягніть у рамку картинку.")
+        folder = library._book_dir(book_id) / "assets"
+        with Image.open(folder / left["file"]) as l_im, Image.open(folder / right["file"]) as r_im:
+            dpi = l_im.info.get("dpi")
+            pages = (ImageOps.mirror(r_im), ImageOps.mirror(l_im))
+        mirrored = not slot.get("mirrored")
+        labels = (left.get("originalName") or "left.png", right.get("originalName") or "right.png")
+        book = _put_pages(book_id, key, pages, labels, dpi, mirrored=mirrored)
+    return library._book_response(book)
 
 
 def to_library(book_id: str, body: dict) -> dict:
@@ -164,6 +268,25 @@ def _import(req: Request):
 @route("GET", r"/api/workshop/books/([0-9a-f]{32})/json")
 def _export(req: Request):
     return library.export_book_json(_workshop_book(req.groups[0]))
+
+
+@route("POST", r"/api/workshop/books/([0-9a-f]{32})/spread")
+def _spread(req: Request):
+    key = req.param("slot") or ""
+    name = (req.param("name") or "spread.png")[:200]
+    _spread_number(key)
+    _workshop_book(req.groups[0])  # refused before the file is even taken
+    tmp = core.data_path("tmp", f"upload-{core.new_id()}{Path(name).suffix.lower()}")
+    try:
+        req.body_to_file(tmp, library.MAX_IMAGE_BYTES)
+        return place_spread(req.groups[0], key, tmp, name)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+@route("POST", r"/api/workshop/books/([0-9a-f]{32})/flip")
+def _flip(req: Request):
+    return flip_spread(req.groups[0], str((req.json or {}).get("slot") or ""))
 
 
 @route("POST", r"/api/workshop/books/([0-9a-f]{32})/to-library")

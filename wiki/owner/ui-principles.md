@@ -1,7 +1,7 @@
 ---
 title: The interface the owner wants
 type: owner
-updated: 2026-09-24
+updated: 2026-09-25
 code:
   - app/web/css/app.css
 ---
@@ -44,6 +44,11 @@ code:
   color (2026-09-18).
 - Dark theme by default; the image viewer follows the program's theme too.
 - Service colors: **Printify — lime green**, **Gelato — blue**, Etsy — orange, Canva — purple.
+
+- **A guard against a slip is loud** (2026-09-25, "not just a message — a big red one, a guard against a
+  slip"): when the program sees the wrong book being made, it's a big red banner above everything in
+  "Proofing", its own badge and its own question before print — not one more row in a list
+  ([text check](../features/text-check.md#another-books-pages-since-2026-09-25)).
 
 ## Specific requirements
 

@@ -29,8 +29,9 @@ Every spread has one page with text and one that's just a picture (matters for t
 [plans](../plans/roadmap.md)).
 
 **The Workshop** (since 2026-09-24) has the same 17 rows — the cover, page 1, spreads 2–15, page 30 — each with
-a prompt (`PROMPT_KEYS`, the same keys as the texts) beside its text; its pictures are whole 2:1 spreads (the
-cover too), pages 1 and 30 a square beside the empty endpaper ([workshop](../features/workshop.md)).
+a prompt (`PROMPT_KEYS`, the same keys as the texts) beside its text; a spread is dropped as one 2:1 picture and
+becomes its `left` + `right` square pages at once (mirrored first for 4–5, 8–9 … 28–29), the cover is one wide
+picture, pages 1 and 30 a square beside the empty endpaper ([workshop](../features/workshop.md)).
 
 ## Print (the Order Creator's folder)
 

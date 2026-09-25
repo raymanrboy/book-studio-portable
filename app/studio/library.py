@@ -864,6 +864,9 @@ def _remove_asset(req: Request):
             s = book["slots"][key]
             old = [s[part]] if s.get(part) else []
             s[part] = None
+            if not any(s.get(p) for p in ("image", "left", "right")):
+                s.pop("mirrored", None)   # what the Workshop noted about the pictures that were here
+                s.pop("source", None)
         save(book)          # the record first: if the write fails, the picture is still there
         for asset in old:
             _delete_asset_file(book_id, asset)

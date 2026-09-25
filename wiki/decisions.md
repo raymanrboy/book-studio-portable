@@ -1,13 +1,50 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-09-24
+updated: 2026-09-25
 code: []
 ---
 # Decisions
 
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
+
+## 2026-09-25 — The text check calibrated on its journal; another book's pages — a loud guard
+
+The owner: calibrate "the machine validator that decides what to show me in errors and what not" (not Gemma),
+now that there are cases; then "do as you see fit — only if I make the wrong book, as happened once, it must be
+not just a message but a big red one that's noticeable, a guard against a slip".
+- **Decided on the journal** (30 checks, 10 orders): 4 real catches, the rest noise with 5 causes — the full
+  story in [features/text-check.md](features/text-check.md#calibration-2026-09-25).
+- **Not shown any more**: a difference only in the capitals of the story's own words (the template's; a child's
+  name in small letters stays red); a model remark that says itself there's no mistake; a remark only about
+  where a line breaks (like commas and quotes — the owner lays out page 1 himself); the model's "a word is
+  missing" when the program finds every word of the buyer's message on the page.
+- **The name**: "Leo's" in the name field is the name "Leo" everywhere (the card, the print order title
+  too) — covers say "{Name}'s" themselves.
+- **New program rule**: a greeting or the "from whom" signature printed twice on the first/last page — yellow.
+- **Another book's pages**: half the story spreads or more unlike the passport → one red finding shown as a big
+  red banner (both books' covers), outlined pages, its own badge and print question; the passport can't be
+  "updated" from such pages. Still never blocks printing (as decided on 2026-09-19): a question, not a lock.
+  Not for light checks — Boys/Girls books may share a story.
+- **For the next calibration**: the journal keeps the model's own verdicts and the owner's "Not an error";
+  `app/tools/textcheck_replay.py` replays every check through the current rules.
+- The First Bible Stories passport's three drifted words were fixed to match Canva (they were red on every
+  order of that book).
+
+## 2026-09-24 (evening) — A spread dropped in the Workshop becomes its two pages, flipped like his flipper
+
+The owner: "when I drop a 2:1 spread, a second later it's two nice squares like in the passport, flipped by the
+logic of my flipper" (his tools `mirror-alternate.py`, `slice-spreads.py` in `Etsy-Book-Pipeline`; his answers —
+[raw/](raw/2026-09-24-workshop-flipper-owner-answers.md)).
+- **The flipper's rule, automatically**: 4–5, 8–9 … 28–29 (the left page divides by 4) are mirrored on the drop;
+  **⇄ on the frame** mirrors any spread by hand (his pick of three).
+- **A narrower picture is cut top and bottom** to make the two squares (his answer; his slicer skips it, and the
+  Workshop used to take it whole with a mark). A wider one loses its sides, like his slicer.
+- **Only the two pages are kept, not the panorama** (his answer). They are PNG, so ⇄ twice gives back the same
+  pixels; ⇄ mirrors the pages and trades them, which is exactly mirroring the whole spread.
+- This replaces "a picture that isn't 2:1 is taken whole and marked" for spreads; the cover and pages 1 and 30
+  keep it.
 
 ## 2026-09-24 (later) — The inks swapped: Orders orange, Listings cyan
 

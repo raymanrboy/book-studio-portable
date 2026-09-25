@@ -1,7 +1,9 @@
 // A book in the Workshop (the Listings mode). 17 rows — the cover, the dedication, spreads 2–15, the afterword —
 // and every row a card of three, top to bottom (owner, 24.09.2026): the prompt for its picture, the 2:1 frame, the
 // text. Prompts and texts come first (typed here, or one JSON from an agent); the pictures come last, dropped one
-// per frame. «Передати в бібліотеку» gives the book its Etsy listing and sends it to the orders' library.
+// per frame; a spread becomes its two square pages at once, mirrored first when it is one of the owner's flipper's
+// (4–5, 8–9 … 28–29; ⇄ on the frame mirrors any spread by hand). «Передати в бібліотеку» gives the book its Etsy
+// listing and sends it to the orders' library.
 import {
   api, html, ic, ib, raw, setHtml, on, media, toast, menu, confirmBox, modal, upload, copyText, fadeImages,
   highlightTokens, el, plural,
@@ -22,6 +24,9 @@ const ROWS = [
 ];
 const IMG_RE = /\.(png|jpe?g|webp)$/i;
 const OFF = 0.04;  // a picture more than 4 % away from its frame's proportion gets the amber mark
+// The owner's flipper (Etsy-Book-Pipeline, mirror-alternate.py): the spreads whose left page divides by 4 are
+// mirrored when dropped in — the server does it (workshop.MIRRORED); the page only says so beforehand.
+const flipped = (key) => /^spread\d+$/.test(key) && (2 * +key.slice(6) - 2) % 4 === 0;
 const PROMPTS = ['промпт', 'промпти', 'промптів'];
 const TEXTS = ['текст', 'тексти', 'текстів'];
 // How the server names a missing piece of a JSON («cover», розвороту 5) in a sentence.
@@ -45,11 +50,12 @@ export async function mount(view, [id]) {
   const assetUrl = (a, w) => media(`/media/book/${id}/${a.file}`, w ? { w } : {});
   const field = (f) => (f === 'prompts' ? book.prompts : book.text) || {};
 
-  /** What sits in a row's frame: one whole picture, or (from a library-style import) two pages. */
+  /** What sits in a row's frame: one whole picture, or a spread's two pages (and what the server noted: whether
+   *  they are mirrored, the size of the picture they were cut from). */
   function pictureOf(key) {
     if (key === 'cover') return { whole: book.cover };
     const s = book.slots[key] || {};
-    return { whole: s.image, left: s.left, right: s.right };
+    return { whole: s.image, left: s.left, right: s.right, mirrored: !!s.mirrored, source: s.source };
   }
   const hasPicture = (key) => { const p = pictureOf(key); return !!(p.whole || p.left || p.right); };
   function offShape(r, a) {
@@ -103,8 +109,30 @@ export async function mount(view, [id]) {
     const what = r.key === 'cover' ? 'обкладинку 2:1' : r.shape === 'wide' ? 'розворот 2:1' : 'сторінку';
     return html`<button type="button" class="ws-ph" data-act="pick" data-key="${r.key}">
       ${half === null ? html`<span class="ws-half">${r.halves[0]}</span><span class="ws-half">${r.halves[1]}</span>` : html`<span class="ws-half ws-one">${half}</span>`}
-      <span class="ws-ph-text">${ic('upload')}<b>Перетягніть ${what}</b><span>або клацніть, щоб обрати файл</span></span>
+      <span class="ws-ph-text">${ic('upload')}<b>Перетягніть ${what}</b><span>або клацніть, щоб обрати файл</span>
+        ${flipped(r.key) ? html`<span class="ws-will-flip">${ic('mirror', 'icon-s')}віддзеркалиться</span>` : ''}</span>
     </button>`;
+  }
+
+  /** A spread cut into its two pages: two squares side by side, like the passport; ⇄ mirrors the spread. */
+  function pairHtml(r, p) {
+    const [w, h] = p.source || [];
+    const cut = w && h && Math.abs(w / h / 2 - 1) > OFF ? (w / h > 2 ? 'з боків' : 'зверху й знизу') : '';
+    const blur = [p.left, p.right].map((a) => (a?.lqip ? `url(${a.lqip})` : 'none'));
+    return html`<div class="ws-art ws-pairart" ${raw(`style="background-image:${blur.join(',')}"`)}>
+      ${[p.left, p.right].map((a, i) => (a
+        ? html`<img data-fade decoding="async" src="${assetUrl(a, 1400)}" alt="${r.label} · ${r.halves[i]}" data-act="zoom" data-key="${r.key}:${i ? 'right' : 'left'}">`
+        : html`<div class="ws-endpaper"></div>`))}
+      <div class="gutter"></div>
+      ${cut ? html`<span class="chip chip-amber ws-mark" data-tip="Картинка ${w}×${h} — не 2:1, тому обрізана ${cut}">${ic('alert', 'icon-s')}обрізано ${cut} · ${w}×${h}</span>` : ''}
+      <div class="img-actions">
+        ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${r.key}:left"`, { cls: 'sm' })}
+        ${ib('mirror', p.mirrored ? 'Віддзеркалено — клацніть, щоб повернути' : 'Віддзеркалити розворот', `data-act="flip" data-key="${r.key}"`, { cls: `sm ${p.mirrored ? 'on' : ''}` })}
+        ${ib('upload', 'Замінити картинку', `data-act="pick" data-key="${r.key}"`, { cls: 'sm' })}
+        ${ib('trash', 'Прибрати картинку', `data-act="remove" data-key="${r.key}"`, { cls: 'sm danger' })}
+      </div>
+      <i class="crops"></i>
+    </div>`;
   }
 
   function artHtml(r, a, extra = '') {
@@ -127,9 +155,7 @@ export async function mount(view, [id]) {
     const up = uploading.get(r.key);
     const busy = up === undefined ? '' : html`<div class="busy-overlay"><div class="ws-up"><i style="transform:scaleX(${up})"></i></div></div>`;
     if (r.shape === 'wide') {
-      const inner = p.whole ? artHtml(r, p.whole)
-        : p.left || p.right ? html`<div class="ws-pair">${[p.left, p.right].map((a) => (a ? artHtml(r, a, 'ws-halfart') : html`<div class="ws-endpaper"></div>`))}</div>`
-          : placeholder(r);
+      const inner = p.whole ? artHtml(r, p.whole) : p.left || p.right ? pairHtml(r, p) : placeholder(r);
       return html`<div class="ws-frame" data-drop="${r.key}">${inner}${busy}</div>`;
     }
     // A single page: the endpaper on one side, the page (the drop target) on the other.
@@ -228,14 +254,24 @@ export async function mount(view, [id]) {
     if (uploading.has(key)) { toast(`${row(key).label}: попередня картинка ще вантажиться`, 'info'); return; }
     uploading.set(key, 0);
     paintFrame(key);
+    // A spread goes to the Workshop's own route: cut to 2:1, mirrored if it's the flipper's, cut into two pages.
+    const spread = /^spread\d+$/.test(key);
     try {
       const q = new URLSearchParams({ slot: key, name: file.name });
-      book = await upload(`/api/library/books/${id}/assets?${q}`, file, (p) => { uploading.set(key, p); paintProgress(key); });
+      const url = spread ? `/api/workshop/books/${id}/spread?${q}` : `/api/library/books/${id}/assets?${q}`;
+      const res = await upload(url, file, (p) => { uploading.set(key, p); paintProgress(key); });
+      book = spread ? res.book : res;
       uploading.delete(key);
       paintFrame(key);
       paintReady();
-      const mark = offShape(row(key), pictureOf(key).whole);
-      if (mark) toast(`${row(key).label}: картинка ${mark} — поставлено, але перевірте пропорцію`, 'info', 5000);
+      if (spread) {
+        const said = [res.mirrored && 'віддзеркалено', res.cut === 'top-bottom' && 'обрізано зверху й знизу',
+          res.cut === 'sides' && 'обрізано з боків'].filter(Boolean);
+        if (said.length) toast(`${row(key).label}: ${said.join(', ')} — і дві сторінки готові`, res.cut ? 'info' : 'success', 4000);
+      } else {
+        const mark = offShape(row(key), pictureOf(key).whole);
+        if (mark) toast(`${row(key).label}: картинка ${mark} — поставлено, але перевірте пропорцію`, 'info', 5000);
+      }
     } catch (err) {
       uploading.delete(key);
       paintFrame(key);
@@ -256,15 +292,35 @@ export async function mount(view, [id]) {
     } catch (err) { toast(err.message, 'error'); }
   }
 
+  /** Every picture of the book in order; a spread's two pages one after the other, like the passport's viewer. */
   function lightboxItems() {
-    return ROWS.filter((r) => pictureOf(r.key).whole).map((r) => {
-      const a = pictureOf(r.key).whole;
-      return {
-        key: r.key, src: assetUrl(a, 1400), full: assetUrl(a, 2600), title: r.label,
-        sub: `${a.width}×${a.height}${offShape(r, a) ? ' · не та пропорція' : ''}`, text: book.text[r.key] || '',
-        onOriginal: () => api(`/api/library/books/${id}/open-original`, { method: 'POST', body: { file: a.file } }).catch((err) => toast(err.message, 'error')),
-      };
+    const items = [];
+    const push = (key, a, title, sub) => items.push({
+      key, src: assetUrl(a, 1400), full: assetUrl(a, 2600), title, sub: `${a.width}×${a.height}${sub}`,
+      text: book.text[key.split(':')[0]] || '',
+      onOriginal: () => api(`/api/library/books/${id}/open-original`, { method: 'POST', body: { file: a.file } }).catch((err) => toast(err.message, 'error')),
     });
+    for (const r of ROWS) {
+      const p = pictureOf(r.key);
+      if (p.whole) push(r.key, p.whole, r.label, offShape(r, p.whole) ? ' · не та пропорція' : '');
+      const flip = p.mirrored ? ' · віддзеркалено' : '';
+      if (p.left) push(`${r.key}:left`, p.left, `${r.label} · ліва сторінка ${r.halves[0]}`, flip);
+      if (p.right) push(`${r.key}:right`, p.right, `${r.label} · права сторінка ${r.halves[1]}`, flip);
+    }
+    return items;
+  }
+
+  /** ⇄: the spread mirrored (its right page, mirrored, becomes the left one); again — back as it was. */
+  async function flip(key) {
+    if (uploading.has(key)) return;
+    uploading.set(key, 1);
+    paintFrame(key);
+    try {
+      book = await api(`/api/workshop/books/${id}/flip`, { method: 'POST', body: { slot: key } });
+      toast(`${row(key).label}: ${pictureOf(key).mirrored ? 'віддзеркалено' : 'повернуто, як було'}`, 'success', 1800);
+    } catch (err) { toast(err.message, 'error'); }
+    uploading.delete(key);
+    paintFrame(key);
   }
   function zoom(key) {
     const items = lightboxItems();
@@ -361,6 +417,7 @@ export async function mount(view, [id]) {
     }
     const key = t.dataset.key || t.closest('[data-key]')?.dataset.key;
     if (act === 'pick') { pickKey = key; $('#ws-file').click(); return; }
+    if (act === 'flip') { e.stopPropagation(); flip(key); return; }
     if (act === 'zoom') { e.stopPropagation(); zoom(key); return; }
     if (act === 'remove') { e.stopPropagation(); removePicture(key); return; }
     const block = t.closest('.ws-block');

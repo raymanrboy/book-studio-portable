@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-09-24
+updated: 2026-09-25
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -128,7 +128,9 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   texts of the cover and spreads, the child's name → `{Name}`; the dedication and afterword can't be
   changed this way.
 - Journal `data/logs/checks/` (one file per book: `<date>_<receipt>-<book number>.json`) — with
-  children's names and dedication texts; local only, never goes into git.
+  children's names and dedication texts; local only, never goes into git. The owner's "Not an error" is
+  written there only by name through `mark()`: a journal file name of the exact form and a finding id
+  that is in it — nothing else can be written or reached (since 2026-09-25).
 
 ### Keys
 - The `Vault` store encrypts with Windows DPAPI (only works for this Windows user).

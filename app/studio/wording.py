@@ -11,6 +11,7 @@ QUOTES = str.maketrans({"’": "'", "‘": "'", "ʼ": "'", "`": "'", "´": "'", 
 DASHES = re.compile("[‐-―−]")
 _TOKEN = re.compile(r"[\w{}\[\]'\-]+")
 
+_POSSESSIVE = re.compile(r"(?<=\w\w)['’]s$", re.I)          # «Leo's» — the buyer thought of «Leo's Baptism Day»
 DEDICATION = re.compile(r"dedicat|closing|присвят", re.I)   # the Etsy field of the buyer's own words
 META = {"dedication", "closing", "message", "messages", "and", "default", "defaults", "please", "use", "the",
         "standard", "both", "is", "fine", "ok", "okay", "keep", "as", "one"}
@@ -31,8 +32,11 @@ def is_default(value: str) -> bool:
 
 def clean_name(value: str) -> str:
     """The child's name as it is printed: «"Leo."» -> «Leo», «Leo & Mila.» -> «Leo & Mila» — the buyer's
-    quotes and the full stop after the name are not printed (the order card and the text check agree)."""
-    return str(value or "").strip().strip("\"'“”‘’«» ").rstrip(".,;:!").strip()
+    quotes and the full stop after the name are not printed (the order card and the text check agree).
+    «Leo's» -> «Leo»: the covers say «{Name}'s Baptism Day» themselves (25.09.2026 calibration: the
+    possessive made every page of one order red)."""
+    name = str(value or "").strip().strip("\"'“”‘’«» ").rstrip(".,;:!").strip()
+    return _POSSESSIVE.sub("", name).strip()
 
 
 def custom_text(variation: dict) -> bool:

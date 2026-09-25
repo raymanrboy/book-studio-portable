@@ -161,7 +161,7 @@ def seed(data: Path) -> None:
 
 
 # The Workshop's sample book (made up): a prompt and a text for every row, pictures only in a few frames — the
-# way a book looks while the owner is still generating them; one of them isn't 2:1.
+# way a book looks while the owner is still generating them; one spread isn't 2:1 (cut top and bottom).
 WORKSHOP_PROMPTS = {
     "cover": "Watercolor wide cover 2:1: a little gosling in a meadow, soft morning light, pastel palette",
     "page1": "A cosy nest with a sleeping gosling, warm sunrise, children's book watercolor",
@@ -173,7 +173,7 @@ WORKSHOP_PROMPTS = {
 
 def seed_workshop() -> None:
     from PIL import Image, ImageDraw
-    from studio import core, library
+    from studio import core, library, workshop
     if (library._book_dir(WORKSHOP_BOOK) / "book.json").exists():
         return
     book = {"id": WORKSHOP_BOOK, "schema": 1, "rev": 0, "createdAt": core.now_iso(), "stage": library.WORKSHOP,
@@ -194,6 +194,10 @@ def seed_workshop() -> None:
         d.line([w // 2, 0, w // 2, h], fill=tuple(c - 30 for c in colour), width=4)
         path = tmp / f"workshop-{slot}.png"
         im.save(path)
+        if slot.startswith("spread"):  # cut into its two pages — spread 4–5 mirrored, 8–9 cut top and bottom
+            workshop.place_spread(WORKSHOP_BOOK, slot, path, f"{slot}.png")
+            path.unlink(missing_ok=True)
+            continue
         with library._lock:
             fresh = library.load(WORKSHOP_BOOK)
             library._set_asset(fresh, slot, library._store_asset(WORKSHOP_BOOK, path, f"{slot}.png", move=True))

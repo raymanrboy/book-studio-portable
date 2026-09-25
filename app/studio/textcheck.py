@@ -31,6 +31,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import Counter
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -555,6 +556,61 @@ FINDING_TEXT = {
 }
 
 
+def _case_only(op: dict, names: set[str]) -> bool:
+    """«love» for «Love», «Savior» for «savior»: the Canva template's capitals, not an order's mistake
+    (25.09.2026 calibration). The child's name in small letters stays the program's own red rule."""
+    return bool(op["expected"] and op["printed"] and op["expected"].casefold() == op["printed"].casefold()
+                and not {w.casefold() for w in words(op["expected"])} & names)
+
+
+def _buyer_intact(own: str | None, text: str) -> bool:
+    """Every word of the buyer's own message is on the page, in its order — capitals and a one-letter slip
+    the owner fixed aside; the template's lines around it («Dear Mia,», «With love,») do not count."""
+    if not own:
+        return False
+    for op in diff(own, text):
+        need, got = op["expected"].split(), op["printed"].split()
+        if need and not (len(need) == len(got) and all(
+                a.casefold() == b.casefold() or (len(a) >= 5 and _distance(a.casefold(), b.casefold()) <= 1)
+                for a, b in zip(need, got))):
+            return False
+    return True
+
+
+def _twice(text: str, own: str | None, gifter: str) -> list[str]:
+    """The first or last page says a thing twice — the owner's merge of the buyer's message with the template
+    (20.09.2026: «Dear Mia,» above the buyer's own «Dear Mia,»; their «Love, Anna & Mark» and the
+    template's «With love, {Gifter}» both kept). Counted against what the buyer wrote: what they wrote twice
+    themselves is theirs. Runs of everyday words alone («we love you») are left out."""
+    printed = words(text)
+    low = [w.casefold() for w in printed]
+    fields = [[w.casefold() for w in words(v or "")] for v in (own, gifter)]
+
+    def runs(ws: list[str], n: int) -> Counter:
+        return Counter(tuple(ws[i:i + n]) for i in range(len(ws) - n + 1))
+
+    out, told = [], []
+    # «Від кого» signed twice, in whatever order: every one of its own words (two at least — «Your family» alone
+    # meets the template's «God and your family») printed more often than the buyer's fields say it.
+    names = {w for w in fields[1] if len(w) >= 3 and w not in COMMON and w not in _META}
+    written = Counter(low)
+    if len(names) >= 2 and all(written[w] > max(1, *(f.count(w) for f in fields)) for w in names):
+        out.append("Підпис «від кого» двічі")
+    allowed: Counter = Counter()
+    for field in fields:
+        for n in (2, 3, 4):
+            allowed |= runs(field, n)  # the most times any one field says it
+    for n in (4, 3, 2):
+        for seq, times in runs(low, n).items():
+            if (times <= max(1, allowed[seq]) or all(w in COMMON for w in seq) or set(seq) <= set(fields[1])
+                    or any(set(seq) <= t for t in told)):  # the signature is the check above
+                continue
+            told.append(set(seq))
+            at = next(i for i in range(len(low)) if tuple(low[i:i + n]) == seq)
+            out.append(f"Двічі «{' '.join(printed[at:at + n])}»")
+    return out
+
+
 def page_issues(target: dict, answer: dict, pers: dict, vocab: set[str], others: set[str]) -> list[dict]:
     """What is wrong on one page: the program's rules, the word-by-word comparison, the model's verdict.
     Red — certain; amber — worth a look (the model saw something the comparison did not, or the other way)."""
@@ -562,42 +618,55 @@ def page_issues(target: dict, answer: dict, pers: dict, vocab: set[str], others:
     problems = [str(p).strip() for p in answer.get("problems") or [] if str(p).strip()]
     expected, mode = target.get("expected"), target["mode"]
     printed = words(text)
-    page_vocab = vocab | {w.casefold() for w in words(expected or "")}
+    names = {t.casefold() for t in words(pers["child"])}
+    # The page's own words are no misspelt name — but the child's name filled into it is still the name: «olivia»
+    # in small letters stays the red rule (it used to fall to the comparison's amber — 25.09.2026).
+    page_vocab = vocab | ({w.casefold() for w in words(expected or "")} - names)
     out, covered = [], set()
     for f in findings(printed, pers["child"], page_vocab, others):
         sure = f["kind"] in ("placeholder", "case", "name") or expected is not None
         out.append(_issue(target, "error" if sure else "warn", FINDING_TEXT[f["kind"]].format(**f), kind="rule"))
         covered.add(f["printed"])
     if expected is not None:
-        ops = [op for op in diff(expected, text) if not set(op["printed"].split()) & covered]
-        names = {t.casefold() for t in words(pers["child"])}
+        ops = [op for op in diff(expected, text) if not set(op["printed"].split()) & covered and not _case_only(op, names)]
         changed = sum(len(op["expected"].split()) + len(op["printed"].split()) for op in ops)
         heavy = len(ops) > 6 or changed > 16  # another text altogether: one line, not a word-by-word list
         if heavy:
             level = "error" if verdict == "error" and mode == "strict" else "warn"
-            out.append(_issue(target, level, "Текст сторінки інший, ніж у паспорті книги", kind="diff"))
+            out.append({**_issue(target, level, "Текст сторінки інший, ніж у паспорті книги", kind="diff"), "whole": True})
         for op in ops if not heavy else []:
             if mode == "strict":
                 level = "error" if verdict == "error" else "warn"
             else:  # the first and last page: the owner may shape them; a lost name is still certain
                 level = "error" if {w.casefold() for w in words(op["expected"])} & names else "warn"
             out.append(_issue(target, level, _say_op(op, others), kind="diff"))
-    elif target["page"] in (1, target["count"]) and not printed:
-        out.append(_issue(target, "warn", "На сторінці немає тексту"))
+    elif target["page"] in (1, target["count"]):
+        if not printed:
+            out.append(_issue(target, "warn", "На сторінці немає тексту"))
+        out += [_issue(target, "warn", said, kind="rule") for said in _twice(text, target.get("own"), pers["gifter"])[:2]]
     if verdict == "error" and problems:
         if out:
             out[0]["note"] = " ".join(problems[:3])
         else:  # the model saw what the words alone do not show — a word cut off at the edge, say
             flagged = answer.get("only_punctuation") is True
-            out += [_issue(target, "warn", p, kind="model") for p in problems[:3] if not _only_punctuation(p, flagged)]
+            intact = _buyer_intact(target.get("own"), text)
+            out += [_issue(target, "warn", p, kind="model") for p in problems[:3]
+                    if not _only_punctuation(p, flagged) and not _NO_PROBLEM.search(p)
+                    and not (intact and _CLAIM.search(p) and not _SEEN.search(p))]
     return out
 
 
 _PUNCTUATION = re.compile(r"лапк|ком[аиуою]\b|крапк|пробіл|розділов|пунктуац|апостроф|тире|дефіс|перенес|"
-                          r"нов(?:ий|ому) рядк|двокрапк|знак оклику|велик\S* літер|мал\S* літер|регістр|"
+                          r"нов\w* рядк|кінці рядк|двокрапк|знак оклику|велик\S* літер|мал\S* літер|регістр|"
                           r"quote|comma|punctuation|capital|uppercase|lowercase", re.I)
 _SUBSTANCE = re.compile(r"обріз|обірв|зрізан|за кра|злит|злип|між|разом|ім'я|імені|шаблон|плейсхолдер|\{|"
-                        r"пропущ|відсутн\S* слов|зайв\S* слов|cut|missing word", re.I)
+                        r"пропущ|відсутн\S* слов|зайв\S* слов|повтор|двічі|дублю|cut|missing word|repeat", re.I)
+# «…помилки у словах немає. Перевірка показує повну відповідність» — the model's verdict said error anyway.
+_NO_PROBLEM = re.compile(r"помил\w*[^.]{0,30}\bнема|нема\w* помил|повн\w* відповідн", re.I)
+# The model says a word is missing or changed; on a page where the program finds every word of the buyer's
+# message, that is the model «correcting» it — a Bible verse quoted the buyer's way (25.09.2026).
+_CLAIM = re.compile(r"пропущ|відсутн|замість|змін|має бути|не вистача", re.I)
+_SEEN = re.compile(r"повтор|двічі|обріз|обірв|за кра", re.I)  # what only the eye can tell stays
 
 
 def _only_punctuation(problem: str, flagged: bool = False) -> bool:
@@ -605,7 +674,8 @@ def _only_punctuation(problem: str, flagged: bool = False) -> bool:
     the page's punctuation or lettering — the owner's to shape (a name in small letters the program catches
     itself). The model says so itself (only_punctuation), so its wording need not match the words below
     (22.09.2026 audit: another model or prompt would word it differently); without that answer the wording
-    is read. A cut-off or stuck word is never just punctuation, whatever the flag says."""
+    is read. A cut-off or stuck word is never just punctuation, whatever the flag says. Where a line breaks
+    is the owner's to shape too («St.» at the end of a line, 25.09.2026); a line said twice is not."""
     if _SUBSTANCE.search(problem):
         return False
     return flagged or bool(_PUNCTUATION.search(problem))
@@ -696,7 +766,7 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int, pi
     with _Run(job, receipt_id, _settings()["model"], pick) as run:
         targets, answers, layout = _passes(run, target, files, count, refs, pers, full, rules)
         run.say("Підсумок…")
-    issues = _all_issues(targets, answers, layout, files, pers, count, rules)
+    issues = _all_issues(targets, answers, layout, files, pers, count, rules, (book or {}).get("id"))
     learn = _learnable(targets, issues)
     found = set(layout["mapping"].values())
     result = {
@@ -714,7 +784,7 @@ def check_book(job, receipt_id: str, item: dict, folder_raw: str, count: int, pi
         "skipped": [n for n in library.SPREAD_NUMBERS if refs.get(f"spread{n}") and f"spread{n}" not in found] if full else [],
         "issues": issues,
     }
-    _journal(receipt_id, result, pers, pick)
+    result["journal"] = _journal(receipt_id, result, pers, pick, answers, layout)
     return result
 
 
@@ -765,7 +835,7 @@ def _targets(files: dict[int, Path], count: int, refs: dict, pers: dict):
                      prompt=_strict(child, expected))
         elif own:
             what = "dedication" if page == 1 else "closing message"
-            t.update(mode="loose", key=None, prompt=_loose(
+            t.update(mode="loose", key=None, own=own, prompt=_loose(
                 child, f"The buyer asked for this {what} (the designer may split lines, fix punctuation and merge "
                        f"greetings like \"With love\"):\n{own}\n{who}",
                 " Also report words of the buyer's message that are missing or changed."))
@@ -851,6 +921,7 @@ def _passes(run: "_Run", target, files: dict, count: int, refs: dict, pers: dict
         t = target(0, "back")
         pending.append((t, run.pool.submit(run.judge, t)))
     run.total = run.done + sum(1 for _, fut in pending if not fut.done())
+    run.unmatched = unmatched  # known before the check pass: another book's pages can be told at once
     answers, found = _collect(run, pending, pers, rules)
     _second_half(run, pending, answers, found, target, pers, rules, mapping)
     return [t for t, _ in pending], answers, {"mapping": mapping, "blank": blank, "unmatched": unmatched}
@@ -890,7 +961,9 @@ def _collect(run: "_Run", pending: list, pers: dict, rules: tuple, answers: dict
         answers[i] = fut.result()
         if not answers[i].get("failed"):
             found += page_issues(pending[i][0], answers[i], pers, *rules)
-        run.job.share({"issues": _ordered(found)})
+        count = pending[i][0]["count"]
+        strange = _strange(found, run.unmatched, count)
+        run.job.share({"issues": _ordered(_one_alarm(found, strange, count) if _wrong_book(strange, count) else found)})
     return answers, found
 
 
@@ -901,7 +974,7 @@ def _ordered(issues: list[dict]) -> list[dict]:
 
 
 def _all_issues(targets: list, answers: dict, layout: dict, files: dict, pers: dict, count: int,
-                rules: tuple) -> list[dict]:
+                rules: tuple, book_id: str | None = None) -> list[dict]:
     issues: list[dict] = []
     for i, t in enumerate(targets):
         a = answers[i]
@@ -916,12 +989,62 @@ def _all_issues(targets: list, answers: dict, layout: dict, files: dict, pers: d
     for page in layout["unmatched"]:
         issues.append(_issue({"page": page, "file": files[page].name, "label": _label(page)},
                              "warn", "Текст не схожий на жоден текст паспорта книги", kind="unmatched"))
+    strange = _strange(issues, layout["unmatched"], count)
+    if _wrong_book(strange, count):
+        issues = _one_alarm(issues, strange, count, _like_book(targets, answers, strange, pers, book_id))
     return _ordered(issues)
+
+
+# ---------------------------------------------------------------- another book's pages (a guard for the owner)
+# 21.09.2026 the owner laid out a book from the Canva template of the order's other book; the check said so in
+# eleven amber rows. He asked for a guard nobody can miss (25.09.2026): one alarm, a red banner in the card.
+
+WRONG_BOOK = hashlib.sha1(b"wrong book").hexdigest()[:12]  # one per check: «not a mistake» outlives a re-check
+
+
+def _strange(issues: list[dict], unmatched: list[int], count: int) -> set[int]:
+    """Story pages unlike the book's passport: no text of it found there, or another text altogether."""
+    return set(unmatched) | {i["page"] for i in issues if i.get("whole") and 1 < i["page"] < count}
+
+
+def _wrong_book(strange: set[int], count: int) -> bool:
+    """Half the story spreads or more: a drifted passport differs in a word or a line, not in whole pages."""
+    return len(strange) >= max(3, len(range(2, count, 2)) // 2)
+
+
+def _one_alarm(issues: list[dict], strange: set[int], count: int, like: dict | None = None) -> list[dict]:
+    """The rows of those pages give way to one alarm (the program's own name rules stay: another child's name
+    is still worth its row). `like` — the library book the pages seem to come from."""
+    first = min(strange)
+    alarm = {"id": WRONG_BOOK, "page": first, "file": f"{first}.png", "part": None, "label": "Уся книга",
+             "level": "error", "kind": "book", "text": "Сторінки не з цієї книги",
+             "note": f"{len(strange)} з {len(range(2, count, 2))} розворотів не схожі на тексти її паспорта",
+             "pages": sorted(strange), "like": like}
+    return [i for i in issues if i["page"] not in strange or i["kind"] == "rule"] + [alarm]
+
+
+def _like_book(targets: list, answers: dict, strange: set[int], pers: dict, book_id: str | None) -> dict | None:
+    """Which library book the strange pages come from, when most of them start like one of its texts."""
+    read = [words(answers[i].get("transcript") or "")[:12] for i, t in enumerate(targets) if t["page"] in strange]
+    read = [r for r in read if len(r) >= 3]
+    best, hits = None, 0
+    for book in library.all_books():
+        texts = [words(fill(v, pers["child"], pers["gifter"]) or v) for k, v in (book.get("text") or {}).items()
+                 if k.startswith("spread") and v]
+        if book.get("id") == book_id or not texts:
+            continue
+        found = sum(1 for r in read if max(similarity(r, t) for t in texts) >= MATCH)
+        if found > hits:
+            best, hits = book, found
+    return orders.book_brief(best) if best and hits >= max(2, len(read) // 2) else None
 
 
 def _learnable(targets: list, issues: list) -> dict[int, str]:
     """Pages whose only fault is a difference from the library text can teach the passport (the owner decides):
-    the library was written apart from the Canva template, and a template that differs would be red every time."""
+    the library was written apart from the Canva template, and a template that differs would be red every time.
+    Never from another book's pages: they would overwrite this book's passport with that book's texts."""
+    if any(i["kind"] == "book" for i in issues):
+        return {}
     kinds: dict[tuple, set] = {}
     for i in issues:
         kinds.setdefault((i["page"], i.get("part")), set()).add(i["kind"])
@@ -944,6 +1067,7 @@ class _Run:
         self.cancel = threading.Event()
         self.lock = threading.Lock()
         self.done, self.total = 0, 1
+        self.unmatched: list[int] = []  # story pages like no passport text, once the read pass knows them
         self.pool: ThreadPoolExecutor | None = None
 
     def __enter__(self) -> "_Run":
@@ -1055,18 +1179,57 @@ def has_text(read: str | None) -> bool:
     return len(words(read or "")) >= 4 and not _REFUSAL.match(read or "")
 
 
-def _journal(receipt_id: str, result: dict, pers: dict, pick: int = 0) -> None:
+def _journal(receipt_id: str, result: dict, pers: dict, pick: int = 0, answers: dict | None = None,
+             layout: dict | None = None) -> str | None:
     """Every check, with what the model read — to see later why something was (not) flagged. Local only.
-    The book number is in the name: two books of one order can finish within the same second."""
+    The book number is in the name: two books of one order can finish within the same second. Each page also
+    keeps the model's own verdict, so a later calibration can replay what the program would show now
+    (app/tools/textcheck_replay.py). Returns the file's name: the owner's «not a mistake» is written there."""
+    pages = result.get("pages") or []
+    if answers:
+        pages = [{**p, "model": _raw(answers.get(i) or {})} for i, p in enumerate(pages)]
     try:
         CHECKS.mkdir(parents=True, exist_ok=True)
         path = CHECKS / f"{time.strftime('%Y-%m-%d_%H%M%S')}_{receipt_id}-{pick + 1}.json"
         core.write_json(path, {"receiptId": receipt_id, "book": pick + 1, "at": core.now_iso(),
-                               "personalization": pers, **result}, backup=False)
+                               "personalization": pers, **result, "pages": pages,
+                               "layout": {k: (layout or {}).get(k) or [] for k in ("unmatched", "blank")}}, backup=False)
         for old in sorted(CHECKS.glob("*.json"))[:-KEEP]:
             old.unlink(missing_ok=True)
+        return path.name
     except Exception:
         core.log.exception("Text check journal not written")
+        return None
+
+
+def _raw(answer: dict) -> dict:
+    """The model's own verdict on a page, as it answered (before the program chose what to show)."""
+    if answer.get("failed"):
+        return {"failed": answer["failed"]}
+    return {"verdict": answer.get("verdict"), "problems": list(answer.get("problems") or []),
+            "onlyPunctuation": answer.get("only_punctuation")}
+
+
+_JOURNAL_NAME = re.compile(r"\d{4}-\d{2}-\d{2}_\d{6}_\d{5,20}-\d{1,3}\.json")
+_journal_lock = threading.Lock()
+
+
+def mark(journal: str, issue_id: str) -> bool:
+    """«Це не помилка»: the owner's own verdict goes into that check's journal, so the next calibration of what
+    is shown is made on his answers rather than on guesses (25.09.2026). False when there is no such finding."""
+    if not _JOURNAL_NAME.fullmatch(journal or "") or not re.fullmatch(r"[0-9a-f]{12}", issue_id or ""):
+        return False
+    path = CHECKS / journal
+    with _journal_lock:
+        data = core.read_json(path)
+        issue = next((i for i in (data or {}).get("issues") or [] if i.get("id") == issue_id), None)
+        if not issue:
+            return False
+        marks = data.setdefault("notMistakes", [])
+        if not any(m.get("id") == issue_id for m in marks):
+            marks.append({"id": issue_id, "text": issue.get("text"), "label": issue.get("label"), "at": core.now_iso()})
+            core.write_json(path, data, backup=False)
+    return True
 
 
 # ---------------------------------------------------------------- routes
@@ -1181,6 +1344,13 @@ def _passport(req: Request):
     book = library.update_texts(book_id, texts)
     core.log.info("Passport texts of %s updated from a print: %s", book["id"], ", ".join(texts))
     return {"updated": sorted(texts)}
+
+
+@route("POST", "/api/textcheck/mark")
+def _mark(req: Request):
+    """The owner marked a finding «це не помилка»: kept in that check's journal for the next calibration."""
+    body = req.json or {}
+    return {"kept": mark(str(body.get("journal") or ""), str(body.get("id") or ""))}
 
 
 @route("POST", "/api/textcheck/warm")

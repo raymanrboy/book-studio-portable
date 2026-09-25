@@ -4,6 +4,7 @@ import json
 import re
 import shutil
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
@@ -151,6 +152,126 @@ class PromptsAndTexts(WorkshopTestCase):
         self.assertEqual((no_text, no_prompt, notes), ([], [], []))
         for word in ("{Name}", "{Gifter}", "2:1", "лише JSON"):
             self.assertIn(word, guide)
+
+
+RED, BLUE, GREEN, WHITE = (220, 30, 30), (30, 60, 220), (40, 170, 70), (255, 255, 255)
+
+
+def panorama(path, size=(800, 400), left=RED, right=BLUE, band=None, edge=0):
+    """A made-up spread: the left half one colour, the right half another; `edge` px of `band` colour along the
+    sides (a wide picture) or the top and bottom (a narrow one) — what the cut must take away."""
+    from PIL import Image, ImageDraw
+    w, h = size
+    im = Image.new("RGB", size, left)
+    d = ImageDraw.Draw(im)
+    d.rectangle([w // 2, 0, w, h], fill=right)
+    if band and edge:
+        if w / h > 2:
+            d.rectangle([0, 0, edge - 1, h], fill=band)
+            d.rectangle([w - edge, 0, w, h], fill=band)
+        else:
+            d.rectangle([0, 0, w, edge - 1], fill=band)
+            d.rectangle([0, h - edge, w, h], fill=band)
+    im.save(path)
+    return path
+
+
+class SpreadsBecomeTwoPages(WorkshopTestCase):
+    """A dropped spread: cut to 2:1, mirrored when it's one of the owner's flipper's, cut into two square pages."""
+
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        super().tearDown()
+        self.tmp.cleanup()
+
+    def pages(self, book_id, key):
+        from PIL import Image
+        slot = library.load(book_id)["slots"][key]
+        folder = library._book_dir(book_id) / "assets"
+        out = []
+        for part in ("left", "right"):
+            with Image.open(folder / slot[part]["file"]) as im:
+                out.append((im.size, im.convert("RGB").getpixel((im.width // 2, im.height // 2)),
+                            im.convert("RGB").getpixel((1, 1))))
+        return slot, out
+
+    def test_the_flippers_spreads_are_mirrored(self):
+        self.assertEqual(sorted(workshop.MIRRORED), [3, 5, 7, 9, 11, 13, 15])  # 4–5, 8–9 … 28–29
+        book = self.new_book()
+        src = panorama(self.dir / "p.png")
+        res = workshop.place_spread(book["id"], "spread2", src, "p.png")          # 2–3: as it is
+        self.assertFalse(res["mirrored"])
+        slot, ((size_l, l, _), (size_r, r, _)) = self.pages(book["id"], "spread2")
+        self.assertEqual((size_l, size_r, l, r), ((400, 400), (400, 400), RED, BLUE))
+        self.assertIsNone(slot["image"])
+        res = workshop.place_spread(book["id"], "spread3", src, "p.png")          # 4–5: mirrored
+        self.assertTrue(res["mirrored"])
+        slot, ((_, l, _), (_, r, _)) = self.pages(book["id"], "spread3")
+        self.assertEqual((l, r, slot["mirrored"], slot["source"]), (BLUE, RED, True, [800, 400]))
+        self.assertEqual(library.completeness(library.load(book["id"]))["pictures"], 2)
+
+    def test_a_wide_picture_loses_its_sides_and_a_narrow_one_its_top_and_bottom(self):
+        book = self.new_book()
+        wide = panorama(self.dir / "wide.png", (1000, 400), band=GREEN, edge=100)
+        res = workshop.place_spread(book["id"], "spread2", wide, "wide.png")
+        self.assertEqual(res["cut"], "sides")
+        _, ((size, _, corner_l), (_, _, corner_r)) = self.pages(book["id"], "spread2")
+        self.assertEqual((size, corner_l, corner_r), ((400, 400), RED, BLUE))   # no green left at the edges
+        narrow = panorama(self.dir / "narrow.png", (1792, 1024), band=GREEN, edge=64)
+        res = workshop.place_spread(book["id"], "spread4", narrow, "narrow.png")
+        self.assertEqual((res["cut"], res["source"]), ("top-bottom", [1792, 1024]))
+        _, ((size, _, corner_l), _) = self.pages(book["id"], "spread4")
+        self.assertEqual((size, corner_l), ((896, 896), RED))
+        exact = panorama(self.dir / "exact.png")
+        self.assertEqual(workshop.place_spread(book["id"], "spread6", exact, "exact.png")["cut"], "")
+
+    def test_flip_by_hand_and_back_loses_nothing(self):
+        from PIL import Image, ImageChops
+        book = self.new_book()
+        workshop.place_spread(book["id"], "spread2", panorama(self.dir / "p.png"), "p.png")
+        _, before = self.pages(book["id"], "spread2")
+        folder = library._book_dir(book["id"]) / "assets"
+        first = {p: library.load(book["id"])["slots"]["spread2"][p]["file"] for p in ("left", "right")}
+        with Image.open(folder / first["left"]) as im:
+            original_left = im.copy()
+        shown = workshop._flip(request(book["id"], {"slot": "spread2"}))
+        self.assertTrue(shown["slots"]["spread2"]["mirrored"])
+        _, ((_, l, _), (_, r, _)) = self.pages(book["id"], "spread2")
+        self.assertEqual((l, r), (BLUE, RED))
+        self.assertFalse(any((folder / f).exists() for f in first.values()))    # the replaced files are gone
+        workshop.flip_spread(book["id"], "spread2")
+        slot, after = self.pages(book["id"], "spread2")
+        self.assertEqual((after, slot["mirrored"]), (before, False))
+        with Image.open(folder / slot["left"]["file"]) as im:
+            self.assertIsNone(ImageChops.difference(im.convert("RGB"), original_left.convert("RGB")).getbbox())
+
+    def test_only_spreads_of_a_workshop_book_and_only_pictures(self):
+        book = self.new_book()
+        src = panorama(self.dir / "p.png")
+        for key in ("cover", "page1", "spread16", "spread"):
+            with self.assertRaises(ApiError):
+                workshop.place_spread(book["id"], key, src, "p.png")
+        (self.dir / "notes.png").write_text("not a picture", encoding="utf-8")
+        with self.assertRaises(ApiError):
+            workshop.place_spread(book["id"], "spread2", self.dir / "notes.png", "notes.png")
+        with self.assertRaises(ApiError):                                  # nothing to flip yet
+            workshop.flip_spread(book["id"], "spread2")
+        on_sale = self.library_book(TAKEN)
+        with self.assertRaises(ApiError) as caught:
+            workshop.place_spread(on_sale["id"], "spread2", src, "p.png")
+        self.assertEqual(caught.exception.status, 409)
+
+    def test_removing_both_pages_forgets_the_notes(self):
+        book = self.new_book()
+        workshop.place_spread(book["id"], "spread3", panorama(self.dir / "p.png"), "p.png")
+        for part in ("left", "right"):
+            library._remove_asset(request(book["id"], slot=f"spread3:{part}"))
+        self.assertNotIn("mirrored", library.load(book["id"])["slots"]["spread3"])
 
 
 class PassingToTheLibrary(WorkshopTestCase):

@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-09-24
+updated: 2026-09-25
 code: []
 ---
 # Glossary
@@ -82,6 +82,8 @@ Code paths below are relative to the repository root.
 | Завершити роботу над замовленням | The × in the order card and in the Order Creator after a successful send: the program forgets the saved work on this order and opens the queue | [keep.js](../app/web/js/keep.js) `finish()`; [features/orders.md](features/orders.md) |
 | Вигаданий номер (телефон) | The phone number filled into Gelato when the Etsy order doesn't have one: `+1 555 555 0100` | [creator.py](../app/studio/creator.py) `GELATO_PLACEHOLDER_PHONE` |
 | ШІ-валідатор, перевірка тексту, «кнопка перевірити» | A local model reads the pages in the order card, the program checks them against the book passport | [textcheck.py](../app/studio/textcheck.py) `check_order()`; [orders.js](../app/web/js/pages/orders.js) `startCheck()`; [features/text-check.md](features/text-check.md) |
+| Калібрування (валідатора), «що показувати в помилках» | Tuning the program's rules that decide which findings of the text check the owner sees (not Gemma); done on the check journal | [textcheck.py](../app/studio/textcheck.py) `page_issues()`; [app/tools/textcheck_replay.py](../app/tools/textcheck_replay.py) `replay()`; [features/text-check.md](features/text-check.md) |
+| Не та книга, «захист від дурня» | The pages were laid out from another book's Canva template: a big red banner in the order card, a question before print | [textcheck.py](../app/studio/textcheck.py) `_one_alarm()`; [orders.js](../app/web/js/pages/orders.js) `wrongBook()`; [features/text-check.md](features/text-check.md) |
 | Gemma, локальна модель, Ollama | `gemma4:12b-it-qat` in Ollama, on this PC's graphics card | [textcheck.py](../app/studio/textcheck.py) `DEFAULT_MODEL`, `status()`, `start_ollama()` |
 | Сліпе переписування / з підказкою | The "read" pass (the model doesn't know what should be there) and the "check" pass (it does) | [textcheck.py](../app/studio/textcheck.py) `READ_PROMPT`, `STRICT_PROMPT` |
 | Паспорт застарів, оновити паспорт | The passport's texts don't match the Canva template — they're taken from the printed book | [orders.js](../app/web/js/pages/orders.js) `learnPassport()`; [textcheck.py](../app/studio/textcheck.py) `_passport()` |
@@ -104,6 +106,9 @@ Code paths below are relative to the repository root.
 | Промпти й тексти з JSON | One JSON from an agent fills every prompt and text of a Workshop book; the program gives the agent's instruction | [workshop.py](../app/studio/workshop.py) `import_json()`, `guide()`; [library.py](../app/studio/library.py) `parse_book_json()` |
 | Відправити (передати) в бібліотеку з замовленнями | «Передати в бібліотеку»: the book gets its Etsy listing and leaves the Workshop for the library | [workshop.py](../app/studio/workshop.py) `to_library()`; [library.js](../app/web/js/pages/library.js) `openAddBook()` |
 | Фотошоп модуль | The Mockups, moved into the Listings mode (2026-09-24) | [features/mockups.md](features/mockups.md) |
+| Фліпер, фліпати (розворот) | Mirroring a spread left to right: his `mirror-alternate.py` rule (4–5, 8–9 … 28–29) on the drop, ⇄ by hand | [workshop.py](../app/studio/workshop.py) `MIRRORED`, `flip_spread()`; [features/workshop.md](features/workshop.md#a-spread-becomes-two-pages) |
+| Нарізати на квадрати, два квадрати як у паспорті | A dropped 2:1 spread cut into its left and right square pages (his `slice-spreads.py`) | [workshop.py](../app/studio/workshop.py) `place_spread()`, `two_squares()` |
+| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's book-making project (prompts, `tools/`); read only | [features/workshop.md](features/workshop.md#a-spread-becomes-two-pages) |
 
 ## Listing mockups (the «Мокапи» utility, built 2026-09-23; in the Listings mode since 2026-09-24)
 

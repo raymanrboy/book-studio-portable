@@ -55,8 +55,9 @@ code:
 - The same `--sample` server has them (the separate `--mockups` server on port 47891 went with the utility).
 - **The Workshop**: one made-up book, «Silly Goose (Workshop sample)» (`seed_workshop()`, `WORKSHOP_BOOK`, only
   when it isn't there yet): every prompt and text but one of each (spread 9's prompt, page 30's text), pictures
-  in four frames — the cover and spreads 2–3, 4–5 at 2:1, and spread 8–9 at 1792×1024 to show the amber «не
-  2:1» mark. Passed to the library in a check, it stays there: delete `.tmp\bsdev` to have it back.
+  in four frames — the cover, spreads 2–3 and 4–5 at 2:1 (4–5 mirrored by the flipper's rule) and 8–9 at
+  1792×1024 (mirrored and cut top and bottom — the amber «обрізано» mark); the spreads go in through
+  `workshop.place_spread()`, so they are two pages each. Passed to the library in a check, it stays there: delete `.tmp\bsdev` to have it back.
 - **The Mockups** (`seed_mockups()`, in `.tmp\bsdev\sample-mockups`): made-up templates (small pictures of a
   table with an open book, saved under the owner's `.psd` names — Pillow reads them by content, so the template
   previews show), a made-up Canva export `Goose demo.zip` (a wide cover, 24 numbered pages), a **pretend

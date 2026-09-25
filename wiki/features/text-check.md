@@ -1,11 +1,12 @@
 ---
 title: Text check (AI validator on a local model)
 type: feature
-updated: 2026-09-23
+updated: 2026-09-25
 code:
   - app/studio/textcheck.py
   - app/studio/wording.py
   - app/tests/test_textcheck.py
+  - app/tools/textcheck_replay.py
   - app/studio/jobs.py
   - app/studio/images.py
 ---
@@ -31,14 +32,24 @@ code:
 - **The list of problems** under the heading: "Page 7 · "Ollivia" instead of "Olivia"" (words in
   quotation marks are bold), and under it, in gray, the model's explanation, in Ukrainian. Clicking a row
   opens the viewer on that spread; ✓ "Not an error" removes it (a deliberate edit; remembered as long as
-  the card is kept). **New files clear every such mark on this book, and replacing a single page clears
+  the card is kept) and **is written into that check's journal** (since 2026-09-25) — the next
+  calibration is made on the owner's own answers ([Calibration](#calibration-2026-09-25)). **New files clear every such mark on this book, and replacing a single page clears
   the marks on that page only** (since 2026-09-20, the owner's request: otherwise a stray click would
   hide the same finding in the next print too). ↻ "Check again" on the same files keeps the marks.
 - **Red** — certain: a leftover `{Name}`, a misspelled name / missing a diacritic / lowercase, another
   child's name, a difference from the passport's words that the model also confirmed. **Yellow** — worth
   a look: seen only by the model (a word cut off at the edge) or only by the comparison; edits on the
   first and last page (the owner adjusts those himself); "from whom" words or the buyer's own dedication
-  that weren't found; a spread with no text.
+  that weren't found; a spread with no text; **a greeting or the "from whom" signature printed twice** on
+  the first or last page ("Двічі «Dear Mia»", "Підпис «від кого» двічі" — since 2026-09-25).
+- **"Це не та книга!"** (since 2026-09-25, the owner: "a big red message, a guard against a slip") — a
+  big red banner at the top of "Proofing" when half the story spreads or more don't look like the ordered
+  book's passport: the pages were laid out from another book's Canva template. It names the book the pages
+  look like (with both covers: "Замовлено" / "А сторінки схожі на"), outlines every such page red, and the
+  badge says "Не та книга". **"Print"** then asks "Це не та книга! Все одно до друку?" (still never
+  blocked). "Це та книга" on the banner removes it (and is journaled like "Not an error"). While it's
+  shown, "Update passport" is never offered — it would overwrite this book's passport with the other
+  book's texts. See [Another book's pages](#another-books-pages-since-2026-09-25).
 - Pages with problems are outlined red/yellow — in the big proof and in the filmstrip.
 - In the viewer, the **T** key shows what the model read on the spread's pages, and what should have
   been there.
@@ -115,7 +126,17 @@ code:
    `SCHEMA`), and the wording of its explanation is only read when that answer is missing; a cut-off or
    stuck-together word always shows. Tested on Gemma 4 12B on made-up pages, 2026-09-23: a comma and
    quotes → `true`, a line cut off at the edge → `false`. The "custom text vs. DEFAULT" rule and name
-   cleanup (`"Leo."` → `Leo`) live in `wording.py`, shared with the order card.
+   cleanup (`"Leo."` → `Leo`, `Leo's` → `Leo` since 2026-09-25) live in `wording.py`, shared with
+   the order card.
+   **Since the 2026-09-25 calibration** also: a difference only in capitals of the story's own words
+   (`love`/`Love`, `Savior`/`savior`) isn't shown (`_case_only()`; the child's name in small letters is
+   still the red rule — before, the name filled into the expected text counted as "a word of the page"
+   and fell to the comparison's yellow); a model remark that itself says there's no mistake
+   (`_NO_PROBLEM`) or only talks about where a line breaks isn't shown; on the first/last page with the
+   buyer's own message, when the program finds every word of it on the page (`_buyer_intact()`), the
+   model's "a word is missing / changed" isn't shown (it "corrected" a Bible verse quoted the buyer's
+   way) — a cut-off or repeated line still is; the first/last page is searched for things said twice
+   (`_twice()`).
 7. The expected text: `fill()` — `{Name}` → the name, `{Gifter}` → "from whom"; if "from whom" starts
    with its own "With love…", the template's "With love," line before it is dropped.
    `personalization()`: a name without a trailing period ("Leo & Mila."), "from whom" without quotes or
@@ -135,7 +156,10 @@ code:
 10. **Journal** — `data/logs/checks/<date>_<receipt>-<book number>.json` (what the model read, what
    should have been there, problems; the last 400). The book number is in the file name so two books of
    one receipt that finish their check within the same second don't write to the same file. Local only,
-   never goes into git.
+   never goes into git. Since 2026-09-25 each page also keeps the model's own answer (`model`: verdict,
+   problems, `onlyPunctuation` — before the program chose what to show, `_raw()`), plus `layout` (unmatched
+   and blank spreads) and `notMistakes` — what the owner marked "Not an error" (`mark()`, route
+   `POST /api/textcheck/mark`; the card sends the journal's name it got in the result, `journal`).
 
 ### Every book of an order is checked separately (since 2026-09-22)
 
@@ -145,6 +169,55 @@ exactly the promise the card makes ("a hidden book's text check keeps finishing 
 code used to do the opposite before 2026-09-22 (found by the audit). A new check of **the same** book
 still cancels the previous one, as before; closing the whole card (`cancel()` with no job number) stops
 every book of that receipt.
+
+### Another book's pages (since 2026-09-25)
+
+On 2026-09-21 the owner laid out one child's book from the Canva template of the **other book of the same
+order**; the check caught it, but as eleven yellow "text like no passport text" rows plus the model's
+"another name — Jacob" (biblical characters). The owner asked for a guard nobody can miss.
+- **When**: the story spreads unlike the passport — no passport text found on them (`unmatched`, 24/28-page
+  books), or "another text altogether" on a page matched by position (30-page books) — are **half of the
+  book's story spreads or more** (at least 3) (`_strange()`, `_wrong_book()`). A drifted passport differs in
+  a word or a line, not in whole pages.
+- **What**: one red finding (`kind: "book"`, `_one_alarm()`) instead of those pages' rows; the program's own
+  name rules on them stay (another child's name is still worth its row). `like` — the library book the
+  pages start like (`_like_book()`: the pages' first words against every other book's passport).
+- **At once**: in a 24/28-page book the unmatched spreads are known after the read pass, so the alarm comes
+  with the first checked page (`_collect()` applies it to what it shares); in a 30-page book — as soon as
+  half the spreads are checked.
+- **Never teaches the passport** (`_learnable()` returns nothing while it's there).
+- The card: the banner (`wrongBook()`), the badge, all such pages outlined, the print question.
+- Light checks (no passport texts) aren't guarded: two library books may share a story (the Boys/Girls
+  versions), and a match to another book's passport would say nothing.
+
+## Calibration (2026-09-25)
+
+> The owner (2026-09-25): once there are more cases, calibrate "the machine validator that decides what
+> to show me in errors and what not" — the program's rules, not Gemma.
+
+- **The data**: the check journal — 30 checks, 10 different orders (the rest re-checks of the same
+  files), 103 rows shown, 69 red. "Not an error" clicks weren't recorded then, so who was right was
+  read from what the owner fixed between re-checks.
+- **Real catches — 4, all fixed by the owner afterwards**: "With love," printed twice (one order);
+  "Dear <name>" twice and the signature twice (another); a book laid out from the other book's template
+  (a third).
+- **The noise**: a buyer typed the name with a possessive "'s" — every page red "<name> instead of <name>'s", 52 of
+  the 69 red rows; capitals of the template's words; the model contradicting itself ("no mistake, full
+  match") on a cover; the model "correcting" a Bible verse the buyer quoted their way; eleven rows plus
+  biblical names for the wrong-template book; a remark about a line break. And the First Bible Stories
+  passport had drifted from Canva in three words ("Noah **to** build", "David was…" without "Young",
+  "Savior") — red on every order of that book; updated that day by the agent (the owner's "do as you see
+  fit"; the three words only, a copy of the old `book.json` kept as its `.bak`).
+- **What changed** — see step 6 above, [Another book's pages](#another-books-pages-since-2026-09-25), the
+  journal (step 10). One catch the model had missed (the signature kept twice, on that order's second check) is now
+  the program's own rule.
+- **Result on the same 30 checks** (`app/tools/textcheck_replay.py`): 103 rows → 12, red 69 → 3 — the three
+  are the real wrong-template book. All 4 real catches stay. Of the 12, four are the model's old words
+  about the name with "'s" that it wouldn't say with the right name in its prompt.
+- **Next calibration**: `python app/tools/textcheck_replay.py` shows what the current rules would show
+  for every journaled check, next to what was shown then, with the owner's "Not an error" marks; `--all`
+  — every check. The model isn't asked again; journals before 2026-09-25 keep only what was shown of its
+  verdicts.
 
 ## Settings
 
@@ -200,13 +273,15 @@ The order archive — three books already sent to print (Gelato, 30 pages, 4000 
 
 ## Where in the code
 
+- [app/studio/textcheck.py](../../app/studio/textcheck.py) — calibration and the wrong-book guard: `_case_only()`, `_buyer_intact()`, `_twice()`, `_strange()`, `_wrong_book()`, `_one_alarm()`, `_like_book()`, `_raw()`, `mark()`, `_mark()`, `WRONG_BOOK`, `_NO_PROBLEM`, `_CLAIM`, `_SEEN`
 - [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_saw_nothing()`, `_collect()`, `_ordered()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `_release_model()`, `_cancel()`, `_warm()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_passport_texts()`, `_passport_words()`, `_alike()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
-- [app/studio/wording.py](../../app/studio/wording.py) — `words()`, `is_default()`, `clean_name()`, `custom_text()`, `DEDICATION`, `META`
+- [app/studio/wording.py](../../app/studio/wording.py) — `words()`, `is_default()`, `clean_name()`, `custom_text()`, `DEDICATION`, `META`, `_POSSESSIVE`
+- [app/tools/textcheck_replay.py](../../app/tools/textcheck_replay.py) — `replay()`, `rebuild()`, `main()` (the journal through today's rules)
 - [app/studio/images.py](../../app/studio/images.py) — `text_score()`, `_percentile()`, `TEXT_SIDE`
 - [app/studio/jobs.py](../../app/studio/jobs.py) — `Job.share()` (findings ready before the whole check is)
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `checkTip()`, `markPages()`, `paintCheck()`, `viewerItems()`, `learnable()`, `learnPassport()`, `dropCheck()`, `print()`, `LEVEL_WORDS`, `LIGHT_TIP`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `checkTip()`, `markPages()`, `paintCheck()`, `viewerItems()`, `learnable()`, `learnPassport()`, `dropCheck()`, `print()`, `alarmOf()`, `wrongBook()`, `findingsHtml()`, `keepMark()`, `LEVEL_WORDS`, `LIGHT_TIP`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`
-- [app/web/css/app.css](../../app/web/css/app.css) — `.tc-list`, `.tc-issue`, `.tc-where`, `.tc-note`, `.tc-light`, `.tc-error`, `.tc-warn`, `.v-badge.warn`, `.tc-passport`, `.tc-slot`
+- [app/web/css/app.css](../../app/web/css/app.css) — `.tc-list`, `.tc-issue`, `.tc-where`, `.tc-note`, `.tc-light`, `.tc-error`, `.tc-warn`, `.v-badge.warn`, `.tc-passport`, `.tc-slot`, `.tc-alarm`, `.tc-alarm-head`, `.tc-alarm-books`, `.tc-alarm-book`, `.tc-alarm-dismiss`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS` (`textcheck`)
 - Tests: [app/tests/test_textcheck.py](../../app/tests/test_textcheck.py) — the model is faked; the real Ollama isn't needed
 

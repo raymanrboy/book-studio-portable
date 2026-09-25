@@ -124,6 +124,8 @@ const P = {
   listing: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.3 6.3a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8.2" cy="8.2" r="1.6"/>',
   workshop: '<path d="M15 12.5V4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H11"/><path d="M4 17.5A1.5 1.5 0 0 1 5.5 16H11"/><path d="M18.6 11.6l2.3 2.3-6.2 6.2-3 .7.7-3z"/>',
   prompt: '<path d="M4.5 19.5l10.5-10.5"/><path d="M13 7l4 4"/><path d="M17.5 3v3.5M15.75 4.75h3.5"/><path d="M20.5 10.5v2.5M19.25 11.75h2.5"/><path d="M8.5 3.5V6M7.25 4.75h2.5"/>',
+  // a spread mirrored left to right (the owner's flipper) — not `swap`, which trades a spread's two pages
+  mirror: '<path d="M12 3v2.5M12 9v2.5M12 15v2.5M12 21v-.5"/><path d="M9 6.5L3.5 17.5H9z"/><path d="M15 6.5l5.5 11H15z"/>',
 };
 
 // Older names still used by the (hidden) profit page map onto the same meanings.

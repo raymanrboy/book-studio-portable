@@ -103,7 +103,8 @@ code:
   book" in the Order Creator; `mockup` — the Mockups (a book in a picture frame); `hand` — "the
   owner fits this by hand" (the front cover in a mockup template); since 2026-09-24 `listing` — the Listings
   mode (an Etsy listing's tag, its brand icon), `workshop` — the Workshop (a book with a pencil), `prompt` — a
-  picture's prompt (a wand; not `sparkle`, which means a new order).
+  picture's prompt (a wand; not `sparkle`, which means a new order), `mirror` — ⇄, a Workshop spread mirrored left
+  to right (not `swap`, which trades a spread's two pages in the passport).
 - Chips (`.chip`): a chip's text is one font (`.chip .num` doesn't switch fonts), `.chip-mono` sits 2 px
   lower so Consolas lines up with the text of other chips.
 - `keep.js` — saved pages (`stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`); pages with
@@ -158,7 +159,7 @@ code:
 - Class groups: `.lib-toolbar` (toolbars), `.ord-*` (orders), `.proof*`, `.strip*` (proofing),
   `.creator*`, `.spread-*` (the Order Creator), `.book-*`, `.slot-*` (the library), `.set-*` (settings),
   `.lightbox`, `.lb-*` (the viewer), `.mk-*` (the Mockups: `.mk-tpl`, `.mk-slot`, `.mk-spread`, `.mk-run`, `.mk-ask`, `.mk-turn`, `.mk-ghost`),
-  `.ws-*` (the Workshop: `.ws-row`, `.ws-block`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-mark`), `.brand-busy`
+  `.ws-*` (the Workshop: `.ws-row`, `.ws-block`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-pairart` — a spread's two pages, `.ws-mark`), `.brand-busy`
   and `.vt-mode` (the mode switch).
 - The owner's appearance requirements — [owner/ui-principles.md](../owner/ui-principles.md).
 

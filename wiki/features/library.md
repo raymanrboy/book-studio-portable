@@ -83,7 +83,8 @@ illustration filters, opening the Etsy listing. See [decisions](../decisions.md)
   "fromWorkshopAt": "…" }
 ```
 `stage` and `prompts` only on a book made in the [Workshop](workshop.md) (since 2026-09-24): `"stage":
-"workshop"` while it's there (no listing yet; `all_books()` leaves it out unless asked for
+"workshop"` while it's there (no listing yet; its spreads are two pages, and the slot also notes `mirrored`
+and `source` — [workshop](workshop.md#a-spread-becomes-two-pages); `all_books()` leaves it out unless asked for
 `stage="workshop"`, so orders, the book counter and the text check never see it); passed to the library, the
 mark goes, the listing and `fromWorkshopAt` are written, the prompts stay (unseen here). A library book never
 gains empty prompts (`load()` fills them in only for a book that has them).

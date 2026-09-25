@@ -3,6 +3,47 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-25] update | The text check calibrated; another book's pages raise a big red alarm
+
+- The owner asked to calibrate what the text check shows. On the journal (30 checks, 10 orders): 103 rows →
+  12, red 69 → 3 (the three are a real wrong-template book); all 4 real catches stay, one the model missed
+  is now the program's own rule. Details — [features/text-check.md](features/text-check.md#calibration-2026-09-25).
+- Code: `textcheck.py` (the rules, the wrong-book alarm, the journal keeps the model's verdicts and the
+  owner's marks, route `POST /api/textcheck/mark`), `wording.py` (`Leo's` → `Leo`), `orders.js` /
+  `app.css` (the red banner, the badge, the print question), new `app/tools/textcheck_replay.py`; 11 new tests.
+- Data: the First Bible Stories passport — three words as in Canva (`.bak` kept).
+- Checked: all 280 tests; the banner, "Це та книга" and the print question in the preview on made-up data
+  (the check's answer faked in the page). Not checked: a real Gemma run on a wrong-template book.
+- Pages: features/text-check.md, features/orders.md, decisions.md, glossary.md, owner/ui-principles.md,
+  security.md, architecture/api-routes.md, code-map.md, dev/testing.md, index.md.
+
+## [2026-09-25] update | The book pipeline makes a Workshop import file instead of rendered prompts
+
+- The owner asked his `Etsy-Book-Pipeline` to produce a file the Workshop imports instead of `rendered-prompts.md`.
+  In the pipeline (not in this repo): new `tools/build_workshop_json.py` → `workshop.json`; agents 3/4 keep a
+  `## Cover` title section, agents 5 and 6 run the tool; `validate-book.py` warns when `## Cover` is missing.
+- Book Studio's code unchanged. Checked: the tool on copies of all 31 books (25 written; the old 15-panorama
+  books and one broken cover JSON refused), every file read by `parse_book_json()` with nothing missing but the
+  cover title, and one imported into the preview's Workshop — 17 prompts, 17 texts.
+- Pages: features/workshop.md.
+
+## [2026-09-24] update | The Workshop: a dropped spread is flipped like his flipper and cut into two pages
+
+- The owner: a 2:1 spread dropped into its frame should become "two nice squares like in the passport", flipped
+  by his flipper's logic (`Etsy-Book-Pipeline\tools\mirror-alternate.py`, `slice-spreads.py`, read only). His
+  answers: automatic + ⇄ by hand; a narrower picture cut top and bottom; only the two pages kept
+  ([raw/2026-09-24-workshop-flipper-owner-answers.md](raw/2026-09-24-workshop-flipper-owner-answers.md)).
+- `workshop.py`: `place_spread()` (cut to 2:1 around the centre, mirrored for 4–5, 8–9 … 28–29 — `MIRRORED`, two
+  square PNG pages into `left`/`right`, the slot notes `mirrored` and `source`), `flip_spread()` (⇄: the pages
+  mirrored and traded; twice — the same pixels), routes `/spread` and `/flip` (113 in all). `library._remove_asset`
+  forgets the notes of an emptied spread. The page: two squares per spread, ⇄ lit while mirrored, «віддзеркалиться»
+  on an empty frame of such a spread, «обрізано …» when the picture wasn't 2:1; the viewer shows the two pages.
+  New icon `mirror`.
+- Checked: tests (269; `SpreadsBecomeTwoPages` by pixel colours), the preview (the sample's spreads, a drop of
+  2400×1100 onto 12–13 — mirrored and cut at the sides, ⇄ on 2–3).
+- Pages: features/workshop.md (+ "A spread becomes two pages"), decisions.md, glossary.md, api-routes.md,
+  index.md, library.md, rules/book-structure.md, frontend.md, dev/preview.md, dev/testing.md.
+
 ## [2026-09-24] decision | The inks swapped: Orders orange, Listings cyan
 
 - The owner: the Workshop takes the colours the Studio has now, the Studio turns orange "like Etsy and Claude".

@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-09-23
+updated: 2026-09-25
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
@@ -151,13 +151,16 @@ one column.
      that page, ✓ "Not an error"), red and yellow outlines on pages (`markPages()`), "Update passport"
      for differences from the book's passport. Closing the card, dropping other files, or picking
      another book stops the check (`dropCheck()`); clearing a "Not an error" mark doesn't make the rest
-     of the rows "slide in" again.
+     of the rows "slide in" again. **Another book's pages** (since 2026-09-25) — a big red banner
+     "Це не та книга!" above the list, with the ordered book's and the look-alike book's covers
+     (`wrongBook()`); "Not an error" is also written into the check's journal (`keepMark()`).
      In detail — [text-check.md](text-check.md).
 3. **Print** (`printCard()`, `#oc-print`): "Send to print in Printify/Gelato" → the Order Creator,
    filled in with the receipt number, the title `receipt number - name`, the address, the format, and
    the files (`print()` → `give('creator', …)`). The Printify card uses the lime-green accent. If the
    text check is still running, or found something red — a question first ("Send without waiting?" /
-   "Print anyway?"), printing is never blocked.
+   "Print anyway?"; for another book's pages — "Це не та книга!", since 2026-09-25), printing is never
+   blocked.
 
 ## Orders with several books (since 2026-09-20)
 

@@ -873,6 +873,24 @@ button.set-head:hover { background: var(--surface-hover); }
 .tc-slot { padding: 0 3px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
 .tc-note { display: block; margin-top: 1px; font-size: 12px; color: var(--text-3); }
 .tc-light { gap: 6px; font-size: 12.5px; }
+/* Another book's pages: one alarm nobody can miss (the owner's «захист від дурня», 25.09.2026). Its own deep red,
+   the same in both themes: white text on the dark theme's light --red would not read. It shakes once. */
+.tc-alarm { display: grid; gap: 10px; padding: 16px 18px; border-radius: 12px; background: #b3261e; color: #fff; font-size: 14px; line-height: 1.45; cursor: zoom-in; box-shadow: 0 6px 22px rgba(179, 38, 30, .35); }
+.tc-alarm.enter { animation: tc-alarm-in 520ms var(--ease) both; }
+.tc-alarm + .tc-list { margin-top: 10px; }
+@keyframes tc-alarm-in {
+  0% { opacity: 0; transform: translateY(-6px); }
+  30% { opacity: 1; transform: none; }
+  45% { transform: translateX(-6px); } 60% { transform: translateX(5px); } 75% { transform: translateX(-3px); } 100% { transform: none; }
+}
+.tc-alarm-head { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 21px; font-weight: 700; letter-spacing: -.01em; }
+.tc-alarm-head .icon { width: 26px; height: 26px; }
+.tc-alarm-dismiss { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .35); color: #fff; }
+.tc-alarm-dismiss:hover { background: rgba(255, 255, 255, .24); color: #fff; }
+.tc-alarm-books { display: flex; flex-wrap: wrap; gap: 10px; }
+.tc-alarm-book { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; margin: 0; padding: 8px; border-radius: 9px; background: rgba(0, 0, 0, .18); font-size: 12.5px; }
+.tc-alarm-book img, .tc-alarm-book > .icon { width: 56px; height: 56px; flex: none; border-radius: 6px; object-fit: cover; }
+.tc-alarm-book figcaption span { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; opacity: .8; }
 .tc-light a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 /* An order of several books: which of them this send takes (the print step). */
 .oc-books { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
@@ -1022,13 +1040,18 @@ button.set-head:hover { background: var(--surface-hover); }
 .ws-ph-text b { color: var(--text-2); font-size: 13px; font-weight: 600; }
 .ws-ph:hover, .drop-hot > .ws-ph { background: var(--accent-soft); color: var(--accent-ink); outline-color: var(--accent); }
 .ws-ph:hover .ws-ph-text b, .drop-hot > .ws-ph .ws-ph-text b { color: var(--accent-ink); }
-.drop-hot > .ws-art, .drop-hot > .ws-pair { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-art); }
+.drop-hot > .ws-art { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-art); }
 .ws-art { position: absolute; inset: 0; border-radius: var(--r-art); background-color: var(--paper); box-shadow: var(--art-shadow); }
 .ws-art img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; opacity: 0; transition: opacity 400ms ease; cursor: zoom-in; }
 .ws-art img.loaded { opacity: 1; }
 .ws-art:hover .img-actions, .ws-art:focus-within .img-actions, .ws-art:hover .crops { opacity: 1; transform: none; }
-.ws-pair { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
-.ws-pair .ws-art, .ws-pair .ws-endpaper { position: relative; inset: auto; }
+/* A spread cut into its two pages: two squares side by side, like the passport; the blurred stand-ins behind. */
+.ws-pairart { display: grid; grid-template-columns: 1fr 1fr; background-size: 50% 100%; background-position: left, right; background-repeat: no-repeat; }
+.ws-pairart img, .ws-pairart .ws-endpaper { width: 100%; height: 100%; min-width: 0; object-fit: cover; border-radius: 0; }
+.ws-pairart > :first-child { border-radius: var(--r-art) 0 0 var(--r-art); }
+.ws-pairart > :nth-child(2) { border-radius: 0 var(--r-art) var(--r-art) 0; }
+.img-actions .ib.on { background: rgba(255, 255, 255, .2); color: #fff; }
+.ws-will-flip { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 11.5px; color: var(--accent-ink); }
 .ws-art.lqip.lqip { background-size: contain; } /* a picture of another shape shows its margins, not a blur */
 .ws-mark { position: absolute; left: 8px; bottom: 8px; z-index: 2; background: var(--surface); box-shadow: var(--shadow); }
 .ws-up { width: 56%; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }

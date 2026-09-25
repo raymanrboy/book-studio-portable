@@ -1,7 +1,7 @@
 ---
 title: Book Studio wiki — index
 type: index
-updated: 2026-09-24
+updated: 2026-09-25
 code: []
 ---
 # Book Studio wiki
@@ -59,7 +59,7 @@ code: []
 
 - [Launch and shutdown](architecture/runtime.md)
 - [Server](architecture/server.md) — routes, background jobs, errors, settings.
-- [Server routes](architecture/api-routes.md) — all 111, with who calls them.
+- [Server routes](architecture/api-routes.md) — all 114, with who calls them.
 - [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
 - [Data](architecture/data.md) — what's in `app/data`.
 

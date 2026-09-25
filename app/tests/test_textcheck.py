@@ -1,5 +1,7 @@
 """Text check before print: the program's comparison and rules, which page is which library text, and a
 whole check with the model faked (no Ollama needed; made-up children and buyers only)."""
+import importlib.util
+import io
 import json
 import re
 import random
@@ -14,7 +16,7 @@ from unittest import mock
 from PIL import Image, ImageDraw
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import core, images, library, textcheck as tc
+from studio import core, images, library, textcheck as tc, wording
 from studio.jobs import UserError
 
 STORY = {  # made-up library texts: every spread starts differently, as real books do
@@ -99,6 +101,13 @@ class BuyerFields(unittest.TestCase):
         self.assertEqual((p["dedication"], p["closing"]), ("Welcome to the world, Little Mia.", "Sweet dreams, Mia."))
         p = tc.personalization(item(dedication="Dedication:\nDear Mia,\nWe love you!\n\nClosing: DEFAULT + Mia Rose"))
         self.assertEqual((p["dedication"], p["closing"]), ("Dear Mia,\nWe love you!", None))  # closing: the book's own
+
+    def test_a_possessive_name_is_the_name(self):
+        """25.09.2026 calibration: a buyer typed «Olivia's» (thinking of «Olivia's Baptism Day») — every page of the
+        book was red for «Olivia» instead of «Olivia's», and the cover wanted «Olivia's's»."""
+        self.assertEqual([wording.clean_name(n) for n in ("Olivia's", "Leo & Mila’s.", "Charles'", "O'Neil", "Jo's")],
+                         ["Olivia", "Leo & Mila", "Charles", "O'Neil", "Jo"])
+        self.assertEqual(tc.personalization(item(child="Olivia's"))["child"], "Olivia")
 
     def test_the_buyers_slips_in_from_are_tidied(self):
         self.assertEqual(tc.personalization(item(gifter='"With love ,Anna and Mark"'))["gifter"], "With love, Anna and Mark")
@@ -200,6 +209,53 @@ class PageIssues(unittest.TestCase):
         self.assertEqual(len(issues("Інакше оформлено звертання", False)), 1)
         self.assertEqual(len(issues("Слово «Olivia» обрізане краєм сторінки", True)), 1)
         self.assertEqual(issues("Відсутні лапки навколо тексту", False), [])        # the words still decide too
+
+    def test_capitals_of_the_storys_own_words_are_the_templates(self):
+        """«love» for «Love», «Savior» for «savior»: in 30 real checks only ever the Canva template's own capitals
+        (25.09.2026 calibration). A child's name in small letters stays red."""
+        story = self.target(expected="The savior baby came, and love was near.")
+        self.assertEqual(self.issues(story, "The Savior baby came, and Love was near.", "error",
+                                     ["Слово 'Savior' написано з великої літери"]), [])
+        self.assertEqual([i["level"] for i in self.issues(self.target(), "Wave hello, sweet olivia.")], ["error"])
+
+    def test_the_model_saying_there_is_no_mistake_is_not_shown(self):
+        said = ["Ім'я написане як \"Olivia's\". Однак помилки у словах немає. Перевірка показує повну відповідність."]
+        self.assertEqual(self.issues(self.target(), "Wave hello, sweet Olivia.", "error", said), [])
+
+    def test_where_a_line_breaks_is_the_owners(self):
+        page1 = self.target("loose", None, 1)
+        broken = ["'St.' стоїть в кінці рядка, а назва церкви 'Mary's Church' починається з нового рядка."]
+        self.assertEqual(self.issues(page1, "Dear Olivia,\nBaptism: May 4 St.\nMary's Church", "error", broken), [])
+        again = self.issues(page1, "Dear Olivia,\nBaptism: May 4", "error", ["Рядок 'Dear Olivia' повторюється на початку"])
+        self.assertEqual(len(again), 1)
+
+    def test_the_buyers_own_words_are_not_corrected(self):
+        """The model «corrected» a Bible verse the buyer quoted their own way; the program sees every word of the
+        buyer's message on the page, so that remark goes. A word the buyer wrote and the page lacks stays."""
+        own = 'Made for Olivia with love!\n"I am with you until the end of age." Mt 28:20'
+        page1 = {**self.target("loose", None, 1), "own": own}
+        printed = 'Made for Olivia\nwith Love!\n"I am with you until the end\nof age." Mt 28:20\n\nWith love,\nGrandma'
+        verse = ["У цитаті пропущено слово 'the' перед 'age' (має бути 'the end of the age')."]
+        self.assertEqual(self.issues(page1, printed, "error", verse), [])
+        lost = self.issues(page1, printed.replace("until ", ""), "error", ["Пропущено слово 'until'"])
+        self.assertEqual([i["kind"] for i in lost], ["model"])
+        cut = self.issues(page1, printed, "error", ["Слово 'age' обрізане краєм сторінки"])
+        self.assertEqual([i["kind"] for i in cut], ["model"])
+
+    def test_a_greeting_or_signature_printed_twice(self):
+        """The owner merges the buyer's message with the page's template by hand; a greeting or the «from» line
+        kept twice was missed by the model once (20.09.2026) — the program counts it itself."""
+        pers = {**self.pers, "gifter": "With love, Mark and Anna"}
+        page1 = {**self.target("loose", None, 1), "own": "Dear Olivia, we are so happy for you! Love, Anna & Mark"}
+
+        def said(text):
+            return [i["text"] for i in tc.page_issues(page1, {"transcript": text, "verdict": "ok", "problems": []},
+                                                       pers, set(tc.COMMON), set())]
+        twice = "Dear Olivia,\n\nDear Olivia, we are so happy for you!\nLove, Anna & Mark\n\nWith love,\nMark and Anna"
+        self.assertEqual(said(twice), ["Підпис «від кого» двічі", "Двічі «Dear Olivia»"])
+        self.assertEqual(said("Dear Olivia, we are so happy for you!\nLove, Anna & Mark"), [])
+        pers["gifter"] = "Your family"   # one word of its own: the template's «your family» is not a second signature
+        self.assertEqual(said("Loved by God and your family.\nWith love,\nYour family"), [])
 
     def test_a_misspelt_name_is_red_even_on_the_owners_own_pages(self):
         found = self.issues(self.target("personal", "Dear Olivia, with love, Grandma", 1), "Dear Ollivia, with love, Grandma")
@@ -312,6 +368,32 @@ class WholeCheck(unittest.TestCase):
         self.assertEqual((cover["learn"], cover["text"]), ("cover", "Sweet Dreams\ndear Olivia"))
         self.assertTrue(all(i["kind"] == "diff" for i in res["issues"] if i["page"] == 0))
 
+    def test_another_books_pages_raise_one_alarm(self):
+        """21.09.2026 the owner laid out a book from the order's other book's Canva template: eleven amber rows then.
+        Now one alarm, at once (the read pass already knows), naming the book the pages come from, and the passport
+        can never be «updated» from them."""
+        words = ("Red", "Blue", "Green", "Tall", "Small", "Old", "New", "Slow", "Fast", "Wide", "Proud", "Shy", "Bright", "Quiet")
+        other = {"id": "b" * 32, "schema": 1, "rev": 0, "title": "Boats", "listing": {"id": "4100000901"},
+                 "slots": library._empty_slots(), "cover": None, "thumbnail": None,
+                 "text": {f"spread{n}": f"{w} boats sail across the bay,\nripples dancing all the day.\n{{Name}} counts them in a row."
+                          for n, w in zip(STORY, words)}}
+        library.save(other)
+        refs = {fill(v, gifter="Grandma & Grandpa"): k for k, v in TEXTS.items()}
+        try:
+            for name, text in list(self.printed.items()):
+                key = refs.get(text.replace("Ollivia", "Olivia"))
+                if key and key.startswith("spread"):
+                    self.printed[name] = fill(other["text"][key])
+            res = self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
+        finally:
+            (library._book_dir(other["id"]) / "book.json").unlink()
+        alarms = [i for i in res["issues"] if i["kind"] == "book"]
+        self.assertEqual(len(alarms), 1)
+        self.assertEqual((alarms[0]["level"], alarms[0]["like"]["id"], len(alarms[0]["pages"])), ("error", other["id"], 11))
+        self.assertFalse([i for i in res["issues"] if i["kind"] in ("unmatched", "model")])
+        self.assertFalse(any(p["learn"] for p in res["pages"]))
+        self.assertTrue(any(i["kind"] == "book" for i in self.shared[0]["issues"]), "the card hears it with the first page")
+
     def test_a_second_check_of_the_same_files_is_instant(self):
         self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
         first = self.calls
@@ -325,6 +407,79 @@ class WholeCheck(unittest.TestCase):
         self.assertIn("Залишився шаблон «{Name}»", texts)
         self.assertIn("«Ollivia» замість «Olivia»", texts)
         self.assertFalse([t for t in texts if "розвороті немає тексту" in t])
+
+
+class AnotherBookByPosition(unittest.TestCase):
+    """A 30-page book is matched to its passport by position, so another book's pages show as pages with another
+    text altogether: half the spreads or more — one alarm; a couple — just their rows."""
+
+    def check(self, unlike: int) -> list[dict]:
+        pers = {"child": "Olivia", "gifter": "Grandma", "dedication": None, "closing": None}
+        targets, answers = [], {}
+        for k, n in enumerate(STORY):
+            expected = fill(STORY[n])
+            printed = "Seven small boats go sailing far across the silver sea tonight with lanterns lit." if k < unlike else expected
+            targets.append({"page": 2 * k + 2, "part": None, "file": f"{2 * k + 2}.png", "label": f"Стор. {2 * k + 2}",
+                            "count": 30, "key": f"spread{n}", "mode": "strict", "expected": expected})
+            answers[k] = {"transcript": printed, "verdict": "error" if k < unlike else "ok", "problems": []}
+        layout = {"blank": [], "unmatched": [], "mapping": {}}
+        files = {t["page"]: Path(t["file"]) for t in targets}
+        return tc._all_issues(targets, answers, layout, files, pers, 30, (set(tc.COMMON), set()))
+
+    def test_half_the_book_unlike_its_passport(self):
+        issues = self.check(8)
+        self.assertEqual([(i["kind"], len(i["pages"])) for i in issues], [("book", 8)])
+
+    def test_a_couple_of_pages_are_just_rows(self):
+        self.assertEqual([i["text"] for i in self.check(2)], ["Текст сторінки інший, ніж у паспорті книги"] * 2)
+
+
+class OwnerMarks(unittest.TestCase):
+    """«Це не помилка» goes into that check's journal, next to the model's own verdict on every page, so the
+    next calibration is made on the owner's answers (25.09.2026)."""
+
+    def test_a_mark_is_kept_in_the_checks_journal(self):
+        result = {"pages": [{"page": 1, "text": "Dear Olivia"}],
+                  "issues": [{"id": "0123456789ab", "text": "Двічі «Dear Olivia»", "label": "Стор. 1", "page": 1}]}
+        name = tc._journal("4100000110", result, {"child": "Olivia"}, 0,
+                           {0: {"transcript": "Dear Olivia", "verdict": "error", "problems": ["x"], "only_punctuation": False}},
+                           {"unmatched": [5], "blank": []})
+        saved = json.loads((tc.CHECKS / name).read_text(encoding="utf-8"))
+        self.assertEqual(saved["pages"][0]["model"], {"verdict": "error", "problems": ["x"], "onlyPunctuation": False})
+        self.assertEqual(saved["layout"], {"unmatched": [5], "blank": []})
+        self.assertEqual(tc._mark(SimpleNamespace(json={"journal": name, "id": "0123456789ab"})), {"kept": True})
+        self.assertTrue(tc.mark(name, "0123456789ab"))          # twice: kept once
+        saved = json.loads((tc.CHECKS / name).read_text(encoding="utf-8"))
+        self.assertEqual([m["text"] for m in saved["notMistakes"]], ["Двічі «Dear Olivia»"])
+        self.assertFalse(tc.mark(name, "ffffffffffff"))          # no such finding
+        self.assertFalse(tc.mark("../../settings.json", "0123456789ab"))
+        self.assertFalse(tc.mark(name.replace(".json", ".txt"), "0123456789ab"))
+
+
+class Replay(unittest.TestCase):
+    """app/tools/textcheck_replay.py: a past check shown again through today's rules."""
+
+    def test_an_old_journal_is_replayed(self):
+        spec = importlib.util.spec_from_file_location("textcheck_replay", Path(tc.__file__).parents[1] / "tools" / "textcheck_replay.py")
+        replay = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(replay)
+        page = {"page": 5, "part": None, "file": "5.png", "label": "Стор. 5", "key": "spread5", "mode": "strict",
+                "expected": "The savior baby came.\nWave hello, sweet Olivia's.", "text": "The Savior baby came.\nWave hello, sweet Olivia."}
+        journal = {"receiptId": "4100000111", "bookId": None,
+                   "personalization": {"child": "Olivia's", "gifter": "", "dedication": None, "closing": None},
+                   "pages": [page, {"page": 24, "part": None, "file": "24.png", "label": "Стор. 24", "key": None,
+                                    "mode": "loose", "expected": None, "text": "Sweet dreams, Olivia"}],
+                   "issues": [{"id": "a" * 12, "page": 5, "part": None, "label": "Стор. 5", "level": "error", "kind": "diff",
+                               "text": "«Savior» замість «savior»", "note": "Слово з великої літери"},
+                              {"id": "b" * 12, "page": 5, "part": None, "label": "Стор. 5", "level": "error", "kind": "diff",
+                               "text": "«Olivia» замість «Olivia's»"}]}
+        self.assertEqual(replay.replay(journal), [])   # the name read right, the template's capitals no mistake
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / "2026-01-01_000000_4100000111-1.json").write_text(json.dumps(journal), encoding="utf-8")
+            out = io.StringIO()
+            with mock.patch.object(tc, "CHECKS", Path(folder)), mock.patch("sys.stdout", out):
+                replay.main([])
+        self.assertIn("checks: 1 · then: 2 · now: 0 · red then: 2 · red now: 0", out.getvalue())
 
 
 class Passport(unittest.TestCase):
