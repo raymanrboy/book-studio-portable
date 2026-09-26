@@ -212,8 +212,11 @@ its setting on the owner's PC, a real Gemini download and paste, F8 on the real 
 - ~~Which book to try it on~~ — **a real new book**: the console is for making a book, so the prototype is
   tried by making one from scratch; the owner will think of which (2026-09-25).
 - **Opening Antigravity** — the app is `%LOCALAPPDATA%\Programs\antigravity\Antigravity.exe` (the `agy` CLI
-  isn't installed); «Відкрити агента» runs `Antigravity.exe <pipeline folder>` (VS Code's way of opening a folder).
-  Used by the owner in the prototype; in Book Studio it opens `pipeline/` — his check.
+  isn't installed); «Відкрити агента» ran `Antigravity.exe <pipeline folder>` (VS Code's way of opening a folder).
+  **Wrong for Antigravity 2** (found 2026-09-26, the owner: "the agent saves books into the old folder"): it takes
+  only `antigravity://` links, never a folder; a new chat runs in the project last picked — it was the prototype's
+  `Book Console`. Now Antigravity is only started, the clipboard's words carry the pipeline's full paths, and the
+  owner picks a project on `Book Studio\pipeline` once — [Workshop](../features/workshop.md#where-a-book-lives).
 
 ## Related
 

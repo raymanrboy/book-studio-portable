@@ -396,6 +396,8 @@ def pretend_photoshop(script: Path) -> None:
                 time.sleep(0.4)
             if t["keepOpen"]:
                 status["opened"].append(t["name"])
+        if status["opened"] and work.get("cover") and Path(work["cover"]).is_file():
+            status["coverOpened"] = True  # the book's cover "opened" beside the templates, as the real script does
         status["state"] = "done"
         report()
 

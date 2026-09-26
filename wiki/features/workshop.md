@@ -29,7 +29,7 @@ code:
 ## Where a book lives
 
 ```
-Book Studio/pipeline/            the book pipeline — Antigravity opens this folder (in git: the agents' rules, playbook)
+Book Studio/pipeline/            the book pipeline — Antigravity's project folder (in git: the agents' rules, playbook)
   GEMINI.md = AGENTS.md          the book agents' rules; CLAUDE.md — the fork for coding agents
   playbook/ notes/ Listing prompts/
   check_book.py                  the book check the agents run before GO (the Workshop's own rules, check.py)
@@ -54,6 +54,13 @@ Book Studio/pipeline/            the book pipeline — Antigravity opens this fo
   owner turns on Antigravity → Settings → Agent → *Agent Gitignore Access* once (checked in the program itself:
   `AllowAgentAccessGitignoreFiles`, `BLOCK_REASON_GITIGNORED`); the agents' rules tell them to say so if they can't
   see `books/`.
+- **Antigravity 2 works in projects and ignores a folder given at its start** (the owner's 2.17, checked
+  2026-09-26): a new chat runs in the project last picked in it. The prototype's project `Book Console` stayed picked,
+  so the first book after the move was written into `D:\Roman\Desktop\Book Console\books`. Hence: **once, by the
+  owner** — an Antigravity project on `Book Studio\pipeline` picked for new chats; and **every time** — the words
+  «Відкрити агента» / «Нова книга» put into the clipboard carry the full paths (`agent_words()`): the rules
+  `…\pipeline\GEMINI.md` and the book's folder `…\pipeline\books\<n>.<slug>`, so the agent is told where to write
+  whatever project it runs in.
 
 ## The gallery (`#/workshop`)
 
@@ -63,30 +70,32 @@ Book Studio/pipeline/            the book pipeline — Antigravity opens this fo
   check's GO (green) or «N помилок» (red); a book the Workshop is waiting a picture for says «чекаю картинку».
 - Search by title or number (Ctrl+F or `/`), sort (`SORTS`: by number, newest first — the default; recently
   changed; least ready first — remembered in `bs-workshop-view`), **«У роботі · У бібліотеці»** (shown once a book
-  has been passed on), the books folder, **«+» (N) — a new book in Antigravity**: Antigravity opens on the
-  pipeline's folder and the clipboard holds «нова книга» to paste into the agent's chat; the book appears here by
-  itself once the agent starts it.
+  has been passed on), the books folder, **«+» (N) — a new book in Antigravity**: Antigravity opens and the
+  clipboard holds «Нова книга. Спершу прочитай …\pipeline\GEMINI.md; книгу пиши тільки в …\pipeline\books» to paste
+  into the agent's chat; the book appears here by itself once the agent starts it.
 - The gallery follows the files by itself (`workshop-live.js`): an agent's new book comes in, a caught picture
   shows, without a reload.
 
 ## A book (`#/workshop/<folder>`)
 
 - **Header**: back (Esc), `№41 Title`, the cover's title, the Tier chip (H — a child hero on every spread; S — no
-  recurring hero); **«Відкрити агента»** (Antigravity on the pipeline's folder, «Продовжуємо книгу books/41.…» in
-  the clipboard), **«Сторінки»** (the `pictures/` folder — the set for Canva), the originals folder, «Ще» — the
-  book's folder, **delete** (the whole folder into the Windows Recycle Bin, confirmed); **«Передати в
-  бібліотеку»** (in the accent colour once every picture and the cover are there), then «У бібліотеці» (opens the
-  library book).
+  recurring hero); on the right **one group of icons, the passport's way** (since 2026-09-26): **the agent**
+  (Antigravity, «Продовжуємо книгу …\pipeline\books\41.… (правила — …\GEMINI.md)» in the clipboard), **the book's
+  folder** (a folder — the owner: "the folder is the book's folder, not hidden behind the three dots"), **the pages**
+  (square pictures — `pictures/`, the set for Canva), **the originals** (a wide picture — `originals/`, the 2:1
+  spreads as the generator made them), «Ще» — **delete** (the whole folder into the Windows Recycle Bin, confirmed); beside it the one text button **«Передати в бібліотеку»** (in the
+  accent colour once every picture and the cover are there), then «У бібліотеці» (opens the library book).
 - **The generation bar** (sticky on top, `genBar()`): what is awaited, what's in the clipboard, the parts of a
   several-part paste, «Далі» (F8), «покласти ще раз», «Стоп», the queue's progress («6 з 10», a thin line). On
   another book's page or the gallery it names the book that waits, with «Перейти».
 - **The path strip** (`STEPS`): Формула → Герой → Історія → Текст → Промпти · GO → Картинки `n/16` → Обкладинка →
-  Canva → Мокапи → Бібліотека. Each a circle — ✓ done, half-filled started, dashed skipped (a Tier S book's hero),
-  a number not yet; the next one has a breathing ring, the line after a done step lights up, a step that has just
-  become done pops; the hero's circle is its photo. **Ticked by the files that exist** (`steps()`): `formula.md`,
+  Canva → Мокапи → Бібліотека. Each a rounded square, the Order Creator's step number (since 2026-09-26; circles
+  before) — ✓ done, half-filled started, dashed skipped (a Tier S book's hero), a number not yet; the next one is
+  outlined in the ink with a breathing ring, the line after a done step lights up, a step that has just become done
+  pops; the hero's square is its photo. **Ticked by the files that exist** (`steps()`): `formula.md`,
   `canonical.png` (the prompt or the card alone — started), `story-blueprint.md`, `book-text.md`, both prompt files
   (one — started), the rows whose every page is in `pictures/`, `Cover.png`; **Canva and Мокапи are ticked by
-  hand** (a hand on the circle; «Мокапи» opens the Mockups page too); **Бібліотека ticks itself** when the book has
+  hand** (the tooltip says so; «Мокапи» opens the Mockups page too); **Бібліотека ticks itself** when the book has
   been passed on (and unticks if that library book went to the trash).
 - **The step's panel** (a click on a step or ← →; a second click or × folds it): the step's file — text with its
   headings and code blocks, a picture (a click — large), tabs when a step has several files, a missing file named
@@ -95,12 +104,17 @@ Book Studio/pipeline/            the book pipeline — Antigravity opens this fo
   warnings, how many checks passed — the old pipeline validator's rules, `check.py`); Картинки — the 16 rows as small
   frames (a click scrolls to the row); Canva, Мокапи — «Зроблено» / «Зняти позначку»; Бібліотека — what's missing and
   «Передати в бібліотеку».
-- **The rows** (one column of 820 px, the owner: "not the full width"): page 1, spreads 2–3 … 28–29, page 30 — and
-  **the cover last** (it's generated last, by Agent 6). Every card: the row's name, three dots (prompt / picture /
-  text), «Генерувати» (or «Ще раз», or «чекаю картинку»); **the prompt** — the whole JSON object pretty-printed,
-  what the generator gets (long ones folded, «Показати весь промпт»; copy); **the 2:1 frame**; **the text** in the
+- **The rows** (one column of 820 px, the owner: "not the full width") under the passport's section heading
+  «СТОРІНКИ КНИГИ n/16»: page 1, spreads 2–3 … 28–29, page 30 — and **the cover last** (it's generated last, by
+  Agent 6). Every card: the row's name, «Генерувати» (▷, or «Ще раз» ↻, or «чекаю картинку»); **the prompt** — the whole JSON object pretty-printed,
+  what the generator gets (long ones folded, «Показати весь промпт»; copy); **the 2:1 frame** (empty — the
+  passport's drop zone; a single page's other half — the dotted endpaper); **the text** in the
   book's font, `{Name}`/`{Gifter}` marked (copy). A short or broken prompt file is named above the rows («3 промпти
   замість 14», «блок 4: JSON не читається»).
+- **A picture dragged from the page is never taken in** (the owner, 2026-09-26: a spread dragged a little and let go
+  on itself replaced itself with a cut square — the browser hands a dragged picture over as a file, its shown
+  preview): a drag that starts in Book Studio's window is shut out of every drop zone (`app.js`, see
+  [dragging files](../flows/dropped-files.md)); dragging a picture out to another program still works.
 - **Prompts and texts are the agents'** (read, never written by the page): to change one, the owner asks the agent
   (or opens the file from the step's panel).
 - **Hero variants** (Tier H, only when the agent made one): tabs «Основна · G2_brunette 3/14»; a variant's tab —
@@ -124,8 +138,8 @@ Book Studio/pipeline/            the book pipeline — Antigravity opens this fo
   `originals/cover-art.*` and laid on **the printer's template** (`TEMPLATE`, the owner's 8×8 hardcover: 17.90″×9.50″
   with the wrap, finished 16.40″×8.00″ — the picture's width is the finished width, `template_layout()`), white all
   round → `originals/cover-expanded.png`; the card slides to ② **Поля**: the picture with its margins and the
-  **outpaint prompt** (fill only the white margin, change nothing inside — `outpaint_prompt()`), «Лінії шаблону»
-  (the finished edge, the spine, the safety zones); the outpainted result becomes `pictures/Cover.png` at exactly
+  **outpaint prompt** (fill only the white margin, change nothing inside — `outpaint_prompt()`), the template's lines
+  (an icon toggle, crop marks: the finished edge, the spine, the safety zones); the outpainted result becomes `pictures/Cover.png` at exactly
   5370×2850 px, 300 dpi (`fit_template()`). «Без полів» takes the picture as it is.
 - **The hero**: `agent/canonical.png` (a variant's: `hero.png`).
 - A picture dropped (or picked) is copied; **a caught download is moved** out of Downloads into `originals/`, named
@@ -187,7 +201,7 @@ book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and scre
 
 ## Where in the code
 
-- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `media_file()`, `agent_text()`, `open_in_windows()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
+- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
 - [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
 - [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `place()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`
 - [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session`, `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`

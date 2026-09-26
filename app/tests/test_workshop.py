@@ -89,9 +89,17 @@ class TheSandbox(Base):
             self.assertTrue(path.resolve().is_relative_to(data), path)
         self.assertNotEqual(core.WORKSHOP_BOOKS, core.PIPELINE_DIR / "books")
         say = books.open_agent(S)                     # no Antigravity window: only the words, in the fake clipboard
-        self.assertEqual(say, f"Продовжуємо книгу books/{S}")
         self.assertEqual(self.clip(), say)
-        self.assertEqual(books.open_agent(None), "нова книга")
+        self.assertTrue(say.startswith(f"Продовжуємо книгу {core.WORKSHOP_BOOKS / S} "), say)
+        self.assertIn(str(core.PIPELINE_DIR / "GEMINI.md"), say)
+
+    def test_the_agent_is_told_the_full_paths_whatever_project_antigravity_has(self):
+        # Antigravity 2 ignores the folder it is started with: the words carry the rules and the books' folder
+        say = books.open_agent(None)
+        self.assertTrue(say.startswith("Нова книга."), say)
+        self.assertIn(str(core.PIPELINE_DIR / "GEMINI.md"), say)
+        self.assertTrue(say.endswith(str(core.WORKSHOP_BOOKS)), say)
+        self.assertNotIn("Book Console", say)
 
 
 class TheBookList(Base):

@@ -1,6 +1,7 @@
 """Listing mockups: reading the Canva demo book, the pictures for the smart objects, the run plan, following
 Photoshop — and the Photoshop script itself, run by Node.js against a pretend Photoshop."""
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -524,7 +525,7 @@ class SaveTheOpenOnes(unittest.TestCase):
 
     def test_the_window_offers_them_again_after_a_reload(self):
         self.assertEqual(mockups.pending(), {"run": self.run.name, "folder": str(self.out),
-                                             "open": ["Cover 1", "Cover & Open 1", "All & Open 1"]})
+                                             "open": ["Cover 1", "Cover & Open 1", "All & Open 1"], "cover": False})
 
     def test_saving_them_removes_the_run(self):
         def photoshop(script: Path):
@@ -554,6 +555,32 @@ class SaveTheOpenOnes(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in (self.run / "templates").iterdir()), ["All & Open 1.psd", "Cover & Open 1.psd"])
         self.assertEqual(result["problems"], ["«All & Open 1» уже не відкритий у Photoshop — його не збережено"])
 
+    def test_the_cover_is_named_for_the_owner_and_travels_to_the_second_script(self):
+        self.assertEqual(Path(self.work["cover"]), self.run / "Cover.png")
+        self.assertIsNone(mockups.finish_plan(self.run)["cover"])        # not there (not copied): nothing to close
+        Path(self.work["cover"]).write_bytes(b"png")
+        self.assertEqual(mockups.finish_plan(self.run)["cover"], self.work["cover"])
+        self.assertIn('"cover": ', mockups.script(self.work))
+
+    def test_finishing_the_page_forgets_the_waiting_run_and_the_book(self):
+        books = self.root / "book"
+        (books / "session").mkdir(parents=True)
+        (books / "session" / "1.png").write_bytes(b"png")
+        mockups._books["x" * 16] = {"id": "x" * 16}
+        with mock.patch.object(mockups, "BOOKS", books), mock.patch.object(mockups.jobs, "running", lambda name: None):
+            mockups.close(self.run.name)
+        self.assertIsNone(mockups.pending())                               # «Ваша черга» isn't offered again
+        self.assertTrue(self.run.exists())                                  # its copies go the usual way, later
+        self.assertEqual(list(books.iterdir()), [])
+        self.assertEqual(mockups._books, {})
+
+    def test_finishing_waits_for_a_run_and_refuses_a_strange_name(self):
+        with mock.patch.object(mockups.jobs, "running", lambda name: object()), self.assertRaises(ApiError):
+            mockups.close(self.run.name)
+        with mock.patch.object(mockups.jobs, "running", lambda name: None), self.assertRaises(ApiError):
+            mockups.close("../../etc")
+        self.assertIsNotNone(mockups.pending())
+
     def test_with_photoshop_closed_there_is_nothing_to_save(self):
         with mock.patch.object(mockups, "running", lambda: False), self.assertRaises(UserError):
             mockups.finish(Job("mockups"), self.run.name, threading.Event())
@@ -580,6 +607,7 @@ class Progress(unittest.TestCase):
 HARNESS = r"""
 const fs = require('fs');
 const TREES = %s;
+const CHANGED = %s;  // documents the owner has changed (Photoshop's doc.saved is false for them)
 const LOG = { opened: [], closed: [], saves: [], replaced: [] };
 function File(p) { this.path = p; this._buf = ''; }
 Object.defineProperty(File.prototype, 'exists', { get() { return fs.existsSync(this.path); } });
@@ -608,12 +636,14 @@ function walk(layers, path, out) {
   return out;
 }
 function Doc(path) {
-  if (!TREES[path]) throw new Error('cannot open ' + path);
+  const picture = !TREES[path] && /\.(png|jpe?g|webp)$/i.test(path) && fs.existsSync(path);  // the book's cover
+  if (!TREES[path] && !picture) throw new Error('cannot open ' + path);
   this.typename = 'Document';
   this.path = path;
+  this.saved = !CHANGED.includes(path);
   this.name = path.replace(/^.*[\\/]/, '');
   this.fullName = { fsName: path.replace(/\//g, '\\') };  // Windows gives the path with backslashes
-  this.layers = TREES[path].map((s) => build(s, this));
+  this.layers = picture ? [] : TREES[path].map((s) => build(s, this));
   let active = null;
   Object.defineProperty(this, 'activeLayer', {
     get: () => active,
@@ -688,20 +718,38 @@ class PhotoshopScript(unittest.TestCase):
             path = self.root / "run" / "pictures" / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"png")
+        Path(self.work["cover"]).write_bytes(b"png")  # the book's cover, copied for the owner (prepare())
 
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_script(self, shapes=None, work=None, open_already=()):
+    def run_script(self, shapes=None, work=None, open_already=(), changed=()):
         work = work or self.work
         report = self.root / "report.json"
-        harness = HARNESS % (json.dumps(shapes or trees(self.work)), json.dumps(list(open_already)), json.dumps(str(report)))
+        harness = HARNESS % (json.dumps(shapes or trees(self.work)), json.dumps(list(changed)), json.dumps(list(open_already)),
+                             json.dumps(str(report)))
         script = self.root / "run.js"
         script.write_text(harness + mockups.script(work), encoding="utf-8")
         done = subprocess.run(["node", str(script)], capture_output=True, text=True, timeout=60)
         self.assertEqual(done.returncode, 0, done.stderr)
         status = json.loads(Path(work["status"]).read_text(encoding="utf-8"))
         return status, json.loads(report.read_text(encoding="utf-8"))
+
+    def test_no_slash_inside_a_regex_class_which_photoshop_cannot_read(self):
+        # Node reads /^.*[\\/]/ but Photoshop 2019's ExtendScript ends the regex at that "/" and stops the whole
+        # script: "Error 25: Expected: )" (the owner's screen, 26.09.2026). The node runs above can't see it.
+        literal = re.compile(r"(?<![\w)\]\"'])/(?![/*])((?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\n\[])+)/[gim]*")
+        found = []
+        for no, line in enumerate(mockups.SCRIPT.read_text(encoding="ascii").splitlines(), 1):
+            code = line.split("//", 1)[0] if line.lstrip().startswith("//") else line
+            for m in literal.finditer(code):
+                for cls in re.findall(r"\[((?:\\.|[^\]\\])*)\]", m.group(1)):
+                    if re.search(r"(?<!\\)/", re.sub(r"\\.", "", cls)):
+                        found.append(f"line {no}: {m.group(0)}")
+        self.assertEqual(found, [])
+        self.assertTrue(literal.search(r'x.replace(/^.*[\\/]/, "")'))           # the check does see the old line
+        bad = literal.search(r'x.replace(/^.*[\\/]/, "")').group(1)
+        self.assertTrue(any(re.search(r"(?<!\\)/", re.sub(r"\\.", "", c)) for c in re.findall(r"\[((?:\\.|[^\]\\])*)\]", bad)))
 
     def test_the_script_fills_every_template_and_leaves_three_open(self):
         status, seen = self.run_script()
@@ -715,6 +763,10 @@ class PhotoshopScript(unittest.TestCase):
         self.assertEqual(closed, {"open1", "open2", "dedication"})          # saved and closed without saving
         self.assertEqual(by_file[seen["active"]]["key"], "cover1")      # the first one the owner finishes
         self.assertEqual(seen["dialogs"], "ALL")                            # Photoshop's own setting comes back
+        # the book's cover opened last, beside them, and left open (the owner, 26.09.2026)
+        self.assertEqual(seen["log"]["opened"][-1], self.work["cover"])
+        self.assertTrue(status["coverOpened"])
+        self.assertNotIn(self.work["cover"], seen["log"]["closed"])
         # Open 1: every picture carries its own spread, with the back, spine and rim already in
         saves = [s for s in seen["log"]["saves"] if by_file[s["doc"]]["key"] == "open1"]
         self.assertEqual([Path(s["file"]).name for s in saves],
@@ -728,7 +780,7 @@ class PhotoshopScript(unittest.TestCase):
         self.assertIsNone(second["PRESENTATIONS/VIEW_09/Cover"]["contents"])  # a same-named layer elsewhere
         self.assertFalse(second["Main/Left"]["visible"])                     # hidden copies stay hidden
         self.assertTrue(second["Main"]["visible"])
-        docs = {by_file[d["path"]]["key"]: d["layers"] for d in seen["docs"]}
+        docs = {by_file[d["path"]]["key"]: d["layers"] for d in seen["docs"] if d["path"] in by_file}
         # All & Open 1: the top copies (with their trailing spaces), not the nested ones; the front untouched
         all_open = docs["allOpen"]
         self.assertTrue(all_open["Left "]["contents"].endswith("soft-page-16.png"))
@@ -749,6 +801,15 @@ class PhotoshopScript(unittest.TestCase):
         self.assertEqual(len(status["saved"]), 5)                           # Open 2's two are the ones missing
         self.assertEqual(status["problems"], [{"kind": "layer", "layer": "Main/Left", "template": "3. Open 2"}] * 2)
         self.assertEqual(mockups._problem_text(status["problems"][0]), "У «3. Open 2» немає смарт-об'єкта «Main/Left»")
+
+    def test_a_cover_that_cannot_be_opened_is_told_and_the_pictures_stand(self):
+        Path(self.work["cover"]).unlink()
+        status, seen = self.run_script()
+        self.assertEqual(status["state"], "done")
+        self.assertEqual(len(status["saved"]), 7)
+        self.assertNotIn("coverOpened", status)
+        self.assertEqual([p["template"] for p in status["problems"]], ["Cover"])
+        self.assertTrue(mockups._problem_text(status["problems"][0]).startswith("«Cover» не відкрився"))
 
     def test_a_stop_mark_ends_the_run_before_anything_opens(self):
         Path(self.work["cancel"]).write_text("stop", encoding="utf-8")
@@ -776,3 +837,21 @@ class PhotoshopScript(unittest.TestCase):
         self.assertEqual(seen["log"]["closed"], still_open)
         self.assertEqual([s["doc"] for s in seen["log"]["saves"]], still_open)  # each picture from its own document
         self.assertEqual(seen["dialogs"], "ALL")
+
+    def test_the_second_script_closes_the_cover_only_when_the_owner_has_not_changed_it(self):
+        run = self.root / "run"
+        core.write_json(run / "job.json", self.work, backup=False)
+        kept = [t for t in self.work["templates"] if t["keepOpen"]]
+        for t in kept:
+            Path(t["file"]).parent.mkdir(parents=True, exist_ok=True)
+            Path(t["file"]).write_bytes(b"psd")
+        fin = mockups.finish_plan(run)
+        self.assertEqual(fin["cover"], self.work["cover"])
+        opened = [t["file"] for t in kept] + [self.work["cover"]]
+        status, seen = self.run_script(work=fin, open_already=opened)
+        self.assertTrue(status["coverClosed"])
+        self.assertEqual(seen["log"]["closed"][-1], self.work["cover"])
+        status, seen = self.run_script(work=fin, open_already=opened, changed=[self.work["cover"]])
+        self.assertNotIn("coverClosed", status)                                # his changes stay open in Photoshop
+        self.assertNotIn(self.work["cover"], seen["log"]["closed"])
+        self.assertEqual(len(status["saved"]), 3)

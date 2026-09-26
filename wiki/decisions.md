@@ -9,6 +9,39 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-26 — Mockups: the book's cover opens in Photoshop too; «×» finishes the page
+
+- **The owner:** "I want the script to open and leave not only the PSDs but also the Cover image in Photoshop, so I
+  can work with it at once. And a cross on the Mockups page, to finish the creation."
+- **Decision (the agent's, on that ask):** the cover opened is the demo book's own cover (the wide picture of the
+  Canva export), a copy in the run's folder named `Cover.png`, opened only when templates are left open, the first
+  template still in front; «Зберегти відкриті» closes it only if unchanged. «×» clears the page and the unpacked
+  book; a run still waiting in Photoshop is asked about first and then no longer offered — Photoshop itself is never
+  touched by it. Where — [features/mockups.md](features/mockups.md).
+
+## 2026-09-26 — The Workshop in Book Studio's own style; no magic wand
+
+- **The owner:** "the icons, fonts and text look like some other style than Book Studio… go over the typography…
+  redraw the icons, especially the magic wand — replace it with something else".
+- **Decision (the agent's, on that ask):** the Workshop takes the program's parts instead of its own look-alikes —
+  the header's secondary actions as one `.tools` group of icons (the passport), the rows under a `.section-title`
+  heading, the passport's `.drop-ico` drop zone and eyebrow-only block heads, the Order Creator's square step numbers
+  for the path and the cover's stages, the dotted endpaper of the Order Creator's empty cover; font sizes only from
+  the program's scale; the three status dots on a row went (the row shows the same by itself). Icons redrawn:
+  `agent` (a chat, typing), `workshop`, `mirror`, `guides` (crop marks); the wand `prompt` became `>_`, with new
+  `generate` (▷) and `regenerate` (↻) for the buttons. Where — [features/workshop.md](features/workshop.md),
+  [architecture/frontend.md](architecture/frontend.md).
+
+## 2026-09-26 — The agent is told the pipeline's full paths (Antigravity 2 picks the folder by its project)
+
+- **Found:** after the move the agent wrote the new book into the prototype's `D:\Roman\Desktop\Book Console\books`.
+  Antigravity 2.17 ignores the folder `Antigravity.exe` is started with; a new chat runs in the project last picked
+  in it (`Book Console`), and reads that folder's `GEMINI.md`.
+- **Decision (the agent's, on the owner's "fix it"):** Book Studio only starts Antigravity; the clipboard's words
+  name the rules (`…\pipeline\GEMINI.md`) and the book's folder in full (`books.agent_words()`), so a chat in a wrong
+  project is still told where to write. **The owner, once:** an Antigravity project on `Book Studio\pipeline`,
+  picked for new chats. *Not done:* Book Studio doesn't edit Antigravity's own settings (another program's).
+
 ## 2026-09-26 — The book console moves into the Workshop; the pipeline moves into Book Studio
 
 - **Decision (the owner):** "create a new branch on GitHub and integrate the console into the Workshop" — branch

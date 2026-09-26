@@ -320,6 +320,22 @@ window.addEventListener('pagehide', () => {
 window.addEventListener('dragover', (e) => e.preventDefault());
 window.addEventListener('drop', (e) => e.preventDefault());
 
+// A picture dragged from the window itself is never a file dropped in: the browser hands it over as a file (its
+// shown preview), so a spread dragged a little and let go replaced itself with a square of its own (the owner,
+// 26.09.2026). Every page's file drop is shut for a drag that started here — before any page sees it; the mockups'
+// own drags (spreads, slots) carry no files and go on as before.
+let dragFromPage = false;
+document.addEventListener('dragstart', () => { dragFromPage = true; }, true);
+document.addEventListener('dragend', () => { dragFromPage = false; }, true);
+const ownPicture = (e) => dragFromPage && [...(e.dataTransfer?.types || [])].includes('Files');
+for (const type of ['dragenter', 'dragover', 'drop']) {
+  window.addEventListener(type, (e) => {
+    if (!ownPicture(e)) return;
+    e.stopImmediatePropagation(); // no drop zone lights up; dragover not allowed → no drop at all
+    if (type === 'drop') { e.preventDefault(); dragFromPage = false; }
+  }, true);
+}
+
 async function boot() {
   topbar.el = document.getElementById('topbar');
   heartbeat();

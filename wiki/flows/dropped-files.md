@@ -1,9 +1,10 @@
 ---
 title: Dragging folders and ZIP archives
 type: flow
-updated: 2026-09-23
+updated: 2026-09-26
 code:
   - app/web/js/order-bits.js
+  - app/web/js/app.js
   - app/studio/drops.py
 ---
 # Dragging folders and ZIPs
@@ -47,9 +48,16 @@ lies, without going through the window (`drops.archive_folder()` names the folde
 - All of `data/tmp/dropped` is wiped on every launch (`clear_drops()`).
 - The field files are dragged over lights up (`drop-hot`); the zone is an element with `data-folder-drop`
   ([order-bits.js](../../app/web/js/order-bits.js) `wireFolderDrop()`).
+- **Only files from outside the window** (since 2026-09-26): the browser hands a picture dragged from the page
+  itself over as a file — its preview — so a Workshop spread dragged a little and let go replaced itself with a
+  square of its own (the owner). `app.js` notes a drag that starts in the window (`dragstart`) and, before any page
+  sees it, shuts every drop zone to it while it carries files (`dragenter`/`dragover`/`drop` stopped in the capture
+  phase: no highlight, no drop). The mockups' own drags (spreads, slots) carry no files — their pictures are
+  `draggable="false"` — and work as before.
 
 ## Where in the code
 
+- [app/web/js/app.js](../../app/web/js/app.js) — `dragFromPage`, `ownPicture()`: a picture dragged from the window never drops back in
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()`, `collect()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`, `_drop_root()`, `_drop_rel()`, `extract_zip()`, `archive_folder()`, `dropped_folder()`, `dropped_top()`, `_drop_file()`, `_drop_zip()`, `_drop_done()`, `MAX_DROP_FILE`, `MAX_DROP_ZIP`
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `takeDrop()`

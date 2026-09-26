@@ -56,7 +56,10 @@ const P = {
   book: '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/>',
   image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/>',
   images: '<rect x="7" y="3.5" width="13.5" height="12" rx="2"/><path d="M4 7.5v11A1.5 1.5 0 0 0 5.5 20H16"/><path d="M20.5 12.5l-3.5-3.5-6 6"/>',
-  imageDown: '<path d="M20.5 13v5.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h5.5"/><path d="M3.5 17l4.5-4.5 3.5 3.5"/><path d="M17.5 3v7.5M14.5 7.5l3 3 3-3"/>',
+  // the Workshop's originals — the pictures as the generator made them, mostly 2:1 spreads: a wide picture (not the
+  // square `images`, which there means the cut pages)
+  original: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="7" cy="10.2" r="1.5"/><path d="M22 15.2l-4.6-4.4L10 18"/>',
+  imageDown:'<path d="M20.5 13v5.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h5.5"/><path d="M3.5 17l4.5-4.5 3.5 3.5"/><path d="M17.5 3v7.5M14.5 7.5l3 3 3-3"/>',
   imageOff: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 3.5l17 17"/>',
   text: '<path d="M6 3.5h9l4 4v13H6z"/><path d="M14.5 3.5V8H19M9 12.5h7M9 16.5h7"/>',
   textOff: '<path d="M5 7h14M5 12h9M5 17h6"/><path d="M4 3.5l16 17"/>',
@@ -119,19 +122,24 @@ const P = {
   mockup: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 9.3c-1.6-.9-3.4-1.1-5.2-.8v7.3c1.8-.3 3.6-.1 5.2.8 1.6-.9 3.4-1.1 5.2-.8V8.5c-1.8-.3-3.6-.1-5.2.8z"/><path d="M12 9.3v7.3"/>',
   hand: '<path d="M8.5 12.5V6.2a1.5 1.5 0 0 1 3 0V11"/><path d="M11.5 10.5V4.8a1.5 1.5 0 0 1 3 0v5.7"/><path d="M14.5 10.5V6.5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.6-2.2l-2.7-3.4a1.6 1.6 0 0 1 2.4-2.1l2 1.9"/>',
 
-  // ---- the Listings mode: its sign (an Etsy listing's tag), the Workshop (a book being written), a prompt for a
-  // picture (a wand — not `sparkle`, which means a new order)
+  // ---- the Listings mode: its sign (an Etsy listing's tag), the Workshop (the book `book` with a pencil at its corner)
   listing: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.3 6.3a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8.2" cy="8.2" r="1.6"/>',
-  workshop: '<path d="M15 12.5V4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H11"/><path d="M4 17.5A1.5 1.5 0 0 1 5.5 16H11"/><path d="M18.6 11.6l2.3 2.3-6.2 6.2-3 .7.7-3z"/>',
-  prompt: '<path d="M4.5 19.5l10.5-10.5"/><path d="M13 7l4 4"/><path d="M17.5 3v3.5M15.75 4.75h3.5"/><path d="M20.5 10.5v2.5M19.25 11.75h2.5"/><path d="M8.5 3.5V6M7.25 4.75h2.5"/>',
+  workshop: '<path d="M18 10.5V3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21H11"/><path d="M5 19.5A1.5 1.5 0 0 1 6.5 18H11"/><path d="M18.4 13.6a1.2 1.2 0 0 1 1.7 0l.8.8a1.2 1.2 0 0 1 0 1.7L15.6 21.4l-2.9.6.6-2.9z"/>',
+  // The Workshop's generation (26.09.2026, the owner: "the magic wand has to go"): a prompt is a command for the
+  // picture generator (a prompt sign in a window — not `text`, which is the book's own words); `generate` starts
+  // one (the prompt into the clipboard, a download awaited); `regenerate` — once more, the new picture replaces it
+  prompt: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 10l2.5 2.2-2.5 2.2M12.5 14.5h4"/>',
+  generate: '<path d="M8 5.8v12.4a1 1 0 0 0 1.5.9l10-6.2a1 1 0 0 0 0-1.8l-10-6.2A1 1 0 0 0 8 5.8z"/>',
+  regenerate: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.8 4.2v3.6h-3.6"/>',
   // a spread mirrored left to right (the owner's flipper) — not `swap`, which trades a spread's two pages
-  mirror: '<path d="M12 3v2.5M12 9v2.5M12 15v2.5M12 21v-.5"/><path d="M9 6.5L3.5 17.5H9z"/><path d="M15 6.5l5.5 11H15z"/>',
-  // the Workshop's pipeline: the book agents (Antigravity — a chat with a spark), the book's hero, a step not needed
-  // (a Tier S book has no hero), the printer's template lines over the cover
-  agent: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V16A1.5 1.5 0 0 1 4 14.5z"/><path d="M12 7.3l.9 2.2 2.2.9-2.2.9-.9 2.2-.9-2.2-2.2-.9 2.2-.9z"/>',
+  mirror: '<path d="M12 3.5v2M12 8.5v2M12 13.5v2M12 18.5v2"/><path d="M8.5 7L3.5 17h5z"/><path d="M15.5 7l5 10h-5z"/>',
+  // the Workshop's pipeline: the book agents (Antigravity — a chat, the agent typing), the book's hero, a step not
+  // needed (a Tier S book has no hero), the printer's template lines over the cover (the cover and its spine inside the
+  // printer's crop marks)
+  agent: '<path d="M6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.8V16A2.5 2.5 0 0 1 4 13.5v-7A2.5 2.5 0 0 1 6.5 4z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01" stroke-width="2.6"/>',
   hero: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5c.8-3.8 3.8-6 7.5-6s6.7 2.2 7.5 6"/>',
   minus: '<path d="M6 12h12"/>',
-  guides: '<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M12 5v14" stroke-dasharray="2 2"/><path d="M6 8h4v8H6zM14 8h4v8h-4z" stroke-dasharray="1.6 1.6"/>',
+  guides: '<rect x="7" y="8" width="10" height="8" rx=".5"/><path d="M12 8v8"/><path d="M7 2v3M17 2v3M7 19v3M17 19v3M1.5 8h3M19.5 8h3M1.5 16h3M19.5 16h3"/>',
 };
 
 // Older names still used by the (hidden) profit page map onto the same meanings.

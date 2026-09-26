@@ -81,11 +81,15 @@ export async function mount(view, [rawId]) {
       ['title', html`<div class="ws-head-title">
         <h1 class="page-title">${b.number != null ? html`<span class="ws-no num">№${b.number}</span>` : ''}${b.title}</h1>
         ${b.coverTitle ? html`<div class="page-sub serif">${highlightTokens(b.coverTitle)}</div>` : ''}</div>`],
-      ...(b.tier ? [['tier', html`<span class="chip chip-accent" data-tip="${b.tier === 'H' ? 'Tier H — герой-дитина на кожному розвороті' : 'Tier S — без постійного героя'}">Tier ${b.tier}</span>`]] : []),
-      ['tools', html`<div class="ws-head-tools">
-        <button class="btn" data-act="agent" data-tip="Antigravity на папці книг; у буфері — «Продовжуємо книгу …» для чату агента">${ic('agent')}Відкрити агента</button>
-        <button class="btn" data-act="open" data-what="pictures" data-tip="Нарізані сторінки 1–30 і Cover.png — набір для Canva">${ic('folderOpen')}Сторінки</button>
-        <div class="tools">${ib('images', 'Оригінали — картинки, як їх віддав генератор', 'data-act="open" data-what="originals"')}${ib('more', 'Ще', 'data-act="more"')}</div>
+      ...(b.tier ? [['tier', html`<span class="chip chip-accent ws-tier" data-tip="${b.tier === 'H' ? 'Tier H — герой-дитина на кожному розвороті' : 'Tier S — без постійного героя'}">Tier ${b.tier}</span>`]] : []),
+      ['tools', html`<div class="page-actions">
+        <div class="tools">
+          ${ib('agent', 'Відкрити агента — Antigravity; у буфері «Продовжуємо книгу …» з повною адресою книги', 'data-act="agent"')}
+          <span class="sep"></span>
+          ${ib('folderOpen', 'Папка книги', 'data-act="open" data-what="folder"')}
+          ${ib('images', 'Сторінки — нарізані 1–30 і Cover.png, набір для Canva', 'data-act="open" data-what="pictures"')}
+          ${ib('original', 'Оригінали — картинки, як їх віддав генератор', 'data-act="open" data-what="originals"')}
+          ${ib('more', 'Ще', 'data-act="more"')}</div>
         ${passed ? html`<button class="btn" data-act="to-library" data-tip="Книга вже в бібліотеці замовлень — відкрити її там">${ic('checkCircle')}У бібліотеці</button>`
           : html`<button class="btn ${ready() ? 'btn-primary' : ''}" data-act="to-library">${ic('shelf')}Передати в бібліотеку</button>`}
       </div>`],
@@ -108,7 +112,7 @@ export async function mount(view, [rawId]) {
     const cls = [s.state, s.next && 'next', just && 'just', prev && ['done', 'skip'].includes(prev.state) && 'after-done',
       mem.step === s.key && 'sel', s.check && !s.check.go && 'nogo'].filter(Boolean).join(' ');
     return html`<button class="ws-step ${cls}" data-act="step" data-step="${s.key}" role="tab" aria-selected="${mem.step === s.key}" data-tip="${tip}">
-      ${dot}<span class="ws-step-label">${s.label}</span>${count}${s.manual ? ic('hand', 'ws-hand') : ''}</button>`;
+      ${dot}<span class="ws-step-label">${s.label}</span>${count}</button>`;
   }
 
   // ---------------------------------------------------------------- the step's panel
@@ -144,7 +148,7 @@ export async function mount(view, [rawId]) {
     const waiting = waitingFor(id, 'hero', null);
     return html`<div class="ws-hero-actions">
       ${waiting ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>чекаю героя з «Завантажень»</span>`
-        : b.heroPrompt ? html`<button class="btn btn-sm ${s.thumb ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-tip="Промпт героя — у буфер; завантажений герой стане canonical.png">${ic('prompt')}${s.thumb ? 'Згенерувати ще раз' : 'Генерувати героя'}</button>` : ''}
+        : b.heroPrompt ? html`<button class="btn btn-sm ${s.thumb ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-tip="Промпт героя — у буфер; завантажений герой стане canonical.png">${ic(s.thumb ? 'regenerate' : 'generate')}${s.thumb ? 'Згенерувати ще раз' : 'Генерувати героя'}</button>` : ''}
       ${s.thumb ? html`<button class="btn btn-sm" data-act="copy-hero" data-tip="canonical.png — у буфер, щоб вставити в новий чат">${ic('copy')}Героя в буфер</button>` : ''}
       <button class="btn btn-sm" data-act="pick" data-key="hero" data-variant="" data-tip="Покласти готову картинку як canonical.png">${ic('upload')}Обрати файл</button>
     </div>`;
@@ -205,7 +209,7 @@ export async function mount(view, [rawId]) {
     let body;
     try { body = await panelBody(s, file); } catch (err) { body = html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`; }
     if (my !== panelSeq) return; // a newer draw is on its way
-    const tabIcon = (f) => (f.kind === 'image' ? 'image' : f.kind === 'check' ? (b.check?.go ? 'checkCircle' : 'alertCircle') : 'text');
+    const tabIcon = (f) => (f.kind === 'image' ? 'image' : f.kind === 'check' ? (b.check?.go ? 'checkCircle' : 'alertCircle') : /prompt/.test(f.name) ? 'prompt' : 'text');
     const tabs = files.length > 1 && s.state !== 'skip' ? html`<div class="seg ws-tabs"><span class="seg-pill"></span>${files.map((f) => html`<button type="button"
       class="${f === file ? 'active' : ''} ${f.exists ? '' : 'missing'} ${f.kind === 'check' ? (b.check.go ? 'go' : 'nogo') : ''}" data-act="tab" data-file="${f.name}"
       data-tip="${f.kind === 'check' ? 'Перевірка промптів (GO)' : f.exists ? f.name : `${f.name} — ще немає`}">${ic(tabIcon(f), 'icon-s')}${f.label || f.name}</button>`)}</div>` : '';
@@ -240,7 +244,7 @@ export async function mount(view, [rawId]) {
     const what = r.kind === 'spread' ? 'розворот 2:1' : 'сторінку';
     return html`<button type="button" class="ws-ph" data-act="pick" data-key="${r.key}" data-variant="${variant}">
       ${half === null ? html`<span class="ws-half num">${r.pages[0]}</span><span class="ws-half num">${r.pages[1]}</span>` : html`<span class="ws-half ws-one num">${half}</span>`}
-      <span class="ws-ph-text">${ic('upload')}<b>Перетягніть ${what}</b><span>або клацніть, щоб обрати файл</span>
+      <span class="ws-ph-text"><span class="drop-ico">${ic('upload')}</span><b>Перетягніть ${what}</b><span>або клацніть, щоб обрати файл</span>
         ${r.kind === 'spread' && r.mirrored ? html`<span class="ws-will-flip">${ic('mirror', 'icon-s')}віддзеркалиться</span>` : ''}</span></button>`;
   }
 
@@ -276,7 +280,7 @@ export async function mount(view, [rawId]) {
     if (waitingFor(id, r.key, variant)) return html`<span class="chip chip-accent"><span class="ws-pulse"></span>чекаю картинку</span>`;
     const again = r.pictures.length > 0;
     return html`<button class="btn btn-sm ${again ? '' : 'btn-primary'}" data-act="gen" data-key="${r.key}" data-variant="${variant}"
-      data-tip="${again ? 'Згенерувати ще раз — нова картинка замінить цю (стара піде в .replaced)' : 'Промпт — у буфер; Майстерня чекає картинку з «Завантажень»'}">${ic('prompt')}${label || (again ? 'Ще раз' : 'Генерувати')}</button>`;
+      data-tip="${again ? 'Згенерувати ще раз — нова картинка замінить цю (стара піде в .replaced)' : 'Промпт — у буфер; Майстерня чекає картинку з «Завантажень»'}">${ic(again ? 'regenerate' : 'generate')}${label || (again ? 'Ще раз' : 'Генерувати')}</button>`;
   }
 
   function promptBlock(r, variant = '', title = 'Промпт') {
@@ -284,7 +288,7 @@ export async function mount(view, [rawId]) {
     const long = r.prompt.split('\n').length > 7;
     const open = mem.open.has(key);
     return html`<div class="ws-block ws-prompt">
-      <div class="ws-block-head">${ic('prompt', 'icon-s')}<span class="eyebrow">${title}</span><span class="spacer"></span>
+      <div class="ws-block-head"><span class="eyebrow">${title}</span><span class="spacer"></span>
         ${r.prompt ? ib('copy', 'Скопіювати промпт', `data-act="copy" data-what="prompt" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm' }) : ''}</div>
       ${r.prompt ? html`<pre class="ws-body ws-mono ${long && !open ? 'clamp' : ''}">${r.prompt}</pre>
         ${long ? html`<button class="ws-more" data-act="whole-prompt" data-key="${key}">${open ? 'Згорнути' : 'Показати весь промпт'}</button>` : ''}`
@@ -294,20 +298,15 @@ export async function mount(view, [rawId]) {
 
   function textBlock(r) {
     return html`<div class="ws-block ws-text">
-      <div class="ws-block-head">${ic('text', 'icon-s')}<span class="eyebrow">${r.key === 'cover' ? 'Назва на обкладинці' : 'Текст'}</span><span class="spacer"></span>
+      <div class="ws-block-head"><span class="eyebrow">${r.key === 'cover' ? 'Назва на обкладинці' : 'Текст'}</span><span class="spacer"></span>
         ${r.text ? ib('copy', 'Скопіювати текст', `data-act="copy" data-what="text" data-key="${r.key}" data-variant=""`, { cls: 'sm' }) : ''}</div>
       ${r.text ? html`<div class="ws-body">${highlightTokens(r.text)}</div>` : html`<div class="ws-body empty-text">Тексту ще немає.</div>`}
     </div>`;
   }
 
-  function rowDots(r, variant) {
-    const has = [['Промпт', r.prompt], ['Картинка', r.pictures.length], ...(variant ? [] : [['Текст', r.text]])];
-    return html`<span class="ws-dots" data-tip="${has.map(([w, ok]) => `${w} ${ok ? '✓' : '—'}`).join(' · ')}">${has.map(([, ok]) => html`<i class="${ok ? 'ok' : ''}"></i>`)}</span>`;
-  }
-
   function rowCard(r, variant = '') {
     return html`<section class="ws-row ${waitingFor(id, r.key, variant) ? 'waiting' : ''}" id="row-${r.key}">
-      <div class="ws-row-head"><span class="ws-row-label">${r.label}</span>${rowDots(r, variant)}<span class="ws-row-act">${genButton(r, variant)}</span></div>
+      <div class="ws-row-head"><span class="ws-row-label">${r.label}</span><span class="ws-row-act">${genButton(r, variant)}</span></div>
       ${promptBlock(r, variant, variant ? 'Промпт заміни героя' : 'Промпт')}
       ${frame(r, variant)}
       ${variant ? '' : textBlock(r)}
@@ -338,7 +337,7 @@ export async function mount(view, [rawId]) {
           </div>${busyCover('cover')}${w1 ? waitCover('Чекаю обкладинку…') : ''}</div>`
         : html`<div class="ws-frame"><div class="ws-drop" data-drop="cover" data-variant=""><button type="button" class="ws-ph" data-act="pick" data-key="cover" data-variant="">
             <span class="ws-half">задня</span><span class="ws-half">передня</span>
-            <span class="ws-ph-text">${ic('upload')}<b>Перетягніть обкладинку</b><span>або клацніть, щоб обрати файл</span></span></button>
+            <span class="ws-ph-text"><span class="drop-ico">${ic('upload')}</span><b>Перетягніть обкладинку</b><span>або клацніть, щоб обрати файл</span></span></button>
             ${busyCover('cover')}${w1 ? waitCover('Чекаю обкладинку з «Завантажень»…') : ''}</div></div>`;
       pane = html`${promptBlock(r, '', 'Промпт обкладинки (агент 6)')}${artFrame}${textBlock(r)}
         ${c.art ? html`<div class="ws-cv-next"><button class="btn btn-primary" data-act="cover-stage" data-stage="2">Далі: поля${ic('chevRight')}</button></div>` : ''}`;
@@ -359,12 +358,12 @@ export async function mount(view, [rawId]) {
         ? html`<img data-fade alt="Обкладинка з полями" src="${pic('pictures', c.final, 2600)}" data-act="zoom" data-key="cover">${saveBtn('pictures', c.final, '', 'Зберегти готову обкладинку як…')}`
         : c.expanded ? html`<img data-fade alt="Обкладинка з білими полями" src="${pic('originals', c.expanded, 2600)}"><span class="ws-cv-inner" style="left:${pct(ax, cw)};top:${pct(ay, ch)};width:${pct(aw, cw)};height:${pct(ah, ch)}"></span>` : '';
       pane = html`<div class="ws-cv-bar">
-          <button class="btn btn-sm btn-ghost ${mem.guides ? 'on' : ''}" data-act="guides" data-tip="Лінії шаблону друкарні: обріз, корінець, безпечні зони">${ic('guides')}Лінії шаблону</button>
+          <div class="tools">${ib('guides', mem.guides ? 'Сховати лінії шаблону друкарні' : 'Показати лінії шаблону друкарні: обріз, корінець, безпечні зони', 'data-act="guides"', { cls: mem.guides ? 'on' : '' })}</div>
           <span class="ws-cv-info num">${c.final ? (c.skipped ? 'без полів' : `${tpx[0]}×${tpx[1]} px · ${c.template.dpi} dpi`) : `поля за шаблоном · ${cw}×${ch} px`}</span>
           <span class="spacer"></span>
           ${c.final ? '' : html`<button class="btn btn-sm btn-ghost" data-act="no-margins" data-tip="Взяти обкладинку як є, без полів — вона стане Cover.png">Без полів</button>`}
           ${w2 ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>чекаю обкладинку з полями</span>`
-            : html`<button class="btn btn-sm ${c.final ? '' : 'btn-primary'}" data-act="gen" data-key="cover-wrap" data-variant="" data-tip="У буфер: обкладинка з полями, потім (Далі / F8) промпт аутпейнту">${ic('prompt')}${c.final ? 'Ще раз' : 'Генерувати поля'}</button>`}
+            : html`<button class="btn btn-sm ${c.final ? '' : 'btn-primary'}" data-act="gen" data-key="cover-wrap" data-variant="" data-tip="У буфер: обкладинка з полями, потім (Далі / F8) промпт аутпейнту">${ic(c.final ? 'regenerate' : 'generate')}${c.final ? 'Ще раз' : 'Генерувати поля'}</button>`}
         </div>
         <div class="ws-drop" data-drop="cover-wrap" data-variant="">
           <div class="ws-art ws-wide ${c.final ? '' : 'margins'}"${ratio(c.final && !c.skipped ? tpx : c.final ? c.artMarks.source : [cw, ch])}>${shown}${lines}
@@ -389,13 +388,13 @@ export async function mount(view, [rawId]) {
       <div class="ws-row-head"><span class="ws-row-label">Герой варіанта · ${v.name}</span><span class="ws-row-act">
         ${v.hero ? html`<button class="btn btn-sm" data-act="copy-hero" data-variant="${v.name}">${ic('copy')}Героя в буфер</button>` : ''}
         ${waiting ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>чекаю картинку</span>`
-          : v.heroPrompt ? html`<button class="btn btn-sm ${v.hero ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-variant="${v.name}">${ic('prompt')}${v.hero ? 'Ще раз' : 'Генерувати'}</button>` : ''}</span></div>
+          : v.heroPrompt ? html`<button class="btn btn-sm ${v.hero ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-variant="${v.name}">${ic(v.hero ? 'regenerate' : 'generate')}${v.hero ? 'Ще раз' : 'Генерувати'}</button>` : ''}</span></div>
       <div class="ws-vhero">
         <div class="ws-drop ws-hero-shot" data-drop="hero" data-variant="${v.name}">
           ${v.hero ? html`<div class="ws-art"><img data-fade alt="Герой варіанта ${v.name}" src="${pic('agent', v.hero, 600, v.name)}"></div>`
-            : html`<button type="button" class="ws-ph" data-act="pick" data-key="hero" data-variant="${v.name}"><span class="ws-ph-text">${ic('upload')}<b>Героя ще немає</b><span>згенеруйте або перетягніть</span></span></button>`}
+            : html`<button type="button" class="ws-ph" data-act="pick" data-key="hero" data-variant="${v.name}"><span class="ws-ph-text"><span class="drop-ico">${ic('hero')}</span><b>Героя ще немає</b><span>згенеруйте або перетягніть</span></span></button>`}
           ${busyCover('hero')}</div>
-        <div class="ws-block ws-prompt grow"><div class="ws-block-head">${ic('prompt', 'icon-s')}<span class="eyebrow">Промпт героя (правка canonical.png)</span></div>
+        <div class="ws-block ws-prompt grow"><div class="ws-block-head"><span class="eyebrow">Промпт героя (правка canonical.png)</span></div>
           ${v.heroPrompt ? html`<pre class="ws-body ws-mono clamp">${v.heroPrompt}</pre>` : html`<div class="ws-body empty-text">hero-prompt.md ще немає — його напише агент.</div>`}</div>
       </div></section>`;
   }
@@ -410,13 +409,13 @@ export async function mount(view, [rawId]) {
     const left = v ? v.rows.some((r) => r.prompt && !r.pictures.length) : rows.some((r) => r.prompt && !r.pictures.length);
     const heroThumb = step('hero').thumb;
     patch($('#ws-rows-head'), [['head', html`<div class="ws-rows-head-in">
-      <h2 class="ws-rows-title">Сторінки книги</h2>
-      ${v ? html`<span class="ws-rows-count num">Розвороти ${v.done}/${v.rows.length}</span>`
-        : html`<span class="ws-rows-count num" data-tip="Промпти ${b.counts.prompts}/17 · Тексти ${b.counts.texts}/17">Картинки ${done}/${rows.length}</span>
-          <span class="ws-meter" data-tip="Картинки ${done} з ${rows.length}"><i style="transform:scaleX(${done / rows.length})"></i></span>`}
+      <h2 class="section-title">Сторінки книги</h2>
+      ${v ? html`<span class="num" data-tip="Розвороти варіанта з картинками">${v.done}/${v.rows.length}</span>`
+        : html`<span class="num" data-tip="Картинки ${done} з ${rows.length} · промпти ${b.counts.prompts}/17 · тексти ${b.counts.texts}/17">${done}/${rows.length}</span>
+          <span class="ws-meter"><i style="transform:scaleX(${done / rows.length})"></i></span>`}
       <span class="spacer"></span>
       ${heroThumb && !v ? html`<button class="btn btn-sm" data-act="copy-hero" data-tip="Героя (canonical.png) — у буфер, щоб вставити в новий чат Gemini першим">${ic('hero')}Героя в буфер</button>` : ''}
-      ${!busy && left ? html`<button class="btn btn-primary" data-act="series" data-tip="${v ? 'Усі розвороти варіанта без картинок — по черзі' : 'Розвороти 2–3 … 28–29, потім сторінки 1 і 30 — ті, що без картинок; після кожної картинки наступний промпт уже в буфері'}">${ic('prompt')}${v ? 'Генерувати варіант' : done ? 'Генерувати решту' : 'Генерувати всю книгу'}</button>` : ''}
+      ${!busy && left ? html`<button class="btn btn-primary" data-act="series" data-tip="${v ? 'Усі розвороти варіанта без картинок — по черзі' : 'Розвороти 2–3 … 28–29, потім сторінки 1 і 30 — ті, що без картинок; після кожної картинки наступний промпт уже в буфері'}">${ic('generate')}${v ? 'Генерувати варіант' : done ? 'Генерувати решту' : 'Генерувати всю книгу'}</button>` : ''}
     </div>`]]);
     patch($('#ws-vtabs'), b.variants.length ? [['tabs', html`<div class="seg ws-vtabs"><span class="seg-pill"></span>
       <button type="button" class="${v ? '' : 'active'}" data-act="variant" data-variant="">Основна</button>
@@ -574,14 +573,10 @@ export async function mount(view, [rawId]) {
     const a = t.dataset.act;
     const { key = '', variant = '' } = t.dataset;
     if (a === 'back') { location.hash = '#/workshop'; return; }
-    if (a === 'agent') { act(t, () => api('/api/workshop/agent', { method: 'POST', body: { book: id } }), (r) => `Antigravity відкривається · у буфері «${r.clip}» — вставте в чат агента`); return; }
+    if (a === 'agent') { act(t, () => api('/api/workshop/agent', { method: 'POST', body: { book: id } }), () => 'Antigravity відкривається · у буфері — ця книга з повною адресою; вставте в чат агента'); return; }
     if (a === 'open') { act(t, () => api('/api/workshop/open', { method: 'POST', body: { book: id, what: t.dataset.what, name: t.dataset.name || '' } })); return; }
     if (a === 'more') {
-      menu(t, [
-        { label: 'Відкрити папку книги', icon: 'folderOpen', onClick: () => act(null, () => api('/api/workshop/open', { method: 'POST', body: { book: id, what: 'folder' } })) },
-        '-',
-        { label: 'Видалити книгу…', icon: 'trash', danger: true, onClick: () => deleteBook(t) },
-      ]);
+      menu(t, [{ label: 'Видалити книгу…', icon: 'trash', danger: true, onClick: () => deleteBook(t) }]);
       return;
     }
     if (a === 'to-library') { toLibrary(); return; }

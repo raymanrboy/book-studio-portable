@@ -4,8 +4,10 @@
 // the output folder the owner picked: the templates folder itself never appears here, the templates were
 // copied before this runs. This file stays ASCII only.
 //
-// JOB = { status, cancel, compression, finish, templates: [{ name, title, file, keepOpen,
+// JOB = { status, cancel, compression, finish, cover, templates: [{ name, title, file, keepOpen,
 //         fills: [{layer: [...], image}], shots: [{title, fills, save}] }] }
+// JOB.cover: a copy of the book's cover picture, opened after the templates when some are left open, so the owner
+// has it at hand to fit the front cover (26.09.2026); the second script closes it if he has not changed it.
 // Progress goes to JOB.status as JSON; a file at JOB.cancel stops the run between pictures.
 // JOB.finish: the second script of a run ("save the open ones" in the window): the templates the first one left
 // open, with the front cover the owner fitted by hand, are saved as PNG and closed; nothing is opened or filled.
@@ -175,7 +177,10 @@ function samePath(a, b) {
 // A template the first script left open: by its copy's path, else by its file name (a Save As elsewhere).
 function findOpen(t) {
     var byName = null;
-    var name = t.file.replace(/^.*[\\/]/, "");
+    // No "/" inside a regex's [...]: Photoshop's ExtendScript reads it as the regex's end ("Error 25: Expected: )",
+    // the owner's screen, 26.09.2026) where any browser or Node accepts it, so the name is cut without one.
+    var wanted = String(t.file).replace(/\\/g, "/");
+    var name = wanted.substring(wanted.lastIndexOf("/") + 1);
     for (var i = 0; i < app.documents.length; i++) {
         var doc = app.documents[i], path = "";
         try {
@@ -185,6 +190,36 @@ function findOpen(t) {
         if (!byName && doc.name === name) byName = doc;
     }
     return byName;
+}
+
+// The book's cover beside the templates the owner finishes (only when some are left open).
+function openCover() {
+    try {
+        app.open(new File(JOB.cover));
+        STATUS.coverOpened = true;
+    } catch (e) {
+        STATUS.problems.push({ kind: "open", template: "Cover", detail: message(e) });
+    }
+}
+
+// The cover the first script opened: closed with the templates, only by its own path and only when the owner has
+// not changed it (a changed one stays open, his work is never thrown away).
+function closeCover() {
+    for (var i = 0; i < app.documents.length; i++) {
+        var doc = app.documents[i], path = "";
+        try {
+            path = doc.fullName.fsName;
+        } catch (e) {}
+        if (path && samePath(path, JOB.cover)) {
+            try {
+                if (doc.saved) {
+                    doc.close(SaveOptions.DONOTSAVECHANGES);
+                    STATUS.coverClosed = true;
+                }
+            } catch (e) {}
+            return;
+        }
+    }
 }
 
 function finishOpen() {
@@ -211,6 +246,7 @@ function finishOpen() {
         STATUS.step += 1;
         report();
     }
+    if (JOB.cover) closeCover();
 }
 
 (function main() {
@@ -230,6 +266,7 @@ function finishOpen() {
                 var kept = runTemplate(JOB.templates[i]);
                 if (kept && !first) first = kept;
             }
+            if (first && JOB.cover) openCover();
         }
         STATUS.state = "done";
     } catch (e) {

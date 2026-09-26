@@ -1,7 +1,7 @@
 ---
 title: Mockups — listing pictures from a demo book (the Listings mode)
 type: feature
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/studio/mockups.py
   - app/studio/mockups.jsx
@@ -75,6 +75,19 @@ and a notice says when it ends («Мокапи: готово · 7 картино
      their copies — «Збережено ще 3 картинки · Тимчасові копії шаблонів прибрано». Saving them by hand
      as before still works; the copies are then cleaned up by themselves (below). A reloaded window
      offers the button again (`pending()`).
+   - **The book's cover opens beside them** (since 2026-09-26, the owner: "open the Cover image in Photoshop too,
+     so I can work with it at once"): the demo book's cover as Canva exported it, copied into the run's folder as
+     `Cover.png` (`plan()` → `prepare()`), is opened after the templates when some are left open; the first
+     template stays in front. The card says «… і обкладинка книги Cover». «Зберегти відкриті» closes it too —
+     only when the owner hasn't changed it (`doc.saved`); a changed one stays open. A cover that can't be opened
+     is a line among the problems («Cover» не відкрився); the pictures stand.
+5. **«×» in the header — «Завершити»** (since 2026-09-26, the owner: "a cross on the Mockups page, to finish the
+   creation"): the page starts clean for the next book — the book, the picks, the folder, the result and «Ваша
+   черга» go; the unpacked demo book is deleted at once (`close()`, `/api/mockups/close`). With templates still
+   waiting in Photoshop it asks first («Завершити без «Зберегти відкриті»?»): they stay open for the owner to save
+   as he used to, and the run is marked (`dismissed` in its folder) so a reload doesn't offer them again; the
+   copies go the usual way. During a run or an open Windows dialog it answers with a notice and waits. The × shows
+   only when there is something to finish.
 
 The sliders button in the header: **where the templates and Photoshop are** (path fields with folder
 buttons and a ✓/✗ line). A missing folder also shows a yellow line above the steps.
@@ -121,7 +134,9 @@ templates, the rest Photoshop.
    portable launcher `Photoshoр.exe` (Cyrillic "р", found by the mask `Photosho*.exe`; keeps the settings
    off drive C), with its temp folder set to `data/mockups/tmp/photoshop` on D. **One script per run → one
    "Yes"**.
-5. The script (ExtendScript, Photoshop CC 2019): for every template — open the copy, "Replace Contents"
+5. The script (ExtendScript, Photoshop CC 2019 — older than any browser: **no `/` inside a regex's `[...]`**, it
+   ends the regex there; that stopped every run from 2026-09-24 to 26.09 with "Error 25: Expected: )" in
+   `findOpen()`, now cut with `lastIndexOf`): for every template — open the copy, "Replace Contents"
    of each smart object by the layer path (names compared with spaces trimmed; a one-name path is looked
    for at the top of the layer list, where the owner's shortcut copies are), put the layer's and its
    groups' visibility back (selecting a hidden layer shows it), then per spread — swap the pages and save
@@ -239,10 +254,10 @@ icon, «Мокапи: готово · 7 картинок», back in the listings
 
 ## Where in the code
 
-- [app/studio/mockups.py](../../app/studio/mockups.py) — `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `OLD_UTILITY`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `forget_old_utility()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `make()`, `finish()`, `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
-- [app/studio/mockups.jsx](../../app/studio/mockups.jsx) — `findLayer()`, `replaceContents()`, `fill()`, `savePng()`, `runTemplate()`, `findOpen()`, `finishOpen()`, `report()`, `cancelled()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `OLD_UTILITY`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `forget_old_utility()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `make()`, `finish()`, `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
+- [app/studio/mockups.jsx](../../app/studio/mockups.jsx) — `openCover()`, `closeCover()`, `findLayer()`, `replaceContents()`, `fill()`, `savePng()`, `runTemplate()`, `findOpen()`, `finishOpen()`, `report()`, `cancelled()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `clear_books()`, `forget_old_utility()` and `clean_runs()` on launch and close
-- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `mount()`, `paintBook()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
+- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `paintHead()`, `finishPage()`, `mount()`, `paintBook()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
 - [app/web/js/app.js](../../app/web/js/app.js) — the route `#/mockups`, `paintBusy()` (the rail's dot)
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_zip()`, `downloads_folder()`, `attention()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `export_files()` (the same naming rules as the print folder), `archive_folder()`

@@ -3,6 +3,65 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-26] update | Mockups: the book's Cover opens in Photoshop; «×» finishes the page
+
+- The owner: open the Cover image in Photoshop beside the PSDs left open; a cross on the Mockups page to finish.
+- `mockups.py`: `plan()` names the cover's copy (`Cover.png` in the run), `prepare()` copies it, `script()` and
+  `finish_plan()` pass it on, `make()` says `coverOpen`, `pending()` skips a `dismissed` run; `close()` and the route
+  `/api/mockups/close`. `mockups.jsx`: `openCover()` after the templates, `closeCover()` in the second script (only
+  an unchanged one); `findOpen()`'s double `path` renamed. `mockups.js`: the header's `.tools` with «×»,
+  `finishPage()`, the turn card names the cover. The preview's pretend Photoshop "opens" the cover too.
+- Checked: 324 tests (the pretend Photoshop opens pictures and knows a changed document; new: the cover opened last
+  and left open, a missing cover told, the second script closing only an unchanged cover, «×» forgetting the run and
+  the book, waiting for a run); the preview — a whole run, the card, «×» with its question, a reload with nothing
+  offered. Not checked: the real Photoshop. Pages: features/mockups.md, api-routes.md, decisions.md, index.md,
+  dev/testing.md.
+
+## [2026-09-26] update | Workshop: the book's folder in the header; a picture dragged from the page never drops in
+
+- The owner: the header's folder must be the book's folder (not behind «Ще»), the originals — a separate button with
+  a wide picture; and a spread dragged a little and let go on itself replaced itself with a cut square.
+- `workshop-book.js`: the header's group — agent │ the book's folder │ the pages (`images`) │ the originals (new
+  icon `original`) │ «Ще» (delete only). `app.js`: a drag that starts in the window is shut out of every drop zone
+  while it carries files (the browser hands a dragged picture over as a file) — the Workshop, the passport, the
+  order card alike; the mockups' own drags carry no files.
+- Checked: 319 tests; the preview — the header's icons; a drag started on a spread's own picture and let go on it:
+  no highlight, no upload; a file from outside: taken as before. Pages: features/workshop.md,
+  flows/dropped-files.md, architecture/frontend.md.
+
+## [2026-09-26] update | Mockups: Photoshop stopped the script — "Error 25: Expected: )", fixed
+
+- The owner's screenshot: line 474, `t.file.replace(/^.*[\\/]/, "")` in `findOpen()` (added on 2026-09-23 after the
+  last working run). Photoshop 2019's ExtendScript ends a regex at a `/` inside `[...]`, so the whole script failed
+  to parse — before its first status, so Book Studio only saw "Photoshop asks about the script". Node (the tests'
+  pretend Photoshop) reads it fine, which is why the tests passed.
+- `mockups.jsx`: the name cut with `lastIndexOf`. A new test reads the script for a `/` inside a regex class.
+- Checked: 319 tests. Not checked: the real Photoshop — the owner's run. Pages: features/mockups.md, dev/testing.md.
+
+## [2026-09-26] update | The Workshop redrawn in Book Studio's style; new icons, no magic wand
+
+- The owner: the Workshop's icons, fonts and text look like another style; go over the typography everywhere; redraw
+  the icons, the magic wand especially.
+- `icons.js`: `agent`, `workshop`, `mirror`, `guides` redrawn; `prompt` (the wand) → `>_`; new `generate`,
+  `regenerate`. `workshop-book.js`: the header's actions → one group of icons; the rows' heading → the section
+  title; the rows' three dots removed; drop zones → the passport's; the cover's guides → an icon toggle.
+  `app.css` (`.ws-*`): sizes on the program's scale, square step markers, the dotted endpaper.
+- Checked: 318 tests; the preview (sandbox) — the gallery, books 40 and 41, a row, an empty frame, the cover, the
+  hero's panel, the generation bar, both themes, at 1:1. Not checked: the owner's own screen. Pages:
+  features/workshop.md, architecture/frontend.md, owner/ui-principles.md, decisions.md.
+
+## [2026-09-26] update | «Відкрити агента» wrote books into the prototype's folder — fixed
+
+- The owner: "on opening the agent it saves books into the old directory of the separate module". Found: Antigravity
+  2.17 ignores the folder it is started with; a new chat ran in its last picked project, the prototype's
+  `Book Console`, so book 40 was written into `D:\Roman\Desktop\Book Console\books` (then copied into
+  `pipeline/books`).
+- `books.agent_words()`: the clipboard's words carry the full paths (the rules `…\pipeline\GEMINI.md`, the book's
+  folder); Antigravity is only started. The toasts and tips of «Відкрити агента» / «Нова книга» say so.
+- Checked: 318 tests (a new one for the words). Not checked: the real Antigravity window. The owner, once: a project
+  on `Book Studio\pipeline` in Antigravity. Pages: features/workshop.md, plans/book-console.md, decisions.md,
+  code-map.md, dev/testing.md (its Workshop row brought up to date).
+
 ## [2026-09-26] update | The book console moves into the Workshop (branch book-console)
 
 - The owner: "create a new branch on GitHub and integrate the console into the Workshop — a plan, then the

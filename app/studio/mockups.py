@@ -40,6 +40,7 @@ BOOKS = core.data_path("mockups", "book")
 PHOTOSHOP_TEMP = core.data_path("tmp", "photoshop")  # a Photoshop started from here keeps its temp files on D
 # What the separate utility (until 24.09.2026) left in its data folder: its temp files, previews, window profile.
 OLD_UTILITY = ("tmp", "cache", "window-profile")
+DISMISSED = "dismissed"             # a run's mark: the owner finished the page («×») — its templates aren't offered again
 KEEP_RUNS = 24 * 3600                # with Photoshop open, a run's copies left open in it stay a day at most
 KEEP_SAVED = 7 * 24 * 3600           # a copy the owner saved himself (Ctrl+S lands in the run folder): a week
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
@@ -301,7 +302,13 @@ def plan(book: dict, picks: dict, out: Path, run: Path, templates_dir: Path) -> 
                       # the spread a template left open holds: its picture is named by it when saved later
                       "spread": (picks.get(key) or [None])[0] if t.get("hand") else None,
                       "fills": fills, "shots": shots})
+    # The book's cover as Canva exported it, opened in Photoshop beside the templates left open: the owner fits the
+    # front cover from it (26.09.2026: "open the Cover image too, so I can work with it at once"). A copy in the run's
+    # folder — the demo book's own folder goes when another book comes in.
+    source = book.get("cover")
+    cover = (run / f"Cover{Path(source).suffix.lower()}").as_posix() if source else None
     return {"run": str(run), "out": str(out), "pictures": pictures, "templates": steps,
+            "cover": cover, "coverSource": str(source) if source else None,
             "status": (run / "status.json").as_posix(), "cancel": (run / "cancel").as_posix()}
 
 
@@ -319,6 +326,12 @@ def prepare(job: Job, book: dict, work: dict) -> None:
                 covers[kind] = cover_pictures(book["cover"], size)
             im = covers[kind][what]
         _save_png(im, run / "pictures" / name)
+    if work.get("cover"):
+        try:
+            shutil.copyfile(work["coverSource"], work["cover"])
+        except OSError as err:  # the mockups still go on; only the cover isn't opened for the owner
+            core.log.warning("Mockups: the cover was not copied for Photoshop: %s", err)
+            work["cover"] = None
 
 
 def copy_templates(job: Job, work: dict) -> None:
@@ -344,7 +357,7 @@ def script(work: dict) -> str:
     """The job as a JavaScript literal (ASCII only: a Cyrillic folder name travels as \\u escapes) in front of
     the fixed script. Only copies, the prepared pictures and the output files are named in it."""
     job = {"status": work["status"], "cancel": work["cancel"], "compression": PNG_COMPRESSION,
-           "finish": bool(work.get("finish")),
+           "finish": bool(work.get("finish")), "cover": work.get("cover") or None,
            "templates": [{k: t[k] for k in ("name", "title", "file", "keepOpen", "fills", "shots")}
                          for t in work["templates"]]}
     return f"var JOB = {json.dumps(job, ensure_ascii=True, indent=1)};\n\n" + SCRIPT.read_text(encoding="utf-8")
@@ -372,7 +385,8 @@ def finish_plan(run: Path) -> dict:
                      "shots": [{"title": t["title"], "fills": [], "save": _free_name(out, name, taken).as_posix()}]})
     if not docs:
         raise UserError("Відкритих шаблонів цього запуску вже немає.")
-    return {"run": str(run), "out": str(out), "finish": True, "templates": docs, "pictures": {},
+    cover = work.get("cover") if work.get("cover") and Path(work["cover"]).is_file() else None
+    return {"run": str(run), "out": str(out), "finish": True, "templates": docs, "pictures": {}, "cover": cover,
             "status": (run / "finish-status.json").as_posix(), "cancel": (run / "finish-cancel").as_posix()}
 
 
@@ -558,6 +572,7 @@ def make(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event) 
     names = set(st.get("opened") or [])
     opened = [t["title"] for t in work["templates"] if t["name"] in names]
     return {"folder": str(out), "saved": [p.name for p in saved], "open": opened,
+            "coverOpen": bool(st.get("coverOpened")),
             "run": run.name if opened else "", "cancelled": st.get("state") == "cancelled",
             "seconds": round(time.time() - started), "problems": _problems(st)}
 
@@ -605,11 +620,13 @@ def pending() -> dict | None:
     if not runs:
         return None
     run = runs[0]
+    if (run / DISMISSED).exists():
+        return None
     st, work = _status(run / "status.json"), core.read_json(run / "job.json", None)
     if not st or st.get("state") != "done" or not isinstance(work, dict):
         return None
     left = [t["title"] for t in work.get("templates") or [] if t.get("keepOpen") and Path(t["file"]).is_file()]
-    return {"run": run.name, "folder": work.get("out"), "open": left} if left else None
+    return {"run": run.name, "folder": work.get("out"), "open": left, "cover": bool(st.get("coverOpened"))} if left else None
 
 
 # ---------------------------------------------------------------- routes
@@ -744,6 +761,29 @@ def _logged(fn, job: Job, *args):
     core.log.info("Mockups: done in %ss — %d saved, left open: %s, problems: %s", result.get("seconds"),
                   len(result.get("saved") or []), result.get("open") or "none", result.get("problems") or "none")
     return result
+
+
+def close(run_name: str = "") -> None:
+    """«×» — the owner has finished with this book (26.09.2026): the demo book goes (its unpacked copy too), and a
+    run whose templates still wait in Photoshop is not offered again. Photoshop and what is open in it are left as
+    they are; the run's copies are cleaned as always (once Photoshop is closed)."""
+    if jobs.running("mockups"):
+        raise ApiError("Зачекайте, поки Photoshop закінчить, — або зупиніть його.")
+    if run_name:
+        if not re.fullmatch(_RUN_NAME, run_name):
+            raise ApiError("Некоректний запит.")
+        if (WORK / run_name).is_dir():
+            (WORK / run_name / DISMISSED).write_text("", encoding="utf-8")
+    with _lock:
+        _books.clear()
+    clear_books()
+    core.log.info("Mockups: finished by the owner%s", f" (run {run_name} no longer offered)" if run_name else "")
+
+
+@route("POST", "/api/mockups/close")
+def _close(req: Request):
+    close(str((req.json or {}).get("run") or ""))
+    return {"ok": True}
 
 
 @route("POST", "/api/mockups/cancel")

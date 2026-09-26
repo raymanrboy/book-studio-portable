@@ -60,7 +60,7 @@ code: []
 
 - [Launch and shutdown](architecture/runtime.md)
 - [Server](architecture/server.md) — routes, background jobs, errors, settings.
-- [Server routes](architecture/api-routes.md) — all 128, with who calls them.
+- [Server routes](architecture/api-routes.md) — all 129, with who calls them.
 - [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
 - [Data](architecture/data.md) — what's in `app/data`.
 

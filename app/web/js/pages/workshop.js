@@ -117,7 +117,7 @@ export async function mount(view) {
       setHtml(box, html`<div class="empty" style="padding:72px 20px">
         <div class="empty-icon">${ic('workshop')}</div>
         <h3>Майстерня порожня</h3>
-        <p>«Нова книга» відкриє Antigravity, а в буфері буде «нова книга» — вставте в чат агента. Книга з'явиться тут сама, щойно агент почне її писати.</p>
+        <p>«Нова книга» відкриє Antigravity, а в буфері буде «Нова книга» з адресою папки книг — вставте в чат агента. Книга з'явиться тут сама, щойно агент почне її писати.</p>
         <button class="btn btn-primary" data-act="add">${ic('agent')}Нова книга</button>
         <div class="faint mono ws-empty-path">${state.folder}</div></div>`);
     } else if (!list.length) {
@@ -163,7 +163,7 @@ export async function mount(view) {
   paint();
 
   const newBook = (btn) => act(btn, () => api('/api/workshop/agent', { method: 'POST', body: {} }),
-    (r) => `Antigravity відкривається · у буфері «${r.clip}» — вставте в чат агента`);
+    () => 'Antigravity відкривається · у буфері — «Нова книга» з адресою папки книг; вставте в чат агента');
   const runSearch = debounce(paint, 90);
   const offs = [
     on(view, 'click', '[data-open]', (e, b) => { location.hash = `#/workshop/${encodeURIComponent(b.dataset.open)}`; }),

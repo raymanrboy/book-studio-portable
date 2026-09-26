@@ -7,7 +7,7 @@ code:
 ---
 # Tests
 
-> 317 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
+> 324 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
 > **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
 > whatever it was before) in `.tmp\` of the repository on drive D, wiped at the end; buyers are made up. The
 > Workshop's tests run in its sandbox (`BOOK_STUDIO_SANDBOX`): made-up books, Downloads, clipboard and Recycle Bin
@@ -61,6 +61,9 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
   status file; the Photoshop script itself (ExtendScript is plain old JavaScript) runs under **Node.js**
   against a small pretend Photoshop — layers, visibility, "Replace Contents", saving that takes the active
   document (`HARNESS` in `test_mockups.py`). Node.js is on the Wrocław PC; without it these tests are skipped.
+  **Node reads more than Photoshop 2019's ExtendScript does**: `/^.*[\\/]/` ran in Node but stopped the real
+  script at once ("Error 25: Expected: )", 2026-09-26) — so a test reads the script's text for what ExtendScript
+  can't parse (a `/` inside a regex's `[...]`; `test_no_slash_inside_a_regex_class_which_photoshop_cannot_read`).
 - `golden_profit.json` — made-up receipts and orders with the results from the original Profit
   Calculator (parity to the cent).
 - Images are generated on the fly (Pillow, small sizes), Printify sizes are swapped in the tests.
@@ -93,7 +96,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 | [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing` (including: a stale printer list proves nothing), `OnlyWhatWentToPrint` (including: "already at the printer" after a restart), `ReprintMark`, `PrintifyReprint`, `GelatoReprint` (including: a warning when the printer accepted it but the accounting wasn't recorded), `PreviewCache` (cache cleanup, locks, zoom) |
 | [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (the model is faked: it "reads" what the test "printed"), `WhileItRuns` (a spread goes to checking without waiting for the last read; findings are handed over while the check runs), `Prescan` (a quick page scan: drawn text vs. a drawn illustration, picture-only pages never reach the model, a false positive — the second half of the spread is checked), `Passport` (a name only as a whole word, and only where the passport had `{Name}`; a preview before saving), `BooksOfOneOrder` (two books of one receipt don't block each other's checks), `AnotherBookByPosition` and `WholeCheck.test_another_books_pages_raise_one_alarm` (another book's pages — one alarm), `OwnerMarks` ("Not an error" into the journal), `Replay` (`app/tools/textcheck_replay.py`), `OllamaAndRoutes` |
 | [test_mockups.py](../../app/tests/test_mockups.py) | `ReadingTheDemoBook`, `Pictures` (the back/front/spine cuts by colour, sizes, 300 dpi), `RunPlan` (every layer, the front cover never touched, names never overwrite, wrong picks, nothing points into the templates folder), `Run` (a pretend Photoshop: the templates untouched, the prepared pictures gone after it, stop, Photoshop closing, a script error), `SaidInTheLog` (the folder dialog and a failed run in the log), `Cleaning` (earlier runs with Photoshop closed / open, a copy the owner saved, Photoshop's temp folder, one demo book at a time in its own folder — an order's dropped files untouched both ways, a picked ZIP only read, the old utility's leftovers, the program's own temp folder on D), `SaveTheOpenOnes` («Зберегти відкриті»: names, offered after a reload, the run gone, a template the owner closed, Photoshop closed), `Progress` (every template's row), `PhotoshopScript` — **the real `mockups.jsx` run by Node.js against a pretend Photoshop**, the second script («Зберегти відкриті») too (skipped without `node`) |
-| [test_workshop.py](../../app/tests/test_workshop.py) | `SpreadsBecomeTwoPages` (the flipper's spreads mirrored, the others not; a wide picture loses its sides, a narrow one its top and bottom; ⇄ and back gives the same pixels and removes the replaced files; only a Workshop book's spreads, only pictures; removing both pages forgets the notes), `ANewBook` (a title is enough; never in the library's list, the order matching or the book counter; a library book gains no prompts; the card's first spread), `PromptsAndTexts` (a prompt saved like a text with `rev`; one JSON fills all 17 of each and reads back the same; what's missing named, the old text-only form still read; a dry run counts replacements and writes nothing; the library's import takes only texts; the agent's instruction parses), `PassingToTheLibrary` (the listing needed; a listing another book has — 409 with its id; after it — in the library, found by orders, prompts kept, one way) |
+| [test_workshop.py](../../app/tests/test_workshop.py) | In the sandbox, on made-up books: `TheSandbox` (the owner's books, clipboard and Downloads never reached; «Відкрити агента» puts the words with the pipeline's full paths — the rules and the books' folder — into the fake clipboard, since Antigravity 2 ignores the folder it is started with), `TheBookList`, `ThePathStrip`, `OnlyInsideTheBook`, `TheSignature`, `TheRows`, `TheBookCheck`, `APictureIntoItsRow`, `CatchingDownloads`, `PassingToTheLibrary` |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode` |
 
 ## Where in the code

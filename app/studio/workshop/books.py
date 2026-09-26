@@ -419,15 +419,26 @@ def antigravity() -> Path | None:
     return exe if exe and exe.is_file() else None
 
 
+def agent_words(book_id: str | None) -> str:
+    """What to say to the book agent: a new book or which book goes on — with the pipeline's full paths. Antigravity 2
+    ignores a folder given at its start: a new chat runs in the project last picked in it, and once that was the
+    prototype's `Book Console`, so the agent wrote the book there (2026-09-26). The words name the rules and the
+    books' folder themselves, whatever project the chat is in."""
+    rules = core.PIPELINE_DIR / "GEMINI.md"
+    if book_id:
+        return f"Продовжуємо книгу {book_path(book_id)} (правила — {rules}; інших папок книг не чіпай)"
+    return f"Нова книга. Спершу прочитай {rules}; книгу пиши тільки в {books_dir()}"
+
+
 def open_agent(book_id: str | None) -> str:
-    """Antigravity on the pipeline's folder (where GEMINI.md, the book agents' rules, is read from — a book's own
-    folder has none) and, in the clipboard, what to say to the agent: «нова книга» or which book goes on."""
-    say = f"Продовжуємо книгу books/{book_path(book_id).name}" if book_id else "нова книга"
+    """Antigravity and, in the clipboard, the words for its agent (`agent_words()`). Which folder the agent works in
+    is the project picked in Antigravity — Book Studio can't choose it."""
+    say = agent_words(book_id)
     if not core.SANDBOX:
         exe = antigravity()
         if not exe:
             raise ApiError("Antigravity не знайдено (очікувався %LOCALAPPDATA%\\Programs\\antigravity\\Antigravity.exe).")
-        subprocess.Popen([str(exe), str(core.PIPELINE_DIR)], cwd=str(core.PIPELINE_DIR),
+        subprocess.Popen([str(exe)], cwd=str(core.PIPELINE_DIR),
                          creationflags=desktop.CREATE_NO_WINDOW if os.name == "nt" else 0)
     from .. import clipboard
     clipboard.set_text(say)

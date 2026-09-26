@@ -5,7 +5,7 @@
 // A page of the Listings mode (#/mockups; until 24.09.2026 a window of its own). It is kept when the owner steps
 // away (keep()): the book, the picks and a run going on in Photoshop wait for him; a small dot on the rail says a
 // run is on, and a notice says when it ends.
-import { api, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal } from '../lib.js';
+import { api, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../order-bits.js';
 
@@ -94,7 +94,7 @@ export async function mount(view) {
           <h1 class="page-title">Мокапи</h1>
           <div class="page-sub">Демо-книга з Canva → картинки для лістингу Etsy</div>
         </div>
-        <div class="page-actions">${ib('sliders', 'Де шаблони і Photoshop', 'data-act="places"')}</div>
+        <div class="page-actions" id="mk-actions"></div>
       </header>
       <div id="mk-lost"></div>
       <div class="creator-grid mk-layout">
@@ -107,7 +107,41 @@ export async function mount(view) {
         <section class="card card-pad stack-l mk-structure" id="mk-right"></section>
       </div>
     </div>`);
-    paintLost(); paintBook(); paintTemplates(); paintOut(); paintAction(); paintStructure();
+    paintHead(); paintLost(); paintBook(); paintTemplates(); paintOut(); paintAction(); paintStructure();
+  }
+
+  // The header: where the templates and Photoshop are; «×» — this book is done, the page starts clean (the owner,
+  // 26.09.2026: "a cross on the Mockups page, to finish the creation"), as the order card's × finishes an order.
+  const something = () => !!(st.book || st.result || st.finished || st.pending || st.runError || st.bookError);
+  function paintHead() {
+    const box = $('#mk-actions');
+    if (!box) return;
+    setHtml(box, html`<div class="tools">${ib('sliders', 'Де шаблони і Photoshop', 'data-act="places"')}
+      ${something() ? html`<span class="sep"></span>${ib('x', 'Завершити — наступна книга з чистого аркуша', 'data-act="close"')}` : ''}</div>`);
+  }
+
+  async function finishPage() {
+    if (st.run || st.asking || st.receiving !== null) {
+      toast(st.run ? 'Photoshop ще працює — дочекайтесь або зупиніть його (× у кроці 4)' : 'Зачекайте хвилинку — вікно Windows ще відкрите', 'info');
+      return;
+    }
+    if (st.pending) {
+      const ok = await confirmBox({
+        title: 'Завершити без «Зберегти відкриті»?',
+        text: `У Photoshop чекають: ${st.pending.open.join(', ')}. Вони лишаться відкритими — збережіть їх самі, як звикли; Book Studio більше не пропонуватиме їх зберегти.`,
+        confirm: 'Завершити',
+      });
+      if (!ok || gone) return;
+    }
+    try {
+      await api('/api/mockups/close', { method: 'POST', body: { run: st.pending?.run || '' } });
+    } catch (err) { toast(err.message, 'error'); return; }
+    if (gone) return;
+    Object.assign(st, { book: null, label: '', receiving: null, bookError: '', out: '', asking: false, run: null,
+      result: null, finished: null, pending: null, runError: '' });
+    resetPicks();
+    render();
+    toast('Мокапи завершено — можна брати наступну книгу', 'success');
   }
 
   function paintLost() {
@@ -342,7 +376,7 @@ export async function mount(view) {
   function turnCard(p) {
     return html`<div class="mk-turn">
       <div class="mk-turn-head">${ic('hand')}<span>Ваша черга — у Photoshop</span></div>
-      <p>Відкриті: <b>${p.open.join(', ')}</b>. Підженіть у кожному лицьову обкладинку — і збережіть усі разом:</p>
+      <p>Відкриті: <b>${p.open.join(', ')}</b>${p.cover ? html` і обкладинка книги <b>Cover</b> — з неї й беріть лицьову` : ''}. Підженіть у кожному шаблоні лицьову обкладинку — і збережіть усі разом:</p>
       <button type="button" class="btn btn-block mk-finish" data-act="finish">${ic('download')}Зберегти відкриті й закрити</button>
       <div class="mk-turn-note">Картинки ляжуть у ту саму папку й будуть названі, як решта. Можна зберегти їх і самому, як звикли, — тимчасові копії програма прибере сама.</div>
     </div>`;
@@ -528,6 +562,7 @@ export async function mount(view) {
     }
     st.receiving = null;
     paintReceiving();
+    paintHead();
   }
 
   async function takeDrop(dropped) {
@@ -623,7 +658,7 @@ export async function mount(view) {
         tellDone(`Збережено ще ${res.saved.length}`);
       } else {
         st.result = { ...res, job: jobId };
-        st.pending = res.run ? { run: res.run, folder: res.folder, open: res.open } : null;
+        st.pending = res.run ? { run: res.run, folder: res.folder, open: res.open, cover: res.coverOpen } : null;
         tellDone(`${res.cancelled ? 'Зупинено' : 'Готово'} · ${res.saved.length} ${plural(res.saved.length, PICTURES)}`);
       }
     } catch (err) {
@@ -634,7 +669,7 @@ export async function mount(view) {
       if (!gone) busy(false);
     }
     st.run = null;
-    if (!gone) { paintAction(); paintPicks(); paintTiles(); }
+    if (!gone) { paintAction(); paintPicks(); paintTiles(); paintHead(); }
   }
 
   // The owner watches Photoshop while it works: the window's title says how it ended, its taskbar button
@@ -707,6 +742,7 @@ export async function mount(view) {
     if (act === 'pick-out') { if (!st.asking && !st.run) askFolder(false); return; }
     if (act === 'same-out') { st.out = st.meta.lastOut; paintOut(); paintMake(); return; }
     if (act === 'places') { openPlaces(); return; }
+    if (act === 'close') { finishPage(); return; }
     if (act === 'place') { place(t.dataset.what); return; }
     if (act === 'make') { make(); return; }
     if (act === 'finish') { if (!st.run && st.pending) start('finish', api('/api/mockups/finish', { method: 'POST', body: { run: st.pending.run } })); return; }

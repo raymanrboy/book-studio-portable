@@ -1,7 +1,7 @@
 ---
 title: The interface the owner wants
 type: owner
-updated: 2026-09-25
+updated: 2026-09-26
 code:
   - app/web/css/app.css
 ---
@@ -26,7 +26,11 @@ code:
   ([workshop](../features/workshop.md)).
 - **A tool of the family looks like Book Studio** (2026-09-23, «Мокапи»: "exactly like Book Studio"):
   numbered step cards, the path field with the folder-and-magnifier button, status badges, the structure
-  of the book on the right — the same parts, not look-alikes.
+  of the book on the right — the same parts, not look-alikes. Again for the Workshop (2026-09-26: "the icons, fonts
+  and text look like some other style… go over the typography, everything neat and crisp, everywhere"): the
+  header's actions as one group of icons, the passport's section headings, drop zones and text blocks, the Order
+  Creator's square step numbers, font sizes only from the program's scale (11.5 / 12 / 12.5 / 13 / 13.5 / 15 / 25);
+  **no magic wand** — the generation has its own icons (▷ generate, ↻ once more, `>_` a prompt).
 - **A tooltip should be fully visible** — a long one wraps to a second line instead of getting cut off
   (2026-09-19).
 - **Icons instead of text buttons** for secondary actions; their meaning lives in the tooltip (`ib()`).

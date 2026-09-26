@@ -167,6 +167,7 @@ them) — see [features/mockups.md](../features/mockups.md).
 | POST | `/api/mockups/make` | token | `_make` | mockups.js `make` (background job `mockups`; `{book, picks, folder}`; the job shares every template's progress) |
 | POST | `/api/mockups/finish` | token | `_finish` | mockups.js «Зберегти відкриті й закрити» (`{run}` → background job `mockups`: the second script saves and closes the templates left open) |
 | POST | `/api/mockups/cancel` | token | `_stop` | mockups.js (the × while it runs) |
+| POST | `/api/mockups/close` | token | `_close` | mockups.js «×» in the header — «Завершити» (`{run}`: the demo book goes, a run waiting for «Зберегти відкриті» is no longer offered; refused while a run goes on) |
 | POST | `/api/mockups/open-folder` | token | `_open_folder` | mockups.js (the result's folder button) |
 | POST | `/api/mockups/open-picture` | token | `_open_picture` | mockups.js, the viewer's "original" button (`{job, i}` — only a picture that job saved) |
 | POST | `/api/mockups/attention` | token | `_attention` | mockups.js `tellDone` (a run ended while Book Studio's window was behind: the taskbar button flashes, Windows' sound) |

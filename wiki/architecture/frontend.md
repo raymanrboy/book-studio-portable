@@ -108,11 +108,14 @@ code:
   picture, not an alias for the `package` box icon, which means "shipped on Etsy"); `plus` — "another
   book" in the Order Creator; `mockup` — the Mockups (a book in a picture frame); `hand` — "the
   owner fits this by hand" (the front cover in a mockup template); since 2026-09-24 `listing` — the Listings
-  mode (an Etsy listing's tag, its brand icon), `workshop` — the Workshop (a book with a pencil), `prompt` — a
-  picture's prompt (a wand; not `sparkle`, which means a new order), `mirror` — ⇄, a Workshop spread mirrored left
-  to right (not `swap`, which trades a spread's two pages in the passport); since 2026-09-26 `agent` — the book
-  agents in Antigravity (a chat with a spark), `hero` — a book's hero, `minus` — a step not needed, `guides` — the
-  printer's template lines.
+  mode (an Etsy listing's tag, its brand icon), `workshop` — the Workshop (the `book` with a pencil at its corner),
+  `mirror` — ⇄, a Workshop spread mirrored left to right (not `swap`, which trades a spread's two pages in the
+  passport); since 2026-09-26 `agent` — the book agents in Antigravity (a chat bubble, the agent typing), `hero` — a
+  book's hero, `minus` — a step not needed, `guides` — the printer's template lines (a cover with its spine inside
+  crop marks). **The magic wand went** (the owner, 2026-09-26): `prompt` — a prompt for the generator (a prompt sign
+  `>_` in a window; the prompt files' tabs), `generate` — «Генерувати» (▷: the prompt into the clipboard, a download
+  awaited), `regenerate` — «Ще раз» (↻; not `sync`, which refreshes the orders); `original` — the Workshop's
+  originals (a wide picture; the square `images` there means the cut pages).
 - Chips (`.chip`): a chip's text is one font (`.chip .num` doesn't switch fonts), `.chip-mono` sits 2 px
   lower so Consolas lines up with the text of other chips.
 - `keep.js` — saved pages (`stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`); pages with
