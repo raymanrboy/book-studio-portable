@@ -1,13 +1,104 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-09-25
+updated: 2026-09-26
 code: []
 ---
 # Decisions
 
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
+
+## 2026-09-26 — The book console moves into the Workshop; the pipeline moves into Book Studio
+
+- **Decision (the owner):** "create a new branch on GitHub and integrate the console into the Workshop" — branch
+  `book-console`. The Workshop *is* the console now: its gallery is the console's book list, a book's page is the
+  console's page, in Book Studio's own parts ([features/workshop.md](features/workshop.md)).
+- **A Workshop book is the pipeline's folder** (`pipeline/books/<n>.<slug>/`), not a library book marked
+  `"stage": "workshop"` any more (the agent's call; 0 such books existed): the agents write into its `agent/`, and
+  that folder has to be inside the one Antigravity opens. **The agents' files are the one source of the prompts and
+  texts** — the old Workshop's typing, its JSON `{ }` and its agent instruction went.
+- **«Передати в бібліотеку» makes a library book** from the book's pages, texts and listing (copied, as a job); the
+  Workshop's book stays with its folder (originals, variants) and moves to «У бібліотеці».
+- **The pipeline (rules, playbook, notes, listing prompts) is in git** at `pipeline/`; **the books are not** (every
+  picture). *Why this place:* Antigravity keeps its agents inside the opened folder and hides git-ignored files
+  unless *Agent Gitignore Access* is on (checked in the program, 2026-09-26) — one setting for the owner, instead of
+  opening all of his disk to the agents (*Non-Workspace File Access*).
+- **The sandbox** (`core.SANDBOX`): the preview and the tests never touch the owner's clipboard, keyboard, Downloads,
+  books or screen.
+- Details — [plans/book-console.md](plans/book-console.md#into-book-studio--the-integration-plan-2026-09-26).
+
+## 2026-09-26 — The cover's margins follow the printer's template; a deleted book goes to the Recycle Bin
+
+- **The cover's margins are the printer's template** (the 8×8 hardcover the owner gave: 17.90″×9.50″, finished
+  16.40″×8.00″), by default and without a name of its own ("just make it the default"): the picture's width is
+  the finished width; the result is 5370×2850 px, 300 dpi.
+- **«Видалити книгу» sends the book's folder to the Windows Recycle Bin**, not away for good — the owner asked for
+  "the book and all its files deleted"; the project never deletes his data irreversibly, and the Recycle Bin keeps
+  it restorable until he empties it.
+
+## 2026-09-26 — The console moves a download into the book; no listing photos; the cover gets margins
+
+- **After the first real book, the owner changed it:** a caught download is **moved** out of Downloads into the
+  book's `originals/`, named by its row ("it should live in the program") — before, it was only copied. The cut,
+  named pages stay in `pictures/`; both folders open from the page; every picture can be saved anywhere
+  («Зберегти як…»).
+- **The listing photos, the cover's mockup and reference are gone** from the console ("redundant", "they only
+  confuse me").
+- **The cover has two stages:** the picture, then its margins outpainted by the generator (white margins of 8 %
+  of its height, adjustable) → Cover.png — the owner's own step, shown on his example screenshot.
+- Details — [plans/book-console.md](plans/book-console.md#the-prototype-2026-09-26).
+
+## 2026-09-26 — The book console's generation mode: the clipboard by the program, F8 for the next part
+
+- **The program fills the Windows clipboard itself** (not the page), so the next prompt is there while the owner
+  stays in Gemini; the work (watching Downloads, catching, the next prompt) is the server's and goes on when the
+  window is behind.
+- **A paste of several parts** (the cover: mockup, reference, prompt; a listing photo; a variant's spread) gives
+  them one by one — the first at once, the next by «Далі» or **F8**, a key taken from Windows only while such a
+  paste goes on (a picture and a text can't reliably go into one paste). *Why not detect the paste:* Windows
+  says nothing when the clipboard is read, and the clipboard history reads it at once.
+- **Nothing the console replaces is deleted** — it goes to the book's `.replaced/`; Downloads is only read.
+- **The cover's mockup and reference are chosen once for every book**; a listing photo's mockup once per book
+  (the agent's choice at the step, 2026-09-26 — the owner may change it).
+- Details — [plans/book-console.md](plans/book-console.md#the-prototype-2026-09-26).
+
+## 2026-09-26 — The book console prototype: its own folder, no SEO guide, no git until the move
+
+- **Decision (the owner):** the prototype lives in `D:\Roman\Desktop\Book Console`; the pipeline's
+  `seo-intelligence` is **not** taken into it ("it goes separately"); the prototype keeps **no git history**
+  until it moves into Book Studio.
+- **The agents write only into a book's `agent/` folder** (the agent's proposal, accepted with «роби»): the
+  console owns `pictures/`, `listing/` and `book.json`, so an agent can't break a book or lose the owner's
+  edits. The old validator became the console's `check_book.py` (same rules).
+- Details — [plans/book-console.md](plans/book-console.md#the-prototype-2026-09-26).
+
+## 2026-09-25 — Pictures are generated on the websites (Gemini, ChatGPT), never through a paid API
+
+- **Decision (the owner):** he generates in the websites' chats on his subscriptions; **no image-generation API
+  is connected** (it costs money per picture). So no "Generate" button in the Workshop. Anything that helps
+  generation works *around* the website chat: prompts to copy, files he downloads.
+- **Where what is made:** the book's spreads — **Gemini** (downloads as PNG to Downloads); the listing's
+  lifestyle pictures — **ChatGPT** (JPEG); the cover — a Photoshop cover mockup put into the chat as context
+  plus one of his existing listings as a reference, asking to replace the picture.
+- **Tier H books (a child hero):** for now he swaps the hero to the buyer's look **per order**, in the same
+  chat. Pre-generating every look is too costly — look, clothing colour and eye colour multiply. **Later:** one
+  look per hero, then every variant can be made once ([plans](plans/roadmap.md)).
+
+## 2026-09-25 — Ideas reviewed: what the owner keeps and what he turns down
+
+An agent offered ten ideas for the whole pipeline; the owner answered each one. Kept ones are in the
+[plans](plans/roadmap.md). **Turned down, and why:**
+- **Upscaling for orders** — his Canva books already hold upscaled pages. (Upscaling in the **Workshop**,
+  right after a drop — kept.)
+- **Pages from the library instead of Canva** — not now: storage and internet are fine, and a mixed
+  source would confuse; "a micro feature for later".
+- **A demo book from the Workshop without Canva** — Canva takes little time and needs a human eye for the
+  aesthetics; Photoshop's interface doesn't suit this work either.
+- **Checking that a character looks the same across the generated pictures** — "I'm very picky, I don't
+  need a checker here".
+- **A print-quality journal (reprints by printer)** and **profit by book** — no statistics wanted here; he
+  keeps such a metric separately.
 
 ## 2026-09-25 — For now a hardcover's printer is decided by its files, not by the country
 

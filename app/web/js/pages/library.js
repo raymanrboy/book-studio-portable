@@ -195,7 +195,8 @@ async function copyGuide() {
 
 // ------------------------------------------------------------------ add book dialog
 /** «Нова книга» — and, with `transfer`, the Workshop's «Передати в бібліотеку»: the same Etsy listing field and
- *  check (read only), for a book that already has its title and pictures. transfer = {book, summary, done(book)}. */
+ *  check (read only), for a book that already has its title and pictures. transfer = {summary, send(body, say),
+ *  done(result)}: `send` passes the book on (`say` shows its progress on the button). */
 export function openAddBook(existing = [], transfer = null) {
   const keysReady = !!store.info?.integrations?.etsy?.keysConfigured;
   let listing = null;
@@ -297,13 +298,13 @@ export function openAddBook(existing = [], transfer = null) {
     create.innerHTML = `<span class="spinner"></span>${transfer ? 'Передаю…' : 'Створення…'}`;
     try {
       if (transfer) {
-        const book = await api(`/api/workshop/books/${transfer.book.id}/to-library`, {
-          method: 'POST',
-          body: listing ? { listing, useListingImage: !!(listing.imageUrl && $('#nb-photo').checked) } : { listingRef: ref.value },
-        });
+        const result = await transfer.send(
+          listing ? { listing, useListingImage: !!(listing.imageUrl && $('#nb-photo').checked) } : { listingRef: ref.value },
+          (text) => { create.innerHTML = `<span class="spinner"></span>${text}`; },
+        );
         m.close();
         refreshInfo();
-        transfer.done(book);
+        transfer.done(result);
         return;
       }
       const book = await api('/api/library/books', {

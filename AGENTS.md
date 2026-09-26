@@ -1,5 +1,9 @@
 # Book Studio — rules for agents
 
+> **Making a book** (a new book, its story, text, prompts)? These rules are not yours: open the folder
+> `pipeline/` and read **`pipeline/GEMINI.md`** — the book pipeline's rules. Everything below is for agents
+> working on Book Studio's code.
+
 A local Windows program for the owner of an Etsy shop selling personalized children's books. Two modes
 (the brand icon switches): **Orders** — the order queue, the book library, creating books/drafts in Printify
 and Gelato; **Listings** — the Workshop (new books in development) and the Photoshop mockups for listings. The owner is not a programmer and
@@ -53,6 +57,8 @@ AGENTS.md, CLAUDE.md    rules for agents (this file and the Claude Code addendum
 README.md               short intro for people
 app/                    the program: studio/ (Python server), web/ (interface), tests/, tools/
                         data/ and bin/ — local only, not in git
+pipeline/               the book pipeline — the book agents' rules and playbook (Antigravity opens this folder);
+                        its books/ (the Workshop's books, every picture) — local only, not in git
 wiki/                   knowledge base (index.md — entry point, log.md — change log, raw/ — owner's sources)
 .claude/                interface preview and Claude Code skills
 ```

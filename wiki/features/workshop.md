@@ -1,149 +1,211 @@
 ---
-title: The Workshop — books in development (the Listings mode)
+title: The Workshop — books in development, with the book pipeline's agents (the Listings mode)
 type: feature
-updated: 2026-09-25
+updated: 2026-09-26
 code:
-  - app/studio/workshop.py
+  - app/studio/workshop/__init__.py
+  - app/studio/workshop/books.py
+  - app/studio/workshop/rows.py
+  - app/studio/workshop/pictures.py
+  - app/studio/workshop/generate.py
+  - app/studio/workshop/check.py
+  - app/studio/workshop/routes.py
+  - app/studio/clipboard.py
   - app/web/js/pages/workshop.js
   - app/web/js/pages/workshop-book.js
+  - app/web/js/workshop-live.js
+  - app/tools/sample_books.py
 ---
 # The Workshop (Майстерня)
 
 > The owner's place for making a new book before it goes on sale: "a place where I create books before sending
-> them to the library with orders" (2026-09-24). Every row of a book — the cover, the dedication, spreads 2–15,
-> the afterword — holds **a prompt** for its picture, **the 2:1 picture** and **the text**. Prompts and texts
-> come first (typed, or one JSON from an agent), the pictures last, dropped one per frame. «Передати в
-> бібліотеку» gives the book its Etsy listing and sends it to the orders' library. Part of the
-> [Listings mode](modes.md); the agreements — [plans/listings-mode.md](../plans/listings-mode.md).
+> them to the library with orders" (2026-09-24). **Since 2026-09-26 it is the book console moved in** (the
+> prototype «Пульт книги», [the plan](../plans/book-console.md)): a book is a folder of the book pipeline, where the
+> agents in Antigravity write its formula, hero, story, text and prompts; the Workshop shows the book's path, puts
+> every prompt into the clipboard, **catches the picture the owner downloads from Gemini** into its row — cut,
+> flipped, the cover laid on the printer's template — and passes the finished book to the library with its Etsy
+> listing. Part of the [Listings mode](modes.md).
+
+## Where a book lives
+
+```
+Book Studio/pipeline/            the book pipeline — Antigravity opens this folder (in git: the agents' rules, playbook)
+  GEMINI.md = AGENTS.md          the book agents' rules; CLAUDE.md — the fork for coding agents
+  playbook/ notes/ Listing prompts/
+  check_book.py                  the book check the agents run before GO (the Workshop's own rules, check.py)
+  books/                         NOT in git — the Workshop's books:
+    41.some-book/
+      agent/      the agents' files — the Workshop only reads them (except the hero it catches: canonical.png,
+                  a variant's hero.png)
+      pictures/   the pages, cut and named: Cover.png, 1.png … 30.png — the set for Canva («Сторінки»)
+      originals/  the pictures as the generator made them, moved out of Downloads, named by their row:
+                  page-01.jpg, spread-04-05.jpg …, cover-art.jpg, cover-expanded.png (made by the Workshop),
+                  cover-wrap.jpg, hero.png
+      .replaced/  whatever a new picture replaced or a removal took — never deleted
+      book.json   the Workshop's state: the steps ticked by hand, each row's marks (mirrored, cut, from, size),
+                  the cover's layout on the template, the library book it was passed on as
+```
+
+- **A book's id is its folder's name** (`41.some-book`; the page's address `#/workshop/41.some-book`). The agents
+  make the folder themselves («нова книга» in Antigravity, numbered on from 40) — the Workshop finds it.
+- **The agents write only into `agent/`** and never touch `book.json` — so they can't break a book, and the
+  Workshop's state isn't lost ([decisions](../decisions.md), 2026-09-26).
+- **Antigravity hides git-ignored files from its agents** by default: `pipeline/books/` is kept out of git, so the
+  owner turns on Antigravity → Settings → Agent → *Agent Gitignore Access* once (checked in the program itself:
+  `AllowAgentAccessGitignoreFiles`, `BLOCK_REASON_GITIGNORED`); the agents' rules tell them to say so if they can't
+  see `books/`.
 
 ## The gallery (`#/workshop`)
 
-- Like the [library's](library.md), in the Listings mode's cyan: search by title (Ctrl+F or `/`), sorting
-  (recently changed, added, by title, least ready first — remembered in `bs-workshop-view`), the agent's
-  instruction (copy / save to a file), "+" (key N).
-- **A new book needs only a title** — no Etsy listing yet (the dialog says the listing comes when the book is
-  passed on); the new book opens at once.
-- A card: the cover, else the first finished spread (`_first_picture()`), else the title's first letter; the
-  title; the pictures count (`4/17`) and three strips **Prompts · Texts · Pictures** (a tooltip with the
-  numbers); ✓ «Готова до бібліотеки» when every picture and text is there (`ready()`).
-- No archive: a book leaves the Workshop by being passed to the library or deleted (to the library's trash).
-- Empty: «Майстерня порожня» and a «Нова книга» button.
+- A card per book (`card()`): the cover (its front half), else the cover's picture, else the first finished
+  spread, else the hero, else the title's letter; `№41 Title` (from the folder's name), the cover's title from
+  `book-text.md` (serif, `{Name}` marked), **the path as ten strips**, «Далі: <step>», «Картинки n/16», the book
+  check's GO (green) or «N помилок» (red); a book the Workshop is waiting a picture for says «чекаю картинку».
+- Search by title or number (Ctrl+F or `/`), sort (`SORTS`: by number, newest first — the default; recently
+  changed; least ready first — remembered in `bs-workshop-view`), **«У роботі · У бібліотеці»** (shown once a book
+  has been passed on), the books folder, **«+» (N) — a new book in Antigravity**: Antigravity opens on the
+  pipeline's folder and the clipboard holds «нова книга» to paste into the agent's chat; the book appears here by
+  itself once the agent starts it.
+- The gallery follows the files by itself (`workshop-live.js`): an agent's new book comes in, a caught picture
+  shows, without a reload.
 
-## A book (`#/workshop/<id>`)
+## A book (`#/workshop/<folder>`)
 
-- **Header**: back (Esc), the title edited in place (Enter or leaving the field saves), the readiness —
-  prompts, texts, pictures, each `n з 17` in its tooltip; `{ }` — the JSON menu; "More" — open the book's
-  folder, delete the book (to the trash, confirmed); the main button **«Передати в бібліотеку»**.
-- **17 row cards in one column of moderate width** (`.ws-page`, 820 px, centred — the owner: "not the full
-  width"): Обкладинка, Сторінка 1 · присвята, Розворот 2–3 … 28–29, Сторінка 30 · післяслово. A row's header
-  has three dots: prompt / picture / text there or not.
-- **Every card, top to bottom** (the owner's pick of three layouts):
-  1. **Prompt** — the copy button (one click, for pasting into an image generator), the pencil; an empty one
-     says «Промпт ще не написано — клацніть, щоб написати».
-  2. **The frame, 2:1** — the owner: "at first there are no pictures in the Workshop, only placeholders to
-     drag them into one at a time … and it's important that these are 2:1 spreads". Empty: dashed, the fold
-     in the middle (broken around the words), the page numbers on its halves, «Перетягніть розворот 2:1 · або
-     клацніть, щоб обрати файл». A file dragged over lights the frame up; a drop or a click puts **one**
-     picture in (several files → «Одна картинка — в одну рамку»); the upload shows its progress.
-     **A spread becomes its two pages at once** (the owner's flipper and slicer from `Etsy-Book-Pipeline`,
-     2026-09-24 — [below](#a-spread-becomes-two-pages)): the frame then shows two squares side by side, like
-     the passport; view, **⇄ mirror**, replace, remove (confirmed: the Workshop's copies are deleted, the
-     owner's file stays). Pages 1 and 30 are single pages: the same 2:1 frame, one half the hatched endpaper,
-     the other the page (1:1 expected; a picture that isn't is taken but marked amber «не 1:1 · …», 4 %
-     tolerance, `OFF`). The cover is one wide picture (back on the left, front on the right), marked the same
-     way when it isn't 2:1.
-  3. **Text** — the book-text font, `{Name}`/`{Gifter}` highlighted, copy and edit.
-- **Editing** a prompt or a text: a click on it or the pencil; the field grows with the text; saved on
-  leaving the field or Ctrl+Enter, Esc gives the old one back. A save uses the book's `rev` (a change from
-  another window is refused, as in the library).
-- **The viewer**: a click on a picture — every picture of the book in order; T shows the page's text; the
-  "original" button opens the file in Windows.
+- **Header**: back (Esc), `№41 Title`, the cover's title, the Tier chip (H — a child hero on every spread; S — no
+  recurring hero); **«Відкрити агента»** (Antigravity on the pipeline's folder, «Продовжуємо книгу books/41.…» in
+  the clipboard), **«Сторінки»** (the `pictures/` folder — the set for Canva), the originals folder, «Ще» — the
+  book's folder, **delete** (the whole folder into the Windows Recycle Bin, confirmed); **«Передати в
+  бібліотеку»** (in the accent colour once every picture and the cover are there), then «У бібліотеці» (opens the
+  library book).
+- **The generation bar** (sticky on top, `genBar()`): what is awaited, what's in the clipboard, the parts of a
+  several-part paste, «Далі» (F8), «покласти ще раз», «Стоп», the queue's progress («6 з 10», a thin line). On
+  another book's page or the gallery it names the book that waits, with «Перейти».
+- **The path strip** (`STEPS`): Формула → Герой → Історія → Текст → Промпти · GO → Картинки `n/16` → Обкладинка →
+  Canva → Мокапи → Бібліотека. Each a circle — ✓ done, half-filled started, dashed skipped (a Tier S book's hero),
+  a number not yet; the next one has a breathing ring, the line after a done step lights up, a step that has just
+  become done pops; the hero's circle is its photo. **Ticked by the files that exist** (`steps()`): `formula.md`,
+  `canonical.png` (the prompt or the card alone — started), `story-blueprint.md`, `book-text.md`, both prompt files
+  (one — started), the rows whose every page is in `pictures/`, `Cover.png`; **Canva and Мокапи are ticked by
+  hand** (a hand on the circle; «Мокапи» opens the Mockups page too); **Бібліотека ticks itself** when the book has
+  been passed on (and unticks if that library book went to the trash).
+- **The step's panel** (a click on a step or ← →; a second click or × folds it): the step's file — text with its
+  headings and code blocks, a picture (a click — large), tabs when a step has several files, a missing file named
+  with the agent who writes it, «Відкрити файл у Windows»; the Hero's panel — «Генерувати героя», «Героя в
+  буфер», «Обрати файл»; Промпти — the **book check**'s tab (GO / «Не готово — N помилок», the errors, the
+  warnings, how many checks passed — the old pipeline validator's rules, `check.py`); Картинки — the 16 rows as small
+  frames (a click scrolls to the row); Canva, Мокапи — «Зроблено» / «Зняти позначку»; Бібліотека — what's missing and
+  «Передати в бібліотеку».
+- **The rows** (one column of 820 px, the owner: "not the full width"): page 1, spreads 2–3 … 28–29, page 30 — and
+  **the cover last** (it's generated last, by Agent 6). Every card: the row's name, three dots (prompt / picture /
+  text), «Генерувати» (or «Ще раз», or «чекаю картинку»); **the prompt** — the whole JSON object pretty-printed,
+  what the generator gets (long ones folded, «Показати весь промпт»; copy); **the 2:1 frame**; **the text** in the
+  book's font, `{Name}`/`{Gifter}` marked (copy). A short or broken prompt file is named above the rows («3 промпти
+  замість 14», «блок 4: JSON не читається»).
+- **Prompts and texts are the agents'** (read, never written by the page): to change one, the owner asks the agent
+  (or opens the file from the step's panel).
+- **Hero variants** (Tier H, only when the agent made one): tabs «Основна · G2_brunette 3/14»; a variant's tab —
+  its hero card (generate: the base `canonical.png`, «Далі», the edit prompt → `hero.png`) and its spreads (generate:
+  the base spread as Gemini made it, un-mirrored, «Далі», the variant's hero, «Далі», the swap prompt → the pages
+  into `pictures/variants/<name>/`); «Генерувати варіант» for all of them.
+- **The viewer**: a click on a page — every page of the book in order (a spread's two pages one after the other,
+  the cover), T for the text, the "original" button opens the file in Windows.
 
-## A spread becomes two pages
+## A picture into its row
 
-The owner (2026-09-24): "when I drop a 2:1 spread, a second later it's already two nice squares, like in the
-book's passport — flipped by the logic of my flipper". His tools in `D:\Roman\Desktop\Etsy-Book-Pipeline\tools`
-(read, never changed): `mirror-alternate.py` and `slice-spreads.py`; his answers —
-[raw/2026-09-24-workshop-flipper-owner-answers.md](../raw/2026-09-24-workshop-flipper-owner-answers.md).
+`pictures.place()` — the owner's flipper and slicer (`Etsy-Book-Pipeline`'s `mirror-alternate.py`,
+`slice-spreads.py`; his answers — [raw/2026-09-24-workshop-flipper-owner-answers.md](../raw/2026-09-24-workshop-flipper-owner-answers.md)):
 
-- **Mirrored first, like his flipper**: the spreads whose left page divides by 4 — **4–5, 8–9, 12–13, 16–17,
-  20–21, 24–25, 28–29** (`MIRRORED`) — are flipped left to right. An empty frame of such a spread says so
-  beforehand («віддзеркалиться»).
-- **Cut to 2:1 around the centre**: a wider picture loses its sides (like `slice-spreads.py`), **a narrower one
-  its top and bottom** (his answer; the slicer would skip it). The frame then shows an amber «обрізано зверху й
-  знизу · 1792×1024» (or «з боків») when the picture was more than 4 % off 2:1.
-- **Cut into two squares** as high as the picture — the left and the right page — stored as PNG in the
-  spread's `left` / `right` (the passport's own two-page form; a whole picture there goes). **Only the two
-  pages are kept**, not the panorama (his answer). The slot notes `mirrored` and `source` (the picture's size).
-- **⇄ mirrors any spread by hand** (his answer "automatically + a button"): the right page, mirrored, becomes
-  the left one and the other way round — the same as mirroring the whole panorama; pressed again, the pages
-  come back pixel for pixel (PNG). The button is lit while the spread is mirrored.
-- A notice after the drop says what happened («Розворот 4–5: віддзеркалено — і дві сторінки готові»,
-  «…обрізано зверху й знизу…»). The viewer shows a spread's two pages one after the other, like the passport's.
-- Passed to the library, the book keeps its spreads as two pages — the passport shows them as it always did.
+- **A spread**: mirrored first when it's one of the flipper's — **4–5, 8–9 … 28–29** (`MIRRORED`; an empty frame
+  says «віддзеркалиться»), cut to 2:1 around the centre (a wider picture loses its sides, a narrower one its top
+  and bottom — the amber mark «обрізано …»), cut into **two square pages** `pictures/<n>.png`. ⇄ mirrors any spread
+  by hand; twice gives back the same pages, pixel for pixel.
+- **Pages 1 and 30**: cut to a square when more than 4 % off (`OFF`).
+- **The cover, in two stages** (`cover_state()`): ① the picture from Agent 6's prompt, kept as
+  `originals/cover-art.*` and laid on **the printer's template** (`TEMPLATE`, the owner's 8×8 hardcover: 17.90″×9.50″
+  with the wrap, finished 16.40″×8.00″ — the picture's width is the finished width, `template_layout()`), white all
+  round → `originals/cover-expanded.png`; the card slides to ② **Поля**: the picture with its margins and the
+  **outpaint prompt** (fill only the white margin, change nothing inside — `outpaint_prompt()`), «Лінії шаблону»
+  (the finished edge, the spine, the safety zones); the outpainted result becomes `pictures/Cover.png` at exactly
+  5370×2850 px, 300 dpi (`fit_template()`). «Без полів» takes the picture as it is.
+- **The hero**: `agent/canonical.png` (a variant's: `hero.png`).
+- A picture dropped (or picked) is copied; **a caught download is moved** out of Downloads into `originals/`, named
+  by its row. **Whatever a new picture replaces, or a removal takes, goes to the book's `.replaced/`** — never deleted.
+- Every picture can be saved anywhere: a page's corner — «Зберегти як…» (the Windows dialog, the folder remembered —
+  `settings.json` → `workshop.saveDir`); the frame's tools — «Копіювати картинку» (a spread as Gemini made it — e.g.
+  for Agent 6's "best frame"), «Зберегти оригінал як…».
 
-## Prompts and texts in one JSON
+## The generation mode
 
-- The `{ }` menu: «Вставити JSON…» (a dialog), «Завантажити JSON-файл…», «Скопіювати промпти й тексти як
-  JSON», the agent's instruction (copy / save). A `.json` dropped anywhere on the page is imported too.
-- The format — the library's book-text JSON where every value is `{"prompt", "text"}`; the library's old
-  text-only form (a plain string) is still read as the text (`parse_book_json()`):
-  ```json
-  { "cover":  {"prompt": "…", "text": "…"},
-    "page1":  {"prompt": "…", "text": "…"},
-    "spreads": {"2": {"prompt": "…", "text": "…"}, "15": {"prompt": "…", "text": "…"}},
-    "page30": {"prompt": "…", "text": "…"} }
-  ```
-- **What's already written is only replaced after a question**: a dry run first counts it
-  («Замінити 5 промптів і 3 тексти, які вже є?»; the same text isn't counted). Then «Заповнено: 17 промптів,
-  17 текстів», and what the JSON lacks is named (a few) or counted (many) — a partial JSON is normal.
-- **From the owner's `Etsy-Book-Pipeline`** (2026-09-25): its Agent 5 (and Agent 6 again, for the cover) runs
-  `tools/build_workshop_json.py "BOOKS_NEW/<book>"` → `workshop.json` in the book's folder — this exact format:
-  every prompt is the pipeline's whole JSON prompt object, pretty-printed, as a string (so the copy button gives
-  what the generator gets); the texts come from `book-text.md` (`## Cover` — the cover title, `## Spread 01` —
-  page 1, `## Spread 02–15`, `## Afterword` — page 30). It replaced the pipeline's `rendered-prompts.md`.
-- **The agent's instruction** (`guide()`, the file `Book Studio — промпти й тексти книги.md`): the book's
-  structure, "every spread prompt describes one wide 2:1 illustration over both pages", `{Name}`,
-  `{Gifter}`, `\n`, "return only the JSON". The owner adds his own style wishes for the agent. A test keeps its
-  example readable by the parser (like the library's [agent guide](library.md#agent-guide)).
+The main win (`generate.Session`): **«Генерувати»** on a row puts its prompt into the **Windows clipboard, by the
+program itself** (`clipboard.py` — so the next prompt is there while the owner stays in Gemini's window), the row
+lights up «чекаю картинку», and the Workshop looks into **Downloads** every 0.6 s: **the first new PNG/JPEG/WEBP that
+appears after the press and has finished downloading** (a `.crdownload` is waited out, the size must stay put) is
+caught into the row — moved, cut, flipped — with a short Windows sound. Files that were there before don't count;
+nothing else in Downloads is touched.
+
+- **«Генерувати всю книгу»** (then «…решту»): the rows with a prompt and no picture, in the pipeline's order —
+  spreads 2–3 … 28–29, then pages 1 and 30 (`SERIES_ORDER`); after each catch **the next row's prompt is already in
+  the clipboard**, and the page follows to the next row when the last one was on screen. When the queue is done,
+  the taskbar button flashes with Windows' sound.
+- **A paste of several parts** (the cover's margins: the picture, then the prompt; a variant's spread: the base
+  spread, the variant's hero, the prompt) goes one by one — the first at once, the next by **«Далі» or F8
+  anywhere** (F8 is taken from Windows only while such a paste goes on, `Hotkey`).
+- The cover's picture, once caught (or dropped), goes on to wait for its margins by itself.
+- **The work is the server's**: it goes on while the window is behind Gemini or the owner is elsewhere in Book
+  Studio — then a notice per caught picture, a dot on the rail (the brand icon in Orders, «Майстерня» in Listings)
+  and the window's title «● Розворот 10–11 · 6 з 16 — Book Studio» (`workshop-live.js` → `bs:busy`).
 
 ## «Передати в бібліотеку»
 
-- The library's «Нова книга» dialog in its passing-on form (`openAddBook(existing, transfer)`): what's
-  missing on top (amber: «Бракує картинок — 6–7, 10–11 …; текстів — …. У бібліотеці їх можна докласти
-  пізніше», or green «Усі картинки й тексти на місці»), the **Etsy listing link or number** checked read-only
-  through the API (without keys — passed unchecked), "take the listing's main photo as the thumbnail",
-  «Передати в бібліотеку».
-- A listing another library book already has → the dialog says so with «Відкрити ту книгу»; the server
-  refuses it too (409 with that book's id).
-- Passed: «„Назва“ — у бібліотеці замовлень», back to the Workshop; the book is in the library with every
-  picture and text, and orders find it by its listing. **One way** for now; the prompts stay in `book.json`,
-  unseen by the library.
+The library's «Нова книга» dialog in its passing-on form (`openAddBook(existing, transfer)`): what's missing on top
+(amber, or green «Усі картинки й тексти на місці»), the **Etsy listing link or number** checked read-only (without
+keys — passed unchecked), "take the listing's main photo as the thumbnail". Then `books.to_library()`: **a library
+book is made** from the book's pages (`Cover.png`, `1…30.png` — a spread's two pages as its left and right), its
+texts (`book-text.md`, the reference for the [text check](text-check.md)) and the listing, titled like the
+Workshop's book and noting it (`"workshop": "<folder>"`); the pages are copied as a job with its progress on the
+button. **The Workshop's book stays** — its folder, originals and variants untouched; it moves to «У бібліотеці» and
+its last step is ticked. A listing another library book already has is refused (409 with that book's id, «Відкрити
+ту книгу»); a book already passed on opens its library book instead.
 
-## Inside
+## Live, and smooth
 
-- A Workshop book is a library book with `"stage": "workshop"` and `"prompts"` ([data](../architecture/data.md),
-  [library model](library.md#the-book-model-bookjson)): the library keeps its pictures, previews, `rev` and
-  trash; `library.all_books()` leaves it out unless asked for `stage="workshop"`, so the orders, the book
-  counter and the text check never see it. Passing it on removes the mark and writes the listing — nothing
-  is copied.
-- The pictures of the cover and pages 1 and 30 go through the library's own route
-  (`/api/library/books/<id>/assets`); a spread through the Workshop's (`/api/workshop/books/<id>/spread`,
-  `place_spread()`: mirror, cut, two pages), and ⇄ through `/api/workshop/books/<id>/flip` (`flip_spread()`); a library book opened at `#/workshop/<id>` goes to its passport, a Workshop
-  book at `#/book/<id>` comes here.
+- A Workshop page asks `/api/workshop/sig` every 1.5 s while it's on screen (a book's page — only its own book's
+  files); when something changed it fetches and **redraws in place** (`patch()` in `lib.js`): each part is keyed,
+  an unchanged one stays as it is (its pictures, hover, focus), a changed one is replaced, and a picture the old part
+  already showed is carried over — nothing reloads or blinks; the scroll, an opened prompt, the chosen step stay.
+- Every picture's address carries its version (`?v=`): the browser keeps it for good; a replaced picture gets a new
+  address.
+- The page remembers each book's open step, tabs, variant, opened prompts and the cover's stage until a restart.
+
+## In the preview and the tests (the sandbox)
+
+`core.SANDBOX` (the preview server's `--sample`, and the tests): the books are made-up ones in the data folder
+(`tools/sample_books.py`: 40 — Tier H with a hero and a variant; 41 — Tier S, prompts and 5 rows of pictures; 42 —
+just started), Downloads is the data folder's `downloads\` (a picture put there is caught), the clipboard goes into
+`clipboard\clipboard.txt|png`, F8 isn't taken, no window opens (Antigravity, Explorer, «Зберегти як»), and a deleted
+book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and screen are never touched.
 
 ## Where in the code
 
-- [app/studio/workshop.py](../../app/studio/workshop.py) — `create()`, `_workshop_book()`, `import_json()`, `place_spread()`, `two_squares()`, `flip_spread()`, `_put_pages()`, `MIRRORED`, `to_library()`, `guide()`, `GUIDE_NAME`, `LISTING_FIELDS`
-- [app/studio/library.py](../../app/studio/library.py) — `WORKSHOP`, `PROMPT_KEYS`, `is_workshop()`, `all_books()`, `parse_book_json()`, `export_book_json()`, `_first_picture()`, `completeness()`, `summary()`
-- [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()`, `newBook()`, `progress()`, `ready()`, `guideMenu()`, `copyGuide()`, `saveGuide()`, `SORTS`
-- [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `ROWS`, `OFF`, `HUMAN`, `flipped()` (the empty frame's «віддзеркалиться»)
-- [app/web/js/pages/library.js](../../app/web/js/pages/library.js) — `openAddBook()` (the passing-on form)
-- [app/web/css/app.css](../../app/web/css/app.css) — `.ws-page`, `.ws-row`, `.ws-block`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-pairart`, `.ws-mark`, `.ws-will-flip`
-- [app/web/js/icons.js](../../app/web/js/icons.js) — `mirror` (⇄; not `swap`, which trades a spread's two pages in the passport)
-- Tests: [app/tests/test_workshop.py](../../app/tests/test_workshop.py) (`ANewBook`, `PromptsAndTexts`, `SpreadsBecomeTwoPages`, `PassingToTheLibrary`)
+- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `media_file()`, `agent_text()`, `open_in_windows()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
+- [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
+- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `place()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`
+- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session`, `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`
+- [app/studio/workshop/check.py](../../app/studio/workshop/check.py) — `run()`, `RULES`, `main()`
+- [app/studio/workshop/routes.py](../../app/studio/workshop/routes.py) — the routes ([api-routes](../architecture/api-routes.md))
+- [app/studio/clipboard.py](../../app/studio/clipboard.py) — `set_text()`, `set_image()`, `Hotkey`, `sandbox_file()`
+- [app/studio/desktop.py](../../app/studio/desktop.py) — `save_file()`, `to_recycle_bin()`, `attention()`
+- [app/studio/library.py](../../app/studio/library.py) — `create_book()`, `listing_of()`, `import_pictures()`, `take_listing_image()`
+- [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()`, `SORTS`, `picture()`, `checkWord()`
+- [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`, `STATE_TEXT`
+- [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genAction()`, `genBar()`, `waitingFor()`
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `patch()`
+- [app/web/css/app.css](../../app/web/css/app.css) — `.ws-card`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-cover`, `.ws-tpl`
+- [pipeline/GEMINI.md](../../pipeline/GEMINI.md) — the book agents' rules; [pipeline/check_book.py](../../pipeline/check_book.py) — their start of the check
+- [app/tools/sample_books.py](../../app/tools/sample_books.py) — `make_books()`
+- Tests: [app/tests/test_workshop.py](../../app/tests/test_workshop.py) (`TheSandbox`, `TheBookList`, `ThePathStrip`, `OnlyInsideTheBook`, `TheSignature`, `TheRows`, `TheBookCheck`, `APictureIntoItsRow`, `CatchingDownloads`, `PassingToTheLibrary`)
 
 ## Related
 
-- [Two modes](modes.md) · [Library](library.md) · [Book structure](../rules/book-structure.md) ·
-  [The plan](../plans/listings-mode.md) · [Decisions](../decisions.md)
+- [The plan and its history](../plans/book-console.md) · [Two modes](modes.md) · [Library](library.md) ·
+  [Mockups](mockups.md) · [Book structure](../rules/book-structure.md) · [Decisions](../decisions.md)

@@ -1,0 +1,299 @@
+{
+  "prompt_name": "etsy_listing_primary_image_golden_hour_boho_flatlay",
+  "version": "2.0.0",
+  "purpose": "Canonical high-impact hero-image meta prompt for a richly layered golden-hour Scandinavian-boho nursery flat lay.",
+  "generation_mode": "Protected-subject image editing, precise compositing and photorealistic environment reconstruction using exactly one attached source image.",
+  "task": "Create a premium square true-overhead nursery lifestyle photograph with strong golden-hour atmosphere, sculptural directional light, rich material layering and abundant tactile boho detail. Use the attached source only for the protected central square object. Present that object as a substantial real 8 x 8 inch printed keepsake item occupying approximately 70% of the frame. The final image must feel dimensional, sunlit, textured and editorial rather than flat, pale or minimal.",
+  "input_contract": {
+    "required_attachments": 1,
+    "image_1_role": "PRIMARY SOURCE - preserve the central square object and all visible artwork exactly.",
+    "reference_policy": "No separate lifestyle reference is required. This JSON fully defines the target composition, material density, prop arrangement, palette, golden-hour light and photographic finish.",
+    "source_background_policy": "Treat any original studio surroundings outside the protected object as replaceable. They must not determine the final environment.",
+    "source_quality_requirement": "The protected object must be fully visible, sufficiently sharp and large enough for its existing typography and illustration details to remain readable after compositing.",
+    "failure_condition": "Do not proceed if the protected object is obscured, cropped, severely distorted or too low-resolution for faithful reuse."
+  },
+  "source_hierarchy": {
+    "primary_source_identity": "The attached source exclusively controls all artwork, typography, spelling, colors, proportions, material identity and visible edge construction of the protected object.",
+    "json_composition_control": "This JSON controls the final square canvas, uniform scale, central placement, surrounding textile architecture and prop layout.",
+    "json_lighting_control": "This JSON controls the golden-hour illumination applied coherently across the whole physical scene, including a non-destructive light-and-shadow envelope over the protected object.",
+    "absolute_priority": "Preserving the protected object's internal design and readability overrides every decorative or lighting instruction."
+  },
+  "protected_source_policy": {
+    "instruction": "Isolate and reuse the protected central square object from the attached source as one coherent physical element. Preserve its internal artwork pixels wherever the editing system permits. Do not reconstruct, regenerate, reinterpret, simplify or redesign any printed region.",
+    "preserve_exactly": [
+      "all illustration details and character features",
+      "all existing typography, spelling, spacing and letter shapes",
+      "all original printed colors and tonal relationships",
+      "square 1:1 physical proportions",
+      "visible edge construction and thickness",
+      "surface texture and print detail",
+      "sharpness and fine detail"
+    ],
+    "allowed_transformations": [
+      "Uniformly scale the complete protected object as one unit until it occupies 68-72% of the canvas width",
+      "Translate the complete protected object to the specified central position",
+      "Apply only the minimal planar alignment needed for a convincing true-overhead presentation",
+      "Rebuild the external contact shadow so it matches the new textile surface and the golden-hour key light",
+      "Apply one physically coherent, low-opacity golden-hour illumination gradient over the complete object without changing any printed hue, text or illustration detail"
+    ],
+    "photometric_integration": "Allow warm highlights and soft directional shading to pass naturally across the protected object's physical surface, but treat the artwork beneath as immutable. The title and all important illustration details must stay crisp and readable.",
+    "prohibited_operations": [
+      "Do not alter, replace or retype any existing lettering",
+      "Do not redraw faces, figures, decorations or illustration details",
+      "Do not change the object's aspect ratio",
+      "Do not stretch, bend or locally warp the artwork plane",
+      "Do not recolor the protected object's printed design",
+      "Do not crop any of its four outer edges",
+      "Do not place any accessory across or over the protected object",
+      "Do not create a second copy of the protected object",
+      "Do not cast a dense shadow across the title or primary character"
+    ]
+  },
+  "edit_scope": {
+    "editable_region": "The complete area outside the protected central object, plus its physically necessary contact shadow and coherent scene-light envelope.",
+    "objective": "Replace empty surroundings with a highly tactile, richly layered and naturally sunlit Scandinavian-boho nursery flat lay that closely matches the dimensionality, material abundance and color harmony of successful premium Etsy imagery.",
+    "canvas": {
+      "aspect_ratio": "1:1 square",
+      "recommended_resolution": "2048 x 2048 pixels or higher",
+      "framing": "Full-frame overhead composition with textiles and decorative elements naturally cropped at the perimeter.",
+      "output_count": 1
+    }
+  },
+  "target_visual_signature": {
+    "first_impression": "A luminous late-afternoon golden-hour nursery still life with a large protected square object surrounded by layered cream, taupe, sage, blush and natural-wood materials.",
+    "dimensionality": "Strong separation between warm illuminated ridges and cooler recessed shadows. Every textile loop, crease, bead, leaf and toy edge contributes visible depth.",
+    "material_abundance": "At least five clearly different textile constructions and six to eight carefully arranged prop types are visible around the perimeter.",
+    "light_signature": "Low directional sunlight enters from the upper-left, travels diagonally through the frame and creates long soft-edged shadows toward the lower-right.",
+    "color_signature": "Luminous creamy highlights, oatmeal and taupe midtones, dusty-blush and muted-sage accents, pale honey-colored wood and slightly cooler neutral shadows.",
+    "editorial_quality": "Rich and tactile but controlled; naturally styled by hand, never sparse, sterile or catalog-flat."
+  },
+  "composition": {
+    "camera_view": "True top-down flat lay at an 88-90 degree viewing angle.",
+    "protected_object_target": {
+      "physical_size_cue": "A substantial real 8 x 8 inch square printed keepsake item.",
+      "canvas_coverage": "Approximately 70% of the full frame; acceptable range is 68-72% of canvas width and 68-72% of canvas height.",
+      "target_bounds": "Approximately x=14-86% and y=14-86% of the final canvas.",
+      "center": "x=50%, y=49-50%.",
+      "rotation": "Nearly zero degrees, with outer edges visually parallel to the square canvas. A maximum 1-2 degree natural rotation is allowed only if inherited from the source.",
+      "visibility": "All four outer edges remain fully visible with a thin consistent breathing gap.",
+      "priority": "Largest, sharpest and most visually dominant element in the frame."
+    },
+    "peripheral_band": "Use the outer 10-16% perimeter intensively. Props and textile edges may leave the canvas naturally, creating richness without reducing the protected object's scale.",
+    "protected_clearance": "Maintain a narrow clean separation around all four sides. Props may approach closely but may never overlap the protected region.",
+    "balance": "Asymmetrical but visually full: botanical height and a textile rabbit on the left; knitted clothing, wooden sensory objects and soft fabric detail on the right; a dusty-blush ribbon anchoring the lower edge.",
+    "depth_strategy": "Create depth through overlapping textile planes, raised knit ridges, partially cropped props, varied object heights and directional cast shadows rather than through shallow focus.",
+    "negative_space": "No large empty corner. Every outer quadrant contains texture, a cropped material edge or a restrained decorative accent.",
+    "thumbnail_readability": "At small marketplace-thumbnail size, the protected object and its existing title remain immediately recognizable and readable."
+  },
+  "environment": {
+    "concept": "A richly layered Scandinavian-boho nursery styling surface built like a tactile textile collage around the protected center.",
+    "base_surface": "Warm-ivory quilted cotton with subtle square stitching, slight loft, soft compression and small natural puckering visible in narrow outer zones.",
+    "textile_layers": [
+      {
+        "zone": "upper-left diagonal",
+        "description": "Cream waffle-weave cotton with raised cells, an irregular soft edge and directional micro-shadows inside every recessed square."
+      },
+      {
+        "zone": "upper-center through lower-left",
+        "description": "Soft taupe linen with a broad ivory windowpane plaid, laid diagonally and showing authentic slubs, creases and woven intersections."
+      },
+      {
+        "zone": "upper-right and narrow lower-left strip",
+        "description": "Thick oatmeal chunky cable knit with large braided loops, real loft and deep shadow pockets between stitches."
+      },
+      {
+        "zone": "right edge through lower-center",
+        "description": "Cream crinkled muslin with semi-sheer fibers, gathered ripples and gentle overlapping translucency."
+      },
+      {
+        "zone": "lower-right",
+        "description": "A second fine rib-knit or softly brushed cotton layer that separates the socks and ribbon from the base textile."
+      }
+    ],
+    "layer_order": "The quilted cotton is the lowest layer; plaid linen crosses above it; waffle cotton and cable knit partially overlap the plaid; muslin drapes over the right and lower edges. All overlaps remain outside the protected object.",
+    "material_behavior": "Every fabric has its own weave scale, thickness, stiffness and response to gravity. Use compressed ridges, lifted edges, deep creases, soft fiber highlights and physically consistent micro-shadows.",
+    "coverage": "Textile layering fills the entire visible perimeter. Avoid a single uniform cloth surrounding the protected object.",
+    "atmosphere": "Luminous, intimate, premium, handcrafted, gift-ready and emotionally warm, with the richness of a styled editorial photograph."
+  },
+  "decoration_layout": {
+    "upper_left": {
+      "object": "Smooth pale-beech crescent",
+      "placement": "Near x=15-29%, y=-1-13%, resting on the cream waffle textile and naturally cropped slightly by the top edge.",
+      "scale": "Medium peripheral accent, clearly smaller than the protected object.",
+      "detail": "Visible fine wood grain, softly rounded edge, warm sunlit rim and a long gentle shadow toward the lower-right."
+    },
+    "left_edge": {
+      "objects": [
+        "One slender eucalyptus stem with dusty muted-sage round leaves",
+        "Three soft beige bunny-tail grass stems",
+        "One delicate branching dried filler stem",
+        "One narrow wheat-like stem for fine vertical detail"
+      ],
+      "placement": "Enter naturally from the left edge and extend from the upper-left toward mid-left. Several tips and stems leave the frame.",
+      "interaction": "Lie flat across two textile layers, creating thin crisp-to-soft shadows that reveal every stem and leaf without crossing the protected region.",
+      "detail": "Show subtle leaf veins, dry fibers, irregular stem thickness and warm translucent edges in the golden light."
+    },
+    "lower_left": {
+      "object": "Handmade muted-sage linen rabbit with long floppy ears, minimal stitched face and softly filled limbs",
+      "placement": "Partially outside the frame at x=-2-23%, y=58-103%, angled gently toward the center.",
+      "cropping": "Substantial natural cropping along the left and lower edges is required so the rabbit frames the scene rather than becoming a second subject.",
+      "detail": "Visible linen weave, small stitched seams, slight stuffing irregularity, gentle fabric compression and a distinct cast shadow over the plaid and knit layers."
+    },
+    "upper_right": {
+      "object": "Oatmeal-beige knitted infant bonnet with fine ribbing and two long knitted ties",
+      "placement": "Partially cropped at x=77-103%, y=-2-18%, resting across the plaid linen and chunky knit.",
+      "interaction": "The ties curve naturally through the upper-right perimeter without entering the protected region.",
+      "detail": "Clearly resolved ribbing, soft yarn fuzz, compressed tie intersections and warm highlight edges."
+    },
+    "right_center": {
+      "objects": [
+        "One small natural-beech circular teething ring",
+        "One short beaded sensory rattle with a second wooden ring and six to eight graduated beads"
+      ],
+      "placement": "Arrange vertically and diagonally along x=91-103%, y=35-65%, with parts naturally cropped by the right edge.",
+      "scale": "Small, physically believable infant accessories with visible separation between the ring and bead strand.",
+      "detail": "Each bead has unique grain direction, a warm highlight and an individual contact shadow."
+    },
+    "lower_right": {
+      "object": "Pair of tiny cream knitted infant socks with ribbed cuffs",
+      "placement": "Partially cropped at x=82-102%, y=68-99%, resting on cream muslin and fine rib-knit.",
+      "interaction": "One sock overlaps the other slightly. Both remain fully outside the protected region.",
+      "detail": "Visible cuff ribs, heel shaping, yarn fibers and small shadow cavities."
+    },
+    "lower_center": {
+      "object": "Large dusty-blush linen ribbon tied into a soft handmade bow",
+      "placement": "Enter from the lower edge around x=39-82%, y=87-104%, with the lower tails intentionally outside the canvas.",
+      "interaction": "Natural creases, a softly structured knot and overlapping tails. It anchors the composition without touching the protected object.",
+      "detail": "Visible linen weave, warm translucent edge light and deeper rose-taupe shadows inside the knot."
+    },
+    "optional_lower_right_accent": {
+      "object": "One small pale-wood star or arch fragment",
+      "placement": "At the extreme lower-right edge, mostly cropped, only if a small empty zone remains.",
+      "restriction": "Omit it if it would crowd the socks or wooden rattle."
+    },
+    "density": "Show six to eight distinct prop types in addition to the five textile constructions. The arrangement must feel abundant, tactile and intentionally styled.",
+    "distribution": "No mirrored symmetry and no evenly spaced catalog grid. Use natural clusters, overlaps between props and textiles, and controlled edge cropping.",
+    "hierarchy": "The protected object remains the hero. Props create visual rhythm through alternating sage, blush, wood and oatmeal accents around the perimeter."
+  },
+  "perspective_and_camera": {
+    "camera_body": "Canon EOS R5 or equivalent full-frame photographic rendering.",
+    "lens": "RF 50mm to 70mm equivalent with minimal distortion.",
+    "settings": {
+      "aperture": "f/5.6",
+      "iso": 200,
+      "shutter_speed": "1/160 s",
+      "white_balance": "Approximately 4300-4600K to retain creamy whites while preserving golden highlights"
+    },
+    "view": "True overhead at 88-90 degrees with no tilted horizon or keystone distortion.",
+    "geometry": "All straight edges remain straight; the protected square object retains true proportions.",
+    "scale": "Infer all prop dimensions from the protected object's real 8 x 8 inch size.",
+    "surface_contact": "Every object has a precise point of contact, believable weight, slight textile compression and local occlusion.",
+    "focus": "Broad editorial sharpness across the protected object and surrounding materials. Only extreme edge tips may soften very slightly.",
+    "microcontrast": "Resolve fibers, grain, knit channels, stitching and leaf detail without digital oversharpening."
+  },
+  "golden_hour_lighting": {
+    "time_of_day": "The final 30-45 minutes before sunset, photographed indoors beside a large nursery window.",
+    "key_source": "One low directional sun source enters from the upper-left at approximately 25-35 degrees above the surface.",
+    "diffusion": "A thin sheer curtain partially diffuses the sunlight, producing clear directional modeling with medium-soft edges rather than harsh noon light or flat overcast light.",
+    "key_to_fill_ratio": "Approximately 3:1. Illuminated ridges are visibly brighter than recessed areas, while shadow detail remains open and natural.",
+    "highlight_temperature": "Warm honey-gold illumination around 3900-4300K, concentrated on raised fabric ridges, pale wood, leaf edges and the upper-left portions of objects.",
+    "shadow_temperature": "Slightly cooler neutral taupe or sage-gray ambient fill around 4800-5200K, creating subtle warm-cool separation without blue shadows.",
+    "light_path": "A broad diagonal pool of sunlight travels from the upper-left across the upper and central portions of the frame. Its boundary is soft and organic, never a rigid artificial stripe.",
+    "shadow_direction": "All cast shadows travel consistently toward the lower-right at the same angle.",
+    "shadow_length": "Use visibly elongated but physically plausible shadows. Raised props create longer shadows; flat textiles create tight micro-shadows and deeper recesses.",
+    "shadow_edges": "Medium-soft penumbra for large props, slightly crisper contact edges at the point of touch, and delicate fine shadows for stems, knit ties and beads.",
+    "protected_object_integration": "Let the same golden-hour gradient pass gently across the physical surface of the protected object. Preserve artwork fidelity and keep the title within the brighter readable zone. Add a stronger contact shadow along its lower and right edges for convincing lift from the textiles.",
+    "material_response": {
+      "textiles": "Matte diffuse highlights on fibers, bright ridges and deep but detailed stitch recesses.",
+      "wood": "Warm satin highlights, visible grain and soft reflected amber light.",
+      "ceramic_or_painted_surfaces": "Restrained soft specular highlight without glossiness.",
+      "botanicals": "Subtle translucency along thin leaves and glowing fine hairs on dried grasses.",
+      "paper_surface": "Soft matte sheen with no glare obscuring existing text or illustrations."
+    },
+    "tonal_structure": "Use a gentle editorial S-curve: luminous highlights, separated midtones, deeper dimensional shadows and preserved detail at both extremes.",
+    "exposure": "Protect cream textile detail and pale artwork areas. No clipped whites, washed-out shadows or evenly bright full-frame illumination.",
+    "ambient_occlusion": "Strengthen small contact shadows where fabrics overlap, where beads touch cloth and beneath the protected object's edges.",
+    "vignette": "No digital vignette. Let the directional light and peripheral material density guide the eye naturally."
+  },
+  "color_palette": {
+    "dominant": [
+      "luminous warm ivory",
+      "oatmeal beige",
+      "soft mushroom taupe",
+      "natural flax linen"
+    ],
+    "accents": [
+      "dusty blush",
+      "muted sage",
+      "eucalyptus green",
+      "pale honey beechwood"
+    ],
+    "shadow_accents": [
+      "cool neutral taupe",
+      "soft sage-gray",
+      "muted rose-taupe"
+    ],
+    "approximate_distribution": "55-65% ivory and oatmeal, 15-20% taupe and flax, 5-8% sage, 5-8% dusty blush, 5-8% natural wood, with the protected artwork retaining its own unchanged palette.",
+    "source_adaptation": "If the attached artwork contains a strong muted accent, echo it once in a small peripheral detail at reduced saturation without changing the fixed neutral base.",
+    "restriction": "Maintain distinct creamy whites, warm midtones and cooler shadows. Avoid monochrome beige muddiness, orange wash and globally yellow white balance. Never recolor the protected artwork."
+  },
+  "visual_style": {
+    "medium": "High-end photorealistic Etsy nursery lifestyle photography.",
+    "aesthetic": "Golden-hour Scandinavian boho with abundant natural fibers, handcrafted objects and refined editorial styling.",
+    "mood": "Tender, luminous, cozy, premium, organic, giftable and emotionally warm.",
+    "rendering": "Authentic full-frame camera realism with fine natural grain, deep material microtexture, realistic wood pores, distinct textile weaves and precise light-driven volume.",
+    "focal_hierarchy": "The protected central object commands the frame. Golden light, diagonal textile layers and peripheral prop clusters all lead the eye toward it.",
+    "sharpness": "Crisp central artwork and resolved surrounding fibers suitable for marketplace zoom, with no oversharpening halos.",
+    "density": "Visually rich and detailed at every edge, yet organized into clear clusters with narrow breathing gaps.",
+    "integration_standard": "The result must look like one professionally styled photograph captured in a real sunlit nursery, never like pasted layers, a sterile stock setup or synthetic CGI."
+  },
+  "negative_constraints": [
+    "No protected central object smaller than 68% of canvas width",
+    "No protected central object larger than 72% of canvas width",
+    "No cropped outer edge of the protected central object",
+    "No changes to existing artwork or typography",
+    "No misspelled, regenerated, warped or duplicated lettering",
+    "No new readable text",
+    "No stretched or non-square protected object",
+    "No accessory touching or overlapping the protected region",
+    "No flat, even, shadowless or ambient-only illumination",
+    "No high-key white wash that erases texture and volume",
+    "No identical brightness across every material",
+    "No short generic contact shadows when low golden-hour light requires elongated shadows",
+    "No conflicting shadow directions, edge softness or color temperature",
+    "No harsh black shadows, clipped highlights or unreadable dark artwork",
+    "No strong orange filter, yellow cast, sepia grade or muddy brown palette",
+    "No monochrome beige scene without sage, blush and natural-wood accents",
+    "No single uniform textile surrounding the protected object",
+    "No fewer than five visibly distinct textile constructions",
+    "No sparse perimeter, empty corner or minimal two-prop styling",
+    "No chaotic clutter, mirrored symmetry or evenly spaced catalog layout",
+    "No oversized peripheral prop competing with the center",
+    "No duplicated toys, socks, rattles, plants, crescents or ribbons",
+    "No bright primary colors, neon accents or glossy plastic",
+    "No synthetic-looking fabric, repeated procedural texture or textureless smooth cloth",
+    "No floating objects, missing contact points or impossible textile intersections",
+    "No shallow-focus blur hiding material details",
+    "No wide-angle distortion, fisheye effect, tilted camera or keystone geometry",
+    "No illustration, collage or plastic 3D appearance in the photographic surroundings",
+    "No watermark, logo, interface element, border or added caption"
+  ],
+  "final_validation": [
+    "The output is exactly 1:1 square and reads as a true overhead photograph.",
+    "The protected central square object represents a believable real 8 x 8 inch printed item.",
+    "The protected object occupies 68-72% of both canvas width and canvas height.",
+    "Its center is approximately x=50%, y=49-50%, and all four outer edges remain visible.",
+    "All original artwork, printed colors and typography remain faithful, sharp and readable.",
+    "Golden-hour direction is immediately visible through warm upper-left highlights and elongated lower-right shadows.",
+    "The lighting has clear dimensional contrast rather than uniform high-key brightness.",
+    "The title and primary illustration remain in a bright readable zone without dense cast shadows.",
+    "At least five textile constructions are visibly distinct: quilted cotton, waffle cotton, plaid linen, chunky knit and crinkled muslin or fine rib-knit.",
+    "Six to eight prop types enrich the perimeter without overlapping the protected object.",
+    "The crescent, botanicals, rabbit, bonnet, wooden rings or beads, socks and dusty-blush bow occupy their assigned zones.",
+    "Every textile overlap, bead, stem, wooden object and soft toy has believable contact, weight and matching shadow behavior.",
+    "Cream highlights retain fiber detail; taupe and sage-gray shadows remain detailed rather than washed out or crushed.",
+    "Warm highlights and cooler neutral shadows create natural color depth without an orange filter.",
+    "No corner feels empty, yet the protected object remains the unmistakable visual hero.",
+    "The completed scene has the rich material volume, color harmony, tactile detail and sunlit editorial atmosphere of premium successful Etsy lifestyle imagery."
+  ]
+}

@@ -9,9 +9,11 @@ their Etsy listing pictures.
 - **Rules for agents** — [AGENTS.md](AGENTS.md) (Claude Code reads [CLAUDE.md](CLAUDE.md))
 
 ```
-app/    the program (launch: the "Book Studio" shortcut or app/Book Studio.pyw; two modes —
-        orders, and listings: the Workshop and the mockups)
-wiki/   knowledge base
+app/       the program (launch: the "Book Studio" shortcut or app/Book Studio.pyw; two modes —
+           orders, and listings: the Workshop and the mockups)
+pipeline/  the book pipeline — the book agents' rules and playbook (Antigravity opens this folder);
+           its books/ — the Workshop's books, local only
+wiki/      knowledge base
 ```
 
 Tests: `cd app && python -m unittest discover -s tests` · wiki check: `python app/tools/wiki_check.py`

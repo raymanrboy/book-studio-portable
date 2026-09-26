@@ -431,6 +431,49 @@ export function flip(container, mutate, duration = 380) {
   });
 }
 
+// A live page redrawn in place (the Workshop looks for changes every 1.5 s): each child of `container` is keyed
+// (`data-key`); one whose markup hasn't changed stays as it is — its pictures, hover and focus with it —, a changed one
+// is replaced, new ones come in, gone ones go, and the order follows `items` ([key, markup] pairs). A picture the old
+// child already showed is carried into the new one as it is, decoded: nothing reloads or blinks. Returns the children
+// (re)drawn this time, for the caller to fade their new pictures in.
+const drawnFrom = new WeakMap(); // element → the markup it was drawn from
+export function patch(container, items) {
+  const old = new Map([...container.children].map((n) => [n.dataset.key, n]));
+  const drawn = [];
+  let cursor = container.firstElementChild;
+  for (const [key, markup] of items) {
+    const text = render(markup);
+    let node = old.get(key);
+    old.delete(key);
+    if (!node || drawnFrom.get(node) !== text) {
+      const next = el(raw(text));
+      next.dataset.key = key;
+      drawnFrom.set(next, text);
+      if (node) {
+        carryPictures(node, next);
+        if (node === cursor) cursor = node.nextElementSibling;
+        node.remove();
+      }
+      node = next;
+      drawn.push(next);
+    }
+    if (node === cursor) cursor = node.nextElementSibling;
+    else container.insertBefore(node, cursor);
+  }
+  old.forEach((n) => n.remove());
+  return drawn;
+}
+function carryPictures(from, to) {
+  const shown = new Map([...from.querySelectorAll('img.loaded')].map((img) => [img.getAttribute('src'), img]));
+  to.querySelectorAll('img[src]').forEach((img) => {
+    const same = shown.get(img.getAttribute('src'));
+    if (!same) return;
+    for (const { name, value } of img.attributes) if (name !== 'data-fade') same.setAttribute(name, value);
+    same.classList.add('loaded');
+    img.replaceWith(same);
+  });
+}
+
 // Re-render a region without stealing the caret from the field the user is typing in.
 export function keepFocus(fn) {
   const a = document.activeElement;

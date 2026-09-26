@@ -1,7 +1,7 @@
 ---
 title: Book structure — pages, spreads, slots
 type: rule
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/studio/library.py
   - app/web/js/order-bits.js
@@ -51,7 +51,7 @@ picture, pages 1 and 30 a square beside the empty endpaper ([workshop](../featur
 
 ## Where in the code
 
-- [app/studio/library.py](../../app/studio/library.py) — `SLOT_KEYS`, `TEXT_KEYS`, `PROMPT_KEYS`, `SPREAD_NUMBERS`, `spread_pages()`, `slot_label()`, `_empty_slots()`, `completeness()`
+- [app/studio/library.py](../../app/studio/library.py) — `SLOT_KEYS`, `TEXT_KEYS`, `SPREAD_NUMBERS`, `spread_pages()`, `slot_label()`, `_empty_slots()`, `completeness()`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `SPREADS`, `SLOT_KEYS`, `pagesOf()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `spreadsOf()`, `folderViewerItems()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `expected_files()`, `build_photobook_pdf()`

@@ -87,9 +87,8 @@ function buildNav() {
   setHtml(document.getElementById('nav'), html`
     <span class="nav-pill" id="nav-pill" style="opacity:0"></span>
     ${m.nav.map((n, i) => html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}" aria-label="${n.label}" data-tip="${n.label}" data-kbd="Alt+${i + 1}" data-tip-side="right">
-      ${ic(n.icon)}${n.hash === '#/settings' ? html`<span class="badge" id="nav-badge" hidden></span>` : ''}${n.hash === '#/mockups' ? html`<span class="badge busy" id="nav-busy" hidden></span>` : ''}</a>`)}`);
+      ${ic(n.icon)}${n.hash === '#/settings' ? html`<span class="badge" id="nav-badge" hidden></span>` : ''}${BUSY_NAV[n.hash] ? html`<span class="badge busy" data-busy="${BUSY_NAV[n.hash]}" hidden></span>` : ''}</a>`)}`);
   document.documentElement.dataset.mode = mode;
-  document.title = m.title;
   paintBusy();
 }
 
@@ -103,15 +102,21 @@ function switchMode() {
   location.hash = entryOf(MODES[mode].other);
 }
 
-// A mockups run going on while the owner is elsewhere: a small cyan dot on the brand icon (in the orders) or
-// on «Мокапи» (in the listings). pages/mockups.js tells it through the 'bs:busy' event.
-const busy = { mockups: false };
+// Work going on in the Listings mode while the owner is elsewhere: a mockups run in Photoshop (pages/mockups.js), a
+// picture the Workshop waits for (workshop-live.js — its value says which row: the window's title carries it, so the
+// taskbar shows it while the owner is in Gemini). A small cyan dot on the brand icon (in the orders) or on the page's
+// rail item (in the listings, when he is on another page). The pages tell it through the 'bs:busy' event.
+const busy = { mockups: false, workshop: null };
+const BUSY_NAV = { '#/mockups': 'mockups', '#/workshop': 'workshop' };
 window.addEventListener('bs:busy', (e) => { Object.assign(busy, e.detail || {}); paintBusy(); });
 function paintBusy() {
   const brandDot = document.getElementById('brand-busy');
-  const navDot = document.getElementById('nav-busy');
-  if (brandDot) brandDot.hidden = !(busy.mockups && mode === 'orders');
-  if (navDot) navDot.hidden = !(busy.mockups && !/^#\/mockups/.test(location.hash));
+  if (brandDot) brandDot.hidden = !((busy.mockups || busy.workshop) && mode === 'orders');
+  document.querySelectorAll('[data-busy]').forEach((dot) => {
+    const page = Object.keys(BUSY_NAV).find((hash) => BUSY_NAV[hash] === dot.dataset.busy);
+    dot.hidden = !(busy[dot.dataset.busy] && !(location.hash || '').startsWith(page));
+  });
+  document.title = busy.workshop ? `● ${busy.workshop} — ${MODES[mode].title}` : MODES[mode].title;
 }
 
 function placeNavPill() {
@@ -196,7 +201,7 @@ const ROUTES = [
   [/^#\/archive(?:\/(\d{8}-\d{6}-[0-9a-f]{6}))?\/?$/, () => import('./pages/archive.js'), 'orders'],
   [/^#\/settings(?:\/(\w+))?$/, () => import('./pages/settings.js'), 'orders'],
   [/^#\/workshop\/?$/, () => import('./pages/workshop.js'), 'listings'],
-  [/^#\/workshop\/([0-9a-f]{32})$/, () => import('./pages/workshop-book.js'), 'listings'],
+  [/^#\/workshop\/([^/]+)$/, () => import('./pages/workshop-book.js'), 'listings'],
   [/^#\/mockups\/?$/, () => import('./pages/mockups.js'), 'listings'],
 ];
 
@@ -332,8 +337,12 @@ async function boot() {
     applyMotion(!!ui.reduceMotion);
     updateSidebar();
   }
-  // Warm up the other pages' code while the user looks at the first one.
-  idle(() => ROUTES.forEach(([, load]) => load().catch(() => {})));
+  // Warm up the other pages' code while the user looks at the first one; a picture the Workshop may be waiting for
+  // since before a reload is noticed (the rail's dot, the title).
+  idle(() => {
+    ROUTES.forEach(([, load]) => load().catch(() => {}));
+    import('./workshop-live.js').then((live) => live.wake()).catch(() => {});
+  });
 }
 
 boot();

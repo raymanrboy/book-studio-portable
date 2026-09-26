@@ -1,0 +1,252 @@
+{
+  "prompt_name": "etsy_listing_upright_shelf_scandinavian_boho",
+  "version": "1.0.0",
+  "purpose": "Universal meta prompt for placing any supplied square children's keepsake volume in a richly styled Scandinavian-boho nursery shelf scene.",
+  "generation_mode": "Image editing, protected-subject compositing and photorealistic environment reconstruction from exactly one attached source image.",
+  "task": "Create a premium square nursery lifestyle photograph in which the protected primary element from the attached source stands naturally on a pale oak floating shelf against a warm ivory plaster wall. Preserve the protected element's exact identity, camera angle, perspective and light-shadow fingerprint. Build a richer cozy boho environment around it without obscuring or competing with it.",
+  "input_contract": {
+    "required_attachments": 1,
+    "image_1_role": "PRIMARY SOURCE - the only authority for the protected central element, its visible artwork, geometry, viewing angle, illumination and shadow behavior.",
+    "universality": "The source may contain any children's title, character, palette or occasion. Never assume or describe its internal design; use exactly what is supplied.",
+    "reference_policy": "No separate lifestyle reference is required. This JSON fully defines the shelf environment and adaptive styling logic.",
+    "source_background_policy": "Any plain studio surroundings outside the protected element are replaceable and must not determine the final decor.",
+    "compatibility_requirement": "The protected element must be fully visible and sufficiently sharp in the source. Its existing angle and light-shadow pattern must be treated as intentional."
+  },
+  "source_hierarchy": {
+    "primary_source_identity": "The attached source exclusively controls all visible artwork, typography, colors, materials, proportions and edge construction of the protected element.",
+    "primary_source_geometry": "The attached source exclusively controls camera elevation, viewing direction, rotation, lean, foreshortening, visible thickness and perspective convergence.",
+    "primary_source_lighting": "The attached source exclusively controls key-light direction, height, softness, intensity, contrast, highlight placement, shadow azimuth, shadow length, penumbra and density.",
+    "json_control": "This JSON controls only the replacement environment, final placement scale, shelf construction, surrounding decor, neutral styling and adaptive accent selection.",
+    "absolute_priority": "When any environmental instruction conflicts with the attached source's protected-element geometry or illumination, the attached source always wins."
+  },
+  "protected_source_policy": {
+    "instruction": "Isolate and reuse the protected primary element from the attached source as one coherent immutable visual object. Preserve its internal pixels wherever the editing system permits. Do not reconstruct, regenerate, reinterpret or redesign its visible artwork.",
+    "preserve_exactly": [
+      "all illustration details and character features",
+      "all existing typography, spelling, spacing and letter shapes",
+      "all original colors and tonal relationships",
+      "original aspect ratio and physical proportions",
+      "original rotation, perspective and lean angle",
+      "the same visible side edges and thickness",
+      "surface texture, highlights, shading, sharpness and focus",
+      "the original light-shadow relationship"
+    ],
+    "allowed_transformations": [
+      "uniformly scale the complete protected element as one unit to fit the target composition",
+      "translate the complete protected element as one unit until its lower edge rests naturally on the shelf plane",
+      "extend or reconstruct only the external cast shadow where necessary so it continues naturally across the new wall or shelf"
+    ],
+    "prohibited_operations": [
+      "Do not flatten or straighten the supplied perspective",
+      "Do not rotate the protected element to a new angle",
+      "Do not change its lean or viewing direction",
+      "Do not stretch, warp or change its aspect ratio",
+      "Do not repaint, regenerate or reinterpret any internal region",
+      "Do not alter, replace or retype any existing lettering",
+      "Do not recolor or relight the protected element",
+      "Do not crop any outer edge of the protected element",
+      "Do not place decor across or over the protected element",
+      "Do not create a duplicate of the protected element"
+    ]
+  },
+  "edit_scope": {
+    "editable_region": "Everything outside the protected primary element, including the wall, floating shelf, peripheral decor and physically necessary continuation of existing shadows.",
+    "objective": "Replace empty studio surroundings with a cohesive, detailed and believable Scandinavian-boho nursery shelf scene while maintaining exact visual continuity with the source.",
+    "canvas": {
+      "aspect_ratio": "1:1 square",
+      "recommended_resolution": "2048 x 2048 pixels or higher",
+      "output_count": 1,
+      "safe_crop": "Keep the protected element and its readable artwork inside the central 80% area so the result remains useful for marketplace thumbnails."
+    }
+  },
+  "source_analysis_pass": {
+    "instruction": "Before generating the environment, silently analyze the attached source and lock the following measurements. Use them consistently for every added surface and object.",
+    "measurements": [
+      "protected-element bounding box and center",
+      "camera height relative to the subject",
+      "vertical and horizontal convergence",
+      "top-edge and side-edge visibility",
+      "rotation and lean angle",
+      "lens compression and depth behavior",
+      "key-light direction and elevation",
+      "highlight side and falloff",
+      "cast-shadow direction, length, softness and opacity",
+      "ambient fill level and white balance"
+    ],
+    "lock_rule": "Do not average these properties into a generic shelf photograph. The generated environment must inherit the exact measured perspective and light-shadow logic."
+  },
+  "composition": {
+    "reference_character": "Match the successful example's calm eye-level nursery shelf composition while adapting it to the exact angle in the attached source.",
+    "camera_position": "Approximately shelf height to slightly above the shelf, looking almost straight toward the wall; use the attached source for the exact elevation and viewing direction.",
+    "lens": "Natural compressed editorial perspective, approximately 60-85 mm full-frame equivalent, with straight vertical lines and no wide-angle exaggeration.",
+    "protected_element_target": {
+      "placement": "Resting physically on the top plane of the shelf and leaning naturally toward the wall only if the attached source already shows that lean.",
+      "center": "Approximately x=50-53%, y=48-52%.",
+      "canvas_coverage": "Approximately 52-60% of canvas width and 58-68% of canvas height, adjusted without changing aspect ratio.",
+      "lower_edge": "The lower edge contacts the shelf around y=76-81% of the canvas.",
+      "visibility": "All outer edges remain visible and no decoration crosses them.",
+      "priority": "Largest, sharpest, highest-contrast and most important feature."
+    },
+    "shelf": {
+      "placement": "A single floating shelf crosses the lower part of the frame around y=76-88%.",
+      "perspective": "Its top plane, edge thickness and horizontal convergence must match the source camera exactly.",
+      "cropping": "Both ends may extend naturally outside the canvas.",
+      "negative_space": "Leave quiet wall space above the protected element while enriching the left and right shelf clusters."
+    },
+    "balance": "Asymmetrical visual balance with a botanical cluster on the left and a tactile nursery-toy cluster on the right.",
+    "depth_layers": "Use wall, protected element, shelf-top objects and a few partially cropped foreground accents to create believable depth without blocking the center."
+  },
+  "environment": {
+    "wall": "Warm ivory matte limewash or fine mineral plaster with subtle hand-troweled variation, tiny natural texture and no visible pattern.",
+    "shelf_material": "Pale natural oak with rounded leading corners, fine open grain, matte oil finish and realistic edge thickness.",
+    "shelf_construction": "Minimal floating installation with no visible brackets, clean join to the wall and a softly shadowed underside.",
+    "surface_behavior": "The protected element and every prop must sit with convincing weight and contact on the same shelf plane.",
+    "atmosphere": "Calm, tender, cozy, premium, organic, handcrafted and thoughtfully styled for a modern nursery.",
+    "detail_level": "Richer than a minimal scene: multiple tactile materials and small layered accents, but every detail remains subordinate to the protected element."
+  },
+  "adaptive_palette": {
+    "fixed_neutrals": [
+      "warm ivory",
+      "oatmeal beige",
+      "soft taupe",
+      "pale oak",
+      "natural linen"
+    ],
+    "botanical_accents": [
+      "muted eucalyptus green",
+      "dry wheat beige"
+    ],
+    "source_adaptation": "Identify one muted cool accent and one muted warm accent already present in the supplied artwork. Echo them only in two or three small peripheral details at reduced saturation.",
+    "protection_rule": "Never recolor the supplied artwork to match the environment. The environment adapts to the supplied artwork, never the reverse.",
+    "saturation": "Low-saturation Scandinavian nursery palette with gentle tonal harmony and no dominant color cast."
+  },
+  "decoration_layout": {
+    "left_botanical_cluster": {
+      "objects": [
+        "A small matte ivory ceramic bud vase with a rounded body and narrow neck",
+        "Two or three eucalyptus stems with dusty round sage leaves",
+        "Three slender beige bunny-tail grass stems",
+        "One delicate dried filler branch"
+      ],
+      "placement": "On the shelf at x=5-20%, positioned slightly behind the pale-wood accent but fully outside the protected region.",
+      "height": "The tallest stems may rise to approximately y=36-42% but must not cross the protected element.",
+      "detail": "Natural irregular spacing, subtle leaf translucency and delicate stem shadows on the wall."
+    },
+    "left_wood_accent": {
+      "object": "Smooth freestanding pale-beech crescent",
+      "placement": "At x=16-28%, y=68-80%, leaning slightly against the vase or wall while resting firmly on the shelf.",
+      "scale": "Small-to-medium accent; never taller than one quarter of the protected element.",
+      "material": "Visible natural grain, softly rounded edges and matte finish."
+    },
+    "left_textile_detail": {
+      "object": "A tiny folded piece of oatmeal muslin or a short cream macrame tassel",
+      "placement": "Partially visible at the extreme left edge of the shelf, below or beside the vase.",
+      "use_rule": "Use only if it improves layering without crowding the botanical cluster."
+    },
+    "right_stacking_toy": {
+      "object": "Small natural-wood stacking toy with four rounded rings",
+      "colors": "Pale wood plus three or four desaturated rings that subtly echo the attached artwork's adaptive accents.",
+      "placement": "At x=77-89%, y=60-80%, fully resting on the shelf and separated from the protected element by a narrow gap.",
+      "scale": "Approximately one third of the protected element's height."
+    },
+    "right_bead_garland": {
+      "object": "Short strand of untreated wooden beads with varied bead sizes and an optional small oatmeal cotton tassel",
+      "placement": "Curving naturally across x=68-94%, y=78-84% along the shelf surface, with part of the strand passing across the base of the stacking toy but never crossing the protected element.",
+      "physics": "Each bead touches the shelf, follows gravity and casts an individual soft contact shadow."
+    },
+    "far_right_soft_toy": {
+      "object": "Handmade muted-sage or oatmeal linen rabbit with long upright ears and a minimal stitched face",
+      "placement": "At x=91-104%, y=55-84%, partially cropped by the right edge.",
+      "cropping": "Natural edge cropping is required so the rabbit reads as a peripheral framing detail rather than a second subject.",
+      "material": "Visible woven linen, softly filled limbs and restrained handcrafted stitching."
+    },
+    "lower_right_knit_detail": {
+      "object": "One tiny pair of cream knitted infant booties or a softly folded knitted bonnet",
+      "placement": "Near the far-right shelf edge, partly behind the bead garland or softly cropped by the canvas.",
+      "use_rule": "Include only if a clear surface zone remains; never stack it against the protected element."
+    },
+    "wall_accent": {
+      "object": "One very small, pale rattan rainbow or circular woven medallion",
+      "placement": "High on the far-right wall around x=91-101%, y=18-31%, softly cropped by the canvas.",
+      "use_rule": "Optional. Keep low-contrast and omit it if the source shadow or protected-element silhouette needs that wall area."
+    },
+    "density": "Use five to seven distinct peripheral details plus the wall and shelf materials. The scene should feel richly styled, cozy and tactile, not sparse.",
+    "spacing": "Preserve visible gaps between prop groups. No accessory may touch, overlap or visually merge with the protected element.",
+    "hierarchy": "Large center, medium left and right clusters, tiny secondary accents. Decor frames the center and never becomes equally prominent."
+  },
+  "perspective_matching": {
+    "instruction": "Construct the shelf, wall and every prop in the exact perspective inferred from the attached source.",
+    "camera_lock": "Match camera height, yaw, pitch, roll, focal compression and horizon behavior. Do not substitute a generic straight-on or three-quarter view.",
+    "plane_alignment": "The shelf top plane must intersect the protected element's lower edge naturally. Every prop shares this same plane and convergence.",
+    "vertical_alignment": "Vase, stacking toy and rabbit follow the same vertical direction as the protected element and wall.",
+    "scale": "Use the protected element as the real-world scale reference. Treat it as approximately 8 x 8 inches unless the source clearly indicates another physical proportion.",
+    "surface_contact": "Every object has a precise contact point, believable weight, local occlusion and appropriate material compression.",
+    "depth_of_field": "Keep the protected element perfectly sharp. Props remain detailed with only subtle natural softness at the extreme foreground or frame edge."
+  },
+  "lighting_integration": {
+    "master_rule": "Copy the attached source's light-shadow drawing exactly. Do not invent a new lighting setup and do not relight the protected element.",
+    "analysis": "Infer the key-light origin, elevation, size, diffusion, intensity, color temperature, highlight direction, ambient fill and shadow characteristics from the attached source.",
+    "environment_extension": "Continue that same light seamlessly across the new wall, shelf and all added objects.",
+    "shadow_fingerprint": {
+      "direction": "Every new cast shadow follows the exact same azimuth as the protected element's existing shadow.",
+      "length": "Shadow lengths correspond to the same apparent light height and object depth.",
+      "softness": "Match the existing penumbra width and edge transition; do not make prop shadows harder or softer than the protected element's shadow.",
+      "density": "Match the same neutral shadow color and opacity while preserving local ambient bounce.",
+      "contact": "Use slightly denser contact shadows at the shelf, wall and object contact points."
+    },
+    "fallback_only_if_source_is_ambiguous": "Use one large diffused neutral-warm daylight source from the upper-left, creating gentle shadows toward the lower-right.",
+    "white_balance": "Follow the source exactly. If ambiguous, use clean neutral-warm daylight around 5000-5400K with no yellow or orange cast.",
+    "wall_light": "Allow a soft natural window-light gradient or broad diagonal light patch only when its direction is consistent with the source.",
+    "shelf_shadow": "Create a realistic narrow contact shadow where the shelf meets the wall and a broader soft shadow beneath the floating shelf, both following the same light source.",
+    "exposure": "Bright editorial exposure with retained wall texture, readable artwork and detailed highlights in pale materials."
+  },
+  "visual_style": {
+    "medium": "High-end photorealistic Etsy nursery lifestyle photography.",
+    "aesthetic": "Modern Scandinavian boho with handcrafted, tactile and natural materials.",
+    "rendering": "Authentic camera realism, subtle natural grain, realistic oak pores, ceramic microtexture, linen weave, knit loops and individual wood-bead contact shadows.",
+    "mood": "Calm, cozy, tender, premium, organic, gift-ready and emotionally warm.",
+    "focal_hierarchy": "The protected element remains dominant and instantly readable at thumbnail size. Decorations enrich the story only at closer inspection.",
+    "integration_standard": "The final result must look like one professionally styled photograph captured in a real nursery, with no visible compositing boundaries or synthetic CGI surfaces."
+  },
+  "negative_constraints": [
+    "No description-based replacement of the protected element",
+    "No regenerated or reinterpreted artwork",
+    "No altered, misspelled, warped or duplicated typography",
+    "No new readable text",
+    "No changed camera angle, perspective, rotation, lean or visible thickness",
+    "No flattening or straightening of the protected element",
+    "No recoloring or relighting of the protected element",
+    "No cropping of the protected element's outer edges",
+    "No decor touching or crossing the protected region",
+    "No mismatched shelf perspective",
+    "No shelf intersecting or floating below the protected element",
+    "No conflicting shadow directions, lengths, softness or density",
+    "No floating props or missing contact shadows",
+    "No oversized vase, toy, rabbit or wall decoration competing with the center",
+    "No sparse empty scene with only one prop on each side",
+    "No chaotic clutter, symmetrical catalog layout or repeated objects",
+    "No bright primary colors, neon accents or glossy plastic",
+    "No dark rustic wood, heavy farmhouse styling or ornate vintage decor",
+    "No yellow cast, sepia grade, hard flash or dramatic spotlight",
+    "No wide-angle distortion, fisheye effect or tilted horizon",
+    "No artificial blur hiding material detail",
+    "No illustration, collage or 3D-render appearance in the photographic environment",
+    "No watermark, logo, border, caption or interface element"
+  ],
+  "final_validation": [
+    "The output is exactly 1:1 square.",
+    "The supplied protected element is fully visible, dominant, sharp and readable.",
+    "Its illustration, typography, colors, proportions and texture remain faithful to the attached source.",
+    "Its original viewing angle, rotation, lean, visible thickness and perspective remain unchanged.",
+    "The shelf top plane meets its lower edge naturally with credible physical contact.",
+    "The shelf, wall and all props use the same camera geometry as the attached source.",
+    "The original key-light direction, highlight placement and shadow fingerprint are extended consistently through the scene.",
+    "Every new shadow matches the source in direction, relative length, softness and density.",
+    "The neutral environment adapts with one muted warm and one muted cool accent from the supplied artwork.",
+    "The left cluster includes ceramics, botanicals and pale wood with natural layering.",
+    "The right cluster includes a stacking toy, bead garland and partially cropped soft toy, with optional knit and wall accents only when space permits.",
+    "There are enough boho details to feel rich and cozy, but none overlaps or competes with the protected element.",
+    "All materials show believable scale, texture, weight, contact and local shadows.",
+    "The result reads as one authentic premium nursery photograph rather than a composite."
+  ]
+}

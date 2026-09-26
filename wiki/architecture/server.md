@@ -1,7 +1,7 @@
 ---
 title: Server — routes, jobs, errors
 type: architecture
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/studio/server.py
   - app/studio/jobs.py
@@ -92,13 +92,17 @@ Rule: the message for the user is in Ukrainian, specific, saying what happened a
 - Logs: `data/logs/app.log`, `printify.log`, `gelato.log` (rotated every 2 MB). `setup_logging()` only
   makes the `logs` folder (since 2026-09-23; the other data folders are made by `ensure_dirs()` in
   Book Studio's `main()`), so the mockups' data folder holds nothing of Book Studio's.
+- Two switches from the environment: `core.SAMPLE` (the preview server: no key is stored or offered) and
+  `core.SANDBOX` (the preview and the tests, since 2026-09-26: the [Workshop](../features/workshop.md) touches
+  nothing of the owner's — its books, Downloads, clipboard and Recycle Bin are folders in the data folder, F8 isn't
+  taken, no window opens). `core.PIPELINE_DIR` / `core.WORKSHOP_BOOKS` — the book pipeline and its books.
 
 ## Where in the code
 
 - [app/studio/server.py](../../app/studio/server.py) — `route()`, `ROUTES`, `Request`, `Response`, `_Handler`, `ApiError`, `_index_html()`, `_State`, `_ping()`, `json_response()`, `file_response()`, `html_response()`, `redirect()`
 - [app/studio/jobs.py](../../app/studio/jobs.py) — `Jobs`, `Job`, `Job.progress()`, `Job.share()`, `Job.snapshot()` (`errorExtra`), `UserError`, `JobError`
 - [app/studio/httpc.py](../../app/studio/httpc.py) — `request()`, `request_json()`, `human()`, `audit_log()`, `HttpError`, `Listing`, `RETRY_STATUSES`, `_NOT_SENT`
-- [app/studio/core.py](../../app/studio/core.py) — `Settings`, `DEFAULT_SETTINGS`, `write_json()`, `read_json()`, `setup_logging()`, `data_path()`
+- [app/studio/core.py](../../app/studio/core.py) — `Settings`, `DEFAULT_SETTINGS`, `write_json()`, `read_json()`, `setup_logging()`, `data_path()`, `SAMPLE`, `SANDBOX`, `PIPELINE_DIR`, `WORKSHOP_BOOKS`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `api()`, `runJob()`, `upload()`, `media()`
 
 ## Related

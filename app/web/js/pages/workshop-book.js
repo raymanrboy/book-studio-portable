@@ -1,461 +1,633 @@
-// A book in the Workshop (the Listings mode). 17 rows — the cover, the dedication, spreads 2–15, the afterword —
-// and every row a card of three, top to bottom (owner, 24.09.2026): the prompt for its picture, the 2:1 frame, the
-// text. Prompts and texts come first (typed here, or one JSON from an agent); the pictures come last, dropped one
-// per frame; a spread becomes its two square pages at once, mirrored first when it is one of the owner's flipper's
-// (4–5, 8–9 … 28–29; ⇄ on the frame mirrors any spread by hand). «Передати в бібліотеку» gives the book its Etsy
-// listing and sends it to the orders' library.
+// A book in the Workshop — the book console moved in (26.09.2026). On top, the book's path: Формула → Герой → Історія →
+// Текст → Промпти · GO → Картинки n/16 → Обкладинка → Canva → Мокапи → Бібліотека, each step ticked by the files that
+// exist (the agents write them in Antigravity), a click shows the step's file or work in the panel under it. Below, the
+// book's rows — page 1, spreads 2–3 … 28–29, page 30 — each its prompt, its 2:1 frame and its text, and the cover last,
+// in two stages. «Генерувати» puts a row's prompt into the clipboard; the picture the owner downloads from Gemini lands
+// in its row, cut and flipped, and the next prompt is already in the clipboard. The page redraws in place whenever a
+// file changes (workshop-live.js, patch()): what stayed, stays — pictures, scroll, an opened prompt.
 import {
-  api, html, ic, ib, raw, setHtml, on, media, toast, menu, confirmBox, modal, upload, copyText, fadeImages,
-  highlightTokens, el, plural,
+  api, html, ic, ib, raw, setHtml, on, toast, menu, confirmBox, upload, copyText, fadeImages, highlightTokens, plural,
+  patch, syncSeg, runJob, topLayer,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { openAddBook } from './library.js';
-import { copyGuide, saveGuide } from './workshop.js';
+import { picture, checkWord } from './workshop.js';
+import { watch, refresh, act, startGen, genAction, genBar, genState, waitingFor } from '../workshop-live.js';
 
-const SPREADS = Array.from({ length: 14 }, (_, i) => i + 2);
-const pagesOf = (n) => [2 * n - 2, 2 * n - 1];
-// shape: 'wide' — one 2:1 picture over the frame; 'right' / 'left' — a single page, the other half the endpaper.
-const ROWS = [
-  { key: 'cover', label: 'Обкладинка', short: 'обкладинка', shape: 'wide', halves: ['задня', 'лицьова'] },
-  { key: 'page1', label: 'Сторінка 1 · присвята', short: 'сторінка 1', shape: 'right', halves: ['форзац', '1'] },
-  ...SPREADS.map((n) => ({ key: `spread${n}`, label: `Розворот ${pagesOf(n).join('–')}`, short: pagesOf(n).join('–'),
-    shape: 'wide', halves: pagesOf(n).map(String) })),
-  { key: 'page30', label: 'Сторінка 30 · післяслово', short: 'сторінка 30', shape: 'left', halves: ['30', 'форзац'] },
-];
 const IMG_RE = /\.(png|jpe?g|webp)$/i;
-const OFF = 0.04;  // a picture more than 4 % away from its frame's proportion gets the amber mark
-// The owner's flipper (Etsy-Book-Pipeline, mirror-alternate.py): the spreads whose left page divides by 4 are
-// mirrored when dropped in — the server does it (workshop.MIRRORED); the page only says so beforehand.
-const flipped = (key) => /^spread\d+$/.test(key) && (2 * +key.slice(6) - 2) % 4 === 0;
-const PROMPTS = ['промпт', 'промпти', 'промптів'];
-const TEXTS = ['текст', 'тексти', 'текстів'];
-// How the server names a missing piece of a JSON («cover», розвороту 5) in a sentence.
-const HUMAN = { '«cover»': 'обкладинки', '«page1»': 'присвяти', '«page30»': 'післяслова' };
+const ERRORS = ['помилка', 'помилки', 'помилок'];
+const STATE_TEXT = { done: 'Готово', part: 'Почато', todo: 'Ще ні', skip: 'Не потрібно — книга без героя (Tier S)' };
+const CUT = { sides: 'обрізано з боків', 'top-bottom': 'обрізано зверху й знизу' };
+// Who writes a step's file — said where the file isn't there yet.
+const WHO = {
+  formula: 'Агент 0 записує формулу книги й Tier (з героєм чи без) у formula.md.',
+  hero: 'Агент 1 пише промпт героя (canonical-prompt.md) і картку героя; героя згенеруйте кнопкою вище — він стане canonical.png.',
+  story: 'Агент 2 пише історію книги — story-blueprint.md.',
+  text: 'Агенти 3 і 4 пишуть і шліфують текст — book-text.md.',
+  prompts: 'Агент 5 пише промпти розворотів (spread-prompts-json.md) і сторінок 1 та 30 (endpage-prompts-json.md).',
+};
+const MANUAL = { canva: 'Книгу зверстано в Canva', mockups: 'Мокапи для лістингу зроблено' };
 
-export async function mount(view, [id]) {
-  let book;
+// What the page remembers about each book until a restart: the step open in the panel, the file shown for a step,
+// the hero variant's tab, the prompts shown whole, the cover's stage picked by hand, the template's lines.
+const memory = new Map();
+
+export async function mount(view, [rawId]) {
+  const id = decodeURIComponent(rawId);
+  const url = (tail = '') => `/api/workshop/books/${encodeURIComponent(id)}${tail}`;
+  let first;
   try {
-    book = await api(`/api/library/books/${id}`);
+    first = await api(url());
   } catch (err) {
     setHtml(view, html`<button class="back-link" onclick="location.hash='#/workshop'">${ic('arrowLeft', 'icon-s')}</button>
       <div class="empty"><div class="empty-icon">${ic('workshop')}</div><h3>Книгу не знайдено</h3><p>${err.message}</p></div>`);
     return null;
   }
-  if (book.stage !== 'workshop') { location.replace(`#/book/${id}`); return null; } // already in the library
-
-  const uploading = new Map(); // row key -> the share uploaded (0…1)
-  const offs = [];
-  const $ = (s) => view.querySelector(s);
-  const row = (key) => ROWS.find((r) => r.key === key);
-  const assetUrl = (a, w) => media(`/media/book/${id}/${a.file}`, w ? { w } : {});
-  const field = (f) => (f === 'prompts' ? book.prompts : book.text) || {};
-
-  /** What sits in a row's frame: one whole picture, or a spread's two pages (and what the server noted: whether
-   *  they are mirrored, the size of the picture they were cut from). */
-  function pictureOf(key) {
-    if (key === 'cover') return { whole: book.cover };
-    const s = book.slots[key] || {};
-    return { whole: s.image, left: s.left, right: s.right, mirrored: !!s.mirrored, source: s.source };
+  let b = first.book;
+  if (!memory.has(id)) {
+    memory.set(id, { step: (b.steps.find((s) => s.next) || b.steps[0]).key, tabs: new Map(), variant: '', open: new Set(), cover: 0, guides: true });
   }
-  const hasPicture = (key) => { const p = pictureOf(key); return !!(p.whole || p.left || p.right); };
-  function offShape(r, a) {
-    const want = r.shape === 'wide' ? 2 : 1;
-    return a && a.width && a.height && Math.abs(a.width / a.height / want - 1) > OFF ? `не ${want}:1 · ${a.width}×${a.height}` : '';
-  }
+  const mem = memory.get(id);
+  const uploading = new Map(); // drop key → the share uploaded (0…1)
+  let stepsSeen = null;         // the steps' states at the last draw: a step that has just become done pops
+  let coverSeen = null;         // { art, stage } at the last draw: a new cover picture turns the card to its margins
+  let waitSeen = '';            // the row waited for at the last draw: the page follows the queue
+  let lb = null;
+  const lbItems = [];
 
   setHtml(view, html`
-    <div class="ws-page">
-      <div class="page-head ws-head">
-        <button class="back-link" data-act="back" aria-label="До Майстерні" data-tip="До Майстерні" data-kbd="Esc">${ic('arrowLeft')}</button>
-        <textarea class="hero-title-input ws-title" id="ws-title" rows="1" spellcheck="false" aria-label="Назва книги">${book.title}</textarea>
-        <div class="ws-head-tools">
-          <span id="ws-ready"></span>
-          <div class="tools">${ib('braces', 'Промпти й тексти (JSON)', 'data-act="json"')}${ib('more', 'Ще', 'data-act="more"')}</div>
-          <button class="btn btn-primary" data-act="transfer">${ic('shelf')}Передати в бібліотеку</button>
-        </div>
-      </div>
+    <div class="page-head ws-head" id="ws-head"></div>
+    <div class="ws-genbar-slot" id="ws-gen"></div>
+    <div class="ws-strip" id="ws-strip" role="tablist" aria-label="Шлях книги"></div>
+    <div class="ws-panel" id="ws-panel" hidden></div>
+    <div class="ws-col">
+      <div class="ws-rows-head" id="ws-rows-head"></div>
+      <div id="ws-vtabs"></div>
+      <div id="ws-notes"></div>
       <div class="ws-rows" id="ws-rows"></div>
     </div>
-    <input type="file" id="ws-file" accept=".png,.jpg,.jpeg,.webp" hidden>
-    <input type="file" id="ws-json-file" accept=".json,application/json" hidden>`);
+    <input type="file" id="ws-file" accept=".png,.jpg,.jpeg,.webp" hidden>`);
+  const $ = (s) => view.querySelector(s);
+  const step = (key) => b.steps.find((s) => s.key === key);
+  const pic = (area, name, w, variant) => picture(b, area, name, w, variant);
+  const inner = () => b.rows.filter((r) => r.kind !== 'cover');
+  const ready = () => step('pictures').state === 'done' && step('cover').state === 'done';
 
-  // ---------------------------------------------------------------- painting
-  function paintReady() {
-    const c = book.completeness;
-    const part = (name, label, n, total) => {
-      const p = n / total;
-      const tip = `${label}: ${n} з ${total}`;
-      return html`<i class="${p >= 1 ? 'ok' : p > 0 ? 'part' : ''}" style="--p:${Math.round(p * 100)}%" data-tip="${tip}" aria-label="${tip}">${ic(name)}</i>`;
-    };
-    setHtml($('#ws-ready'), html`<div class="ready" role="list">
-      ${part('prompt', 'Промпти', c.prompts, c.promptsTotal)}${part('text', 'Тексти', c.texts, c.textsTotal)}${part('image', 'Картинки', c.pictures, c.picturesTotal)}</div>`);
+  // ---------------------------------------------------------------- the header
+  function head() {
+    const passed = b.library;
+    return [
+      ['back', html`<button class="back-link" data-act="back" aria-label="До Майстерні" data-tip="До Майстерні" data-kbd="Esc">${ic('arrowLeft')}</button>`],
+      ['title', html`<div class="ws-head-title">
+        <h1 class="page-title">${b.number != null ? html`<span class="ws-no num">№${b.number}</span>` : ''}${b.title}</h1>
+        ${b.coverTitle ? html`<div class="page-sub serif">${highlightTokens(b.coverTitle)}</div>` : ''}</div>`],
+      ...(b.tier ? [['tier', html`<span class="chip chip-accent" data-tip="${b.tier === 'H' ? 'Tier H — герой-дитина на кожному розвороті' : 'Tier S — без постійного героя'}">Tier ${b.tier}</span>`]] : []),
+      ['tools', html`<div class="ws-head-tools">
+        <button class="btn" data-act="agent" data-tip="Antigravity на папці книг; у буфері — «Продовжуємо книгу …» для чату агента">${ic('agent')}Відкрити агента</button>
+        <button class="btn" data-act="open" data-what="pictures" data-tip="Нарізані сторінки 1–30 і Cover.png — набір для Canva">${ic('folderOpen')}Сторінки</button>
+        <div class="tools">${ib('images', 'Оригінали — картинки, як їх віддав генератор', 'data-act="open" data-what="originals"')}${ib('more', 'Ще', 'data-act="more"')}</div>
+        ${passed ? html`<button class="btn" data-act="to-library" data-tip="Книга вже в бібліотеці замовлень — відкрити її там">${ic('checkCircle')}У бібліотеці</button>`
+          : html`<button class="btn ${ready() ? 'btn-primary' : ''}" data-act="to-library">${ic('shelf')}Передати в бібліотеку</button>`}
+      </div>`],
+    ];
   }
 
-  function blockHtml(f, key) {
-    const value = field(f)[key] || '';
-    const prompt = f === 'prompts';
-    const what = prompt ? 'Промпт' : 'Текст';
-    return html`<div class="ws-block ${prompt ? 'ws-prompt' : 'ws-text'}" data-field="${f}" data-key="${key}">
-      <div class="ws-block-head">${ic(prompt ? 'prompt' : 'text', 'icon-s')}<span class="eyebrow">${what}</span><span class="spacer"></span>
-        ${ib('copy', prompt ? 'Скопіювати промпт' : 'Скопіювати текст', `data-act="copy" ${value ? '' : 'disabled'}`, { cls: 'sm' })}
-        ${ib('edit', 'Редагувати', 'data-act="edit"', { cls: 'sm' })}</div>
-      <div class="ws-body ${value ? '' : 'empty-text'}" data-act="edit">${value ? (prompt ? value : highlightTokens(value))
-        : `${what} ще не написано — клацніть, щоб написати`}</div>
-    </div>`;
-  }
-
-  /** An empty frame: dashed, the fold in the middle, the page numbers on its halves; a drop or a click fills it. */
-  function placeholder(r, half = null) {
-    const what = r.key === 'cover' ? 'обкладинку 2:1' : r.shape === 'wide' ? 'розворот 2:1' : 'сторінку';
-    return html`<button type="button" class="ws-ph" data-act="pick" data-key="${r.key}">
-      ${half === null ? html`<span class="ws-half">${r.halves[0]}</span><span class="ws-half">${r.halves[1]}</span>` : html`<span class="ws-half ws-one">${half}</span>`}
-      <span class="ws-ph-text">${ic('upload')}<b>Перетягніть ${what}</b><span>або клацніть, щоб обрати файл</span>
-        ${flipped(r.key) ? html`<span class="ws-will-flip">${ic('mirror', 'icon-s')}віддзеркалиться</span>` : ''}</span>
-    </button>`;
-  }
-
-  /** A spread cut into its two pages: two squares side by side, like the passport; ⇄ mirrors the spread. */
-  function pairHtml(r, p) {
-    const [w, h] = p.source || [];
-    const cut = w && h && Math.abs(w / h / 2 - 1) > OFF ? (w / h > 2 ? 'з боків' : 'зверху й знизу') : '';
-    const blur = [p.left, p.right].map((a) => (a?.lqip ? `url(${a.lqip})` : 'none'));
-    return html`<div class="ws-art ws-pairart" ${raw(`style="background-image:${blur.join(',')}"`)}>
-      ${[p.left, p.right].map((a, i) => (a
-        ? html`<img data-fade decoding="async" src="${assetUrl(a, 1400)}" alt="${r.label} · ${r.halves[i]}" data-act="zoom" data-key="${r.key}:${i ? 'right' : 'left'}">`
-        : html`<div class="ws-endpaper"></div>`))}
-      <div class="gutter"></div>
-      ${cut ? html`<span class="chip chip-amber ws-mark" data-tip="Картинка ${w}×${h} — не 2:1, тому обрізана ${cut}">${ic('alert', 'icon-s')}обрізано ${cut} · ${w}×${h}</span>` : ''}
-      <div class="img-actions">
-        ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${r.key}:left"`, { cls: 'sm' })}
-        ${ib('mirror', p.mirrored ? 'Віддзеркалено — клацніть, щоб повернути' : 'Віддзеркалити розворот', `data-act="flip" data-key="${r.key}"`, { cls: `sm ${p.mirrored ? 'on' : ''}` })}
-        ${ib('upload', 'Замінити картинку', `data-act="pick" data-key="${r.key}"`, { cls: 'sm' })}
-        ${ib('trash', 'Прибрати картинку', `data-act="remove" data-key="${r.key}"`, { cls: 'sm danger' })}
-      </div>
-      <i class="crops"></i>
-    </div>`;
-  }
-
-  function artHtml(r, a, extra = '') {
-    const mark = offShape(r, a);
-    return html`<div class="ws-art ${a.lqip ? 'lqip' : ''} ${extra}" ${a.lqip ? raw(`style="background-image:url(${a.lqip})"`) : ''}>
-      <img data-fade decoding="async" src="${assetUrl(a, 1400)}" alt="${r.label}" data-act="zoom" data-key="${r.key}">
-      ${r.shape === 'wide' && r.key !== 'cover' ? html`<div class="gutter"></div>` : ''}
-      ${mark ? html`<span class="chip chip-amber ws-mark" data-tip="Рамка чекає пропорцію ${r.shape === 'wide' ? '2:1' : '1:1'}">${ic('alert', 'icon-s')}${mark}</span>` : ''}
-      <div class="img-actions">
-        ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${r.key}"`, { cls: 'sm' })}
-        ${ib('upload', 'Замінити картинку', `data-act="pick" data-key="${r.key}"`, { cls: 'sm' })}
-        ${ib('trash', 'Прибрати картинку', `data-act="remove" data-key="${r.key}"`, { cls: 'sm danger' })}
-      </div>
-      <i class="crops"></i>
-    </div>`;
-  }
-
-  function frameHtml(r) {
-    const p = pictureOf(r.key);
-    const up = uploading.get(r.key);
-    const busy = up === undefined ? '' : html`<div class="busy-overlay"><div class="ws-up"><i style="transform:scaleX(${up})"></i></div></div>`;
-    if (r.shape === 'wide') {
-      const inner = p.whole ? artHtml(r, p.whole) : p.left || p.right ? pairHtml(r, p) : placeholder(r);
-      return html`<div class="ws-frame" data-drop="${r.key}">${inner}${busy}</div>`;
+  // ---------------------------------------------------------------- the path strip
+  function stepHtml(s, i) {
+    const prev = b.steps[i - 1];
+    const just = stepsSeen && stepsSeen[s.key] !== 'done' && s.state === 'done';
+    const dot = s.key === 'hero' && s.thumb ? html`<span class="ws-dot photo"><img alt="" src="${pic('agent', s.thumb, 96)}"></span>`
+      : html`<span class="ws-dot">${s.state === 'done' ? ic('check') : s.state === 'skip' ? ic('minus') : i + 1}</span>`;
+    let count = s.key === 'pictures' ? html`<span class="ws-step-count num">${s.count}/${s.total}</span>` : '';
+    let tip = `${s.label}: ${STATE_TEXT[s.state]}`;
+    if (s.check) {
+      count = html`<span class="ws-step-count ${s.check.go ? 'go' : 'nogo'}">${checkWord(s.check)}</span>`;
+      tip += ` · перевірка: ${checkWord(s.check)}`;
     }
-    // A single page: the endpaper on one side, the page (the drop target) on the other.
-    const page = html`<div class="ws-pagehalf" data-drop="${r.key}">${p.whole ? artHtml(r, p.whole) : placeholder(r, r.shape === 'right' ? r.halves[1] : r.halves[0])}${busy}</div>`;
+    if (s.manual) tip += ' · позначається вручну';
+    const cls = [s.state, s.next && 'next', just && 'just', prev && ['done', 'skip'].includes(prev.state) && 'after-done',
+      mem.step === s.key && 'sel', s.check && !s.check.go && 'nogo'].filter(Boolean).join(' ');
+    return html`<button class="ws-step ${cls}" data-act="step" data-step="${s.key}" role="tab" aria-selected="${mem.step === s.key}" data-tip="${tip}">
+      ${dot}<span class="ws-step-label">${s.label}</span>${count}${s.manual ? ic('hand', 'ws-hand') : ''}</button>`;
+  }
+
+  // ---------------------------------------------------------------- the step's panel
+  function renderDoc(text) {
+    // A light reading of Markdown: headings stand out, code blocks keep their lines, the rest as written.
+    const out = [];
+    let code = null;
+    for (const line of text.replace(/\r/g, '').split('\n')) {
+      if (line.trim().startsWith('```')) {
+        if (code) { out.push(html`<pre>${code.join('\n')}</pre>`); code = null; } else code = [];
+        continue;
+      }
+      if (code) { code.push(line); continue; }
+      const h = line.match(/^(#{1,4})\s+(.*)$/);
+      out.push(h ? html`<div class="h h${h[1].length}">${h[2]}</div>` : html`<div class="p">${line}</div>`);
+    }
+    if (code) out.push(html`<pre>${code.join('\n')}</pre>`);
+    return html`<div class="ws-doc">${out}</div>`;
+  }
+
+  function checkBody(c) {
+    // The book check (the old validator's rules): what fails, what to glance at, what passed.
+    const list = (items, cls) => items.map((m) => html`<li class="${cls}">${m}</li>`);
+    return html`${c.go
+      ? html`<div class="notice notice-success ws-check-head">${ic('checkCircle')}<div><b>GO</b> — механічно готово: помилок немає${c.warns.length ? `, ${c.warns.length} ${plural(c.warns.length, ['попередження', 'попередження', 'попереджень'])} — глянути` : ''}.</div></div>`
+      : html`<div class="notice notice-error ws-check-head">${ic('alertCircle')}<div><b>Не готово</b> — ${c.fails.length} ${plural(c.fails.length, ERRORS)}. Попросіть агента виправити їх до GO.</div></div>`}
+      ${c.fails.length ? html`<div class="ws-check-group"><div class="eyebrow">Помилки</div><ul class="ws-check-list">${list(c.fails, 'fail')}</ul></div>` : ''}
+      ${c.warns.length ? html`<div class="ws-check-group"><div class="eyebrow">Попередження</div><ul class="ws-check-list">${list(c.warns, 'warn')}</ul></div>` : ''}
+      <div class="faint ws-check-foot">Пройдено перевірок: <span class="num">${c.passed}</span> · ті самі правила, що в <span class="mono">pipeline/check_book.py</span></div>`;
+  }
+
+  function heroActions(s) {
+    const waiting = waitingFor(id, 'hero', null);
+    return html`<div class="ws-hero-actions">
+      ${waiting ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>чекаю героя з «Завантажень»</span>`
+        : b.heroPrompt ? html`<button class="btn btn-sm ${s.thumb ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-tip="Промпт героя — у буфер; завантажений герой стане canonical.png">${ic('prompt')}${s.thumb ? 'Згенерувати ще раз' : 'Генерувати героя'}</button>` : ''}
+      ${s.thumb ? html`<button class="btn btn-sm" data-act="copy-hero" data-tip="canonical.png — у буфер, щоб вставити в новий чат">${ic('copy')}Героя в буфер</button>` : ''}
+      <button class="btn btn-sm" data-act="pick" data-key="hero" data-variant="" data-tip="Покласти готову картинку як canonical.png">${ic('upload')}Обрати файл</button>
+    </div>`;
+  }
+
+  function miniRows() {
+    // The 16 rows as small frames: a filled one shows its pages; a click scrolls to the row.
+    return html`<div class="ws-mini">${inner().map((r) => html`<button class="ws-mini-row ${r.pictures.length ? 'full' : ''}" data-act="goto" data-row="${r.key}" data-tip="${r.label} — показати рядок">
+      <div class="ws-mini-art ${r.kind === 'single' ? 'single' : ''}">${r.pictures.map((p) => html`<img data-fade alt="" src="${pic('pictures', p, 240)}">`)}</div>
+      <div class="ws-mini-label num">${r.label.replace(/^\D+/, '').replace(/ ·.*$/, '')}</div></button>`)}</div>`;
+  }
+
+  async function panelBody(s, file) {
+    if (s.manual) {
+      return html`<div class="ws-manual"><div>${MANUAL[s.key]} поза Book Studio? Позначте крок, коли зроблено.</div>
+        <div class="row-wrap">${s.key === 'mockups' ? html`<a class="btn" href="#/mockups">${ic('mockup')}Відкрити Мокапи</a>` : ''}
+        <button class="btn ${s.state === 'done' ? '' : 'btn-primary'}" data-act="mark" data-step="${s.key}">${s.state === 'done' ? 'Зняти позначку' : html`${ic('check')}Зроблено`}</button></div></div>`;
+    }
+    if (s.key === 'library') {
+      return b.library
+        ? html`<div class="ws-manual"><div>Книга в бібліотеці замовлень${b.library.listingId ? html` · лістинг <span class="num">#${b.library.listingId}</span>` : ''}: замовлення знаходять її за лістингом. Папка книги тут лишилась як була — оригінали, варіанти героя.</div>
+          <button class="btn" data-act="to-library">${ic('shelf')}Відкрити в бібліотеці</button></div>`
+        : html`<div class="ws-manual">${missingSummary()}<button class="btn ${ready() ? 'btn-primary' : ''}" data-act="to-library">${ic('shelf')}Передати в бібліотеку</button></div>`;
+    }
+    if (s.key === 'pictures') {
+      return html`${s.count ? '' : html`<div class="ws-missing">Картинок ще немає — натисніть «Генерувати всю книгу» над рядками.</div>`}${miniRows()}`;
+    }
+    if (s.state === 'skip') return html`<div class="ws-missing">Книга без постійного героя (Tier S) — цей крок не потрібен.</div>`;
+    const hero = s.key === 'hero' ? heroActions(s) : '';
+    if (s.key === 'cover' && !file) {
+      return html`<div class="ws-missing">Обкладинка — остання картка внизу сторінки: два етапи, картинка й поля.</div><button class="btn btn-sm" data-act="goto" data-row="cover">Показати обкладинку</button>`;
+    }
+    if (!file) return html`${hero}<div class="ws-missing">${WHO[s.key] || ''}</div>`;
+    if (!file.exists) return html`${hero}<div class="ws-missing"><div>Ще немає: <span class="mono">${file.name}</span></div><div>${WHO[s.key] || ''}</div></div>`;
+    if (file.kind === 'check') return checkBody(b.check);
+    if (file.kind === 'image') {
+      return html`${hero}<div class="ws-shot"><img data-fade alt="${file.name}" src="${pic(file.area, file.name, 1400)}" data-act="zoom-one" data-area="${file.area}" data-name="${file.name}"></div>`;
+    }
+    const { text } = await api(url(`/file?name=${encodeURIComponent(file.name)}`));
+    return html`${hero}${renderDoc(text)}`;
+  }
+
+  function panelFiles(s) {
+    if (s.key === 'cover' && !step('cover').files.some((f) => f.area === 'pictures')) return [];
+    const files = s.manual || ['pictures', 'library'].includes(s.key) ? [] : [...s.files];
+    if (s.key === 'prompts' && b.check) files.unshift({ name: '__check', label: 'Перевірка', kind: 'check', exists: true });
+    return files;
+  }
+
+  let panelSeq = 0;
+  async function paintPanel() {
+    const panel = $('#ws-panel');
+    const s = step(mem.step);
+    const my = ++panelSeq;
+    if (!s) { panel.hidden = true; patch(panel, []); return; }
+    const files = panelFiles(s);
+    const file = files.find((f) => f.name === mem.tabs.get(s.key)) || files.find((f) => f.exists) || files[0];
+    let body;
+    try { body = await panelBody(s, file); } catch (err) { body = html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`; }
+    if (my !== panelSeq) return; // a newer draw is on its way
+    const tabIcon = (f) => (f.kind === 'image' ? 'image' : f.kind === 'check' ? (b.check?.go ? 'checkCircle' : 'alertCircle') : 'text');
+    const tabs = files.length > 1 && s.state !== 'skip' ? html`<div class="seg ws-tabs"><span class="seg-pill"></span>${files.map((f) => html`<button type="button"
+      class="${f === file ? 'active' : ''} ${f.exists ? '' : 'missing'} ${f.kind === 'check' ? (b.check.go ? 'go' : 'nogo') : ''}" data-act="tab" data-file="${f.name}"
+      data-tip="${f.kind === 'check' ? 'Перевірка промптів (GO)' : f.exists ? f.name : `${f.name} — ще немає`}">${ic(tabIcon(f), 'icon-s')}${f.label || f.name}</button>`)}</div>` : '';
+    let state = s.key === 'pictures' ? `${s.count} з ${s.total}` : STATE_TEXT[s.state];
+    if (s.check) state += s.check.go ? ' · GO' : ' · перевірка не пройдена';
+    const canOpen = file?.exists && file.area === 'agent';
+    panel.hidden = false;
+    const drawn = patch(panel, [
+      ['head', html`<div class="ws-panel-head">
+        <div class="ws-panel-title">${s.label}</div><div class="ws-panel-state ${s.state}">${state}</div>
+        <div class="ws-panel-tools">${tabs}${canOpen ? ib('fileOpen', 'Відкрити файл у Windows', `data-act="open" data-what="agent" data-name="${file.name}"`) : ''}${ib('x', 'Згорнути', 'data-act="fold"')}</div></div>`],
+      ['body', html`<div class="ws-panel-body">${body}</div>`],
+    ]);
+    drawn.forEach(fadeImages);
+    panel.querySelectorAll('.seg').forEach(syncSeg);
+  }
+
+  // ---------------------------------------------------------------- the rows
+  const saveBtn = (area, name, variant, tip) => html`<button type="button" class="ws-save" data-act="save" data-area="${area}" data-name="${name}" data-variant="${variant || ''}" aria-label="${tip}" data-tip="${tip}">${ic('download')}</button>`;
+  const waitCover = (text) => html`<div class="ws-wait"><span class="ws-pulse"></span>${text}</div>`;
+  const busyCover = (key) => (uploading.has(key) ? html`<div class="busy-overlay"><div class="ws-up"><i data-up="${key}"></i></div></div>` : '');
+
+  function marks(r) {
+    const m = r.marks || {};
+    const chips = [];
+    if (m.mirrored) chips.push(html`<span class="chip ws-mark">${ic('mirror', 'icon-s')}віддзеркалено</span>`);
+    if (m.cut) chips.push(html`<span class="chip chip-amber ws-mark" data-tip="${m.source ? `Картинка ${m.source[0]}×${m.source[1]}` : ''}">${ic('alert', 'icon-s')}${CUT[m.cut] || m.cut}</span>`);
+    return chips.length ? html`<div class="ws-marks">${chips}</div>` : '';
+  }
+
+  function placeholder(r, variant, half = null) {
+    const what = r.kind === 'spread' ? 'розворот 2:1' : 'сторінку';
+    return html`<button type="button" class="ws-ph" data-act="pick" data-key="${r.key}" data-variant="${variant}">
+      ${half === null ? html`<span class="ws-half num">${r.pages[0]}</span><span class="ws-half num">${r.pages[1]}</span>` : html`<span class="ws-half ws-one num">${half}</span>`}
+      <span class="ws-ph-text">${ic('upload')}<b>Перетягніть ${what}</b><span>або клацніть, щоб обрати файл</span>
+        ${r.kind === 'spread' && r.mirrored ? html`<span class="ws-will-flip">${ic('mirror', 'icon-s')}віддзеркалиться</span>` : ''}</span></button>`;
+  }
+
+  function frame(r, variant = '') {
+    const waiting = waitingFor(id, r.key, variant) ? waitCover('Чекаю картинку з «Завантажень»…') : '';
+    const drop = (inside) => html`<div class="ws-drop" data-drop="${r.key}" data-variant="${variant}">${inside}${busyCover(r.key)}${waiting}</div>`;
+    if (!r.pictures.length) {
+      if (r.kind === 'spread') return html`<div class="ws-frame">${drop(placeholder(r, variant))}</div>`;
+      const page = drop(placeholder(r, variant, r.pages[0]));
+      const endpaper = html`<div class="ws-endpaper"><span>форзац</span></div>`;
+      return html`<div class="ws-frame ws-single">${r.key === 'page1' ? html`${endpaper}${page}` : html`${page}${endpaper}`}</div>`;
+    }
+    const page = (name, i) => html`<div class="ws-page">
+      <img data-fade alt="${r.label}" src="${pic('pictures', name, 900, variant)}" data-act="zoom" data-key="${r.key}" data-part="${i}">
+      ${saveBtn('pictures', name, variant, `Зберегти сторінку ${name.replace(/\.\w+$/, '')} як…`)}</div>`;
+    const tools = html`<div class="img-actions">
+      ${variant ? '' : ib('expand', 'Переглянути', `data-act="zoom" data-key="${r.key}"`, { cls: 'sm' })}
+      ${r.kind === 'spread' ? ib('mirror', r.marks?.mirrored ? 'Віддзеркалено — клацніть, щоб повернути' : 'Віддзеркалити розворот', `data-act="flip" data-key="${r.key}" data-variant="${variant}"`, { cls: `sm ${r.marks?.mirrored ? 'on' : ''}` }) : ''}
+      ${variant ? '' : ib('copy', r.kind === 'spread' ? 'Копіювати розворот як картинку (як його зробив Gemini) — наприклад, агенту 6 як найкращий кадр' : 'Копіювати сторінку як картинку', `data-act="copy-picture" data-key="${r.key}"`, { cls: 'sm' })}
+      ${r.original && !variant ? ib('imageDown', 'Зберегти оригінал як…', `data-act="save" data-area="originals" data-name="${r.original}" data-variant=""`, { cls: 'sm' }) : ''}
+      ${ib('upload', 'Замінити файлом', `data-act="pick" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm' })}
+      ${ib('trash', 'Прибрати картинку', `data-act="remove" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm danger' })}</div>`;
+    if (r.kind === 'spread') {
+      return html`<div class="ws-frame">${drop(html`<div class="ws-art ws-pairart">${r.pictures.map(page)}<div class="gutter"></div>${marks(r)}${tools}</div>`)}</div>`;
+    }
+    const art = drop(html`<div class="ws-art">${page(r.pictures[0], 0)}${marks(r)}${tools}</div>`);
     const endpaper = html`<div class="ws-endpaper"><span>форзац</span></div>`;
-    return html`<div class="ws-frame ws-single">${r.shape === 'right' ? html`${endpaper}${page}` : html`${page}${endpaper}`}</div>`;
+    return html`<div class="ws-frame ws-single">${r.key === 'page1' ? html`${endpaper}${art}` : html`${art}${endpaper}`}</div>`;
   }
 
-  function rowDots(key) {
-    const has = [!!(book.prompts[key] || '').trim(), hasPicture(key), !!(book.text[key] || '').trim()];
-    const tip = ['промпт', 'картинка', 'текст'].map((w, i) => `${w} ${has[i] ? '✓' : '—'}`).join(' · ');
-    return html`<span class="ws-dots" data-tip="${tip}">${has.map((ok) => html`<i class="${ok ? 'ok' : ''}"></i>`)}</span>`;
+  function genButton(r, variant = '', label = '') {
+    if (!r.prompt) return '';
+    if (waitingFor(id, r.key, variant)) return html`<span class="chip chip-accent"><span class="ws-pulse"></span>чекаю картинку</span>`;
+    const again = r.pictures.length > 0;
+    return html`<button class="btn btn-sm ${again ? '' : 'btn-primary'}" data-act="gen" data-key="${r.key}" data-variant="${variant}"
+      data-tip="${again ? 'Згенерувати ще раз — нова картинка замінить цю (стара піде в .replaced)' : 'Промпт — у буфер; Майстерня чекає картинку з «Завантажень»'}">${ic('prompt')}${label || (again ? 'Ще раз' : 'Генерувати')}</button>`;
   }
 
-  function rowHtml(r) {
-    return html`<section class="ws-row" data-row="${r.key}">
-      <div class="ws-row-head"><span class="section-title">${r.label}</span><span class="spacer"></span>${rowDots(r.key)}</div>
-      ${blockHtml('prompts', r.key)}
-      ${frameHtml(r)}
-      ${blockHtml('text', r.key)}
+  function promptBlock(r, variant = '', title = 'Промпт') {
+    const key = `${variant}/${r.key}`;
+    const long = r.prompt.split('\n').length > 7;
+    const open = mem.open.has(key);
+    return html`<div class="ws-block ws-prompt">
+      <div class="ws-block-head">${ic('prompt', 'icon-s')}<span class="eyebrow">${title}</span><span class="spacer"></span>
+        ${r.prompt ? ib('copy', 'Скопіювати промпт', `data-act="copy" data-what="prompt" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm' }) : ''}</div>
+      ${r.prompt ? html`<pre class="ws-body ws-mono ${long && !open ? 'clamp' : ''}">${r.prompt}</pre>
+        ${long ? html`<button class="ws-more" data-act="whole-prompt" data-key="${key}">${open ? 'Згорнути' : 'Показати весь промпт'}</button>` : ''}`
+        : html`<div class="ws-body empty-text">${r.key === 'cover' ? 'Промпту ще немає — його напише агент 6, коли розвороти будуть готові.' : 'Промпту ще немає — його напише агент.'}</div>`}
+    </div>`;
+  }
+
+  function textBlock(r) {
+    return html`<div class="ws-block ws-text">
+      <div class="ws-block-head">${ic('text', 'icon-s')}<span class="eyebrow">${r.key === 'cover' ? 'Назва на обкладинці' : 'Текст'}</span><span class="spacer"></span>
+        ${r.text ? ib('copy', 'Скопіювати текст', `data-act="copy" data-what="text" data-key="${r.key}" data-variant=""`, { cls: 'sm' }) : ''}</div>
+      ${r.text ? html`<div class="ws-body">${highlightTokens(r.text)}</div>` : html`<div class="ws-body empty-text">Тексту ще немає.</div>`}
+    </div>`;
+  }
+
+  function rowDots(r, variant) {
+    const has = [['Промпт', r.prompt], ['Картинка', r.pictures.length], ...(variant ? [] : [['Текст', r.text]])];
+    return html`<span class="ws-dots" data-tip="${has.map(([w, ok]) => `${w} ${ok ? '✓' : '—'}`).join(' · ')}">${has.map(([, ok]) => html`<i class="${ok ? 'ok' : ''}"></i>`)}</span>`;
+  }
+
+  function rowCard(r, variant = '') {
+    return html`<section class="ws-row ${waitingFor(id, r.key, variant) ? 'waiting' : ''}" id="row-${r.key}">
+      <div class="ws-row-head"><span class="ws-row-label">${r.label}</span>${rowDots(r, variant)}<span class="ws-row-act">${genButton(r, variant)}</span></div>
+      ${promptBlock(r, variant, variant ? 'Промпт заміни героя' : 'Промпт')}
+      ${frame(r, variant)}
+      ${variant ? '' : textBlock(r)}
     </section>`;
   }
 
+  // ---------------------------------------------------------------- the cover: ① the picture ② its margins
+  function coverCard() {
+    const r = b.rows.find((x) => x.key === 'cover');
+    const c = b.cover;
+    const artV = c.art ? b.v?.[`originals/${c.art}`] || c.art : '';
+    if (coverSeen && artV && coverSeen.art !== artV) mem.cover = 0; // a new picture: on to its margins
+    const stage = mem.cover || (c.final || c.art ? 2 : 1);
+    const slide = coverSeen && coverSeen.stage !== stage ? (stage > coverSeen.stage ? 'slide-next' : 'slide-back') : '';
+    coverSeen = { art: artV, stage };
+    const w1 = waitingFor(id, 'cover', ''), w2 = waitingFor(id, 'cover-wrap', '');
+    const stepBtn = (n, label, done, now) => html`<button type="button" class="ws-cv-step ${stage === n ? 'on' : ''} ${done ? 'done' : ''}" data-act="cover-stage" data-stage="${n}">
+      <span class="ws-cv-no">${done ? ic('check') : n}</span>${label}${now ? html`<span class="ws-pulse"></span>` : ''}</button>`;
+    const ratio = (s) => (s && s[0] && s[1] ? raw(` style="aspect-ratio:${s[0]} / ${s[1]}"`) : '');
+    let pane;
+    if (stage === 1) {
+      const artFrame = c.art
+        ? html`<div class="ws-drop" data-drop="cover" data-variant=""><div class="ws-art ws-wide"${ratio(c.artMarks.source)}>
+            <img data-fade alt="Обкладинка" src="${pic('originals', c.art, 1400)}" data-act="zoom" data-key="cover-art">
+            ${saveBtn('originals', c.art, '', 'Зберегти обкладинку як…')}
+            ${c.artMarks.source ? html`<div class="ws-marks"><span class="chip ws-mark num">${c.artMarks.source[0]}×${c.artMarks.source[1]}</span></div>` : ''}
+            <div class="img-actions">${ib('upload', 'Замінити файлом', 'data-act="pick" data-key="cover" data-variant=""', { cls: 'sm' })}${ib('trash', 'Прибрати обкладинку (і її поля)', 'data-act="remove" data-key="cover" data-variant=""', { cls: 'sm danger' })}</div>
+          </div>${busyCover('cover')}${w1 ? waitCover('Чекаю обкладинку…') : ''}</div>`
+        : html`<div class="ws-frame"><div class="ws-drop" data-drop="cover" data-variant=""><button type="button" class="ws-ph" data-act="pick" data-key="cover" data-variant="">
+            <span class="ws-half">задня</span><span class="ws-half">передня</span>
+            <span class="ws-ph-text">${ic('upload')}<b>Перетягніть обкладинку</b><span>або клацніть, щоб обрати файл</span></span></button>
+            ${busyCover('cover')}${w1 ? waitCover('Чекаю обкладинку з «Завантажень»…') : ''}</div></div>`;
+      pane = html`${promptBlock(r, '', 'Промпт обкладинки (агент 6)')}${artFrame}${textBlock(r)}
+        ${c.art ? html`<div class="ws-cv-next"><button class="btn btn-primary" data-act="cover-stage" data-stage="2">Далі: поля${ic('chevRight')}</button></div>` : ''}`;
+    } else {
+      // The picture laid on the printer's template, white all round → the generator fills the margins → Cover.png at
+      // the template's exact size. The template's lines can be shown over it.
+      const lay = c.layout || {};
+      const [cw, ch] = lay.size || [1, 1];
+      const [ax, ay, aw, ah] = lay.art || [0, 0, cw, ch];
+      const pct = (v, of) => `${((v / of) * 100).toFixed(3)}%`;
+      const box = (g) => `left:${(g[0] * 100).toFixed(3)}%;top:${(g[1] * 100).toFixed(3)}%;width:${(g[2] * 100).toFixed(3)}%;height:${(g[3] * 100).toFixed(3)}%`;
+      const G = c.guides;
+      const lines = mem.guides && !c.skipped ? html`<div class="ws-tpl" aria-hidden="true">
+          <span class="ws-tpl-trim" style="${box(G.trim)}"></span><span class="ws-tpl-spine" style="${box(G.spine)}"></span>
+          <span class="ws-tpl-safe" style="${box(G.back)}"><em>задня</em></span><span class="ws-tpl-safe" style="${box(G.front)}"><em>передня</em></span></div>` : '';
+      const tpx = c.template.px;
+      const shown = c.final
+        ? html`<img data-fade alt="Обкладинка з полями" src="${pic('pictures', c.final, 2600)}" data-act="zoom" data-key="cover">${saveBtn('pictures', c.final, '', 'Зберегти готову обкладинку як…')}`
+        : c.expanded ? html`<img data-fade alt="Обкладинка з білими полями" src="${pic('originals', c.expanded, 2600)}"><span class="ws-cv-inner" style="left:${pct(ax, cw)};top:${pct(ay, ch)};width:${pct(aw, cw)};height:${pct(ah, ch)}"></span>` : '';
+      pane = html`<div class="ws-cv-bar">
+          <button class="btn btn-sm btn-ghost ${mem.guides ? 'on' : ''}" data-act="guides" data-tip="Лінії шаблону друкарні: обріз, корінець, безпечні зони">${ic('guides')}Лінії шаблону</button>
+          <span class="ws-cv-info num">${c.final ? (c.skipped ? 'без полів' : `${tpx[0]}×${tpx[1]} px · ${c.template.dpi} dpi`) : `поля за шаблоном · ${cw}×${ch} px`}</span>
+          <span class="spacer"></span>
+          ${c.final ? '' : html`<button class="btn btn-sm btn-ghost" data-act="no-margins" data-tip="Взяти обкладинку як є, без полів — вона стане Cover.png">Без полів</button>`}
+          ${w2 ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>чекаю обкладинку з полями</span>`
+            : html`<button class="btn btn-sm ${c.final ? '' : 'btn-primary'}" data-act="gen" data-key="cover-wrap" data-variant="" data-tip="У буфер: обкладинка з полями, потім (Далі / F8) промпт аутпейнту">${ic('prompt')}${c.final ? 'Ще раз' : 'Генерувати поля'}</button>`}
+        </div>
+        <div class="ws-drop" data-drop="cover-wrap" data-variant="">
+          <div class="ws-art ws-wide ${c.final ? '' : 'margins'}"${ratio(c.final && !c.skipped ? tpx : c.final ? c.artMarks.source : [cw, ch])}>${shown}${lines}
+            ${c.final ? html`<div class="img-actions">${ib('copy', 'Копіювати готову обкладинку як картинку', 'data-act="copy-picture" data-key="cover"', { cls: 'sm' })}
+              ${ib('upload', 'Замінити файлом', 'data-act="pick" data-key="cover-wrap" data-variant=""', { cls: 'sm' })}
+              ${ib('trash', 'Прибрати поля (сама обкладинка лишиться)', 'data-act="remove" data-key="cover-wrap" data-variant=""', { cls: 'sm danger' })}</div>` : ''}
+          </div>${busyCover('cover-wrap')}${w2 ? waitCover('Чекаю обкладинку з полями…') : ''}</div>
+        ${c.outpaint ? promptBlock({ key: 'cover-wrap', prompt: c.outpaint }, '', 'Промпт аутпейнту — заповнити тільки білі поля') : ''}`;
+    }
+    return html`<section class="ws-row ws-cover ${w1 || w2 ? 'waiting' : ''}" id="row-cover">
+      <div class="ws-row-head"><span class="ws-row-label">Обкладинка</span>
+        <span class="ws-cv-steps">${stepBtn(1, 'Картинка', !!c.art, w1)}<i class="ws-cv-line ${c.art ? 'on' : ''}"></i>${stepBtn(2, 'Поля', !!c.final, w2)}</span>
+        <span class="ws-row-act">${stage === 1 ? genButton({ ...r, pictures: c.art ? [c.art] : [] }) : ''}</span></div>
+      <div class="ws-cv-body ${slide}"><div class="ws-cv-pane">${pane}</div></div>
+    </section>`;
+  }
+
+  // ---------------------------------------------------------------- hero variants (only when the agent made one)
+  function variantHero(v) {
+    const waiting = waitingFor(id, 'hero', v.name);
+    return html`<section class="ws-row ${waiting ? 'waiting' : ''}">
+      <div class="ws-row-head"><span class="ws-row-label">Герой варіанта · ${v.name}</span><span class="ws-row-act">
+        ${v.hero ? html`<button class="btn btn-sm" data-act="copy-hero" data-variant="${v.name}">${ic('copy')}Героя в буфер</button>` : ''}
+        ${waiting ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>чекаю картинку</span>`
+          : v.heroPrompt ? html`<button class="btn btn-sm ${v.hero ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-variant="${v.name}">${ic('prompt')}${v.hero ? 'Ще раз' : 'Генерувати'}</button>` : ''}</span></div>
+      <div class="ws-vhero">
+        <div class="ws-drop ws-hero-shot" data-drop="hero" data-variant="${v.name}">
+          ${v.hero ? html`<div class="ws-art"><img data-fade alt="Герой варіанта ${v.name}" src="${pic('agent', v.hero, 600, v.name)}"></div>`
+            : html`<button type="button" class="ws-ph" data-act="pick" data-key="hero" data-variant="${v.name}"><span class="ws-ph-text">${ic('upload')}<b>Героя ще немає</b><span>згенеруйте або перетягніть</span></span></button>`}
+          ${busyCover('hero')}</div>
+        <div class="ws-block ws-prompt grow"><div class="ws-block-head">${ic('prompt', 'icon-s')}<span class="eyebrow">Промпт героя (правка canonical.png)</span></div>
+          ${v.heroPrompt ? html`<pre class="ws-body ws-mono clamp">${v.heroPrompt}</pre>` : html`<div class="ws-body empty-text">hero-prompt.md ще немає — його напише агент.</div>`}</div>
+      </div></section>`;
+  }
+
+  // ---------------------------------------------------------------- painting
   function paintRows() {
-    setHtml($('#ws-rows'), ROWS.map(rowHtml));
-    fadeImages($('#ws-rows'));
+    const v = mem.variant ? b.variants.find((x) => x.name === mem.variant) : null;
+    if (mem.variant && !v) mem.variant = '';
+    const rows = inner();
+    const done = rows.filter((r) => r.pictures.length).length;
+    const busy = genState()?.active?.book === id;
+    const left = v ? v.rows.some((r) => r.prompt && !r.pictures.length) : rows.some((r) => r.prompt && !r.pictures.length);
+    const heroThumb = step('hero').thumb;
+    patch($('#ws-rows-head'), [['head', html`<div class="ws-rows-head-in">
+      <h2 class="ws-rows-title">Сторінки книги</h2>
+      ${v ? html`<span class="ws-rows-count num">Розвороти ${v.done}/${v.rows.length}</span>`
+        : html`<span class="ws-rows-count num" data-tip="Промпти ${b.counts.prompts}/17 · Тексти ${b.counts.texts}/17">Картинки ${done}/${rows.length}</span>
+          <span class="ws-meter" data-tip="Картинки ${done} з ${rows.length}"><i style="transform:scaleX(${done / rows.length})"></i></span>`}
+      <span class="spacer"></span>
+      ${heroThumb && !v ? html`<button class="btn btn-sm" data-act="copy-hero" data-tip="Героя (canonical.png) — у буфер, щоб вставити в новий чат Gemini першим">${ic('hero')}Героя в буфер</button>` : ''}
+      ${!busy && left ? html`<button class="btn btn-primary" data-act="series" data-tip="${v ? 'Усі розвороти варіанта без картинок — по черзі' : 'Розвороти 2–3 … 28–29, потім сторінки 1 і 30 — ті, що без картинок; після кожної картинки наступний промпт уже в буфері'}">${ic('prompt')}${v ? 'Генерувати варіант' : done ? 'Генерувати решту' : 'Генерувати всю книгу'}</button>` : ''}
+    </div>`]]);
+    patch($('#ws-vtabs'), b.variants.length ? [['tabs', html`<div class="seg ws-vtabs"><span class="seg-pill"></span>
+      <button type="button" class="${v ? '' : 'active'}" data-act="variant" data-variant="">Основна</button>
+      ${b.variants.map((x) => html`<button type="button" class="${v === x ? 'active' : ''}" data-act="variant" data-variant="${x.name}">${x.name}<span class="seg-count">${x.done}/${x.rows.length}</span></button>`)}</div>`]] : []);
+    patch($('#ws-notes'), !v && b.notes.length ? [['notes', html`<div class="notice notice-warn">${ic('alert')}<div>${raw(b.notes.map((n) => html`${n}`).join('<br>'))}</div></div>`]] : []);
+    const cards = v
+      ? [[`${v.name}|hero`, variantHero(v)], ...(v.rows.length ? v.rows.map((r) => [`${v.name}|${r.key}`, rowCard(r, v.name)])
+        : [[`${v.name}|none`, html`<div class="ws-missing">У цьому варіанті ще немає промптів заміни (2.json … 15.json) — їх пише агент.</div>`]])]
+      : [...rows.map((r) => [r.key, rowCard(r)]), ['cover', coverCard()]];
+    const drawn = patch($('#ws-rows'), cards);
+    drawn.forEach(fadeImages);
+    view.querySelectorAll('#ws-vtabs .seg').forEach(syncSeg);
+    uploading.forEach((_, key) => paintProgress(key));
   }
-  /** Only the frame and the row's dots: a prompt or a text being typed in the same row stays as it is. */
-  function paintFrame(key) {
-    const rowEl = view.querySelector(`[data-row="${key}"]`);
-    const old = rowEl?.querySelector('.ws-frame');
-    if (!old) return;
-    const next = el(frameHtml(row(key)));
-    old.replaceWith(next);
-    fadeImages(next);
-    rowEl.querySelector('.ws-dots')?.replaceWith(el(rowDots(key)));
-  }
+
   function paintProgress(key) {
-    const bar = view.querySelector(`[data-row="${key}"] .ws-up > i`);
+    const bar = view.querySelector(`[data-up="${CSS.escape(key)}"]`);
     if (bar) bar.style.transform = `scaleX(${uploading.get(key) || 0})`;
   }
 
-  paintReady();
-  paintRows();
+  function draw() {
+    const drawn = [...patch($('#ws-head'), head()), ...patch($('#ws-strip'), b.steps.map((s, i) => [s.key, stepHtml(s, i)]))];
+    drawn.forEach(fadeImages);
+    stepsSeen = Object.fromEntries(b.steps.map((s) => [s.key, s.state]));
+    const bar = genBar(id);
+    patch($('#ws-gen'), bar ? [['bar', bar]] : []);
+    paintRows();
+    paintPanel();
+    followWaiting();
+    refreshViewer();
+  }
 
-  // ---------------------------------------------------------------- saving
-  async function patch(body) {
+  /** When the next row starts waiting and the one before was on screen, the page goes on to it — the owner sees where
+   *  the next picture will land. */
+  function followWaiting() {
+    const a = genState()?.active;
+    const key = a && a.book === id ? `${a.variant || ''}/${a.key.startsWith('cover') ? 'cover' : a.key}` : '';
+    const before = waitSeen;
+    waitSeen = key;
+    if (!key || !before || key === before) return;
+    const prev = view.querySelector(`#row-${before.split('/')[1]}`)?.getBoundingClientRect();
+    const next = view.querySelector(`#row-${key.split('/')[1]}`);
+    if (next && (!prev || (prev.bottom > 0 && prev.top < innerHeight))) next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // The generation's state first (the bar and the waiting rows are drawn from it), then the page.
+  const unwatch = watch({ book: id, sig: first.sig, gen: first.gen }, async () => {
     try {
-      book = await api(`/api/library/books/${id}`, { method: 'PATCH', body: { ...body, rev: book.rev } });
-      paintReady();
-      return true;
+      b = (await api(url())).book;
     } catch (err) {
-      toast(err.message, 'error');
-      return false;
+      if (err.status === 404) { toast('Книги більше немає в Майстерні', 'info'); location.hash = '#/workshop'; }
+      return;
     }
-  }
+    draw();
+  });
+  draw();
 
-  /** A prompt or a text edited in place: saved on leaving the field or Ctrl+Enter; Esc gives the old one back. */
-  function edit(f, key) {
-    const block = view.querySelector(`.ws-block[data-field="${f}"][data-key="${key}"]`);
-    if (!block || block.querySelector('textarea')) return;
-    const ta = el(html`<textarea class="textarea ws-edit" spellcheck="${f === 'text' ? 'true' : 'false'}"
-      placeholder="${f === 'prompts' ? 'Опис ілюстрації для генератора' : 'Текст сторінки. {Name} і {Gifter} — місця для персоналізації.'}"></textarea>`);
-    ta.value = field(f)[key] || '';
-    block.querySelector('.ws-body').replaceWith(ta);
-    const foot = el(html`<div class="ws-edit-foot"><span class="faint">Ctrl+Enter — зберегти · Esc — скасувати</span><span class="spacer"></span>
-      ${ib('x', 'Скасувати', 'data-x="cancel"', { cls: 'sm', kbd: 'Esc' })}${ib('check', 'Зберегти', 'data-x="save"', { cls: 'sm primary', kbd: 'Ctrl+Enter' })}</div>`);
-    block.appendChild(foot);
-    ta.focus();
-    ta.setSelectionRange(ta.value.length, ta.value.length);
-    let finished = false;
-    const finish = async (save) => {
-      if (finished) return;
-      finished = true;
-      const value = ta.value.trim();
-      if (save && value !== (field(f)[key] || '').trim()) {
-        if (await patch({ [f]: { [key]: value } })) toast(f === 'prompts' ? 'Промпт збережено' : 'Текст збережено', 'success', 1400);
-      }
-      block.replaceWith(el(blockHtml(f, key)));
-      const dots = view.querySelector(`[data-row="${key}"] .ws-dots`);
-      if (dots) dots.replaceWith(el(rowDots(key)));
-    };
-    ta.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); finish(true); }
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
-    });
-    ta.addEventListener('blur', () => setTimeout(() => { if (!block.contains(document.activeElement)) finish(true); }, 120));
-    foot.addEventListener('mousedown', (e) => e.preventDefault());
-    foot.addEventListener('click', (e) => { const b = e.target.closest('[data-x]'); if (b) finish(b.dataset.x === 'save'); });
-  }
-
-  // ---------------------------------------------------------------- pictures, one per frame
-  let pickKey = null;
-  async function uploadTo(key, file) {
-    if (!IMG_RE.test(file.name)) { toast(`«${file.name}» — не картинка (PNG, JPG, WEBP)`, 'error'); return; }
-    if (uploading.has(key)) { toast(`${row(key).label}: попередня картинка ще вантажиться`, 'info'); return; }
-    uploading.set(key, 0);
-    paintFrame(key);
-    // A spread goes to the Workshop's own route: cut to 2:1, mirrored if it's the flipper's, cut into two pages.
-    const spread = /^spread\d+$/.test(key);
-    try {
-      const q = new URLSearchParams({ slot: key, name: file.name });
-      const url = spread ? `/api/workshop/books/${id}/spread?${q}` : `/api/library/books/${id}/assets?${q}`;
-      const res = await upload(url, file, (p) => { uploading.set(key, p); paintProgress(key); });
-      book = spread ? res.book : res;
-      uploading.delete(key);
-      paintFrame(key);
-      paintReady();
-      if (spread) {
-        const said = [res.mirrored && 'віддзеркалено', res.cut === 'top-bottom' && 'обрізано зверху й знизу',
-          res.cut === 'sides' && 'обрізано з боків'].filter(Boolean);
-        if (said.length) toast(`${row(key).label}: ${said.join(', ')} — і дві сторінки готові`, res.cut ? 'info' : 'success', 4000);
-      } else {
-        const mark = offShape(row(key), pictureOf(key).whole);
-        if (mark) toast(`${row(key).label}: картинка ${mark} — поставлено, але перевірте пропорцію`, 'info', 5000);
-      }
-    } catch (err) {
-      uploading.delete(key);
-      paintFrame(key);
-      toast(err.message, 'error');
-    }
-  }
-
-  async function removePicture(key) {
-    const r = row(key);
-    const ok = await confirmBox({ title: 'Прибрати картинку?', text: `${r.label}: картинку буде видалено з Майстерні. Файл на вашому диску не зміниться.`, confirm: 'Прибрати', danger: true });
-    if (!ok) return;
-    const p = pictureOf(key);
-    const slots = p.whole ? [key] : [p.left && `${key}:left`, p.right && `${key}:right`].filter(Boolean);
-    try {
-      for (const slot of slots) book = await api(`/api/library/books/${id}/assets?slot=${encodeURIComponent(slot)}`, { method: 'DELETE' });
-      paintFrame(key);
-      paintReady();
-    } catch (err) { toast(err.message, 'error'); }
-  }
-
-  /** Every picture of the book in order; a spread's two pages one after the other, like the passport's viewer. */
-  function lightboxItems() {
+  // ---------------------------------------------------------------- the viewer
+  function viewerItems() {
     const items = [];
-    const push = (key, a, title, sub) => items.push({
-      key, src: assetUrl(a, 1400), full: assetUrl(a, 2600), title, sub: `${a.width}×${a.height}${sub}`,
-      text: book.text[key.split(':')[0]] || '',
-      onOriginal: () => api(`/api/library/books/${id}/open-original`, { method: 'POST', body: { file: a.file } }).catch((err) => toast(err.message, 'error')),
+    const push = (key, area, name, title, sub, text) => items.push({
+      key, src: pic(area, name, 1400), full: pic(area, name, 2600), title, sub, text,
+      onOriginal: () => api('/api/workshop/open', { method: 'POST', body: { book: id, what: area, name } }).catch((err) => toast(err.message, 'error')),
     });
-    for (const r of ROWS) {
-      const p = pictureOf(r.key);
-      if (p.whole) push(r.key, p.whole, r.label, offShape(r, p.whole) ? ' · не та пропорція' : '');
-      const flip = p.mirrored ? ' · віддзеркалено' : '';
-      if (p.left) push(`${r.key}:left`, p.left, `${r.label} · ліва сторінка ${r.halves[0]}`, flip);
-      if (p.right) push(`${r.key}:right`, p.right, `${r.label} · права сторінка ${r.halves[1]}`, flip);
+    for (const r of inner()) {
+      const flipped = r.marks?.mirrored ? ' · віддзеркалено' : '';
+      r.pictures.forEach((p, i) => push(`${r.key}:${i}`, 'pictures', p,
+        r.pictures.length > 1 ? `${r.label} · ${i ? 'права' : 'ліва'} сторінка ${r.pages[i]}` : r.label, `${p}${flipped}`, r.text));
     }
+    const c = b.cover;
+    const text = b.rows.find((r) => r.key === 'cover')?.text || '';
+    if (c.final) push('cover:0', 'pictures', c.final, 'Обкладинка', c.skipped ? 'без полів' : 'з полями, за шаблоном друкарні', text);
+    if (c.art) push('cover-art:0', 'originals', c.art, 'Обкладинка · картинка', 'як її зробив генератор', text);
     return items;
   }
+  function zoom(key) {
+    lbItems.splice(0, lbItems.length, ...viewerItems());
+    lb = openLightbox(lbItems, Math.max(0, lbItems.findIndex((it) => it.key === key)));
+  }
+  /** A picture replaced while the viewer is open: it shows the new one (only when a picture changed). */
+  function refreshViewer() {
+    if (!lb || !document.querySelector('.lightbox:not(.closing)')) { lb = null; return; }
+    const items = viewerItems();
+    if (items.map((it) => it.src).join() === lbItems.map((it) => it.src).join()) return;
+    lbItems.splice(0, lbItems.length, ...items);
+    if (lbItems.length) lb.refresh(Math.min(lb.index, lbItems.length - 1)); else lb.close();
+  }
 
-  /** ⇄: the spread mirrored (its right page, mirrored, becomes the left one); again — back as it was. */
-  async function flip(key) {
-    if (uploading.has(key)) return;
-    uploading.set(key, 1);
-    paintFrame(key);
+  // ---------------------------------------------------------------- pictures in, by hand
+  let pickFor = null;
+  async function uploadTo(key, variant, file) {
+    if (!IMG_RE.test(file.name)) { toast(`«${file.name}» — не картинка (PNG, JPG, WEBP)`, 'error'); return; }
+    if (uploading.has(key)) { toast('Попередня картинка ще вантажиться', 'info'); return; }
+    uploading.set(key, 0);
+    paintRows();
     try {
-      book = await api(`/api/workshop/books/${id}/flip`, { method: 'POST', body: { slot: key } });
-      toast(`${row(key).label}: ${pictureOf(key).mirrored ? 'віддзеркалено' : 'повернуто, як було'}`, 'success', 1800);
+      const q = new URLSearchParams({ key, name: file.name, ...(variant ? { variant } : {}) });
+      const res = await upload(url(`/place?${q}`), file, (p) => { uploading.set(key, p); paintProgress(key); });
+      toast(res.note || 'Готово', res.cut ? 'info' : 'success', res.cut ? 4000 : 2600);
     } catch (err) { toast(err.message, 'error'); }
     uploading.delete(key);
-    paintFrame(key);
-  }
-  function zoom(key) {
-    const items = lightboxItems();
-    if (items.length) openLightbox(items, Math.max(0, items.findIndex((it) => it.key === key)));
+    paintRows();
+    refresh();
   }
 
-  // ---------------------------------------------------------------- prompts and texts in one JSON
-  async function importJson(raw) {
-    let check;
-    try { check = await api(`/api/workshop/books/${id}/json`, { method: 'POST', body: { json: raw, dryRun: true } }); }
-    catch (err) { toast(err.message, 'error', 6500); return false; }
-    const r = check.replaces;
-    if (r.prompts || r.texts) {
-      const what = [r.prompts && `${r.prompts} ${plural(r.prompts, PROMPTS)}`, r.texts && `${r.texts} ${plural(r.texts, TEXTS)}`].filter(Boolean).join(' і ');
-      const ok = await confirmBox({ title: `Замінити ${what}, які вже є?`, text: 'У JSON для них інакше, ніж уже написано в книзі. Решта просто заповниться.', confirm: 'Замінити' });
-      if (!ok) return false;
-    }
-    try {
-      const res = await api(`/api/workshop/books/${id}/json`, { method: 'POST', body: { json: raw } });
-      book = res.book;
-      paintReady();
-      paintRows();
-      toast(`Заповнено: ${res.prompts} ${plural(res.prompts, PROMPTS)}, ${res.texts} ${plural(res.texts, TEXTS)}`, 'success');
-      // A few are named, many only counted: "немає промптів (присвяти, розвороту 9)" / "немає 15 промптів".
-      const gap = (list, words) => (list.length > 3 ? `${list.length} ${plural(list.length, words)}`
-        : `${words[2]} (${list.map((n) => HUMAN[n] || n).join(', ')})`);
-      const gaps = [[res.missing.prompts, PROMPTS], [res.missing.texts, TEXTS]].filter(([list]) => list.length).map(([l, w]) => gap(l, w));
-      if (gaps.length) toast(`У JSON немає ${gaps.join(' і ')} — там лишилось, як було`, 'info', 7000);
-      return true;
-    } catch (err) { toast(err.message, 'error', 6500); return false; }
+  async function removePicture(btn, key, variant) {
+    const title = key === 'cover' ? 'Прибрати обкладинку разом з її полями?' : key === 'cover-wrap' ? 'Прибрати поля обкладинки?' : 'Прибрати картинку з цього рядка?';
+    const text = `${key === 'cover-wrap' ? 'Сама обкладинка лишиться. ' : ''}Нічого не зникає назавжди — файли підуть у папку .replaced книги.`;
+    if (!await confirmBox({ title, text, confirm: 'Прибрати', danger: true })) return;
+    act(btn, () => api(url('/remove'), { method: 'POST', body: { key, variant } }));
   }
 
-  function pasteJson() {
-    const m = modal({
-      title: 'Промпти й тексти з JSON',
-      sub: 'Вставте відповідь агента — усе розкладеться по рядках книги.',
-      body: html`<textarea class="textarea mono ws-json" id="ws-json" rows="14" spellcheck="false" placeholder='{ "cover": {"prompt": "…", "text": "…"}, "page1": …, "spreads": {"2": …}, "page30": … }'></textarea>`,
-      foot: html`<button class="btn btn-ghost" data-no>Скасувати</button><button class="btn btn-primary" data-yes>${ic('braces')}Заповнити</button>`,
-      size: 'l',
-    });
-    const ta = m.el.querySelector('#ws-json');
-    m.foot.querySelector('[data-no]').onclick = () => m.close();
-    m.foot.querySelector('[data-yes]').onclick = async () => {
-      if (!ta.value.trim()) { toast('Вставте JSON', 'error'); return; }
-      if (await importJson(ta.value)) m.close();
-    };
-    setTimeout(() => ta.focus(), 30);
-  }
-
-  async function copyJson() {
-    try { copyText(JSON.stringify(await api(`/api/workshop/books/${id}/json`), null, 2), 'Промпти й тексти скопійовано як JSON'); }
-    catch (err) { toast(err.message, 'error'); }
-  }
-
-  // ---------------------------------------------------------------- «Передати в бібліотеку»
-  async function transfer() {
-    let existing;
-    try { existing = (await api('/api/library/books')).books; } catch (err) { toast(err.message, 'error'); return; }
-    const noPicture = ROWS.filter((r) => !hasPicture(r.key)).map((r) => r.short);
-    const noText = ROWS.filter((r) => !(book.text[r.key] || '').trim()).map((r) => r.short);
+  // ---------------------------------------------------------------- the library
+  function missingSummary() {
+    const noPicture = inner().filter((r) => !r.pictures.length).map((r) => r.label.replace(/^\D+/, '').replace(/ ·.*$/, ''));
+    if (!b.cover.final) noPicture.unshift('обкладинка');
+    const noText = b.rows.filter((r) => !r.text).map((r) => (r.kind === 'cover' ? 'обкладинка' : r.label.replace(/^\D+/, '').replace(/ ·.*$/, '')));
     const gaps = [noPicture.length && `картинок — ${noPicture.join(', ')}`, noText.length && `текстів — ${noText.join(', ')}`].filter(Boolean);
-    const summary = gaps.length
+    return gaps.length
       ? html`<div class="notice notice-warn">${ic('alert')}<div>Бракує ${gaps.join('; ')}. У бібліотеці їх можна докласти пізніше.</div></div>`
       : html`<div class="notice notice-success">${ic('checkCircle')}<div>Усі картинки й тексти на місці.</div></div>`;
+  }
+
+  async function toLibrary() {
+    if (b.library) { location.hash = `#/book/${b.library.id}`; return; }
+    let existing;
+    try { existing = (await api('/api/library/books')).books; } catch (err) { toast(err.message, 'error'); return; }
     openAddBook(existing, {
-      book, summary,
-      done: (b) => { toast(`«${b.title}» — у бібліотеці замовлень`, 'success'); location.hash = '#/workshop'; },
+      summary: missingSummary(),
+      send: (body, say) => runJob(api(url('/to-library'), { method: 'POST', body }),
+        (job) => say(`Передаю… ${Math.round(job.percent || 0)}%`)),
+      done: (res) => {
+        toast(`«${res.book.title}» — у бібліотеці замовлень${res.errors.length ? ` · не взято: ${res.errors.length}` : ''}`, res.errors.length ? 'info' : 'success', 6000);
+        refresh();
+      },
     });
+  }
+
+  async function deleteBook(btn) {
+    const name = `${b.number != null ? `№${b.number} ` : ''}${b.title}`;
+    const ok = await confirmBox({
+      title: `Видалити книгу «${name}»?`,
+      text: 'Книга зникне з Майстерні, а її папка з усіма файлами — тексти й промпти агентів, сторінки, оригінали, обкладинка — піде в Кошик Windows. Звідти її ще можна відновити, поки Кошик не очищено.',
+      confirm: 'Видалити книгу', danger: true,
+    });
+    if (!ok) return;
+    const res = await act(btn, () => api(url(), { method: 'DELETE' }), `Книгу «${name}» видалено — папка в Кошику Windows`);
+    if (res) { memory.delete(id); location.hash = '#/workshop'; }
   }
 
   // ---------------------------------------------------------------- events
-  offs.push(on(view, 'click', '[data-act]', (e, t) => {
-    const act = t.dataset.act;
-    if (act === 'back') { location.hash = '#/workshop'; return; }
-    if (act === 'transfer') { transfer(); return; }
-    if (act === 'json') {
+  const rowOf = (key, variant) => (variant ? b.variants.find((x) => x.name === variant)?.rows : b.rows)?.find((r) => r.key === key)
+    || (key === 'cover-wrap' ? { key, label: 'Поля обкладинки', prompt: b.cover.outpaint } : null);
+  const offs = [on(view, 'click', '[data-act]', (e, t) => {
+    const a = t.dataset.act;
+    const { key = '', variant = '' } = t.dataset;
+    if (a === 'back') { location.hash = '#/workshop'; return; }
+    if (a === 'agent') { act(t, () => api('/api/workshop/agent', { method: 'POST', body: { book: id } }), (r) => `Antigravity відкривається · у буфері «${r.clip}» — вставте в чат агента`); return; }
+    if (a === 'open') { act(t, () => api('/api/workshop/open', { method: 'POST', body: { book: id, what: t.dataset.what, name: t.dataset.name || '' } })); return; }
+    if (a === 'more') {
       menu(t, [
-        { label: 'Вставити JSON…', icon: 'braces', onClick: pasteJson },
-        { label: 'Завантажити JSON-файл…', icon: 'fileOpen', onClick: () => $('#ws-json-file').click() },
-        { label: 'Скопіювати промпти й тексти як JSON', icon: 'copy', onClick: copyJson },
+        { label: 'Відкрити папку книги', icon: 'folderOpen', onClick: () => act(null, () => api('/api/workshop/open', { method: 'POST', body: { book: id, what: 'folder' } })) },
         '-',
-        { label: 'Скопіювати інструкцію для агента', icon: 'guide', onClick: copyGuide },
-        { label: 'Зберегти інструкцію у файл…', icon: 'download', onClick: saveGuide },
+        { label: 'Видалити книгу…', icon: 'trash', danger: true, onClick: () => deleteBook(t) },
       ]);
       return;
     }
-    if (act === 'more') {
-      menu(t, [
-        { label: 'Відкрити папку книги', icon: 'folderOpen', onClick: () => api(`/api/library/books/${id}/open-folder`, { method: 'POST', body: {} }).catch((err) => toast(err.message, 'error')) },
-        '-',
-        { label: 'Видалити книгу', icon: 'trash', danger: true, onClick: deleteBook },
-      ]);
+    if (a === 'to-library') { toLibrary(); return; }
+    if (a === 'step') { mem.step = mem.step === t.dataset.step ? null : t.dataset.step; draw(); return; }
+    if (a === 'fold') { mem.step = null; draw(); return; }
+    if (a === 'tab') { mem.tabs.set(mem.step, t.dataset.file); paintPanel(); return; }
+    if (a === 'mark') { act(t, () => api(url('/mark'), { method: 'POST', body: { step: t.dataset.step, on: step(t.dataset.step).state !== 'done' } })); return; }
+    if (a === 'goto') {
+      const el = view.querySelector(`#row-${t.dataset.row}`);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
       return;
     }
-    const key = t.dataset.key || t.closest('[data-key]')?.dataset.key;
-    if (act === 'pick') { pickKey = key; $('#ws-file').click(); return; }
-    if (act === 'flip') { e.stopPropagation(); flip(key); return; }
-    if (act === 'zoom') { e.stopPropagation(); zoom(key); return; }
-    if (act === 'remove') { e.stopPropagation(); removePicture(key); return; }
-    const block = t.closest('.ws-block');
-    if (act === 'copy' && block) { copyText(field(block.dataset.field)[block.dataset.key] || '', block.dataset.field === 'prompts' ? 'Промпт скопійовано' : 'Текст скопійовано'); return; }
-    if (act === 'edit' && block) edit(block.dataset.field, block.dataset.key);
-  }));
-
-  async function deleteBook() {
-    const ok = await confirmBox({ title: `Видалити «${book.title}»?`, text: 'Книга піде в кошик бібліотеки (app/data/library/trash) — звідти її можна повернути вручну.', confirm: 'Видалити', danger: true });
-    if (!ok) return;
-    try {
-      await api(`/api/library/books/${id}`, { method: 'DELETE' });
-      toast('Книгу видалено', 'success');
-      location.hash = '#/workshop';
-    } catch (err) { toast(err.message, 'error'); }
-  }
+    if (a === 'gen') { startGen(t, { book: id, key, variant: key.startsWith('cover') ? '' : variant }); return; }
+    if (a === 'series') { startGen(t, { book: id, variant: mem.variant, series: true }); return; }
+    if (a === 'copy-hero') { act(t, () => api(url('/copy-hero'), { method: 'POST', body: { variant } }), 'Герой у буфері як картинка — вставте в чат'); return; }
+    if (a === 'copy-picture') { act(t, () => api(url('/copy-picture'), { method: 'POST', body: { key } }), 'Картинка в буфері — вставте куди треба'); return; }
+    if (a === 'save') { act(t, () => api(url('/save-as'), { method: 'POST', body: { area: t.dataset.area, name: t.dataset.name, variant } }), (r) => (r.saved ? `Збережено: ${r.name}` : null)); return; }
+    if (a === 'flip') { act(t, () => api(url('/flip'), { method: 'POST', body: { key, variant } }), (r) => (r.mirrored ? 'Віддзеркалено' : 'Повернуто, як було')); return; }
+    if (a === 'remove') { removePicture(t, key, variant); return; }
+    if (a === 'no-margins') { act(t, () => api(url('/no-margins'), { method: 'POST', body: {} }), (r) => r.note); return; }
+    if (a === 'pick') { pickFor = { key, variant }; $('#ws-file').click(); return; }
+    if (a === 'zoom') { zoom(`${key}:${t.dataset.part || 0}`); return; }
+    if (a === 'zoom-one') {
+      const { area, name } = t.dataset;
+      openLightbox([{ src: pic(area, name, 1400), full: pic(area, name, 2600), title: `${step(mem.step)?.label} · ${name}`, sub: b.title,
+        onOriginal: () => api('/api/workshop/open', { method: 'POST', body: { book: id, what: area, name } }).catch((err) => toast(err.message, 'error')) }]);
+      return;
+    }
+    if (a === 'copy') {
+      const r = rowOf(key, variant);
+      if (r) copyText(t.dataset.what === 'prompt' ? r.prompt : r.text, t.dataset.what === 'prompt' ? `Промпт скопійовано (${r.label.toLowerCase()})` : 'Текст скопійовано');
+      return;
+    }
+    if (a === 'whole-prompt') { if (mem.open.has(key)) mem.open.delete(key); else mem.open.add(key); paintRows(); return; }
+    if (a === 'variant') { mem.variant = variant; paintRows(); return; }
+    if (a === 'cover-stage') { mem.cover = Number(t.dataset.stage); paintRows(); return; }
+    if (a === 'guides') { mem.guides = !mem.guides; paintRows(); }
+  }), on(view, 'click', '[data-gen]', (e, t) => genAction(t, t.dataset.gen))];
 
   $('#ws-file').addEventListener('change', (e) => {
     const f = e.target.files[0];
     e.target.value = '';
-    if (f && pickKey) uploadTo(pickKey, f);
-  });
-  $('#ws-json-file').addEventListener('change', async (e) => {
-    const f = e.target.files[0];
-    e.target.value = '';
-    if (f) importJson(await f.text());
+    if (f && pickFor) uploadTo(pickFor.key, pickFor.variant, f);
   });
 
-  // The title, edited in place like the passport's.
-  const title = $('#ws-title');
-  title.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); title.blur(); } });
-  title.addEventListener('blur', async () => {
-    const v = title.value.trim();
-    if (!v) { title.value = book.title; return; }
-    if (v !== book.title && await patch({ title: v })) toast('Назву збережено', 'success', 1400);
-  });
-
-  // Dragging files in: a picture onto its frame (one per frame), a JSON anywhere on the page.
+  // A picture dragged in from Explorer lands in the frame it is dropped on — one picture per frame.
   const files = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
   const mark = (target) => {
     view.querySelectorAll('.drop-hot').forEach((x) => x.classList.remove('drop-hot'));
@@ -468,33 +640,38 @@ export async function mount(view, [id]) {
     mark(e.target.closest('[data-drop]'));
   };
   const onLeave = (e) => { if (!e.relatedTarget || !view.contains(e.relatedTarget)) mark(null); };
-  const onDrop = async (e) => {
+  const onDrop = (e) => {
     if (!files(e)) return;
     e.preventDefault();
     mark(null);
-    const dropped = [...e.dataTransfer.files];
     const target = e.target.closest('[data-drop]');
-    const json = dropped.filter((f) => /\.json$/i.test(f.name));
-    if (dropped.length === 1 && json.length === 1) { importJson(await json[0].text()); return; }
-    if (!target) { toast('Перетягніть картинку на її рамку (або JSON — будь-куди на сторінку)', 'info'); return; }
-    if (dropped.length !== 1) { toast('Одна картинка — в одну рамку', 'error'); return; }
-    uploadTo(target.dataset.drop, dropped[0]);
+    const dropped = [...e.dataTransfer.files].filter((f) => IMG_RE.test(f.name));
+    if (!target) { toast('Перетягніть картинку на її рамку', 'info'); return; }
+    if (dropped.length !== 1) { toast(dropped.length ? 'Одна картинка — в одну рамку' : 'Це не картинка (PNG, JPG, WEBP)', 'error'); return; }
+    uploadTo(target.dataset.drop, target.dataset.variant || '', dropped[0]);
   };
   view.addEventListener('dragover', onOver);
   view.addEventListener('dragleave', onLeave);
   view.addEventListener('drop', onDrop);
 
   const onKey = (e) => {
-    if (e.key !== 'Escape' || document.querySelector('.modal-root, .lightbox, .menu')) return;
-    if (/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName || '')) return;
-    location.hash = '#/workshop';
+    if (topLayer() || document.querySelector('.menu') || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
+    if (e.key === 'Escape') { location.hash = '#/workshop'; return; }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      const i = Math.max(0, b.steps.findIndex((s) => s.key === mem.step));
+      const next = b.steps[Math.max(0, Math.min(b.steps.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))];
+      if (next && next.key !== mem.step) { e.preventDefault(); mem.step = next.key; draw(); }
+    }
   };
   document.addEventListener('keydown', onKey);
 
   return {
     unmount() {
+      unwatch();
       offs.forEach((off) => off());
       document.removeEventListener('keydown', onKey);
+      lb?.close();
     },
   };
 }

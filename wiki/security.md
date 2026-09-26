@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-09-25
+updated: 2026-09-26
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -12,6 +12,8 @@ code:
   - app/studio/tunnel.py
   - app/studio/textcheck.py
   - app/studio/mockups.py
+  - app/studio/workshop/generate.py
+  - app/studio/clipboard.py
 ---
 # Security
 
@@ -35,7 +37,8 @@ code:
    the owner's credentials (copied from Etsy OS on 2026-09-17 at his request; git ignores it): never
    read, print, commit, change, or delete it unless the owner directly asks for exactly that. Never ask
    the owner to paste keys into chat.
-7. **Never permanently delete the owner's data.** A deleted book goes to `app/data/library/trash`. The
+7. **Never permanently delete the owner's data.** A deleted book goes to `app/data/library/trash`; a deleted
+   Workshop book's folder — to the Windows Recycle Bin. The
    one deliberate exception is the [order archive](features/archive.md): the program deletes its files
    itself 14 days after "Sent" (the owner's decision, 2026-09-18, except "Keep").
 8. **Git**: commit and push only when the owner asks. `app/data/`, `app/bin/`, and real customer data
@@ -159,6 +162,21 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   folder and closes them without saving the copy; it opens nothing and touches no other document.
 - Tests: `RunPlan`, `Run`, `Cleaning`, `SaveTheOpenOnes`, `PhotoshopScript` ([test_mockups.py](../app/tests/test_mockups.py)).
 
+### The Workshop (the book console, since 2026-09-26)
+- **Nothing of the owner's is deleted for good**: a picture a new one replaces, or a removal takes, goes to the
+  book's `.replaced/`; a deleted book's whole folder goes to the **Windows Recycle Bin** (`to_recycle_bin()`).
+- **Downloads**: only the first new PNG/JPEG/WEBP that appears *after* «Генерувати» and has finished downloading is
+  taken (moved into the book — the owner's wish); files that were there before, and anything else, are never touched.
+- **A book's `agent/` is the agents'**: the Workshop only reads it, except the hero it catches (`canonical.png`, a
+  variant's `hero.png`). The agents write only into `agent/` and never into `book.json`.
+- The clipboard is filled only on the owner's press («Генерувати», «Далі»/F8, the copy buttons, «Відкрити агента»);
+  F8 is taken from Windows only while a several-part paste goes on and given back after the last part.
+- No internet and no keys: Antigravity is only started on `pipeline/`; the book agents' rules never reach Book
+  Studio's code and data (outside the folder Antigravity opens).
+- **The sandbox** (`core.SANDBOX` — the preview server and the tests): the clipboard goes into files, F8 isn't taken,
+  no window opens, Downloads, the books and the Recycle Bin are made-up folders in the data folder.
+- Tests: `TheSandbox`, `OnlyInsideTheBook`, `CatchingDownloads` ([test_workshop.py](../app/tests/test_workshop.py)).
+
 ### Local server
 - Listens only on `127.0.0.1`; every `/api` request carries the session token `SESSION_TOKEN` (header
   `X-Studio-Token`), media uses the `?t=` parameter.
@@ -181,7 +199,10 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - [app/tests/__init__.py](../app/tests/__init__.py) — a temporary data folder for tests (unconditional)
 - [app/tools/dev_server.py](../app/tools/dev_server.py) — `claim()`, `MARK`, `main()` (`BOOK_STUDIO_SAMPLE`)
 - [app/studio/mockups.py](../app/studio/mockups.py) — `copy_templates()`, `_inside()`, `_free_name()`, `_pick_out()`, `make()`, `clean_runs()`, `finish()`, `_open_zip()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `forget_old_utility()`
-- [app/studio/workshop.py](../app/studio/workshop.py) — `to_library()` (the Etsy listing only read, through the API; nothing is sent anywhere)
+- [app/studio/workshop/books.py](../app/studio/workshop/books.py) — `to_library()` (the Etsy listing only read, through the API; nothing is sent anywhere), `delete_book()`, `open_agent()`
+- [app/studio/workshop/generate.py](../app/studio/workshop/generate.py) — `Session` (only the awaited picture leaves Downloads)
+- [app/studio/desktop.py](../app/studio/desktop.py) — `to_recycle_bin()`
+- [app/studio/core.py](../app/studio/core.py) — `SANDBOX`
 
 ## Related
 

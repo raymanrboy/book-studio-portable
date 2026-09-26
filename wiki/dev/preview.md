@@ -1,9 +1,10 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/tools/dev_server.py
+  - app/tools/sample_books.py
 ---
 # Interface preview
 
@@ -53,11 +54,14 @@ code:
 ## The Listings mode: the Workshop and the Mockups (since 2026-09-24)
 
 - The same `--sample` server has them (the separate `--mockups` server on port 47891 went with the utility).
-- **The Workshop**: one made-up book, «Silly Goose (Workshop sample)» (`seed_workshop()`, `WORKSHOP_BOOK`, only
-  when it isn't there yet): every prompt and text but one of each (spread 9's prompt, page 30's text), pictures
-  in four frames — the cover, spreads 2–3 and 4–5 at 2:1 (4–5 mirrored by the flipper's rule) and 8–9 at
-  1792×1024 (mirrored and cut top and bottom — the amber «обрізано» mark); the spreads go in through
-  `workshop.place_spread()`, so they are two pages each. Passed to the library in a check, it stays there: delete `.tmp\bsdev` to have it back.
+- **The Workshop** (since 2026-09-26 — the book console moved in): the preview is its **sandbox** (`core.SANDBOX`):
+  three made-up books in `.tmp\bsdev\workshop-books` (`seed_workshop()` → [tools/sample_books.py](../../app/tools/sample_books.py)
+  `make_books()`, only when there are none): **40** — Tier H, the hero, story, text, no prompts yet, a hero variant
+  G2_brunette; **41** — Tier S, every prompt (the book check says 14 errors), 5 rows of pictures, Canva ticked; **42** —
+  just started. **A picture put into `.tmp\bsdev\downloads`** is caught by a waiting row, as a download would be; what
+  would go into the clipboard lands in `.tmp\bsdev\clipboard\`; F8 isn't taken; no window opens (Antigravity,
+  Explorer, «Зберегти як» → `saved\`); a deleted book goes to `recycle-bin\`. To have the books back as they were,
+  delete `.tmp\bsdev\workshop-books`.
 - **The Mockups** (`seed_mockups()`, in `.tmp\bsdev\sample-mockups`): made-up templates (small pictures of a
   table with an open book, saved under the owner's `.psd` names — Pillow reads them by content, so the template
   previews show), a made-up Canva export `Goose demo.zip` (a wide cover, 24 numbered pages), a **pretend
@@ -102,7 +106,7 @@ so. Changes to `app/web/*` are picked up by reloading the window (Ctrl+R).
 
 ## Where in the code
 
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()` (`BOOK_STUDIO_SAMPLE`), `claim()`, `MARK`, `seed_workshop()`, `WORKSHOP_BOOK`, `WORKSHOP_PROMPTS`, `seed_mockups()`, `pretend_photoshop()`, `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`, `PORT`
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()` (`BOOK_STUDIO_SAMPLE`), `claim()`, `MARK`, `seed_workshop()`, `seed_mockups()`, `pretend_photoshop()`, `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`, `PORT`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (`--no-window` mode)
 
 ## Related

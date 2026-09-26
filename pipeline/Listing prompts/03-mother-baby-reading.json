@@ -1,0 +1,280 @@
+{
+  "prompt_name": "etsy_listing_mother_baby_reading_lifestyle",
+  "version": "1.0.0",
+  "purpose": "Universal meta prompt for a photorealistic family lifestyle scene generated from one supplied two-panel children's artwork image.",
+  "generation_mode": "Protected-artwork image editing and photorealistic lifestyle-scene generation using exactly one attached source image.",
+  "task": "Create a warm candid square photograph of one adult mother reading an open professionally printed children's keepsake volume with her infant. Use the attached 2:1 artwork as the only visual source for the two visible printed panels. Preserve that artwork exactly while generating a new mother and infant for every run and surrounding them with a refined, cozy Scandinavian-boho bedroom environment.",
+  "input_contract": {
+    "required_attachments": 1,
+    "image_1_role": "PRIMARY ARTWORK SOURCE - the only authority for everything printed across the two visible panels.",
+    "expected_input": "One complete 2:1 landscape artwork containing a left square panel and a right square panel in their intended reading order.",
+    "panel_mapping": "Map the source's left half to the physical left printed panel and the source's right half to the physical right printed panel. Preserve the central division as the binding location. Never swap, mirror or reorder the halves.",
+    "reference_policy": "Do not use the attachment to determine the mother's or infant's ethnicity, facial features, body, hair or identity. Human casting is randomized independently.",
+    "failure_condition": "Do not proceed if the supplied artwork is cropped, obscured, unreadable, incomplete or not clearly divisible into the intended left and right panels."
+  },
+  "source_hierarchy": {
+    "primary_source": "The attached image exclusively controls the visible illustration, typography, panel order, composition, colors and all printed details.",
+    "json_control": "This JSON controls the physical presentation, people, pose, environment, camera, lighting, props and photographic realism.",
+    "absolute_priority": "Faithful preservation and readability of the attached artwork overrides every pose, styling or decorative instruction."
+  },
+  "protected_artwork_policy": {
+    "instruction": "Reuse the supplied two-panel artwork directly as the visible printed surface. Preserve source pixels wherever the editing system permits. Do not reconstruct, repaint, simplify, reinterpret or redesign any printed region.",
+    "preserve_exactly": [
+      "left-panel and right-panel order",
+      "all illustration details and character features",
+      "all existing text, spelling, line breaks, typography and placement",
+      "all original colors and tonal relationships",
+      "the original layout and relative scale of every printed element",
+      "the central division and binding position",
+      "sharp printed edges and fine artwork texture"
+    ],
+    "allowed_transformations": [
+      "Apply one coherent perspective transform to the entire supplied 2:1 artwork so it rests naturally on the two open physical panels",
+      "Apply extremely subtle paper curvature only near the central binding and outer edges",
+      "Add physically plausible paper sheen, edge thickness, contact shadows and ambient color reflection without changing printed colors"
+    ],
+    "prohibited_operations": [
+      "Do not invent or replace printed text",
+      "Do not alter typography or line breaks",
+      "Do not swap, mirror, duplicate or crop either panel",
+      "Do not move individual printed elements",
+      "Do not redraw characters or illustrations",
+      "Do not recolor the supplied artwork",
+      "Do not allow hands, clothing, props or hair to obscure printed text or important illustration details",
+      "Do not create a second printed volume"
+    ]
+  },
+  "physical_print_mapping": {
+    "format": "A real open square children's keepsake volume made from two facing 8 x 8 inch printed panels, producing an approximately 16 x 8 inch open footprint.",
+    "binding": "A narrow believable central binding valley with subtle depth and a soft occlusion shadow. Keep it aligned exactly with the source's central division.",
+    "paper": "Premium matte off-white coated stock with restrained natural sheen, crisp edges and realistic thickness.",
+    "curvature": "Very gentle physical curvature near the binding and outer edges only. Printed letters remain straight, undistorted and readable.",
+    "geometry": "Both square panels remain equal in size and form one coherent open object with accurate perspective.",
+    "visibility": "The complete open object, including every outer corner and the full central binding, remains comfortably inside the frame.",
+    "contact": "It rests naturally on the bedding with a soft continuous contact shadow and slight compression of the fabric beneath it."
+  },
+  "casting_randomization": {
+    "randomize_each_generation": true,
+    "instruction": "For every generation, randomly select exactly one contemporary American family casting profile from the list below. Make a genuine new mother and infant rather than repeating a default appearance. Do not always choose the first or lightest-skinned option.",
+    "selection_distribution": "Use a balanced random draw across many generations so the complete image set represents the broad diversity of families living in the United States. This is a creative representation system, not an attempt to infer identity from appearance.",
+    "casting_profiles": [
+      "Black or African American family",
+      "East Asian American family",
+      "South Asian American family",
+      "Southeast Asian American family",
+      "Latino or Hispanic American family, including Mexican American representation",
+      "Middle Eastern or North African American family",
+      "White or European American family",
+      "Native or Indigenous American family",
+      "Pacific Islander American family",
+      "Multiracial American family"
+    ],
+    "within_profile_variation": [
+      "Vary skin tone naturally within the selected profile",
+      "Vary facial structure without exaggeration",
+      "Vary natural hair texture, density, length and styling",
+      "Vary eye color where plausible",
+      "Vary the mother's age within the specified adult range",
+      "Randomly choose a boy, girl or gender-neutral infant presentation without relying on pink-blue stereotypes"
+    ],
+    "family_coherence": "Give the mother and infant believable familial resemblance through a subtle combination of skin undertone, hair characteristics or facial traits, while allowing natural mixed-heritage and adoptive-family diversity.",
+    "anti_stereotype_rules": [
+      "Portray every family in the same ordinary contemporary American home setting",
+      "Do not use national costumes, flags, religious symbols or ethnicity-coded props unless explicitly requested",
+      "Do not caricature facial features, hair or skin",
+      "Do not sexualize, exoticize or idealize any casting profile",
+      "Do not associate personality, wealth or parenting behavior with ethnicity",
+      "Do not imitate a celebrity or identifiable real person"
+    ],
+    "user_override": "If the user explicitly supplies a casting description, use it instead of random selection while keeping all realism and anti-stereotype rules."
+  },
+  "people": {
+    "mother": {
+      "age": "Clearly adult, approximately 24-42 years old.",
+      "appearance": "Natural contemporary appearance consistent with the randomly selected casting profile, realistic facial asymmetry, healthy natural skin texture and an unforced warm expression.",
+      "hair": "A natural texture and hairstyle selected coherently for the chosen individual; softly styled, not salon-perfect, and never covering her eyes.",
+      "makeup": "Minimal or no visible makeup, with natural brows, lashes and lip texture.",
+      "clothing": "Soft oatmeal, warm taupe or cream knit cardigan over a simple neutral cotton top. No visible brand marks or readable graphics.",
+      "pose": "Lying comfortably along the right side of the frame, torso angled toward the infant and head inclined naturally toward the shared reading moment.",
+      "expression": "A genuine small smile or delighted conversational expression directed toward the infant, never a posed advertising grin."
+    },
+    "infant": {
+      "age": "Approximately 4-9 months old.",
+      "appearance": "Healthy, age-appropriate proportions and natural features consistent with the selected family casting, with soft infant hair, subtle rosy warmth and realistic skin variation.",
+      "clothing": "A simple cotton sleeper in one muted accent sampled from the supplied artwork, such as sage, dusty blue, muted clay, oatmeal or dusty rose. No print, logo or readable text.",
+      "pose": "Lying safely beside the mother on the bedding, body supported and comfortably angled toward her and the open printed object.",
+      "expression": "Genuine curiosity or delight: a soft smile, bright attentive gaze or natural open-mouthed happy reaction.",
+      "attention": "Looking toward the mother or the visible artwork, selected naturally for the candid interaction."
+    },
+    "relationship": "Their body language feels relaxed, affectionate and spontaneous, with believable closeness rather than a rigid studio pose."
+  },
+  "interaction": {
+    "primary_action": "The mother is actively reading and sharing the visible artwork with the infant during a quiet morning moment.",
+    "mother_near_hand": "Resting gently along the lower outer edge of the open printed object, with relaxed wrist, five anatomically correct fingers, believable grip and physical contact.",
+    "mother_other_hand": "Placed naturally near the infant's shoulder or softly gesturing toward a non-text area without obscuring the printed artwork.",
+    "infant_hands": "Relaxed and age-appropriate. One hand may reach toward a clear outer margin, but it must not obscure text, faces or important illustration details.",
+    "eye_line": "Create an emotional connection by having the mother look toward the infant while the infant looks toward either the mother or the artwork.",
+    "moment": "Candid and continuous, as if photographed between spoken lines; no one looks directly at the camera.",
+    "anatomy_priority": "If a gesture risks malformed anatomy or obscured artwork, simplify it to a relaxed resting hand."
+  },
+  "composition": {
+    "format": "Square 1:1 lifestyle photograph.",
+    "view": "A slightly wide overhead three-quarter view, approximately 50-65 degrees downward, close enough for emotion but wide enough to include every required subject.",
+    "protected_object": {
+      "placement": "Diagonal from the lower-left toward the center, with the central binding aiming loosely toward the emotional triangle between mother and infant.",
+      "center": "Approximately x=39-44%, y=66-71%.",
+      "coverage": "Approximately 48-58% of canvas width and 27-36% of canvas height, depending on the inherited perspective.",
+      "visibility": "Every outer corner, both complete printed panels and the binding remain visible.",
+      "sharpness": "Perfectly sharp and readable."
+    },
+    "mother_face": "Place around x=70-78%, y=30-42%, fully inside the frame with comfortable headroom.",
+    "infant_face": "Place around x=42-55%, y=28-42%, fully inside the frame and on a similar focus plane to the mother.",
+    "emotional_triangle": "The mother, infant and open printed object form three distinct points connected by gaze, hands and diagonal placement.",
+    "safe_area": "Keep both complete faces and the entire protected object inside the central 88% of the canvas.",
+    "cropping": "Peripheral textiles and props may be cropped naturally, but never crop either face, any hand interacting with the protected object or any part of the protected object.",
+    "visual_hierarchy": "The protected artwork and the two faces share primary attention; props remain clearly secondary."
+  },
+  "environment": {
+    "setting": "An intimate contemporary Scandinavian-boho bedroom during a quiet late-morning family moment.",
+    "base_textile": "Softly wrinkled dusty-rose washed cotton bedding with authentic weave, gentle tonal variation and broad natural creases.",
+    "adaptive_option": "If dusty rose strongly clashes with the supplied artwork, shift the bedding only toward muted clay, warm taupe or pale sage while retaining the same low-saturation washed-cotton character.",
+    "layering": "Cream chunky knit, oatmeal muslin and one boucle or woven cushion create subtle tactile layers near the perimeter.",
+    "atmosphere": "Tender, peaceful, warm, emotionally authentic, premium and lived-in without messiness.",
+    "cleanliness": "No food, drinks, phones, packaging, adult clutter or distracting household objects."
+  },
+  "prop_layout": {
+    "upper_left": {
+      "objects": [
+        "A softly bunched cream chunky-knit blanket",
+        "A small ivory or oatmeal handmade teddy with minimal stitched features"
+      ],
+      "placement": "Partially cropped along the upper-left edge and farther from the camera than the people.",
+      "focus": "Gently soft but still recognizable."
+    },
+    "upper_center_edge": {
+      "object": "Small matte ivory ceramic bud vase holding one dried bunny-tail stem or one delicate neutral dried flower",
+      "placement": "Resting safely on a small pale-wood bedside tray at the extreme upper edge, never appearing loose or unstable on the bedding.",
+      "focus": "Secondary and softly defocused."
+    },
+    "left_lower_edge": {
+      "object": "One smooth natural-beech teething ring with two or three round wooden beads",
+      "placement": "Near the lower-left perimeter, separated from the protected object by a visible strip of bedding."
+    },
+    "right_lower_edge": {
+      "objects": [
+        "A small pair of cream knitted infant booties",
+        "A short dusty-blush or oatmeal linen ribbon"
+      ],
+      "placement": "Partially cropped at the lower-right edge and positioned away from the mother's hands."
+    },
+    "behind_mother": {
+      "object": "One oatmeal boucle cushion or soft woven pillow without pattern or text",
+      "placement": "Supporting the outer edge of the composition and remaining mostly out of focus."
+    },
+    "density": "Use four to six small prop types. The environment should feel cozy and styled, but the people and protected artwork must remain visually dominant.",
+    "interaction_rule": "No prop touches, overlaps or casts a strong shadow across the protected artwork or either face."
+  },
+  "camera": {
+    "camera_body": "Canon EOS R5",
+    "lens": "Canon RF 50mm F1.2L",
+    "settings": {
+      "aperture": "f/2.8",
+      "iso": 320,
+      "shutter_speed": "1/250 s",
+      "white_balance": "Natural window-light balance around 5000K"
+    },
+    "distance": "Slightly wider than a close portrait so the complete protected object, both faces and key gestures fit comfortably.",
+    "perspective": "Natural 50mm geometry with no wide-angle stretching of faces, hands or the protected object.",
+    "focus_plane": "Align the protected artwork, infant's eyes and mother's eyes closely enough that all three remain crisp at f/2.8.",
+    "depth_of_field": "Use gentle optical separation only for distant blankets, teddy, vase and cushion; no artificial portrait-mode cutout."
+  },
+  "lighting": {
+    "source": "One large real window above and to the upper-left, creating genuine soft late-morning sunlight.",
+    "color": "Clean warm-neutral daylight near 5000K with restrained amber highlights and no heavy yellow cast.",
+    "pattern": "A gentle broad window-light gradient with a few soft dappled highlights across the washed cotton, never crossing printed text with harsh contrast.",
+    "faces": "Soft directional modeling, natural catchlights, delicate shadow transitions and subtle skin translucency.",
+    "protected_object": "Believable matte-paper sheen, crisp printed edges and a soft continuous shadow beneath the physical object and hands.",
+    "shadow_direction": "All cast shadows follow the same upper-left light source and fall consistently toward the lower-right.",
+    "fill": "Natural room bounce keeps the shaded sides of both faces detailed and realistic.",
+    "restrictions": "No studio flash, ring light, artificial rim light, dramatic contrast, glow effect or overexposed cream textiles."
+  },
+  "photographic_realism": {
+    "skin": "True-to-life skin with pores, fine vellus hair, tiny tonal variations, natural under-eye detail, subtle lip texture and realistic color transitions.",
+    "eyes": "Accurate eye moisture, restrained window catchlights, natural sclera color and realistic eyelashes.",
+    "hair": "Individual strands, flyaways, natural density and coherent roots without helmet-like clumps.",
+    "hands": "Anatomically correct palms, joints, nails and exactly five fingers per visible hand, with believable pressure and occlusion.",
+    "infant_anatomy": "Age-appropriate head-to-body ratio, limb length, joints, hands, feet and safe natural posture.",
+    "textiles": "Authentic cotton weave, knit loops, boucle texture, wrinkles, compression and micro-shadows.",
+    "print": "Crisp source-derived artwork, subtle matte sheen, accurate thickness, clean physical edges and undistorted typography.",
+    "integration": "Skin, textiles, protected artwork and props share one camera, one focus model, one color science and one light source.",
+    "finish": "Premium editorial lifestyle photography with restrained natural grain, not hyper-clean synthetic rendering."
+  },
+  "variation_control": {
+    "fixed_between_generations": [
+      "1:1 format",
+      "overhead three-quarter camera family",
+      "mother on the right",
+      "infant beside her",
+      "protected object diagonal from lower-left toward center",
+      "emotional triangle",
+      "soft upper-left window light",
+      "Scandinavian-boho material language",
+      "complete visibility of the protected artwork"
+    ],
+    "randomized_between_generations": [
+      "family casting profile",
+      "individual facial features",
+      "natural hair texture and style",
+      "infant gender presentation",
+      "muted sleeper accent sampled from the supplied artwork",
+      "small natural variations in smiles, eye lines and textile wrinkles",
+      "minor peripheral prop rotation"
+    ],
+    "single_image_consistency": "Within one generated image, use exactly one mother, one infant, one casting profile, one lighting setup and one coherent anatomy."
+  },
+  "negative_constraints": [
+    "No changes to the supplied two-panel artwork",
+    "No invented, replaced, unreadable, misspelled or warped printed text",
+    "No mirrored, swapped, duplicated, missing or cropped panels",
+    "No distorted central binding or implausible physical geometry",
+    "No hand, hair, clothing or prop obscuring printed text or important artwork",
+    "No second printed volume",
+    "No multiple mothers or multiple infants",
+    "No direct gaze into the camera",
+    "No celebrity likeness",
+    "No ethnic caricature, costume coding or stereotypical cultural props",
+    "No default repetition of the same family appearance across generations",
+    "No plastic skin, beauty-filter skin, waxy faces or airbrushed pores",
+    "No exaggerated makeup or fashion-editorial posing",
+    "No malformed infant anatomy, adult-like infant proportions or unsafe body position",
+    "No distorted hands, fused fingers, extra fingers, missing fingers or broken wrists",
+    "No duplicated limbs, faces, eyes or props",
+    "No wide-angle face distortion or tilted horizon",
+    "No excessive blur on the protected artwork or either face",
+    "No artificial portrait-mode edge halo",
+    "No CGI, illustration, painterly rendering, collage or plastic 3D appearance",
+    "No harsh flash, hard spotlight, artificial glow or dramatic cinematic contrast",
+    "No clipped highlights, crushed shadows, yellow cast or oversaturated colors",
+    "No food, drinks, phones, packaging or unsafe loose clutter near the infant",
+    "No watermark, logo, border, caption or interface element"
+  ],
+  "final_validation": [
+    "The output is exactly 1:1 square.",
+    "Exactly one adult mother and one 4-9-month-old infant are present.",
+    "A new family appearance was selected independently for this generation.",
+    "The selected casting is contemporary, natural, respectful and free from cultural stereotyping.",
+    "The mother and infant show believable relational warmth and subtle family coherence.",
+    "The complete supplied left and right artwork panels are visible in the correct order.",
+    "All original illustration details, colors, typography, line breaks and printed positions remain faithful to the attachment.",
+    "The central binding aligns with the exact division between the two source halves.",
+    "The physical open object has believable 8 x 8 inch panel scale, paper behavior, edge thickness and bedding contact.",
+    "The protected object, infant's face and mother's face are all sharp and comfortably inside the frame.",
+    "Mother, infant and protected artwork form a clear emotional triangle.",
+    "All visible hands and infant anatomy are correct, relaxed and physically plausible.",
+    "No gesture or prop obscures printed text, important artwork or either face.",
+    "The bedding and four to six boho prop types provide cozy context without visual clutter.",
+    "The upper-left window light, catchlights, paper sheen and all cast shadows are physically consistent.",
+    "Skin, hair, fabric, wood, ceramic and print textures look genuinely photographed.",
+    "The result reads as an intimate candid family moment rather than a posed synthetic advertisement."
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-09-25
+updated: 2026-09-26
 code:
   - app/studio/archive.py
   - app/studio/server.py
@@ -17,7 +17,7 @@ code:
   - app/studio/textcheck.py
   - app/studio/drops.py
   - app/studio/mockups.py
-  - app/studio/workshop.py
+  - app/studio/workshop/routes.py
 ---
 # Server routes
 
@@ -69,43 +69,57 @@ code:
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/library/books` | token | `_list` | library.js, workshop.js (`?stage=workshop` — the Workshop's books; without it only the library's, never a Workshop book), workshop-book.js (the passing-on dialog's duplicate check) |
+| GET | `/api/library/books` | token | `_list` | library.js, workshop-book.js (the passing-on dialog's duplicate check) |
 | POST | `/api/library/books` | token | `_create` | library.js `openAddBook` |
 | GET | `/api/library/guide` | token | `_guide` | library.js `copyGuide` |
 | POST | `/api/library/guide/save` | token | `_guide_save` | library.js `saveGuide` |
-| GET | `/api/library/books/([0-9a-f]{32})` | token | `_get` | book.js, workshop-book.js |
-| PATCH | `/api/library/books/([0-9a-f]{32})` | token | `_patch` | book.js (title, Canva, texts; checks `rev`), workshop-book.js (title, texts, `prompts` — only a book that has them) |
-| DELETE | `/api/library/books/([0-9a-f]{32})` | token | `_delete` | book.js, workshop-book.js (moves it to trash) |
+| GET | `/api/library/books/([0-9a-f]{32})` | token | `_get` | book.js |
+| PATCH | `/api/library/books/([0-9a-f]{32})` | token | `_patch` | book.js (title, Canva, texts; checks `rev`) |
+| DELETE | `/api/library/books/([0-9a-f]{32})` | token | `_delete` | book.js (moves it to trash) |
 | POST | `/api/library/books/([0-9a-f]{32})/archive` | token | `_archive` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/refresh-listing` | token | `_refresh_listing` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/thumbnail-from-listing` | token | `_thumb_from_listing` | book.js |
-| POST | `/api/library/books/([0-9a-f]{32})/assets` | token | `_upload_asset` | book.js (`?slot=&name=&auto=`, body — the file), workshop-book.js (one picture per frame) |
-| DELETE | `/api/library/books/([0-9a-f]{32})/assets` | token | `_remove_asset` | book.js, workshop-book.js (a spread's two pages one by one; an empty spread forgets the Workshop's `mirrored`, `source`) |
+| POST | `/api/library/books/([0-9a-f]{32})/assets` | token | `_upload_asset` | book.js (`?slot=&name=&auto=`, body — the file) |
+| DELETE | `/api/library/books/([0-9a-f]{32})/assets` | token | `_remove_asset` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/swap` | token | `_swap_halves` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/text` | token | `_import_text` | book.js |
 | GET | `/api/library/books/([0-9a-f]{32})/text.json` | token | `_text_json` | book.js ("copy as JSON") |
 | POST | `/api/library/books/([0-9a-f]{32})/folder-scan` | token | `_folder_scan` | book.js `importFolder` |
 | POST | `/api/library/books/([0-9a-f]{32})/folder-import` | token | `_folder_import` | book.js `importFolder` (background job) |
 | POST | `/api/library/books/([0-9a-f]{32})/export` | token | `_export` | book.js (background job) |
-| POST | `/api/library/books/([0-9a-f]{32})/open-folder` | token | `_open_folder` | book.js, workshop-book.js |
-| POST | `/api/library/books/([0-9a-f]{32})/open-original` | token | `_open_original` | lightbox.js via book.js and workshop-book.js |
-| GET | `/media/book/([0-9a-f]{32})/([0-9a-f]{32}\.(?:png\|jpg\|jpeg\|webp))` | media | `_media` | library.js, book.js, orders.js, workshop.js, workshop-book.js (`?w=` — preview) |
+| POST | `/api/library/books/([0-9a-f]{32})/open-folder` | token | `_open_folder` | book.js |
+| POST | `/api/library/books/([0-9a-f]{32})/open-original` | token | `_open_original` | lightbox.js via book.js |
+| GET | `/media/book/([0-9a-f]{32})/([0-9a-f]{32}\.(?:png\|jpg\|jpeg\|webp))` | media | `_media` | library.js, book.js, orders.js (`?w=` — preview) |
 
-## The Workshop — [workshop.py](../../app/studio/workshop.py)
+## The Workshop — [workshop/routes.py](../../app/studio/workshop/routes.py)
 
-The Listings mode's books in development ([features/workshop.md](../features/workshop.md)); their pictures,
-title, texts and prompts go through the library's routes above.
+The Listings mode's books in development — the book pipeline's folders ([features/workshop.md](../features/workshop.md));
+`<book>` is a book's folder name (`41.some-book`). The page asks `sig` every 1.5 s and redraws on a change.
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| POST | `/api/workshop/books` | token | `_create` | workshop.js `newBook` (`{title}` — no listing) |
-| POST | `/api/workshop/books/([0-9a-f]{32})/json` | token | `_import` | workshop-book.js (`{json, dryRun}` — prompts and texts from one JSON; `dryRun` only counts what would be replaced) |
-| POST | `/api/workshop/books/([0-9a-f]{32})/spread` | token | `_spread` | workshop-book.js `uploadTo` (`?slot=spreadN&name=`, body — the file: cut to 2:1, mirrored if it's one of the flipper's, cut into two pages → `{book, mirrored, cut, source}`) |
-| POST | `/api/workshop/books/([0-9a-f]{32})/flip` | token | `_flip` | workshop-book.js ⇄ (`{slot}` — the spread's two pages mirrored and traded) |
-| GET | `/api/workshop/books/([0-9a-f]{32})/json` | token | `_export` | workshop-book.js ("copy the prompts and texts as JSON") |
-| POST | `/api/workshop/books/([0-9a-f]{32})/to-library` | token | `_to_library` | library.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage`; a listing another library book has → 409 with its `bookId`) |
-| GET | `/api/workshop/guide` | token | `_guide` | workshop.js `copyGuide` (the agent's instruction for prompts and texts) |
-| POST | `/api/workshop/guide/save` | token | `_guide_save` | workshop.js `saveGuide` |
+| GET | `/api/workshop/books` | token | `_list` | workshop.js (the gallery: `{books, folder, sig, gen}`) |
+| GET | `/api/workshop/sig` | token | `_sig` | workshop-live.js (`?book=` — one book's files only; `{sig, gen}` — what changed, the generation mode's state) |
+| GET | `/api/workshop/books/([^/]+)` | token | `_get` | workshop-book.js (`{book, sig, gen}` — the strip, the rows, the cover, the variants, the check, every picture's version) |
+| DELETE | `/api/workshop/books/([^/]+)` | token | `_delete` | workshop-book.js «Видалити книгу» (the folder into the Recycle Bin; a wait for its picture stops) |
+| GET | `/api/workshop/books/([^/]+)/file` | token | `_file` | workshop-book.js (`?name=` — one of the agent's text files, for the step's panel) |
+| POST | `/api/workshop/books/([^/]+)/mark` | token | `_mark` | workshop-book.js (`{step, on}` — Canva, the mockups) |
+| POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|agent, name}` — Explorer, or one file in its program) |
+| POST | `/api/workshop/agent` | token | `_agent` | workshop.js «+», workshop-book.js «Відкрити агента» (Antigravity on `pipeline/`; «нова книга» / «Продовжуємо книгу …» into the clipboard) |
+| POST | `/api/workshop/books/([^/]+)/to-library` | token | `_to_library` | library.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage` → `{jobId}`; a listing another library book has → 409 with its `bookId`) |
+| POST | `/api/workshop/books/([^/]+)/place` | token | `_place` | workshop-book.js (`?key=&name=&variant=`, body — the picture: cut, flipped, two pages; the cover goes on to wait for its margins) |
+| POST | `/api/workshop/books/([^/]+)/flip` | token | `_flip` | workshop-book.js ⇄ (`{key, variant}`) |
+| POST | `/api/workshop/books/([^/]+)/remove` | token | `_remove` | workshop-book.js (`{key, variant}` — into `.replaced/`) |
+| POST | `/api/workshop/books/([^/]+)/no-margins` | token | `_no_margins` | workshop-book.js «Без полів» |
+| POST | `/api/workshop/books/([^/]+)/copy-picture` | token | `_copy_picture` | workshop-book.js «Копіювати картинку» (`{key}`) |
+| POST | `/api/workshop/books/([^/]+)/copy-hero` | token | `_copy_hero` | workshop-book.js «Героя в буфер» (`{variant}`) |
+| POST | `/api/workshop/books/([^/]+)/save-as` | token | `_save_as` | workshop-book.js «Зберегти як…» (`{area, name, variant}`; the Windows dialog) |
+| GET | `/media/workshop/([^/]+)/(agent\|pictures\|originals)(?:/v/([^/]+))?/([^/]+)` | media | `_media` | workshop.js, workshop-book.js (`?w=` — a preview; `?v=` — the version: kept for good) |
+| GET | `/api/workshop/gen` | token | `_gen` | — (the state; the pages get it with `sig`) |
+| POST | `/api/workshop/gen/start` | token | `_gen_start` | workshop-live.js `startGen` (`{book, key, variant, series}`) |
+| POST | `/api/workshop/gen/stop` | token | `_gen_stop` | the generation bar «Стоп» |
+| POST | `/api/workshop/gen/next` | token | `_gen_next` | the generation bar «Далі» (F8 does the same on the server) |
+| POST | `/api/workshop/gen/again` | token | `_gen_again` | the generation bar «покласти ще раз» |
 
 ## Order Creator and files — [creator.py](../../app/studio/creator.py)
 

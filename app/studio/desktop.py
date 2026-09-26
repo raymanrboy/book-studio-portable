@@ -1,4 +1,4 @@
-"""Windows integration: native folder dialog, Explorer, app window."""
+"""Windows integration: native file and folder dialogs, Explorer, the Recycle Bin, app window."""
 from __future__ import annotations
 
 import os
@@ -10,17 +10,23 @@ from . import core
 
 CREATE_NO_WINDOW = 0x08000000
 
-# The Windows dialog in a process of its own (Tk wants its own main thread): argv = folder|file|zip, title, start folder.
+# The Windows dialog in a process of its own (Tk wants its own main thread):
+# argv = folder|file|zip|save, title, start folder[, the file name «Зберегти як» suggests].
 _DIALOG_SCRIPT = r"""
 import sys, tkinter as tk
 from tkinter import filedialog
 kind, title, initial = sys.argv[1], sys.argv[2], sys.argv[3] or None
+name = sys.argv[4] if len(sys.argv) > 4 else ''
 root = tk.Tk()
 root.withdraw()
 root.attributes('-topmost', True)
 root.update()
 if kind == 'folder':
     path = filedialog.askdirectory(parent=root, title=title, initialdir=initial, mustexist=True)
+elif kind == 'save':
+    ext = name[name.rfind('.'):] if '.' in name else '.png'
+    path = filedialog.asksaveasfilename(parent=root, title=title, initialdir=initial, initialfile=name,
+                                        defaultextension=ext, filetypes=[('Картинка', '*' + ext)])
 elif kind == 'zip':
     path = filedialog.askopenfilename(parent=root, title=title, initialdir=initial,
                                       filetypes=[('ZIP-архів', '*.zip')])
@@ -41,10 +47,10 @@ def _console_python() -> str:
     return str(exe)
 
 
-def _dialog(kind: str, title: str, initial: str) -> str | None:
+def _dialog(kind: str, title: str, initial: str, name: str = "") -> str | None:
     folder = initial if initial and Path(initial).is_dir() else ""
     result = subprocess.run(
-        [_console_python(), "-B", "-c", _DIALOG_SCRIPT, kind, title, folder],  # -B: no .pyc written anywhere
+        [_console_python(), "-B", "-c", _DIALOG_SCRIPT, kind, title, folder, name],  # -B: no .pyc written anywhere
         capture_output=True, text=True, encoding="utf-8",
         creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
         timeout=3600,
@@ -65,6 +71,38 @@ def pick_file(title: str, initial: str = "") -> str | None:
 def pick_zip(title: str, initial: str = "") -> str | None:
     """A ZIP archive (a demo book exported from Canva), in the usual Windows dialog."""
     return _dialog("zip", title, initial)
+
+
+def save_file(title: str, name: str, initial: str = "") -> str | None:
+    """Where to save a copy of a file («Зберегти як…»), in the usual Windows dialog; None when it was closed."""
+    return _dialog("save", title, initial or str(Path.home() / "Pictures"), name)
+
+
+def to_recycle_bin(path: Path) -> None:
+    """A file or a whole folder into the Windows Recycle Bin — restorable from there until it is emptied: the owner's
+    things are never deleted for good. The sandbox (the preview, the tests) moves it into its data folder instead."""
+    path = Path(path)
+    if core.SANDBOX:
+        import shutil
+        import time
+        folder = core.data_path("recycle-bin")
+        folder.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(path), str(folder / f"{path.name}-{time.strftime('%Y%m%d-%H%M%S')}"))
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    class SHFILEOPSTRUCTW(ctypes.Structure):
+        _fields_ = [("hwnd", wintypes.HWND), ("wFunc", wintypes.UINT), ("pFrom", wintypes.LPCWSTR),
+                    ("pTo", wintypes.LPCWSTR), ("fFlags", ctypes.c_uint16), ("fAnyOperationsAborted", wintypes.BOOL),
+                    ("hNameMappings", ctypes.c_void_p), ("lpszProgressTitle", wintypes.LPCWSTR)]
+    FO_DELETE, FOF_SILENT, FOF_NOCONFIRMATION, FOF_ALLOWUNDO, FOF_NOERRORUI = 3, 0x4, 0x10, 0x40, 0x400
+    op = SHFILEOPSTRUCTW(None, FO_DELETE, str(path.resolve()) + "\0", None,
+                         FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI, False, None, None)
+    result = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
+    if result != 0 or op.fAnyOperationsAborted or path.exists():
+        raise OSError(f"Windows не дав перенести «{path.name}» у Кошик (код {result}) — можливо, якийсь файл відкритий "
+                      "в іншій програмі. Закрийте його і спробуйте ще раз.")
 
 
 def downloads_folder() -> str:

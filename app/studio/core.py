@@ -22,6 +22,13 @@ BIN_DIR = ROOT / "bin"
 DATA_DIR = Path(os.environ.get("BOOK_STUDIO_DATA") or (ROOT / "data")).resolve()
 # app/tools/dev_server.py: made-up data for looking at the pages — a real key is never stored or offered there.
 SAMPLE = os.environ.get("BOOK_STUDIO_SAMPLE") == "1"
+# The preview server and the tests: the Workshop touches nothing of the owner's — its clipboard goes into files in
+# the data folder, F8 isn't taken from Windows, no window opens, and its Downloads and books are made-up ones there.
+SANDBOX = SAMPLE or os.environ.get("BOOK_STUDIO_SANDBOX") == "1"
+# The book pipeline (the folder Antigravity opens: the book agents' rules and playbook, in git) and the Workshop's
+# books — its folders, where the agents write (pipeline/books, kept out of git).
+PIPELINE_DIR = ROOT.parent / "pipeline"
+WORKSHOP_BOOKS = DATA_DIR / "workshop-books" if SANDBOX else PIPELINE_DIR / "books"
 
 log = logging.getLogger("studio")
 

@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -11,6 +11,7 @@ code:
   - app/web/js/handoff.js
   - app/web/js/keep.js
   - app/web/js/lightbox.js
+  - app/web/js/workshop-live.js
   - app/web/css/app.css
 ---
 # Interface
@@ -38,7 +39,7 @@ code:
   would be drawn over the icon — it would vanish while the pill traveled (the owner's note, 2026-09-18).
 - **Routes** (`ROUTES`, each with its mode): `#/orders[/<receipt number>]` → `pages/orders.js`, `#/library` →
   `library.js`, `#/book/<id>` → `book.js`, `#/creator` → `creator.js`, `#/archive[/<id>]` → `archive.js`,
-  `#/settings[/<section>]` → `settings.js` — the orders; `#/workshop` → `workshop.js`, `#/workshop/<id>` →
+  `#/settings[/<section>]` → `settings.js` — the orders; `#/workshop` → `workshop.js`, `#/workshop/<book folder>` →
   `workshop-book.js`, `#/mockups` → `mockups.js` — the listings. **The Profit page isn't in the routes** — it's hidden until
   1 October ([features/profit.md](../features/profit.md)).
 - **A page's contract**: `export async function mount(view, params)` builds content in the given
@@ -78,12 +79,17 @@ code:
 | Segmented switch | `segHtml()`, `syncSeg()`, `setSeg()` |
 | Formatting | `money()`, `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
 | Smoothness | `fadeImages()` (decoding off the main thread), `slide()` (height), `flip()` (moving cards), `keepFocus()`, `idle()`, `reducedMotion()` |
+| Live pages | `patch()` — a keyed redraw in place: an unchanged part stays, a changed one is replaced, a picture already shown is carried over (the Workshop) |
 
 ## The Listings mode's pages (since 2026-09-24)
 
-- [The Workshop](../features/workshop.md) — `pages/workshop.js` (the gallery, built like the library's) and
-  `pages/workshop-book.js` (17 row cards: prompt, 2:1 frame, text; its own drag-and-drop — one picture per
-  frame, a `.json` anywhere). «Передати в бібліотеку» is the library's `openAddBook()` in its passing-on form.
+- [The Workshop](../features/workshop.md) (the book console moved in, 2026-09-26) — `pages/workshop.js` (the gallery
+  of the pipeline's books) and `pages/workshop-book.js` (the path strip and its panel, the rows, the cover's two
+  stages, hero variants; its own drag-and-drop — one picture per frame). Both are **live**: `workshop-live.js` asks
+  the server what changed every 1.5 s while a Workshop page is on screen (every 4 s while a picture is awaited
+  elsewhere) and the page redraws only what changed with `patch()`; it also keeps the generation mode's state, draws
+  its bar (`genBar()`) and tells the shell through `bs:busy` (the rail's dot, the window's title). «Передати в
+  бібліотеку» is the library's `openAddBook()` in its passing-on form (`transfer.send` runs the job).
 - [The Mockups](../features/mockups.md) — `pages/mockups.js`, the separate utility's page moved in (its own
   window `mockups.html` + `mockups-shell.js` went). It keeps the usual page contract and adds `keep()`/`revive()`
   so the book, the picks and a run survive stepping away; it tells the rail about a run through the `bs:busy`
@@ -104,7 +110,9 @@ code:
   owner fits this by hand" (the front cover in a mockup template); since 2026-09-24 `listing` — the Listings
   mode (an Etsy listing's tag, its brand icon), `workshop` — the Workshop (a book with a pencil), `prompt` — a
   picture's prompt (a wand; not `sparkle`, which means a new order), `mirror` — ⇄, a Workshop spread mirrored left
-  to right (not `swap`, which trades a spread's two pages in the passport).
+  to right (not `swap`, which trades a spread's two pages in the passport); since 2026-09-26 `agent` — the book
+  agents in Antigravity (a chat with a spark), `hero` — a book's hero, `minus` — a step not needed, `guides` — the
+  printer's template lines.
 - Chips (`.chip`): a chip's text is one font (`.chip .num` doesn't switch fonts), `.chip-mono` sits 2 px
   lower so Consolas lines up with the text of other chips.
 - `keep.js` — saved pages (`stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`); pages with
@@ -160,7 +168,7 @@ code:
 - Class groups: `.lib-toolbar` (toolbars), `.ord-*` (orders), `.proof*`, `.strip*` (proofing),
   `.creator*`, `.spread-*` (the Order Creator), `.book-*`, `.slot-*` (the library), `.set-*` (settings),
   `.lightbox`, `.lb-*` (the viewer), `.mk-*` (the Mockups: `.mk-tpl`, `.mk-slot`, `.mk-spread`, `.mk-run`, `.mk-ask`, `.mk-turn`, `.mk-ghost`),
-  `.ws-*` (the Workshop: `.ws-row`, `.ws-block`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-pairart` — a spread's two pages, `.ws-mark`), `.brand-busy`
+  `.ws-*` (the Workshop: `.ws-card`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-block`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-pairart` — a spread's two pages, `.ws-cover`, `.ws-tpl`), `.brand-busy`
   and `.vt-mode` (the mode switch).
 - The owner's appearance requirements — [owner/ui-principles.md](../owner/ui-principles.md).
 
@@ -169,7 +177,8 @@ code:
 - [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
 - [app/web/js/app.js](../../app/web/js/app.js) — `MODES`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `entryOf()`, `switchMode()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `buildNav()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
-- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`
+- [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`, `finish()`

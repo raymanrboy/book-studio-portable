@@ -102,7 +102,7 @@ def defined_in(name: str, text: str, const: bool) -> bool:
 
 def routes_in_code() -> set[tuple[str, str]]:
     found = set()
-    for path in (APP / "studio").glob("*.py"):
+    for path in (APP / "studio").rglob("*.py"):  # the Workshop's routes live in its package
         found.update(_ROUTE.findall(path.read_text(encoding="utf-8")))
     return found
 

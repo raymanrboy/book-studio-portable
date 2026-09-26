@@ -1,7 +1,7 @@
 ---
 title: Book library and a book's passport
 type: feature
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/studio/library.py
   - app/web/js/pages/library.js
@@ -105,7 +105,7 @@ A test guarantees the guide and the importer never drift apart.
 
 ## Where in the code
 
-- [app/studio/library.py](../../app/studio/library.py) — `load()`, `save()`, `summary()`, `completeness()`, `all_books()`, `is_workshop()`, `_store_asset()`, `_set_asset()`, `_parse_slot()`, `scan_folder()`, `parse_book_json()`, `parse_text_json()`, `export_text_json()`, `export_book_json()`, `export_book()`, `agent_guide()`, `_backfill_lqip()`, `SLOT_KEYS`, `TEXT_KEYS`, `PROMPT_KEYS`, `WORKSHOP`, `GUIDE_NAME`
+- [app/studio/library.py](../../app/studio/library.py) — `load()`, `save()`, `summary()`, `completeness()`, `all_books()`, `create_book()`, `listing_of()`, `take_listing_image()`, `_store_asset()`, `_set_asset()`, `_parse_slot()`, `import_pictures()`, `scan_folder()`, `parse_text_json()`, `export_text_json()`, `export_book()`, `agent_guide()`, `_backfill_lqip()`, `SLOT_KEYS`, `TEXT_KEYS`, `LISTING_FIELDS`, `GUIDE_NAME`
 - [app/web/js/pages/library.js](../../app/web/js/pages/library.js) — `mount()`, `card()`, `apply()`, `openAddBook()`, `saveGuide()`, `copyGuide()`, `SORTS`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mount()`, `renderHero()`, `renderCover()`, `rowHtml()`, `editText()`, `uploadTo()`, `importDropped()`, `importFolder()`, `importTextJson()`, `canvaDialog()`, `lightboxItems()`, `onDrop()`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `lqip()`, `display_size()`, `compose_spread()`

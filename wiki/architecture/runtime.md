@@ -1,7 +1,7 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -25,7 +25,9 @@ code:
 4. Imports every module with routes (`archive`, `creator`, `drops`, `etsy`, `gelato`, `images`, `library`,
    `mockups`, `orders`, `printify`, `profit`, `sendlog`, `settings_api`, `textcheck`, `tunnel`, `workshop`) —
    the import itself registers the routes. (`mockups` joined on 2026-09-24, when the separate «Мокапи»
-   program moved in, and `workshop` came with the [Listings mode](../features/modes.md).)
+   program moved in, and `workshop` came with the [Listings mode](../features/modes.md); since 2026-09-26 `workshop`
+   is a package — the book console moved in, its routes in `workshop/routes.py`. Its generation mode starts its
+   Downloads watcher, and the F8 thread, the first time it's asked for.)
 5. Cleanup: old Gelato temp folders (`cleanup_stale()`), leftovers from the old Order Creator form
    (`forget_old_form()`), dropped files from the previous session (`drops.clear_drops()`), the mockups' unpacked
    demo book (`mockups.clear_books()`), once — what the separate «Мокапи» left in `data/mockups`

@@ -1,12 +1,14 @@
 """Book Studio server for looking at the interface during development — never on the real data.
 
   python app/tools/dev_server.py            empty program on http://127.0.0.1:47890/
-  python app/tools/dev_server.py --sample   plus made-up orders, one library book, one Workshop book and the
+  python app/tools/dev_server.py --sample   plus made-up orders, one library book, three Workshop books and the
                                             mockups' made-up templates to click through
 
 The data folder is .tmp\\bsdev in the repository, on drive D (or BOOK_STUDIO_DATA when it is set): no keys
 there, so nothing reaches Etsy, Printify or Gelato. The mockups get made-up templates and a pretend Photoshop:
-nothing real is opened, and their Windows dialogs answer by themselves. Stop it with Ctrl+C (or preview_stop).
+nothing real is opened, and their Windows dialogs answer by themselves. The Workshop is in the sandbox
+(studio.core.SANDBOX): its books, its Downloads (a picture put into the "downloads" folder is caught) and its
+clipboard (the "clipboard" folder) live in the data folder. Stop it with Ctrl+C (or preview_stop).
 """
 from __future__ import annotations
 
@@ -19,7 +21,6 @@ from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]
 PORT = 47890
-WORKSHOP_BOOK = "0" * 31 + "2"   # the Workshop's sample book: the same id on every start
 
 # The sample book's texts (made up): the library passport and what Olivia's printed book carries — with
 # one misspelt name and one forgotten {Name}, for the text check to find.
@@ -156,52 +157,18 @@ def seed(data: Path) -> None:
         _seed_archive(data)
     seed_workshop()
     seed_mockups(data / "sample-mockups")
-    print(f"Sample data: {len(receipts)} orders, 1 library book, 1 Workshop book, {len(archive.entries())} archived"
+    print(f"Sample data: {len(receipts)} orders, 1 library book, 3 Workshop books, {len(archive.entries())} archived"
           " books, made-up mockup templates", flush=True)
 
 
-# The Workshop's sample book (made up): a prompt and a text for every row, pictures only in a few frames — the
-# way a book looks while the owner is still generating them; one spread isn't 2:1 (cut top and bottom).
-WORKSHOP_PROMPTS = {
-    "cover": "Watercolor wide cover 2:1: a little gosling in a meadow, soft morning light, pastel palette",
-    "page1": "A cosy nest with a sleeping gosling, warm sunrise, children's book watercolor",
-    "page30": "A gosling asleep under the stars, calm night palette",
-    **{f"spread{n}": f"Wide 2:1 spread: the gosling's day, scene {n - 1}, soft watercolor, room for the text on one side"
-       for n in range(2, 16)},
-}
-
-
 def seed_workshop() -> None:
-    from PIL import Image, ImageDraw
-    from studio import core, library, workshop
-    if (library._book_dir(WORKSHOP_BOOK) / "book.json").exists():
-        return
-    book = {"id": WORKSHOP_BOOK, "schema": 1, "rev": 0, "createdAt": core.now_iso(), "stage": library.WORKSHOP,
-            "title": "Silly Goose (Workshop sample)", "listing": {}, "canvaUrl": "", "notes": "", "archived": False,
-            "cover": None, "thumbnail": None, "slots": library._empty_slots(),
-            "text": {**SAMPLE_TEXTS, "page30": ""},                  # one text still to write
-            "prompts": {**WORKSHOP_PROMPTS, "spread9": ""}}          # and one prompt
-    library._book_dir(WORKSHOP_BOOK).mkdir(parents=True, exist_ok=True)
-    library.save(book)
-    tmp = core.data_path("tmp")
-    tmp.mkdir(parents=True, exist_ok=True)
-    for slot, size, colour in [("cover", (1600, 800), (236, 196, 80)), ("spread2", (1600, 800), (140, 190, 150)),
-                               ("spread3", (1600, 800), (150, 170, 210)), ("spread5", (1792, 1024), (210, 160, 150))]:
-        im = Image.new("RGB", size, colour)
-        d = ImageDraw.Draw(im)
-        w, h = size
-        d.ellipse([w * 0.18, h * 0.3, w * 0.36, h * 0.72], fill=(250, 244, 226))
-        d.line([w // 2, 0, w // 2, h], fill=tuple(c - 30 for c in colour), width=4)
-        path = tmp / f"workshop-{slot}.png"
-        im.save(path)
-        if slot.startswith("spread"):  # cut into its two pages — spread 4–5 mirrored, 8–9 cut top and bottom
-            workshop.place_spread(WORKSHOP_BOOK, slot, path, f"{slot}.png")
-            path.unlink(missing_ok=True)
-            continue
-        with library._lock:
-            fresh = library.load(WORKSHOP_BOOK)
-            library._set_asset(fresh, slot, library._store_asset(WORKSHOP_BOOK, path, f"{slot}.png", move=True))
-            library.save(fresh)
+    """The Workshop's made-up books (tools/sample_books.py) in the preview's own books folder, and an empty made-up
+    Downloads the generation mode watches — only when there are none yet (a book the preview changed stays)."""
+    from studio import core
+    from sample_books import make_books
+    if not core.WORKSHOP_BOOKS.is_dir() or not any(core.WORKSHOP_BOOKS.iterdir()):
+        make_books(core.WORKSHOP_BOOKS)
+    core.data_path("downloads").mkdir(parents=True, exist_ok=True)
 
 
 def _sample_book(folder: Path, name: str, pages: int, hue: int, story: bool = False) -> list:

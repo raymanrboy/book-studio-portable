@@ -1,7 +1,7 @@
 ---
 title: Book Studio wiki — index
 type: index
-updated: 2026-09-25
+updated: 2026-09-26
 code: []
 ---
 # Book Studio wiki
@@ -34,8 +34,9 @@ code: []
 - [Profit](features/profit.md) — hidden until 1 October.
 - [Two modes](features/modes.md) — Orders and Listings: the brand icon switches, each mode its rail and ink
   (orange / cyan).
-- [Workshop](features/workshop.md) — the Listings mode: books in development, a prompt, a 2:1 spread and a
-  text per row; passed to the library with their Etsy listing.
+- [Workshop](features/workshop.md) — the Listings mode: books in development, written by the book pipeline's
+  agents (`pipeline/`); the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches
+  the pictures from Downloads, the cover on the printer's template; passed to the library with their Etsy listing.
 - [Mockups](features/mockups.md) — the Listings mode: a Canva demo book → Etsy listing pictures from the
   Photoshop templates (the owner fits the front cover by hand).
 
@@ -59,7 +60,7 @@ code: []
 
 - [Launch and shutdown](architecture/runtime.md)
 - [Server](architecture/server.md) — routes, background jobs, errors, settings.
-- [Server routes](architecture/api-routes.md) — all 114, with who calls them.
+- [Server routes](architecture/api-routes.md) — all 128, with who calls them.
 - [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
 - [Data](architecture/data.md) — what's in `app/data`.
 
@@ -91,6 +92,9 @@ code: []
   [Mockups](features/mockups.md).
 - [Two modes: Orders and Listings](plans/listings-mode.md) — the agreements of 2026-09-24: the mode switch
   on the brand icon, the Workshop, the mockups inside Book Studio.
+- [The book console](plans/book-console.md) — the plan of 2026-09-25 and its history: the book pipeline and the
+  Workshop as one place, a generation mode that catches downloads; a prototype apart from Book Studio, then moved
+  into the Workshop (2026-09-26).
 - [Open questions and technical debt](plans/open-questions.md)
 
 ## Housekeeping

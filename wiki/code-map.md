@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-09-25
+updated: 2026-09-26
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -45,8 +45,15 @@ code:
 | [textcheck.py](../app/studio/textcheck.py) | Text check with a local model (Ollama): a quick page scan, reading, matching against the passport, checking, name rules | `check_order()`, `check_book()`, `run_key()`, `_passes()`, `page_kinds()`, `_second_half()`, `_collect()`, `assign()`, `diff()`, `findings()`, `page_issues()`, `cancel()`, `warm()`, `status()`, `start_ollama()` |
 | [archive.py](../app/studio/archive.py) | Order archive: files of books that went to print, auto-deletion, "Keep" | `store()`, `refresh()`, `clock()`, `summary()`, `get()` |
 | [images.py](../app/studio/images.py) | Previews, PNG checking, gluing a spread together, cache cleanup, a quick text scan of a page | `preview()`, `check_png()`, `compose_spread()`, `lqip()`, `text_score()`, `image_info()`, `prune_cache()` |
-| [library.py](../app/studio/library.py) | Book library: model (with the Workshop's `stage` and `prompts`), import, export, the guide | `load()`, `save()`, `all_books()`, `is_workshop()`, `summary()`, `completeness()`, `scan_folder()`, `parse_book_json()`, `parse_text_json()`, `export_book_json()`, `agent_guide()`, `export_book()` |
-| [workshop.py](../app/studio/workshop.py) | [The Workshop](features/workshop.md): a new book by its title, prompts and texts from one JSON, the agent's instruction, passing a book to the library | `create()`, `import_json()`, `to_library()`, `guide()` |
+| [library.py](../app/studio/library.py) | Book library: model, a new book, import (a folder, pictures, texts), export, the guide | `load()`, `save()`, `all_books()`, `summary()`, `completeness()`, `create_book()`, `listing_of()`, `import_pictures()`, `scan_folder()`, `parse_text_json()`, `agent_guide()`, `export_book()` |
+| [workshop/books.py](../app/studio/workshop/books.py) | [The Workshop](features/workshop.md): a book = a folder of the pipeline — the list, the path strip, marks, versions, Antigravity, delete, passing to the library | `all_books()`, `summary()`, `detail()`, `steps()`, `set_mark()`, `signature()`, `open_agent()`, `delete_book()`, `to_library()` |
+| [workshop/rows.py](../app/studio/workshop/rows.py) | The agents' files read into the book's rows; the cover's template and outpaint prompt; hero variants; the book check (GO) | `book_rows()`, `text_sections()`, `cover_state()`, `template_layout()`, `outpaint_prompt()`, `variants()`, `book_check()` |
+| [workshop/pictures.py](../app/studio/workshop/pictures.py) | A picture into its row: cut, flipped, two pages; the cover on the template; ⇄; nothing deleted | `place()`, `two_squares()`, `build_expanded()`, `fit_template()`, `flip()`, `remove()`, `spread_panorama()` |
+| [workshop/generate.py](../app/studio/workshop/generate.py) | The generation mode: the clipboard, the Downloads watcher, F8 | `Session`, `session()`, `downloads_folder()` |
+| [workshop/check.py](../app/studio/workshop/check.py) | The book check: the old pipeline validator's rules (the agents run it too) | `run()`, `main()` |
+| [workshop/routes.py](../app/studio/workshop/routes.py) | The Workshop's routes | — |
+| [workshop/\_\_init\_\_.py](../app/studio/workshop/__init__.py) | The package: what the Workshop is, its modules | — |
+| [clipboard.py](../app/studio/clipboard.py) | The Windows clipboard filled by the program (text, a picture), F8 taken while needed | `set_text()`, `set_image()`, `Hotkey` |
 | [creator.py](../app/studio/creator.py) | Order Creator: file checking, Printify, Gelato (one or several books of an order), replacing a single page | `validate()`, `replace_page()`, `restore_page()`, `_backups()`, `_while_sending()`, `books_of()`, `receipt_for()`, `joint_title()`, `gelato_page_options()`, `gelato_pages_problem()`, `create_printify_draft()`, `_printify_product()`, `_printify_order()`, `create_gelato_draft()`, `_gelato_book()`, `build_photobook_pdf()`, `guess_child_name()` |
 | [orders.py](../app/studio/orders.py) | Order pipeline: printer, book, laying out pages | `plan_for()`, `page_options()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()` |
 | [drops.py](../app/studio/drops.py) | Dragged-in files (saving, unpacking a ZIP, the book folder) and how a Canva export names its files — shared by the orders, the library and the mockups | `export_files()`, `page_number()`, `COVER_NAME`, `UPSCAYL_TAIL`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `clear_drops()`, `DROPS` |
@@ -77,8 +84,9 @@ code:
 | [js/pages/creator.js](../app/web/js/pages/creator.js) | The Order Creator (one draft for every book of an order) | `mount()`, `folderBlock()` |
 | [js/pages/archive.js](../app/web/js/pages/archive.js) | Order archive: the list, a book, reprinting | `mount()`, `mountList()`, `mountBook()` |
 | [js/pages/settings.js](../app/web/js/pages/settings.js) | Settings | `mount()` |
-| [js/pages/workshop.js](../app/web/js/pages/workshop.js) | The Workshop's gallery, a new book, the agent's instruction | `mount()`, `newBook()`, `guideMenu()` |
-| [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: 17 rows of prompt, 2:1 frame and text; the JSON; «Передати в бібліотеку» | `mount()` |
+| [js/pages/workshop.js](../app/web/js/pages/workshop.js) | The Workshop's gallery: the books with their path, a new book in Antigravity | `mount()`, `picture()`, `checkWord()` |
+| [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: the path strip and its panel, the rows, the cover's two stages, hero variants, «Передати в бібліотеку» | `mount()` |
+| [js/workshop-live.js](../app/web/js/workshop-live.js) | The Workshop's live link: what changed, the generation mode's state and bar, the rail's dot and title | `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genBar()` |
 | [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups (the Listings mode): the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
 | [js/pages/profit.js](../app/web/js/pages/profit.js) | Profit (hidden) | `mount()` |
 | [css/app.css](../app/web/css/app.css) | The whole "Prepress" visual system | — |

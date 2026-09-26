@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-09-25
+updated: 2026-09-26
 code: []
 ---
 # Glossary
@@ -100,15 +100,21 @@ Code paths below are relative to the repository root.
 | Два режими; режим роботи з замовленнями / режим створення лістингів | Orders (orange) and Listings (cyan) — each with its own rail; the address says which | [features/modes.md](features/modes.md); [app.js](../app/web/js/app.js) `MODES` |
 | Перемикач по кліку на головну іконку Бук Студіо | The brand icon at the top of the rail (Alt+0) goes to the other mode | [app.js](../app/web/js/app.js) `switchMode()`, `entryOf()` |
 | Кольори режимів: студія — оранжева, «як у Etsy і Claude»; майстерня — як була студія (блакитна) | The `--accent*` tokens: orange by default (Orders), cyan under `[data-mode="listings"]`; magenta for a few hours before the owner swapped them | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |
-| Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library, a prompt, a 2:1 spread and a text per row | [features/workshop.md](features/workshop.md); [workshop.py](../app/studio/workshop.py) |
-| Промпт (для розвороту) | The picture's description for an image generator, in every row above the frame | [workshop-book.js](../app/web/js/pages/workshop-book.js); [library.py](../app/studio/library.py) `PROMPT_KEYS` |
-| Плейсхолдер, рамка під картинку (розворот 2:1) | An empty frame in a Workshop row: a picture is dropped (or picked) in, one at a time; not 2:1 → the amber mark | [workshop-book.js](../app/web/js/pages/workshop-book.js) `OFF`; [features/workshop.md](features/workshop.md) |
-| Промпти й тексти з JSON | One JSON from an agent fills every prompt and text of a Workshop book; the program gives the agent's instruction | [workshop.py](../app/studio/workshop.py) `import_json()`, `guide()`; [library.py](../app/studio/library.py) `parse_book_json()` |
-| Відправити (передати) в бібліотеку з замовленнями | «Передати в бібліотеку»: the book gets its Etsy listing and leaves the Workshop for the library | [workshop.py](../app/studio/workshop.py) `to_library()`; [library.js](../app/web/js/pages/library.js) `openAddBook()` |
+| Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library — since 2026-09-26 the book console moved in: the agents write a book, the Workshop shows its path and catches its pictures | [features/workshop.md](features/workshop.md); [workshop/books.py](../app/studio/workshop/books.py) |
+| Пульт, пульт книги | The book console — a prototype window apart from Book Studio (2026-09-26), moved into the Workshop the same day; now the Workshop's book page | [plans/book-console.md](plans/book-console.md); [features/workshop.md](features/workshop.md) |
+| Пайплайн, агенти 0–6, Antigravity | The book pipeline: the agents that write a book's formula, hero, story, text and prompts, in Antigravity opened on `pipeline/`; their files go into a book's `agent/` | [pipeline/GEMINI.md](../pipeline/GEMINI.md); [workshop/books.py](../app/studio/workshop/books.py) `open_agent()` |
+| Смуга шляху; «Далі: …» | The book's path strip: Формула → … → Бібліотека, ticked by the files that exist | [workshop/books.py](../app/studio/workshop/books.py) `STEPS`, `steps()` |
+| GO, перевірка книги | The book check before generating: the old pipeline validator's rules — GO or N errors on the strip | [workshop/check.py](../app/studio/workshop/check.py) `run()`; [workshop/rows.py](../app/studio/workshop/rows.py) `book_check()` |
+| Генерувати, режим генерації; Далі / F8 | The row's prompt into the clipboard, the Workshop waits for the downloaded picture and puts the next prompt in | [workshop/generate.py](../app/studio/workshop/generate.py) `Session`; [features/workshop.md](features/workshop.md#the-generation-mode) |
+| Промпт (для розвороту) | The picture's description for an image generator — the agent's JSON, shown whole above the frame | [workshop/rows.py](../app/studio/workshop/rows.py) `book_rows()` |
+| Плейсхолдер, рамка під картинку (розворот 2:1) | An empty frame in a Workshop row: the caught download or a picture dropped (or picked) lands there, one at a time | [workshop-book.js](../app/web/js/pages/workshop-book.js); [features/workshop.md](features/workshop.md) |
+| Поля обкладинки, аутпейнт, шаблон друкарні | The cover's second stage: the picture on the printer's template, white margins, the outpaint prompt → Cover.png 5370×2850 | [workshop/rows.py](../app/studio/workshop/rows.py) `TEMPLATE`, `outpaint_prompt()`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `fit_template()` |
+| Варіанти героя (G2, G3 …) | A Tier H book's hero looks: a variant's hero and its swap prompts per spread | [workshop/rows.py](../app/studio/workshop/rows.py) `variants()` |
+| Відправити (передати) в бібліотеку з замовленнями | «Передати в бібліотеку»: a library book made from the Workshop book's pages, texts and its Etsy listing | [workshop/books.py](../app/studio/workshop/books.py) `to_library()`; [library.js](../app/web/js/pages/library.js) `openAddBook()` |
 | Фотошоп модуль | The Mockups, moved into the Listings mode (2026-09-24) | [features/mockups.md](features/mockups.md) |
-| Фліпер, фліпати (розворот) | Mirroring a spread left to right: his `mirror-alternate.py` rule (4–5, 8–9 … 28–29) on the drop, ⇄ by hand | [workshop.py](../app/studio/workshop.py) `MIRRORED`, `flip_spread()`; [features/workshop.md](features/workshop.md#a-spread-becomes-two-pages) |
-| Нарізати на квадрати, два квадрати як у паспорті | A dropped 2:1 spread cut into its left and right square pages (his `slice-spreads.py`) | [workshop.py](../app/studio/workshop.py) `place_spread()`, `two_squares()` |
-| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's book-making project (prompts, `tools/`); read only | [features/workshop.md](features/workshop.md#a-spread-becomes-two-pages) |
+| Фліпер, фліпати (розворот) | Mirroring a spread left to right: his `mirror-alternate.py` rule (4–5, 8–9 … 28–29) on the drop, ⇄ by hand | [workshop/rows.py](../app/studio/workshop/rows.py) `MIRRORED`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `flip()`; [features/workshop.md](features/workshop.md#a-picture-into-its-row) |
+| Нарізати на квадрати, два квадрати як у паспорті | A 2:1 spread cut into its left and right square pages (his `slice-spreads.py`) | [workshop/pictures.py](../app/studio/workshop/pictures.py) `place()`, `two_squares()` |
+| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` (2026-09-26) | [plans/book-console.md](plans/book-console.md) |
 
 ## Listing mockups (the «Мокапи» utility, built 2026-09-23; in the Listings mode since 2026-09-24)
 

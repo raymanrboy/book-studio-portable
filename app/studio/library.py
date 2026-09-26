@@ -8,9 +8,8 @@ Book structure (30 physical pages, same as the production pipeline):
 A spread image is either one combined picture or separate left/right pages.
 Everything except the listing is optional and can be added any time.
 
-A book still in development lives here too, marked "stage": "workshop" (the Listings mode's Workshop,
-workshop.py): no listing yet, and a prompt beside every text. It never reaches the orders — all_books()
-leaves it out unless asked for — and passing it to the library only removes the mark and writes the listing.
+A book made in the Listings mode's Workshop comes here when it is passed on (workshop/books.py, to_library()): a
+library book made from its pages and texts, noting the Workshop book it came from ("workshop").
 """
 from __future__ import annotations
 
@@ -35,8 +34,7 @@ FIRST_SPREAD, LAST_SPREAD = 2, 15
 SPREAD_NUMBERS = list(range(FIRST_SPREAD, LAST_SPREAD + 1))
 SLOT_KEYS = ["page1"] + [f"spread{n}" for n in SPREAD_NUMBERS] + ["page30"]
 TEXT_KEYS = ["cover"] + SLOT_KEYS
-PROMPT_KEYS = list(TEXT_KEYS)   # a Workshop book: the prompt for every picture, beside its text
-WORKSHOP = "workshop"           # book["stage"] of a book still in development
+LISTING_FIELDS = ("id", "title", "state", "shopId", "url", "imageUrl", "verifiedAt")
 
 _lock = threading.RLock()
 
@@ -84,15 +82,7 @@ def load(book_id: str) -> dict:
     text = {k: "" for k in TEXT_KEYS}
     text.update({k: v for k, v in (data.get("text") or {}).items() if k in TEXT_KEYS})
     data["text"] = text
-    if is_workshop(data) or "prompts" in data:  # a library book never gains empty prompts it didn't have
-        prompts = {k: "" for k in PROMPT_KEYS}
-        prompts.update({k: v for k, v in (data.get("prompts") or {}).items() if k in PROMPT_KEYS and isinstance(v, str)})
-        data["prompts"] = prompts
     return data
-
-
-def is_workshop(book: dict) -> bool:
-    return book.get("stage") == WORKSHOP
 
 
 def save(book: dict) -> dict:
@@ -122,7 +112,6 @@ def completeness(book: dict) -> dict:
         if s.get("image") or (s.get("left") and s.get("right")):
             illustrated += 1
     texts = sum(1 for k in TEXT_KEYS if (book["text"].get(k) or "").strip())
-    prompts = sum(1 for k in PROMPT_KEYS if ((book.get("prompts") or {}).get(k) or "").strip())
     return {
         "cover": bool(book.get("cover")),
         "thumbnail": bool(book.get("thumbnail")),
@@ -130,32 +119,16 @@ def completeness(book: dict) -> dict:
         "illustrationsTotal": len(SLOT_KEYS),
         "texts": texts,
         "textsTotal": len(TEXT_KEYS),
-        "prompts": prompts,
-        "promptsTotal": len(PROMPT_KEYS),
-        # The Workshop counts the cover among the pictures: one frame per row, 17 rows.
-        "pictures": illustrated + (1 if book.get("cover") else 0),
-        "picturesTotal": len(SLOT_KEYS) + 1,
         "canva": bool((book.get("canvaUrl") or "").strip()),
         "complete": bool(book.get("cover")) and illustrated == len(SLOT_KEYS) and texts == len(TEXT_KEYS),
     }
 
 
-def _first_picture(book: dict) -> dict | None:
-    """A Workshop card without a cover yet shows its first finished spread."""
-    for key in SLOT_KEYS:
-        s = book["slots"][key]
-        if s.get("image") or s.get("left"):
-            return s.get("image") or s.get("left")
-    return None
-
-
 def summary(book: dict) -> dict:
-    workshop = is_workshop(book)
-    card = book.get("thumbnail") or book.get("cover") or (_first_picture(book) if workshop else None)
+    card = book.get("thumbnail") or book.get("cover")
     return {
         "id": book["id"],
         "title": book.get("title") or (book.get("listing") or {}).get("title") or "Без назви",
-        "stage": WORKSHOP if workshop else "library",
         "listingId": (book.get("listing") or {}).get("id"),
         "verified": bool((book.get("listing") or {}).get("verifiedAt")),
         "archived": bool(book.get("archived")),
@@ -183,21 +156,16 @@ def update_texts(book_id: str, texts: dict[str, str]) -> dict:
         return save(book)
 
 
-def all_books(stage: str = "library") -> list[dict]:
-    """The library's books — the ones orders are matched against. The Workshop asks for its own
-    (stage="workshop"): a book still in development never reaches an order, the book counter or the text check."""
+def all_books() -> list[dict]:
     books = []
     if BOOKS_DIR.exists():
         for folder in BOOKS_DIR.iterdir():
             if folder.is_dir() and re.fullmatch(r"[0-9a-f]{32}", folder.name):
                 try:
-                    book = load(folder.name)
+                    books.append(load(folder.name))
                 except ApiError as err:
                     # One broken book never hides the others — but it is not dropped silently either.
                     core.log.warning("Library: book %s not loaded (%s) — it is left out of the list", folder.name, err)
-                    continue
-                if is_workshop(book) == (stage == WORKSHOP):
-                    books.append(book)
     return books
 
 
@@ -329,12 +297,10 @@ def _set_asset(book: dict, slot: str, asset: dict | None) -> list[dict]:
 
 # ---------------------------------------------------------------- text import
 
-def parse_book_json(raw: str) -> tuple[dict, dict, list[str], list[str], list[str]]:
-    """Parses the book's JSON: {cover, page1, spreads: {"2".."15"}, page30}, every value either the text
-    itself (the library's book-text format) or {"prompt": …, "text": …} (the Workshop's).
+def parse_text_json(raw: str) -> tuple[dict, list[str], list[str]]:
+    """Parses the book-text JSON: {cover, page1, spreads: {"2".."15"}, page30}.
 
-    Lenient: takes every valid field and reports the rest — (text, prompts, texts missing, prompts missing,
-    notes); a missing piece is named like "«cover»" or "розвороту 5".
+    Lenient: imports every valid field, reports the rest.
     """
     try:
         data = json.loads(raw.lstrip("﻿"))
@@ -343,50 +309,28 @@ def parse_book_json(raw: str) -> tuple[dict, dict, list[str], list[str], list[st
     if not isinstance(data, dict):
         raise ApiError("JSON має бути об'єктом із полями cover, page1, spreads, page30.")
     text: dict[str, str] = {}
-    prompts: dict[str, str] = {}
-    no_text: list[str] = []
-    no_prompt: list[str] = []
-    notes: list[str] = []
-
-    def take(key: str, value: Any, name: str) -> None:
-        body, prompt = (value, None) if isinstance(value, str) else \
-            (value.get("text"), value.get("prompt")) if isinstance(value, dict) else (None, None)
-        if isinstance(body, str) and body.strip():
-            text[key] = body.strip()
-        else:
-            no_text.append(name)
-        if isinstance(prompt, str) and prompt.strip():
-            prompts[key] = prompt.strip()
-        else:
-            no_prompt.append(name)
-
+    problems: list[str] = []
     for key in ("cover", "page1", "page30"):
-        take(key, data.get(key), f"«{key}»")
+        value = data.get(key)
+        if isinstance(value, str) and value.strip():
+            text[key] = value.strip()
+        else:
+            problems.append(f"Немає тексту «{key}»")
     spreads = data.get("spreads")
     if not isinstance(spreads, dict):
-        notes.append("Немає об'єкта «spreads» з розворотами 2–15")
+        problems.append("Немає об'єкта «spreads» з текстами розворотів 2–15")
         spreads = {}
     for n in SPREAD_NUMBERS:
-        take(f"spread{n}", spreads.get(str(n)), f"розвороту {n}")
+        value = spreads.get(str(n))
+        if isinstance(value, str) and value.strip():
+            text[f"spread{n}"] = value.strip()
+        else:
+            problems.append(f"Немає тексту розвороту {n}")
     extra = [k for k in spreads.keys() if not (k.isdigit() and FIRST_SPREAD <= int(k) <= LAST_SPREAD)]
-    if extra:
-        notes.append(f"Пропущено невідомі ключі spreads: {', '.join(extra)}")
-    return text, prompts, no_text, no_prompt, notes
-
-
-def parse_text_json(raw: str) -> tuple[dict, list[str], list[str]]:
-    """The library's book-text JSON: only the texts are taken (a Workshop JSON's prompts are left out).
-
-    Lenient: imports every valid field, reports the rest.
-    """
-    text, _, no_text, _, notes = parse_book_json(raw)
+    notes = [f"Пропущено невідомі ключі spreads: {', '.join(extra)}"] if extra else []
     if not text:
         raise ApiError("У JSON не знайдено жодного тексту книги.")
-    no_spreads = [n for n in notes if n.startswith("Немає об'єкта")]
-    singles = [f"Немає тексту {name}" for name in no_text if name.startswith("«")]
-    spreads = [f"Немає тексту {name}" for name in no_text if not name.startswith("«")]
-    problems = singles + (["Немає об'єкта «spreads» з текстами розворотів 2–15"] if no_spreads else []) + spreads
-    return text, problems, [n for n in notes if n not in no_spreads]
+    return text, problems, notes
 
 
 def export_text_json(book: dict) -> dict:
@@ -397,14 +341,6 @@ def export_text_json(book: dict) -> dict:
         "spreads": {str(n): t.get(f"spread{n}", "") for n in SPREAD_NUMBERS},
         "page30": t.get("page30", ""),
     }
-
-
-def export_book_json(book: dict) -> dict:
-    """The Workshop's JSON of a book — the prompt and the text of every row; parse_book_json() reads it back."""
-    t, p = book["text"], book.get("prompts") or {}
-    pair = lambda key: {"prompt": p.get(key, ""), "text": t.get(key, "")}  # noqa: E731
-    return {"cover": pair("cover"), "page1": pair("page1"),
-            "spreads": {str(n): pair(f"spread{n}") for n in SPREAD_NUMBERS}, "page30": pair("page30")}
 
 
 # ---------------------------------------------------------------- folder import
@@ -650,7 +586,7 @@ def _book_response(book: dict) -> dict:
 
 @route("GET", "/api/library/books")
 def _list(req: Request):
-    books = [summary(b) for b in all_books(WORKSHOP if req.param("stage") == WORKSHOP else "library")]
+    books = [summary(b) for b in all_books()]
     books.sort(key=lambda b: b.get("updatedAt") or "", reverse=True)
     return {"books": books}
 
@@ -674,43 +610,63 @@ def _guide_save(req: Request):
     return {"path": str(target)}
 
 
-@route("POST", "/api/library/books")
-def _create(req: Request):
-    body = req.json or {}
-    listing = body.get("listing") or {}
+def listing_of(body: dict) -> dict:
+    """The Etsy listing a new book is tied to: the one the page checked (read only), else the link or the number
+    typed in, unchecked."""
+    listing = body.get("listing") if isinstance(body.get("listing"), dict) else {}
     listing_id = str(listing.get("id") or "").strip()
     if not listing_id:
         listing_id = etsy.parse_listing_ref(body.get("listingRef") or "")
         listing = {"id": listing_id, "url": f"https://www.etsy.com/listing/{listing_id}"}
+    return {k: listing.get(k) for k in LISTING_FIELDS}
+
+
+def create_book(listing: dict, title: str = "", canva_url: str = "", **extra) -> dict:
+    """A new library book tied to its Etsy listing — «Нова книга», and a Workshop book passed on. A listing another
+    book already has is refused: 409 with that book's id, so the page can open it."""
     with _lock:
-        existing = _find_by_listing(listing_id)
+        existing = _find_by_listing(str(listing["id"]))
         if existing:
-            raise ApiError("Ця книга вже є в бібліотеці" + (" (в архіві)." if existing.get("archived") else "."),
-                           409, {"bookId": existing["id"]})
+            raise ApiError(f"Лістинг #{listing['id']} уже має книга «{existing.get('title')}»"
+                           + (" (в архіві)." if existing.get("archived") else "."), 409, {"bookId": existing["id"]})
         book_id = core.new_id()
         book = {
             "id": book_id,
             "schema": 1,
             "rev": 0,
             "createdAt": core.now_iso(),
-            "title": (body.get("title") or listing.get("title") or f"Лістинг {listing_id}").strip(),
-            "listing": {k: listing.get(k) for k in ("id", "title", "state", "shopId", "url", "imageUrl", "verifiedAt")},
-            "canvaUrl": (body.get("canvaUrl") or "").strip(),
+            "title": (title or listing.get("title") or f"Лістинг {listing['id']}").strip(),
+            "listing": listing,
+            "canvaUrl": canva_url.strip(),
             "notes": "",
             "archived": False,
             "cover": None,
             "thumbnail": None,
             "slots": _empty_slots(),
             "text": {k: "" for k in TEXT_KEYS},
+            **extra,
         }
         _book_dir(book_id).mkdir(parents=True, exist_ok=True)
-        save(book)
-    if body.get("useListingImage") and listing.get("imageUrl"):
+        return save(book)
+
+
+def take_listing_image(book: dict) -> None:
+    """The listing's main photo as the book's thumbnail — a nicety: a failure only goes to the log."""
+    url = (book.get("listing") or {}).get("imageUrl")
+    if url:
         try:
-            _download_listing_image(book, listing["imageUrl"])
+            _download_listing_image(book, url)
         except Exception as err:
             core.log.warning("Listing image download failed: %s", err)
-    return _book_response(load(book_id))
+
+
+@route("POST", "/api/library/books")
+def _create(req: Request):
+    body = req.json or {}
+    book = create_book(listing_of(body), str(body.get("title") or ""), str(body.get("canvaUrl") or ""))
+    if body.get("useListingImage"):
+        take_listing_image(book)
+    return _book_response(load(book["id"]))
 
 
 @route("GET", r"/api/library/books/([0-9a-f]{32})")
@@ -736,10 +692,6 @@ def _patch(req: Request):
             for key, value in body["text"].items():
                 if key in TEXT_KEYS and isinstance(value, str):
                     book["text"][key] = value
-        if isinstance(body.get("prompts"), dict) and isinstance(book.get("prompts"), dict):
-            for key, value in body["prompts"].items():
-                if key in PROMPT_KEYS and isinstance(value, str):
-                    book["prompts"][key] = value
         if book.get("title", "").strip() == "":
             raise ApiError("Назва книги не може бути порожньою.")
         save(book)
@@ -864,9 +816,6 @@ def _remove_asset(req: Request):
             s = book["slots"][key]
             old = [s[part]] if s.get(part) else []
             s[part] = None
-            if not any(s.get(p) for p in ("image", "left", "right")):
-                s.pop("mirrored", None)   # what the Workshop noted about the pictures that were here
-                s.pop("source", None)
         save(book)          # the record first: if the write fails, the picture is still there
         for asset in old:
             _delete_asset_file(book_id, asset)
@@ -912,6 +861,32 @@ def _folder_scan(req: Request):
     return scan_folder(Path((req.json or {}).get("path") or ""))
 
 
+def import_pictures(book_id: str, files: list[tuple[str, Path, str]], job, step: str = "Імпорт ілюстрацій…") -> list[str]:
+    """Pictures into a book's slots — (slot, file, its name) — copied and their previews prepared three at a time;
+    each lands in the book as soon as it is ready (the progress runs from 5 to 95 %). Returns what wasn't taken."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    errors: list[str] = []
+    done = 0
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {pool.submit(_store_asset, book_id, path, name): (slot, name) for slot, path, name in files}
+        for fut in as_completed(futures):
+            slot, name = futures[fut]
+            done += 1
+            job.progress(step, 5 + 90 * done / max(len(files), 1), name)
+            try:
+                asset = fut.result()
+                with _lock:
+                    book = load(book_id)
+                    gone = _set_asset(book, slot, asset)
+                    save(book)      # the record first: if the write fails, the old picture is still there
+                    for old in gone:
+                        _delete_asset_file(book_id, old)
+            except (ApiError, OSError) as err:
+                errors.append(f"{name}: {err}")
+    return errors
+
+
 @route("POST", r"/api/library/books/([0-9a-f]{32})/folder-import")
 def _folder_import(req: Request):
     book_id = req.groups[0]
@@ -922,29 +897,8 @@ def _folder_import(req: Request):
     load(book_id)
 
     def run(job) -> dict:
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
-        items = [(slot, info) for slot, info in scan["mapping"].items() if slot in selected]
-        image_errors: list[str] = []
-        done = 0
-        # Files are copied and their previews prepared three at a time; each lands in the book as soon as it is ready.
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            futures = {pool.submit(_store_asset, book_id, Path(info["path"]), info["name"]): (slot, info)
-                       for slot, info in items}
-            for fut in as_completed(futures):
-                slot, info = futures[fut]
-                done += 1
-                job.progress("Імпорт ілюстрацій…", 5 + 90 * done / max(len(items), 1), info["name"])
-                try:
-                    asset = fut.result()
-                    with _lock:
-                        book = load(book_id)
-                        gone = _set_asset(book, slot, asset)
-                        save(book)      # the record first: if the write fails, the old picture is still there
-                        for old in gone:
-                            _delete_asset_file(book_id, old)
-                except (ApiError, OSError) as err:
-                    image_errors.append(f"{info['name']}: {err}")
+        items = [(slot, Path(info["path"]), info["name"]) for slot, info in scan["mapping"].items() if slot in selected]
+        image_errors = import_pictures(book_id, items, job)
         text_result, text_error = None, None
         if include_text and scan.get("text"):
             job.progress("Імпорт тексту…", 97, scan["text"]["name"])

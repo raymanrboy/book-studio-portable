@@ -1,12 +1,15 @@
 ---
 title: Plans — what's next
 type: plan
-updated: 2026-09-24
+updated: 2026-09-26
 code: []
 ---
 # Plans
 
 > Ideas agreed with the owner, but not yet built. Starting any of them needs his command.
+
+> **Reviewed with the owner on 2026-09-25** (an agent's list of ideas, his answer point by point — what he
+> keeps is below, what he turned down is in [decisions](../decisions.md), 2026-09-25).
 
 ## The order pipeline
 
@@ -15,6 +18,13 @@ code: []
   ones would need downloading from Canva; the file numbers themselves say what's given, and the program
   fills in the rest.
   *Needed:* fill the library with every book.
+  **Later — a micro feature** (the owner, 2026-09-25): his storage and internet are fine, so to avoid
+  confusion the whole book keeps coming from Canva for now.
+- **The ship-by date on a new order's card** (agreed 2026-09-25, not built). Not intrusive — "not small,
+  but not loud": a quiet line on the right side of the card, where there is room. Not in the queue's
+  rows. *Note:* Etsy gives the date per item (`expected_ship_date` in a receipt's transactions);
+  `profit.normalize_receipt()` doesn't keep it yet — it needs adding there (a full re-sync fills it for
+  older receipts).
 - **The program draws the pages itself — "an order comes in, and it's all already filled in"** (the
   owner's idea, 2026-09-19, "off the top of his head"; details — [below](#pages-with-no-canva-idea-2026-09-19)).
   All the owner would need from Canva is placing text on the pages; the most manual work is long
@@ -67,12 +77,17 @@ code: []
   page clears only **that page's** marks; ↻ "Check again" on the same files keeps them.
   *Still unresolved:* whether to show a "Hidden: N · show" line (to bring back a finding right away,
   without waiting for new files), and whether to mention hidden red findings in the pre-print question.
-- **A "product already created in Printify" mark** in the queue and the card — so a book isn't created
-  twice while its Printify order still isn't confirmed.
+- ~~**A "product already created in Printify" mark**~~ — **most likely covered already** (checked on
+  2026-09-25; the owner to confirm). *Why he wanted it:* a Printify "On hold" order (and a Gelato draft)
+  leaves the receipt in "New" until he confirms and pays it — so the same book could be created twice.
+  *What covers it now:* in the queue such a receipt carries a printer-status chip `On hold` / `Draft`
+  (from the sync at launch and "Refresh", `profit.waiting_order()`), and the card's "Print" step says
+  "Draft … created" with "Result in Order Creator" ([features/orders.md](../features/orders.md)).
 - ~~**Orders with several books**~~ — **built on 2026-09-20**: each book of an order goes through the
   path separately, and they go to the printer together as one draft to one address
   ([features/orders.md](../features/orders.md), [features/order-creator.md](../features/order-creator.md)).
-- **Upscaling inside the program** (Upscayl) — too much work for now, postponed.
+- **Upscaling for orders — not needed** (the owner, 2026-09-25): his Canva books now hold pages that are
+  already upscaled. Upscaling moves to the Workshop — [below](#the-workshop).
 
 Built from this list: 28 pages in Gelato (2026-09-17), the [order archive](../features/archive.md) with
 reprints (2026-09-18), a local-model [text check](../features/text-check.md) (2026-09-19), orders with
@@ -264,12 +279,65 @@ The owner wants a real program feature — a "check button", a strong one — no
   prompts and texts from one JSON, pictures dropped one per frame — and passes a finished book to the library
   with its Etsy listing. The owner said the Listings mode's library "will be modified a bit" later; next steps
   are his to name (e.g. a way back from the library to the Workshop, the listing's own texts).
+- **The listing's texts by the local Gemma — maybe** (2026-09-25: the owner asked whether Gemma can
+  cope). *The agent's estimate:* the size is fine — the input is the book's 17 texts plus an example listing
+  (a few thousand tokens; Ollama's context has to be raised from its small default), the output — a title,
+  13 tags and a description (~600–900 tokens, ~15–20 s at ~54 tokens/s). The weak spot is quality, not
+  size: a 12B model knows nothing of Etsy search, and the tag rules (13 tags, ≤20 characters) the program
+  would check itself. *Before deciding:* a test on 2–3 existing books against his real listings (read-only).
+- **Not wanted** (2026-09-25): a demo book drawn from the Workshop instead of Canva — Canva takes little
+  time and needs a human eye for the aesthetics; a check that a character looks the same on every spread —
+  he checks the generations himself ([decisions](../decisions.md)).
+
+## The Workshop
+
+- **A dropped spread is cut, flipped and upscaled at once** (the owner, 2026-09-25: "I drop a page, it's
+  cut, flipped and upscaled at once" — "a top feature"). Today a drop already cuts and mirrors
+  ([workshop](../features/workshop.md#a-spread-becomes-two-pages)); the upscale would be the third step,
+  so the library gets print-ready pages. *To work out when it's started:* which Upscayl (its command-line
+  engine runs without a window) and model he uses, the target size (4000×4000 per page, like Printify),
+  where it runs (in the background after the drop, the frame showing its progress), and the graphics card
+  shared with the text check's model.
+
+- **Ideas of 2026-09-25:**
+  - ~~A live bridge to `Etsy-Book-Pipeline`, catching downloads~~ — **built on 2026-09-26**:
+    [the book console](book-console.md), a prototype first, then moved into the [Workshop](../features/workshop.md)
+    on the branch `book-console`.
+  - **Tier H orders** — the order card shows the buyer's chosen look and copies a ready hero-swap
+    prompt (from the pipeline's archetype blocks); later, with one look per hero, every variant made once
+    in the Workshop and the order takes the right set.
+  - **Listing photos** — the pipeline's `Listing prompts` (flat lay, shelf, a mother reading) offered
+    with the book's cover on the Mockups page, to copy into ChatGPT (it downloads JPEG).
+  - **Turned down:** generating through an API ([decisions](../decisions.md)).
 
 ## Accounting
 
 - **Turn on "Profit" on 1 October 2026** ([recipe](../recipes.md)).
+- **A clean slate on 1 October** (the owner, 2026-09-25: "so that accounting pulls nothing before
+  1 October — not even a request for that data; serious work starts then"). *What was found:* accounting
+  makes **no requests of its own** — the one sync (Etsy receipts, Printify and Gelato orders) feeds the
+  order queue, the tracking and the archive, and has to stay. Accounting's own part is local: the fees,
+  matching (`reconcile.match()`), states, `profit/print-orders.json`. So a clean slate means: accounting
+  counts only receipts from 1 October on, and nothing before is matched, shown or stored for it (the
+  debts in [open questions](open-questions.md#technical-debt) about older receipts then stop mattering).
+  To agree with him before building: whether the queue keeps showing older orders as now (it should).
 
 ## Infrastructure
+
+- **Automatic backup of the whole program to Google Drive** (the owner, 2026-09-25: "the whole program,
+  with all the goods, the sensitive data too — just encrypt the archive with a password"). Not built.
+  - *What:* the program folder with `app/data` (≈6.6 GB on 2026-09-22; the order archive 4 GB of it), the
+    keys included. The preview cache can be left out — it rebuilds itself.
+  - *How it could look:* a 7-Zip archive with AES-256 and hidden file names, on a schedule (e.g. weekly,
+    when the program starts), keeping the last few; to Drive through the Google Drive desktop app's folder
+    (simplest — no new keys) or through the Drive API.
+  - *Catches to settle with the owner:* **the vault is DPAPI-encrypted and opens only for this Windows
+    user** — on another PC `vault.json` from the backup won't open; the keys would have to go into the
+    archive in a readable form (inside the password archive) or be re-entered after a restore. The
+    password: typed each time, or kept in the vault for the schedule — either way he must keep it
+    himself, it can't be recovered. Drive's free 15 GB fit about two full copies.
+  - Agents still never read or copy the keys themselves ([security](../security.md)); this is the
+    program's own feature, built only on his command.
 
 - Running tests automatically on GitHub (GitHub Actions) — possibly; the `gh` token already has
   `workflow` permission.

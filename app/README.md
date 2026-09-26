@@ -30,9 +30,11 @@ without that check.
 ## Two modes: Orders and Listings
 
 A click on the Book Studio icon at the top left (or Alt+0) switches between **Orders** (everything below,
-orange, like Etsy) and **Listings** (blue): the **Workshop** — new books in development, a prompt, a 2:1 spread and a
-text for every row, passed to the library with their Etsy listing — and the **Mockups**. Book Studio always
-opens in Orders. More — [the wiki](../wiki/features/modes.md).
+orange, like Etsy) and **Listings** (blue): the **Workshop** — new books in development: the agents in Antigravity
+write a book (the pipeline — the `pipeline/` folder), the Workshop shows its path, puts every prompt into the
+clipboard and catches the picture downloaded from Gemini into its row; passed to the library with their Etsy
+listing — and the **Mockups**. Book Studio always opens in Orders. More — [the wiki](../wiki/features/workshop.md).
+Antigravity once: Settings → Agent → *Agent Gitignore Access* on (the books are kept out of git).
 
 ## «Мокапи» — pictures for an Etsy listing
 

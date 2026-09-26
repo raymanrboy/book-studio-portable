@@ -3,6 +3,143 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-26] update | The book console moves into the Workshop (branch book-console)
+
+- The owner: "create a new branch on GitHub and integrate the console into the Workshop — a plan, then the
+  integration". The plan — [plans/book-console.md](plans/book-console.md#into-book-studio--the-integration-plan-2026-09-26).
+- The pipeline moved into the project (`pipeline/`: the agents' rules with a Book Studio fork, the playbook, notes,
+  listing prompts, `check_book.py`); its `books/` kept out of git. The root `AGENTS.md` got a fork for book agents.
+- The Workshop rebuilt as the console: `app/studio/workshop/` (books, rows, pictures, generate, check, routes),
+  `clipboard.py`, the Recycle Bin and «Зберегти як» in `desktop.py`, `core.SANDBOX`; the old Workshop model
+  (`stage`/`prompts` in the library, the JSON, the instruction) removed; passing to the library copies the pages and
+  texts into a new library book (a job).
+- The page: the gallery and a book's page live (`workshop-live.js`, `patch()` — a redraw in place that keeps
+  pictures), the generation bar, the rail's dot and the window's title while a picture is awaited elsewhere.
+- Tests: 52 of the Workshop (the prototype's, ported, plus the library and the sandbox), 317 in all; checked in
+  the preview on made-up books in both themes. Pages: features/workshop.md (rewritten), plans/book-console.md (the
+  steps page folded in and removed), decisions.md, glossary.md, code-map.md, api-routes.md, data.md, frontend.md,
+  modes.md, runtime.md, preview.md, testing.md, security.md, library.md, overview.md, index.md, roadmap.md.
+
+## [2026-09-26] update | Book console: the cover's margins by the printer's template; deleting a book
+
+- The owner gave the printer's cover template (8×8 hardcover, Printify SKU 11688-12031). The console now lays the
+  cover's picture on it by width (`rows.TEMPLATE`, `template_layout()`, `template_guides()`), shows its lines, and
+  brings the outpainted cover to 5370×2850 px, 300 dpi (`place.fit_template()`); the − / + margin control is gone.
+- «Видалити книгу» on a book's page: the folder to the Windows Recycle Bin (`dialogs.to_recycle_bin()`,
+  `books.delete_book()`), a question in the console's own look (it also replaced the browser's confirm on removing a
+  picture). Found and fixed on the way: the delete button did nothing after the question (the event forgot its
+  button after the wait).
+- Checked: 46 tests; the sandbox preview (a real-size 5824×2880 cover on the template, deleting two made-up books);
+  the real Recycle Bin with a made-up folder. Pages: plans/book-console-steps.md, decisions.md.
+
+## [2026-09-26] update | Book console after the first real book: polish, downloads moved in, the cover's margins
+
+- The owner made his first book in the console ("it all works really great") and asked: polish the interface and
+  the flow; remove the listing photos (and the cover's mockup/reference); move a download out of Downloads into
+  the program, a way to the cut pages' folder, save any picture anywhere; the cover as the last card in two
+  stages with an outpaint of added margins.
+- Built in `Book Console/console/`: `originals/` (a download moved there, named by its row), `pictures/` opened by
+  «Сторінки», «Зберегти як…» on every page, «Копіювати картинку»; the cover's two stages (`cover_state()`,
+  `build_expanded()`, `outpaint_prompt()`, `set_margin()`, `skip_margins()`, the old Cover.png migrated); pictures
+  with versions (no blinking), the queue's progress, following the waiting row. The listing photos and the
+  picking of files removed; `GEMINI.md`/`AGENTS.md` and `playbook/workflow.md` say `originals/` instead of
+  `listing/` and describe the margins.
+- Checked: the sandbox preview in both themes, 43 tests. Not checked: Gemini's real outpaint, the window on the
+  owner's screen. Book Studio's code not touched. Pages: plans/book-console-steps.md, decisions.md.
+
+## [2026-09-26] update | Book console prototype, steps 7–15: the generation mode and everything after it
+
+- The owner: "the rest in a row, without steps". Built in `Book Console/console/`: «Відкрити агента»
+  (Antigravity on the root, the book's line in the clipboard); a picture into a row by hand (cut, flipped, ⇄,
+  replace, remove — the old copies to `.replaced/`); «Генерувати» for a row and for the whole book (the program's
+  own clipboard, Downloads watched and only copied from, the next prompt ready after each catch); the hero, the
+  cover (mockup → reference → prompt, «Далі» or F8), the listing photos (the book's mockup → prompt → ChatGPT's
+  JPEG), the Canva folder and the Workshop's JSON, hero variants (tabs, `agent/variants/<name>/` — the rule added to
+  `GEMINI.md`/`AGENTS.md`). New: `pult/gen.py`, `place.py`, `winclip.py`, `dialogs.py`, `paths.py`; a sandbox for
+  the preview and the tests.
+- Checked: the sandbox preview (a whole book caught row by row, mirroring and cutting, a listing photo, a variant),
+  39 tests; the real clipboard and F8 briefly (the owner's clipboard put back). Fixed on the way: a kept copy
+  overwritten by a second replacement in the same second; a variant's spread starting without its base. Not
+  checked: a real Gemini/ChatGPT download and paste, the Antigravity window. Step 16 waits for the owner's book.
+- Book Studio's code not touched (the preview entry added and removed). Pages: plans/book-console-steps.md,
+  decisions.md.
+
+## [2026-09-26] update | Book console prototype, steps 5–6: the book's rows and the GO check
+
+- `console/pult/rows.py`: the 17 rows (prompt · 2:1 frame · text), read from the agents' files the way the old
+  `build_workshop_json.py` read them; short or broken prompt files named above the rows. The page shows them in a
+  820 px column under the strip, prompts folded and copyable, `{Name}`/`{Gifter}` marked; the step's panel folds.
+- The book check in the window: `check_book.run()` (the rules unchanged) once any prompt file is there, cached until
+  an agent's file changes; GO / «N помилок» on the strip, on the card and in the «Перевірка» tab.
+- Found while checking: a broken line in `check_book.py` after adding `run()` (fixed; the report compared with the
+  old validator again — the same); a style name clash that shrank the empty frames (fixed).
+- Checked: made-up books in the preview (rows, live text fix, GO on a copy of book 39's files in `.tmp`, 10 errors
+  on another); 25 tests. Book Studio's code not touched (the preview entry added and removed). Pages:
+  plans/book-console-steps.md.
+
+## [2026-09-26] update | Book console prototype, steps 3–4: the window, the book list, the path strip
+
+- `Book Console/console/`: `Book Console.pyw` + `pult/` (a stdlib server on 127.0.0.1:47850 with a session token,
+  its own Edge window closed like Book Studio's, temp files in `console/data/tmp` on D), `web/` (Book Studio's
+  look in the Listings cyan), the desktop shortcut «Пульт книги» with its own icon. The book list (cards: number,
+  title, the cover's title, thumbnail, a 10-step bar, «Далі», «Картинки n/16») and a book's page with the path
+  strip ticked by the files, a panel per step (the agent's file, the hero, the 16 rows), Canva/Mockups/Library
+  ticked by hand into `book.json`; the page redraws itself within 1.5 s of a file changing.
+- Pictures count 16 rows, the cover is its own step (the plan said `n/17`). Found and fixed while checking: an
+  unread request body broke the next request on the same connection (`{}GET` → 501).
+- Checked: made-up books (`console/dev_server.py --sample`) in the preview — list, strip, panels, live ticks,
+  marks, light theme, refused paths and missing token; 15 tests (`console/tests`); the real launcher without a
+  window. Not checked: the window on the owner's screen. Book Studio's code not touched (a preview entry added
+  to `.claude/launch.json` for the check and removed). Pages: plans/book-console-steps.md, plans/book-console.md.
+
+## [2026-09-26] update | Book console prototype, steps 1–2: the folder, the clean copy, the agents' rules
+
+- The owner: «роби»; the folder `Book Console` — yes, `seo-intelligence` — not taken, no git until the move.
+- `D:\Roman\Desktop\Book Console`: the playbook, `notes/discoveries.md`, the three listing prompts + README
+  copied; the old pipeline checked unchanged (4443 files, the same sizes and times). `GEMINI.md` = `AGENTS.md`
+  (book agents, files only in `books/<n>.<slug>/agent/`, numbers from 40), `CLAUDE.md` — the fork for coding
+  agents, `console/check_book.py` — the old validator reading `agent/` (the same report on a copy of book 39).
+  Every `BOOKS_NEW/…/_work` path, `workshop.json`, slicing, flipping and cover-splitting instruction rewritten.
+- Book Studio's code not touched. Pages: plans/book-console-steps.md, plans/book-console.md, decisions.md.
+
+## [2026-09-26] decision | The book console prototype: its look and its steps
+
+- The owner: start the prototype — a plan first, no code. The agent's proposal: the folder
+  `D:\Roman\Desktop\Book Console` (name to confirm), a clean copy of the pipeline's playbook, one folder per
+  book with `agent/` (only agents write) and `pictures/` (only the console writes), the console as the
+  Workshop's book page on its own small server in its own window; Downloads (`D:\Roman\Downloads`) only
+  read, a caught file copied. 17 small steps (0–16), each with what the owner sees — new temporary page
+  plans/book-console-steps.md (a temporary page, folded into plans/book-console.md on the move); step 0 done. Nothing built until «роби».
+- No code changed. Pages: plans/book-console-steps.md, plans/book-console.md, index.md.
+
+## [2026-09-25] decision | The book console planned: the pipeline and the Workshop as one place
+
+- The owner: into the roadmap, a prototype apart from Book Studio first, then a separate branch; only planning
+  for now. New page [plans/book-console.md](plans/book-console.md): the path strip, the generation mode
+  (Downloads → the row, the next prompt in the clipboard), hero variants, the pipeline moved in cleaned (agents
+  write only into `agent/`), the catches. His agents run in Antigravity; spreads — Gemini (PNG), listing photos —
+  ChatGPT (JPEG). No code changed. Pages: plans/book-console.md, plans/roadmap.md, index.md.
+
+## [2026-09-25] decision | No image API; bold ideas around the ChatGPT chat recorded for discussion
+
+- The owner generates on the websites — spreads in Gemini, listing photos in ChatGPT (subscriptions), no paid API; Tier H heroes swapped per order,
+  every look made in advance — later. Ideas under discussion in plans/roadmap.md: a live bridge to
+  `Etsy-Book-Pipeline`, catching downloads into Workshop rows, a hero-swap helper in the order card, listing
+  photos. No code changed. Pages: decisions.md, plans/roadmap.md.
+
+## [2026-09-25] decision | The plans reviewed with the owner: kept, turned down, new
+
+- An agent offered ten ideas; the owner answered each. **New in the plans:** the ship-by date as a quiet line
+  on a new order's card; upscaling right after a drop in the Workshop; a clean slate for accounting on
+  1 October; an automatic encrypted backup of the whole program to Google Drive; maybe the listing's texts by
+  Gemma (a test first). **Later:** pages from the library instead of Canva. **Covered already (to confirm):**
+  the "product already created in Printify" mark — the queue's `On hold` / `Draft` chip.
+- **Turned down:** upscaling for orders, a demo book without Canva, a character-consistency check, a
+  print-quality journal, profit by book — reasons in decisions.md.
+- Checked in the code: accounting has no requests of its own (one sync feeds the queue too); Etsy's
+  `expected_ship_date` isn't kept by `normalize_receipt()`; the vault's DPAPI won't open on another PC.
+- No code changed. Pages: plans/roadmap.md, decisions.md.
+
 ## [2026-09-25] update | The flaky test fixed: a send's folder check no longer warms previews in the background
 
 - About one full test run in five ended with `PermissionError` in

@@ -996,37 +996,204 @@ button.set-head:hover { background: var(--surface-hover); }
 .offline-icon { width: 48px; height: 48px; margin: 0 auto; border-radius: 12px; display: grid; place-items: center; background: var(--amber-soft); color: var(--amber); font-weight: 800; font-size: 22px; }
 
 /* ================================================================== THE WORKSHOP (the Listings mode) */
-/* Books in development (owner, 24.09.2026): one column of moderate width — "not the full width" — and every row a
-   card of three, top to bottom: the prompt, the 2:1 frame, the text. */
-.ws-card .book-id .icon { color: var(--text-4); }
-.ws-page { max-width: 820px; margin: 0 auto; }
-.ws-head { flex-wrap: nowrap; align-items: center; gap: 10px; }
-.ws-title { flex: 1; min-width: 0; font-size: 25px; margin-left: 0; }
-.ws-head-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+/* The book console moved in (26.09.2026): the books the agents write, each with its path, its rows and the generation
+   mode. The pages redraw in place when a file changes (patch()); only transform and opacity animate. */
+.btn.busy, .ib.busy { opacity: .6; cursor: progress; pointer-events: none; }
+.btn-ghost.on { background: var(--accent-soft); color: var(--accent-ink); }
+.ws-no { color: var(--text-3); font-variant-numeric: tabular-nums; margin-right: 8px; }
+.ws-pulse { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: busy-dot 1.4s ease-in-out infinite; }
+.ws-go { font-family: var(--font-display); font-weight: 700; letter-spacing: .06em; color: var(--green); }
+.ws-nogo { font-weight: 600; color: var(--red); }
+
+/* The gallery: a card per book — its picture, №, the cover's title, the path as ten strips, what's next. */
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+.ws-card {
+  display: flex; flex-direction: column; min-width: 0; padding: 0; text-align: left; color: inherit; overflow: hidden;
+  border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s);
+  transition: transform var(--t) var(--ease), box-shadow var(--t) ease, border-color var(--t) ease; contain: layout style;
+}
+.ws-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--border-strong); }
+.ws-card.enter { animation: card-in 420ms var(--ease) both; }
+.ws-card-art { position: relative; aspect-ratio: 16 / 9; background: var(--surface-2); overflow: hidden; }
+.ws-card-art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; opacity: 0; transition: opacity 400ms ease; }
+.ws-card-art img.cover { object-position: 100% 50%; } /* the wide cover shows its front */
+.ws-card-art img.page { object-position: 50% 50%; }
+.ws-card-art img.loaded { opacity: 1; }
+.ws-card-letter { position: absolute; inset: 0; display: grid; place-items: center; font-size: 54px; color: var(--text-4); }
+.ws-card-wait {
+  position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 9px;
+  border-radius: 6px; font-size: 12px; font-weight: 600; background: var(--surface); color: var(--accent-ink); box-shadow: var(--shadow);
+  opacity: 0; transform: translateY(4px); transition: opacity var(--t) ease, transform var(--t) var(--ease); pointer-events: none;
+}
+.ws-card-wait.on { opacity: 1; transform: none; }
+.ws-card-body { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px; }
+.ws-card-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; line-height: 1.25; }
+.ws-card-sub { font-size: 13.5px; color: var(--text-2); min-height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-card-bar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin-top: 4px; }
+.ws-card-bar i { height: 4px; border-radius: 2px; background: var(--border-strong); }
+.ws-card-bar i.done { background: var(--accent); }
+.ws-card-bar i.part { background: linear-gradient(90deg, var(--accent) 50%, var(--border-strong) 50%); }
+.ws-card-bar i.skip { background: var(--surface-3); }
+.ws-card-meta { display: flex; gap: 10px; align-items: baseline; font-size: 12px; color: var(--text-3); }
+.ws-card-meta b { color: var(--text-2); font-weight: 600; }
+.ws-card-meta .ws-go, .ws-card-meta .ws-nogo { margin-left: auto; }
+.ws-empty-path { margin-top: 14px; font-size: 12px; }
+
+/* A book's header: №, the title, the cover's title; the agent, the pages for Canva, the library. */
+.ws-head-title { min-width: 0; }
+.ws-head-title .page-sub.serif { font-size: 15px; color: var(--text-2); }
+.ws-head-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* The generation bar: what is awaited, what's in the clipboard, how far the queue is — sticky on top. */
+.ws-genbar-slot { position: sticky; top: 0; z-index: 20; }
+.ws-genbar {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; margin: -6px 0 16px;
+  border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--accent-line); box-shadow: var(--shadow), 0 0 0 3px var(--accent-soft);
+  animation: card-in 320ms var(--ease) both;
+}
+.ws-genbar.other { border-color: var(--border-strong); box-shadow: var(--shadow-s); }
+.ws-genbar.err { border-color: var(--red-line); color: var(--red); background: var(--red-soft); box-shadow: none; }
+.ws-gb-main { flex: 1; min-width: 0; font-size: 13.5px; }
+.ws-gb-main b { font-weight: 650; }
+.ws-gb-title { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ws-gb-count { font-size: 12px; color: var(--text-3); }
+.ws-gb-sub { font-size: 12.5px; color: var(--text-2); margin-top: 1px; }
+.ws-gb-err { font-size: 12.5px; color: var(--red); margin-top: 3px; }
+.ws-gb-parts { display: inline-flex; gap: 3px; margin: -2px 8px 0 0; vertical-align: middle; }
+.ws-gb-parts i { width: 14px; height: 4px; border-radius: 2px; background: var(--border-strong); }
+.ws-gb-parts i.done { background: var(--accent-line); }
+.ws-gb-parts i.now { background: var(--accent); }
+.ws-gb-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent-soft); }
+.ws-gb-progress i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 500ms var(--ease); }
+
+/* The path strip: ten steps — done (filled), started (half), skipped (dashed), next (a breathing ring). */
+.ws-strip {
+  display: grid; grid-template-columns: repeat(10, minmax(76px, 1fr)); padding: 14px 10px 12px; margin-bottom: 16px;
+  border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); overflow-x: auto;
+}
+.ws-step {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 0; padding: 4px 2px 6px;
+  border: 0; background: none; color: var(--text-3); border-radius: var(--r-grp); transition: background var(--t-fast) ease, color var(--t-fast) ease;
+}
+.ws-step:hover { background: var(--surface-2); color: var(--text); }
+.ws-step.sel { background: var(--accent-soft); color: var(--text); }
+.ws-step::before { /* the line from the step before: lit once that one is done */
+  content: ""; position: absolute; top: 18px; left: calc(-50% + 20px); width: calc(100% - 40px); height: 2px; border-radius: 1px; background: var(--border-strong);
+}
+.ws-step:first-child::before { display: none; }
+.ws-step.after-done::before { background: var(--accent); }
+.ws-dot {
+  position: relative; z-index: 1; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
+  background: var(--surface); border: 2px solid var(--border-strong); color: var(--text-4); font-family: var(--font-display); font-size: 12.5px; font-weight: 600;
+}
+.ws-dot .icon { width: 16px; height: 16px; stroke-width: 2.2; }
+.ws-dot img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; border-radius: 50%; }
+.ws-step.done .ws-dot { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.ws-step.done .ws-dot.photo { background: var(--paper); }
+.ws-step.part .ws-dot { border-color: var(--accent); color: var(--accent-ink); background: linear-gradient(90deg, var(--accent-soft) 50%, var(--surface) 50%); }
+.ws-step.skip .ws-dot { border-style: dashed; }
+.ws-step.next:not(.done) .ws-dot { box-shadow: 0 0 0 4px var(--accent-soft); overflow: visible; }
+.ws-step.next:not(.done) .ws-dot::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--accent); animation: busy-dot 1.8s ease-in-out infinite; }
+.ws-step.just .ws-dot { animation: ws-pop 520ms var(--spring); }
+@keyframes ws-pop { from { transform: scale(.6); } }
+.ws-step.nogo .ws-dot { border-color: var(--red); }
+.ws-step.nogo.done .ws-dot { background: var(--red); border-color: var(--red); color: #fff; }
+.ws-step-label { font-size: 12px; font-weight: 600; line-height: 1.2; text-align: center; max-width: 100%; }
+.ws-step.done .ws-step-label, .ws-step.part .ws-step-label { color: var(--text); }
+.ws-step.skip .ws-step-label { color: var(--text-4); }
+.ws-step-count { font-family: var(--font-display); font-size: 11.5px; line-height: 1; margin-top: -3px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.ws-step.done .ws-step-count { color: var(--accent-ink); }
+.ws-step-count.go { font-weight: 700; letter-spacing: .06em; color: var(--green) !important; }
+.ws-step-count.nogo { font-family: var(--font); font-weight: 600; color: var(--red) !important; }
+.ws-hand { position: absolute; top: 2px; right: 8px; width: 13px; height: 13px; color: var(--text-4); }
+
+/* The step's panel: its file (text, picture), the book check, the work the step asks for. */
+.ws-panel { border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); overflow: hidden; }
+.ws-panel-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.ws-panel-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+.ws-panel-state { font-size: 12.5px; color: var(--text-3); }
+.ws-panel-state.done { color: var(--accent-ink); }
+.ws-panel-tools { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.ws-tabs button.missing { color: var(--text-4); font-weight: 500; }
+.ws-tabs button.go .icon { color: var(--green); }
+.ws-tabs button.nogo .icon { color: var(--red); }
+.ws-panel-body { padding: 16px 18px 20px; max-height: calc(100vh - 330px); min-height: 150px; overflow: auto; }
+.ws-doc { font-size: 13.5px; line-height: 1.6; overflow-wrap: anywhere; max-width: 900px; }
+.ws-doc .h { font-family: var(--font-display); font-weight: 600; margin: 14px 0 4px; font-size: 15px; }
+.ws-doc .h:first-child { margin-top: 0; }
+.ws-doc .h1 { font-size: 18px; }
+.ws-doc .p { white-space: pre-wrap; min-height: .8em; }
+.ws-doc pre { font-family: var(--font-mono); font-size: 12px; line-height: 1.5; white-space: pre-wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 10px 12px; margin: 8px 0; }
+.ws-shot { display: flex; justify-content: center; }
+.ws-shot img { max-height: 520px; width: auto; border-radius: var(--r-art); box-shadow: var(--art-shadow); background: var(--paper); cursor: zoom-in; opacity: 0; transition: opacity 400ms ease; }
+.ws-shot img.loaded { opacity: 1; }
+.ws-missing { display: grid; gap: 6px; justify-items: start; color: var(--text-3); padding: 14px 2px; }
+.ws-missing .mono { color: var(--text-2); }
+.ws-manual { display: grid; gap: 12px; justify-items: start; padding: 6px 2px; color: var(--text-2); max-width: 720px; }
+.ws-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.ws-check-head { margin-bottom: 14px; max-width: 900px; }
+.ws-check-group { margin-bottom: 14px; max-width: 900px; }
+.ws-check-list { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.ws-check-list li { position: relative; padding-left: 16px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.ws-check-list li::before { content: ""; position: absolute; left: 2px; top: .55em; width: 6px; height: 6px; border-radius: 50%; }
+.ws-check-list li.fail::before { background: var(--red); }
+.ws-check-list li.warn::before { background: var(--amber); }
+.ws-check-foot { font-size: 12px; }
+.ws-mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; }
+.ws-mini-row { display: grid; gap: 5px; padding: 6px; margin: -6px; border: 0; background: none; border-radius: var(--r-grp); transition: background var(--t-fast) ease; }
+.ws-mini-row:hover { background: var(--surface-2); }
+.ws-mini-art { display: grid; grid-template-columns: 1fr 1fr; aspect-ratio: 2 / 1; overflow: hidden; border-radius: var(--r-art); outline: 1px dashed var(--border-strong); outline-offset: -1px; background: var(--surface-2); }
+.ws-mini-art.single { grid-template-columns: 1fr; aspect-ratio: 1; width: 50%; justify-self: center; }
+.ws-mini-row.full .ws-mini-art { outline: 0; box-shadow: var(--art-shadow); background: var(--paper); }
+.ws-mini-art img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 400ms ease; }
+.ws-mini-art img.loaded { opacity: 1; }
+.ws-mini-label { font-size: 12px; color: var(--text-3); text-align: center; }
+.ws-mini-row.full .ws-mini-label { color: var(--text); }
+
+/* The rows: one column of moderate width (the owner: "not the full width"), every row a card of three, top to bottom:
+   the prompt, the 2:1 frame, the text. */
+.ws-col { max-width: 820px; margin: 26px auto 0; }
+.ws-rows-head-in { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.ws-rows-title { font-size: 19px; }
+.ws-rows-count { font-size: 12.5px; color: var(--text-3); }
+.ws-meter { width: 90px; height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.ws-meter i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 500ms var(--ease); }
+.ws-vtabs { margin-bottom: 14px; }
+#ws-notes .notice { margin-bottom: 14px; }
 .ws-rows { display: flex; flex-direction: column; gap: 18px; }
-.ws-row { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); }
-.ws-row-head { display: flex; align-items: center; gap: 8px; min-height: 20px; }
-.ws-dots { display: inline-flex; gap: 4px; }
+.ws-row {
+  display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; scroll-margin-top: 80px;
+  border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s);
+  transition: border-color var(--t) ease, box-shadow var(--t) ease;
+}
+.ws-row.waiting { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-s); }
+.ws-row.flash { animation: ws-flash 1.2s var(--ease); }
+@keyframes ws-flash { 0%, 35% { box-shadow: 0 0 0 3px var(--accent-line), var(--shadow-s); } }
+.ws-row-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.ws-row-label { font-family: var(--font-display); font-size: 14.5px; font-weight: 600; }
+.ws-row-act { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.ws-dots { display: inline-flex; gap: 4px; margin-left: 2px; }
 .ws-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); transition: background var(--t) ease; }
 .ws-dots i.ok { background: var(--accent); }
 
-/* The prompt and the text: a quiet box each; a click writes, the field grows with what's typed. */
+/* The prompt and the text — read from the agents' files: a quiet box each. */
 .ws-block { border-radius: var(--r-ctl); background: var(--surface-2); padding: 7px 10px 10px; }
 .ws-block-head { display: flex; align-items: center; gap: 6px; min-height: 28px; }
 .ws-block-head > .icon-s { color: var(--accent-ink); }
-.ws-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.55; color: var(--text); cursor: text; }
+.ws-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.55; color: var(--text); }
 .ws-text .ws-body { font-family: var(--font-book-text); font-size: 14.5px; line-height: 1.62; }
 .ws-body.empty-text { color: var(--text-4); font-family: var(--font); font-size: 12.5px; }
-.ws-edit { width: 100%; min-height: 76px; field-sizing: content; resize: vertical; font-size: 13.5px; line-height: 1.55; }
-.ws-text .ws-edit { font-family: var(--font-book-text); font-size: 14.5px; line-height: 1.62; }
-.ws-edit-foot { display: flex; align-items: center; gap: 6px; padding-top: 6px; font-size: 11.5px; }
-.ws-json { width: 100%; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; resize: vertical; }
+.ws-mono { font-family: var(--font-mono); font-size: 12px; line-height: 1.5; }
+.ws-mono.clamp { max-height: 10.5em; overflow: hidden; mask-image: linear-gradient(#000 60%, transparent); }
+.ws-more { border: 0; background: none; padding: 4px 0 0; font-size: 12px; font-weight: 600; color: var(--accent-ink); }
+.ws-more:hover { text-decoration: underline; }
 
-/* The 2:1 frame: empty — dashed, the fold in the middle, the page numbers on its halves; a single page (1, 30) —
-   the endpaper half hatched. A frame that files are dragged over lights up in the mode's ink. */
+/* The 2:1 frame: empty — dashed, the fold in the middle, the page numbers on its halves; a single page (1, 30) — the
+   endpaper half hatched; filled — the pages, the dark picture tools on hover. */
 .ws-frame { position: relative; aspect-ratio: 2 / 1; border-radius: var(--r-art); }
 .ws-frame.ws-single { display: grid; grid-template-columns: 1fr 1fr; }
-.ws-pagehalf { position: relative; min-width: 0; }
+.ws-drop { position: relative; min-width: 0; border-radius: var(--r-art); }
+.ws-frame:not(.ws-single) > .ws-drop { position: absolute; inset: 0; }
 .ws-endpaper {
   display: grid; place-items: center; color: var(--text-4); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase;
   background: repeating-linear-gradient(135deg, var(--surface-2) 0 7px, var(--surface-3) 7px 8px); border-radius: var(--r-art);
@@ -1037,36 +1204,86 @@ button.set-head:hover { background: var(--surface-hover); }
   outline: 1.5px dashed var(--border-strong); outline-offset: -1.5px;
   transition: background var(--t-fast) ease, color var(--t-fast) ease, outline-color var(--t-fast) ease;
 }
-/* The fold: dashed, broken around the words in the middle. */
-.ws-ph::after {
+.ws-ph::after { /* the fold: dashed, broken around the words in the middle */
   content: ""; position: absolute; left: 50%; top: 9%; bottom: 9%; width: 1px;
   background: repeating-linear-gradient(to bottom, var(--border-strong) 0 4px, transparent 4px 8px);
   mask: linear-gradient(#000 0 33%, transparent 33% 67%, #000 67%);
 }
-.ws-pagehalf .ws-ph { grid-template-columns: 1fr; }
-.ws-pagehalf .ws-ph::after { display: none; }
-.ws-half { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--text-4); }
-.ws-ph-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 12px; pointer-events: none; }
+.ws-single .ws-ph, .ws-hero-shot .ws-ph { grid-template-columns: 1fr; }
+.ws-single .ws-ph::after, .ws-hero-shot .ws-ph::after { display: none; }
+.ws-half { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-size: 12px; color: var(--text-4); }
+.ws-ph-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 12px; pointer-events: none; text-align: center; }
 .ws-ph-text .icon { width: 24px; height: 24px; margin-bottom: 2px; }
 .ws-ph-text b { color: var(--text-2); font-size: 13px; font-weight: 600; }
 .ws-ph:hover, .drop-hot > .ws-ph { background: var(--accent-soft); color: var(--accent-ink); outline-color: var(--accent); }
 .ws-ph:hover .ws-ph-text b, .drop-hot > .ws-ph .ws-ph-text b { color: var(--accent-ink); }
-.drop-hot > .ws-art { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-art); }
-.ws-art { position: absolute; inset: 0; border-radius: var(--r-art); background-color: var(--paper); box-shadow: var(--art-shadow); }
-.ws-art img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; opacity: 0; transition: opacity 400ms ease; cursor: zoom-in; }
-.ws-art img.loaded { opacity: 1; }
-.ws-art:hover .img-actions, .ws-art:focus-within .img-actions, .ws-art:hover .crops { opacity: 1; transform: none; }
-/* A spread cut into its two pages: two squares side by side, like the passport; the blurred stand-ins behind. */
-.ws-pairart { display: grid; grid-template-columns: 1fr 1fr; background-size: 50% 100%; background-position: left, right; background-repeat: no-repeat; }
-.ws-pairart img, .ws-pairart .ws-endpaper { width: 100%; height: 100%; min-width: 0; object-fit: cover; border-radius: 0; }
-.ws-pairart > :first-child { border-radius: var(--r-art) 0 0 var(--r-art); }
-.ws-pairart > :nth-child(2) { border-radius: 0 var(--r-art) var(--r-art) 0; }
-.img-actions .ib.on { background: rgba(255, 255, 255, .2); color: #fff; }
 .ws-will-flip { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 11.5px; color: var(--accent-ink); }
-.ws-art.lqip.lqip { background-size: contain; } /* a picture of another shape shows its margins, not a blur */
-.ws-mark { position: absolute; left: 8px; bottom: 8px; z-index: 2; background: var(--surface); box-shadow: var(--shadow); }
+.ws-drop.drop-hot { outline: 0 !important; background: none !important; }
+.drop-hot > .ws-art { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ws-art { position: absolute; inset: 0; border-radius: var(--r-art); background: var(--paper); box-shadow: var(--art-shadow); }
+.ws-art:hover .img-actions, .ws-art:focus-within .img-actions { opacity: 1; transform: none; }
+.ws-art img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; opacity: 0; transition: opacity 400ms ease; cursor: zoom-in; }
+.ws-art img.loaded { opacity: 1; }
+.ws-pairart { display: grid; grid-template-columns: 1fr 1fr; }
+.ws-page { position: relative; min-width: 0; height: 100%; overflow: hidden; border-radius: var(--r-art); }
+.ws-pairart .ws-page:first-child, .ws-pairart .ws-page:first-child img { border-radius: var(--r-art) 0 0 var(--r-art); }
+.ws-pairart .ws-page:nth-child(2), .ws-pairart .ws-page:nth-child(2) img { border-radius: 0 var(--r-art) var(--r-art) 0; }
+.ws-save {
+  position: absolute; right: 8px; bottom: 8px; z-index: 2; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0;
+  border-radius: 8px; background: rgba(16, 17, 19, .78); color: #e9e9e9; opacity: 0; transform: translateY(3px);
+  transition: opacity var(--t) ease, transform var(--t) var(--ease), background var(--t-fast) ease;
+}
+.ws-save .icon { width: 16px; height: 16px; }
+.ws-save:hover { background: rgba(16, 17, 19, .92); color: #fff; }
+.ws-pairart .ws-page:first-child .ws-save { right: auto; left: 8px; }
+.ws-page:hover .ws-save, .ws-wide:hover .ws-save, .ws-save:focus-visible { opacity: 1; transform: none; }
+.ws-marks { position: absolute; left: 8px; bottom: 8px; z-index: 2; display: flex; gap: 6px; pointer-events: none; transition: opacity var(--t) ease; }
+.ws-art:hover .ws-marks { opacity: 0; }
+.ws-mark { background: var(--surface); box-shadow: var(--shadow); }
+.ws-wait {
+  position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--r-art);
+  font-size: 13px; font-weight: 600; color: var(--accent-ink); background: color-mix(in srgb, var(--surface) 72%, transparent); animation: fade-in var(--t) ease both;
+}
 .ws-up { width: 56%; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
-.ws-up > i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 200ms var(--ease); }
+.ws-up > i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform 200ms var(--ease); }
+
+/* The cover: ① the picture ② its margins — one card, two stages that slide. */
+.ws-cover .ws-row-head { gap: 14px; }
+.ws-cv-steps { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; }
+.ws-cv-step { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px 0 4px; border: 0; border-radius: 14px; background: none; color: var(--text-3); font-size: 12.5px; font-weight: 600; transition: background var(--t-fast) ease, color var(--t-fast) ease; }
+.ws-cv-step:hover { background: var(--surface-2); color: var(--text); }
+.ws-cv-step.on { background: var(--accent-soft); color: var(--accent-ink); }
+.ws-cv-no { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-display); font-size: 11.5px; border: 1.5px solid currentColor; }
+.ws-cv-step.done .ws-cv-no { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.ws-cv-no .icon { width: 12px; height: 12px; stroke-width: 2.4; }
+.ws-cv-line { width: 22px; height: 2px; border-radius: 1px; background: var(--border-strong); }
+.ws-cv-line.on { background: var(--accent); }
+.ws-cv-body { overflow: hidden; }
+.ws-cv-pane { display: flex; flex-direction: column; gap: 10px; }
+.ws-cv-body.slide-next .ws-cv-pane { animation: ws-pane-next 360ms var(--ease) both; }
+.ws-cv-body.slide-back .ws-cv-pane { animation: ws-pane-back 360ms var(--ease) both; }
+@keyframes ws-pane-next { from { opacity: 0; transform: translateX(28px); } }
+@keyframes ws-pane-back { from { opacity: 0; transform: translateX(-28px); } }
+.ws-cv-next { display: flex; justify-content: flex-end; }
+.ws-cv-next .btn .icon { margin-right: -3px; }
+.ws-cv-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ws-cv-info { font-size: 12.5px; color: var(--text-3); }
+.ws-art.ws-wide { position: relative; aspect-ratio: 2 / 1; }
+.ws-art.ws-wide img { object-fit: contain; }
+.ws-art.margins { overflow: hidden; }
+.ws-cv-inner { position: absolute; border: 1.5px dashed var(--accent); box-shadow: 0 0 0 9999px color-mix(in srgb, var(--accent) 14%, transparent); pointer-events: none; }
+/* The printer's template over the cover: the finished size (orange, as in the template), the spine (green), the
+   safety zones (blue); what's outside the orange line wraps round the boards. */
+.ws-tpl { position: absolute; inset: 0; pointer-events: none; }
+.ws-tpl > span { position: absolute; }
+.ws-tpl-trim { border: 1.5px solid #ef6a3a; }
+.ws-tpl-spine { background: rgba(140, 200, 90, .28); border-left: 1px solid rgba(90, 160, 60, .7); border-right: 1px solid rgba(90, 160, 60, .7); }
+.ws-tpl-safe { border: 1.5px dashed #29b6e8; }
+.ws-tpl-safe em { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; background: rgba(20, 21, 23, .55); padding: 1px 7px; border-radius: 4px; }
+
+/* A hero variant (Tier H): its hero on the left, the edit prompt beside it. */
+.ws-vhero { display: flex; gap: 14px; align-items: flex-start; }
+.ws-hero-shot { width: 180px; aspect-ratio: 3 / 4; flex: none; }
 
 /* ================================================================== LISTING MOCKUPS (the Listings mode) */
 /* The Order Creator's layout: numbered steps on the left (.creator-grid), the demo book's structure on the right. */

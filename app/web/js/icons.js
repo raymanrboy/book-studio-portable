@@ -126,6 +126,12 @@ const P = {
   prompt: '<path d="M4.5 19.5l10.5-10.5"/><path d="M13 7l4 4"/><path d="M17.5 3v3.5M15.75 4.75h3.5"/><path d="M20.5 10.5v2.5M19.25 11.75h2.5"/><path d="M8.5 3.5V6M7.25 4.75h2.5"/>',
   // a spread mirrored left to right (the owner's flipper) — not `swap`, which trades a spread's two pages
   mirror: '<path d="M12 3v2.5M12 9v2.5M12 15v2.5M12 21v-.5"/><path d="M9 6.5L3.5 17.5H9z"/><path d="M15 6.5l5.5 11H15z"/>',
+  // the Workshop's pipeline: the book agents (Antigravity — a chat with a spark), the book's hero, a step not needed
+  // (a Tier S book has no hero), the printer's template lines over the cover
+  agent: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V16A1.5 1.5 0 0 1 4 14.5z"/><path d="M12 7.3l.9 2.2 2.2.9-2.2.9-.9 2.2-.9-2.2-2.2-.9 2.2-.9z"/>',
+  hero: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5c.8-3.8 3.8-6 7.5-6s6.7 2.2 7.5 6"/>',
+  minus: '<path d="M6 12h12"/>',
+  guides: '<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M12 5v14" stroke-dasharray="2 2"/><path d="M6 8h4v8H6zM14 8h4v8h-4z" stroke-dasharray="1.6 1.6"/>',
 };
 
 // Older names still used by the (hidden) profit page map onto the same meanings.

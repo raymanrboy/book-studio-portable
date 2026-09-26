@@ -1,7 +1,7 @@
 ---
 title: Program data — the app/data folder
 type: architecture
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -19,7 +19,7 @@ code:
 |---|---|---|
 | `settings.json` (+`.bak`) | Non-secret settings: theme, Etsy (shop, return address), Printify (shop, Master, sizes, `manualApprovalConfirmedAt`), Gelato (formats, the EUR→USD rate, `pageCounts` 28 and 30; on launch `_upgrade()` removes the old `pageCount` and switches Gelato's "inch" products to metric), `textcheck` (enabled, model, Ollama address — 127.0.0.1 only) | `core.settings` |
 | `vault.json` (+`.bak`) | Etsy/Printify/Gelato keys, Etsy tokens, and a Gemini key (`gemini_api_key`, for a planned text check — not used yet), DPAPI-encrypted. **Never read or print** | `Vault` |
-| `library/books/<id>/book.json` | The book model ([features/library.md](../features/library.md)); a book still in the [Workshop](../features/workshop.md) is here too, marked `"stage": "workshop"`, with `"prompts"` | `library.save()` |
+| `library/books/<id>/book.json` | The book model ([features/library.md](../features/library.md)); a book passed on from the [Workshop](../features/workshop.md) notes it (`"workshop": "<folder>"`) | `library.save()` |
 | `library/books/<id>/assets/<uuid>.png` | The book's illustrations (originals) | `library._store_asset()` |
 | `library/trash/` | Deleted books (can be restored by hand) | `library._delete()` |
 | `profit/snapshot.json` | A snapshot of the last sync: Etsy receipts, Printify and Gelato orders (slim), the sync cursor, `loaded` — when each of the three lists last loaded in full (the archive only trusts a fresh one). Read from disk once per file change (`load_snapshot()`) | `profit._sync()` |
@@ -38,6 +38,15 @@ code:
 | `archive/<id>/` | Order archive: `Cover.png` + the pages that went to print, and `entry.json` (what, where, when, address). **Deletes itself** 14 days after "Sent" (30 if the order can't be tracked), except "Keep" | [order archive](../features/archive.md) |
 | `window-profile/` | The Edge window profile (≈0.5 GB) | Edge |
 | `mockups/` | **The [Mockups](../features/mockups.md)' files** (the separate utility's data folder 2026-09-23…24, now Book Studio's `data_path("mockups", …)`): `book/<id>/` (the unpacked demo book, `BOOKS` — one at a time, apart from the orders' `tmp/dropped/`, gone on launch and close), `places.json` (where the templates / Photoshop are when not in the usual place, the last output folder `lastOut`, the last ZIP's folder `lastZip`), `work/<time>-<id>/` — one run: `templates/` (copies of the six templates; the three left open in Photoshop stay, the rest go right after the run), `pictures/` (gone right after the script), `mockups.jsx`, `job.json`, `status.json`, `finish.jsx`, `finish.json`, `finish-status.json`. A run folder goes after «Зберегти відкриті», at once when Photoshop is closed, else after a day (a copy the owner saved himself — a week). Left from the separate utility: `logs/` (its log; Book Studio's own is `logs/app.log` above); its `tmp/`, `cache/`, `window-profile/` go on the first launch (`forget_old_utility()`). A Photoshop started from here keeps its temp files in `tmp/photoshop/` (emptied once Photoshop is closed) | [mockups](../features/mockups.md) |
+
+## Outside `app/data`: the Workshop's books
+
+The [Workshop](../features/workshop.md)'s books are the book pipeline's folders, **`pipeline/books/<n>.<slug>/`**
+(since 2026-09-26; `core.WORKSHOP_BOOKS`), next to the agents' rules — the agents in Antigravity write there, so the
+folder has to be inside the one Antigravity opens. Not in git (`.gitignore`): every book's pictures, the originals and
+`.replaced/`. A book's own `book.json` is the Workshop's state (not the library's model). In the sandbox (the preview,
+the tests) the books are made-up ones in the data folder's `workshop-books/`, and so are its `downloads/`,
+`clipboard/`, `recycle-bin/` and `saved/`. `settings.json` keeps `workshop.saveDir` — where «Зберегти як…» last saved.
 
 ## Rules
 
@@ -61,7 +70,7 @@ code:
 - [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `UPLOADS_KEPT`, `forget_old_form()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `PLACES`, `WORK`, `BOOKS`, `PHOTOSHOP_TEMP`, `KEEP_RUNS`, `clean_runs()`, `clear_books()`, `forget_old_utility()`
-- [app/studio/library.py](../../app/studio/library.py) — `WORKSHOP`, `PROMPT_KEYS`, `is_workshop()`
+- [app/studio/core.py](../../app/studio/core.py) — `PIPELINE_DIR`, `WORKSHOP_BOOKS`, `SANDBOX`
 - [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `store()`, `refresh()`
 - [app/tests/__init__.py](../../app/tests/__init__.py) — `BOOK_STUDIO_DATA` for tests
 

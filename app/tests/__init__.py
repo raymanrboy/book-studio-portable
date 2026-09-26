@@ -16,6 +16,9 @@ os.environ["TEMP"] = os.environ["TMP"] = str(_ROOT)
 # whatever BOOK_STUDIO_DATA said. The tests below empty whole folders, so this may not be left to chance.
 _folder = tempfile.mkdtemp(prefix="bstests-")
 os.environ["BOOK_STUDIO_DATA"] = _folder
+# The Workshop's sandbox: its books, Downloads, clipboard and Recycle Bin are files in that folder too — the owner's
+# clipboard, keyboard (F8), Downloads and screen are never touched by a test.
+os.environ["BOOK_STUDIO_SANDBOX"] = "1"
 
 
 def _wipe() -> None:

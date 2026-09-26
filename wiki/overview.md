@@ -1,7 +1,7 @@
 ---
 title: Book Studio overview
 type: overview
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/studio/main.py
   - app/studio/core.py
@@ -38,7 +38,7 @@ on the Kyiv PC.
 | Settings | Service keys, the Etsy connection, the Printify template, the text check, the data folder | [features/settings.md](features/settings.md) |
 | Profit (hidden until 1 October) | An equivalent of the Etsy Profit Calculator: Etsy Net minus print cost | [features/profit.md](features/profit.md) |
 | **Two modes** (since 2026-09-24) | The brand icon switches between **Orders** (everything above, orange) and **Listings** (cyan: the Workshop and the Mockups below) | [features/modes.md](features/modes.md) |
-| Workshop (Listings) | Books in development: a prompt, a 2:1 spread and a text per row; passed to the library with their Etsy listing | [features/workshop.md](features/workshop.md) |
+| Workshop (Listings) | Books in development, written by the book pipeline's agents in Antigravity (`pipeline/`): the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches the downloaded pictures; passed to the library with their Etsy listing | [features/workshop.md](features/workshop.md) |
 | Mockups (Listings; a separate utility 2026-09-23…24) | Etsy listing pictures: a Canva demo book → the owner's Photoshop templates; he fits the front cover by hand | [features/mockups.md](features/mockups.md) |
 
 ## How it's built

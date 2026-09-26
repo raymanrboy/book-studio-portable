@@ -13,3 +13,5 @@ __pycache__/
 .claude/settings.local.json
 # Windows folder view settings
 desktop.ini
+# The Workshop's books: the pipeline's folders with every picture (gigabytes) — local only, like app/data
+pipeline/books/

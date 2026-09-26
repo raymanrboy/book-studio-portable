@@ -1,7 +1,7 @@
 ---
 title: Two modes — Orders and Listings
 type: feature
-updated: 2026-09-24
+updated: 2026-09-26
 code:
   - app/web/js/app.js
 ---
@@ -32,6 +32,10 @@ code:
 - **A mockups run is never lost**: the Mockups page is kept when the owner leaves it; while Photoshop works
   and the owner is in the orders, a small cyan dot breathes on the brand icon (and on «Мокапи» when he is
   elsewhere in the listings); when it ends, a notice says «Мокапи: готово · 7 картинок».
+- **A picture the Workshop waits for is never missed** (since 2026-09-26): while the generation mode waits and the
+  owner is elsewhere, the same dot shows (on the brand icon in the orders, on «Майстерня» in the listings), the
+  window's title says what is awaited («● Розворот 10–11 · 6 з 16 — Book Studio», seen on the taskbar while he is in
+  Gemini), and a notice comes for every picture caught.
 
 ## How it works
 
@@ -44,7 +48,8 @@ code:
   `vt-flip-out`, `vt-flip-in`; the brand gets its own `view-transition-name` only then).
 - `last` keeps each mode's last address; `entryOf()` is where a mode is entered (an order card only while it's
   kept — `ordersTarget()` stays for the «Замовлення» item itself).
-- The dot: the Mockups page sends the `bs:busy` event when a run starts and ends; `paintBusy()` shows it.
+- The dot: the Mockups page sends the `bs:busy` event when a run starts and ends, `workshop-live.js` — while a
+  picture is awaited (with what, for the title); `paintBusy()` shows the dots and writes the title (`BUSY_NAV`).
 
 ## Where in the code
 
