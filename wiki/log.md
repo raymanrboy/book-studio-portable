@@ -3,6 +3,31 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-26] update | Cleanup phase 1: 22 bugs fixed, each with a test
+
+- Money and safety: `httpc.request()` reads a reply cut short as "result unknown"; the Etsy callback page escapes
+  the link's text; Gelato's link goes to the registry as soon as the draft exists; Printify uploads every book's
+  pictures before making any book; a full Etsy read keeps each receipt once.
+- The rest: Esc in a Workshop dialog stays in the book; «Готово · N картинок» in the title (the shell alone writes
+  it); «Стоп» during placing stays a stop; the variant checked before anything is written; `_work/` in the book
+  check's key; no `.tmp` left by a locked page (`core.replace_file()`); `Request.int_param()` for numbers in a
+  query; no deleting a library book mid-import; the Order Creator's badge per book, its running guard and its
+  debounce cancelled on leaving; a ZIP or folder dropped on a passport slot is an import; the text check caches
+  no broken answer and never retries a timeout; the Profit page's saved period and its poll; dropped folders kept
+  a day unused; one `remembered()`/`remember()` for the pages' own preferences.
+- Checked: 336 tests (14 new), the wiki check; the preview — every page opens without a console error, Esc in the
+  Workshop's dialog, the done title. Not checked: a real send (tests and fakes only, as always).
+- Pages: plans/cleanup.md, decisions.md, security.md, architecture/server.md, architecture/frontend.md,
+  features/order-creator.md, features/text-check.md, features/library.md, features/workshop.md,
+  features/mockups.md, flows/dropped-files.md, rules/sync-policy.md, dev/testing.md.
+
+## [2026-09-26] decision | The big cleanup agreed: every finding of the code study to be fixed
+
+- The owner, after the study (7 parallel audits, report as a private page): "fix everything you found — a
+  flawless app; the wiki and GitHub up to date". The parallel mockups work committed, `book-console` merged into
+  `main` and pushed; the work goes on in the branch `cleanup`, merged after every phase.
+- The plan and its progress: [plans/cleanup.md](plans/cleanup.md). Pages: index.md.
+
 ## [2026-09-26] update | Mockups: Dedication left open for its background and table colours
 
 - The owner: Dedication must stay open too — he picks the background and table colours there.

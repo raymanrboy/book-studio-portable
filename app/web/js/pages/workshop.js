@@ -1,7 +1,10 @@
 // The Workshop (the Listings mode): the books in development — the book pipeline's folders, where the agents in
 // Antigravity write each book (the book console moved in, 26.09.2026). A card shows how far the book is on its path;
 // the gallery follows the files by itself (an agent's new book appears, a caught picture shows) without a reload.
-import { api, html, ic, ib, setHtml, on, media, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg, highlightTokens } from '../lib.js';
+import {
+  api, html, ic, ib, setHtml, on, media, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg, highlightTokens,
+  remembered, remember,
+} from '../lib.js';
 import { watch, genBar, genAction, genState, act } from '../workshop-live.js';
 
 const PREF = 'bs-workshop-view';
@@ -27,8 +30,7 @@ export function checkWord(c) {
 }
 
 export async function mount(view) {
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem(PREF) || '{}'); } catch { /* a convenience only */ }
+  const saved = remembered(PREF, {});
   const state = { books: [], folder: '', sort: SORTS.some((s) => s.value === saved.sort) ? saved.sort : 'number', query: '', shelf: 'work' };
   let first;
   try {
@@ -58,7 +60,7 @@ export async function mount(view) {
 
   const grid = view.querySelector('#ws-grid');
   const q = view.querySelector('#ws-q');
-  const persist = () => { try { localStorage.setItem(PREF, JSON.stringify({ sort: state.sort })); } catch { /* fine */ } };
+  const persist = () => remember(PREF, { sort: state.sort });
   const passed = () => state.books.filter((b) => b.library);
   const readiness = (b) => b.steps.reduce((sum, s) => sum + (s.state === 'done' || s.state === 'skip' ? 1 : s.state === 'part' ? 0.5 : 0), 0);
 

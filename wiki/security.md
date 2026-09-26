@@ -75,7 +75,11 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   except the sign-in page `/oauth/connect`.
 - Signing in to Etsy from Settings only opens after confirming "I'm on the Kyiv PC" (`oauthFlow()`); the
   second path is transferring a session with an "access link" from Profit Calculator.
-- Test: `OpenUrlGuard` in [test_flows.py](../app/tests/test_flows.py).
+- The page after Etsy's consent (`/etsy/callback`, reached without the token) shows the link's text escaped
+  (`html.escape`): the program's own page holds the session token, so a crafted link must never run a script
+  there (the 2026-09-26 audit).
+- Tests: `OpenUrlGuard`, `test_the_callback_page_shows_a_crafted_link_as_text` in
+  [test_flows.py](../app/tests/test_flows.py).
 
 ### Printify
 - Every request goes through `_check()`: a fixed list of allowed reads and only two writes
@@ -167,6 +171,8 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   book's `.replaced/`; a deleted book's whole folder goes to the **Windows Recycle Bin** (`to_recycle_bin()`).
 - **Downloads**: only the first new PNG/JPEG/WEBP that appears *after* «Генерувати» and has finished downloading is
   taken (moved into the book — the owner's wish); files that were there before, and anything else, are never touched.
+- **Only inside the book**: a variant a request names is an existing folder in `agent/variants/`, checked before
+  anything is written (`_variant()`, the 2026-09-26 audit: «../..» wrote outside the book).
 - **A book's `agent/` is the agents'**: the Workshop only reads it, except the hero it catches (`canonical.png`, a
   variant's `hero.png`). The agents write only into `agent/` and never into `book.json`.
 - The clipboard is filled only on the owner's press («Генерувати», «Далі»/F8, the copy buttons, «Відкрити агента»);
@@ -181,18 +187,21 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - Listens only on `127.0.0.1`; every `/api` request carries the session token `SESSION_TOKEN` (header
   `X-Studio-Token`), media uses the `?t=` parameter.
 - `_host_ok()` checks the Host header (protection against DNS rebinding).
+- A number in a query that isn't one (`?w=abc`) is its default (`Request.int_param()`), never a server error
+  with a traceback in the log.
 - The temporary Gelato link serves exactly one file and closes itself (`TunnelRegistry`).
 
 ## Where in the code
 
-- [app/studio/etsy.py](../app/studio/etsy.py) — `SCOPES`, `get()`, `start_oauth()`
+- [app/studio/etsy.py](../app/studio/etsy.py) — `SCOPES`, `get()`, `start_oauth()`, `_oauth_callback()`
 - [app/studio/settings_api.py](../app/studio/settings_api.py) — `_open_url()`
 - [app/web/js/pages/settings.js](../app/web/js/pages/settings.js) — `oauthFlow()`
 - [app/studio/printify.py](../app/studio/printify.py) — `_check()`, `call()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `create_product()`
 - [app/studio/creator.py](../app/studio/creator.py) — `create_printify_draft()`, `_master_fingerprint()`
 - [app/studio/gelato.py](../app/studio/gelato.py) — `_allowed()`, `create_draft_order()`
 - [app/studio/vault.py](../app/studio/vault.py) — `protect()`, `unprotect()`, `SECRET_NAMES`
-- [app/studio/server.py](../app/studio/server.py) — `SESSION_TOKEN`, `_host_ok()`, `route()`
+- [app/studio/server.py](../app/studio/server.py) — `SESSION_TOKEN`, `_host_ok()`, `route()`, `Request.int_param()`
+- [app/studio/workshop/pictures.py](../app/studio/workshop/pictures.py) — `_variant()`, `variant_dir()`
 - [app/studio/tunnel.py](../app/studio/tunnel.py) — `TunnelRegistry`, `cleanup_stale()`, `_ends_with_us()`
 - [app/studio/httpc.py](../app/studio/httpc.py) — `request()` (`idempotent`, `ambiguous`), `human()`
 - [app/studio/core.py](../app/studio/core.py) — `SAMPLE`

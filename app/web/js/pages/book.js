@@ -622,7 +622,9 @@ export async function mount(view, [id]) {
     const dropped = dropContents(e); // must be read while the drop event runs
     const files = [...e.dataTransfer.files];
     if (files.length === 1 && /\.json$/i.test(files[0].name)) { importTextJson(await files[0].text()); return; }
-    if (target && files.length === 1) { uploadTo(target.dataset.drop, files[0], !!target.dataset.auto); return; }
+    // One picture onto a slot goes to that slot; a folder or a ZIP (one «file» too) is an import wherever it lands.
+    const onePicture = files.length === 1 && !/\.zip$/i.test(files[0].name) && !dropped.entries.some((en) => en.isDirectory);
+    if (target && onePicture) { uploadTo(target.dataset.drop, files[0], !!target.dataset.auto); return; }
     if (target && files.length === 2 && /^spread\d+/.test(target.dataset.drop)) {
       const base = target.dataset.drop.split(':')[0];
       const [a, b] = files.sort((x, y) => naturalCompare(x.name, y.name));

@@ -105,10 +105,13 @@ function switchMode() {
 // Work going on in the Listings mode while the owner is elsewhere: a mockups run in Photoshop (pages/mockups.js), a
 // picture the Workshop waits for (workshop-live.js — its value says which row: the window's title carries it, so the
 // taskbar shows it while the owner is in Gemini). A small cyan dot on the brand icon (in the orders) or on the page's
-// rail item (in the listings, when he is on another page). The pages tell it through the 'bs:busy' event.
-const busy = { mockups: false, workshop: null };
+// rail item (in the listings, when he is on another page). The pages tell it through the 'bs:busy' event; `done` —
+// how a run ended while the window was not in front («Готово · 7 картинок»), in the title until he comes back to it.
+// The window's title is written here only.
+const busy = { mockups: false, workshop: null, done: null };
 const BUSY_NAV = { '#/mockups': 'mockups', '#/workshop': 'workshop' };
 window.addEventListener('bs:busy', (e) => { Object.assign(busy, e.detail || {}); paintBusy(); });
+window.addEventListener('focus', () => { if (busy.done) { busy.done = null; paintBusy(); } });
 function paintBusy() {
   const brandDot = document.getElementById('brand-busy');
   if (brandDot) brandDot.hidden = !((busy.mockups || busy.workshop) && mode === 'orders');
@@ -116,7 +119,8 @@ function paintBusy() {
     const page = Object.keys(BUSY_NAV).find((hash) => BUSY_NAV[hash] === dot.dataset.busy);
     dot.hidden = !(busy[dot.dataset.busy] && !(location.hash || '').startsWith(page));
   });
-  document.title = busy.workshop ? `● ${busy.workshop} — ${MODES[mode].title}` : MODES[mode].title;
+  const title = busy.workshop ? `● ${busy.workshop} — ${MODES[mode].title}` : MODES[mode].title;
+  document.title = busy.done ? `${busy.done} · ${title}` : title;
 }
 
 function placeNavPill() {

@@ -825,13 +825,6 @@ def _attention(req: Request):
     return {"ok": desktop.attention(core.APP_NAME)}
 
 
-def _width(req: Request, default: int) -> int:
-    try:
-        return max(64, min(4096, int(req.param("w") or default)))
-    except ValueError:
-        return default
-
-
 @route("GET", r"/media/mockups/template/([a-zA-Z0-9]+)", auth="media")
 def _template_media(req: Request):
     """The template's own preview (the picture Photoshop keeps inside the PSD) — the file is only read."""
@@ -840,7 +833,7 @@ def _template_media(req: Request):
     if not path or not path.is_file():
         raise ApiError("Не знайдено.", 404)
     try:
-        preview = images.preview(path, _width(req, 320))
+        preview = images.preview(path, req.int_param("w", 320, 64, 4096))
     except Exception:
         raise ApiError("Прев'ю шаблону не читається.", 404) from None
     return file_response(preview, "image/jpeg", cache="private, max-age=600")
@@ -852,24 +845,21 @@ def _out_media(req: Request):
     i = int(req.groups[1])
     if i >= len(files) or not files[i].is_file():
         raise ApiError("Не знайдено.", 404)
-    return file_response(images.preview(files[i], _width(req, 480)), "image/jpeg", cache="private, max-age=600")
+    return file_response(images.preview(files[i], req.int_param("w", 480, 64, 4096)), "image/jpeg", cache="private, max-age=600")
 
 
 @route("GET", r"/media/mockups/([0-9a-f]{16})/(cover|page|spread)", auth="media")
 def _media(req: Request):
     book, what = _book(req.groups[0]), req.groups[1]
-    try:
-        n = int(req.param("n") or 0)
-    except ValueError:
-        raise ApiError("Не знайдено.", 404) from None
+    n = req.int_param("n", 0)
     if what == "spread":
         left, right = book["pages"].get(n), book["pages"].get(n + 1)
         if not left:
             raise ApiError("Не знайдено.", 404)
-        height = max(120, min(2400, int(req.param("h") or 360)))
+        height = req.int_param("h", 360, 120, 2400)
         return file_response(images.compose_spread(left, right, height), "image/jpeg", cache="private, max-age=600")
     target = book["cover"] if what == "cover" else book["pages"].get(n)
     if not target:
         raise ApiError("Не знайдено.", 404)
-    size = max(64, min(4096, int(req.param("w") or 480)))
+    size = req.int_param("w", 480, 64, 4096)
     return file_response(images.preview(target, size), "image/jpeg", cache="private, max-age=600")

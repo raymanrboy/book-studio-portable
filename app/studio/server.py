@@ -96,6 +96,17 @@ class Request:
         values = self.query.get(name)
         return values[0] if values else default
 
+    def int_param(self, name: str, default: int, lo: int | None = None, hi: int | None = None) -> int:
+        """A whole number from the query (a preview's width, a page), kept within lo…hi; missing or not a number —
+        the default, never an error page."""
+        try:
+            value = int(self.param(name) or default)
+        except ValueError:
+            value = default
+        if lo is not None:
+            value = max(lo, value)
+        return min(hi, value) if hi is not None else value
+
     def content_length(self) -> int:
         try:
             return int(self.headers.get("Content-Length") or 0)

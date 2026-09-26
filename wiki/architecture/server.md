@@ -25,7 +25,9 @@ code:
   - `none` — `/api/ping`, `/api/app/bye`, `/etsy/callback`.
 - The function returns a `dict` (becomes JSON), `None` (becomes `{"ok": true}`), or a `Response`
   (`file_response()`, `html_response()`, `redirect()`).
-- `Request`: `req.json` (up to 25 MB), `req.param(name)`, `req.body_to_file(path, max)` for uploads.
+- `Request`: `req.json` (up to 25 MB), `req.param(name)`, `req.int_param(name, default, lo, hi)` (a number
+  from the query — a preview's width, a page; missing or not a number, it is the default, never an error page;
+  since 2026-09-26), `req.body_to_file(path, max)` for uploads.
 - Static files: `/css`, `/js`, `/img`, `/fonts` from `app/web`, `/` — `index.html`.
 - `state.app` — what `/api/ping` answers ("Book Studio"), so a second launch recognises the running copy
   and only opens another window. (From 2026-09-23 to 24 the [mockups](../features/mockups.md) were a second
@@ -72,7 +74,8 @@ Rule: the message for the user is in Ukrainian, specific, saying what happened a
   product, or order (the 2026-09-22 audit). A POST that only reads (searching Gelato orders, a new Etsy
   token) is marked `idempotent=True`.
 - `HttpError.ambiguous = True` means: the request may have done its work on the service (timeout, drop,
-  500/502/504). For creating a product/order/draft, that's a signal to **not retry**, and to ask the
+  a reply cut short while it was read — `IncompleteRead`, an SSL error — or 500/502/504; until the
+  2026-09-26 audit a cut-short reply escaped as a plain crash, without the "don't resend" warning). For creating a product/order/draft, that's a signal to **not retry**, and to ask the
   owner to check the service instead.
 - Printify's and Gelato's errors are read by one shared function (`httpc.human()`): the same wording for
   401/403/404/429/4xx/5xx, and `extra` carries `upstream` (the printer's status) and `ambiguous`.
@@ -86,6 +89,8 @@ Rule: the message for the user is in Ukrainian, specific, saying what happened a
   (`get()`, `section()`, `update()`, `replace_section()`, `drop_section()`).
 - `write_json()` writes atomically (a temp file → fsync → replace) and keeps a `.bak` copy; if the copy
   fails, the write still goes through, with a warning in the log (`.bak` is now older).
+  `replace_file()` — the move over a file Windows may hold for a moment (antivirus, the indexer, a picture
+  open in a viewer), tried a few times; the Workshop's pictures are written through it too.
 - `read_json()` reads `.bak` only on a **damaged** file; a file that's **missing** stays missing — the
   `.bak` of a deleted file is never read (since 2026-09-23: it used to bring back a state the program or
   a test had cleared).
@@ -99,10 +104,10 @@ Rule: the message for the user is in Ukrainian, specific, saying what happened a
 
 ## Where in the code
 
-- [app/studio/server.py](../../app/studio/server.py) — `route()`, `ROUTES`, `Request`, `Response`, `_Handler`, `ApiError`, `_index_html()`, `_State`, `_ping()`, `json_response()`, `file_response()`, `html_response()`, `redirect()`
+- [app/studio/server.py](../../app/studio/server.py) — `route()`, `ROUTES`, `Request`, `Request.int_param()`, `Response`, `_Handler`, `ApiError`, `_index_html()`, `_State`, `_ping()`, `json_response()`, `file_response()`, `html_response()`, `redirect()`
 - [app/studio/jobs.py](../../app/studio/jobs.py) — `Jobs`, `Job`, `Job.progress()`, `Job.share()`, `Job.snapshot()` (`errorExtra`), `UserError`, `JobError`
 - [app/studio/httpc.py](../../app/studio/httpc.py) — `request()`, `request_json()`, `human()`, `audit_log()`, `HttpError`, `Listing`, `RETRY_STATUSES`, `_NOT_SENT`
-- [app/studio/core.py](../../app/studio/core.py) — `Settings`, `DEFAULT_SETTINGS`, `write_json()`, `read_json()`, `setup_logging()`, `data_path()`, `SAMPLE`, `SANDBOX`, `PIPELINE_DIR`, `WORKSHOP_BOOKS`
+- [app/studio/core.py](../../app/studio/core.py) — `Settings`, `DEFAULT_SETTINGS`, `write_json()`, `replace_file()`, `read_json()`, `setup_logging()`, `data_path()`, `SAMPLE`, `SANDBOX`, `PIPELINE_DIR`, `WORKSHOP_BOOKS`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `api()`, `runJob()`, `upload()`, `media()`
 
 ## Related

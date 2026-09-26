@@ -134,25 +134,30 @@ export async function mount(view) {
   }
 
   // ---------------------------------------------------------------- left column
+  /** A book's file check as a badge: running (with its own id, so each book's percent lands on its own badge),
+   *  passed, or failed. */
+  function checkBadge(b, i) {
+    const v = b.validation;
+    if (b.validating) return html`<span class="v-badge run" id="cr-badge-${i}"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(b.validating)}%</span></span>`;
+    if (!v) return '';
+    return v.ok ? html`<span class="v-badge ok" data-tip="Усі PNG повністю прочитано й перевірено">${ic('check')}<span class="num">${v.found}/${v.expected}</span></span>`
+      : html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
+  }
+  const badgeProgress = (i, pct) => { const num = view.querySelector(`#cr-badge-${i} .num`); if (num) num.textContent = `${Math.round(pct)}%`; };
+
   /** One book's folder: the path, what the check found, and (with several books) its own name. */
   function folderBlock(i) {
     const s = cur();
     const b = cur().books[i];
     const v = b.validation;
-    let badge;
-    if (b.validating) badge = html`<span class="v-badge run"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(b.validating)}%</span></span>`;
-    else if (!v) badge = '';
-    else if (v.ok) badge = html`<span class="v-badge ok" data-tip="Усі PNG повністю прочитано й перевірено">${ic('check')}<span class="num">${v.found}/${v.expected}</span></span>`;
-    else badge = html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
     // A dragged folder is shown by its own name (b.label); b.folder is where the program copied it.
     return html`<div class="cr-book ${many() && i === cur().pick ? 'is-shown' : ''}" data-folder-drop data-book="${i}">
       ${many() ? html`<div class="row cr-book-head"><button class="cr-book-name" data-act="show-book" data-book="${i}" data-tip="Показати структуру цієї книги">${ic('book', 'icon-s')}Книга ${i + 1}</button>
-        <span class="spacer"></span>${badge}${cur().books.length > 2 || !cur().books[i].folder ? ib('x', 'Прибрати книгу', `data-act="drop-book" data-book="${i}"`, { cls: 'sm' }) : ''}</div>` : ''}
+        <span class="spacer"></span>${checkBadge(b, i)}${cur().books.length > 2 || !cur().books[i].folder ? ib('x', 'Прибрати книгу', `data-act="drop-book" data-book="${i}"`, { cls: 'sm' }) : ''}</div>` : ''}
       <div class="input-group">
         <input class="input path-input" id="cr-folder-${i}" data-book="${i}" placeholder="Папку ще не вибрано" value="${b.label || b.folder}" title="${b.label ? b.folder : ''}" spellcheck="false" autocomplete="off" aria-label="Шлях до папки">
         ${ib('folderPick', 'Обрати папку', `data-act="browse" data-book="${i}"`)}
       </div>
-      ${!many() ? html`<div class="row" style="display:none">${badge}</div>` : ''}
       ${s.reprint && i === 0 ? html`<div class="row faint cr-reprint">${ic('orderArchive', 'icon-s')}<span>${st.mode === 'printify'
         ? 'Передрук з архіву: нове замовлення на книгу, яка вже є в Printify'
         : 'Передрук з архіву: нова чернетка з тих самих файлів'}</span></div>` : ''}
@@ -167,12 +172,7 @@ export async function mount(view) {
 
   function folderCard(num) {
     const one = !many();
-    const b = bk();
-    let badge = '';
-    if (one && b.validating) badge = html`<span class="v-badge run"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(b.validating)}%</span></span>`;
-    else if (one && b.validation) badge = b.validation.ok
-      ? html`<span class="v-badge ok" data-tip="Усі PNG повністю прочитано й перевірено">${ic('check')}<span class="num">${b.validation.found}/${b.validation.expected}</span></span>`
-      : html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
+    const badge = one ? checkBadge(bk(), cur().pick) : '';
     return html`<section class="card card-pad stack">
       <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">${one ? 'Папка з файлами' : `Папки з файлами · ${cur().books.length} книги`}</h3>${badge}</div>
       ${cur().books.map((x, i) => folderBlock(i))}
@@ -455,8 +455,7 @@ export async function mount(view) {
       const res = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode, folder: b.folder } }), (j) => {
         if (my !== b.seq || st.mode !== mode) return;
         b.validating = Math.max(1, j.percent);
-        const badge = view.querySelector(`[data-book="${i}"] .v-badge.run, #cr-left .v-badge.run`);
-        if (badge) badge.lastChild.textContent = `Перевірка… ${Math.round(b.validating)}%`;
+        badgeProgress(i, b.validating);
       }, 300, () => my === b.seq && !gone);
       if (my !== b.seq) return;
       b.validation = res;
@@ -476,6 +475,7 @@ export async function mount(view) {
   // ---------------------------------------------------------------- create
   async function create() {
     const s = cur();
+    if (s.running) return; // Enter in a title while it sends: the send already under way goes on alone
     const mode = st.mode;
     s.books.forEach((b, i) => { b.title = ($(`#cr-title-${i}`)?.value ?? b.title).trim(); });
     const problems = [];
@@ -720,8 +720,7 @@ export async function mount(view) {
       const path = await receiveDrop(dropped, (pct) => {
         if (my !== b.seq || st.mode !== mode) return;
         b.validating = pct;
-        const num = view.querySelector(`[data-book="${i}"] .v-badge.run .num, #cr-left .v-badge.run .num`);
-        if (num) num.textContent = `${Math.round(pct)}%`;
+        badgeProgress(i, pct);
       });
       if (my !== b.seq) return;
       b.folder = path;
@@ -829,7 +828,7 @@ export async function mount(view) {
     // A kept page out of sight does not tick; back in sight, the countdown goes on from the same moment (_until).
     hidden() { clearInterval(tunnelTimer); },
     shown() { if (st.gelato.result && $('#cr-countdown')) startCountdown(); },
-    unmount() { gone = true; offs.forEach((f) => f()); clearInterval(tunnelTimer); },
+    unmount() { gone = true; validateSoon.cancel(); offs.forEach((f) => f()); clearInterval(tunnelTimer); },
   };
 }
 

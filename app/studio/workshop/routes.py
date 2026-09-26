@@ -160,9 +160,8 @@ def _media(req: Request):
     book_id, area, variant, name = req.groups
     path = books.media_file(book_id, area, name, variant)
     cache = "private, max-age=31536000, immutable" if req.param("v") else "no-cache"
-    width = req.param("w")
-    if width:
-        return file_response(images.preview(path, max(64, min(4096, int(width)))), "image/jpeg", cache=cache)
+    if req.param("w"):
+        return file_response(images.preview(path, req.int_param("w", 480, 64, 4096)), "image/jpeg", cache=cache)
     return file_response(path, cache=cache)
 
 

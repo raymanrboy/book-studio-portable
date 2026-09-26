@@ -4,7 +4,7 @@
 // click away, behind the details toggle, so the page stays quiet. Theme lives only in the rail.
 import {
   api, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, openExternal, syncSeg,
-  dateTime, sleep, slide, menu,
+  dateTime, sleep, slide, menu, remembered, remember,
 } from '../lib.js';
 import { refreshInfo } from '../info.js';
 
@@ -20,10 +20,10 @@ export async function mount(view, [section]) {
   let s;
   let tc = null; // text check: on/off, model, whether Ollama answers (asked separately — never slows the page)
   const editing = new Set();
-  const openCards = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]'));
+  const openCards = new Set(remembered(OPEN_KEY, []));
   const openDetails = new Set();
   if (section) openCards.add(section);
-  const persistOpen = () => localStorage.setItem(OPEN_KEY, JSON.stringify([...openCards]));
+  const persistOpen = () => remember(OPEN_KEY, [...openCards]);
 
   async function load() {
     s = await api('/api/settings');

@@ -650,7 +650,8 @@ export async function mount(view, [rawId]) {
   view.addEventListener('drop', onDrop);
 
   const onKey = (e) => {
-    if (topLayer() || document.querySelector('.menu') || e.ctrlKey || e.altKey || e.metaKey) return;
+    // defaultPrevented: the Esc a dialog took to close itself (it is already on its way out of the top layer).
+    if (e.defaultPrevented || topLayer() || document.querySelector('.menu') || e.ctrlKey || e.altKey || e.metaKey) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
     if (e.key === 'Escape') { location.hash = '#/workshop'; return; }
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {

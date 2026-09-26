@@ -95,6 +95,8 @@ code: []
 - [The book console](plans/book-console.md) — the plan of 2026-09-25 and its history: the book pipeline and the
   Workshop as one place, a generation mode that catches downloads; a prototype apart from Book Studio, then moved
   into the Workshop (2026-09-26).
+- [The big cleanup](plans/cleanup.md) — the plan of 2026-09-26 and its progress: every finding of the code
+  study fixed, phase by phase (bugs, money, speed, no blinking, duplicates, big files cut by job).
 - [Open questions and technical debt](plans/open-questions.md)
 
 ## Housekeeping

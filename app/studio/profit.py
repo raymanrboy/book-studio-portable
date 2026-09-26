@@ -297,7 +297,9 @@ def _sync(job, full: bool = False) -> dict:
             snap["receipts"] = merge_receipts(snap["receipts"], fresh)
             changed = len(fresh)
         else:
-            snap["receipts"] = fresh
+            # Etsy pages by offset, newest first: an order placed while the pages are read shifts every later page
+            # by one, and a receipt then comes twice.
+            snap["receipts"] = merge_receipts([], fresh)
             snap["etsyFullAt"] = started
         snap["etsyCursor"] = started
         snap["shopId"], snap["shopName"] = shop_id, shop_name

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import html
 import json
 import re
 import secrets
@@ -29,7 +30,6 @@ SYNC_FALLBACK_SECRET = "etsy-vault-fallback-secret-2026"  # used by Profit Calcu
 
 _token_lock = threading.Lock()
 _pending: dict[str, dict] = {}  # OAuth state -> {verifier, redirect, created}
-_last_oauth_event: dict = {}
 
 
 class EtsyError(ApiError):
@@ -463,7 +463,8 @@ def _oauth_callback(req: Request):
                 message = f"Магазин {result['shopName']} підключено. Можна закрити це вікно."
         except ApiError as err:
             title, message, ok = "Не вдалося підключити Etsy", str(err), False
-    _last_oauth_event.update({"ok": ok, "message": message, "at": time.time()})
+    # The query and the shop's name are someone else's text: escaped, so a crafted link can't run a script here.
+    title, message = html.escape(title), html.escape(message)
     color = "#16a34a" if ok else "#e11d48"
     return html_response(f"""<!doctype html><meta charset="utf-8"><title>{title}</title>
 <body style="font-family:Segoe UI,sans-serif;background:#111;color:#eee;display:grid;place-items:center;height:100vh;margin:0">

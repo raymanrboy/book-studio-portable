@@ -1,6 +1,7 @@
 """Minimal HTTPS client (stdlib) with retries and readable errors."""
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import socket
@@ -107,7 +108,9 @@ def request(
                 delay *= 2
                 continue
             raise last_error from None
-        except (urllib.error.URLError, socket.timeout, TimeoutError, ConnectionError) as err:
+        # Everything else a connection can do: refused, dropped, timed out, or a reply cut short while it was read
+        # (IncompleteRead, an SSL error) — the last ones after the server may have done its work.
+        except (http.client.HTTPException, OSError) as err:
             reason = getattr(err, "reason", err)
             ambiguous = not isinstance(reason, _NOT_SENT)
             last_error = HttpError(f"Немає з'єднання: {reason}", url=url, ambiguous=ambiguous)

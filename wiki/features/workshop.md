@@ -86,7 +86,9 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
   spreads as the generator made them), «Ще» — **delete** (the whole folder into the Windows Recycle Bin, confirmed); beside it the one text button **«Передати в бібліотеку»** (in the
   accent colour once every picture and the cover are there), then «У бібліотеці» (opens the library book).
 - **The generation bar** (sticky on top, `genBar()`): what is awaited, what's in the clipboard, the parts of a
-  several-part paste, «Далі» (F8), «покласти ще раз», «Стоп», the queue's progress («6 з 10», a thin line). On
+  several-part paste, «Далі» (F8), «покласти ще раз», «Стоп», the queue's progress («6 з 10», a thin line).
+  «Стоп» (or deleting the book, or another row started) while a caught picture is still being cut stays a stop:
+  the picture is kept in its row, the old queue never comes back (the 2026-09-26 audit). On
   another book's page or the gallery it names the book that waits, with «Перейти».
 - **The path strip** (`STEPS`): Формула → Герой → Історія → Текст → Промпти · GO → Картинки `n/16` → Обкладинка →
   Canva → Мокапи → Бібліотека. Each a rounded square, the Order Creator's step number (since 2026-09-26; circles

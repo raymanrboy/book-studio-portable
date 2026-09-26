@@ -8,6 +8,7 @@ listing mockups (mockups.read_book).
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import time
@@ -23,6 +24,9 @@ DROP_IMAGE = re.compile(r"\.(png|jpe?g|webp)$", re.I)
 MAX_DROP_FILE = 400 * 1024 * 1024
 MAX_DROP_ZIP = 6 * 1024 * 1024 * 1024
 _DROP_SESSION = re.compile(r"[0-9a-f]{32}")
+# A dropped folder unused this long goes at the next drop (and every one at a restart). An order's card keeps its
+# folder for as long as the program runs (decision 2026-09-18), and each check of the folder counts as a use.
+KEEP_UNUSED = 24 * 3600
 
 UPSCAYL_TAIL = re.compile(r"_upscayl.*$", re.I)        # "12_upscayl_4x_ultrasharp" -> "12"
 COVER_NAME = re.compile(r"cover|cober|обкладин", re.I)  # "Cover", the usual slip "Cober", "Обкладинка"
@@ -91,6 +95,17 @@ def clear_drops(keep: str | None = None, older_than: float = 0) -> None:
                 shutil.rmtree(entry, ignore_errors=True) if entry.is_dir() else entry.unlink(missing_ok=True)
         except OSError:
             pass
+
+
+def touch(folder: Path) -> None:
+    """A dropped folder in use (its card or the Order Creator checks it again): its time is now, so the clean-up
+    after the next drop leaves it."""
+    try:
+        rel = folder.resolve().relative_to(DROPS.resolve())
+        if rel.parts:
+            os.utime(DROPS / rel.parts[0])
+    except (ValueError, OSError):
+        pass
 
 
 def _drop_root(session: str | None) -> Path:
@@ -190,5 +205,5 @@ def _drop_done(req: Request):
     root = _drop_root(session)
     if not root.is_dir():
         raise ApiError("Файли не отримано — перетягніть папку ще раз.")
-    clear_drops(keep=session, older_than=2 * 3600)
+    clear_drops(keep=session, older_than=KEEP_UNUSED)
     return {"path": str(dropped_top(root) if body.get("whole") else dropped_folder(root))}

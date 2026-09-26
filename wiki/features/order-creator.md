@@ -1,7 +1,7 @@
 ---
 title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
-updated: 2026-09-23
+updated: 2026-09-26
 code:
   - app/studio/creator.py
   - app/web/js/pages/creator.js
@@ -110,18 +110,21 @@ every book of a receipt; `books_of()` checks them, `joint_title()` gives a share
    `Cover.png` at 4672×2464 and `1…24.png` at 4000×4000, real PNGs, fully decoded, no animation;
    duplicates — a warning. No book is created while another one's files are wrong.
 3. Reads the Master, checks the blueprint/provider, saves a snapshot.
-4. For every book (`_printify_product()`): uploads images 3 at a time (`_printify_images()`); already
-   uploaded ones (SHA-256 cache, checked to still exist in Printify) aren't duplicated. A failure → nothing
-   more is created; a retry continues from where it stopped.
-5. Creates the product from the Master's configuration (`build_printify_payload()`), no auto-retry.
-6. Re-reads the book (image positions); the Master — once, after every book (unchanged).
+4. Every book's images go up first, 3 at a time (`_printify_images()`); already uploaded ones (SHA-256
+   cache, checked to still exist in Printify) aren't duplicated. A failure → **no book is made at all**, and
+   a retry continues from where it stopped (the 2026-09-26 audit: the books went one after another, so a
+   failed upload of book 2 left book 1 made, and the retry made it a second time).
+5. Then each book (`_printify_product()`) is made from the Master's configuration
+   (`build_printify_payload()`), no auto-retry.
+6. Re-reads the book (image positions); the Master — once, after every book (unchanged). The books exist by
+   then: a failed read-back is a warning in the result, never a failed send (a retry would make them twice).
 7. With an address — **one** order for every book (`_printify_order()` → `create_order_on_hold()`):
    `external_id` = `<receipt>-<8 characters>`, `label` = the shared title, **one line item per book**,
    matte variant, standard shipping, no Express or notifications. An error here doesn't undo the books:
    `orderError` explains what to do.
-8. "Result unknown" (the connection dropped after the request was sent, or the printer answered with
-   500/502/504) is told apart from a refusal the same way for every send (`_unknown_outcome()`): the
-   message says **not to resend**, and to check Printify / Gelato first.
+8. "Result unknown" (the connection dropped after the request was sent, a reply cut short while it was
+   read, or the printer answered with 500/502/504) is told apart from a refusal the same way for every send
+   (`_unknown_outcome()`): the message says **not to resend**, and to check Printify / Gelato first.
 
 Before the first such order, the interface shows a "Manual order approval in Printify" dialog
 (`confirmManualApproval()`), and the server remembers `manualApprovalConfirmedAt`.
@@ -147,8 +150,11 @@ Before the first such order, the interface shows a "Manual order approval in Pri
 5. `create_draft_order()`: `orderReferenceId` = the shared title `<receipt> - <name>` (for several
    books — `<receipt> - Emma, Liam`; so that once confirmed, paid in Gelato and synced, the order moves
    to "In progress"), **one item per book** with its own `pageCount` and its own
-   `files: [{type: "default", url}]`, metadata; then the draft is read back for the journal
-   (`_journal_readback()` — one record per item).
+   `files: [{type: "default", url}]`, metadata. As soon as Gelato answers, the link goes to the registry —
+   the draft exists and still has to fetch its PDFs, so nothing that fails after this point can take them
+   away (the 2026-09-26 audit); then the draft is read back for the journal (`_journal_readback()` — one
+   record per item; a failed read-back is only a journal note). A reply without the draft's number is a
+   "result unknown": don't resend, check Drafts.
 6. The link lives for 15 min (`tunnelKeepAliveSeconds`); Gelato fetches the file itself, in about a
    minute.
 7. **Result unknown** (Gelato didn't answer within 120 s, the connection dropped, 500/502/504): the draft

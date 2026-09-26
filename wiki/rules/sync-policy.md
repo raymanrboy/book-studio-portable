@@ -1,7 +1,7 @@
 ---
 title: When orders are refreshed
 type: rule
-updated: 2026-09-23
+updated: 2026-09-26
 code:
   - app/studio/profit.py
   - app/web/js/order-bits.js
@@ -26,7 +26,9 @@ code:
 
 1. **Etsy**: only receipts changed since the previous sync (with a 1-hour overlap); a full re-read
    happens on the first sync, once a week, with a different shop, or on request (`full`). An Etsy
-   failure = a failure of the whole sync.
+   failure = a failure of the whole sync. A full read keeps each receipt once (`merge_receipts()`): Etsy pages
+   by offset, so an order placed while the pages are read made one receipt come twice — a doubled queue row
+   and doubled money (the 2026-09-26 audit).
 2. **Printify**: every order in the shop (with tracking numbers). A failure → a warning, the previous
    data stays.
 3. **Gelato**: every order (orders and drafts). The search doesn't return tracking numbers, so for

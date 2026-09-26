@@ -78,6 +78,7 @@ code:
 | Notices | `toast()`, `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `menu()`, `closeMenu()`, `topLayer()` |
 | Segmented switch | `segHtml()`, `syncSeg()`, `setSeg()` |
 | Formatting | `money()`, `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
+| A page's own preference | `remembered(key, fallback)` / `remember(key, value)` — kept in the window (a filter, a period, the open cards, the mockups' picks); missing or broken it is the fallback, never an error that stops the page (since 2026-09-26) |
 | Smoothness | `fadeImages()` (decoding off the main thread), `slide()` (height), `flip()` (moving cards), `keepFocus()`, `idle()`, `reducedMotion()` |
 | Live pages | `patch()` — a keyed redraw in place: an unchanged part stays, a changed one is replaced, a picture already shown is carried over (the Workshop) |
 
@@ -93,7 +94,8 @@ code:
 - [The Mockups](../features/mockups.md) — `pages/mockups.js`, the separate utility's page moved in (its own
   window `mockups.html` + `mockups-shell.js` went). It keeps the usual page contract and adds `keep()`/`revive()`
   so the book, the picks and a run survive stepping away; it tells the rail about a run through the `bs:busy`
-  event. Laid out with the Order Creator's own parts (`.creator-grid`, `.card` steps with `.step-no`,
+  event, and how a run ended while the window was behind Photoshop (`done` — the shell alone writes the window's
+  title, and clears those words when the window comes to the front). Laid out with the Order Creator's own parts (`.creator-grid`, `.card` steps with `.step-no`,
   `.path-input` + `folderPick`, `.v-badge`, `.structure-cover`, `.spread-grid`, `.result-card`) plus its own
   `.mk-*`; a spread or a slot is dragged with its own data types (`application/x-mk-spread`, `…-slot`), so the
   file-drop highlight (`wireFolderDrop()` — files only) never reacts to it.
@@ -180,7 +182,7 @@ code:
 - [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
 - [app/web/js/app.js](../../app/web/js/app.js) — `MODES`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `entryOf()`, `switchMode()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `buildNav()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
-- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `remembered()`, `remember()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`

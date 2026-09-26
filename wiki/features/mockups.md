@@ -67,7 +67,9 @@ and a notice says when it ends («Мокапи: готово · 6 картино
      previews; a click opens them large, the viewer's "original" button opens the file) and the folder
      button. When Book Studio's window isn't in front (the owner watches Photoshop), **its taskbar button
      flashes, Windows plays its notification sound and the title says «Готово · 6 картинок · Book Studio»** —
-     the owner's question "is there any message that it's finished?".
+     the owner's question "is there any message that it's finished?". The page hands the words to the shell
+     (`bs:busy` with `done`), which alone writes the window's title and clears them when the window comes to the
+     front (the 2026-09-26 audit: the page wrote the title itself and the shell overwrote it at once).
    - **«Ваша черга — у Photoshop»** (amber): the templates left open are named; after fitting the front
      cover in each, **«Зберегти відкриті й закрити»** runs a second, short script (one more "Yes") that
      saves them as PNG into the same folder, named like the rest (`1. Cover 1.png`,

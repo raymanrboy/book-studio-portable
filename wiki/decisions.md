@@ -9,6 +9,21 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-26 — The big cleanup: every finding of the code study is fixed
+
+- **Decision (the owner):** "fix everything you found — I need a flawless app; the wiki and GitHub up to date".
+  The plan and its progress — [plans/cleanup.md](plans/cleanup.md); `main` is updated after every phase.
+- **Changed on purpose in phase 1** (not to be "fixed" back):
+  - Printify: **every book's pictures go up before any book is made**; the steps after a book or a draft exists
+    (reading it back, the Master's check) only warn — they never fail the send, or a retry would make it twice.
+  - Gelato: the PDF link belongs to the registry as soon as the draft exists.
+  - A reply cut short while it is read counts as "result unknown" (don't resend), like a timeout.
+  - The text check keeps no broken answer and never asks a timed-out page twice.
+  - A dropped folder stays until a day unused (each check of it is a use), not 2 hours from the drop.
+  - A library book is not deleted while its folder import runs.
+- **Why:** each was a real way to lose work or money (a second order, a draft without its files, a card losing its
+  folder), found by reading the code; every one now has its own test.
+
 ## 2026-09-26 — Mockups: Dedication stays open for its colours
 
 - **The owner:** "Dedication has to be left open too, because there I pick the colour of the background and the

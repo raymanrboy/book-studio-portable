@@ -3,6 +3,7 @@ whole check with the model faked (no Ollama needed; made-up children and buyers 
 import importlib.util
 import io
 import json
+import shutil
 import re
 import random
 import tempfile
@@ -386,7 +387,7 @@ class WholeCheck(unittest.TestCase):
                     self.printed[name] = fill(other["text"][key])
             res = self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
         finally:
-            (library._book_dir(other["id"]) / "book.json").unlink()
+            shutil.rmtree(library._book_dir(other["id"]))  # the whole book, or later tests hear of a broken one
         alarms = [i for i in res["issues"] if i["kind"] == "book"]
         self.assertEqual(len(alarms), 1)
         self.assertEqual((alarms[0]["level"], alarms[0]["like"]["id"], len(alarms[0]["pages"])), ("error", other["id"], 11))
@@ -399,6 +400,46 @@ class WholeCheck(unittest.TestCase):
         first = self.calls
         self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
         self.assertEqual(self.calls, first)
+
+    def test_a_broken_answer_is_asked_again_next_time(self):
+        """Audit 26.09.2026: an answer cut off by the model was kept, so ↻ never asked that page again — «Сторінку не
+        вдалося перевірити» stayed until the program was restarted."""
+        broken = {"7.png|None"}
+
+        def chat(model, prompt, picture, schema=None, max_tokens=None):
+            if schema is not None and picture in broken:
+                self.calls += 1
+                return '{"transcript": "cut off here'
+            return real(model, prompt, picture, schema, max_tokens)
+        real = self.fake_chat
+        self.fake_chat = chat
+        try:
+            res = self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
+        finally:
+            self.fake_chat = real
+        failed = lambda res: [i for i in res["issues"] if "не вдалося перевірити" in i["text"]]
+        self.assertEqual(len(failed(res)), 1)
+        before = self.calls
+        res = self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
+        self.assertEqual(self.calls, before + 1)                   # only that page is asked again …
+        self.assertEqual(failed(res), [])                            # … and now it is read
+
+    def test_a_page_that_timed_out_is_not_asked_twice(self):
+        asked = []
+
+        def chat(model, prompt, picture, schema=None, max_tokens=None):
+            if schema is not None and picture == "7.png|None":
+                asked.append(picture)
+                raise tc.TimedOut("Модель не відповіла вчасно.")
+            return real(model, prompt, picture, schema, max_tokens)
+        real = self.fake_chat
+        self.fake_chat = chat
+        try:
+            res = self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
+        finally:
+            self.fake_chat = real
+        self.assertEqual(asked, ["7.png|None"])
+        self.assertTrue(any("не вдалося перевірити" in i["text"] for i in res["issues"]))
 
     def test_light_check_without_library_texts(self):
         res = self.run_check(item(gifter="Grandma & Grandpa"))

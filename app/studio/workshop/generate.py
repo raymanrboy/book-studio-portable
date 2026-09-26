@@ -255,6 +255,11 @@ class Session:
             self.last = {"book": a["book"], "variant": a["variant"], "key": a["key"], "label": a["label"],
                          "note": result.get("note", ""), "file": file.name, "at": time.time()}
             core.log.info("Workshop: caught %s → %s %s", file.name, a["book"], a["key"])
+            if self.active is not a:
+                # «Стоп», the book deleted or another row started while the picture was placed (0.5–3 s): the
+                # picture is in its book, but that wait is over — its queue must not come back.
+                self._bump()
+                return
             queue = a["queue"]
             if a["key"] == "cover" and not queue:
                 queue = ["cover-wrap"]  # the cover's picture goes on to its margins by itself

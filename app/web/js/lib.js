@@ -102,6 +102,15 @@ export function on(root, type, selector, handler) {
   return () => root.removeEventListener(type, fn);
 }
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** A page's own preference kept in the window (a filter, a period, the open cards) — a nicety only: missing or
+ *  broken, it is the fallback, never an error that stops the page. */
+export function remembered(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; } catch { return fallback; }
+}
+export function remember(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* not kept this time */ }
+}
 export function debounce(fn, ms = 300) {
   let t;
   const d = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };

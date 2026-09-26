@@ -36,8 +36,8 @@ listing's photo as a thumbnail. A duplicate by listing isn't created (the existi
 The same dialog, with a book given to it (`openAddBook(existing, transfer)`), is the Workshop's **«Передати в
 бібліотеку»** (since 2026-09-24): no title or Canva fields, what the book still lacks on top, the listing field
 and its check as here, «Передати в бібліотеку» → `POST /api/workshop/books/<id>/to-library`
-([workshop](workshop.md#передати-в-бібліотеку)). A Workshop book opened at `#/book/<id>` goes to its Workshop
-page.
+([workshop](workshop.md#передати-в-бібліотеку)). The Workshop's books are not library books: they live in
+`pipeline/books/`, and the library book is made only at this moment (since 2026-09-26).
 
 ## A book's passport (`#/book/<id>`)
 
@@ -54,8 +54,10 @@ page.
   or the left/right page separately (can be swapped). The endpapers are shown empty.
 - **Actions** (top right): import from a folder, add files, the book's text (upload/paste JSON, copy the
   whole text or as JSON), "More": refresh from Etsy, the listing's photo as a thumbnail, a Canva link,
-  export files to a folder, open the book's folder, archive, delete (to trash).
-- **Drag and drop**: a file onto a slot → goes there; a wide picture onto half a spread → becomes the
+  export files to a folder, open the book's folder, archive, delete (to trash; refused while the book's folder
+  import still runs — it would make the folder again without its `book.json`, the 2026-09-26 audit).
+- **Drag and drop**: a picture onto a slot → goes there (a ZIP or a folder dropped on a slot is an import, like
+  anywhere else on the page — it was refused as «не зображення» until the 2026-09-26 audit); a wide picture onto half a spread → becomes the
   whole spread; two files onto a spread → left and right; a single `.json` → text. **A folder, ZIP, or
   several files** (dropped, or via "Add files") → a copy into the program → the same "Import from
   folder" dialog and the same server rules (`scan_folder()`) as the "Import from folder" button
@@ -79,15 +81,11 @@ illustration filters, opening the Etsy listing. See [decisions](../decisions.md)
   "cover": <asset|null>, "thumbnail": <asset|null>,
   "slots": { "page1": {"image"}, "spread2": {"image", "left", "right"}, …, "page30": {"image"} },
   "text":  { "cover", "page1", "spread2" … "spread15", "page30" },
-  "stage": "workshop", "prompts": { "cover", "page1", "spread2" … "spread15", "page30" },
-  "fromWorkshopAt": "…" }
+  "workshop": "41.slug" }
 ```
-`stage` and `prompts` only on a book made in the [Workshop](workshop.md) (since 2026-09-24): `"stage":
-"workshop"` while it's there (no listing yet; its spreads are two pages, and the slot also notes `mirrored`
-and `source` — [workshop](workshop.md#a-spread-becomes-two-pages); `all_books()` leaves it out unless asked for
-`stage="workshop"`, so orders, the book counter and the text check never see it); passed to the library, the
-mark goes, the listing and `fromWorkshopAt` are written, the prompts stay (unseen here). A library book never
-gains empty prompts (`load()` fills them in only for a book that has them).
+`workshop` only on a book passed from the [Workshop](workshop.md) (since 2026-09-26): the folder of the Workshop
+book it was made from, in `pipeline/books/`. (From 2026-09-24 to 26 a Workshop book was itself a library book
+marked `"stage": "workshop"`, with its prompts; that model is gone.)
 Asset: `{id, file, originalName, width, height, bytes, addedAt, lqip}`. `rev` guards against two windows
 changing the same book at once (a `PATCH` with a stale `rev` → 409).
 

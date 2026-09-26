@@ -287,8 +287,8 @@ def _shops(req: Request):
 
 @route("GET", "/api/printify/products")
 def _products(req: Request):
-    shop_id = int(req.param("shop") or core.settings.section("printify").get("shopId") or 0)
-    page = int(req.param("page") or 1)
+    shop_id = req.int_param("shop", int(core.settings.section("printify").get("shopId") or 0))
+    page = req.int_param("page", 1, 1)
     data = products(shop_id, page)
     items = [{
         "id": p.get("id"), "title": p.get("title"), "blueprintId": p.get("blueprint_id"),

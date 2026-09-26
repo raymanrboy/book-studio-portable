@@ -118,15 +118,16 @@ def write_json(path: Path, obj: Any, backup: bool = True) -> None:
         os.fsync(f.fileno())
     if backup and path.exists():
         try:
-            _replace(path, path.with_name(path.name + ".bak"), copy_only=True)
+            replace_file(path, path.with_name(path.name + ".bak"), copy_only=True)
         except OSError:
             # The write goes on (the new data matters more); the .bak is now older than one write.
             log.warning("Backup copy of %s not made; the .bak keeps an older state", path.name, exc_info=True)
-    _replace(tmp, path)
+    replace_file(tmp, path)
 
 
-def _replace(src: Path, dst: Path, copy_only: bool = False) -> None:
-    # Windows can briefly lock files (antivirus, indexer) — retry a few times.
+def replace_file(src: Path, dst: Path, copy_only: bool = False) -> None:
+    """`src` moved over `dst` (or copied, `copy_only`). Windows can briefly lock a file (antivirus, the indexer,
+    a picture open in a viewer) — tried a few times."""
     last: Exception | None = None
     for attempt in range(8):
         try:

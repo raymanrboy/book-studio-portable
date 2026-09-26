@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 import unittest
+import unittest.mock
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -296,6 +297,11 @@ class TheBookCheck(Base):
         self.assertIs(first, rows.book_check(path))  # the same result, not run again
         (path / "agent" / "book-text.md").write_text("## Spread 15 — Finale\nThe end.\n", encoding="utf-8")
         self.assertIsNot(first, rows.book_check(path))
+        # the story blueprint the check reads first lives in agent/_work/ (audit 26.09.2026: it was not looked at)
+        second = rows.book_check(path)
+        (path / "agent" / "_work").mkdir(exist_ok=True)
+        (path / "agent" / "_work" / "story-blueprint.md").write_text("# Blueprint\n", encoding="utf-8")
+        self.assertIsNot(second, rows.book_check(path))
 
     def test_the_agents_run_the_same_check_from_the_pipelines_folder(self):
         script = core.PIPELINE_DIR / "check_book.py"
@@ -306,6 +312,26 @@ class TheBookCheck(Base):
 
 
 class APictureIntoItsRow(Base):
+    def test_a_variant_is_a_folder_of_the_book_or_nothing_is_written(self):
+        """Audit 26.09.2026: the variant from a request went into paths unchecked — «../..» wrote outside the book."""
+        for bad in ("../..", "..", "no-such-variant"):
+            with self.subTest(variant=bad), self.assertRaises(ApiError):
+                pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png", variant=bad)
+        self.assertFalse((self.dir / H / "originals" / "variants").exists())
+        self.assertFalse((self.dir / "originals").exists())
+        with self.assertRaises(ApiError):
+            pictures.flip(H, "spread2", variant="..")
+        with self.assertRaises(ApiError):
+            pictures.remove(H, "spread2", variant="..")
+
+    def test_a_locked_page_leaves_no_half_written_file(self):
+        """A page open in a viewer can stay locked: the write fails, but no «2.png.tmp» is left among the pages."""
+        def locked(src, dst, copy_only=False):
+            raise PermissionError("in use")
+        with unittest.mock.patch.object(core, "replace_file", locked), self.assertRaises(PermissionError):
+            pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
+        self.assertEqual([p.name for p in (self.dir / H / "pictures").glob("*.tmp")], [])
+
     def test_a_plain_spread_becomes_its_two_pages(self):
         r = pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
         self.assertEqual(r["note"], "Розворот 2–3: дві сторінки готові")
@@ -472,6 +498,24 @@ class CatchingDownloads(Base):
         spread_png(self.downloads / "h.png")
         self.look()
         self.assertFalse((self.dir / S / "pictures" / "12.png").exists())
+
+    def test_a_stop_while_the_picture_is_placed_stays_a_stop(self):
+        """Audit 26.09.2026: placing a picture takes up to a few seconds outside the lock; «Стоп» pressed meanwhile
+        was undone — the old queue started again and took the clipboard."""
+        self.s.start(S, None, series=True)
+        place = pictures.place
+
+        def slow_place(*args, **kwargs):
+            self.s.stop()  # the owner presses «Стоп» while the picture is being cut
+            return place(*args, **kwargs)
+        spread_png(self.downloads / "g.png")
+        self.s.look()
+        with unittest.mock.patch.object(pictures, "place", slow_place):
+            self.s.look()
+        st = self.s.status()
+        self.assertIsNone(st["active"])                              # stopped stays stopped
+        self.assertEqual(st["last"]["file"], "g.png")                 # the picture itself is kept in its row
+        self.assertTrue((self.dir / S / "pictures" / "10.png").exists())
 
     def test_a_deleted_book_stops_only_its_own_wait(self):
         self.s.start(S, "spread6")

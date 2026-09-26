@@ -321,13 +321,15 @@ _check_lock = threading.Lock()
 
 
 def _agent_key(agent: Path) -> str:
+    """What the check reads, as sizes and times: agent/ and its _work/ (the agent's story blueprint lives there)."""
     parts = []
-    for name in books._names(agent):
-        try:
-            st = (agent / name).stat()
-        except OSError:
-            continue
-        parts.append(f"{name}:{st.st_size}:{st.st_mtime_ns}")
+    for folder in (agent, agent / "_work"):
+        for name in books._names(folder):
+            try:
+                st = (folder / name).stat()
+            except OSError:
+                continue
+            parts.append(f"{folder.name}/{name}:{st.st_size}:{st.st_mtime_ns}")
     return "|".join(parts)
 
 

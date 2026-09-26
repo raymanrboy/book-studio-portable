@@ -3,7 +3,7 @@
 // so images are never reloaded and every change glides with intermediate frames.
 import {
   api, html, ic, ib, setHtml, on, media, modal, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
-  raw, flip, debounce, menu, copyText,
+  raw, flip, debounce, menu, copyText, remembered, remember,
 } from '../lib.js';
 import { store, refreshInfo } from '../info.js';
 
@@ -16,7 +16,7 @@ const SORTS = [
 ];
 
 export async function mount(view) {
-  const saved = JSON.parse(localStorage.getItem(PREF) || '{}');
+  const saved = remembered(PREF, {});
   const state = { books: [], filter: saved.filter || 'active', sort: saved.sort || 'recent', query: '' };
   try {
     state.books = (await api('/api/library/books')).books;
@@ -43,7 +43,7 @@ export async function mount(view) {
 
   const grid = view.querySelector('#lib-grid');
   const q = view.querySelector('#lib-q');
-  const persist = () => localStorage.setItem(PREF, JSON.stringify({ filter: state.filter, sort: state.sort }));
+  const persist = () => remember(PREF, { filter: state.filter, sort: state.sort });
   const sortTip = () => {
     const b = view.querySelector('#lib-sort');
     const label = `Сортування: ${SORTS.find((s) => s.value === state.sort)?.label.toLowerCase()}`;

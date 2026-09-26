@@ -1,7 +1,9 @@
 """End-to-end flows with the external services replaced by fakes (no network, no real accounts)."""
 import json
 import re
+import shutil
 import tempfile
+import time
 import unittest
 import urllib.parse
 from pathlib import Path
@@ -13,6 +15,7 @@ from PIL import Image
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
 from studio import archive, core, creator, drops, etsy, gelato, httpc, printify, profit, tunnel
 from studio.jobs import Job, JobError
+from studio.server import ApiError
 from studio.vault import vault
 
 
@@ -172,11 +175,36 @@ class PrintifyDraftFlow(unittest.TestCase):
         self.assertEqual({k["orderId"] for k in kept}, {"order-on-hold-1"})
         self.assertEqual({k["sendLog"] for k in kept}, {res["sendLog"]})
         record = journal(res["sendLog"])
-        assert_steps(self, record, ["files", "files", "master", "uploads", "product", "verify",
-                                    "uploads", "product", "verify", "masterSafe", "printOrderRemembered",
+        assert_steps(self, record, ["files", "files", "master", "uploads", "uploads", "product", "verify",
+                                    "product", "verify", "masterSafe", "printOrderRemembered",
                                     "archive", "archive"])
         self.assertEqual([s["book"] for s in record["steps"] if s["step"] == "product"],
                          ["4100000001 - Emma", "4100000001 - Liam"])
+
+    def test_a_failed_upload_of_the_second_book_makes_no_book_at_all(self):
+        """Audit 26.09.2026: the books went up one after another, so a failed upload of book 2 left book 1 made —
+        and the repeat the message promises made it a second time. Every picture goes up first now."""
+        second = Path(self.dir.name) / "liam"
+        second.mkdir()
+        png(second / "Cover.png", (60, 30), (30, 20, 10))
+        for i in range(1, 25):
+            png(second / f"{i}.png", (40, 40), (5, i * 10, 200))
+        real_upload = printify.upload_image
+
+        def upload(path, name):
+            if Path(path).parent == second and name == "7.png":
+                raise ApiError("Printify: upload refused")
+            return real_upload(path, name)
+        books = [{"folder": str(self.root), "title": "4100000001 - Emma"},
+                 {"folder": str(second), "title": "4100000001 - Liam"}]
+        with mock.patch.object(printify, "call", self.fake):
+            with mock.patch.object(printify, "upload_image", upload), self.assertRaises(JobError):
+                creator.create_printify_draft([dict(b) for b in books], Job("t"))
+            self.assertEqual(self.fake.created, [])                 # no book was made
+            res = creator.create_printify_draft([dict(b) for b in books], Job("t"))
+        self.assertEqual(len(self.fake.created), 2)                 # the repeat makes each book once
+        self.assertEqual(len(self.fake.uploads), 50)                # and uploads no picture twice
+        self.assertEqual(res["reused"] + res["uploaded"], 50)
 
     def test_the_order_names_its_receipt_not_the_title(self):
         """22.09.2026 audit: the receipt lived only in the title — a title typed without its number left the
@@ -396,6 +424,43 @@ class GelatoDraftFlow(unittest.TestCase):
                 else:
                     self.assertIn("відхилив", str(caught.exception))
                     self.assertEqual((kept, len(stopped)), ([], 1))                # a real refusal cleans up
+
+    def test_a_broken_read_back_never_takes_the_files_from_a_made_draft(self):
+        """Audit 26.09.2026: the read-back after the draft was made let anything but ApiError through, and the send
+        then stopped the link and deleted the PDFs Gelato still had to fetch. The draft is kept, the send succeeds."""
+        vault.set("gelato_api_key", "fake-gelato-key")
+        gelato._geometry.clear()
+        gelato._products.clear()
+        self.addCleanup(vault.set, "gelato_api_key", None)
+        kept, stopped = [], []
+
+        def fake_call(method, url, body=None, **kw):
+            if method == "GET" and "/cover-dimensions" in url:
+                return self.COVER
+            if method == "GET" and url.endswith("/orders/gelato-order-7"):
+                raise ValueError("a reply that is not JSON")
+            if method == "GET":
+                return self.PRODUCT
+            return {"id": "gelato-order-7", "orderType": "draft", "fulfillmentStatus": "draft"}
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            png(root / "Cover.png", (466, 250), (1, 2, 3))
+            for i in range(1, 31):
+                png(root / f"{i}.png", (100, 100), (i, i, i))
+            creator._validation_cache.clear()
+            address = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Austin",
+                       "postCode": "73301", "country": "US", "state": "TX"}
+            with mock.patch.object(gelato, "call", fake_call), \
+                    mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
+                    mock.patch.object(tunnel.FileTunnel, "stop", lambda self: stopped.append(self)), \
+                    mock.patch.object(tunnel.registry, "keep", lambda key, *a: kept.append(key)):
+                res = creator.create_gelato_draft([{"folder": str(root), "title": "4100000011 - Ava",
+                                                    "format": "hardcover_8x8"}], address, Job("t"))
+        self.assertEqual(res["orderId"], "gelato-order-7")
+        self.assertEqual((kept, stopped), (["gelato-order-7"], []))           # the link lives on for Gelato
+        steps = {s["step"]: s for s in journal(res["sendLog"])["steps"]}
+        self.assertIn("not JSON", steps["readback"]["error"])
 
     def test_two_books_travel_as_items_of_one_draft(self):
         """Two books of one Etsy order (owner, 20.09.2026): one draft, one address, an item and a PDF of its
@@ -679,6 +744,24 @@ class CreatorStartsEmpty(unittest.TestCase):
 
 
 class DroppedFolders(unittest.TestCase):
+    def test_a_folder_in_use_outlives_the_next_drop(self):
+        """Audit 26.09.2026: every drop cleared the drops older than 2 hours — a card kept open since the morning lost
+        its folder. Now a day unused, and each check of a folder is a use."""
+        import os
+        sessions = {name: drops.DROPS / (name * 32) for name in "abc"}
+        for folder in sessions.values():
+            folder.mkdir(parents=True, exist_ok=True)
+            png(folder / "Cover.png", (60, 30), (1, 2, 3))
+        day_ago = time.time() - drops.KEEP_UNUSED - 60
+        for name in "ab":
+            os.utime(sessions[name], (day_ago, day_ago))
+        creator.validate("printify", str(sessions["a"]))              # the card checks its folder again
+        self.assertIsNotNone(drops._drop_done(SimpleNamespace(json={"session": "c" * 32})))
+        self.assertTrue(sessions["a"].exists())                        # in use: kept
+        self.assertFalse(sessions["b"].exists())                       # a day unused: gone
+        for folder in sessions.values():
+            shutil.rmtree(folder, ignore_errors=True)
+
     def test_zip_is_unpacked_to_the_folder_with_the_cover(self):
         import zipfile
         with tempfile.TemporaryDirectory() as d:
@@ -827,6 +910,16 @@ class EtsyOAuth(unittest.TestCase):
         etsy.disconnect()
         for name in ("etsy_keystring", "etsy_shared_secret"):
             vault.set(name, None)
+
+    def test_the_callback_page_shows_a_crafted_link_as_text(self):
+        """The page after Etsy's consent needs no token, and the program's own page holds one: text from the link
+        must never become a script there."""
+        from types import SimpleNamespace
+        query = {"error": ["access_denied"], "error_description": ["<script>fetch('/')</script>"]}
+        req = SimpleNamespace(param=lambda name, default=None: (query.get(name) or [default])[0])
+        page = etsy._oauth_callback(req).body.decode("utf-8")
+        self.assertNotIn("<script>", page)
+        self.assertIn("&lt;script&gt;fetch(&#x27;/&#x27;)&lt;/script&gt;", page)
 
 
 if __name__ == "__main__":

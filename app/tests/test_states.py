@@ -399,6 +399,17 @@ class IncrementalSync(unittest.TestCase):
         for path in (profit.SNAPSHOT, profit.STATES, profit.LINKS):
             path.unlink(missing_ok=True)
 
+    def test_a_receipt_read_twice_is_kept_once(self):
+        """Audit 26.09.2026: a new order during a full read shifts Etsy's pages, and one receipt came twice — two
+        rows in the queue, the money counted twice."""
+        twice = [receipt(3, "C", ts=1757000300), receipt(2, "B", ts=1757000200), receipt(2, "B", ts=1757000200),
+                 receipt(1, "A", ts=1757000100)]
+        with mock.patch.object(etsy, "tokens", lambda: {"access_token": "1.x", "shop_id": 63208655}),                 mock.patch.object(etsy, "fetch_all_receipts",
+                                  lambda progress=None, min_last_modified=None: (twice, 63208655, "Shop")):
+            result = profit._sync(Job("t"), full=True)
+        self.assertEqual(result["receipts"], 3)
+        self.assertEqual([r["receipt_id"] for r in profit.load_snapshot()["receipts"]], ["3", "2", "1"])
+
     def test_second_sync_reads_only_changed_receipts(self):
         calls = []
         first = [receipt(2, "B", ts=1757000200), receipt(1, "A", ts=1757000100)]

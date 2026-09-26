@@ -1,5 +1,6 @@
 import json
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -108,6 +109,42 @@ class NothingIsLostWhenAWriteFails(unittest.TestCase):
         self.assertIsNone(library.load(self.book_id)["slots"]["spread2"].get("image"))
 
 
+class DeletingABook(unittest.TestCase):
+    def test_a_book_being_imported_is_not_deleted(self):
+        """Audit 26.09.2026: deleting a book while its folder import ran left a folder with no book.json, warned
+        about on every list."""
+        import threading
+        from studio.jobs import jobs
+        book = library.create_book({"id": "4100000977"}, "4100000077 - Iris")
+        release = threading.Event()
+        jobs.start("library-import", lambda job: release.wait(5), exclusive=f"library-{book['id']}")
+        delete = Request(None, "DELETE", f"/api/library/books/{book['id']}", {}, (book["id"],))
+        try:
+            with self.assertRaises(ApiError) as caught:
+                library._delete(delete)
+            self.assertEqual(caught.exception.status, 409)
+            self.assertTrue(library._book_dir(book["id"]).exists())
+        finally:
+            release.set()
+        for _ in range(100):
+            if not jobs.running(f"library-{book['id']}"):
+                break
+            time.sleep(0.02)
+        self.assertTrue(library._delete(delete)["ok"])
+
+
+class QueryNumbers(unittest.TestCase):
+    def test_a_size_that_is_not_a_number_is_the_default_not_an_error(self):
+        """Audit 26.09.2026: «?w=abc» on a picture was a server error with a traceback in the log (4 routes)."""
+        def req(**query):
+            return Request(None, "GET", "/media/x", {k: [v] for k, v in query.items()}, ())
+        self.assertEqual(req(w="abc").int_param("w", 480, 64, 4096), 480)
+        self.assertEqual(req().int_param("w", 480, 64, 4096), 480)
+        self.assertEqual(req(w="10").int_param("w", 480, 64, 4096), 64)
+        self.assertEqual(req(w="99999").int_param("w", 480, 64, 4096), 4096)
+        self.assertEqual(req(page="3").int_param("page", 1, 1), 3)
+
+
 class JsonFiles(unittest.TestCase):
     """22.09.2026 audit: the .bak brought a removed file back; a .bak copy that failed was not said."""
 
@@ -127,14 +164,14 @@ class JsonFiles(unittest.TestCase):
 
     def test_a_failed_backup_copy_is_logged_and_the_write_still_happens(self):
         core.write_json(self.path, {"n": 1})
-        real = core._replace
+        real = core.replace_file
 
         def locked(src, dst, copy_only=False):
             if copy_only:
                 raise PermissionError("the .bak is held by another program")
             return real(src, dst, copy_only)
 
-        with mock.patch.object(core, "_replace", locked), self.assertLogs("studio", "WARNING") as logged:
+        with mock.patch.object(core, "replace_file", locked), self.assertLogs("studio", "WARNING") as logged:
             core.write_json(self.path, {"n": 2})
         self.assertIn("older state", logged.output[0])
         self.assertEqual(core.read_json(self.path), {"n": 2})
@@ -448,6 +485,13 @@ class SafetyRails(unittest.TestCase):
         self.assertEqual(attempts("POST", urllib.error.URLError(ConnectionRefusedError())), (3, False))
         self.assertEqual(attempts("GET", socket.timeout("timed out")), (3, True))
         self.assertEqual(attempts("POST", socket.timeout("timed out"), idempotent=True), (3, True))
+        # A reply cut short while it was read: the server may have made the product or order all the same.
+        import http.client
+        import ssl
+        self.assertEqual(attempts("POST", http.client.IncompleteRead(b"{", 200)), (1, True))
+        self.assertEqual(attempts("POST", ssl.SSLEOFError("EOF occurred in violation of protocol")), (1, True))
+        self.assertEqual(attempts("POST", http.client.RemoteDisconnected("closed")), (1, True))
+        self.assertEqual(attempts("GET", http.client.IncompleteRead(b"{", 200)), (3, True))
 
     def test_both_printers_read_a_failure_alike(self):
         from studio import httpc

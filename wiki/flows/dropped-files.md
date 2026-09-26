@@ -27,7 +27,9 @@ code:
    folder with `Cover.png`, otherwise the one folder with pictures, otherwise the session's root
    (`dropped_folder()`). For the library (`receiveDrop(…, { withText: true })` → `text=1` on every file
    and `whole: true`) — **the dropped folder itself** (`dropped_top()`): import reads its
-   `generated/`, `pages/`, and `book-text.json` too. This also clears sessions older than 2 hours.
+   `generated/`, `pages/`, and `book-text.json` too. This also clears sessions unused for 24 hours
+   (`KEEP_UNUSED`; each check of a folder by the Order Creator or a card counts as a use — `drops.touch()`,
+   so a card kept open all day never loses its folder; audit 2026-09-26, it was 2 hours from the drop).
 4. Next: in the order card — laying out pages; in the Order Creator — checking; in a book's passport —
    "Import from folder" (the same way for a folder, a ZIP, and several files); in the
    [mockups utility](../features/mockups.md) — reading the demo book (`mockups.read_book()`).

@@ -1,7 +1,7 @@
 ---
 title: Text check (AI validator on a local model)
 type: feature
-updated: 2026-09-25
+updated: 2026-09-26
 code:
   - app/studio/textcheck.py
   - app/studio/wording.py
@@ -143,7 +143,9 @@ code:
    a space before the comma; `DEFAULT` in any spelling (`is_default()`); the buyer's own dedication is
    split into "Dedication:" / "Closing:".
 8. The model's answers are cached in memory (file + size + modified time + prompt): re-checking the same
-   files is instant; after fixing one page, only that page is re-checked. A newer check of the same
+   files is instant; after fixing one page, only that page is re-checked. A broken answer (cut off, not JSON)
+   is not kept, so ↻ asks that page again; a call that timed out (`TimedOut`, 300 s) is not tried a second time
+   — one hung page held a whole check ~10 minutes (both since the 2026-09-26 audit). A newer check of the same
    order stops the previous one; the card stops its own check (`cancel()`) when it's closed, other files
    are dropped, or another book is picked (since 2026-09-19). A hidden card (switched to another tab)
    doesn't stop it. Every call to the model runs inside `_Run` (4 at a time, a counter for the
@@ -274,7 +276,7 @@ The order archive — three books already sent to print (Gelato, 30 pages, 4000 
 ## Where in the code
 
 - [app/studio/textcheck.py](../../app/studio/textcheck.py) — calibration and the wrong-book guard: `_case_only()`, `_buyer_intact()`, `_twice()`, `_strange()`, `_wrong_book()`, `_one_alarm()`, `_like_book()`, `_raw()`, `mark()`, `_mark()`, `WRONG_BOOK`, `_NO_PROBLEM`, `_CLAIM`, `_SEEN`
-- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_saw_nothing()`, `_collect()`, `_ordered()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `_release_model()`, `_cancel()`, `_warm()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_passport_texts()`, `_passport_words()`, `_alike()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
+- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_saw_nothing()`, `_collect()`, `_ordered()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `_release_model()`, `_cancel()`, `_warm()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_chat()`, `TimedOut`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_passport_texts()`, `_passport_words()`, `_alike()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
 - [app/studio/wording.py](../../app/studio/wording.py) — `words()`, `is_default()`, `clean_name()`, `custom_text()`, `DEDICATION`, `META`, `_POSSESSIVE`
 - [app/tools/textcheck_replay.py](../../app/tools/textcheck_replay.py) — `replay()`, `rebuild()`, `main()` (the journal through today's rules)
 - [app/studio/images.py](../../app/studio/images.py) — `text_score()`, `_percentile()`, `TEXT_SIDE`

@@ -15,13 +15,13 @@ takes, goes to the book's `.replaced/` folder — never deleted.
 """
 from __future__ import annotations
 
-import os
 import shutil
 import time
 from pathlib import Path
 
 from PIL import Image, ImageOps
 
+from .. import core
 from ..server import ApiError
 from . import books
 from .rows import MIRRORED, TEMPLATE, cover_state, original_of, original_stem, row, template_layout
@@ -79,16 +79,27 @@ def _retire(book: Path, target: Path) -> None:
         while dest.exists():  # twice in one second: each kept copy has a name of its own
             n += 1
             dest = keep / f"{stamp}.{n}-{rel}"
-        os.replace(target, dest)
+        core.replace_file(target, dest)
 
 
-def _save(book: Path, im: Image.Image, target: Path) -> None:
+def _write(im: Image.Image, target: Path, keep_old_of: Path | None = None) -> None:
+    """A picture written beside its target and swapped in. A page open in a viewer can be locked for a moment on
+    Windows (the swaps try again); a failed write never leaves a half-written `.tmp` among the pages.
+    `keep_old_of`: the book whose .replaced/ keeps what the new picture replaces."""
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_name(target.name + ".tmp")
     dpi = im.info.get("dpi")
-    im.save(tmp, "PNG", compress_level=4, **({"dpi": dpi} if dpi else {}))
-    _retire(book, target)
-    os.replace(tmp, target)
+    try:
+        im.save(tmp, "PNG", compress_level=4, **({"dpi": dpi} if dpi else {}))
+        if keep_old_of is not None:
+            _retire(keep_old_of, target)
+        core.replace_file(tmp, target)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _save(book: Path, im: Image.Image, target: Path) -> None:
+    _write(im, target, keep_old_of=book)
 
 
 def _move(source: Path, dest: Path) -> None:
@@ -116,6 +127,12 @@ def _keep_original(book: Path, key: str, variant: str | None, source: Path, name
     else:
         shutil.copyfile(source, dest)
     return dest
+
+
+def _variant(book: Path, variant: str | None) -> str | None:
+    """The variant a request names, checked before anything is written: an existing folder in agent/variants/,
+    never a path out of the book."""
+    return variant_dir(book, variant).name if variant else None
 
 
 def _pictures_dir(book: Path, variant: str | None) -> Path:
@@ -149,6 +166,7 @@ def place(book_id: str, key: str, source: Path, name: str, variant: str | None =
     """Puts one picture into a row; `take` moves the file (a download) instead of copying it. Returns what
     happened, in the owner's words."""
     book = books.book_path(book_id)
+    variant = _variant(book, variant)
     if key not in ("hero", "cover-wrap"):
         row(key)
     im = open_picture(source, name)  # only a real picture goes anywhere, and nothing is moved before that
@@ -216,11 +234,7 @@ def build_expanded(book: Path, im: Image.Image | None = None) -> list[int]:
     cw, ch = lay["canvas"]
     canvas = Image.new("RGB", (cw, ch), (255, 255, 255))
     canvas.paste(im.convert("RGB"), tuple(lay["art"][:2]))
-    target = book / books.ORIGINALS / "cover-expanded.png"
-    target.parent.mkdir(exist_ok=True)
-    tmp = target.with_name(target.name + ".tmp")
-    canvas.save(tmp, "PNG", compress_level=4)
-    os.replace(tmp, target)  # made by the Workshop from the picture — nothing to keep
+    _write(canvas, book / books.ORIGINALS / "cover-expanded.png")  # made from the picture — nothing to keep
     _mark(book, None, "cover-expanded", {"size": [cw, ch], "art": lay["art"], "ppi": lay["ppi"], "template": True})
     return [cw, ch]
 
@@ -264,6 +278,7 @@ def flip(book_id: str, key: str, variant: str | None = None) -> dict:
     """⇄ on a spread: the right page mirrored becomes the left one and the other way round (the same as mirroring
     the whole panorama); twice gives back what was there, pixel for pixel."""
     book = books.book_path(book_id)
+    variant = _variant(book, variant)
     if row(key)["kind"] != "spread":
         raise ApiError("Віддзеркалити можна тільки розворот.")
     pages = _pages(book, key, variant)
@@ -272,9 +287,7 @@ def flip(book_id: str, key: str, variant: str | None = None) -> dict:
     with Image.open(pages[0]) as l_im, Image.open(pages[1]) as r_im:
         new_left, new_right = ImageOps.mirror(r_im), ImageOps.mirror(l_im)
     for im, target in ((new_left, pages[0]), (new_right, pages[1])):
-        tmp = target.with_name(target.name + ".tmp")
-        im.save(tmp, "PNG", compress_level=4)
-        os.replace(tmp, target)  # the flip itself is lossless — the old pages aren't kept
+        _write(im, target)  # the flip itself is lossless — the old pages aren't kept
     slot = f"{variant}/{key}" if variant else key
     was = (books.state(book).get("rows") or {}).get(slot, {}).get("mirrored", int(key[6:]) in MIRRORED)
     _mark(book, variant, key, {"mirrored": not was})
@@ -284,6 +297,7 @@ def flip(book_id: str, key: str, variant: str | None = None) -> dict:
 def remove(book_id: str, key: str, variant: str | None = None) -> dict:
     """The row's pictures out of the book — into .replaced/, with the picture as it came."""
     book = books.book_path(book_id)
+    variant = _variant(book, variant)
     originals = book / books.ORIGINALS / ("variants/" + variant if variant else "")
     if key in ("cover", "cover-wrap"):
         targets = [_pictures_dir(book, None) / "Cover.png"]

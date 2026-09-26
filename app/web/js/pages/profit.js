@@ -2,7 +2,7 @@
 // plus order states: cancelled, full / partial refund, replacement reprint.
 import {
   api, html, ic, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, signedMoney, menu,
-  dateTime, relTime, plural, slide, debounce, reducedMotion, idle, keepFocus,
+  dateTime, relTime, plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember,
 } from '../lib.js';
 import { refreshInfo, store } from '../info.js';
 
@@ -32,7 +32,8 @@ const podName = (o) => (o.pod_provider === 'gelato' ? 'Gelato' : 'Printify');
 const deadText = (o) => (o.pod_dead === 'draft' ? 'чернетка Gelato — не оплачена' : `скасовано в ${podName(o)}`);
 
 export async function mount(view) {
-  const saved = JSON.parse(localStorage.getItem('bs-profit') || '{}');
+  const saved = remembered('bs-profit', {}); // the period picked last time
+  let gone = false; // the page was let go: its polls stop (runJob keepGoing)
   const st = {
     data: null,
     period: saved.period || 'all',
@@ -47,7 +48,7 @@ export async function mount(view) {
     syncing: false,
     notice: null,
   };
-  const persist = () => localStorage.setItem('bs-profit', JSON.stringify({ period: st.period, start: st.start, end: st.end }));
+  const persist = () => remember('bs-profit', { period: st.period, start: st.start, end: st.end });
 
   setHtml(view, html`
     <div class="page-head">
@@ -495,7 +496,7 @@ export async function mount(view) {
         $('#pf-detail').textContent = j.detail ? ` · ${j.detail}` : '';
         $('#pf-pct').textContent = `${Math.round(j.percent)}%`;
         $('#pf-bar').style.width = `${j.percent}%`;
-      });
+      }, 420, () => !gone);
       const etsyPart = res.changed === null || res.changed === undefined
         ? `Завантажено ${res.receipts} ${plural(res.receipts, ['замовлення', 'замовлення', 'замовлень'])} Etsy.`
         : `Змінених чеків Etsy: ${res.changed} (усього ${res.receipts}).`;
@@ -508,13 +509,13 @@ export async function mount(view) {
       await load();
       refreshInfo();
     } catch (err) {
+      if (gone) return;
       const code = err.data?.code || '';
       st.notice = { type: 'error', text: err.message, settings: /etsy|not_configured/.test(code) || /Etsy|Налаштування/.test(err.message) };
       renderNotice();
     } finally {
       st.syncing = false;
-      $('#pf-progress').hidden = true;
-      renderHead();
+      if (!gone) { $('#pf-progress').hidden = true; renderHead(); }
     }
   }
 
@@ -762,5 +763,5 @@ export async function mount(view) {
 
   setHtml($('#pf-kpis'), Array.from({ length: 4 }, () => html`<div class="kpi"><div class="skeleton" style="height:12px;width:50%"></div><div class="skeleton" style="height:26px;width:70%;margin-top:10px"></div></div>`));
   await load();
-  return { unmount() { offs.forEach((f) => f()); clearTimeout(noticeTimer); runSearch.cancel(); cancelAnimationFrame(kpiRaf); } };
+  return { unmount() { gone = true; offs.forEach((f) => f()); clearTimeout(noticeTimer); runSearch.cancel(); cancelAnimationFrame(kpiRaf); } };
 }

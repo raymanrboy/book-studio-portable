@@ -103,6 +103,10 @@ class Unavailable(ModelError):
     """Ollama does not answer at all."""
 
 
+class TimedOut(ModelError):
+    """The model took longer than CALL_TIMEOUT — asking again would only wait as long once more."""
+
+
 # ---------------------------------------------------------------- Ollama (this computer only)
 
 _NO_PROXY = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -129,10 +133,10 @@ def _call(path: str, body: dict | None = None, timeout: float = 10) -> dict:
             detail = ""
         raise ModelError(f"Ollama відповіла помилкою {err.code}" + (f": {detail}" if detail else "") + ".") from None
     except TimeoutError:
-        raise ModelError("Модель не відповіла вчасно.") from None
+        raise TimedOut("Модель не відповіла вчасно.") from None
     except (urllib.error.URLError, ConnectionError, OSError) as err:
         if isinstance(getattr(err, "reason", None), TimeoutError):
-            raise ModelError("Модель не відповіла вчасно.") from None
+            raise TimedOut("Модель не відповіла вчасно.") from None
         raise Unavailable("Ollama не запущена.") from None
 
 
@@ -1111,16 +1115,18 @@ class _Run:
             image = picture(path, part)
             try:
                 answer = _chat(self.model, prompt, image, schema, max_tokens)
-            except Unavailable:
+            except (Unavailable, TimedOut):  # nothing to gain from a second try: one hung page held a check 10 min
                 raise
             except ModelError:
                 if self.cancel.is_set():
                     raise UserError("Перевірку перервано.") from None
                 answer = _chat(self.model, prompt, image, schema, max_tokens)  # once more
-            with _cache_lock:
-                if len(_cache) > 3000:
-                    _cache.clear()
-                _cache[key] = answer
+            # A broken answer (cut off, not JSON) is not kept: ↻ asks that page again instead of repeating the failure.
+            if schema is None or "failed" not in _parse(answer):
+                with _cache_lock:
+                    if len(_cache) > 3000:
+                        _cache.clear()
+                    _cache[key] = answer
         with self.lock:
             self.done += 1
             self.say("Звірка тексту…" if schema else "Читання сторінок…")

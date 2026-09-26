@@ -5,7 +5,9 @@
 // A page of the Listings mode (#/mockups; until 24.09.2026 a window of its own). It is kept when the owner steps
 // away (keep()): the book, the picks and a run going on in Photoshop wait for him; a small dot on the rail says a
 // run is on, and a notice says when it ends.
-import { api, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox } from '../lib.js';
+import {
+  api, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered, remember,
+} from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../order-bits.js';
 
@@ -67,17 +69,15 @@ export async function mount(view) {
 
   const memKey = () => `${st.book.name}|${st.book.pageCount}`;
   function rememberPicks() {
-    try {
-      const all = JSON.parse(localStorage.getItem(PICKS_KEY) || '{}');
-      delete all[memKey()];
-      all[memKey()] = st.picks;
-      Object.keys(all).slice(0, -12).forEach((k) => delete all[k]); // the last dozen books
-      localStorage.setItem(PICKS_KEY, JSON.stringify(all));
-    } catch { /* a convenience only */ }
+    const all = remembered(PICKS_KEY, {});
+    delete all[memKey()];
+    all[memKey()] = st.picks;
+    Object.keys(all).slice(0, -12).forEach((k) => delete all[k]); // the last dozen books
+    remember(PICKS_KEY, all);
   }
   function recallPicks() {
     try {
-      const p = JSON.parse(localStorage.getItem(PICKS_KEY) || '{}')[memKey()];
+      const p = remembered(PICKS_KEY, {})[memKey()];
       const starts = new Set(st.book.spreads.map(([n]) => n));
       const fits = p && slotted().every((t) => Array.isArray(p[t.key]) && p[t.key].length === t.slots
         && p[t.key].every((n) => n === null || starts.has(n)));
@@ -674,20 +674,15 @@ export async function mount(view) {
     if (!gone) { paintAction(); paintPicks(); paintTiles(); paintHead(); }
   }
 
-  // The owner watches Photoshop while it works: the window's title says how it ended, its taskbar button
-  // flashes and Windows plays its sound (only when the window is not the one in front). Elsewhere in Book
-  // Studio (this page is kept hidden) a notice says it too.
-  let titled = null; // the window's own title, given back when the owner comes to it
+  // The owner watches Photoshop while it works: the window's title says how it ended (app.js keeps it there until
+  // he comes back), its taskbar button flashes and Windows plays its sound (only when the window is not the one in
+  // front). Elsewhere in Book Studio (this page is kept hidden) a notice says it too.
   function tellDone(text) {
     if (!view.isConnected) toast(`Мокапи: ${text.toLowerCase()}`, text === 'Не вдалося' ? 'error' : 'success');
     if (document.hasFocus()) return;
-    titled = titled || document.title;
-    document.title = `${text} · ${titled}`;
+    window.dispatchEvent(new CustomEvent('bs:busy', { detail: { done: text } }));
     setTimeout(() => api('/api/mockups/attention', { method: 'POST', body: {} }).catch(() => {}), 250);
   }
-  const onFocus = () => { if (titled) { document.title = titled; titled = null; } };
-  window.addEventListener('focus', onFocus);
-  offs.push(() => window.removeEventListener('focus', onFocus));
 
   // ---------------------------------------------------------------- where the templates and Photoshop are
   function placesBody() {

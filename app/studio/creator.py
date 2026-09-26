@@ -24,7 +24,7 @@ from collections import Counter
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 
-from . import archive, core, desktop, gelato, images, printify, profit, sendlog, tunnel, wording
+from . import archive, core, desktop, drops, gelato, images, printify, profit, sendlog, tunnel, wording
 from .jobs import JobError, jobs
 from .server import ApiError, Request, file_response, route
 from .vault import vault
@@ -136,6 +136,7 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
         expected = expected_files(mode)
         return {"ok": False, "folder": str(folder), "errors": ["Папку не знайдено або шлях некоректний."],
                 "warnings": [], "files": [], "found": 0, "expected": len(expected), "pageCount": len(expected) - 1}
+    drops.touch(folder)
     present = _files_by_lower(folder)
     expected = expected_files(mode, _gelato_page_count(present) if mode == "gelato" else None)
     key = (mode, str(folder.resolve()), _signature(folder),
@@ -528,10 +529,10 @@ def _printify_images(book: dict, job, log: dict, span) -> dict[str, str]:
 
 
 def _printify_product(book: dict, job, log: dict, cfg: dict, shop_id: int, span) -> dict:
-    """One unpublished book: its images uploaded, the product built by the Master's configuration, then read
-    back to see every page on its own position."""
-    image_ids = _printify_images(book, job, log, lambda p: span(0.02 + 0.84 * p))
-    job.progress(f"Створення книги в Printify{book['mark']}…", span(0.88), "Збирання структури за Master-продуктом")
+    """One unpublished book from its uploaded images, built by the Master's configuration, then read back to
+    see every page on its own position."""
+    image_ids = book["images"]
+    job.progress(f"Створення книги в Printify{book['mark']}…", span(0), "Збирання структури за Master-продуктом")
     payload = build_printify_payload(book["title"], image_ids, cfg)
     log.setdefault("request", payload)   # the first book's, as before; every book's is in its own step
     try:
@@ -548,10 +549,10 @@ def _printify_product(book: dict, job, log: dict, cfg: dict, shop_id: int, span)
     if not product_id:
         raise JobError("Printify не повернув ID нової книги.")
 
-    job.progress(f"Перевірка результату{book['mark']}…", span(0.95), "Звірка сторінок")
+    job.progress(f"Перевірка результату{book['mark']}…", span(0.6), "Звірка сторінок")
     warnings: list[str] = []
     verified = False
-    try:
+    try:  # the book exists now: nothing after this point may fail the send, or a repeat would make it twice
         new_product = printify.product(shop_id, product_id)
         placed = {}
         for area in new_product.get("print_areas") or []:
@@ -561,7 +562,8 @@ def _printify_product(book: dict, job, log: dict, cfg: dict, shop_id: int, span)
         verified = not mismatched
         if mismatched:
             warnings.append(f"Позиції не збіглися з очікуваними: {', '.join(mismatched[:6])}. Перевірте книгу вручну.")
-    except ApiError as err:
+    except Exception as err:
+        core.log.exception("Printify: the new book not read back")
         warnings.append(f"Не вдалося перечитати нову книгу: {err}")
     sendlog.step(log, "verify", book=book["title"], productId=product_id, verified=verified, warnings=list(warnings))
     return {"title": book["title"], "productId": product_id, "verified": verified, "warnings": warnings,
@@ -649,9 +651,14 @@ def _printify_draft(books: list[dict], job, address: dict | None, log: dict, rep
     core.write_json(snapshot_dir / f"{core.now_iso().replace(':', '-')}-before.json", before, backup=False)
     fingerprint_before = _master_fingerprint(before)
 
+    # Every book's pictures go up before any book is made: a failed upload of the second book must not leave
+    # the first one made already — a repeat would make it a second time.
+    for i, book in enumerate(books):
+        low, step = 10 + 76 * i / len(books), 76 / len(books)
+        book["images"] = _printify_images(book, job, log, lambda p, low=low, step=step: low + step * p)
     made: list[dict] = []
     for i, book in enumerate(books):
-        low, step = 10 + 80 * i / len(books), 80 / len(books)
+        low, step = 86 + 8 * i / len(books), 8 / len(books)
         made.append(_printify_product(book, job, log, cfg, shop_id, lambda p, low=low, step=step: low + step * p))
 
     warnings = [f"{m['title']}: {w}" if len(made) > 1 else w for m in made for w in m["warnings"]]
@@ -661,7 +668,8 @@ def _printify_draft(books: list[dict], job, address: dict | None, log: dict, rep
         master_safe = _master_fingerprint(after) == fingerprint_before
         if not master_safe:
             warnings.append("Увага: Master-продукт має зміни після створення — перевірте його в Printify.")
-    except ApiError as err:
+    except Exception as err:  # the books exist: a failed look at the Master is said, never a failed send
+        core.log.exception("Printify: the Master not read after the send")
         warnings.append(f"Не вдалося перевірити Master: {err}")
     sendlog.step(log, "masterSafe", ok=master_safe)
 
@@ -911,10 +919,11 @@ def gelato_pages_problem(format_key: str, count: int) -> str | None:
 
 
 def _journal_readback(log: dict, order_id: str, sizes: list[int]) -> None:
-    """What Gelato itself recorded for the new draft (read only): usually it has already fetched the PDFs."""
+    """What Gelato itself recorded for the new draft (read only): usually it has already fetched the PDFs.
+    The draft exists by now, so nothing here may fail the send."""
     try:
         items = gelato.get_order(order_id).get("items") or []
-    except ApiError as err:
+    except Exception as err:
         sendlog.step(log, "readback", error=str(err))
         return
     for item in items:
@@ -1050,11 +1059,15 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
                            f"«{title}». Файли для неї доступні ще {max(1, keep // 60)} хв.") from None
         log["response"] = created
         order_id = created.get("id")
+        # The draft exists from here on and Gelato still has to fetch its PDFs: the link goes to the registry
+        # first, so nothing that fails after this point can take the files away from it.
+        tunnel.registry.keep(order_id or f"unknown-{session}", link, session_dir, keep)
+        link = None
         if not order_id:
-            raise JobError("Gelato не повернув ID чернетки.")
+            log["outcome"] = "unknown"
+            raise JobError("Gelato прийняв чернетку, але не повернув її номер. НЕ надсилайте повторно: спершу "
+                           f"перевірте Gelato → Orders → Drafts, чи є там «{title}».")
         _journal_readback(log, order_id, [b["pdf"]["pdfBytes"] for b in ready])
-        tunnel.registry.keep(order_id, link, session_dir, keep)
-        link = None  # owned by the registry now
         warnings = [f"{b['title']}: {w}" if b["mark"] else w for b in ready for w in b["pdf"]["warnings"]]
         if reprint_of:
             _mark_reprint(log, warnings, books[0].get("receipt"), "gelato", order_id)
@@ -1318,7 +1331,7 @@ def _folder_media(req: Request):
     target = _files_by_lower(folder).get(name.lower())
     if not target:
         raise ApiError("Не знайдено.", 404)
-    size = max(64, min(4096, int(req.param("w") or 480)))
+    size = req.int_param("w", 480, 64, 4096)
     return file_response(images.preview(target, size), "image/jpeg", cache="private, max-age=600")
 
 
@@ -1338,5 +1351,5 @@ def _folder_spread(req: Request):
         sides.append(present.get(name.lower()))
     if not any(sides):
         raise ApiError("Не знайдено.", 404)
-    height = max(200, min(2400, int(req.param("h") or 1200)))
+    height = req.int_param("h", 1200, 200, 2400)
     return file_response(images.compose_spread(sides[0], sides[1], height), "image/jpeg", cache="private, max-age=600")

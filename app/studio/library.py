@@ -712,6 +712,8 @@ def _archive(req: Request):
 @route("DELETE", r"/api/library/books/([0-9a-f]{32})")
 def _delete(req: Request):
     book_id = req.groups[0]
+    if jobs.running(f"library-{book_id}"):  # its import would make the folder again, without a book.json
+        raise ApiError("Книга ще імпортується — видаліть її, коли імпорт завершиться.", 409)
     with _lock:
         book = load(book_id)
         src = _book_dir(book_id)
@@ -952,8 +954,7 @@ def _media(req: Request):
     path = _book_dir(req.groups[0]) / "assets" / req.groups[1]
     if not path.is_file():
         raise ApiError("Не знайдено.", 404)
-    width = req.param("w")
-    if width:
-        size = max(64, min(4096, int(width)))
+    if req.param("w"):
+        size = req.int_param("w", 480, 64, 4096)
         return file_response(images.preview(path, size), "image/jpeg", cache="private, max-age=31536000, immutable")
     return file_response(path, cache="private, max-age=31536000, immutable")
