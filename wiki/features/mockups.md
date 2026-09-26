@@ -11,9 +11,9 @@ code:
 
 > A page of Book Studio's **Listings mode** (`#/mockups`, Alt+2 there — [two modes](modes.md)): bring in the
 > demo book's Canva ZIP, click the "presentable" spreads, pick a folder — one Photoshop script fills the
-> owner's mockup templates and saves **7 PNG pictures**; the **3 templates where the front cover really
-> shows** are left open in Photoshop for the owner to fit the cover by hand, and **«Зберегти відкриті»** then
-> saves those 3 as well. Built on 2026-09-23 as a separate utility from the
+> owner's mockup templates and saves **6 PNG pictures**; **4 templates are left open** in Photoshop — the 3
+> where the front cover really shows, for the owner to fit the cover by hand, and **Dedication**, for him to pick
+> its background and table colours (since 2026-09-26) — and **«Зберегти відкриті»** then saves those 4 as well. Built on 2026-09-23 as a separate utility from the
 > [plan](../plans/listing-mockups.md) (the templates' structure and the agreements live there); **moved into
 > Book Studio on 2026-09-24**, working exactly as before (the owner: "Ні, як зараз" — not tied to library
 > books).
@@ -25,7 +25,7 @@ Book Studio, with the search", i.e. the path field with the folder-and-magnifier
 steps on the left**, the **demo book's structure on the right**. A step's number turns into a green ✓ when
 it is done. **The page is kept when the owner steps away** (another page, the orders): the book, the picks, a
 run in Photoshop and its result wait for him; while a run goes on elsewhere, a cyan dot sits on the rail,
-and a notice says when it ends («Мокапи: готово · 7 картинок»).
+and a notice says when it ends («Мокапи: готово · 6 картинок»).
 
 1. **Демо-книга з Canva.** Drag the ZIP anywhere onto the window (the book field lights up), or press the
    field / its folder button — the Windows dialog opens in the Downloads folder the first time, then where
@@ -54,8 +54,8 @@ and a notice says when it ends («Мокапи: готово · 7 картино
    folder). «Та сама, що минулого разу · <name>» takes the last folder in one click. A new book starts
    with the field empty — the folder is picked for every book (the owner's rule). No folder yet when
    «Зробити мокапи» is pressed → the dialog opens then.
-4. **Photoshop.** One line says what will happen («Photoshop сам збереже 7 картинок, а 3 шаблони залишить
-   відкритими…»), then **«Зробити мокапи»**. The button **always answers** (since 2026-09-23): no book →
+4. **Photoshop.** One line says what will happen («Photoshop сам збереже 6 картинок, а 4 шаблони залишить
+   відкритими — лицьову обкладинку й кольори Dedication підганяєте ви»), then **«Зробити мокапи»**. The button **always answers** (since 2026-09-23): no book →
    the book field blinks and a toast asks for the ZIP; empty slots → they blink amber, the first one is
    highlighted and a toast names the templates; while the folder dialog is open the card says so; closed
    without a folder → «Папку не вибрано — мокапи не робились».
@@ -63,16 +63,16 @@ and a notice says when it ends («Мокапи: готово · 7 картино
      with its pictures counted («2/4») or «✋ лишиться відкритим»; a progress bar; × stops. While
      Photoshop asks "run this script?", the card draws that dialog small with its **Yes** pulsing and
      says «Натисніть «Yes» у його вікні — далі все саме».
-   - **Done**: a green card «Готово · 7 картинок · 45 с» with **the saved pictures themselves** (their
+   - **Done**: a green card «Готово · 6 картинок · 45 с» with **the saved pictures themselves** (their
      previews; a click opens them large, the viewer's "original" button opens the file) and the folder
      button. When Book Studio's window isn't in front (the owner watches Photoshop), **its taskbar button
-     flashes, Windows plays its notification sound and the title says «Готово · 7 картинок · Book Studio»** —
+     flashes, Windows plays its notification sound and the title says «Готово · 6 картинок · Book Studio»** —
      the owner's question "is there any message that it's finished?".
    - **«Ваша черга — у Photoshop»** (amber): the templates left open are named; after fitting the front
      cover in each, **«Зберегти відкриті й закрити»** runs a second, short script (one more "Yes") that
      saves them as PNG into the same folder, named like the rest (`1. Cover 1.png`,
      `Cover & Open 1 (20-21).png`, `All & Open 1 (22-23).png`, never overwriting), closes them and removes
-     their copies — «Збережено ще 3 картинки · Тимчасові копії шаблонів прибрано». Saving them by hand
+     their copies — «Збережено ще 4 картинки · Тимчасові копії шаблонів прибрано». Saving them by hand
      as before still works; the copies are then cleaned up by themselves (below). A reloaded window
      offers the button again (`pending()`).
    - **The book's cover opens beside them** (since 2026-09-26, the owner: "open the Cover image in Photoshop too,
@@ -102,10 +102,14 @@ templates, the rest Photoshop.
 |---|---|---|---|
 | `2. Open 1` | 4 | the spread's pages, the back, the spine, the front cover's rim | 4 PNG |
 | `3. Open 2` | 2 | the same | 2 PNG |
-| `4. Dedication` | — | page 1, the back, the spine, the rim | 1 PNG |
 | `1. Cover 1` | — | nothing (its only layer is the front cover) | left open → «Зберегти відкриті» |
 | `Cover & Open 1` | 1 | the spread's pages | left open → «Зберегти відкриті» |
 | `All & Open 1` | 1 | the spread's pages, the back, the spine | left open → «Зберегти відкриті» |
+| `4. Dedication` | — | page 1, the back, the spine, the rim | left open (the owner picks the background and table colours; `"keep": "colours"`, since 2026-09-26 — saved by itself until then) → «Зберегти відкриті» |
+
+The templates left open come last (`RUN_ORDER`), Cover 1 first among them — it is the one in front when the
+script ends. `kept_open()`: a template with `hand` (the front cover) or `keep` (Dedication's colours); the page
+marks both with ✋ and says which touch is the owner's.
 
 - **Pictures are cut by Python (Pillow) at exactly the smart object's size, 300 dpi**
   (`cover_pictures()`, `page_picture()`): the back — the left half of the wide cover, the front (only for
@@ -140,8 +144,8 @@ templates, the rest Photoshop.
    of each smart object by the layer path (names compared with spaces trimmed; a one-name path is looked
    for at the top of the layer list, where the owner's shortcut copies are), put the layer's and its
    groups' visibility back (selecting a hidden layer shows it), then per spread — swap the pages and save
-   a PNG **copy**; the automatic templates close **without saving**, the three with the owner's cover stay
-   open, and the first of them becomes the active document. Photoshop's "show dialogs" setting is put back.
+   a PNG **copy**; the automatic templates close **without saving**, the four for the owner's touch stay
+   open, and the first of them (Cover 1) becomes the active document. Photoshop's "show dialogs" setting is put back.
    Replacing and saving always act on the **active** document (seen live: a copy "saved" from another
    document held the active one's picture), so the script activates its document first.
 6. `watch()` follows `status.json` the script writes (step, saved, left open, problems) and hands the page

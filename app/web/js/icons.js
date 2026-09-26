@@ -130,7 +130,8 @@ const P = {
   // one (the prompt into the clipboard, a download awaited); `regenerate` — once more, the new picture replaces it
   prompt: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 10l2.5 2.2-2.5 2.2M12.5 14.5h4"/>',
   generate: '<path d="M8 5.8v12.4a1 1 0 0 0 1.5.9l10-6.2a1 1 0 0 0 0-1.8l-10-6.2A1 1 0 0 0 8 5.8z"/>',
-  regenerate: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.8 4.2v3.6h-3.6"/>',
+  // one line from the arc into the arrowhead's corner (26.09.2026: the arc and a loose arrowhead looked broken)
+  regenerate: '<path d="M20 12a8 8 0 1 1-8-8c2.2 0 4.3.9 5.9 2.4L20 8.5"/><path d="M20 3.5v5h-5"/>',
   // a spread mirrored left to right (the owner's flipper) — not `swap`, which trades a spread's two pages
   mirror: '<path d="M12 3.5v2M12 8.5v2M12 13.5v2M12 18.5v2"/><path d="M8.5 7L3.5 17h5z"/><path d="M15.5 7l5 10h-5z"/>',
   // the Workshop's pipeline: the book agents (Antigravity — a chat, the agent typing), the book's hero, a step not

@@ -1,7 +1,7 @@
 ---
 title: Listing mockups — a Photoshop utility (plan and templates)
 type: plan
-updated: 2026-09-24
+updated: 2026-09-26
 code: []
 ---
 # Listing mockups (plan and templates)
@@ -116,7 +116,8 @@ All six are 300 ppi, 8-bit RGB, and every smart object inside is 300 ppi. They c
   open** in Photoshop.
 - **The script opens a copy** of each template (in a temporary folder) — even an accidental Ctrl+S never
   touches the originals.
-- The 7 fully automatic pictures (Open 1 ×4, Open 2 ×2, Dedication) are saved and closed by the script;
+- The fully automatic pictures (Open 1 ×4, Open 2 ×2 — and Dedication until 2026-09-26, when the owner asked to
+  keep it open for its background and table colours) are saved and closed by the script;
   a template used several times is opened once, and only the spread is swapped between saves.
 - **Output — PNG**; the owner picks the folder **every time** (the Windows dialog).
 - A small "save the open ones" script — saves the three hand-finished documents into the same folder with

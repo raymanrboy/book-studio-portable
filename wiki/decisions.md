@@ -9,6 +9,14 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-26 — Mockups: Dedication stays open for its colours
+
+- **The owner:** "Dedication has to be left open too, because there I pick the colour of the background and the
+  table."
+- **Decision:** Dedication is filled as before (page 1, the back, the spine, the rim) and left open instead of saved
+  (`"keep": "colours"`); «Зберегти відкриті» saves it as `4. Dedication.png` with his colours. So a run saves 6
+  pictures by itself and leaves 4 templates open; no automatic Dedication picture in the default colours.
+
 ## 2026-09-26 — Mockups: the book's cover opens in Photoshop too; «×» finishes the page
 
 - **The owner:** "I want the script to open and leave not only the PSDs but also the Cover image in Photoshop, so I

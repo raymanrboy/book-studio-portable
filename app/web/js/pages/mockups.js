@@ -196,14 +196,16 @@ export async function mount(view) {
         ${t.found ? html`<img data-fade alt="" draggable="false" src="${media(`/media/mockups/template/${t.key}`, { w: TPL_W })}">` : ''}${ic('image')}
       </button>
       <div class="mk-tpl-main">
-        <div class="mk-tpl-head"><span class="mk-tpl-name">${t.label}</span>${t.hand ? handMark() : ''}<span class="spacer"></span>${note}</div>
+        <div class="mk-tpl-head"><span class="mk-tpl-name">${t.label}</span>${t.hand || t.keep ? handMark(t) : ''}<span class="spacer"></span>${note}</div>
         <div class="mk-slots" data-slots="${t.key}">${auto ? autoSlot(t) : ''}</div>
       </div>
     </div>`;
   }
 
-  function handMark() {
-    return html`<span class="mk-hand" data-tip="Лицьову обкладинку підганяєте ви: шаблон лишиться відкритим у Photoshop">${ic('hand', 'icon-s')}</span>`;
+  // ✋ — the owner's own touch, so the template stays open in Photoshop: the front cover, or Dedication's colours.
+  const yours = (t) => (t.keep === 'colours' ? 'колір фону й столу обираєте ви' : 'лицьову обкладинку підганяєте ви');
+  function handMark(t) {
+    return html`<span class="mk-hand" data-tip="${yours(t).replace(/^./, (c) => c.toUpperCase())}: шаблон лишиться відкритим у Photoshop">${ic('hand', 'icon-s')}</span>`;
   }
 
   function autoSlot(t) {
@@ -299,14 +301,14 @@ export async function mount(view) {
     const box = $('#mk-make');
     if (!box) return;
     const m = st.meta;
-    const saves = m.templates.filter((t) => !t.hand).reduce((sum, t) => sum + Math.max(1, t.slots), 0);
-    const hands = m.templates.filter((t) => t.hand).length;
+    const saves = m.templates.filter((t) => !t.hand && !t.keep).reduce((sum, t) => sum + t.slots, 0);
+    const hands = m.templates.filter((t) => t.hand || t.keep).length;
     const ready = m.templatesFound && m.photoshopFound && m.templates.every((t) => t.found);
     const left = st.book ? missing() : 0;
     const need = !st.book ? 'Ще: демо-книга' : left ? `Ще ${left} ${plural(left, SPREADS)}` : '';
     setHtml(box, html`
       <p class="mk-plan">Photoshop сам збереже <b class="num">${saves}</b> ${plural(saves, PICTURES)}, а <b class="num">${hands}</b> шаблони залишить
-        відкритими — лицьову обкладинку в них підганяєте ви.${st.book && !st.out ? ' Папку спитаю, коли натиснете.' : ''}</p>
+        відкритими — лицьову обкладинку й кольори Dedication підганяєте ви.${st.book && !st.out ? ' Папку спитаю, коли натиснете.' : ''}</p>
       <button type="button" class="btn btn-primary btn-block mk-make ${need ? 'waiting' : ''}" data-act="make" ${ready ? '' : 'disabled'}>${ic('mockup')}Зробити мокапи</button>
       ${need ? html`<div class="mk-left">${need}</div>` : ''}`);
   }
@@ -376,7 +378,7 @@ export async function mount(view) {
   function turnCard(p) {
     return html`<div class="mk-turn">
       <div class="mk-turn-head">${ic('hand')}<span>Ваша черга — у Photoshop</span></div>
-      <p>Відкриті: <b>${p.open.join(', ')}</b>${p.cover ? html` і обкладинка книги <b>Cover</b> — з неї й беріть лицьову` : ''}. Підженіть у кожному шаблоні лицьову обкладинку — і збережіть усі разом:</p>
+      <p>Відкриті: <b>${p.open.join(', ')}</b>${p.cover ? html` і обкладинка книги <b>Cover</b> — з неї й беріть лицьову` : ''}. Підженіть лицьову обкладинку${p.open.includes('Dedication') ? ' й кольори фону та столу в Dedication' : ''} — і збережіть усі разом:</p>
       <button type="button" class="btn btn-block mk-finish" data-act="finish">${ic('download')}Зберегти відкриті й закрити</button>
       <div class="mk-turn-note">Картинки ляжуть у ту саму папку й будуть названі, як решта. Можна зберегти їх і самому, як звикли, — тимчасові копії програма прибере сама.</div>
     </div>`;
@@ -523,7 +525,7 @@ export async function mount(view) {
     const found = st.meta.templates.filter((t) => t.found);
     viewer(found.map((t) => ({
       src: media(`/media/mockups/template/${t.key}`, { w: BIG }), full: media(`/media/mockups/template/${t.key}`, { w: SHARP }),
-      title: t.label, sub: `${t.file}${t.hand ? ' · лицьову обкладинку підганяєте ви' : ''}`,
+      title: t.label, sub: `${t.file}${t.hand || t.keep ? ` · ${yours(t)}` : ''}`,
     })), Math.max(0, found.findIndex((t) => t.key === key)));
   }
 

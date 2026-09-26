@@ -56,7 +56,8 @@ SOFT = {"page": (1935, 1935), "board": (1935, 1935), "spine": (164, 1935)}   # t
 # What the script fills where. Layer paths are compared with spaces trimmed ("Left " in All & Open 1); a
 # one-name path is looked for at the top of the layer list, where the shortcut copies are. "slots" — how many
 # spreads the owner picks for the template; "hand" — the front cover he fits himself, so the template is left
-# open in Photoshop. In the order the owner sees them.
+# open in Photoshop; "keep" — left open too, for his own touch: Dedication's background and table colours (the
+# owner, 26.09.2026 — it was saved and closed by itself until then). In the order the owner sees them.
 _A = {"front": ("Main", "Cover"), "back": ("Main", "Back Cover"), "spine": ("Main", "Rige")}
 TEMPLATES = [
     {"key": "open1", "file": "2. Open 1.psd", "label": "Open 1", "size": HARD, "slots": 4,
@@ -69,12 +70,17 @@ TEMPLATES = [
      "layers": {"back": ("Back Cover",), "spine": ("Spine",), "left": ("Left",), "right": ("Right",)},
      "hand": ("Front Cover",)},
     {"key": "dedication", "file": "4. Dedication.psd", "label": "Dedication", "size": HARD, "slots": 0,
-     "layers": {**_A, "page1": ("Main", "Page 1")}},
+     "layers": {**_A, "page1": ("Main", "Page 1")}, "keep": "colours"},
     {"key": "cover1", "file": "1. Cover 1.psd", "label": "Cover 1", "size": HARD, "slots": 0, "layers": {},
      "hand": ("Main", "COVER_")},
 ]
 # Photoshop works through the saved pictures first; the templates it leaves open come last.
-RUN_ORDER = ("open1", "open2", "dedication", "cover1", "coverOpen", "allOpen")
+RUN_ORDER = ("open1", "open2", "cover1", "coverOpen", "allOpen", "dedication")
+
+
+def kept_open(t: dict) -> bool:
+    """A template the script leaves open in Photoshop for the owner (his front cover, or Dedication's colours)."""
+    return bool(t.get("hand") or t.get("keep"))
 
 _RUN_NAME = r"\d{8}-\d{6}-[0-9a-f]{6}"
 
@@ -290,17 +296,15 @@ def plan(book: dict, picks: dict, out: Path, run: Path, templates_dir: Path) -> 
         for n in picks.get(key) or []:
             pages = [{"layer": list(layers["left"]), "image": picture("page", size, n)},
                      {"layer": list(layers["right"]), "image": picture("page", size, n + 1)}]
-            if t.get("hand"):
+            if kept_open(t):
                 fills += pages  # its one spread stays in the document the owner finishes
             else:
                 shots.append({"fills": pages, "title": f"{t['label']} · {n}–{n + 1}",
                               "save": _free_name(out, f"{stem} ({n}-{n + 1}).png", taken).as_posix()})
-        if key == "dedication":
-            shots.append({"fills": [], "title": t["label"], "save": _free_name(out, f"{stem}.png", taken).as_posix()})
         steps.append({"key": key, "name": stem, "title": t["label"], "source": str(templates_dir / t["file"]),
-                      "file": (run / "templates" / t["file"]).as_posix(), "keepOpen": bool(t.get("hand")),
+                      "file": (run / "templates" / t["file"]).as_posix(), "keepOpen": kept_open(t),
                       # the spread a template left open holds: its picture is named by it when saved later
-                      "spread": (picks.get(key) or [None])[0] if t.get("hand") else None,
+                      "spread": (picks.get(key) or [None])[0] if kept_open(t) else None,
                       "fills": fills, "shots": shots})
     # The book's cover as Canva exported it, opened in Photoshop beside the templates left open: the owner fits the
     # front cover from it (26.09.2026: "open the Cover image too, so I can work with it at once"). A copy in the run's
@@ -637,7 +641,8 @@ def state() -> dict:
     busy = jobs.running("mockups")
     return {
         "templates": [{"key": t["key"], "label": t["label"], "file": t["file"], "slots": t["slots"],
-                       "hand": bool(t.get("hand")), "found": (where["templates"] / t["file"]).is_file()}
+                       "hand": bool(t.get("hand")), "keep": t.get("keep") or "",
+                       "found": (where["templates"] / t["file"]).is_file()}
                       for t in TEMPLATES],
         "templatesDir": str(where["templates"]), "templatesFound": where["templates"].is_dir(),
         "photoshopDir": str(where["photoshop"]), "photoshopFound": bool(ps),

@@ -3,6 +3,23 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-26] update | Mockups: Dedication left open for its background and table colours
+
+- The owner: Dedication must stay open too — he picks the background and table colours there.
+- `mockups.py`: `"keep": "colours"` on Dedication, `kept_open()` (hand or keep), no automatic Dedication shot, the
+  kept ones last in `RUN_ORDER`; `state()` passes `keep`. `mockups.js`: ✋ on Dedication with its own tip, «6
+  картинок, а 4 шаблони…», the turn card names Dedication's colours.
+- Checked: the mockups tests updated (6 saved, 4 open, Dedication filled and open, saved by «Зберегти відкриті»);
+  the preview — a whole run and «Зберегти відкриті» (4 pictures, Dedication among them). Not checked: the real
+  Photoshop. Pages: features/mockups.md, plans/listing-mockups.md, decisions.md.
+
+## [2026-09-26] update | The «Ще раз» icon redrawn
+
+- The owner: the «Ще раз» button "looks broken" — the `regenerate` arc and its arrowhead were two loose strokes.
+  Now one line runs from the arc into the arrowhead's corner (`icons.js`), the `sync` icon's family.
+- Checked: the preview, the button and the icon large, light theme. Pages: none beyond this log (the icon's
+  meaning in architecture/frontend.md is unchanged).
+
 ## [2026-09-26] update | Mockups: the book's Cover opens in Photoshop; «×» finishes the page
 
 - The owner: open the Cover image in Photoshop beside the PSDs left open; a cross on the Mockups page to finish.

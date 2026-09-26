@@ -163,7 +163,11 @@ class RunPlan(unittest.TestCase):
         self.assertEqual([f["layer"][-1] for f in by["open2"]["fills"]], ["Cover", "Back Cover", "Rige"])
         self.assertEqual(by["dedication"]["fills"][-1]["layer"], ["Main", "Page 1"])
         self.assertTrue(by["dedication"]["fills"][-1]["image"].endswith("hard-page-1.png"))
-        self.assertEqual(len(by["dedication"]["shots"]), 1)
+        # Dedication: filled, then left open for the owner's background and table colours (26.09.2026) — nothing
+        # saved by itself, «Зберегти відкриті» saves it
+        self.assertTrue(by["dedication"]["keepOpen"])
+        self.assertEqual(by["dedication"]["shots"], [])
+        self.assertEqual(mockups.RUN_ORDER[-1], "dedication")         # the kept ones last, Cover 1 still in front
         # the three where the front cover shows: filled, left open, nothing saved, the front never touched
         for key in ("cover1", "coverOpen", "allOpen"):
             with self.subTest(template=key):
@@ -181,8 +185,7 @@ class RunPlan(unittest.TestCase):
         work = self.plan({**PICKS, "open1": [2, 2, 10, 14]})
         saves = [Path(s["save"]).name for t in work["templates"] for s in t["shots"]]
         self.assertEqual(saves, ["2. Open 1 (2-3) (2).png", "2. Open 1 (2-3) (3).png", "2. Open 1 (10-11).png",
-                                 "2. Open 1 (14-15).png", "3. Open 2 (8-9).png", "3. Open 2 (12-13).png",
-                                 "4. Dedication.png"])
+                                 "2. Open 1 (14-15).png", "3. Open 2 (8-9).png", "3. Open 2 (12-13).png"])
 
     def test_a_wrong_pick_is_refused(self):
         for picks in ({**PICKS, "open1": [2, 6]},              # too few
@@ -254,17 +257,17 @@ class Run(unittest.TestCase):
             return mockups.make(Job("mockups"), self.book, PICKS, self.out, cancel or threading.Event())
 
     def test_a_run_saves_the_pictures_and_keeps_the_templates_untouched(self):
-        photoshop = FakePhotoshop(opened=("1. Cover 1", "Cover & Open 1", "All & Open 1"))
+        photoshop = FakePhotoshop(opened=("1. Cover 1", "Cover & Open 1", "All & Open 1", "4. Dedication"))
         result = self.make(photoshop)
-        self.assertEqual(len(result["saved"]), 7)
-        self.assertIn("4. Dedication.png", result["saved"])
-        self.assertEqual(result["open"], ["Cover 1", "Cover & Open 1", "All & Open 1"])
+        self.assertEqual(len(result["saved"]), 6)
+        self.assertNotIn("4. Dedication.png", result["saved"])            # saved later, with the owner's colours
+        self.assertEqual(result["open"], ["Cover 1", "Cover & Open 1", "All & Open 1", "Dedication"])
         self.assertEqual(result["problems"], ["У «3. Open 2» немає смарт-об'єкта «Main/Left»"])
         self.assertEqual(len(photoshop.scripts), 1)                       # one script, one "run this?" click
         run = next((self.root / "work").iterdir())
         self.assertEqual(result["run"], run.name)                         # «Зберегти відкриті» finds it by this
         copies = sorted(p.name for p in (run / "templates").iterdir())
-        self.assertEqual(copies, ["1. Cover 1.psd", "All & Open 1.psd", "Cover & Open 1.psd"])   # closed ones go
+        self.assertEqual(copies, ["1. Cover 1.psd", "4. Dedication.psd", "All & Open 1.psd", "Cover & Open 1.psd"])  # closed ones go
         self.assertFalse((run / "pictures").exists())                     # the smart objects hold them now
         # the templates folder: the same files, never written
         self.assertEqual({p.name: p.stat().st_mtime_ns for p in self.templates.iterdir()}, self.stamps)
@@ -519,13 +522,13 @@ class SaveTheOpenOnes(unittest.TestCase):
         fin = mockups.finish_plan(self.run)
         self.assertTrue(fin["finish"])
         self.assertEqual([Path(t["shots"][0]["save"]).name for t in fin["templates"]],
-                         ["1. Cover 1 (2).png", "Cover & Open 1 (4-5).png", "All & Open 1 (16-17).png"])
+                         ["1. Cover 1 (2).png", "Cover & Open 1 (4-5).png", "All & Open 1 (16-17).png", "4. Dedication.png"])
         self.assertEqual([t["file"] for t in fin["templates"]], [t["file"] for t in self.work["templates"] if t["keepOpen"]])
         self.assertIn('"finish": true', mockups.script(fin))
 
     def test_the_window_offers_them_again_after_a_reload(self):
         self.assertEqual(mockups.pending(), {"run": self.run.name, "folder": str(self.out),
-                                             "open": ["Cover 1", "Cover & Open 1", "All & Open 1"], "cover": False})
+                                             "open": ["Cover 1", "Cover & Open 1", "All & Open 1", "Dedication"], "cover": False})
 
     def test_saving_them_removes_the_run(self):
         def photoshop(script: Path):
@@ -538,7 +541,8 @@ class SaveTheOpenOnes(unittest.TestCase):
         (self.run / "finish-status.json").write_text(json.dumps({"state": "done"}), encoding="utf-8")  # an old try's
         with mock.patch.object(mockups, "launch", photoshop):
             result = mockups.finish(Job("mockups"), self.run.name, threading.Event())
-        self.assertEqual(result["saved"], ["1. Cover 1.png", "Cover & Open 1 (4-5).png", "All & Open 1 (16-17).png"])
+        self.assertEqual(result["saved"], ["1. Cover 1.png", "Cover & Open 1 (4-5).png", "All & Open 1 (16-17).png",
+                                           "4. Dedication.png"])
         self.assertTrue(result["cleaned"])
         self.assertFalse(self.run.exists())
         self.assertIsNone(mockups.pending())
@@ -552,7 +556,8 @@ class SaveTheOpenOnes(unittest.TestCase):
         with mock.patch.object(mockups, "launch", photoshop):
             result = mockups.finish(Job("mockups"), self.run.name, threading.Event())
         self.assertFalse(result["cleaned"])
-        self.assertEqual(sorted(p.name for p in (self.run / "templates").iterdir()), ["All & Open 1.psd", "Cover & Open 1.psd"])
+        self.assertEqual(sorted(p.name for p in (self.run / "templates").iterdir()),
+                         ["4. Dedication.psd", "All & Open 1.psd", "Cover & Open 1.psd"])
         self.assertEqual(result["problems"], ["«All & Open 1» уже не відкритий у Photoshop — його не збережено"])
 
     def test_the_cover_is_named_for_the_owner_and_travels_to_the_second_script(self):
@@ -751,16 +756,16 @@ class PhotoshopScript(unittest.TestCase):
         bad = literal.search(r'x.replace(/^.*[\\/]/, "")').group(1)
         self.assertTrue(any(re.search(r"(?<!\\)/", re.sub(r"\\.", "", c)) for c in re.findall(r"\[((?:\\.|[^\]\\])*)\]", bad)))
 
-    def test_the_script_fills_every_template_and_leaves_three_open(self):
+    def test_the_script_fills_every_template_and_leaves_four_open(self):
         status, seen = self.run_script()
         self.assertEqual(status["state"], "done", status)
         self.assertEqual(status["problems"], [])
-        self.assertEqual(len(status["saved"]), 7)
-        self.assertEqual(status["opened"], ["1. Cover 1", "Cover & Open 1", "All & Open 1"])
+        self.assertEqual(len(status["saved"]), 6)
+        self.assertEqual(status["opened"], ["1. Cover 1", "Cover & Open 1", "All & Open 1", "4. Dedication"])
         self.assertEqual(status["step"], status["total"])
         by_file = {t["file"]: t for t in self.work["templates"]}
         closed = {by_file[p]["key"] for p in seen["log"]["closed"]}
-        self.assertEqual(closed, {"open1", "open2", "dedication"})          # saved and closed without saving
+        self.assertEqual(closed, {"open1", "open2"})                        # saved and closed without saving
         self.assertEqual(by_file[seen["active"]]["key"], "cover1")      # the first one the owner finishes
         self.assertEqual(seen["dialogs"], "ALL")                            # Photoshop's own setting comes back
         # the book's cover opened last, beside them, and left open (the owner, 26.09.2026)
@@ -791,6 +796,7 @@ class PhotoshopScript(unittest.TestCase):
             with self.subTest(template=key):
                 self.assertIsNone(docs[key][layer]["contents"])          # the owner's front cover
         self.assertTrue(docs["coverOpen"]["Left Page"]["visible"])       # a visible copy stays visible
+        self.assertTrue(docs["dedication"]["Main/Page 1"]["contents"].endswith("hard-page-1.png"))  # open, filled
 
     def test_a_missing_layer_is_told_and_the_rest_goes_on(self):
         shapes = trees(self.work)
@@ -798,7 +804,7 @@ class PhotoshopScript(unittest.TestCase):
         shapes[open2][1]["children"] = [c for c in shapes[open2][1]["children"] if c["name"] != "Left"]
         status, seen = self.run_script(shapes)
         self.assertEqual(status["state"], "done")
-        self.assertEqual(len(status["saved"]), 5)                           # Open 2's two are the ones missing
+        self.assertEqual(len(status["saved"]), 4)                           # Open 2's two are the ones missing
         self.assertEqual(status["problems"], [{"kind": "layer", "layer": "Main/Left", "template": "3. Open 2"}] * 2)
         self.assertEqual(mockups._problem_text(status["problems"][0]), "У «3. Open 2» немає смарт-об'єкта «Main/Left»")
 
@@ -806,7 +812,7 @@ class PhotoshopScript(unittest.TestCase):
         Path(self.work["cover"]).unlink()
         status, seen = self.run_script()
         self.assertEqual(status["state"], "done")
-        self.assertEqual(len(status["saved"]), 7)
+        self.assertEqual(len(status["saved"]), 6)
         self.assertNotIn("coverOpened", status)
         self.assertEqual([p["template"] for p in status["problems"]], ["Cover"])
         self.assertTrue(mockups._problem_text(status["problems"][0]).startswith("«Cover» не відкрився"))
@@ -830,8 +836,8 @@ class PhotoshopScript(unittest.TestCase):
         still_open = [t["file"] for t in kept if t["key"] != "allOpen"]   # the owner closed All & Open 1 himself
         status, seen = self.run_script(work=fin, open_already=still_open)
         self.assertEqual(status["state"], "done", status)
-        self.assertEqual([Path(p).name for p in status["saved"]], ["1. Cover 1.png", "Cover & Open 1 (4-5).png"])
-        self.assertEqual(status["closed"], ["1. Cover 1", "Cover & Open 1"])
+        self.assertEqual([Path(p).name for p in status["saved"]], ["1. Cover 1.png", "Cover & Open 1 (4-5).png", "4. Dedication.png"])
+        self.assertEqual(status["closed"], ["1. Cover 1", "Cover & Open 1", "4. Dedication"])
         self.assertEqual(status["problems"], [{"kind": "closed", "template": "All & Open 1"}])
         self.assertEqual(seen["log"]["opened"], still_open)                    # it opened nothing itself
         self.assertEqual(seen["log"]["closed"], still_open)
@@ -854,4 +860,4 @@ class PhotoshopScript(unittest.TestCase):
         status, seen = self.run_script(work=fin, open_already=opened, changed=[self.work["cover"]])
         self.assertNotIn("coverClosed", status)                                # his changes stay open in Photoshop
         self.assertNotIn(self.work["cover"], seen["log"]["closed"])
-        self.assertEqual(len(status["saved"]), 3)
+        self.assertEqual(len(status["saved"]), 4)
