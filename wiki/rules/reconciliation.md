@@ -75,9 +75,11 @@ still takes priority.
 Cost: Printify — `total_price + total_shipping + total_tax` (in cents); Gelato — `totalInclVat` in dollars
 (`to_usd()`): euros at `eurUsdRate` (1.085, the Profit Calculator's), Czech crowns, pounds and zlotys at
 `czkUsdRate`, `gbpUsdRate`, `plnUsdRate` (the ECB's cross rates of 25.09.2026), all in the settings' `gelato`
-section. **A currency without a rate is never counted as dollars** (until 2026-09-26 anything but euros was — the
-owner's five orders in crowns, and two in pounds among the Profit Calculator's): the row shows `cost_unknown`
-and no profit.
+section. **A currency without a rate is never counted as dollars** (until 2026-09-26 anything but euros was — five
+orders in crowns in the Gelato account, June 2026, and two in pounds among the Profit Calculator's): the row shows
+`cost_unknown` and no profit. The owner's own Gelato orders are billed in dollars (28 of his 30 by 2026-09-27; two
+of 5 August in euros); the euros and crowns in the account are mostly other people's orders — they are converted
+only in case one gets linked to a sale.
 
 ## The money of a row (`outcomes.apply()`, worked out once)
 

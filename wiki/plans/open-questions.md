@@ -109,16 +109,24 @@ different server).
 
 ## Technical debt
 
-- The book's `notes` field is still in the model, `PATCH`, and `summary()`, even though notes were
-  removed from the interface.
 - `pages/profit.js` isn't wired into the routes until October 1.
+- **Profit counts only sales from 1 October 2026** (the owner, 2026-09-27: "accounting starts in October and must
+  not include earlier orders at all"). Not in the code yet: the view counts every receipt the sync has (77 since
+  January) — a start date to be added before the page is turned on.
+- **The owner's own Gelato account** (planned, 2026-09-27: "no one else's orders in it"). The sync replaces the
+  Gelato list with what the connected account returns (`sync._gelato_part()`), so after the switch an order printed
+  through the old account and not yet marked shipped on Etsy would find no print order and fall back to «нове»
+  in the queue, and lose its tracking. Before the switch: keep the old account's orders (or switch once every
+  order sent through it is marked shipped).
 - ~~**Accounting — before October 1**~~ (deferred by the owner on 2026-09-23) — **fixed on 2026-09-26** in the
   [big cleanup](cleanup.md): one money step, a cancelled first order keeps the second one's cost, every currency
   converted, the cover from the buyer's choice, only placed and paid orders counted
   ([rules/reconciliation.md](../rules/reconciliation.md)).
-- **The euro's rate** stays the Profit Calculator's 1.085 (saved in the owner's settings); the ECB gave 1.1403 on
-  2026-09-25, and most Gelato orders are billed in euros (524 of 561) — so their cost is ~5% low. The owner's
-  call; not changed.
+- ~~**The euro's rate**~~ — closed on 2026-09-27: nothing to change. The Gelato account holds 568 orders, most of
+  them not the owner's (531 in euros, 5 in crowns); of his 30 sales printed at Gelato 28 are billed in dollars
+  (the owner: "all my orders are paid in dollars") and 2 — both on 5 August, before the account's first dollar
+  order on 12 August — in euros (€35.85; at 1.085 or the ECB's 1.1403 the difference is about $2). The rates stay
+  as a safety net.
 
 ## Related
 

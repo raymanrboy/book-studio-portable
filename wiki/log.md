@@ -3,6 +3,19 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] decision | Profit from 1 October only; Gelato's currencies are other people's orders
+
+- The owner: accounting starts on 1 October and must not include earlier orders — recorded (decisions, open
+  questions); not in the code yet, to be done before the page is turned on.
+- Checked in his local data (counts only): the Gelato account has 568 orders, most not his; of his 30 Gelato sales
+  28 are billed in dollars, 2 (5 August) in euros; the 5 in crowns are none of his. The euro question is closed; the
+  wiki's "524 of 561, ~5% low" and "the owner's five orders in crowns" were wrong and are corrected.
+- Found: after a switch to his own Gelato account the sync would drop the old account's orders — orders not yet
+  marked shipped on Etsy would fall back to «нове». Recorded in open questions, to be handled before the switch.
+- Checked in the preview: on every page with pictures (15 pages), no picture is left without its fade-in started.
+- Stale line removed: the book's `notes` field (gone in phase 5).
+- Pages: decisions, plans/open-questions, rules/reconciliation.
+
 ## [2026-09-27] update | Cleanup phase 6: big files cut by job
 
 - Server: `textcheck.py` → the package `textcheck/` (the replay gave the same output, byte for byte); `creator.py`

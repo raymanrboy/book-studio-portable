@@ -9,6 +9,17 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-27 — Profit from 1 October only; the Gelato account's currencies
+
+- **Decision (the owner):** accounting starts on 1 October 2026 and does not include earlier orders at all. Not in
+  the code yet (open questions) — to be done before the Profit page is turned on.
+- **Why the program asks the printers now:** it is the queue's sync, not the accounting's — the order's stage, the
+  printer's status, the tracking number, the archive's 14 days all come from it (its old names — the job
+  `profit-sync`, `/api/profit/sync`, `data/profit/` — are from the time it lived in `profit.py`). The Profit page
+  itself asks nothing: it reads the same snapshot.
+- **Currencies:** the owner's Gelato orders are paid in dollars; the euros and crowns in the account are mostly
+  other people's orders (he plans an account of his own). The euro's rate stays; nothing to decide.
+
 ## 2026-09-27 — The big cleanup, phase 6: big files cut by job
 
 - **A page keeps its state and its actions in `mount()`**; what only draws (a row, a panel, a result) or a dialog of
@@ -48,7 +59,8 @@ code: []
     on hold or awaiting payment costs nothing yet and the sale shows no profit until it is paid.
   - **Every currency converted**: crowns, pounds, zlotys at the ECB's rates of 25.09.2026 (settings'
     `czkUsdRate`, `gbpUsdRate`, `plnUsdRate`); a currency without a rate is never counted as dollars. The euro keeps
-    the Profit Calculator's 1.085 — changing it is the owner's call (open questions).
+    the Profit Calculator's 1.085 (2026-09-27: the owner's own Gelato orders are billed in dollars — only two early
+    ones in euros; the crowns are other people's orders in the account — open questions).
   - **The cover type only from the buyer's choice**, never from letters of a Gelato order's name.
   - A cancelled first print order no longer wipes the cost of the sale's other print orders.
 - **How:** one reading of a print order (`printorders.py`), matching one receipt at a time (`reconcile.py`), the
