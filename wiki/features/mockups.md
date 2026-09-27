@@ -6,6 +6,7 @@ code:
   - app/studio/mockups.py
   - app/studio/mockups.jsx
   - app/web/js/pages/mockups.js
+  - app/web/js/pages/mockups-run.js
 ---
 # Mockups (Мокапи)
 
@@ -266,6 +267,7 @@ icon, «Мокапи: готово · 7 картинок», back in the listings
 - [app/studio/mockups.jsx](../../app/studio/mockups.jsx) — `openCover()`, `closeCover()`, `findLayer()`, `replaceContents()`, `fill()`, `savePng()`, `runTemplate()`, `findOpen()`, `finishOpen()`, `report()`, `cancelled()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
 - [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `paintHead()`, `finishPage()`, `mount()`, `paintBook()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
+- [app/web/js/pages/mockups-run.js](../../app/web/js/pages/mockups-run.js) — step 4 drawn: `runView()`, `rowsHtml()`, `resultCard()`, `turnCard()`, `finishedCard()`
 - [app/web/js/app.js](../../app/web/js/app.js) — the route `#/mockups`, `paintBusy()` (the rail's dot)
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_zip()`, `downloads_folder()`, `attention()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `export_files()` (the same naming rules as the print folder), `archive_folder()`
