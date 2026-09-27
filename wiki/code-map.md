@@ -106,6 +106,7 @@ code:
 | [js/pages/library.js](../app/web/js/pages/library.js) | The library gallery, the guide | `mount()`, `saveGuide()` |
 | [js/pages/book.js](../app/web/js/pages/book.js) | A book's passport | `mount()` |
 | [js/pages/creator.js](../app/web/js/pages/creator.js) | The Order Creator (one draft for every book of an order) | `mount()`, `folderBlock()` |
+| [js/pages/creator-picker.js](../app/web/js/pages/creator-picker.js) | The Order Creator's «Замовлення Etsy» (the queue's own orders) | `pickEtsyOrder()` |
 | [js/pages/archive.js](../app/web/js/pages/archive.js) | Order archive: the list, a book, reprinting | `mount()`, `mountList()`, `mountBook()` |
 | [js/pages/settings.js](../app/web/js/pages/settings.js) | Settings | `mount()` |
 | [js/pages/settings-dialogs.js](../app/web/js/pages/settings-dialogs.js) | Settings' dialogs: the Etsy sign-in, the Printify Master | `oauthFlow()`, `pickMaster()` |

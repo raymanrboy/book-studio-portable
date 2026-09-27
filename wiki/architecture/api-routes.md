@@ -48,7 +48,7 @@ code:
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/orders` | token | `_list` | orders.js (the queue), creator.js `fromEtsy` (the same list; its own `/api/creator/etsy-orders` went on 2026-09-27) |
+| GET | `/api/orders` | token | `_list` | orders.js (the queue), creator-picker.js `pickEtsyOrder` (the same list; its own `/api/creator/etsy-orders` went on 2026-09-27) |
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (the card; `earlierSends` — sends of this order that never became a print-shop order) |
 | POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (laying out pages; for Gelato — also whether it prints that many pages in this format; `provider: "files"` — a hardcover, the length picks the printer) |
 

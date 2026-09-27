@@ -55,7 +55,7 @@ Code paths below are relative to the repository root.
 | Тимчасове посилання (для Gelato) | A Cloudflare tunnel to a single PDF | [tunnel.py](../app/studio/tunnel.py) `FileTunnel` |
 | Перетягнути папку або ZIP | Copying it into the program and unpacking it | [drop.js](../app/web/js/drop.js) `receiveDrop()`; [drops.py](../app/studio/drops.py) `extract_zip()` |
 | Очистити адресу (гумка) | The icon in the address block | [creator.js](../app/web/js/pages/creator.js) `addressCard()` |
-| Заповнити із замовлення Etsy | Picking an order in the Order Creator | [creator.js](../app/web/js/pages/creator.js) `fromEtsy()` |
+| Заповнити із замовлення Etsy | Picking an order in the Order Creator | [creator-picker.js](../app/web/js/pages/creator-picker.js) `pickEtsyOrder()` |
 
 ## Book and library
 

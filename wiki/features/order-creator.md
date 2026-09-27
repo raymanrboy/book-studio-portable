@@ -5,6 +5,7 @@ updated: 2026-09-27
 code:
   - app/studio/creator/
   - app/web/js/pages/creator.js
+  - app/web/js/pages/creator-picker.js
   - app/web/js/folder-viewer.js
 ---
 # Order Creator
@@ -66,7 +67,7 @@ code:
 
 ## Picking an Etsy order
 
-The `fromEtsy()` dialog: search, stages "New / In progress / Sent", personalization is collapsed (an
+The `pickEtsyOrder()` dialog (`creator-picker.js`; the page fills itself in — `fillFromOrder()`): search, stages "New / In progress / Sent", personalization is collapsed (an
 arrow expands the "field: value" list). It lists the queue's own orders (`/api/orders`, with the same tab counts and
 empty states — `countStages()`, `emptyOrders()`); its own route `/api/creator/etsy-orders` went on 2026-09-27. Opening the dialog doesn't start a sync, only waits for one
 already running; the refresh button starts one. Picking an order fills in the title and address
@@ -199,7 +200,8 @@ exactly that — [Gelato](../integrations/gelato.md).
 
 ## Where in the code
 
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `openStructure()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `openStructure()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fillFromOrder()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
+- [app/web/js/pages/creator-picker.js](../../app/web/js/pages/creator-picker.js) — `pickEtsyOrder()`
 - [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`
 - [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `journaled_send()`, `mark_books()`, `record_order()`, `books_of()`, `receipt_for()`, `joint_title()`, `_unknown_outcome()`, `checked_files()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `validate_address()`
 - [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`

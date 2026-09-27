@@ -1,17 +1,17 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
-  api, post, html, ic, ib, setHtml, on, media, modal, toast, runJob, segHtml, syncSeg, setSeg, bytes, dateTime,
-  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, setProgress, patch, enterOnce,
-  confirmChecked,
+  api, post, html, ic, ib, setHtml, on, media, toast, runJob, segHtml, syncSeg, setSeg, bytes, copyText, openExternal,
+  debounce, keepFocus, fadeImages, setProgress, patch, enterOnce, confirmChecked,
 } from '../lib.js';
 import { openFolderViewer } from '../folder-viewer.js';
 import {
-  COUNTRIES, STAGES, addressFromEtsy, spreadsOf, matchesOrder, variationsOf, pagesText, restorable, childOf,
-  receiptOfTitle, holdClicks, orderSync, pageVersion, filesBadge, checkNotices, svcChip, countStages, emptyOrders,
+  COUNTRIES, addressFromEtsy, spreadsOf, pagesText, restorable, childOf, receiptOfTitle, pageVersion, filesBadge,
+  checkNotices,
 } from '../order-bits.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { take } from '../handoff.js';
 import { markSent, finish } from '../keep.js';
+import { pickEtsyOrder } from './creator-picker.js';
 
 export async function mount(view) {
   let status;
@@ -521,104 +521,22 @@ export async function mount(view) {
     tunnelTimer = setInterval(tick, 1000);
   }
 
-  // ---------------------------------------------------------------- Etsy order picker
-  async function fromEtsy() {
-    let data;
-    try { data = await api('/api/orders'); } catch (err) { toast(err.message, 'error'); return; }  // the queue's own list
-    let term = '', stage = 'new', shown = [];
-    const syncedText = () => (data.syncedAt ? `Оновлено ${relTime(data.syncedAt)}` : 'Ще не завантажено');
-    const m = modal({
-      title: 'Замовлення Etsy',
-      sub: syncedText(),
-      size: 'l',
-      body: html`<div class="stack"><div class="row eo-head"><div class="input-group grow">${ic('search')}<input class="input" id="eo-q" placeholder="Ім'я покупця або номер чека" aria-label="Пошук замовлення" autofocus></div>
-          ${segHtml(STAGES.map((s) => ({ ...s, count: 0 })), stage, { name: 'stage' })}
-          <div class="tools">${ib('sync', 'Оновити замовлення з Etsy', 'data-x="sync"')}</div></div>
-        <div class="cand-list" id="eo-list" style="max-height:440px"></div></div>`,
-      foot: null,
+  // ---------------------------------------------------------------- an Etsy order picked (creator-picker.js)
+  function fillFromOrder(o) {
+    const s = cur();
+    if (o.stage === 'new') st.receiptId = String(o.receiptId);
+    // An order of several books gives a name to each of them (a folder is still chosen for each by hand).
+    const names = (o.items || []).map((it) => it.childName || o.childName || '');
+    while (s.books.length < Math.max(1, names.length)) s.books.push(newBook({ format: bk(0).format }));
+    s.books.forEach((b, i) => {
+      b.receiptId = String(o.receiptId);
+      b.title = `${o.receiptId} - ${names[i] || names[0] || ''}`.trim().replace(/-$/, '- ');
     });
-    const list = m.el.querySelector('#eo-list');
-    const seg = m.el.querySelector('[data-seg="stage"]');
-    const syncBtn = m.el.querySelector('[data-x="sync"]');
-    const setSub = (text) => { const node = m.el.querySelector('.modal-sub'); if (node) node.textContent = text; };
-    // The buyer's personalization stays folded; the chevron unfolds it as a label/value list,
-    // one group per book when the order holds several.
-    const unfolded = new Set();
-    const details = (o) => html`<div class="acc ${unfolded.has(o.receiptId) ? 'open' : ''}" data-vars="${o.receiptId}"><div>
-        ${o.items.map((it) => html`${o.items.length > 1 ? html`<div class="cand-item">${it.quantity > 1 ? `${it.quantity} × ` : ''}${it.title}</div>` : ''}
-          <dl class="cand-vars">${(it.variations || []).map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>`)}
-      </div></div>`;
-    const rowHtml = (o, entering) => html`<div class="cand ${entering ? 'enter' : ''}" data-rid="${o.receiptId}" style="align-items:flex-start">
-        <div class="grow">
-          <div class="row" style="gap:8px"><b>${o.name}</b><span class="chip chip-mono">#${o.receiptId}</span>
-            ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}
-            ${o.provider ? svcChip(o.provider) : ''}</div>
-          <div class="faint" style="font-size:12px;margin-top:3px"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${o.coverLabel} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</div>
-          ${variationsOf(o).length ? details(o) : ''}
-        </div>
-        ${o.childName ? html`<span class="chip chip-accent">${o.childName}</span>` : ''}
-        ${variationsOf(o).length ? ib('chevDown', 'Персоналізація', `data-vars-toggle="${o.receiptId}" aria-expanded="${unfolded.has(o.receiptId)}"`, { cls: `sm details-toggle ${unfolded.has(o.receiptId) ? 'on' : ''}` }) : ''}</div>`;
-
-    const render = ({ fresh = false } = {}) => {
-      const t = term.trim().toLowerCase();
-      countStages(seg, data.orders, t);
-      const rows = data.orders.filter((o) => o.stage === stage && matchesOrder(o, t));
-      const before = shown;
-      shown = rows.map((o) => o.receiptId);
-      if (!rows.length) { setHtml(list, emptyOrders(data.orders, t, stage, sync.syncing, 'empty-sm')); return; }
-      setHtml(list, rows.map((o) => rowHtml(o, fresh && !before.includes(o.receiptId))));
-      if (fresh && before.join() !== shown.join()) holdClicks(list);
-    };
-
-    const sync = orderSync({
-      fetch: () => api('/api/orders'), alive: () => m.el.isConnected, setSub, syncedText, button: syncBtn,
-      onStart: () => { if (!data.orders.length) render(); },
-      onFresh: (next) => { data = next; setSub(syncedText()); render({ fresh: true }); },
-    });
-    syncBtn.addEventListener('click', () => sync.refresh());
-    seg.addEventListener('click', (e) => {
-      const b = e.target.closest('button[data-value]');
-      if (!b || b.dataset.value === stage) return;
-      stage = b.dataset.value;
-      setSeg(seg, stage);
-      render();
-    });
-    render();
-    sync.follow();
-    requestAnimationFrame(() => syncSeg(seg));
-    m.el.querySelector('#eo-q').addEventListener('input', (e) => { term = e.target.value; render(); });
-    list.addEventListener('click', (e) => {
-      const fold = e.target.closest('[data-vars-toggle]');
-      if (fold) {
-        const id = fold.dataset.varsToggle;
-        const open = !unfolded.has(id);
-        if (open) unfolded.add(id); else unfolded.delete(id);
-        fold.classList.toggle('on', open);
-        fold.setAttribute('aria-expanded', String(open));
-        const body = list.querySelector(`[data-vars="${id}"]`);
-        if (body) slide(body, open);
-        return;
-      }
-      if (e.target.closest('[data-vars]')) return; // reading or copying the personalization is not a choice
-      const row = e.target.closest('[data-rid]');
-      if (!row) return;
-      const o = data.orders.find((x) => x.receiptId === row.dataset.rid);
-      m.close();
-      const s = cur();
-      if (o.stage === 'new') st.receiptId = String(o.receiptId);
-      // An order of several books gives a name to each of them (a folder is still chosen for each by hand).
-      const names = (o.items || []).map((it) => it.childName || o.childName || '');
-      while (s.books.length < Math.max(1, names.length)) s.books.push(newBook({ format: bk(0).format }));
-      s.books.forEach((b, i) => {
-        b.receiptId = String(o.receiptId);
-        b.title = `${o.receiptId} - ${names[i] || names[0] || ''}`.trim().replace(/-$/, '- ');
-      });
-      s.address = { ...s.address, ...addressFromEtsy(o) };
-      renderLeft();
-      const ti = $('#cr-title-0');
-      if (ti) { ti.focus(); ti.setSelectionRange(ti.value.length, ti.value.length); }
-      toast(o.childName ? 'Заповнено із замовлення — перевірте назву' : 'Допишіть ім’я дитини в назві', 'info', 3500);
-    });
+    s.address = { ...s.address, ...addressFromEtsy(o) };
+    renderLeft();
+    const ti = $('#cr-title-0');
+    if (ti) { ti.focus(); ti.setSelectionRange(ti.value.length, ti.value.length); }
+    toast(o.childName ? 'Заповнено із замовлення — перевірте назву' : 'Допишіть ім’я дитини в назві', 'info', 3500);
   }
 
   // ---------------------------------------------------------------- drag & drop onto the folder block
@@ -680,7 +598,7 @@ export async function mount(view) {
       }
       else if (a === 'drop-book' && s.books.length > 1) { s.books.splice(i, 1); s.pick = Math.min(s.pick, s.books.length - 1); renderLeft(); renderRight(); }
       else if (a === 'open-folder') post('/api/creator/open-folder', { path: b.folder }).catch((er) => toast(er.message, 'error'));
-      else if (a === 'from-etsy') fromEtsy();
+      else if (a === 'from-etsy') pickEtsyOrder(fillFromOrder);
       else if (a === 'clear-address') { s.address = { country: 'US' }; renderLeft(); $('#addr-firstName')?.focus(); }
       else if (a === 'open-orders') openExternal('https://printify.com/app/orders');
       else if (a === 'copy-printify-order') copyText(st.printify.result?.order?.id || '', 'Order ID скопійовано');
