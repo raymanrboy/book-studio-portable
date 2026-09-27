@@ -1,31 +1,30 @@
-"""Matching Etsy receipts with Printify / Gelato orders and allocating cost.
+"""Matching Etsy receipts with Printify / Gelato orders — the Etsy Profit Calculator's rules, one receipt at a time:
 
-Same rules as Etsy Profit Calculator:
- 1. manual links set by the operator;
- 2. Printify: receipt number in metadata.shop_order_id or in a line-item title;
- 3. Printify: shipping-recipient name (closest order in time when several);
- 4. Gelato: receipt number in orderReferenceId, then recipient name;
- 5. one provider order shared by several receipts = bundle, cost split equally.
+ 1. a manual link set by the owner (or "none": this receipt has no print order);
+ 2. the receipt's number in a print order: Printify (metadata.shop_order_id or a line item's title), then Gelato
+    (orderReferenceId);
+ 3. the shipping recipient's name: Printify, then Gelato — the order closest in time when several fit.
 
-Additions: cancelled provider orders and Gelato drafts are only used when no live order
-fits, and orders the operator marked as a replacement reprint are never auto-matched.
+Both number rules come before either name rule (since 2026-09-26): a receipt whose own Gelato order carries its
+number was taken by any Printify order with a similar name ("Ann Lee" is inside "Joann Leeds") — and then showed
+that order's status and tracking. A live order is always preferred to a cancelled one or a Gelato draft; orders the
+owner marked as a replacement reprint are never matched by themselves. One print order that several receipts find is
+a bundle: its cost is split equally. What the rows then cost and earn after cancellations, refunds and reprints is
+outcomes.py's.
 """
 from __future__ import annotations
 
 import bisect
-import math
 import re
 from datetime import datetime, timezone
 
 from .fees import r1, r2
+from .printorders import facts as order_facts, js_round, num, rates as current_rates
 
 _STRIP = re.compile(r"[^\w\s]|_", re.UNICODE)
 _SPACES = re.compile(r"\s+")
-
-
-def _js_round(value: float) -> float:
-    """JavaScript Math.round for plain numbers."""
-    return math.floor(value + 0.5)
+_DIGITS = re.compile(r"\d+")
+MIN_NAME = 3  # a shorter shipping name finds nothing by itself
 
 
 def normalize_name(name: str | None) -> str:
@@ -68,74 +67,51 @@ def _distance(a: float | None, b: float | None) -> float:
     return abs(a - b)
 
 
-def gelato_cost_to_usd(cost: float, currency: str | None, eur_rate: float) -> float:
-    if not cost:
-        return 0.0
-    cur = (currency or "USD").upper()
-    if cur == "EUR":
-        return r2(cost * eur_rate)
-    return cost
+# ---------------------------------------------------------------- the cover a buyer chose
+
+HARD = ("hardcover", "hard cover", "hardback", "тверд")
+SOFT = ("softcover", "soft cover", "paperback", "м'як")
 
 
-def _num(value) -> float:
-    if isinstance(value, (int, float)):
-        return float(value)
-    try:
-        return float(str(value))
-    except (TypeError, ValueError):
-        return 0.0
+def item_format(item: dict) -> str | None:
+    """"hardcover" / "softcover" as the Etsy item says it — its variations, then its SKU, then its title; None when
+    it doesn't say."""
+    for v in item.get("variations") or []:
+        text = f"{v.get('name') or ''} {v.get('value') or ''}".lower()
+        if any(k in text for k in HARD):
+            return "hardcover"
+        if any(k in text for k in SOFT):
+            return "softcover"
+    sku = (item.get("sku") or "").lower()
+    if sku:
+        if "hard" in sku or "-hc" in sku or sku.startswith("hc") or "_hc" in sku:
+            return "hardcover"
+        if "soft" in sku or "-sc" in sku or sku.startswith("sc") or "_sc" in sku or "pb" in sku:
+            return "softcover"
+    title = (item.get("title") or "").lower()
+    if any(k in title for k in HARD):
+        return "hardcover"
+    if any(k in title for k in SOFT):
+        return "softcover"
+    return None
 
 
-def _full_name(first: str | None, last: str | None) -> str:
-    return f"{first or ''} {last or ''}".strip()
-
-
-def cover_label(items: list, gelato_reference: str | None = None) -> str:
-    """Hardcover / Softcover label from Etsy variations, SKU or title."""
+def cover_label(items: list) -> str:
+    """«2x Hardcover + Softcover книга» — from what the buyer chose. Only the Etsy items say it (until 2026-09-26 the
+    letters of a Gelato order's name were read as well: «Oscar» made a softcover)."""
     if not items:
         return "Книга"
-    details: list[tuple[str, int]] = []
+    counts = {"hardcover": 0, "softcover": 0}
     for item in items:
-        fmt = "unknown"
-        for v in item.get("variations") or []:
-            combined = f"{v.get('name') or ''} {v.get('value') or ''}".lower()
-            if any(k in combined for k in ("hardcover", "hard cover", "hardback", "тверд")):
-                fmt = "hardcover"
-                break
-            if any(k in combined for k in ("softcover", "soft cover", "paperback", "м'як")):
-                fmt = "softcover"
-                break
-        sku = (item.get("sku") or "").lower()
-        if fmt == "unknown" and sku:
-            if "hard" in sku or "-hc" in sku or sku.startswith("hc") or "_hc" in sku:
-                fmt = "hardcover"
-            elif "soft" in sku or "-sc" in sku or sku.startswith("sc") or "_sc" in sku or "pb" in sku:
-                fmt = "softcover"
-        title = (item.get("title") or "").lower()
-        if fmt == "unknown" and title:
-            if any(k in title for k in ("hardcover", "hard cover", "hardback", "тверд")):
-                fmt = "hardcover"
-            elif any(k in title for k in ("softcover", "soft cover", "paperback", "м'як")):
-                fmt = "softcover"
-        details.append((fmt, int(item.get("quantity") or 1)))
+        fmt = item_format(item)
+        if fmt:
+            counts[fmt] += int(item.get("quantity") or 1)
+    parts = [f"{f'{n}x ' if n > 1 else ''}{label}" for label, n in (("Hardcover", counts["hardcover"]),
+                                                                     ("Softcover", counts["softcover"])) if n]
+    return f"{' + '.join(parts)} книга" if parts else items[0].get("title") or "Книга"
 
-    if all(f == "unknown" for f, _ in details):
-        ref = (gelato_reference or "").lower()
-        if "hard" in ref or "hc" in ref:
-            return "Hardcover книга"
-        if "soft" in ref or "sc" in ref:
-            return "Softcover книга"
 
-    hard = sum(q for f, q in details if f == "hardcover")
-    soft = sum(q for f, q in details if f == "softcover")
-    if hard and soft:
-        return f"{f'{hard}x ' if hard > 1 else ''}Hardcover + {f'{soft}x ' if soft > 1 else ''}Softcover книга"
-    if hard:
-        return f"{f'{hard}x ' if hard > 1 else ''}Hardcover книга"
-    if soft:
-        return f"{f'{soft}x ' if soft > 1 else ''}Softcover книга"
-    return items[0].get("title") or "Книга"
-
+# ---------------------------------------------------------------- finding a receipt's print order
 
 class _NameIndex:
     """Finds every name for which is_name_match() is true without comparing all pairs.
@@ -183,9 +159,6 @@ class _NameIndex:
         return sorted(found)
 
 
-_DIGITS = re.compile(r"\d+")
-
-
 def _receipt_ids_in(text: str, rid_set: set[str], lengths: set[int]) -> set[str]:
     """Receipt ids that occur as substrings of text (ids are digits, so only digit runs can hold them)."""
     out: set[str] = set()
@@ -198,253 +171,149 @@ def _receipt_ids_in(text: str, rid_set: set[str], lengths: set[int]) -> set[str]
     return out
 
 
-def _p_dead(p: dict) -> bool:
-    return str(p.get("status") or "").lower() in ("canceled", "cancelled")
+def _numbers_named(provider: str, order: dict, rid_set: set[str], lengths: set[int]) -> set[str]:
+    """The receipts a print order names by number: Printify's shop_order_id and its line items' titles, Gelato's
+    orderReferenceId («4100000001 - Emma»)."""
+    if provider == "gelato":
+        return _receipt_ids_in(str(order.get("orderReferenceId") or ""), rid_set, lengths)
+    hits: set[str] = set()
+    shop_order_id = (order.get("metadata") or {}).get("shop_order_id")
+    if shop_order_id and str(shop_order_id) in rid_set:
+        hits.add(str(shop_order_id))
+    for li in order.get("line_items") or []:
+        hits |= _receipt_ids_in(f"{(li.get('metadata') or {}).get('title') or ''} {li.get('title') or ''}",
+                                rid_set, lengths)
+    return hits
 
 
-def _g_dead(g: dict) -> bool:
-    return (str(g.get("fulfillmentStatus") or "").lower() in ("canceled", "cancelled")
-            or str(g.get("orderType") or "").lower() == "draft")
+class _Printer:
+    """One printer's orders as matching reads them: by the receipt number they name (the first order that names it,
+    a live one before a cancelled one or a draft) and by the recipient's name."""
+
+    def __init__(self, provider: str, orders: list[dict], rates: dict, reserved, rid_set: set[str]):
+        self.orders = [order_facts(provider, o, rates) for o in orders]
+        self.by_id = {f["id"]: f for f in self.orders}
+        free = [f["key"] not in reserved for f in self.orders]
+        lengths = {len(r) for r in rid_set}
+        self.by_number: dict[str, dict] = {}
+        for i in sorted(range(len(self.orders)), key=lambda i: bool(self.orders[i]["dead"])):
+            if free[i]:
+                for rid in _numbers_named(provider, self.orders[i]["order"], rid_set, lengths):
+                    self.by_number.setdefault(rid, self.orders[i])
+        self.names = _NameIndex([f["name"] for f in self.orders])
+        self.times = [parse_time(f["created"]) for f in self.orders]
+        self.free = free
+
+    def by_name(self, name: str, created) -> dict | None:
+        if len(name.strip()) < MIN_NAME:
+            return None
+        found = [i for i in self.names.candidates(name) if self.free[i]]
+        if not found:
+            return None
+        t = parse_time(created)
+        return self.orders[min(found, key=lambda i: (bool(self.orders[i]["dead"]), _distance(self.times[i], t)))]
 
 
-def match(etsy_orders: list, printify_orders: list, gelato_orders: list, links: dict, eur_rate: float = 1.085,
+def _find(eo: dict, rid: str, link: dict | None, printers: dict) -> tuple[dict | None, str]:
+    """The receipt's print order and how it was found ("manual" / "auto"); (None, "none") for a receipt the owner
+    said has none, (None, "unmatched") when nothing fits."""
+    if link:
+        if link.get("provider") == "none":
+            return None, "none"
+        printer = printers.get(link.get("provider"))
+        manual = printer.by_id.get(str(link.get("orderId") or "")) if printer else None
+        if manual:
+            return manual, "manual"
+    p, g = printers["printify"], printers["gelato"]
+    name, created = eo.get("customer_shipping_name") or "", eo.get("created_at")
+    found = p.by_number.get(rid) or g.by_number.get(rid) or p.by_name(name, created) or g.by_name(name, created)
+    return (found, "auto") if found else (None, "unmatched")
+
+
+def match(etsy_orders: list, printify_orders: list, gelato_orders: list, links: dict, rates: dict | None = None,
           reserved: frozenset | set = frozenset(), sent: dict | None = None) -> list:
-    printify_by_id = {str(p.get("id")): p for p in printify_orders}
-    gelato_by_id = {str(g.get("id")): g for g in gelato_orders}
-    p_free = [f"printify:{p.get('id')}" not in reserved for p in printify_orders]
-    g_free = [f"gelato:{g.get('id')}" not in reserved for g in gelato_orders]
+    """One row per receipt: its Etsy money and the print order found for it, with the cost and profit the Profit
+    Calculator shows (the whole order's cost, split between the receipts of a bundle). `sent` — the print orders
+    this program sent for each receipt (profit.load_sends()): the row lists them as `sent_orders`, for the money
+    step to count the ones besides the matched one."""
+    rates = current_rates() if rates is None else rates
     rid_set = {str(eo["receipt_id"]) for eo in etsy_orders}
-    rid_lengths = {len(r) for r in rid_set}
-
-    p_to_etsy: dict[str, list[str]] = {}
-    etsy_to_p: dict[str, dict] = {}
-    etsy_p_type: dict[str, str] = {}
-    g_to_etsy: dict[str, list[str]] = {}
-    etsy_to_g: dict[str, dict] = {}
-    etsy_g_type: dict[str, str] = {}
-    blocked: set[str] = set()
-    # One receipt can honestly have more than one print order: books of one order sent in two goes, or
-    # split between the printers. Only this program's own record of what it sent says so for certain —
-    # see profit.remember_print_order().
-    claimed = {str(rid): [(str(r.get("provider")), str(r.get("orderId"))) for r in refs or []]
-               for rid, refs in (sent or {}).items()}
-
-    def bind_p(rid: str, p: dict, kind: str) -> None:
-        etsy_to_p[rid] = p
-        etsy_p_type[rid] = kind
-        bucket = p_to_etsy.setdefault(str(p["id"]), [])
-        if rid not in bucket:
-            bucket.append(rid)
-
-    def bind_g(rid: str, g: dict, kind: str) -> None:
-        etsy_to_g[rid] = g
-        etsy_g_type[rid] = kind
-        bucket = g_to_etsy.setdefault(str(g["id"]), [])
-        if rid not in bucket:
-            bucket.append(rid)
-
-    def done(rid: str) -> bool:
-        return rid in etsy_to_p or rid in etsy_to_g or rid in blocked
-
-    # 1. manual links
+    printers = {provider: _Printer(provider, orders, rates, reserved, rid_set)
+                for provider, orders in (("printify", printify_orders), ("gelato", gelato_orders))}
+    found = {}
+    users: dict[str, list[str]] = {}
     for eo in etsy_orders:
         rid = str(eo["receipt_id"])
-        link = links.get(rid)
-        if not link:
-            continue
-        provider, order_id = link.get("provider"), str(link.get("orderId") or "")
-        if provider == "none":
-            blocked.add(rid)
-        elif provider == "printify" and order_id in printify_by_id:
-            bind_p(rid, printify_by_id[order_id], "manual")
-        elif provider == "gelato" and order_id in gelato_by_id:
-            bind_g(rid, gelato_by_id[order_id], "manual")
-
-    # 2. Printify: receipt number in shop_order_id or line-item titles (first order in Printify's list wins,
-    #    live orders before cancelled ones)
-    for pi in sorted(range(len(printify_orders)), key=lambda i: _p_dead(printify_orders[i])):
-        if not p_free[pi]:
-            continue
-        p = printify_orders[pi]
-        hits: set[str] = set()
-        shop_order_id = (p.get("metadata") or {}).get("shop_order_id")
-        if shop_order_id and str(shop_order_id) in rid_set:
-            hits.add(str(shop_order_id))
-        for li in p.get("line_items") or []:
-            text = f"{(li.get('metadata') or {}).get('title') or ''} {li.get('title') or ''}"
-            hits |= _receipt_ids_in(text, rid_set, rid_lengths)
-        for rid in hits:
-            if not done(rid):
-                bind_p(rid, p, "auto")
-
-    # 3. Printify: recipient name (closest order in time when several)
-    p_names = _NameIndex([_full_name((p.get("address_to") or {}).get("first_name"),
-                                     (p.get("address_to") or {}).get("last_name")) for p in printify_orders])
-    p_times = [parse_time(p.get("created_at")) for p in printify_orders]
-    for eo in etsy_orders:
-        rid = str(eo["receipt_id"])
-        if done(rid):
-            continue
-        name = eo.get("customer_shipping_name") or ""
-        if len(name.strip()) < 3:
-            continue
-        idx = [i for i in p_names.candidates(name) if p_free[i]]
-        if idx:
-            t = parse_time(eo.get("created_at"))
-            idx.sort(key=lambda i: (_p_dead(printify_orders[i]), _distance(p_times[i], t)))
-            bind_p(rid, printify_orders[idx[0]], "auto")
-
-    # 4. Gelato: receipt number in orderReferenceId, then recipient name
-    first_ref: dict[str, int] = {}
-    for gi in sorted(range(len(gelato_orders)), key=lambda i: _g_dead(gelato_orders[i])):
-        g = gelato_orders[gi]
-        if g.get("orderReferenceId") and g_free[gi]:
-            for rid in _receipt_ids_in(str(g["orderReferenceId"]), rid_set, rid_lengths):
-                first_ref.setdefault(rid, gi)
-    g_names = _NameIndex([_full_name(g.get("firstName"), g.get("lastName")) for g in gelato_orders])
-    g_times = [parse_time(g.get("createdAt")) for g in gelato_orders]
-    for eo in etsy_orders:
-        rid = str(eo["receipt_id"])
-        if done(rid):
-            continue
-        if rid in first_ref:
-            bind_g(rid, gelato_orders[first_ref[rid]], "auto")
-            continue
-        name = eo.get("customer_shipping_name") or ""
-        if name and len(name.strip()) > 2:
-            idx = [i for i in g_names.candidates(name) if g_free[i]]
-            if idx:
-                t = parse_time(eo.get("created_at"))
-                idx.sort(key=lambda i: (_g_dead(gelato_orders[i]), _distance(g_times[i], t)))
-                bind_g(rid, gelato_orders[idx[0]], "auto")
-
-    # 5. results with fair cost allocation
-    shared: dict[tuple[str, str], int] = {}     # one print order covering two receipts is split between them
-    for owned in claimed.values():
-        for key in owned:
-            shared[key] = shared.get(key, 0) + 1
+        f, how = _find(eo, rid, links.get(rid), printers)
+        found[rid] = (f, how)
+        if f:
+            users.setdefault(f["key"], []).append(rid)
     rows = []
     for eo in etsy_orders:
         rid = str(eo["receipt_id"])
-        net = eo.get("etsy_net") or 0.0
-        row = {
-            "id": rid,
-            "etsy_receipt_id": rid,
-            "customer_name": eo.get("customer_shipping_name") or "",
-            "created_at": eo.get("created_at"),
-            "status": eo.get("status"),
-            "is_shipped": eo.get("is_shipped"),
-            "etsy_gross": eo.get("etsy_gross"),
-            "etsy_fees": eo.get("etsy_fees"),
-            "etsy_net": net,
-            "etsy_currency": eo.get("currency") or "USD",
-            "is_net_estimated": eo.get("is_net_estimated", False),
-            "fee_breakdown": eo.get("fee_breakdown"),
-            "items": eo.get("items") or [],
-            "shipping_address": eo.get("shipping_address") or {},
-            "link_blocked": rid in blocked,
-        }
-        if rid in etsy_to_p:
-            p = etsy_to_p[rid]
-            bundle = len(p_to_etsy.get(str(p["id"]), [rid])) or 1
-            prod_c, ship_c, tax_c = _num(p.get("total_price")), _num(p.get("total_shipping")), _num(p.get("total_tax"))
-            full_cost = _js_round(prod_c + ship_c + tax_c) / 100
-            alloc_prod = r2(prod_c / 100 / bundle)
-            alloc_ship = r2(ship_c / 100 / bundle)
-            alloc_cost = r2(full_cost / bundle)
-            profit = r2(net - alloc_cost)
-            addr = p.get("address_to") or {}
-            row.update({
-                "match_type": etsy_p_type.get(rid, "auto"),
-                "pod_provider": "printify",
-                "pod_total_cost": alloc_cost,
-                "printify_order_id": str(p["id"]),
-                "app_order_id": str(p["id"])[-6:].upper(),
-                "printify_app_order_id": p.get("app_order_id"),
-                "printify_status": p.get("status"),
-                "matched_printify_recipient": _full_name(addr.get("first_name"), addr.get("last_name")),
-                "printify_production_cost": alloc_prod,
-                "printify_shipping_cost": alloc_ship,
-                "printify_total_cost": alloc_cost,
-                "profit": profit,
-                "profit_margin": r1(profit / net * 100) if net > 0 else 0,
-                "is_bundle": bundle > 1,
-                "bundle_count": bundle if bundle > 1 else None,
-            })
-        elif rid in etsy_to_g:
-            g = etsy_to_g[rid]
-            bundle = len(g_to_etsy.get(str(g["id"]), [rid])) or 1
-            raw_cost = _num(g.get("totalInclVat"))
-            full_usd = gelato_cost_to_usd(raw_cost, g.get("currency"), eur_rate)
-            alloc_usd = r2(full_usd / bundle)
-            profit = r2(net - alloc_usd)
-            row.update({
-                "match_type": etsy_g_type.get(rid, "auto"),
-                "pod_provider": "gelato",
-                "pod_total_cost": alloc_usd,
-                "gelato_order_id": str(g["id"]),
-                "gelato_order_reference": g.get("orderReferenceId"),
-                "matched_gelato_recipient": _full_name(g.get("firstName"), g.get("lastName")),
-                "gelato_cost": r2(raw_cost / bundle),
-                "gelato_currency": g.get("currency"),
-                "gelato_status": g.get("fulfillmentStatus"),
-                "printify_production_cost": 0,
-                "printify_shipping_cost": 0,
-                "printify_total_cost": alloc_usd,
-                "profit": profit,
-                "profit_margin": r1(profit / net * 100) if net > 0 else 0,
-                "is_bundle": bundle > 1,
-                "bundle_count": bundle if bundle > 1 else None,
-            })
-        else:
-            row.update({
-                "match_type": "unmatched",
-                "pod_provider": None,
-                "pod_total_cost": 0,
-                "printify_production_cost": 0,
-                "printify_shipping_cost": 0,
-                "printify_total_cost": 0,
-                "profit": None,
-                "profit_margin": None,
-                "is_bundle": False,
-                "bundle_count": None,
-            })
-        _further_orders(row, claimed.get(rid, []), shared, printify_by_id, gelato_by_id, reserved, eur_rate, net)
-        row["cover_label"] = cover_label(row["items"], row.get("gelato_order_reference"))
+        f, how = found[rid]
+        row = _row(eo, rid, how)
+        if f:
+            row.update(_order_part(f, how, len(users[f["key"]]), row["etsy_net"]))
+        row["sent_orders"] = [(str(r.get("provider")), str(r.get("orderId"))) for r in (sent or {}).get(rid) or []]
+        row["cover_label"] = cover_label(row["items"])
         rows.append(row)
     return rows
 
 
-def _further_orders(row: dict, owned: list, shared: dict, printify_by_id: dict, gelato_by_id: dict,
-                    reserved: frozenset | set, eur_rate: float, net: float) -> None:
-    """Print orders of this receipt besides the one the row is built around: the rest of a part-sent
-    order, or the books that went to the other printer. Their cost belongs to this sale as much as the
-    first one's — counting only the first understates what the books cost and overstates the profit."""
-    first = (row.get("pod_provider"), str(row.get("printify_order_id") or row.get("gelato_order_id") or ""))
-    further = []
-    for provider, order_id in owned:
-        if (provider, order_id) == first or f"{provider}:{order_id}" in reserved:
-            continue
-        order = (printify_by_id if provider == "printify" else gelato_by_id).get(order_id)
-        if not order or (_p_dead(order) if provider == "printify" else _g_dead(order)):
-            continue    # cancelled, or a Gelato draft the owner has not confirmed yet: nothing is owed
-        share = max(1, shared.get((provider, order_id), 1))
-        if provider == "printify":
-            cost = _js_round(_num(order.get("total_price")) + _num(order.get("total_shipping"))
-                             + _num(order.get("total_tax"))) / 100
-            further.append({"provider": "printify", "order_id": order_id, "status": order.get("status"),
-                            "app_order_id": order.get("app_order_id"), "cost": r2(cost / share)})
-        else:
-            cost = gelato_cost_to_usd(_num(order.get("totalInclVat")), order.get("currency"), eur_rate)
-            further.append({"provider": "gelato", "order_id": order_id,
-                            "status": order.get("fulfillmentStatus"),
-                            "app_order_id": order.get("orderReferenceId"), "cost": r2(cost / share)})
-    row["further_orders"] = further
-    if not further:
-        return
-    total = r2((row.get("pod_total_cost") or 0) + sum(f["cost"] for f in further))
-    row.update({"pod_total_cost": total, "printify_total_cost": total, "profit": r2(net - total)})
-    row["profit_margin"] = r1(row["profit"] / net * 100) if net > 0 else 0
+def _row(eo: dict, rid: str, how: str) -> dict:
+    return {
+        "id": rid,
+        "etsy_receipt_id": rid,
+        "customer_name": eo.get("customer_shipping_name") or "",
+        "created_at": eo.get("created_at"),
+        "status": eo.get("status"),
+        "is_shipped": eo.get("is_shipped"),
+        "etsy_gross": eo.get("etsy_gross"),
+        "etsy_fees": eo.get("etsy_fees"),
+        "etsy_net": eo.get("etsy_net") or 0.0,
+        "fee_breakdown": eo.get("fee_breakdown"),
+        "items": eo.get("items") or [],
+        "shipping_address": eo.get("shipping_address") or {},
+        "link_blocked": how == "none",
+        "match_type": "unmatched" if how in ("none", "unmatched") else how,
+        "pod_provider": None,
+        "pod_total_cost": 0,
+        "printify_production_cost": 0,
+        "printify_shipping_cost": 0,
+        "printify_total_cost": 0,
+        "profit": None,
+        "profit_margin": None,
+        "is_bundle": False,
+        "bundle_count": None,
+    }
+
+
+def _order_part(f: dict, how: str, bundle: int, net: float) -> dict:
+    """The matched order's part of a row, split between the receipts of a bundle."""
+    cost = None if f["cost"] is None else r2(f["cost"] / bundle)
+    profit = None if cost is None else r2(net - cost)
+    part = {
+        "match_type": how,
+        "pod_provider": f["provider"],
+        "pod_total_cost": cost or 0,
+        "printify_total_cost": cost or 0,
+        "profit": profit,
+        "profit_margin": (r1(profit / net * 100) if net > 0 else 0) if profit is not None else None,
+        "is_bundle": bundle > 1,
+        "bundle_count": bundle if bundle > 1 else None,
+    }
+    if f["provider"] == "printify":
+        part.update({"printify_order_id": f["id"], "app_order_id": f["id"][-6:].upper(),
+                     "matched_printify_recipient": f["name"],
+                     "printify_production_cost": r2(f["prod"] / bundle),
+                     "printify_shipping_cost": r2(f["ship"] / bundle)})
+    else:
+        part.update({"gelato_order_id": f["id"], "gelato_order_reference": f["order"].get("orderReferenceId"),
+                     "matched_gelato_recipient": f["name"], "gelato_cost": r2(f["raw_cost"] / bundle),
+                     "gelato_currency": f["currency"], "gelato_status": f["status"],
+                     "cost_unknown": f["cost"] is None})
+    return part
 
 
 def printify_only_rows(printify_orders: list) -> list:
@@ -452,9 +321,9 @@ def printify_only_rows(printify_orders: list) -> list:
     rows = []
     for p in printify_orders:
         addr = p.get("address_to") or {}
-        name = _SPACES.sub(" ", _full_name(addr.get("first_name"), addr.get("last_name"))).strip() or "Без імені"
-        prod_c = sum(_num(li.get("cost")) * (_num(li.get("quantity")) or 1) for li in (p.get("line_items") or []))
-        ship_c, tax_c = _num(p.get("total_shipping")), _num(p.get("total_tax"))
+        name = _SPACES.sub(" ", f"{addr.get('first_name') or ''} {addr.get('last_name') or ''}").strip() or "Без імені"
+        prod_c = sum(num(li.get("cost")) * (num(li.get("quantity")) or 1) for li in (p.get("line_items") or []))
+        ship_c, tax_c = num(p.get("total_shipping")), num(p.get("total_tax"))
         rows.append({
             "id": str(p.get("id")),
             "customer_name": name,
@@ -463,12 +332,10 @@ def printify_only_rows(printify_orders: list) -> list:
             "pod_provider": "printify",
             "printify_order_id": str(p.get("id")),
             "app_order_id": p.get("app_order_id") or str(p.get("id")),
-            "printify_status": p.get("status"),
-            "printify_production_cost": _js_round(prod_c) / 100,
-            "printify_shipping_cost": _js_round(ship_c) / 100,
-            "printify_tax_cost": _js_round(tax_c) / 100,
-            "printify_total_cost": _js_round(prod_c + ship_c + tax_c) / 100,
-            "pod_total_cost": _js_round(prod_c + ship_c + tax_c) / 100,
+            "printify_production_cost": js_round(prod_c) / 100,
+            "printify_shipping_cost": js_round(ship_c) / 100,
+            "printify_total_cost": js_round(prod_c + ship_c + tax_c) / 100,
+            "pod_total_cost": js_round(prod_c + ship_c + tax_c) / 100,
             "items": [],
             "profit": None,
             "profit_margin": None,

@@ -1,7 +1,7 @@
 ---
 title: Printify
 type: integration
-updated: 2026-09-23
+updated: 2026-09-27
 code:
   - app/studio/printify.py
 ---
@@ -82,7 +82,7 @@ for sends.
 - [app/studio/printify.py](../../app/studio/printify.py) — `_READ`, `_WRITE`, `_check()`, `_human()`, `call()`, `token()`, `MAX_ORDER_PAGES`, `MANUAL_APPROVAL_NEEDED`, `shops()`, `product()`, `upload_exists()`, `all_orders()`, `slim_order()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `analyze_master()`, `_manual_approval()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `create_printify_draft()`, `build_printify_payload()`, `printify_order_payload()`, `matte_variant()`, `_master_fingerprint()`, `_remember_upload()`, `UPLOADS_KEPT`, `_printify_setup()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
-- [app/studio/profit.py](../../app/studio/profit.py) — `carrier_label()`, `CARRIERS`
+- [app/studio/printorders.py](../../app/studio/printorders.py) — `carrier_label()`, `CARRIERS`
 - Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`FakePrintify`, `PrintifyDraftFlow`), [app/tests/test_states.py](../../app/tests/test_states.py) (`SentStage`)
 
 ## Related

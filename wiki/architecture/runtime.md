@@ -1,7 +1,7 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -106,7 +106,7 @@ Cyrillic shortcut name is saved under a Latin one and then renamed.
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `cleanup_stale()`, `_ends_with_us()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `forget_old_form()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `clear_drops()`
-- [app/studio/profit.py](../../app/studio/profit.py) — `startup_sync()`
+- [app/studio/sync.py](../../app/studio/sync.py) — `startup_sync()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `refresh_quietly()`
 - [app/studio/images.py](../../app/studio/images.py) — `prune_cache_quietly()`, `prune_cache()`
 - [app/web/js/app.js](../../app/web/js/app.js) — `heartbeat()`, `boot()`

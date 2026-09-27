@@ -3,10 +3,16 @@ import unittest
 from pathlib import Path
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import fees, profit, reconcile
+from studio import fees, reconcile, sync
 
 GOLDEN = json.loads((Path(__file__).parent / "golden_profit.json").read_text(encoding="utf-8"))
 STATUS = {"auto": "matched", "manual": "manual", "unmatched": "unmatched"}
+
+
+RATES = {"EUR": 1.085, "GBP": 1.325}
+# The Profit Calculator counted an order billed in pounds as dollars; converted since 26.09.2026 (the rows below keep
+# every other number of it).
+IN_POUNDS = {"4100002931": 27.48, "4100034195": 22.23}
 
 
 class ProfitParity(unittest.TestCase):
@@ -15,13 +21,23 @@ class ProfitParity(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         fx = GOLDEN["fixture"]
-        orders = [profit.normalize_receipt(r) for r in fx["receipts"]]
+        orders = [sync.normalize_receipt(r) for r in fx["receipts"]]
         links = {k: {"provider": "printify", "orderId": v} for k, v in fx["manual"].items()}
-        cls.rows = {r["id"]: r for r in reconcile.match(orders, fx["printify"], fx["gelato"], links, 1.085)}
+        cls.rows = {r["id"]: r for r in reconcile.match(orders, fx["printify"], fx["gelato"], links, RATES)}
+
+    def test_an_order_in_pounds_is_counted_in_dollars(self):
+        for rid, pounds in IN_POUNDS.items():
+            row = self.rows[rid]
+            with self.subTest(receipt=rid):
+                self.assertEqual((row["gelato_cost"], row["gelato_currency"]), (pounds, "GBP"))
+                self.assertEqual(row["pod_total_cost"], fees.r2(pounds * RATES["GBP"]))
+                self.assertEqual(row["profit"], fees.r2(row["etsy_net"] - row["pod_total_cost"]))
 
     def test_every_receipt(self):
         for exp in GOLDEN["expected"]:
             row = self.rows[exp["id"]]
+            if exp["id"] in IN_POUNDS:
+                exp = {**exp, "cost": row["pod_total_cost"], "profit": row["profit"], "margin": row["profit_margin"]}
             with self.subTest(receipt=exp["id"]):
                 self.assertAlmostEqual(row["etsy_net"], exp["net"], places=9)
                 self.assertAlmostEqual(row["etsy_fees"], exp["fees"], places=9)
@@ -69,6 +85,24 @@ class NameMatching(unittest.TestCase):
         self.assertTrue(reconcile.is_name_match("  ZOË  o'neil ", "Zoë O'Neil"))
         self.assertFalse(reconcile.is_name_match("Al", "Al"[:1]))
         self.assertFalse(reconcile.is_name_match("Emma Stone", "Olivia Stone"))
+
+    def test_the_name_index_finds_exactly_what_the_name_rule_finds(self):
+        """The index that turns the name rule into lookups (_NameIndex) against the rule itself, on made-up names."""
+        import random
+        rnd = random.Random(26)
+        parts = ["ann", "lee", "jo", "joann", "leeds", "mia", "stone", "o'neil", "zoë", "van", "der", "berg", "al"]
+        names = [" ".join(rnd.choice(parts) for _ in range(rnd.randint(1, 3))) for _ in range(300)]
+        index = reconcile._NameIndex(names)
+        for query in names[:120] + ["Ann Lee", "Joann Leeds", "  ZOË  o'neil ", "Al"]:
+            with self.subTest(query=query):
+                self.assertEqual(index.candidates(query),
+                                 [i for i, n in enumerate(names) if reconcile.is_name_match(query, n)])
+
+    def test_the_cover_comes_only_from_what_the_buyer_chose(self):
+        """A Gelato order named «4100000001 - Oscar» made a softcover of any book whose Etsy items said nothing."""
+        self.assertEqual(reconcile.cover_label([{"title": "Personalized book", "quantity": 1}]), "Personalized book")
+        self.assertEqual(reconcile.item_format({"title": "Book", "sku": "BK-HC-8"}), "hardcover")
+        self.assertIsNone(reconcile.item_format({"title": "Book"}))
 
     def test_cover_label(self):
         items = [{"title": "Book", "quantity": 2, "variations": [{"name": "Cover", "value": "Hardcover"}]},

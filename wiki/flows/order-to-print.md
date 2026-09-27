@@ -1,7 +1,7 @@
 ---
 title: The order-to-print path, from Etsy
 type: flow
-updated: 2026-09-25
+updated: 2026-09-27
 code:
   - app/web/js/pages/orders.js
   - app/studio/orders.py
@@ -20,7 +20,7 @@ code:
 
 | # | What the owner does | What the program does | Where in the code |
 |---|---|---|---|
-| 0 | Starts the program | One sync of Etsy + Printify + Gelato | [profit.py](../../app/studio/profit.py) `startup_sync()` |
+| 0 | Starts the program | One sync of Etsy + Printify + Gelato | [sync.py](../../app/studio/sync.py) `startup_sync()` |
 | 1 | Opens "Orders" → "New" | A list of receipts with no print order, with book and printer | [orders.js](../../app/web/js/pages/orders.js) `mountQueue()` |
 | 2 | Opens an order | The card: the book from the library by listing, the printer by rule, the buyer's fields | [orders.py](../../app/studio/orders.py) `enrich()` |
 | 3 | "Open template in Canva" | Opens the link from the book's passport in a browser | [orders.js](../../app/web/js/pages/orders.js) `renderLeft()` |
@@ -31,8 +31,8 @@ code:
 | 7 | "Send to print in …" | The Order Creator is filled in: mode, folder, title `receipt - name`, address, format | [orders.js](../../app/web/js/pages/orders.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
 | 8 | "Create draft (order)" | Printify: a book + an On-hold order; Gelato: a PDF + a draft. A copy of the files that went to print goes into the [order archive](../features/archive.md) | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator.py](../../app/studio/creator.py) `create_printify_draft()`, `create_gelato_draft()` |
 | 9 | In Printify — "Submit order"; in Gelato — open the draft in the Dashboard (while the link is alive), confirm and pay | Until then the order stays in "New" with a "Draft" / "On hold" chip: a draft doesn't count | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
-| 10 | Clicks "Refresh" | A confirmed and paid order moves to "In progress" (the receipt number is in the reference / title); the printer status shows on the right; the book appears in the order archive | [profit.py](../../app/studio/profit.py) `order_stage()`, `is_placed()` |
-| 11 | Once the printer ships it — opens the truck tab, clicks to copy the tracking number | An order with a tracking number or "shipped" status is on the truck tab, with a carrier and a number | [profit.py](../../app/studio/profit.py) `order_stage()`; [orders.js](../../app/web/js/pages/orders.js) `trackChips()` |
+| 10 | Clicks "Refresh" | A confirmed and paid order moves to "In progress" (the receipt number is in the reference / title); the printer status shows on the right; the book appears in the order archive | [stages.py](../../app/studio/stages.py) `order_stage()`; [printorders.py](../../app/studio/printorders.py) `is_placed()` |
+| 11 | Once the printer ships it — opens the truck tab, clicks to copy the tracking number | An order with a tracking number or "shipped" status is on the truck tab, with a carrier and a number | [stages.py](../../app/studio/stages.py) `order_stage()`; [orders.js](../../app/web/js/pages/orders.js) `trackChips()` |
 | 12 | Marks the order shipped on Etsy (on the Kyiv PC), then clicks "Refresh" | The order moves to "Sent" (a box); its 14-day countdown starts in the order archive | [rules/order-stages.md](../rules/order-stages.md); [archive.py](../../app/studio/archive.py) `refresh()` |
 | 13 | If something happened to the book — "Order archive" → the book → "Reprint" | Printify: a new On-hold order for the same book; Gelato: a new draft from the same files; the receipt is marked as a replacement | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator.py](../../app/studio/creator.py) `create_printify_reprint()` |
 

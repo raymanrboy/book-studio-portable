@@ -1,9 +1,10 @@
 ---
 title: Order stages — new, in progress, shipped by the printer, sent
 type: rule
-updated: 2026-09-18
+updated: 2026-09-27
 code:
-  - app/studio/profit.py
+  - app/studio/stages.py
+  - app/studio/printorders.py
 ---
 # Order stages
 
@@ -30,7 +31,7 @@ hour before the receipt). Then:
 | Otherwise | `work` (+ the printer) | In progress (a clock) |
 
 `SENT_STATUSES`: Printify — `fulfilled`, `partially-fulfilled`; Gelato — `shipped`, `in_transit`,
-`delivered`, `returned` (`gelato.SHIPPED`).
+`delivered`, `returned` (`printorders.GELATO_SHIPPED`).
 
 ## The truck (`sent`) — since 2026-09-17
 
@@ -76,8 +77,9 @@ an unpaid order waiting for confirmation at the printer):
 
 ## Where in the code
 
-- [app/studio/profit.py](../../app/studio/profit.py) — `order_stage()`, `print_order()`, `waiting_order()`, `_matched_order()`, `is_placed()`, `PRINTIFY_NOT_PLACED`, `GELATO_NOT_PAID`, `placed_orders()`, `picker_orders()`, `carrier_label()`, `SENT_STATUSES`, `CARRIERS`, `HOUR_MS`, `mark_reprint()`, `reserved_orders()`
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `SHIPPED`
+- [app/studio/stages.py](../../app/studio/stages.py) — `order_stage()`, `print_order()`, `waiting_order()`, `_matched_order()`, `picker_orders()`, `HOUR_MS`, `mark_reprint()`
+- [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`, `PRINTIFY_NOT_PLACED`, `GELATO_NOT_PAID`, `all_facts()`, `carrier_label()`, `SENT_STATUSES`, `GELATO_SHIPPED`, `CARRIERS`
+- [app/studio/outcomes.py](../../app/studio/outcomes.py) — `reserved_orders()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`
 - [app/studio/creator.py](../../app/studio/creator.py) — `printify_order_payload()`, `create_gelato_draft()`
 - Tests: [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages` — drafts, "on hold", unpaid, `SentStage`)

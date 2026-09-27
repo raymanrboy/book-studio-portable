@@ -1,7 +1,7 @@
 ---
 title: Open questions and technical debt
 type: plan
-updated: 2026-09-23
+updated: 2026-09-27
 code: []
 ---
 # Open questions
@@ -112,9 +112,13 @@ different server).
 - The book's `notes` field is still in the model, `PATCH`, and `summary()`, even though notes were
   removed from the interface.
 - `pages/profit.js` isn't wired into the routes until October 1.
-- **Accounting — before October 1** (deferred by the owner on 2026-09-23): five findings from the
-  owner's own audit about money (a second print order, the three-stage computation, CZK, the cover
-  type, the "live order" rules) — listed in [decisions.md](../decisions.md), 2026-09-23.
+- ~~**Accounting — before October 1**~~ (deferred by the owner on 2026-09-23) — **fixed on 2026-09-26** in the
+  [big cleanup](cleanup.md): one money step, a cancelled first order keeps the second one's cost, every currency
+  converted, the cover from the buyer's choice, only placed and paid orders counted
+  ([rules/reconciliation.md](../rules/reconciliation.md)).
+- **The euro's rate** stays the Profit Calculator's 1.085 (saved in the owner's settings); the ECB gave 1.1403 on
+  2026-09-25, and most Gelato orders are billed in euros (524 of 561) — so their cost is ~5% low. The owner's
+  call; not changed.
 
 ## Related
 

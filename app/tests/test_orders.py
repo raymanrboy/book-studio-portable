@@ -281,28 +281,28 @@ class SyncOnlyAtStartOrByHand(unittest.TestCase):
     def test_start_up_sync_runs_once_and_pages_can_follow_it(self):
         import threading
         import time
-        from studio import etsy, profit
+        from studio import etsy, sync
         from studio.jobs import jobs
         gate = threading.Event()
         with mock.patch.object(etsy, "tokens", lambda: {"access_token": "1.x"}), \
-                mock.patch.object(profit, "_sync", lambda job, full=False: gate.wait(5) and {}):
-            profit.startup_sync()
-            running = profit._sync_state(None)["jobId"]
+                mock.patch.object(sync, "_sync", lambda job, full=False: gate.wait(5) and {}):
+            sync.startup_sync()
+            running = sync._sync_state(None)["jobId"]
             self.assertIsNotNone(running)                            # a page opened now follows this one
-            profit.startup_sync()
-            self.assertEqual(profit._sync_state(None)["jobId"], running)  # never a second one alongside
+            sync.startup_sync()
+            self.assertEqual(sync._sync_state(None)["jobId"], running)  # never a second one alongside
             gate.set()
             for _ in range(500):  # the job ends at once; the long limit only keeps a busy machine from failing the test
                 if not jobs.running("profit-sync"):
                     break
                 time.sleep(0.02)
-        self.assertIsNone(profit._sync_state(None)["jobId"])          # afterwards nothing runs by itself
+        self.assertIsNone(sync._sync_state(None)["jobId"])          # afterwards nothing runs by itself
 
     def test_nothing_starts_without_connections(self):
-        from studio import etsy, profit
+        from studio import etsy, sync
         with mock.patch.object(etsy, "tokens", lambda: None):
-            profit.startup_sync()
-        self.assertIsNone(profit._sync_state(None)["jobId"])
+            sync.startup_sync()
+        self.assertIsNone(sync._sync_state(None)["jobId"])
 
 
 class DevToolsKeepOffRealData(unittest.TestCase):

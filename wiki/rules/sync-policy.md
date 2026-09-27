@@ -1,8 +1,9 @@
 ---
 title: When orders are refreshed
 type: rule
-updated: 2026-09-26
+updated: 2026-09-27
 code:
+  - app/studio/sync.py
   - app/studio/profit.py
   - app/web/js/order-bits.js
 ---
@@ -50,7 +51,9 @@ within one Windows clock "tick" get the same modified time — a bug fixed on 20
 
 ## Where in the code
 
-- [app/studio/profit.py](../../app/studio/profit.py) — `startup_sync()`, `_start_sync()`, `_sync_state()`, `_sync()`, `merge_receipts()`, `cached_view()`, `_save()`, `FULL_SYNC_EVERY`, `SYNC_OVERLAP`
+- [app/studio/profit.py](../../app/studio/profit.py) — `cached_view()`
+- [app/studio/sync.py](../../app/studio/sync.py) — `startup_sync()`, `_start_sync()`, `_sync_state()`, `_sync()`, `merge_receipts()`, `FULL_SYNC_EVERY`, `SYNC_OVERLAP`
+- [app/studio/records.py](../../app/studio/records.py) — `save()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `attach_shipments()`, `TRACKING_READS`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `syncOrders()`, `runningSync()`, `watchSync()`
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `refresh()`

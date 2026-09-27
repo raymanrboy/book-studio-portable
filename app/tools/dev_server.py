@@ -65,7 +65,7 @@ def _book_bought(rid: int, n: int, cover: str, child: str) -> dict:
 
 def _receipt(rid: int, name: str, country: str, city: str, state: str, cover: str, child: str,
              shipped: bool = False, days_ago: int = 0, also: tuple[str, ...] = ()) -> dict:
-    """A made-up Etsy receipt in the shape the Etsy API returns (see profit.normalize_receipt).
+    """A made-up Etsy receipt in the shape the Etsy API returns (see sync.normalize_receipt).
     `also`: more children of the same order — an order of several books, one address."""
     money = lambda cents: {"amount": cents, "divisor": 100, "currency_code": "USD"}  # noqa: E731
     return {
@@ -98,7 +98,7 @@ def _gelato(rid: int, status: str, carrier: str = "", tracking: str = "") -> dic
 
 
 def seed(data: Path) -> None:
-    from studio import core, profit  # imported after BOOK_STUDIO_DATA is set
+    from studio import core, records, sync  # imported after BOOK_STUDIO_DATA is set
 
     hard, soft = "Hardcover 8&quot; x 8&quot;", "Softcover 8&quot; x 8&quot;"
     receipts = [
@@ -125,13 +125,13 @@ def seed(data: Path) -> None:
         _gelato(4100000103, "draft"),
         _gelato(4100000107, "printed"),   # Leo's order was split: one book here, one in Printify
     ]
-    snapshot = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": printify_orders,
+    snapshot = {"receipts": [sync.normalize_receipt(r) for r in receipts], "printify": printify_orders,
                 "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": [],
                 "loaded": {source: core.now_iso() for source in ("etsy", "printify", "gelato")}}
-    core.write_json(profit.SNAPSHOT, snapshot, backup=False)
+    core.write_json(records.SNAPSHOT, snapshot, backup=False)
     # One receipt with two print orders: what the queue and the profit row look like when the books of an
     # order went in two goes, or to two printers.
-    core.write_json(profit.SENDS, {"4100000107": [
+    core.write_json(records.SENDS, {"4100000107": [
         {"provider": "printify", "orderId": f"{4100000107:024x}", "at": core.now_iso()},
         {"provider": "gelato", "orderId": f"00000000-0000-4000-8000-{4100000107:012d}", "at": core.now_iso()},
     ]}, backup=False)

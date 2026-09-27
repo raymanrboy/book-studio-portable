@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from . import core, drops, images
+from . import core, drops, images, printorders, records, stages
 from .server import ApiError, Request, route
 
 ROOT = core.data_path("archive")
@@ -31,7 +31,6 @@ KEEP_DAYS = 14   # after the order became "shipped" (Etsy) or was closed
 LOST_DAYS = 30   # a book whose Etsy order the program cannot find (e.g. no receipt number in the title)
 DROP_DAYS = 3    # a send that never went to print: its files may still be taken to send the order again
 VANISH_DAYS = 2  # a print order still missing from the printer's orders this long after sending: deleted
-CANCELLED = ("canceled", "cancelled")
 DAY = 86400
 _ID = re.compile(r"\d{8}-\d{6}-[0-9a-f]{6}")
 _RECEIPT = re.compile(r"\s*(\d{6,20})\b")  # the Etsy receipt number at the start of "4100000001 - Emma"
@@ -161,20 +160,13 @@ def get(eid: str) -> dict:
 # ---------------------------------------------------------------- when files go
 
 def _facts() -> dict:
-    """What the last sync knows: stage of every Etsy order and every print order (status, tracking)."""
-    from . import profit  # late: profit imports this module after a sync; at the top the two would load each other
-    snap = profit.load_snapshot()
-    placed = profit.placed_orders(snap)
-    rows = profit.cached_view()["full"]
-    stages = {}
-    for r in snap.get("receipts") or []:
-        row = rows.get(str(r["receipt_id"]))
-        if row:
-            stages[str(r["receipt_id"])] = profit.order_stage(row, placed)[0]
-    names = {str(r["receipt_id"]): profit.plain(r.get("customer_shipping_name")) for r in snap.get("receipts") or []}
-    return {"stages": stages, "placed": placed, "names": names, "sent": profit.SENT_STATUSES,
-            "haveReceipts": bool(snap.get("receipts")),
-            "loaded": {source: _ts(at) for source, at in (snap.get("loaded") or {}).items()}}
+    """What the last sync knows: stage of every Etsy order and every print order (status, tracking) — stages.facts(),
+    worked out once per build of the Profit view."""
+    known = stages.facts()
+    return {"stages": {rid: one["stage"] for rid, one in known["receipts"].items()}, "placed": known["placed"],
+            "names": {rid: one["receipt"].get("customer_shipping_name") or "" for rid, one in known["receipts"].items()},
+            "sent": printorders.SENT_STATUSES, "haveReceipts": known["haveReceipts"],
+            "loaded": {source: _ts(at) for source, at in known["loaded"].items()}}
 
 
 _NO_FACTS = {"stages": {}, "placed": {}, "names": {}, "sent": (), "haveReceipts": False, "loaded": {}}
@@ -213,7 +205,7 @@ def _unknown(entry: dict, facts: dict) -> bool:
 
 def standing(entry: dict, facts: dict | None) -> str:
     """Whether this send really went to print — only such books are in the archive (owner, 18.09.2026):
-    "counted" — its print order is placed (ordered and paid, not cancelled: profit.is_placed());
+    "counted" — its print order is placed (ordered and paid, not cancelled: printorders.is_placed());
     "waiting" — a draft, on hold or awaiting payment, or not synced yet;
     "dropped" — cancelled, or missing from its printer's orders loaded whole VANISH_DAYS or more after
     sending (a deleted draft). A printer whose orders failed to load since proves nothing: a stale list
@@ -234,7 +226,7 @@ def standing(entry: dict, facts: dict | None) -> str:
     if own:
         if own.get("placed", True):
             return "counted"
-        return "dropped" if str(own.get("status") or "").lower() in CANCELLED else "waiting"
+        return "dropped" if str(own.get("status") or "").lower() in printorders.CANCELLED else "waiting"
     sent, loaded = _ts(entry.get("sentAt")), _loaded(entry, facts)
     if sent is not None and loaded is not None and loaded - sent >= VANISH_DAYS * DAY:
         return "dropped"
@@ -324,10 +316,9 @@ def _note(entry: dict, state: str, facts: dict, now: float) -> bool:
 
 
 def _reprint_mark(entry: dict, on: bool) -> None:
-    from . import profit  # late, as in _facts()
     try:
         args = (entry.get("receiptId"), entry.get("provider"), entry.get("orderId"))
-        profit.mark_reprint(*args) if on else profit.unmark_reprint(*args)
+        stages.mark_reprint(*args) if on else records.unmark_reprint(*args)
     except Exception:
         core.log.exception("Archive: the reprint mark of %s could not be changed", entry.get("id"))
 
@@ -416,7 +407,7 @@ def _keep(req: Request):
 
 def reprintable(eid: str) -> dict:
     """The archived book a reprint is made from: only one that really went to print. A send that never did
-    is not reprinted — its Etsy order is simply sent again from its card (earlier_sends())."""
+    is not reprinted — its Etsy order is simply sent again from its card (card_facts())."""
     entry = get(eid)
     if standing(entry, _facts_or_none()) != "counted":
         raise ApiError("Ця відправка не стала замовленням у друкарні (чернетка, неоплачене чи скасоване "
@@ -425,21 +416,17 @@ def reprintable(eid: str) -> dict:
     return entry
 
 
-def earlier_sends(receipt_id: str) -> list[dict]:
-    """Sends of this Etsy order that never went to print (a draft left unconfirmed, a cancelled order, a
-    deleted draft) whose files are still here, newest first: its card offers them to send the order again."""
+def card_facts(receipt_id: str) -> dict:
+    """What an order's card needs from the archive, from one read of it:
+    "earlierSends" — sends of this Etsy order that never went to print (a draft left unconfirmed, a cancelled
+    order, a deleted draft) whose files are still here, newest first: the card offers them to send it again;
+    "atPrinter" — a send its printer still has (a book, a draft or an order not cancelled or deleted there): read
+    from the archive, so it outlives a restart, unlike the page's own memory of a send."""
     facts = _facts_or_none()
-    if facts is None:
-        return []
-    return [{k: e.get(k) for k in ("id", "provider", "sentAt", "pageCount", "format", "formatLabel")}
-            for e in entries() if e.get("receiptId") == str(receipt_id) and standing(e, facts) != "counted"]
-
-
-def at_printer(receipt_id: str) -> bool:
-    """A send of this Etsy order that its printer still has — a book, a draft or an order not cancelled or
-    deleted there. Read from the archive, so it outlives a restart, unlike the page's own memory of a send."""
-    facts = _facts_or_none()
-    return any(e.get("receiptId") == str(receipt_id) and standing(e, facts) != "dropped" for e in entries())
+    own = [e for e in entries() if e.get("receiptId") == str(receipt_id)]
+    return {"earlierSends": [{k: e.get(k) for k in ("id", "provider", "sentAt", "pageCount", "format", "formatLabel")}
+                             for e in own if facts is not None and standing(e, facts) != "counted"],
+            "atPrinter": any(standing(e, facts) != "dropped" for e in own)}
 
 
 _BOOK_FILE = re.compile(r"Cover\.png|\d{1,3}\.png")

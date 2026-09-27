@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import core, etsy, gelato, outcomes, printify, profit, reconcile
+from studio import core, etsy, gelato, outcomes, printify, printorders, profit, reconcile, records, stages, sync
 from studio.fees import r2
 from studio.jobs import Job
 from studio.server import ApiError
@@ -35,26 +35,39 @@ def porder(pid, first, last, cost_cents=1195, status="fulfilled", shop_order_id=
             "line_items": []}
 
 
+RATES = {"EUR": 1.085, "CZK": 0.0468}
+
+
 def view(receipts, p_orders=(), g_orders=(), states=None, links=None, sent=None):
     """Runs the same pipeline as build_view without touching the snapshot."""
-    norm = [profit.normalize_receipt(r) for r in receipts]
-    states = states or {}
-    orders = {f"printify:{p['id']}": p for p in p_orders}
-    orders.update({f"gelato:{g['id']}": g for g in g_orders})
-    rows = reconcile.match(norm, list(p_orders), list(g_orders), links or {}, 1.085,
-                           reserved=profit.reserved_orders(states), sent=sent)
-    by_id = {r["receipt_id"]: r for r in norm}
-    for row in rows:
-        outcomes.apply(row, by_id[row["id"]], states.get(row["id"]), orders, 1.085)
+    norm = [sync.normalize_receipt(r) for r in receipts]
+    rows = outcomes.rows(norm, list(p_orders), list(g_orders), links or {}, states or {}, sent or {}, RATES)
     return {r["id"]: r for r in rows}
+
+
+class OnTheSnapshot(unittest.TestCase):
+    """Tests that read the real view: their own snapshot, no links, states or sends of another test."""
+    FILES = (records.SNAPSHOT, records.STATES, records.LINKS, records.SENDS)
+
+    def setUp(self):
+        for path in self.FILES:
+            path.unlink(missing_ok=True)
+
+    def tearDown(self):
+        for path in self.FILES:
+            path.unlink(missing_ok=True)
+
+    def synced(self, receipts, p_orders=(), g_orders=()):
+        core.write_json(records.SNAPSHOT, {"receipts": [sync.normalize_receipt(r) for r in receipts],
+                                           "printify": list(p_orders), "gelato": list(g_orders)})
 
 
 class NormalOrdersUnchanged(unittest.TestCase):
     def test_golden_rows_keep_original_numbers(self):
         fx = GOLDEN["fixture"]
         links = {k: {"provider": "printify", "orderId": v} for k, v in fx["manual"].items()}
-        norm = [profit.normalize_receipt(r) for r in fx["receipts"]]
-        plain = {r["id"]: dict(r) for r in reconcile.match(norm, fx["printify"], fx["gelato"], links, 1.085)}
+        norm = [sync.normalize_receipt(r) for r in fx["receipts"]]
+        plain = {r["id"]: dict(r) for r in reconcile.match(norm, fx["printify"], fx["gelato"], links, RATES)}
         with_states = view(fx["receipts"], fx["printify"], fx["gelato"], links=links)
         for rid, row in with_states.items():
             with self.subTest(receipt=rid):
@@ -217,7 +230,7 @@ class SeveralPrintOrdersForOneReceipt(unittest.TestCase):
         self.assertEqual(rid["pod_total_cost"], 11.95)
 
 
-class PickerStages(unittest.TestCase):
+class PickerStages(OnTheSnapshot):
     """Order Creator picker: brand-new orders apart from ones already ordered from a print provider.
     Only a print order really placed counts (owner, 18.09.2026): a draft, an order on hold or unpaid, or a
     cancelled one leaves the Etsy order in "new"."""
@@ -247,8 +260,8 @@ class PickerStages(unittest.TestCase):
 
     def test_each_order_lands_in_its_stage(self):
         receipts, p_orders, g_orders = self.orders()
-        placed = profit.placed_orders({"printify": p_orders, "gelato": g_orders})
-        got = {rid: profit.order_stage(row, placed) for rid, row in view(receipts, p_orders, g_orders).items()}
+        placed = printorders.all_facts({"printify": p_orders, "gelato": g_orders}, RATES)
+        got = {rid: stages.order_stage(row, placed) for rid, row in view(receipts, p_orders, g_orders).items()}
         self.assertEqual(got, {
             "1001": ("new", None),            # nothing ordered yet
             "1002": ("work", "printify"),     # Printify order carries the receipt number
@@ -263,11 +276,8 @@ class PickerStages(unittest.TestCase):
         })
 
     def test_picker_leaves_out_cancelled_orders_and_shows_waiting_drafts(self):
-        receipts, p_orders, g_orders = self.orders()
-        snap = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": p_orders, "gelato": g_orders}
-        rows = view(receipts, p_orders, g_orders)
-        with mock.patch.object(profit, "load_snapshot", lambda: snap),                 mock.patch.object(profit, "cached_view", lambda: {"full": rows}):
-            picked = {o["receiptId"]: o for o in profit.picker_orders()}
+        self.synced(*self.orders())
+        picked = {o["receiptId"]: o for o in stages.picker_orders()}
         self.assertNotIn("1007", picked)
         self.assertEqual(sorted(o["stage"] for o in picked.values()).count("new"), 6)
         waiting = {rid: (o["provider"], o["printStatus"]) for rid, o in picked.items() if o["stage"] == "new"}
@@ -276,7 +286,7 @@ class PickerStages(unittest.TestCase):
             "1005": ("gelato", "draft"), "1009": ("printify", "on-hold"), "1010": ("gelato", "created")})
 
 
-class SentStage(unittest.TestCase):
+class SentStage(OnTheSnapshot):
     """The truck tab: the printer has shipped the book, Etsy is not marked yet."""
     AFTER = "2025-09-05 10:00:00+00:00"
 
@@ -296,12 +306,8 @@ class SentStage(unittest.TestCase):
         return receipts, [p_sent, p_work, p_done], [g_sent]
 
     def picked(self):
-        receipts, p_orders, g_orders = self.orders()
-        snap = {"receipts": [profit.normalize_receipt(r) for r in receipts], "printify": p_orders, "gelato": g_orders}
-        rows = view(receipts, p_orders, g_orders)
-        with mock.patch.object(profit, "load_snapshot", lambda: snap), \
-                mock.patch.object(profit, "cached_view", lambda: {"full": rows}):
-            return {o["receiptId"]: o for o in profit.picker_orders()}
+        self.synced(*self.orders())
+        return {o["receiptId"]: o for o in stages.picker_orders()}
 
     def test_shipped_by_the_printer_waits_in_the_truck_until_etsy_is_marked(self):
         got = {rid: (o["stage"], o["provider"]) for rid, o in self.picked().items()}
@@ -324,12 +330,12 @@ class SentStage(unittest.TestCase):
     def test_shipped_status_alone_is_enough(self):
         placed = {"gelato:g1": {"created": None, "status": "shipped", "tracking": []}}
         row = {"pod_provider": "gelato", "gelato_order_id": "g1", "match_type": "manual"}
-        self.assertEqual(profit.order_stage(row, placed), ("sent", "gelato"))
+        self.assertEqual(stages.order_stage(row, placed), ("sent", "gelato"))
         placed["gelato:g1"]["status"] = "printed"
-        self.assertEqual(profit.order_stage(row, placed), ("work", "gelato"))
+        self.assertEqual(stages.order_stage(row, placed), ("work", "gelato"))
 
     def test_carrier_labels(self):
-        self.assertEqual([profit.carrier_label(c) for c in ("usps", "fedex", "royal-mail", "asendia", "")],
+        self.assertEqual([printorders.carrier_label(c) for c in ("usps", "fedex", "royal-mail", "asendia", "")],
                          ["USPS", "FedEx", "Royal Mail", "asendia", ""])
 
     def test_printify_snapshot_keeps_tracking(self):
@@ -391,12 +397,12 @@ class GelatoTracking(unittest.TestCase):
 
 class IncrementalSync(unittest.TestCase):
     def setUp(self):
-        for path in (profit.SNAPSHOT, profit.STATES, profit.LINKS):  # whatever another test synced before
+        for path in (records.SNAPSHOT, records.STATES, records.LINKS):  # whatever another test synced before
             path.unlink(missing_ok=True)
 
     def tearDown(self):
         vault.set("printify_token", None)
-        for path in (profit.SNAPSHOT, profit.STATES, profit.LINKS):
+        for path in (records.SNAPSHOT, records.STATES, records.LINKS):
             path.unlink(missing_ok=True)
 
     def test_a_receipt_read_twice_is_kept_once(self):
@@ -406,9 +412,9 @@ class IncrementalSync(unittest.TestCase):
                  receipt(1, "A", ts=1757000100)]
         with mock.patch.object(etsy, "tokens", lambda: {"access_token": "1.x", "shop_id": 63208655}),                 mock.patch.object(etsy, "fetch_all_receipts",
                                   lambda progress=None, min_last_modified=None: (twice, 63208655, "Shop")):
-            result = profit._sync(Job("t"), full=True)
+            result = sync._sync(Job("t"), full=True)
         self.assertEqual(result["receipts"], 3)
-        self.assertEqual([r["receipt_id"] for r in profit.load_snapshot()["receipts"]], ["3", "2", "1"])
+        self.assertEqual([r["receipt_id"] for r in records.load_snapshot()["receipts"]], ["3", "2", "1"])
 
     def test_second_sync_reads_only_changed_receipts(self):
         calls = []
@@ -422,16 +428,16 @@ class IncrementalSync(unittest.TestCase):
 
         with mock.patch.object(etsy, "tokens", lambda: {"access_token": "1.x", "shop_id": 63208655}), \
                 mock.patch.object(etsy, "fetch_all_receipts", fetch):
-            profit._sync(Job("a"))
-            cursor = profit.load_snapshot()["etsyCursor"]
-            result = profit._sync(Job("b"))
-            snap = profit.load_snapshot()
+            sync._sync(Job("a"))
+            cursor = records.load_snapshot()["etsyCursor"]
+            result = sync._sync(Job("b"))
+            snap = records.load_snapshot()
             self.assertIsNone(calls[0])                                   # first sync reads everything
-            self.assertEqual(calls[1], cursor - profit.SYNC_OVERLAP)       # then only what changed since
+            self.assertEqual(calls[1], cursor - sync.SYNC_OVERLAP)       # then only what changed since
             self.assertEqual(result["changed"], 2)
             self.assertEqual([r["receipt_id"] for r in snap["receipts"]], ["3", "2", "1"])
             self.assertEqual(snap["receipts"][2]["status"], "Canceled")
-            profit._sync(Job("c"), full=True)
+            sync._sync(Job("c"), full=True)
             self.assertIsNone(calls[2])
 
     def test_a_list_that_failed_or_was_cut_keeps_its_old_load_time(self):
@@ -444,35 +450,135 @@ class IncrementalSync(unittest.TestCase):
                 mock.patch.object(etsy, "fetch_all_receipts", fetch), \
                 mock.patch.object(vault, "get", lambda name: keys.get(name)):
             with mock.patch.object(gelato, "all_orders", side_effect=gelato.GelatoError("немає з'єднання з Gelato", 502)):
-                profit._sync(Job("a"))
-            self.assertEqual(sorted(profit.load_snapshot()["loaded"]), ["etsy"])
+                sync._sync(Job("a"))
+            self.assertEqual(sorted(records.load_snapshot()["loaded"]), ["etsy"])
             cut = httpc.Listing([{"id": "g1", "fulfillmentStatus": "draft"}])
             cut.complete = False
             with mock.patch.object(gelato, "all_orders", lambda progress=None: cut):
-                result = profit._sync(Job("b"))
-            self.assertEqual(sorted(profit.load_snapshot()["loaded"]), ["etsy"])
+                result = sync._sync(Job("b"))
+            self.assertEqual(sorted(records.load_snapshot()["loaded"]), ["etsy"])
             self.assertTrue(any("лише останні" in w for w in result["warnings"]))
             with mock.patch.object(gelato, "all_orders", lambda progress=None: httpc.Listing(cut)):
-                profit._sync(Job("c"))
-            self.assertEqual(sorted(profit.load_snapshot()["loaded"]), ["etsy", "gelato"])
+                sync._sync(Job("c"))
+            self.assertEqual(sorted(records.load_snapshot()["loaded"]), ["etsy", "gelato"])
 
     def test_the_snapshot_is_read_once_per_change(self):
-        core.write_json(profit.SNAPSHOT, {"receipts": [], "syncedAt": "2026-09-22T10:00:00Z"})
-        first = profit.load_snapshot()
-        self.assertIs(profit.load_snapshot(), first)                     # nothing changed: not parsed again
-        core.write_json(profit.SNAPSHOT, {"receipts": [], "syncedAt": "2026-09-22T11:00:00Z"})
-        self.assertEqual(profit.load_snapshot()["syncedAt"], "2026-09-22T11:00:00Z")
+        core.write_json(records.SNAPSHOT, {"receipts": [], "syncedAt": "2026-09-22T10:00:00Z"})
+        first = records.load_snapshot()
+        self.assertIs(records.load_snapshot(), first)                     # nothing changed: not parsed again
+        core.write_json(records.SNAPSHOT, {"receipts": [], "syncedAt": "2026-09-22T11:00:00Z"})
+        self.assertEqual(records.load_snapshot()["syncedAt"], "2026-09-22T11:00:00Z")
+
+
+class MatchingOrder(unittest.TestCase):
+    """Both receipt-number rules come before either name rule (audit 26.09.2026)."""
+
+    def gorder(self, gid, ref, first, last, created="2025-09-05T10:00:00Z", **extra):
+        return {"id": gid, "orderReferenceId": ref, "firstName": first, "lastName": last, "totalInclVat": 20,
+                "currency": "USD", "fulfillmentStatus": "printed", "orderType": "order", "createdAt": created, **extra}
+
+    def test_the_receipts_own_gelato_order_beats_a_printify_order_with_a_like_name(self):
+        """"Ann Lee" is inside "Joann Leeds": the name rule used to hand Ann's receipt that order — its status and
+        tracking showed on her card, while her own Gelato draft carried her number."""
+        other = porder("a" * 24, "Joann", "Leeds", created="2025-09-05 10:00:00+00:00")
+        own = self.gorder("g1", "1 - Emma", "Ann", "Lee")
+        row = view([receipt(1, "Ann Lee")], [other], [own])["1"]
+        self.assertEqual((row["pod_provider"], row.get("gelato_order_id")), ("gelato", "g1"))
+
+    def test_a_name_still_finds_an_order_that_names_no_receipt(self):
+        by_name = porder("a" * 24, "Ann", "Lee", created="2025-09-05 10:00:00+00:00")
+        row = view([receipt(1, "Ann Lee")], [by_name])["1"]
+        self.assertEqual(row["printify_order_id"], "a" * 24)
+
+    def test_a_manual_link_to_an_order_the_sync_does_not_have_falls_back_to_the_rules(self):
+        own = self.gorder("g1", "1 - Emma", "Ann", "Lee")
+        row = view([receipt(1, "Ann Lee")], g_orders=[own], links={"1": {"provider": "printify", "orderId": "gone"}})["1"]
+        self.assertEqual((row["match_type"], row["gelato_order_id"]), ("auto", "g1"))
+
+
+class MoneyRules(unittest.TestCase):
+    """The accounting items deferred on 23.09.2026, fixed on 26.09.2026."""
+
+    def gorder(self, gid, ref, cost=18.0, currency="USD", **extra):
+        return {"id": gid, "orderReferenceId": ref, "firstName": "Dana", "lastName": "Reed", "totalInclVat": cost,
+                "currency": currency, "fulfillmentStatus": "printed", "orderType": "order",
+                "createdAt": "2025-09-04T12:00:00Z", **extra}
+
+    def test_a_cancelled_first_order_keeps_the_second_ones_cost(self):
+        """The refund of a sale whose first print order was cancelled wiped the cost of its second one too."""
+        first = porder("a" * 24, "Dana", "Reed", status="canceled", shop_order_id="1")
+        second = self.gorder("g2", "1-later")
+        sent = {"1": [{"provider": "printify", "orderId": "a" * 24}, {"provider": "gelato", "orderId": "g2"}]}
+        row = view([receipt(1, "Dana Reed", status="Fully Refunded", refunds=[49.98])], [first], [second], sent=sent)["1"]
+        self.assertEqual(row["pod_dead"], "canceled")
+        self.assertEqual([f["order_id"] for f in row["further_orders"]], ["g2"])
+        self.assertEqual(row["cost_total"], 18.0)                    # the second print order still cost money
+        self.assertEqual(row["profit"], r2(row["etsy_net"] - 18.0))
+
+    def test_an_order_on_hold_or_unpaid_costs_nothing_yet(self):
+        """Only a placed and paid print order counts (18.09.2026) — the money counted on-hold and unpaid ones."""
+        on_hold = porder("a" * 24, "Dana", "Reed", status="on-hold", shop_order_id="1")
+        unpaid = self.gorder("g2", "2 - Emma", financialStatus="pending")
+        rows = view([receipt(1, "Dana Reed"), receipt(2, "Dana Reed", ts=1757000100)], [on_hold], [unpaid])
+        for rid in ("1", "2"):
+            with self.subTest(receipt=rid):
+                row = rows[rid]
+                self.assertEqual(row["pod_dead"], "unpaid")
+                self.assertIsNone(row["profit"])                    # what the sale earns is not known yet
+                self.assertFalse(row.get("needs_link"))             # it is the right order, only not paid
+                self.assertEqual(row["cost_total"], 0.0)
+                self.assertGreater(row["pod_cost_original"], 0)     # what it will cost is still shown
+
+    def test_an_unpaid_further_order_is_not_counted(self):
+        first = porder("a" * 24, "Dana", "Reed", shop_order_id="1")
+        later = self.gorder("g2", "1-later", financialStatus="pending")
+        sent = {"1": [{"provider": "printify", "orderId": "a" * 24}, {"provider": "gelato", "orderId": "g2"}]}
+        row = view([receipt(1, "Dana Reed")], [first], [later], sent=sent)["1"]
+        self.assertEqual((row["further_orders"], row["pod_total_cost"]), ([], 11.95))
+
+    def test_every_currency_gelato_bills_in_is_converted(self):
+        """Five orders in Czech crowns were counted as dollars (23.09.2026)."""
+        for currency, rate in (("EUR", RATES["EUR"]), ("CZK", RATES["CZK"]), ("USD", 1)):
+            with self.subTest(currency=currency):
+                row = view([receipt(1, "Dana Reed")], g_orders=[self.gorder("g1", "1 - Emma", 500, currency)])["1"]
+                self.assertEqual(row["pod_total_cost"], r2(500 * rate))
+                self.assertEqual(row["profit"], r2(row["etsy_net"] - row["pod_total_cost"]))
+
+    def test_a_currency_without_a_rate_is_never_counted_as_dollars(self):
+        row = view([receipt(1, "Dana Reed")], g_orders=[self.gorder("g1", "1 - Emma", 500, "SEK")])["1"]
+        self.assertTrue(row["cost_unknown"])
+        self.assertIsNone(row["profit"])
+        self.assertEqual((row["gelato_cost"], row["gelato_currency"]), (500, "SEK"))
+
+    def test_a_split_bundle_is_shared_between_its_receipts(self):
+        both = {**porder("a" * 24, "Dana", "Reed", cost_cents=2000), "line_items": [{"title": "1 and 2"}]}
+        rows = view([receipt(1, "Dana Reed"), receipt(2, "Dana Reed")], [both])
+        self.assertEqual([rows[r]["pod_total_cost"] for r in ("1", "2")], [10.0, 10.0])
+        self.assertEqual({rows[r]["bundle_count"] for r in ("1", "2")}, {2})
+
+
+class PickerFacts(OnTheSnapshot):
+    def test_one_order_reads_as_in_the_whole_list_and_the_facts_are_worked_out_once(self):
+        receipts, p_orders, g_orders = PickerStages().orders()
+        self.synced(receipts, p_orders, g_orders)
+        everything = {o["receiptId"]: o for o in stages.picker_orders()}
+        self.assertEqual(stages.picker_order("1005"), everything["1005"])
+        self.assertIsNone(stages.picker_order("1007"))              # a cancelled Etsy order is closed
+        key = stages.facts()["key"]
+        self.assertEqual(stages.facts()["key"], key)                 # the same build of the view, the same facts
+        core.write_json(records.SNAPSHOT, {**records.load_snapshot(), "syncedAt": "later"})
+        self.assertNotEqual(stages.facts()["key"], key)              # a new sync: worked out again
 
 
 class StateApi(unittest.TestCase):
     def setUp(self):
         self.p = porder("a" * 24, "Amelia", "Lewis", shop_order_id="1")
         self.other = porder("c" * 24, "Zed", "Q", created="2025-09-06 12:00:00+00:00")
-        core.write_json(profit.SNAPSHOT, {"receipts": [profit.normalize_receipt(receipt(1, "Amelia Lewis"))],
+        core.write_json(records.SNAPSHOT, {"receipts": [sync.normalize_receipt(receipt(1, "Amelia Lewis"))],
                                           "printify": [self.p, self.other], "gelato": []})
 
     def tearDown(self):
-        for path in (profit.SNAPSHOT, profit.STATES, profit.LINKS):
+        for path in (records.SNAPSHOT, records.STATES, records.LINKS):
             path.unlink(missing_ok=True)
 
     def call(self, fn, body):

@@ -3,6 +3,27 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] update | Cleanup phase 2: matching and money rebuilt, the Profit page ready for 1 October
+
+- New modules: `printorders.py` (one reading of a print order), `records.py` (the files), `stages.py` (the queue's
+  stages, once per view), `sync.py` (pulling the orders); `profit.py` is the Profit view only; `reconcile.py`
+  matches one receipt at a time, numbers before names; `outcomes.py` works out the money once (`rows()`). The
+  archive ↔ profit cycle and every late import between them are gone.
+- The accounting items deferred on 2026-09-23 fixed: only placed and paid orders cost money; crowns, pounds and
+  zlotys converted at the ECB's rates (a currency without one is never dollars); the cover type from the buyer's
+  choice only; a cancelled first order keeps the second one's cost. The euro's rate left for the owner.
+- Also: the order card reads its order and the archive once (`stages.picker_order()`, `archive.card_facts()`); the
+  queue reads the printer rules once (`orders.printing()`); refund notes unescaped; nothing unescaped twice;
+  dropped receipt fields (the buyer's e-mail among them); `gelato.SHIPPED` → `printorders.GELATO_SHIPPED`.
+- The Profit page: icons and the shared tips, no emoji or English, classes instead of inline styles, «Не оплачено»
+  and the currency state.
+- Checked: 349 tests (13 new: `MatchingOrder`, `MoneyRules`, `PickerFacts`, the name index against the rule, the
+  cover, the pounds); the golden parity test kept, the pound rows marked; the Profit page on the preview server.
+- Pages: rules/reconciliation.md, rules/order-stages.md, rules/sync-policy.md, features/profit.md,
+  features/archive.md, features/orders.md, architecture/api-routes.md, architecture/data.md,
+  architecture/runtime.md, code-map.md, glossary.md, flows/order-to-print.md, integrations/*.md, recipes.md,
+  decisions.md, plans/open-questions.md, plans/cleanup.md, dev/testing.md.
+
 ## [2026-09-26] update | Cleanup phase 1: 22 bugs fixed, each with a test
 
 - Money and safety: `httpc.request()` reads a reply cut short as "result unknown"; the Etsy callback page escapes

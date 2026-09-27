@@ -1,7 +1,7 @@
 ---
 title: Gelato and the temporary link
 type: integration
-updated: 2026-09-25
+updated: 2026-09-27
 code:
   - app/studio/gelato.py
   - app/studio/tunnel.py
@@ -145,7 +145,8 @@ draft, this tells apart a refusal from an **unknown result**
 
 ## Where in the code
 
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `_human()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `_fresh_catalog()`, `CATALOG_HOURS`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `SHIPPED`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
+- [app/studio/gelato.py](../../app/studio/gelato.py) — `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `_human()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `_fresh_catalog()`, `CATALOG_HOURS`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
+- [app/studio/printorders.py](../../app/studio/printorders.py) — `GELATO_SHIPPED`
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`, `_URL_RE`, `FileTunnel`, `_head_ok()`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()`, `_ends_with_us()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_unknown_outcome()`, `_journal_readback()`, `build_photobook_pdf()`, `COVER_TRIM_WARN_MM`, `BLANK_DPI`, `GELATO_PLACEHOLDER_PHONE`, `_one_idat()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`, `_OLD_GELATO_SIZES`, `_upgrade()`

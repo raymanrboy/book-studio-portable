@@ -10,7 +10,7 @@ import hashlib
 import time
 from typing import Any
 
-from . import core, httpc
+from . import core, httpc, printorders
 from .server import ApiError, Request, route
 from .vault import vault
 
@@ -184,8 +184,6 @@ def get_order(order_id: str) -> dict:
     return call("GET", f"{ORDER_API}/orders/{order_id}", action="Статус замовлення Gelato")
 
 
-# Statuses of an order that has left the printer (https://dashboard.gelato.com/docs/orders/order_details/).
-SHIPPED = ("shipped", "in_transit", "delivered", "returned")
 TRACKING_READS = 60  # full orders read per sync at most; the rest wait for the next one
 
 
@@ -221,7 +219,7 @@ def attach_shipments(orders: list, previous: list) -> int:
         status = g.get("fulfillmentStatus")
         if old.get("shipments"):
             g["shipments"] = old["shipments"]
-        elif str(status or "").lower() in SHIPPED:
+        elif str(status or "").lower() in printorders.GELATO_SHIPPED:
             if old.get("shipmentsFor") == status:
                 g["shipments"], g["shipmentsFor"] = [], status
             else:

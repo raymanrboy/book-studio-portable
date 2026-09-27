@@ -1,7 +1,7 @@
 ---
 title: The big cleanup — every finding of the 2026-09-26 code study, fixed (plan)
 type: plan
-updated: 2026-09-26
+updated: 2026-09-27
 code: []
 ---
 # The big cleanup (plan and progress)
@@ -64,20 +64,20 @@ The rest:
 - [x] Profit page: unguarded `localStorage` parse; the sync poll outlives the page.
 - [x] Dropped folders cleared after 2 hours while a card may still use one → check and fix.
 
-## Phase 2 — orders and money (before the Profit page opens on October 1)
+## Phase 2 — orders and money (done 2026-09-26)
 
-- [ ] One module for a print order's facts (cost, dead, placed, name, label, tracking), used by matching,
+- [x] One module for a print order's facts (cost, dead, placed, name, label, tracking), used by matching,
   money, stages and the archive.
-- [ ] Receipt matching as a rule pipeline: manual → Printify number → Gelato number → Printify name → Gelato
+- [x] Receipt matching as a rule pipeline: manual → Printify number → Gelato number → Printify name → Gelato
   name (the rule order changes on purpose).
-- [ ] Money worked out once: a cancelled first order no longer wipes the second's cost; CZK converted, not
+- [x] Money worked out once: a cancelled first order no longer wipes the second's cost; CZK converted, not
   counted as USD; the cover type from the order's own data, not letters of its reference; only placed and
   paid orders count (2026-09-18).
-- [ ] `profit.py` split (sync, records, stages, the Profit view) — the archive ↔ profit import cycle goes.
-- [ ] The stage of every receipt worked out once per view; the order card in one pass.
-- [ ] Dead fields dropped (the buyer's e-mail kept for nothing among them); `plain()` applied once.
-- [ ] New focused tests for matching and money (today most tests share one fixture).
-- [ ] The Profit page follows the owner's UI rules (tips, no emoji, Ukrainian labels, no inline styles).
+- [x] `profit.py` split (sync, records, stages, the Profit view) — the archive ↔ profit import cycle goes.
+- [x] The stage of every receipt worked out once per view; the order card in one pass.
+- [x] Dead fields dropped (the buyer's e-mail kept for nothing among them); `plain()` applied once.
+- [x] New focused tests for matching and money (today most tests share one fixture).
+- [x] The Profit page follows the owner's UI rules (tips, no emoji, Ukrainian labels, no inline styles).
 
 ## Phase 3 — speed
 

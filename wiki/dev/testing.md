@@ -1,13 +1,13 @@
 ---
 title: Tests
 type: dev
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/tests/
 ---
 # Tests
 
-> 336 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
+> 349 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
 > **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
 > whatever it was before) in `.tmp\` of the repository on drive D, wiped at the end; buyers are made up. The
 > Workshop's tests run in its sandbox (`BOOK_STUDIO_SANDBOX`): made-up books, Downloads, clipboard and Recycle Bin

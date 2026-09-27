@@ -13,7 +13,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import archive, core, creator, drops, gelato, images, printify, profit, tunnel
+from studio import archive, core, creator, drops, gelato, images, outcomes, printify, printorders, profit, records, stages, tunnel
 from studio.jobs import Job, JobError
 from studio.server import ApiError
 from studio.vault import vault
@@ -39,7 +39,7 @@ def facts(stages=None, placed=None, have=True, loaded=None, at=None):
     """Order facts as a sync leaves them; every list loaded whole at `at` (now) unless `loaded` says otherwise."""
     at = time.time() if at is None else at
     return {"stages": stages or {}, "placed": placed or {}, "names": {"4100000001": "Jane Doe"},
-            "sent": profit.SENT_STATUSES, "haveReceipts": have,
+            "sent": printorders.SENT_STATUSES, "haveReceipts": have,
             "loaded": {"etsy": at, "printify": at, "gelato": at} if loaded is None else loaded}
 
 
@@ -53,7 +53,7 @@ class ArchiveCase(unittest.TestCase):
         self.addCleanup(warm.stop)
         # states.json and its .bak (read when the main file is missing) start empty and are put back after
         self._states = {p: (p.read_bytes() if p.exists() else None)
-                        for p in (profit.STATES, profit.STATES.with_name(profit.STATES.name + ".bak"))}
+                        for p in (records.STATES, records.STATES.with_name(records.STATES.name + ".bak"))}
         for p in self._states:
             p.unlink(missing_ok=True)
         self.tmp = tempfile.TemporaryDirectory()
@@ -192,14 +192,14 @@ class Removing(ArchiveCase):
 
     def test_a_reprint_whose_draft_was_deleted_goes_and_leaves_no_mark(self):
         eid = self.keep(reprintOf="20260101-101010-abcdef", orderId="deleted-draft")
-        self.assertTrue(profit.mark_reprint("4100000001", "printify", "deleted-draft"))
+        self.assertTrue(stages.mark_reprint("4100000001", "printify", "deleted-draft"))
         sent = archive._ts(archive.get(eid)["sentAt"])
         others = {"printify:o9": {"status": "fulfilled", "tracking": [], "placed": True}}  # without this one
         self.assertEqual(self.refresh(sent + DAY, placed=others), [])  # maybe not synced yet
         self.assertIsNone(archive.get(eid).get("droppedAt"))
         self.assertEqual(self.refresh(sent + 2 * DAY, placed=others), [])
         self.assertIsNotNone(archive.get(eid)["droppedAt"])                 # gone from the printer: deleted
-        self.assertNotIn("4100000001", profit.load_states())               # the replacement mark goes with it
+        self.assertNotIn("4100000001", records.load_states())               # the replacement mark goes with it
         self.assertEqual(self.refresh(sent + 5 * DAY + 60, placed=others), [eid])
 
     def test_a_printer_list_that_stopped_loading_proves_nothing(self):
@@ -296,7 +296,7 @@ class OnlyWhatWentToPrint(ArchiveCase):
         self.assertIsNotNone(archive.get(eid)["droppedAt"])
         self.assertEqual(self.listed(placed=cancelled), [])
         with mock.patch.object(archive, "_facts", lambda: facts(placed=cancelled)):
-            offered = archive.earlier_sends("4100000001")
+            offered = archive.card_facts("4100000001")["earlierSends"]
             self.assertEqual([(e["id"], e["provider"], e["pageCount"]) for e in offered], [(eid, "gelato", 30)])
             copy = Path(archive._reuse(SimpleNamespace(groups=[eid]))["path"])
         self.assertEqual(copy.parent, drops.DROPS)                         # a working copy for the order card
@@ -312,15 +312,15 @@ class OnlyWhatWentToPrint(ArchiveCase):
         draft = {"gelato:g1": {"status": "draft", "placed": False, "tracking": []}}
         cancelled = {"gelato:g1": {"status": "canceled", "placed": False, "tracking": []}}
         with mock.patch.object(archive, "_facts", lambda: facts(placed=draft)):
-            self.assertTrue(archive.at_printer("4100000001"))
-            self.assertFalse(archive.at_printer("4100000002"))
+            self.assertTrue(archive.card_facts("4100000001")["atPrinter"])
+            self.assertFalse(archive.card_facts("4100000002")["atPrinter"])
         with mock.patch.object(archive, "_facts", lambda: facts(placed=cancelled)):
-            self.assertFalse(archive.at_printer("4100000001"))
+            self.assertFalse(archive.card_facts("4100000001")["atPrinter"])
 
     def test_a_placed_order_is_not_offered_again(self):
         self.keep(provider="gelato", orderId="g1")
         with mock.patch.object(archive, "_facts", lambda: facts(placed={"gelato:g1": {"status": "passed", "placed": True}})):
-            self.assertEqual(archive.earlier_sends("4100000001"), [])
+            self.assertEqual(archive.card_facts("4100000001")["earlierSends"], [])
 
     def test_keep_holds_even_a_cancelled_book(self):
         eid = self.keep(provider="gelato", orderId="g1", keep=True)
@@ -338,30 +338,31 @@ class OnlyWhatWentToPrint(ArchiveCase):
 
 class ReprintMark(ArchiveCase):
     def test_recorded_as_a_replacement_without_touching_other_states(self):
-        self.assertTrue(profit.mark_reprint("4100000001", "printify", "o2"))
-        self.assertTrue(profit.mark_reprint("4100000001", "gelato", "g3"))      # a second reprint is added
-        self.assertTrue(profit.mark_reprint("4100000001", "gelato", "g3"))      # the same one only once
-        states = profit.load_states()
+        self.assertTrue(stages.mark_reprint("4100000001", "printify", "o2"))
+        self.assertTrue(stages.mark_reprint("4100000001", "gelato", "g3"))      # a second reprint is added
+        self.assertTrue(stages.mark_reprint("4100000001", "gelato", "g3"))      # the same one only once
+        states = records.load_states()
         self.assertEqual(states["4100000001"]["status"], "replacement")
         self.assertEqual(states["4100000001"]["replacementOrders"],
                          [{"provider": "printify", "orderId": "o2"}, {"provider": "gelato", "orderId": "g3"}])
-        self.assertIn("printify:o2", profit.reserved_orders(states))             # kept out of matching
-        core.write_json(profit.STATES, {"4100000009": {"status": "refund_full", "at": "x"}})
-        self.assertFalse(profit.mark_reprint("4100000009", "printify", "o7"))   # the owner's refund stays
-        self.assertEqual(profit.load_states()["4100000009"]["status"], "refund_full")
-        self.assertFalse(profit.mark_reprint(None, "printify", "o8"))
+        self.assertIn("printify:o2", outcomes.reserved_orders(states))             # kept out of matching
+        core.write_json(records.STATES, {"4100000009": {"status": "refund_full", "at": "x"}})
+        self.assertFalse(stages.mark_reprint("4100000009", "printify", "o7"))   # the owner's refund stays
+        self.assertEqual(records.load_states()["4100000009"]["status"], "refund_full")
+        self.assertFalse(stages.mark_reprint(None, "printify", "o8"))
 
     def test_a_book_cancelled_at_the_printer_is_simply_made_again(self):
         """Its reprint is the only live print order, so it is matched as usual and the queue moves on."""
         row = {"pod_provider": "gelato", "gelato_order_id": "g1", "match_type": "manual"}
-        view = {"full": {"4100000002": row}}
-        with mock.patch.object(profit, "cached_view", lambda: view), \
-                mock.patch.object(profit, "placed_orders", lambda snap: {"gelato:g1": {"status": "canceled", "placed": False}}):
-            self.assertFalse(profit.mark_reprint("4100000002", "gelato", "g2"))
-        self.assertNotIn("4100000002", profit.load_states())
-        with mock.patch.object(profit, "cached_view", lambda: view), \
-                mock.patch.object(profit, "placed_orders", lambda snap: {"gelato:g1": {"status": "shipped", "placed": True}}):
-            self.assertTrue(profit.mark_reprint("4100000002", "gelato", "g2"))    # the first book is out there
+
+        def known(status, placed):
+            return lambda: {"receipts": {"4100000002": {"row": row}},
+                            "placed": {"gelato:g1": {"status": status, "placed": placed}}}
+        with mock.patch.object(stages, "facts", known("canceled", False)):
+            self.assertFalse(stages.mark_reprint("4100000002", "gelato", "g2"))
+        self.assertNotIn("4100000002", records.load_states())
+        with mock.patch.object(stages, "facts", known("shipped", True)):
+            self.assertTrue(stages.mark_reprint("4100000002", "gelato", "g2"))    # the first book is out there
 
 
 class FakePrintify:
@@ -432,7 +433,7 @@ class PrintifyReprint(ArchiveCase):
         self.assertEqual((kept["reprintOf"], kept["orderId"], kept["sendLog"]), (self.first["archiveId"], "order-2", res["sendLog"]))
         original = archive.folder(self.first["archiveId"])
         self.assertTrue(os.path.samefile(archive.folder(res["archiveId"]) / "12.png", original / "12.png"))
-        self.assertEqual(profit.load_states()["4100000001"]["replacementOrders"], [{"provider": "printify", "orderId": "order-2"}])
+        self.assertEqual(records.load_states()["4100000001"]["replacementOrders"], [{"provider": "printify", "orderId": "order-2"}])
         journal = json.loads((core.data_path("logs", "sends") / res["sendLog"]).read_text(encoding="utf-8"))
         self.assertEqual((journal["kind"], journal["ok"], journal["reprintOf"]), ("reprint", True, self.first["archiveId"]))
         self.assertEqual([s["step"] for s in journal["steps"]], ["product", "reprintMarked", "archive"])
@@ -441,7 +442,7 @@ class PrintifyReprint(ArchiveCase):
         """The order is already in Printify. If the program then cannot write it down as a reprint, the
         result must say so — quietly succeeding would invite a second, paid, order for the same book."""
         with mock.patch.object(printify, "call", self.fake), \
-                mock.patch.object(profit, "mark_reprint", side_effect=OSError("states.json locked")):
+                mock.patch.object(stages, "mark_reprint", side_effect=OSError("states.json locked")):
             res = creator.create_printify_reprint(self.first["archiveId"], "4100000001 - Emma", ADDRESS, Job("t"))
         self.assertEqual(res["order"]["id"], "order-2")                  # the printer did accept it
         warned = " ".join(res["warnings"])
@@ -514,7 +515,7 @@ class GelatoReprint(ArchiveCase):
         self.assertEqual((res["orderId"], res["reprint"], sent["items"][0]["pageCount"]), ("g2", True, 28))
         kept = archive.get(res["archiveId"])
         self.assertEqual((kept["reprintOf"], kept["orderId"], kept["provider"]), (first, "g2", "gelato"))
-        self.assertEqual(profit.load_states()["4100000002"]["replacementOrders"], [{"provider": "gelato", "orderId": "g2"}])
+        self.assertEqual(records.load_states()["4100000002"]["replacementOrders"], [{"provider": "gelato", "orderId": "g2"}])
         with self.assertRaises(ApiError):   # an unknown archive id is refused before anything starts
             creator._create_gelato(SimpleNamespace(json={"reprintOf": "20260101-101010-abcdef"}))
         printed_elsewhere = self.keep(provider="printify")

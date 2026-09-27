@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/archive.py
   - app/studio/server.py
@@ -175,12 +175,17 @@ them) — see [features/mockups.md](../features/mockups.md).
 | GET | `/media/mockups/out/([0-9a-f]{12})/([0-9]+)` | media | `_out_media` | mockups.js (`?w=` — a picture a job saved, by its number) |
 | GET | `/media/mockups/([0-9a-f]{16})/(cover\|page\|spread)` | media | `_media` | mockups.js (`?n=&w=` / `?n=&h=` — a page, the cover, a spread glued together) |
 
-## Accounting and sync — [profit.py](../../app/studio/profit.py)
+## Sync — [sync.py](../../app/studio/sync.py)
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
 | POST | `/api/profit/sync` | token | `_start_sync` | order-bits.js `syncOrders`, profit.js (joins a sync already running) |
 | GET | `/api/profit/sync` | token | `_sync_state` | order-bits.js `runningSync` |
+
+## Accounting — [profit.py](../../app/studio/profit.py)
+
+| Method | Pattern | Access | Function | Who calls it |
+|---|---|---|---|---|
 | GET | `/api/profit/data` | token | `_data` | profit.js |
 | GET | `/api/profit/row` | token | `_row` | profit.js |
 | GET | `/api/profit/candidates` | token | `_candidates` | profit.js |

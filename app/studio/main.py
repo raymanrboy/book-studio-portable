@@ -66,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     core.own_temp()  # the window, the dialogs and cloudflared keep their temp files on drive D, not C
 
     # Register all API routes.
-    from . import archive, creator, drops, etsy, gelato, images, library, mockups, orders, printify, profit, sendlog, settings_api, textcheck, tunnel, workshop  # noqa: F401
+    from . import archive, creator, drops, etsy, gelato, images, library, mockups, orders, printify, profit, sendlog, settings_api, sync, textcheck, tunnel, workshop  # noqa: F401
 
     tunnel.cleanup_stale()
     creator.forget_old_form()
@@ -74,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     mockups.clear_books()
     mockups.forget_old_utility()
     httpd = server.start(args.port)
-    profit.startup_sync()  # the one automatic refresh of orders; afterwards only the refresh button
+    sync.startup_sync()  # the one automatic refresh of orders; afterwards only the refresh button
     # The order archive tidies up on its own (again after every sync): books whose 14 days are over go.
     import threading
     threading.Thread(target=archive.refresh_quietly, daemon=True).start()

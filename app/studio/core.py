@@ -188,6 +188,9 @@ DEFAULT_SETTINGS: dict = {
         "pageCounts": [28, 30],  # a book is as long as the Canva export: 30 pages, or 28 without one spread
         "currency": "USD",
         "eurUsdRate": 1.085,
+        # Dollars per unit of the other currencies Gelato bills in: the ECB's cross rates of 25.09.2026 (1.1403 USD,
+        # 24.345 CZK, 0.86045 GBP, 4.3718 PLN per euro); the euro keeps the Profit Calculator's rate above.
+        "czkUsdRate": 0.0468, "gbpUsdRate": 1.325, "plnUsdRate": 0.2608,
         "tunnelKeepAliveSeconds": 900,
         "defaultFormat": "hardcover_8x8",
         "formats": {

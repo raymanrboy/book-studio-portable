@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -59,9 +59,13 @@ code:
 | [drops.py](../app/studio/drops.py) | Dragged-in files (saving, unpacking a ZIP, the book folder) and how a Canva export names its files — shared by the orders, the library and the mockups | `export_files()`, `page_number()`, `COVER_NAME`, `UPSCAYL_TAIL`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `clear_drops()`, `DROPS` |
 | [mockups.py](../app/studio/mockups.py) | [Listing mockups](features/mockups.md): the demo book (in its own folder), pictures for the smart objects, the run plan, Photoshop | `TEMPLATES`, `BOOKS`, `read_book()`, `clear_books()`, `_take_dropped()`, `forget_old_utility()`, `cover_pictures()`, `page_picture()`, `plan()`, `script()`, `launch()`, `watch()`, `make()` |
 | [mockups.jsx](../app/studio/mockups.jsx) | The Photoshop script (ExtendScript, CC 2019) the mockups run: fills copies of the templates, saves PNGs | `findLayer()`, `replaceContents()`, `runTemplate()` |
-| [profit.py](../app/studio/profit.py) | Sync, snapshot, stages, accounting | `_sync()`, `startup_sync()`, `remember_print_order()`, `normalize_receipt()`, `build_view()`, `cached_view()`, `order_stage()`, `picker_orders()` |
-| [reconcile.py](../app/studio/reconcile.py) | Matching Etsy receipts to print orders (one receipt can have several print orders) | `match()`, `_further_orders()`, `cover_label()`, `is_name_match()`, `printify_only_rows()` |
-| [outcomes.py](../app/studio/outcomes.py) | Cancellations, refunds, replacements | `apply()`, `auto_state()`, `pod_order_info()` |
+| [sync.py](../app/studio/sync.py) | Pulling the orders: Etsy receipts (changed ones, a full read weekly), Printify and Gelato orders, into the snapshot | `_sync()`, `startup_sync()`, `normalize_receipt()`, `merge_receipts()` |
+| [records.py](../app/studio/records.py) | What is kept about orders on disk: the snapshot, manual links and states, the print orders this program sent | `load_snapshot()`, `stamp()`, `remember_print_order()`, `add_replacement()`, `unmark_reprint()`, `SNAPSHOT`, `SENDS` |
+| [printorders.py](../app/studio/printorders.py) | One reading of a Printify / Gelato order: its cost in dollars, dead or placed, name, label, tracking | `facts()`, `all_facts()`, `is_placed()`, `dead()`, `to_usd()`, `rates()`, `carrier_label()` |
+| [reconcile.py](../app/studio/reconcile.py) | Matching Etsy receipts to print orders (numbers before names), the cover a buyer chose | `match()`, `_find()`, `item_format()`, `cover_label()`, `is_name_match()`, `printify_only_rows()` |
+| [outcomes.py](../app/studio/outcomes.py) | The money of a row, once: cancellations, refunds, replacements, a sale's other print orders, unpaid orders | `rows()`, `apply()`, `auto_state()`, `order_info()`, `reserved_orders()` |
+| [stages.py](../app/studio/stages.py) | Where each Etsy order stands (new / in work / sent / shipped / closed), once per view; a reprint's mark | `facts()`, `order_stage()`, `picker_orders()`, `picker_order()`, `mark_reprint()` |
+| [profit.py](../app/studio/profit.py) | The Profit view and its routes (rows, one row, candidates, links, states) | `build_view()`, `cached_view()`, `_set_link()`, `_set_state()` |
 | [fees.py](../app/studio/fees.py) | Etsy fees for a Ukrainian seller | `calculate_ukrainian_etsy_fees()`, `r2()`, `money()` |
 | [\_\_init\_\_.py](../app/studio/__init__.py) | The package | — |
 

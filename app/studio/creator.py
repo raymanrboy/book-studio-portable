@@ -24,7 +24,7 @@ from collections import Counter
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 
-from . import archive, core, desktop, drops, gelato, images, printify, profit, sendlog, tunnel, wording
+from . import archive, core, desktop, drops, gelato, images, printify, records, sendlog, stages, tunnel, wording
 from .jobs import JobError, jobs
 from .server import ApiError, Request, file_response, route
 from .vault import vault
@@ -431,7 +431,7 @@ def _remember_sent(log: dict, warnings: list[str], books: list, provider: str, o
     but a record that could not be written is said, like the reprint mark's."""
     receipts = {b.get("receipt") for b in books}
     try:
-        written = [r for r in receipts if r and profit.remember_print_order(r, provider, order_id)]
+        written = [r for r in receipts if r and records.remember_print_order(r, provider, order_id)]
     except Exception as err:
         core.log.exception("Print order not remembered")
         sendlog.step(log, "printOrderRemembered", ok=False, error=str(err))
@@ -446,7 +446,7 @@ def _mark_reprint(log: dict, warnings: list[str], receipt: str | None, provider:
     A failure here never undoes the send — but it must not be quiet either: the order is already in the
     printer, so the owner has to know that only the local record is missing, and not send it again."""
     try:
-        marked = profit.mark_reprint(receipt, provider, order_id)
+        marked = stages.mark_reprint(receipt, provider, order_id)
     except Exception as err:
         core.log.exception("Reprint mark failed")
         sendlog.step(log, "reprintMarked", ok=False, error=str(err))
@@ -1285,12 +1285,12 @@ def _close_tunnel(req: Request):
 
 @route("GET", "/api/creator/etsy-orders")
 def _etsy_orders(req: Request):
-    orders = profit.picker_orders()
+    orders = stages.picker_orders()
     for o in orders:
         o["childName"] = guess_child_name(o["items"])
         for item in o["items"]:  # each book of the order its own child (the page names every book by it)
             item["childName"] = guess_child_name([item])
-    return {"orders": orders, "syncedAt": profit.load_snapshot().get("syncedAt")}
+    return {"orders": orders, "syncedAt": records.load_snapshot().get("syncedAt")}
 
 
 @route("POST", "/api/creator/pick-file")

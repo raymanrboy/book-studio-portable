@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-09-26
+updated: 2026-09-27
 code: []
 ---
 # Glossary
@@ -17,21 +17,21 @@ Code paths below are relative to the repository root.
 |---|---|---|
 | Замовлення (сторінка), черга | The first screen: the list of Etsy orders by stage | [orders.js](../app/web/js/pages/orders.js) `mountQueue()` |
 | Картка замовлення | One screen for one order | [orders.js](../app/web/js/pages/orders.js) `mountCard()` |
-| Нові / В роботі / машинка / Відправлені | Order stages (`new` / `work` / `sent` / `shipped`) | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
-| Машинка (вкладка) | Stage `sent`: the printer has already shipped it (a tracking number or "shipped" status), but Etsy hasn't marked it yet | [profit.py](../app/studio/profit.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES`; [rules/order-stages.md](rules/order-stages.md) |
+| Нові / В роботі / машинка / Відправлені | Order stages (`new` / `work` / `sent` / `shipped`) | [stages.py](../app/studio/stages.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
+| Машинка (вкладка) | Stage `sent`: the printer has already shipped it (a tracking number or "shipped" status), but Etsy hasn't marked it yet | [stages.py](../app/studio/stages.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES`; [rules/order-stages.md](rules/order-stages.md) |
 | Замовлення на кілька книг, «Книга 1 / Книга 2» | One Etsy receipt with several books: in the card, each has its own folder, proofing and text check, and they go to print together as one draft to one address | [orders.js](../app/web/js/pages/orders.js) `readyBooks()`, `printCard()`; [creator.py](../app/studio/creator.py) `books_of()`, `joint_title()`; [features/orders.md](features/orders.md) |
 | Швидкий огляд сторінок, пред-перевірка | The program looks at a preview of every page itself and works out where there's any text at all: only those pages are shown to the model | [images.py](../app/studio/images.py) `text_score()`; [textcheck.py](../app/studio/textcheck.py) `page_kinds()`; [features/text-check.md](features/text-check.md) |
 | Замінити сторінку | The button in the viewer: a page fixed in Canva and downloaded separately takes the place of the old one; "Undo" sits next to it | [creator.py](../app/studio/creator.py) `replace_page()`; [orders.js](../app/web/js/pages/orders.js) `replacePage()`; [features/orders.md](features/orders.md) |
-| Бокс, коробка (вкладка) | "Sent" — marked as shipped on Etsy | [profit.py](../app/studio/profit.py) `order_stage()` |
+| Бокс, коробка (вкладка) | "Sent" — marked as shipped on Etsy | [stages.py](../app/studio/stages.py) `order_stage()` |
 | Годинник (вкладка) | "In progress" | [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
-| Квадратик справа (у рядку черги), статус | The chip on the right: the printer's status in plain English ("In transit"), with a colored dot | [order-bits.js](../app/web/js/order-bits.js) `statusChip()`, `statusText()`; [profit.py](../app/studio/profit.py) `picker_orders()` (`printStatus`) |
+| Квадратик справа (у рядку черги), статус | The chip on the right: the printer's status in plain English ("In transit"), with a colored dot | [order-bits.js](../app/web/js/order-bits.js) `statusChip()`, `statusText()`; [stages.py](../app/studio/stages.py) `picker_orders()` (`printStatus`) |
 | Трек-номер, перевізник (USPS…) | The chip after the printer chip: carrier \| number; a click copies the number | [order-bits.js](../app/web/js/order-bits.js) `trackChips()`, `copyChip()`; [printify.py](../app/studio/printify.py) `slim_order()`; [gelato.py](../app/studio/gelato.py) `attach_shipments()` |
 | Останній стан, «повертає, де я був» | A new order's card and the Order Creator working on it are kept when switching to another tab | [keep.js](../app/web/js/keep.js); [app.js](../app/web/js/app.js) `navigate()`; [architecture/frontend.md](architecture/frontend.md) |
 | Номер замовлення Etsy, номер чека | The `#…` in the queue and the card's header; a click copies the digits without "#" | [order-bits.js](../app/web/js/order-bits.js) `receiptCopy()`, `copyChip()` |
-| Оновити замовлення, синхронізація | Loading orders from Etsy + Printify + Gelato | [profit.py](../app/studio/profit.py) `_sync()`, `startup_sync()`; [order-bits.js](../app/web/js/order-bits.js) `syncOrders()` |
+| Оновити замовлення, синхронізація | Loading orders from Etsy + Printify + Gelato | [sync.py](../app/studio/sync.py) `_sync()`, `startup_sync()`; [order-bits.js](../app/web/js/order-bits.js) `syncOrders()` |
 | Друкарня, постачальник | Printify or Gelato | [orders.py](../app/studio/orders.py) `plan_for()` |
 | Правило друкарні | Hardcover in the US → Printify, everything else → Gelato | [rules/printer-rule.md](rules/printer-rule.md) |
-| Персоналізація, поля Etsy | The buyer's variations (name: value) | [profit.py](../app/studio/profit.py) `normalize_receipt()`; [orders.js](../app/web/js/pages/orders.js) `renderLeft()` |
+| Персоналізація, поля Etsy | The buyer's variations (name: value) | [sync.py](../app/studio/sync.py) `normalize_receipt()`; [orders.js](../app/web/js/pages/orders.js) `renderLeft()` |
 | Ім'я дитини | The value of the field with "name/child…" in its name | [creator.py](../app/studio/creator.py) `guess_child_name()` |
 | «Від кого» | The field name in the Etsy listing; shown as-is | [orders.js](../app/web/js/pages/orders.js) `renderLeft()` |
 | Свій текст (присвята не DEFAULT) | The "custom text" tag next to a field | [order-bits.js](../app/web/js/order-bits.js) `isCustomText()` |
@@ -78,7 +78,7 @@ Code paths below are relative to the repository root.
 | Архів замовлень | A separate menu with the files of books that went to print (14 days after "Sent"), and reprints | [archive.py](../app/studio/archive.py); [archive.js](../app/web/js/pages/archive.js); [features/archive.md](features/archive.md) |
 | Передрук, редрук | Reprinting the same book from the order archive: Printify — a new order for the same book, Gelato — a new draft | [creator.py](../app/studio/creator.py) `create_printify_reprint()`; [features/archive.md](features/archive.md) |
 | Не видаляти (у архіві) | The pin on a book in the archive: the files stay until the mark is removed | [archive.py](../app/studio/archive.py) `_keep()` |
-| Оформлене замовлення (в друкарні) | Confirmed and paid, not a draft, not "on hold", not cancelled; only this moves the order into "in progress" and puts the book in the archive | [profit.py](../app/studio/profit.py) `is_placed()`; [rules/order-stages.md](rules/order-stages.md) |
+| Оформлене замовлення (в друкарні) | Confirmed and paid, not a draft, not "on hold", not cancelled; only this moves the order into "in progress" and puts the book in the archive | [printorders.py](../app/studio/printorders.py) `is_placed()`; [rules/order-stages.md](rules/order-stages.md) |
 | Завершити роботу над замовленням | The × in the order card and in the Order Creator after a successful send: the program forgets the saved work on this order and opens the queue | [keep.js](../app/web/js/keep.js) `finish()`; [features/orders.md](features/orders.md) |
 | Вигаданий номер (телефон) | The phone number filled into Gelato when the Etsy order doesn't have one: `+1 555 555 0100` | [creator.py](../app/studio/creator.py) `GELATO_PLACEHOLDER_PHONE` |
 | ШІ-валідатор, перевірка тексту, «кнопка перевірити» | A local model reads the pages in the order card, the program checks them against the book passport | [textcheck.py](../app/studio/textcheck.py) `check_order()`; [orders.js](../app/web/js/pages/orders.js) `startCheck()`; [features/text-check.md](features/text-check.md) |
@@ -88,8 +88,8 @@ Code paths below are relative to the repository root.
 | Сліпе переписування / з підказкою | The "read" pass (the model doesn't know what should be there) and the "check" pass (it does) | [textcheck.py](../app/studio/textcheck.py) `READ_PROMPT`, `STRICT_PROMPT` |
 | Паспорт застарів, оновити паспорт | The passport's texts don't match the Canva template — they're taken from the printed book | [orders.js](../app/web/js/pages/orders.js) `learnPassport()`; [textcheck.py](../app/studio/textcheck.py) `_passport()` |
 | Взяти файли минулої відправки | The button in the order card: files from a send that never became an order (cancelled, a deleted draft) are taken from the archive — and the order is sent like a normal one | [orders.js](../app/web/js/pages/orders.js) `takeEarlier()`; [features/archive.md](features/archive.md) |
-| «+N у друці» (чип у черзі) | This receipt has N more print orders besides the one whose status is shown: the books went in two batches, or to two printers | [order-bits.js](../app/web/js/order-bits.js) `alsoSentChip()`; [profit.py](../app/studio/profit.py) `picker_orders()` (`alsoSent`); [rules/reconciliation.md](rules/reconciliation.md) |
-| Відправка (записана програмою) | The list of print orders the program itself created for a receipt — the full cost is counted from it | [profit.py](../app/studio/profit.py) `remember_print_order()`, `SENDS` |
+| «+N у друці» (чип у черзі) | This receipt has N more print orders besides the one whose status is shown: the books went in two batches, or to two printers | [order-bits.js](../app/web/js/order-bits.js) `alsoSentChip()`; [stages.py](../app/studio/stages.py) `picker_orders()` (`alsoSent`); [rules/reconciliation.md](rules/reconciliation.md) |
+| Відправка (записана програмою) | The list of print orders the program itself created for a receipt — the full cost is counted from it | [records.py](../app/studio/records.py) `remember_print_order()`, `SENDS` |
 | Кошик | `data/library/trash` — where a deleted book goes | [library.py](../app/studio/library.py) `_delete()` |
 | Переглядач (лайтбокс) | The full-screen zoomable viewer | [lightbox.js](../app/web/js/lightbox.js) `openLightbox()` |
 

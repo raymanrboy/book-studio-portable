@@ -1,7 +1,7 @@
 // Profit: Etsy Net − Printify/Gelato cost for every Etsy order (analogue of Etsy Profit Calculator),
 // plus order states: cancelled, full / partial refund, replacement reprint.
 import {
-  api, html, ic, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, signedMoney, menu,
+  api, html, ic, ib, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, signedMoney, menu,
   dateTime, relTime, plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember,
 } from '../lib.js';
 import { refreshInfo, store } from '../info.js';
@@ -27,9 +27,12 @@ const EASE = 'cubic-bezier(.22, 1, .36, 1)';
 const toCal = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const usd = (n) => (n === null || n === undefined ? '—' : n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${Number(n).toFixed(2)}`);
 const costOf = (o) => o.cost_total ?? ((o.pod_total_cost || 0) > 0 ? o.pod_total_cost : (o.printify_total_cost || 0));
-const isIssue = (o) => (o.state && o.state !== 'normal') || o.needs_link || o.pod_dead;
+const isIssue = (o) => (o.state && o.state !== 'normal') || o.needs_link || o.pod_dead || o.cost_unknown;
 const podName = (o) => (o.pod_provider === 'gelato' ? 'Gelato' : 'Printify');
-const deadText = (o) => (o.pod_dead === 'draft' ? 'чернетка Gelato — не оплачена' : `скасовано в ${podName(o)}`);
+// Why the print order costs nothing (outcomes.unpaid()): a draft, not paid yet (on hold, awaiting payment), cancelled.
+const DEAD_SHORT = { draft: 'чернетка', unpaid: 'не оплачено', canceled: 'скасовано' };
+const deadText = (o) => (o.pod_dead === 'draft' ? 'чернетка Gelato — не оплачена'
+  : o.pod_dead === 'unpaid' ? `ще не оплачено в ${podName(o)}` : `скасовано в ${podName(o)}`);
 
 export async function mount(view) {
   const saved = remembered('bs-profit', {}); // the period picked last time
@@ -52,34 +55,31 @@ export async function mount(view) {
 
   setHtml(view, html`
     <div class="page-head">
-      <div><h1 class="page-title">Прибуток</h1><div class="page-sub" id="pf-sub">Чистий виторг Etsy мінус собівартість друку й доставки</div></div>
-      <div class="page-actions">
-        <button class="btn btn-primary" id="pf-sync">${ic('refresh')}<span>Update / Sync</span></button>
-        <button class="btn btn-icon" id="pf-more" title="Інші способи оновлення">${ic('more')}</button>
-      </div>
+      <div><h1 class="page-title">Прибуток</h1><div class="page-sub" id="pf-sub"></div></div>
+      <div class="page-actions"><div class="tools">${ib('sync', 'Оновити замовлення', 'id="pf-sync"')}${ib('more', 'Інші способи оновлення', 'id="pf-more"')}</div></div>
     </div>
-    <div id="pf-progress" hidden style="margin-bottom:14px">
-      <div class="row" style="margin-bottom:6px;font-size:12.5px"><span id="pf-step" style="font-weight:600"></span><span class="faint" id="pf-detail"></span><span class="spacer"></span><span class="mono faint" id="pf-pct"></span></div>
+    <div id="pf-progress" class="pf-progress" hidden>
+      <div class="row"><b id="pf-step"></b><span class="faint" id="pf-detail"></span><span class="spacer"></span><span class="mono faint" id="pf-pct"></span></div>
       <div class="progress progress-thin"><i id="pf-bar"></i></div>
     </div>
-    <div id="pf-notice"></div>
+    <div id="pf-notice" class="pf-notices"></div>
     <div id="pf-kpis" class="kpis"></div>
     <div class="period-bar">
-      <span class="row" style="font-size:12.5px;font-weight:600;color:var(--text-2)"><span class="check-ico ok" style="background:var(--accent-soft);color:var(--accent)">${ic('calendar', 'icon-s')}</span>Період вибірки замовлень</span>
+      <span class="row pf-period-label"><span class="pf-period-ico">${ic('calendar', 'icon-s')}</span>Період</span>
       <span class="spacer"></span>
       <div id="pf-period"></div>
       <div class="period-custom ${st.period === 'custom' ? 'open' : ''}" id="pf-custom"><div>
-        <div class="row-wrap" style="padding-top:10px;border-top:1px solid var(--border);margin-top:4px">
+        <div class="row-wrap pf-dates">
           <label class="date-field">Від:<input type="date" id="pf-start" value="${st.start}"></label>
           <label class="date-field">До:<input type="date" id="pf-end" value="${st.end}"></label>
         </div></div></div>
     </div>
     <div class="table-card">
       <div class="table-top">
-        <div class="input-group" style="width:min(380px,100%)">${ic('search')}<input class="input" id="pf-q" placeholder="Пошук за замовником, чеком чи товаром…" autocomplete="off"></div>
+        <div class="input-group pf-search">${ic('search')}<input class="input" id="pf-q" placeholder="Замовник, чек чи товар…" autocomplete="off"></div>
         <div id="pf-filter"></div>
         <span class="spacer"></span>
-        <span class="faint" style="font-size:12.5px">Замовлень у вибірці: <b class="num" id="pf-count" style="color:var(--text)">0</b></span>
+        <span class="pf-count" data-tip="Замовлень у вибірці">${ic('receipt', 'icon-s')}<b class="num" id="pf-count">0</b></span>
       </div>
       <div id="pf-table"></div>
     </div>`);
@@ -131,12 +131,11 @@ export async function mount(view) {
     const bits = [];
     if (d?.shopName) bits.push(`магазин ${d.shopName}`);
     if (d?.printifyShop?.title) bits.push(`Printify: ${d.printifyShop.title}`);
-    bits.push(d?.syncedAt ? `оновлено ${relTime(d.syncedAt)}` : 'ще не синхронізовано');
-    $('#pf-sub').textContent = `Чистий виторг Etsy мінус собівартість друку й доставки · ${bits.join(' · ')}`;
-    const b = $('#pf-sync');
-    b.disabled = st.syncing;
+    bits.push(st.syncing ? 'оновлення…' : d?.syncedAt ? `оновлено ${relTime(d.syncedAt)}` : 'ще не оновлено');
+    $('#pf-sub').textContent = bits.join(' · ');
+    $('#pf-sync').disabled = st.syncing;
+    $('#pf-sync').firstElementChild?.classList.toggle('spin', st.syncing);
     $('#pf-more').disabled = st.syncing;
-    setHtml(b, html`${ic('refresh', st.syncing ? 'spin' : '')}<span>${st.syncing ? 'Оновлення…' : 'Update / Sync'}</span>`);
   }
 
   function renderNotice() {
@@ -144,9 +143,9 @@ export async function mount(view) {
     const n = st.notice;
     const warnings = st.data?.warnings || [];
     const parts = [];
-    if (n) parts.push(html`<div class="notice notice-${n.type}" style="margin-bottom:12px">${ic(n.type === 'success' ? 'checkCircle' : 'alertCircle')}<div class="grow">${n.text}
-      ${n.settings ? html`<div style="margin-top:8px"><a class="btn btn-sm" href="#/settings/etsy">Відкрити налаштування</a></div>` : ''}</div></div>`);
-    if (warnings.length && st.data?.mode !== 'empty') parts.push(html`<div class="notice notice-warn" style="margin-bottom:12px">${ic('alert')}<div>${warnings.map((w) => html`<div>${w}</div>`)}</div></div>`);
+    if (n) parts.push(html`<div class="notice notice-${n.type}">${ic(n.type === 'success' ? 'checkCircle' : 'alertCircle')}<div class="grow">${n.text}
+      ${n.settings ? html`<div class="pf-notice-act"><a class="btn btn-sm" href="#/settings/etsy">Відкрити налаштування</a></div>` : ''}</div></div>`);
+    if (warnings.length && st.data?.mode !== 'empty') parts.push(html`<div class="notice notice-warn">${ic('alert')}<div>${warnings.map((w) => html`<div>${w}</div>`)}</div></div>`);
     setHtml(box, parts);
   }
 
@@ -165,27 +164,24 @@ export async function mount(view) {
     const k = kpi(periodRows());
     const box = $('#pf-kpis');
     if (!box.querySelector('[data-k]')) {
-      const card = (key, label, iconName, color, glow) => html`<div class="kpi" style="--kpi-glow:${glow}" data-card="${key}">
-        <div class="kpi-label"><span>${label}</span><span class="kpi-ico" style="color:${color}">${ic(iconName, 'icon-s')}</span></div>
-        <div class="kpi-value" data-k="${key}" style="color:${color === 'var(--text-3)' ? 'var(--text)' : color}"></div><div class="kpi-foot" data-f="${key}"></div></div>`;
+      const card = (key, label, iconName, tone) => html`<div class="kpi ${tone}" data-card="${key}">
+        <div class="kpi-label"><span>${label}</span><span class="kpi-ico">${ic(iconName, 'icon-s')}</span></div>
+        <div class="kpi-value" data-k="${key}"></div><div class="kpi-foot" data-f="${key}"></div></div>`;
       setHtml(box, [
-        card('net', 'На руки (Etsy Net)', 'dollar', 'var(--green)', 'var(--green-soft)'),
-        card('cost', 'Собівартість POD', 'bag', 'var(--text-3)', 'var(--red-soft)'),
-        card('profit', 'Чистий прибуток', 'trending', 'var(--green)', 'var(--green-soft)'),
-        card('margin', 'Середня маржа', 'shield', 'var(--accent)', 'var(--accent-soft)'),
+        card('net', 'На руки (Etsy Net)', 'dollar', 'tone-green'),
+        card('cost', 'Собівартість друку', 'bag', ''),
+        card('profit', 'Чистий прибуток', 'chart', 'tone-green'),
+        card('margin', 'Середня маржа', 'shield', 'tone-accent'),
       ]);
     }
-    box.querySelector('[data-f="net"]').textContent = `Для ${k.n} зіставлених замовлень`;
-    box.querySelector('[data-f="cost"]').textContent = 'Printify + Gelato (друк і доставка)';
+    box.querySelector('[data-f="net"]').textContent = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}`;
     const pf = box.querySelector('[data-f="profit"]');
-    pf.textContent = k.issues ? `Втрати на поверненнях і замінах: ${usd(k.impact)}` : 'Etsy Net мінус собівартість';
-    pf.title = k.issues ? `${k.issues} ${plural(k.issues, ['замовлення', 'замовлення', 'замовлень'])}: скасування, повернення, заміни` : '';
-    pf.style.color = k.issues && k.impact < 0 ? 'var(--red)' : '';
-    box.querySelector('[data-f="margin"]').textContent = `Тільки зіставлені (${k.n} шт)`;
-    const profitColor = k.profit >= 0 ? 'var(--green)' : 'var(--red)';
-    box.querySelector('[data-k="profit"]').style.color = profitColor;
-    box.querySelector('[data-card="profit"]').style.setProperty('--kpi-glow', k.profit >= 0 ? 'var(--green-soft)' : 'var(--red-soft)');
-    box.querySelector('[data-card="profit"] .kpi-ico').style.color = profitColor;
+    pf.textContent = k.issues ? `Повернення й заміни: ${usd(k.impact)}` : '';
+    pf.dataset.tip = k.issues ? `${k.issues} ${plural(k.issues, ['замовлення', 'замовлення', 'замовлень'])}: скасування, повернення, заміни` : '';
+    pf.classList.toggle('neg', Boolean(k.issues && k.impact < 0));
+    const card = box.querySelector('[data-card="profit"]');
+    card.classList.toggle('tone-green', k.profit >= 0);
+    card.classList.toggle('tone-red', k.profit < 0);
     const from = { ...shownKpi };
     const to = { net: k.net, cost: k.cost, profit: k.profit, margin: k.margin };
     const fmt = { net: money, cost: money, profit: usd, margin: (v) => `${(Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '')}%` };
@@ -210,15 +206,15 @@ export async function mount(view) {
     const cost = costOf(o);
     const matched = o.match_type && o.match_type !== 'unmatched';
     if (o.needs_link) {
-      return html`<button class="cost-btn" data-toggle="${o.id}" title="Знайдено лише ${deadText(o)} — зв'яжіть актуальне замовлення"><span class="chip chip-amber">${ic('alert', 'icon-s')}Потрібна пара</span><span class="chev">${ic('chevDown', 'icon-s')}</span></button>`;
+      return html`<button class="cost-btn" data-toggle="${o.id}" data-tip="Знайдено лише ${deadText(o)} — зв'яжіть актуальне замовлення"><span class="chip chip-amber">${ic('alert', 'icon-s')}Потрібна пара</span><span class="chev">${ic('chevDown', 'icon-s')}</span></button>`;
     }
     if (cost > 0 || (matched && o.pod_dead) || (o.state === 'canceled' && o.profit !== null)) {
       const gel = o.pod_provider === 'gelato';
-      const sub = !matched ? html`<span class="prov" style="color:var(--text-4)">без друку</span>`
-        : html`<span class="prov ${gel ? 'prov-gelato' : 'prov-printify'}">${gel ? 'Gelato' : 'Printify'}${o.is_bundle ? html` <span style="color:var(--purple);text-transform:none">(1/${o.bundle_count || 2})</span>` : ''}${o.pod_dead ? html` <span style="color:var(--text-4);text-transform:none">${o.pod_dead === 'draft' ? 'чернетка' : 'скасовано'}</span>` : ''}</span>`;
-      return html`<button class="cost-btn" data-toggle="${o.id}" title="Деталі">
-        <span style="text-align:right"><b class="num" style="display:block">${money(cost)}</b>${sub}
-          ${o.replacement_cost > 0 ? html`<span class="prov" style="display:block;color:var(--purple);text-transform:none">у т.ч. заміна ${money(o.replacement_cost)}</span>` : ''}</span>
+      const sub = !matched ? html`<span class="prov prov-none">без друку</span>`
+        : html`<span class="prov ${gel ? 'prov-gelato' : 'prov-printify'}">${gel ? 'Gelato' : 'Printify'}${o.is_bundle ? html` <span class="prov-note bundle">(1/${o.bundle_count || 2})</span>` : ''}${o.pod_dead ? html` <span class="prov-note">${DEAD_SHORT[o.pod_dead]}</span>` : ''}</span>`;
+      return html`<button class="cost-btn" data-toggle="${o.id}">
+        <span class="cost-sum"><b class="num">${money(cost)}</b>${sub}
+          ${o.replacement_cost > 0 ? html`<span class="prov prov-note bundle">у т.ч. заміна ${money(o.replacement_cost)}</span>` : ''}</span>
         <span class="chev">${ic('chevDown', 'icon-s')}</span></button>`;
     }
     return html`<button class="cost-btn" data-toggle="${o.id}"><span class="chip chip-amber">${ic('clock', 'icon-s')}Не зіставлено</span><span class="chev">${ic('chevDown', 'icon-s')}</span></button>`;
@@ -227,28 +223,33 @@ export async function mount(view) {
   function statusCell(o) {
     if (st.data?.mode === 'printify_only') return html`<span class="chip chip-lime">Printify</span>`;
     const matched = o.match_type && o.match_type !== 'unmatched';
+    if (matched && (o.pod_dead === 'unpaid' || o.cost_unknown)) {
+      const tip = o.cost_unknown ? `Gelato списує в ${o.gelato_currency} — курсу до долара немає`
+        : `Замовлення в ${podName(o)} ще не оплачене — прибуток буде після оплати`;
+      return html`<button class="chip chip-amber chip-btn" data-match="${o.id}" data-tip="${tip}">${ic('clock', 'icon-s')}${o.cost_unknown ? o.gelato_currency : 'Не оплачено'}</button>`;
+    }
     if (o.profit !== null && o.profit !== undefined && !matched) {
-      return html`<button class="chip" style="cursor:pointer" data-match="${o.id}" title="Скасовано до друку — витрат немає. Натисніть, щоб зв'язати замовлення постачальника">${ic('check', 'icon-s')}Без витрат</button>`;
+      return html`<button class="chip chip-btn" data-match="${o.id}" data-tip="Скасовано до друку — витрат немає">${ic('check', 'icon-s')}Без витрат</button>`;
     }
     if (o.profit !== null && o.profit !== undefined) {
-      return html`<button class="chip chip-green" style="cursor:pointer" data-match="${o.id}" title="${o.match_type === 'manual' ? 'Зв’язано вручну — натисніть, щоб змінити' : 'Знайдено автоматично — натисніть, щоб змінити'}">
+      return html`<button class="chip chip-green chip-btn" data-match="${o.id}" data-tip="${o.match_type === 'manual' ? 'Зв’язано вручну' : 'Знайдено автоматично'}">
         ${ic(o.match_type === 'manual' ? 'link' : 'checkCircle', 'icon-s')}${o.match_type === 'manual' ? 'Вручну' : 'Зіставлено'}</button>`;
     }
-    if (o.link_blocked) return html`<button class="chip" style="cursor:pointer" data-match="${o.id}" title="Позначено без собівартості">${ic('unlink', 'icon-s')}Без POD</button>`;
-    return html`<button class="btn btn-xs" style="color:var(--accent-ink);border-color:var(--accent-line);background:var(--accent-soft)" data-match="${o.id}">${ic('link', 'icon-s')}Зв'язати</button>`;
+    if (o.link_blocked) return html`<button class="chip chip-btn" data-match="${o.id}" data-tip="Позначено без собівартості">${ic('unlink', 'icon-s')}Без друку</button>`;
+    return html`<button class="chip chip-accent chip-btn" data-match="${o.id}">${ic('link', 'icon-s')}Зв'язати</button>`;
   }
 
   function stateChip(o) {
     if (!o.state || o.state === 'normal') return '';
     const text = o.state === 'refund_partial' && o.refund_amount ? `повернення ${usd(-o.refund_amount)}` : STATE_TEXT[o.state];
-    return html`<span class="chip ${STATE_CHIP[o.state]}" title="${o.state_manual ? 'Статус встановлено вручну' : 'Статус з Etsy'}">${o.state_manual ? ic('edit', 'icon-s') : ''}${text}</span>`;
+    return html`<span class="chip ${STATE_CHIP[o.state]}" data-tip="${o.state_manual ? 'Статус встановлено вручну' : 'Статус з Etsy'}">${o.state_manual ? ic('edit', 'icon-s') : ''}${text}</span>`;
   }
 
   function netCell(o) {
     if (o.etsy_net === undefined) return html`<span class="faint">—</span>`;
     const changed = o.state && o.state !== 'normal' && o.etsy_net_original !== undefined && Math.abs(o.etsy_net - o.etsy_net_original) > 0.004;
-    return html`<div class="o-net" style="${o.etsy_net < 0 ? 'color:var(--red)' : o.etsy_net === 0 ? 'color:var(--text-3)' : ''}">${usd(o.etsy_net)}</div>
-      ${changed ? html`<div class="o-was" title="До повернення">${money(o.etsy_net_original)}</div>` : o.etsy_fees > 0 ? html`<div class="o-fees">збори: -$${o.etsy_fees.toFixed(2)}</div>` : ''}`;
+    return html`<div class="o-net ${o.etsy_net < 0 ? 'neg' : o.etsy_net === 0 ? 'zero' : ''}">${usd(o.etsy_net)}</div>
+      ${changed ? html`<div class="o-was" data-tip="До повернення">${money(o.etsy_net_original)}</div>` : o.etsy_fees > 0 ? html`<div class="o-fees">збори: -$${o.etsy_fees.toFixed(2)}</div>` : ''}`;
   }
 
   function rowInner(o) {
@@ -257,7 +258,7 @@ export async function mount(view) {
       <div class="r num">${netCell(o)}</div>
       <div class="r">${providerCell(o)}</div>
       <div class="r">${o.profit !== null && o.profit !== undefined ? html`<span class="profit-pill ${o.profit > 0 ? 'profit-pos' : o.profit < 0 ? 'profit-neg' : 'profit-zero'}">${o.profit === 0 ? '$0.00' : signedMoney(o.profit)}</span>
-        ${o.profit_margin !== null && o.profit_margin !== undefined ? html`<div class="faint" style="font-size:11.5px;margin-top:2px">маржа ${o.profit_margin}%</div>` : ''}` : html`<span class="faint">—</span>`}</div>
+        ${o.profit_margin !== null && o.profit_margin !== undefined ? html`<div class="o-margin">маржа ${o.profit_margin}%</div>` : ''}` : html`<span class="faint">—</span>`}</div>
       <div class="c">${statusCell(o)}</div>`;
   }
 
@@ -288,30 +289,30 @@ export async function mount(view) {
     const id = o.id;
     return html`<div class="dbox state-box" data-state-box="${id}">
       <div class="dbox-title">Статус замовлення
-        <span class="faint" style="font-weight:500">· в Etsy: ${STATE_TEXT[o.state_auto || 'normal']}${o.state_manual ? ', тут змінено вручну' : ''}</span>
+        <span class="dbox-note">· в Etsy: ${STATE_TEXT[o.state_auto || 'normal']}${o.state_manual ? ', тут змінено вручну' : ''}</span>
         <span class="spacer"></span>
-        ${o.state_manual ? html`<button class="btn btn-ghost btn-xs" data-state-auto="${id}" title="Повернути статус, який показує Etsy">${ic('restore', 'icon-s')}Як в Etsy</button>` : ''}
+        ${o.state_manual ? html`<button class="btn btn-ghost btn-xs" data-state-auto="${id}" data-tip="Повернути статус, який показує Etsy">${ic('restore', 'icon-s')}Як в Etsy</button>` : ''}
       </div>
       <div class="state-seg">${segHtml(STATE_OPTS, s, { name: `state-${id}` })}</div>
       ${s === 'refund_partial' ? html`<div class="state-extra">
         <label class="st-label" for="st-amt-${id}">Сума повернення покупцю, $</label>
         <input class="input mono" id="st-amt-${id}" data-state-amount="${id}" inputmode="decimal" value="${o.refund_amount ? o.refund_amount.toFixed(2) : ''}" placeholder="${o.etsy_refund_total ? o.etsy_refund_total.toFixed(2) : '0.00'}">
-        <span class="faint" style="font-size:11.5px">з ${money(o.fee_breakdown?.gross)} · Etsy повертає збори пропорційно</span>
+        <span class="state-hint">з ${money(o.fee_breakdown?.gross)}</span>
       </div>` : ''}
       ${s === 'replacement' ? html`<div class="state-extra">
-        <span class="faint" style="font-size:12px">Передрук за ваш рахунок:</span>
-        ${(o.replacement_orders || []).map((r) => html`<span class="chip chip-purple chip-mono">${r.provider === 'gelato' ? 'Gelato' : 'Printify'} #${r.label} · ${r.dead ? 'скасовано' : money(r.cost)}
-          <button class="chip-x" data-repl-remove="${r.provider}:${r.id}" data-row-id="${id}" title="Прибрати">${ic('x', 'icon-s')}</button></span>`)}
+        <span class="st-label">Передрук:</span>
+        ${(o.replacement_orders || []).map((r) => html`<span class="chip chip-purple chip-mono">${r.provider === 'gelato' ? 'Gelato' : 'Printify'} #${r.label} · ${r.dead ? DEAD_SHORT[r.dead] : money(r.cost)}
+          <button class="chip-x" data-repl-remove="${r.provider}:${r.id}" data-row-id="${id}" aria-label="Прибрати" data-tip="Прибрати">${ic('x', 'icon-s')}</button></span>`)}
         <button class="btn btn-xs" data-repl-add="${id}">${ic('plus', 'icon-s')}${(o.replacement_orders || []).length ? 'Ще замовлення' : 'Обрати замовлення Printify / Gelato'}</button>
-        <label class="st-label" for="st-rc-${id}" style="margin-left:auto">Інші витрати, $</label>
+        <label class="st-label push" for="st-rc-${id}">Інші витрати, $</label>
         <input class="input mono" id="st-rc-${id}" data-state-rcost="${id}" inputmode="decimal" value="${o.replacement_manual ? o.replacement_manual.toFixed(2) : ''}" placeholder="0.00">
       </div>` : ''}
       ${s !== 'normal' ? html`<div class="state-extra">
         <label class="st-label" for="st-note-${id}">Примітка</label>
-        <input class="input" id="st-note-${id}" data-state-note="${id}" value="${o.state_note || ''}" placeholder="Причина: пошкоджено в доставці, помилка в імені…" maxlength="500" style="flex:1;min-width:200px">
+        <input class="input state-note" id="st-note-${id}" data-state-note="${id}" value="${o.state_note || ''}" placeholder="Причина: пошкоджено в доставці, помилка в імені…" maxlength="500">
       </div>` : ''}
       ${econLines(o)}
-      ${(o.refunds || []).length ? html`<div class="faint" style="font-size:11.5px;margin-top:10px">Повернення в Etsy: ${o.refunds.map((r) => `${r.at ? dateTime(new Date(r.at * 1000).toISOString()) : ''} · ${money(r.amount)}${r.reason ? ` · ${r.reason}` : ''}${r.note ? ` · «${r.note}»` : ''}`).join('; ')}</div>` : ''}
+      ${(o.refunds || []).length ? html`<div class="state-hint state-refunds">Повернення в Etsy: ${o.refunds.map((r) => `${r.at ? dateTime(new Date(r.at * 1000).toISOString()) : ''} · ${money(r.amount)}${r.reason ? ` · ${r.reason}` : ''}${r.note ? ` · «${r.note}»` : ''}`).join('; ')}</div>` : ''}
     </div>`;
   }
 
@@ -326,63 +327,64 @@ export async function mount(view) {
         ${gel ? html`<span class="chip chip-blue chip-mono">Gelato: #${o.gelato_order_reference || (o.gelato_order_id || '').slice(-8).toUpperCase()}</span>`
           : o.printify_order_id ? html`<span class="chip chip-lime chip-mono">Printify: #${o.app_order_id || o.printify_order_id.slice(-6).toUpperCase()}</span>` : ''}
         ${o.pod_dead ? html`<span class="chip">${deadText(o)}</span>` : ''}
-        ${o.is_bundle ? html`<span class="chip chip-purple">📦 Спільна посилка: 1 з ${o.bundle_count || 2}</span>` : ''}
+        ${o.is_bundle ? html`<span class="chip chip-purple">${ic('package', 'icon-s')}Спільна посилка: 1 з ${o.bundle_count || 2}</span>` : ''}
         ${o.match_type === 'manual' ? html`<span class="chip">${ic('link', 'icon-s')}зв'язано вручну</span>` : ''}
         ${o.is_shipped ? html`<span class="chip chip-green">відправлено</span>` : o.status ? html`<span class="chip">${o.status}</span>` : ''}
         <span class="spacer"></span>
-        <span class="faint mono" style="font-size:11.5px">Створено: ${dateTime(o.created_at)}</span>
+        <span class="detail-date">${dateTime(o.created_at)}</span>
         ${st.data?.mode === 'etsy' ? html`<button class="btn btn-xs" data-match="${o.id}">${ic('link', 'icon-s')}Змінити зіставлення</button>` : ''}
       </div>
       ${st.data?.mode === 'etsy' ? stateBox(o) : ''}
       ${st.data?.mode === 'etsy' ? html`<div class="detail-grid">
         <div class="dbox"><div class="dbox-title">Адреса доставки</div>
-          <div style="font-weight:600">${a.name || o.customer_name}</div>
+          <div class="dbox-strong">${a.name || o.customer_name}</div>
           ${a.first_line || a.second_line ? html`<div class="muted">${[a.first_line, a.second_line].filter(Boolean).join(', ')}</div>` : ''}
           ${cityLine ? html`<div class="muted">${cityLine}</div>` : ''}
         </div>
         <div class="dbox"><div class="dbox-title">Товари Etsy</div>
-          ${(o.items || []).length ? o.items.map((it) => html`<div class="row" style="justify-content:space-between;gap:12px"><span class="truncate muted">${it.quantity}× ${it.title}</span><b class="num">$${(it.price || 0).toFixed(2)}</b></div>
-            ${(it.variations || []).length ? html`<div class="faint" style="font-size:11.5px;margin:1px 0 4px">${it.variations.map((v) => `${v.name}: ${v.value}`).join(' · ')}</div>` : ''}`) : html`<span class="faint">Інформація уточнюється</span>`}
-          ${fb?.discount_amt > 0 ? html`<div class="row" style="justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);color:var(--green)"><span>Знижка магазину / купон:</span><b class="num">-$${fb.discount_amt.toFixed(2)}</b></div>` : ''}
+          ${(o.items || []).length ? o.items.map((it) => html`<div class="item-line"><span class="truncate muted">${it.quantity}× ${it.title}</span><b class="num">$${(it.price || 0).toFixed(2)}</b></div>
+            ${(it.variations || []).length ? html`<div class="item-vars">${it.variations.map((v) => `${v.name}: ${v.value}`).join(' · ')}</div>` : ''}`) : html`<span class="faint">—</span>`}
+          ${fb?.discount_amt > 0 ? html`<div class="item-line item-discount"><span>Знижка магазину / купон:</span><b class="num">-$${fb.discount_amt.toFixed(2)}</b></div>` : ''}
         </div>
       </div>` : ''}
       ${fb ? html`<div class="dbox">
-        <div class="dbox-title">Усі утримання Etsy (український магазин)<span class="spacer"></span><span class="faint" style="font-weight:500">Разом списано: <b class="num" style="color:var(--red)">-$${(fb.total_etsy_fees + fb.sales_tax).toFixed(2)}</b></span></div>
+        <div class="dbox-title">Утримання Etsy<span class="spacer"></span><span class="dbox-note">Разом: <b class="num neg">-$${(fb.total_etsy_fees + fb.sales_tax).toFixed(2)}</b></span></div>
         <div class="fee-grid">
           <div class="fee-cell"><span>Комісія товару (6.5%+ПДВ)</span><b>-$${(fb.trans_item_fee + fb.vat_trans_item).toFixed(2)}</b></div>
           <div class="fee-cell"><span>Комісія доставки (6.5%+ПДВ)</span><b>-$${(fb.trans_ship_fee + fb.vat_trans_ship).toFixed(2)}</b></div>
           <div class="fee-cell"><span>Еквайринг (6%+0.30+ПДВ)</span><b>-$${(fb.processing_fee + fb.vat_processing).toFixed(2)}</b></div>
           <div class="fee-cell"><span>Лістинг ($0.20+ПДВ)</span><b>-$${(fb.listing_renew_fee + fb.vat_listing_renew).toFixed(2)}</b></div>
         </div>
-        <div class="faint" style="font-size:11.5px;margin-top:8px">Сума з картки покупця: <b class="num">$${fb.gross.toFixed(2)}</b> · товари: $${fb.item_total.toFixed(2)} · доставка: $${fb.shipping_total.toFixed(2)}
-          ${fb.sales_tax > 0 ? html` · податок США (Sales Tax $${fb.sales_tax.toFixed(2)}) сплачено покупцем і утримано Etsy` : ''}</div>
+        <div class="dbox-foot">З картки покупця: <b class="num">$${fb.gross.toFixed(2)}</b> · товари: $${fb.item_total.toFixed(2)} · доставка: $${fb.shipping_total.toFixed(2)}
+          ${fb.sales_tax > 0 ? html` · податок США $${fb.sales_tax.toFixed(2)} (утримує Etsy)` : ''}</div>
       </div>` : ''}
       ${o.pod_provider === 'printify' && (o.pod_cost_original || o.printify_total_cost || 0) > 0 ? html`<div class="dbox">
-        <div class="dbox-title"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--lime)"></span>Собівартість виробництва Printify
-          ${o.matched_printify_recipient ? html`<span class="faint" style="font-weight:500">· одержувач ${o.matched_printify_recipient}</span>` : ''}</div>
-        <div class="fee-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="dbox-title"><span class="svc-dot printify"></span>Собівартість Printify
+          ${o.matched_printify_recipient ? html`<span class="dbox-note">· одержувач ${o.matched_printify_recipient}</span>` : ''}</div>
+        <div class="fee-grid three">
           <div class="fee-cell"><span>Друк товару</span><b>$${(o.printify_production_cost || 0).toFixed(2)}</b></div>
           <div class="fee-cell"><span>Доставка клієнту</span><b>$${(o.printify_shipping_cost || 0).toFixed(2)}</b></div>
-          <div class="fee-cell"><span>Разом витрат</span><b style="color:var(--red)">$${(o.pod_dead ? 0 : o.printify_total_cost || 0).toFixed(2)}</b></div>
+          <div class="fee-cell"><span>Разом</span><b class="neg">$${(o.pod_dead ? 0 : o.printify_total_cost || 0).toFixed(2)}</b></div>
         </div>
-        ${o.pod_dead ? html`<div class="faint" style="font-size:12px;margin-top:8px">Замовлення скасовано в Printify — за нього нічого не списано.</div>` : ''}
-        ${o.is_bundle ? html`<div style="color:var(--purple);font-size:12px;margin-top:8px">📦 Спільне замовлення: собівартість і доставка Printify розділені порівну між ${o.bundle_count || 2} замовленнями на цю адресу.</div>` : ''}
+        ${o.pod_dead ? html`<div class="dbox-foot">${deadText(o)} — нічого не списано</div>` : ''}
+        ${o.is_bundle ? html`<div class="dbox-foot bundle">${ic('package', 'icon-s')}Спільне замовлення на ${o.bundle_count || 2} чеки: витрати поділено порівну</div>` : ''}
       </div>` : ''}
       ${gel ? html`<div class="dbox">
-        <div class="dbox-title"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--blue)"></span>Собівартість виробництва Gelato
-          ${o.matched_gelato_recipient ? html`<span class="faint" style="font-weight:500">· одержувач ${o.matched_gelato_recipient}</span>` : ''}</div>
-        <div class="fee-grid" style="grid-template-columns:repeat(3,1fr)">
-          <div class="fee-cell"><span>Статус Gelato</span><b>${o.pod_dead === 'draft' ? 'чернетка' : o.gelato_status || 'виробництво'}</b></div>
-          <div class="fee-cell"><span>Валюта списання</span><b>${o.gelato_cost} ${o.gelato_currency || 'USD'}</b></div>
-          <div class="fee-cell"><span>Разом витрат (USD)</span><b style="color:var(--red)">$${(o.pod_total_cost || 0).toFixed(2)}</b></div>
+        <div class="dbox-title"><span class="svc-dot gelato"></span>Собівартість Gelato
+          ${o.matched_gelato_recipient ? html`<span class="dbox-note">· одержувач ${o.matched_gelato_recipient}</span>` : ''}</div>
+        <div class="fee-grid three">
+          <div class="fee-cell"><span>Статус</span><b>${o.pod_dead ? DEAD_SHORT[o.pod_dead] : o.gelato_status || '—'}</b></div>
+          <div class="fee-cell"><span>Списано</span><b>${o.gelato_cost} ${o.gelato_currency || 'USD'}</b></div>
+          <div class="fee-cell"><span>Разом</span><b class="neg">${o.cost_unknown ? '—' : `$${(o.pod_total_cost || 0).toFixed(2)}`}</b></div>
         </div>
-        ${o.pod_dead ? html`<div class="faint" style="font-size:12px;margin-top:8px">${o.pod_dead === 'draft' ? 'Чернетку ще не оформлено як замовлення — Gelato за неї не списує гроші.' : 'Замовлення скасовано в Gelato — за нього нічого не списано.'}</div>` : ''}
-        ${o.is_bundle ? html`<div style="color:var(--purple);font-size:12px;margin-top:8px">📦 Спільне замовлення: собівартість і доставка Gelato розділені порівну між ${o.bundle_count || 2} замовленнями на цю адресу.</div>` : ''}
+        ${o.pod_dead ? html`<div class="dbox-foot">${deadText(o)} — нічого не списано</div>` : ''}
+        ${o.cost_unknown ? html`<div class="dbox-foot">${ic('alert', 'icon-s')}Курсу ${o.gelato_currency} до долара немає — прибуток не пораховано</div>` : ''}
+        ${o.is_bundle ? html`<div class="dbox-foot bundle">${ic('package', 'icon-s')}Спільне замовлення на ${o.bundle_count || 2} чеки: витрати поділено порівну</div>` : ''}
       </div>` : ''}
-      ${st.data?.mode === 'etsy' && o.profit === null ? html`<div class="dbox" style="display:flex;align-items:center;gap:12px">
-        ${ic('info')}<span class="grow muted">${o.link_blocked ? 'Позначено як замовлення без собівартості POD.'
+      ${st.data?.mode === 'etsy' && o.profit === null && !(o.pod_dead === 'unpaid' || o.cost_unknown) ? html`<div class="dbox dbox-row">
+        ${ic('info')}<span class="grow muted">${o.link_blocked ? 'Позначено як замовлення без собівартості.'
           : o.needs_link ? `Знайдено лише ${deadText(o)}. Зв’яжіть замовлення, яким книгу справді надрукували.`
-            : 'Замовлення не знайдено ні в Printify, ні в Gelato за номером чека чи ім’ям одержувача.'}</span>
+            : 'Не знайдено ні в Printify, ні в Gelato.'}</span>
         <button class="btn btn-sm" data-match="${o.id}">${ic('link', 'icon-s')}Зв'язати вручну</button></div>` : ''}
     </div>`;
   }
@@ -398,16 +400,15 @@ export async function mount(view) {
       const ready = integ.etsy?.connected || integ.printify?.configured;
       setHtml(box, html`<div class="empty"><div class="empty-icon">${ic(ready ? 'refresh' : 'key')}</div>
         <h3>${ready ? 'Даних ще немає' : 'Підключіть Etsy та Printify'}</h3>
-        <p>${ready ? 'Натисніть «Update / Sync», щоб завантажити замовлення Etsy та собівартість Printify і Gelato.' : 'Для розрахунку прибутку потрібні доступ до Etsy (замовлення) і токен Printify (собівартість). Gelato — за бажанням.'}</p>
-        ${ready ? html`<button class="btn btn-primary" data-act="sync">${ic('refresh')}Update / Sync</button>` : html`<a class="btn btn-primary" href="#/settings">${ic('sliders')}Відкрити налаштування</a>`}</div>`);
+        ${ready ? '' : html`<p>Потрібні доступ до Etsy і токен Printify; Gelato — за бажанням.</p>`}
+        ${ready ? html`<button class="btn btn-primary" data-act="sync">${ic('sync')}Оновити</button>` : html`<a class="btn btn-primary" href="#/settings">${ic('sliders')}Відкрити налаштування</a>`}</div>`);
       return;
     }
     const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     st.page = Math.min(Math.max(1, st.page), pages);
     const slice = rows.slice((st.page - 1) * PAGE_SIZE, st.page * PAGE_SIZE);
     if (!slice.length) {
-      const why = st.filter === 'issues' ? 'Скасованих, повернених чи замінених замовлень за цей період немає.' : 'Спробуйте змінити період або оновити синхронізацію.';
-      setHtml(box, html`<div class="empty"><div class="empty-icon">${ic('package')}</div><h3>Замовлень не знайдено</h3><p>${why}</p></div>`);
+      setHtml(box, html`<div class="empty"><div class="empty-icon">${ic('package')}</div><h3>${st.filter === 'issues' ? 'Проблемних замовлень немає' : 'Замовлень не знайдено'}</h3></div>`);
       return;
     }
     setHtml(box, html`<div class="olist" role="table">
@@ -417,9 +418,8 @@ export async function mount(view) {
         <div class="acc ${st.open === o.id && st.details.has(o.id) ? 'open' : ''}" data-acc="${o.id}"><div>${st.open === o.id && st.details.has(o.id) ? detailHtml(st.details.get(o.id)) : ''}</div></div>
       </div>`)}
     </div>
-      ${pages > 1 ? html`<div class="pager"><span>Сторінка <b style="color:var(--text)">${st.page}</b> з <b style="color:var(--text)">${pages}</b></span>
-        <span class="row"><button class="btn btn-sm btn-icon" data-page="-1" ${st.page === 1 ? 'disabled' : ''}>${ic('chevLeft')}</button>
-        <button class="btn btn-sm btn-icon" data-page="1" ${st.page === pages ? 'disabled' : ''}>${ic('chevRight')}</button></span></div>` : ''}`);
+      ${pages > 1 ? html`<div class="pager"><span><b>${st.page}</b> з <b>${pages}</b></span>
+        <span class="tools">${ib('chevLeft', 'Попередня сторінка', `data-page="-1" ${st.page === 1 ? 'disabled' : ''}`)}${ib('chevRight', 'Наступна сторінка', `data-page="1" ${st.page === pages ? 'disabled' : ''}`)}</span></div>` : ''}`);
     requestAnimationFrame(() => view.querySelectorAll('.state-seg .seg').forEach(syncSeg));
   }
 
@@ -586,7 +586,6 @@ export async function mount(view) {
           ${segHtml([{ value: 'all', label: 'Усі' }, { value: 'printify', label: 'Printify' }, { value: 'gelato', label: 'Gelato' }], 'all', { name: 'prov' })}
         </div>
         <div class="cand-list" id="mm-list"></div>
-        <div class="faint" style="font-size:12px">${multi ? 'Можна обрати кілька замовлень. ' : ''}Спочатку показано замовлення зі схожим ім'ям одержувача.</div>
       </div>`,
       foot,
     });
@@ -612,13 +611,13 @@ export async function mount(view) {
         const key = `${c.provider}:${c.id}`;
         return html`<div class="cand ${sel.has(key) ? 'sel' : ''}" data-key="${key}">
           <span class="${multi ? 'box' : 'radio'}"></span>
-          <div class="grow" style="min-width:0"><div class="row" style="gap:6px"><b class="truncate">${c.name}</b>${c.score ? html`<span class="chip chip-green" style="height:18px">схоже</span>` : ''}
-            ${c.dead ? html`<span class="chip" style="height:18px">${c.dead === 'draft' ? 'чернетка' : 'скасовано'}</span>` : ''}</div>
-            <div class="faint mono" style="font-size:11px">#${c.label} · ${dateTime(c.createdAt)}${c.status ? ` · ${c.status}` : ''}${usedNote(c)}</div></div>
+          <div class="cand-main"><div class="cand-name"><b class="truncate">${c.name}</b>${c.score ? html`<span class="chip chip-green">схоже</span>` : ''}
+            ${c.dead ? html`<span class="chip">${DEAD_SHORT[c.dead]}</span>` : ''}</div>
+            <div class="cand-meta">#${c.label} · ${dateTime(c.createdAt)}${c.status ? ` · ${c.status}` : ''}${usedNote(c)}</div></div>
           <span class="chip ${c.provider === 'gelato' ? 'chip-blue' : 'chip-lime'}">${c.provider === 'gelato' ? 'Gelato' : 'Printify'}</span>
-          <b class="num" style="min-width:70px;text-align:right">${money(c.cost)}</b></div>`;
-      }), more > 0 ? html`<button class="btn btn-ghost btn-sm btn-block" data-more style="margin:4px 0">Показати ще (${more})</button>` : '']
-        : html`<div class="empty" style="padding:30px">Замовлень не знайдено</div>`);
+          <b class="num cand-cost">${money(c.cost)}</b></div>`;
+      }), more > 0 ? html`<button class="btn btn-ghost btn-sm btn-block cand-more" data-more>Показати ще (${more})</button>` : '']
+        : html`<div class="empty empty-sm">Замовлень не знайдено</div>`);
     }
     renderList();
     const onSearch = debounce(() => { limit = 60; renderList(); }, 80);
@@ -655,8 +654,8 @@ export async function mount(view) {
       sub: `Покупець: ${o.customer_name} · Чек #${o.etsy_receipt_id} · Etsy Net ${usd(o.etsy_net)}`,
       selected: [current],
       foot: html`
-        ${o.match_type === 'manual' || o.link_blocked ? html`<button class="btn btn-ghost" data-x="reset" style="color:var(--red)">${ic('unlink', 'icon-s')}Скинути ручний зв'язок</button>` : ''}
-        ${!o.link_blocked ? html`<button class="btn btn-ghost" data-x="none" title="Замовлення виконано поза Printify/Gelato">Без собівартості</button>` : ''}
+        ${o.match_type === 'manual' || o.link_blocked ? html`<button class="btn btn-ghost btn-ghost-danger" data-x="reset">${ic('unlink', 'icon-s')}Скинути ручний зв'язок</button>` : ''}
+        ${!o.link_blocked ? html`<button class="btn btn-ghost" data-x="none" data-tip="Замовлення виконано поза Printify і Gelato">Без собівартості</button>` : ''}
         <span class="spacer"></span>
         <button class="btn btn-ghost" data-x="cancel">Скасувати</button>
         <button class="btn btn-primary" data-x="save">${ic('link', 'icon-s')}Зберегти пару</button>`,
@@ -761,7 +760,7 @@ export async function mount(view) {
   $('#pf-start').addEventListener('change', (e) => { st.start = e.target.value; persist(); st.page = 1; renderKpis(); renderFilter(); renderTable(); });
   $('#pf-end').addEventListener('change', (e) => { st.end = e.target.value; persist(); st.page = 1; renderKpis(); renderFilter(); renderTable(); });
 
-  setHtml($('#pf-kpis'), Array.from({ length: 4 }, () => html`<div class="kpi"><div class="skeleton" style="height:12px;width:50%"></div><div class="skeleton" style="height:26px;width:70%;margin-top:10px"></div></div>`));
+  setHtml($('#pf-kpis'), Array.from({ length: 4 }, () => html`<div class="kpi"><div class="skeleton sk-label"></div><div class="skeleton sk-value"></div></div>`));
   await load();
   return { unmount() { gone = true; offs.forEach((f) => f()); clearTimeout(noticeTimer); runSearch.cancel(); cancelAnimationFrame(kpiRaf); } };
 }

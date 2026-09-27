@@ -1,7 +1,7 @@
 ---
 title: Etsy — read-only
 type: integration
-updated: 2026-09-23
+updated: 2026-09-27
 code:
   - app/studio/etsy.py
 ---
@@ -54,7 +54,7 @@ refresh is a POST that only reads, so it can be retried after a dropped connecti
 ## Where in the code
 
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `SCOPES`, `keys()`, `api_key_header()`, `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `decode_session_key()`, `encode_session_key()`, `import_session()`, `fetch_listing()`, `fetch_all_receipts()`, `MAX_RECEIPTS`, `parse_listing_ref()`, `_oauth_callback()`, `port_warning()`, `_human()`
-- [app/studio/profit.py](../../app/studio/profit.py) — `normalize_receipt()`, `plain()`
+- [app/studio/sync.py](../../app/studio/sync.py) — `normalize_receipt()`, `plain()`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `oauthFlow()`, `etsyCard()`
 - Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`EtsyOAuth`, `OpenUrlGuard`)
 

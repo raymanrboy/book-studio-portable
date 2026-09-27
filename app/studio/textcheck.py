@@ -37,7 +37,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import core, creator, images, library, orders, profit
+from . import core, creator, images, library, orders, stages
 from .jobs import UserError, jobs
 from .wording import DASHES as _DASHES, DEDICATION as _DEDICATION, META as _META, QUOTES as _QUOTES
 from .wording import clean_name, is_default, words
@@ -529,7 +529,7 @@ def _vocabulary(pers: dict) -> set[str]:
 def _other_children(receipt_id: str) -> set[str]:
     """First names of the children in other orders — a page with one of them was copied from an old design."""
     names: set[str] = set()
-    for o in profit.picker_orders():
+    for o in stages.picker_orders():
         if str(o.get("receiptId")) == str(receipt_id):
             continue
         for item in o.get("items") or []:
@@ -746,7 +746,7 @@ def run_key(receipt_id: str, pick: int = 0) -> str:
 
 def check_order(job, receipt_id: str, folder_raw: str, count: int, pick: int = 0) -> dict:
     """The whole check of one order's print folder (Cover.png + 1..count.png), for its book number `pick`."""
-    order = next((o for o in profit.picker_orders() if str(o["receiptId"]) == str(receipt_id)), None)
+    order = stages.picker_order(str(receipt_id))
     if not order:
         raise UserError("Замовлення не знайдено.")
     orders.enrich(order, orders.books_by_listing())

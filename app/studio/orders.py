@@ -12,7 +12,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from . import archive, core, creator, drops, library, profit, reconcile, wording
+from . import archive, core, creator, drops, library, reconcile, records, stages, wording
 from .server import ApiError, Request, route
 
 PRINTIFY_PAGES = 24
@@ -25,12 +25,17 @@ _SMALL = re.compile(r'5[.,]5|(?<![\d.,])5\s*(?:"|″|”|&quot;|in\b\.?|inch(?:e
 
 def binding_of(item: dict) -> str | None:
     """"hardcover" / "softcover" from the buyer's choice (variations, SKU or title), None when unclear."""
-    label = reconcile.cover_label([item])
-    hard, soft = "Hardcover" in label, "Softcover" in label
-    return "hardcover" if hard and not soft else "softcover" if soft and not hard else None
+    return reconcile.item_format(item)
 
 
-def plan_for(item: dict, country_iso: str | None) -> dict:
+def printing() -> dict:
+    """What the printer rule reads from the settings — each printer's page counts, the Gelato formats — read once for
+    a whole queue, not three times for every book in it."""
+    return {"pages": {p: page_options(p) for p in ("printify", "gelato")},
+            "formats": core.settings.section("gelato").get("formats") or {}}
+
+
+def plan_for(item: dict, country_iso: str | None, rules: dict | None = None) -> dict:
     """Owner's rule: a hardcover going to the US is printed by Printify (24 pages, reliable there);
     everything else by Gelato (28 or 30 pages; its US hardcovers are slow, the rest is on time).
 
@@ -38,18 +43,17 @@ def plan_for(item: dict, country_iso: str | None) -> dict:
     by the files he downloads: 24 pages → Printify, 28 or 30 → Gelato (`choice`, `provider_by_pages()`).
     The rule's printer stays as the suggestion the queue shows. Softcovers, the small one included, are Gelato's.
     """
+    rules = rules or printing()
     binding = binding_of(item)
     country = (country_iso or "").upper()
     if binding is None:
         return {"provider": None, "binding": None, "country": country, "pages": None, "format": None}
     text = " ".join(f"{v.get('name')} {v.get('value')}" for v in item.get("variations") or []) + " " + (item.get("title") or "")
     fmt = "hardcover_8x8" if binding == "hardcover" else ("softcover_5x5" if _SMALL.search(text) else "softcover_8x8")
-    gelato = core.settings.section("gelato")
     plan = {"provider": "gelato", "binding": binding, "country": country, "format": fmt,
-            "formatLabel": ((gelato.get("formats") or {}).get(fmt) or {}).get("label"),
-            "pages": page_options("gelato")}
+            "formatLabel": (rules["formats"].get(fmt) or {}).get("label"), "pages": rules["pages"]["gelato"]}
     if binding == "hardcover":
-        choice = {p: page_options(p) for p in ("printify", "gelato")}
+        choice = dict(rules["pages"])
         plan.update(choice=choice, pages=sorted({n for pages in choice.values() for n in pages}),
                     provider="printify" if country == "US" else "gelato")
     return plan
@@ -88,19 +92,20 @@ def book_brief(book: dict | None) -> dict | None:
             "canvaUrl": book.get("canvaUrl") or ""}
 
 
-def enrich(order: dict, books: dict[str, dict]) -> dict:
+def enrich(order: dict, books: dict[str, dict], rules: dict | None = None) -> dict:
+    rules = rules or printing()
     country = (order.get("address") or {}).get("country_iso")
     for item in order.get("items") or []:
         item["book"] = book_brief(books.get(item.get("listingId") or ""))
-        item["plan"] = plan_for(item, country)
+        item["plan"] = plan_for(item, country, rules)
         item["childName"] = creator.guess_child_name([item])
         for v in item.get("variations") or []:
             v["custom"] = wording.custom_text(v)  # «свій текст»: the text check reads it by the same rule
             v["isName"] = bool(item["childName"]) and wording.clean_name(v.get("value")) == item["childName"]
     first = (order.get("items") or [{}])[0]
     order["book"], order["plan"] = first.get("book"), first.get("plan")
-    order["childName"] = creator.guess_child_name(order.get("items") or [])
-    order["pageOptions"] = {p: page_options(p) for p in ("printify", "gelato")}  # for a printer picked by hand
+    order["childName"] = next((i["childName"] for i in order.get("items") or [] if i.get("childName")), "")
+    order["pageOptions"] = rules["pages"]  # for a printer picked by hand
     return order
 
 
@@ -171,24 +176,22 @@ def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
 
 @route("GET", "/api/orders")
 def _list(req: Request):
-    books = books_by_listing()
-    orders = [enrich(o, books) for o in profit.picker_orders()]
-    return {"orders": orders, "syncedAt": profit.load_snapshot().get("syncedAt")}
+    books, rules = books_by_listing(), printing()
+    orders = [enrich(o, books, rules) for o in stages.picker_orders()]
+    return {"orders": orders, "syncedAt": records.load_snapshot().get("syncedAt")}
 
 
 @route("GET", r"/api/orders/(\d{5,20})")
 def _one(req: Request):
     rid = req.groups[0]
-    order = next((o for o in profit.picker_orders() if o["receiptId"] == rid), None)
+    order = stages.picker_order(rid)
     if not order:
         raise ApiError("Замовлення не знайдено або його скасовано.", 404)
-    receipt = next((r for r in profit.load_snapshot().get("receipts") or [] if r["receipt_id"] == rid), {})
-    order["buyerMessage"] = profit.plain(receipt.get("message_from_buyer"))
-    # a send of this order that never went to print (cancelled, a deleted draft): its files can be taken again
-    order["earlierSends"] = archive.earlier_sends(rid)
-    # a draft or a book of it already at a printer: replacing a page there first asks (the card's own
-    # memory of a send is gone after a restart)
-    order["atPrinter"] = archive.at_printer(rid)
+    order["buyerMessage"] = stages.facts()["receipts"][rid]["receipt"].get("message_from_buyer") or ""
+    # a send of this order that never went to print (cancelled, a deleted draft): its files can be taken again;
+    # a draft or a book of it already at a printer: replacing a page there first asks (the card's own memory of
+    # a send is gone after a restart)
+    order.update(archive.card_facts(rid))
     return enrich(order, books_by_listing())
 
 

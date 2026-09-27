@@ -1,13 +1,31 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-09-26
+updated: 2026-09-27
 code: []
 ---
 # Decisions
 
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
+
+## 2026-09-26 — The big cleanup, phase 2: matching and money
+
+- **Changed on purpose** (the owner: "fix everything you found"; not to be "fixed" back):
+  - **Receipt numbers before names**: Printify by number, Gelato by number, then Printify by name, Gelato by name.
+    A receipt whose own Gelato order carried its number was taken by a Printify order with a similar name and
+    showed its status and tracking.
+  - **Only a placed and paid print order costs money** — the 2026-09-18 decision, now in the money too: an order
+    on hold or awaiting payment costs nothing yet and the sale shows no profit until it is paid.
+  - **Every currency converted**: crowns, pounds, zlotys at the ECB's rates of 25.09.2026 (settings'
+    `czkUsdRate`, `gbpUsdRate`, `plnUsdRate`); a currency without a rate is never counted as dollars. The euro keeps
+    the Profit Calculator's 1.085 — changing it is the owner's call (open questions).
+  - **The cover type only from the buyer's choice**, never from letters of a Gelato order's name.
+  - A cancelled first print order no longer wipes the cost of the sale's other print orders.
+- **How:** one reading of a print order (`printorders.py`), matching one receipt at a time (`reconcile.py`), the
+  money once (`outcomes.py`); `profit.py` split into `sync.py`, `records.py`, `stages.py` and the Profit view — the
+  archive ↔ profit import cycle is gone. The Profit page brought to the owner's interface rules, ready for
+  1 October. Details — [rules/reconciliation.md](rules/reconciliation.md).
 
 ## 2026-09-26 — The big cleanup: every finding of the code study is fixed
 

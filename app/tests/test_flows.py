@@ -13,7 +13,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import archive, core, creator, drops, etsy, gelato, httpc, printify, profit, tunnel
+from studio import archive, core, creator, drops, etsy, gelato, httpc, printify, profit, records, stages, sync, tunnel
 from studio.jobs import Job, JobError
 from studio.server import ApiError
 from studio.vault import vault
@@ -221,12 +221,12 @@ class PrintifyDraftFlow(unittest.TestCase):
                                                   "receiptId": "4100000005"}], Job("t"), self.ADDRESS)
         self.assertEqual(archive.get(res["archiveId"])["receiptId"], "4100000005")
         self.assertTrue(self.fake.orders[0]["external_id"].startswith("4100000005-"))
-        self.assertEqual([r["orderId"] for r in profit.load_sends()["4100000005"]], ["order-on-hold-1"])
+        self.assertEqual([r["orderId"] for r in records.load_sends()["4100000005"]], ["order-on-hold-1"])
 
     def test_a_record_that_cannot_be_written_is_said(self):
         core.settings.update({"printify": {"manualApprovalConfirmedAt": "2026-09-15T20:00:00Z"}})
         with mock.patch.object(printify, "call", self.fake), \
-                mock.patch.object(profit, "remember_print_order", side_effect=OSError("print-orders.json locked")), \
+                mock.patch.object(records, "remember_print_order", side_effect=OSError("print-orders.json locked")), \
                 self.assertLogs("studio", "ERROR"):
             res = creator.create_printify_draft([{"folder": str(self.root), "title": "4100000007 - Ava"}],
                                                 Job("t"), self.ADDRESS)
@@ -806,7 +806,7 @@ class DroppedFolders(unittest.TestCase):
         order = {"receiptId": "4100000108", "items": [
             {"variations": [{"name": "Child's Name", "value": "Sofia"}]},
             {"variations": [{"name": "Child's Name", "value": "Jack."}]}]}
-        with mock.patch.object(profit, "picker_orders", lambda: [order]):
+        with mock.patch.object(stages, "picker_orders", lambda: [order]):
             res = creator._etsy_orders(SimpleNamespace())
         self.assertEqual([i["childName"] for i in res["orders"][0]["items"]], ["Sofia", "Jack"])
 
@@ -822,7 +822,7 @@ class DroppedFolders(unittest.TestCase):
         r = {"receipt_id": 1, "create_timestamp": 1757000000, "name": "Tom &amp; Ann", "transactions": [{
             "title": "Book 8&quot; &amp; more", "variations": [
                 {"formatted_name": "Cover Type &amp; Size", "formatted_value": "8&quot; × 8&quot; Hardcover"}]}]}
-        n = profit.normalize_receipt(r)
+        n = sync.normalize_receipt(r)
         self.assertEqual(n["customer_shipping_name"], "Tom & Ann")
         self.assertEqual(n["items"][0]["title"], 'Book 8" & more')
         self.assertEqual(n["items"][0]["variations"][0], {"name": "Cover Type & Size", "value": '8" × 8" Hardcover'})
@@ -856,7 +856,7 @@ class ProfitSyncFlow(unittest.TestCase):
                 mock.patch.object(etsy, "fetch_all_receipts", lambda progress=None, min_last_modified=None: ([receipt], 1, "Shop")), \
                 mock.patch.object(printify, "shops", lambda: [{"id": 5, "title": "PShop"}]), \
                 mock.patch.object(printify, "all_orders", lambda shop, progress=None: [porder]):
-            result = profit._sync(Job("t"))
+            result = sync._sync(Job("t"))
         vault.set("printify_token", None)
         self.assertEqual(result["receipts"], 1)
         self.assertEqual(result["matched"], 1)

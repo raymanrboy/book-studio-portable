@@ -1,11 +1,12 @@
 ---
 title: Program data — the app/data folder
 type: architecture
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/core.py
   - app/studio/vault.py
   - app/studio/images.py
+  - app/studio/records.py
 ---
 # Program data
 
@@ -66,7 +67,7 @@ the tests) the books are made-up ones in the data folder's `workshop-books/`, an
 - [app/studio/vault.py](../../app/studio/vault.py) — `Vault`, `SECRET_NAMES`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `_cached()`
 - [app/studio/library.py](../../app/studio/library.py) — `BOOKS_DIR`, `TRASH_DIR`
-- [app/studio/profit.py](../../app/studio/profit.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `load_snapshot()`, `remember_print_order()`
+- [app/studio/records.py](../../app/studio/records.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `load_snapshot()`, `remember_print_order()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `UPLOADS_KEPT`, `forget_old_form()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `PLACES`, `WORK`, `BOOKS`, `PHOTOSHOP_TEMP`, `KEEP_RUNS`, `clean_runs()`, `clear_books()`, `forget_old_utility()`

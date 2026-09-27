@@ -1,7 +1,7 @@
 ---
 title: Order archive — what went to print, and reprints
 type: feature
-updated: 2026-09-23
+updated: 2026-09-27
 code:
   - app/studio/archive.py
   - app/web/js/pages/archive.js
@@ -136,9 +136,12 @@ page itself remembered this).
 
 ## Where in the code
 
-- [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `earlier_sends()`, `at_printer()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
+- [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `card_facts()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
 - [app/studio/creator.py](../../app/studio/creator.py) — `_to_archive()`, `_mark_reprint()`, `_journaled()`, `create_printify_reprint()`, `_printify_reprint()`, `_reprint_printify()`, `_create_gelato()`
-- [app/studio/profit.py](../../app/studio/profit.py) — `is_placed()`, `mark_reprint()`, `unmark_reprint()`, `_sync()` (`loaded` for each list; after a sync — `archive.refresh_quietly()`)
+- [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`
+- [app/studio/stages.py](../../app/studio/stages.py) — `facts()`, `mark_reprint()`
+- [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`
+- [app/studio/sync.py](../../app/studio/sync.py) — `_sync()` (`loaded` for each list; after a sync — `archive.refresh_quietly()`)
 - [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`, `atPrinter`); [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `earlier()`, `takeEarlier()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (checking the archive on launch)
 - [app/web/js/pages/archive.js](../../app/web/js/pages/archive.js) — `mountList()`, `mountBook()`, `clockChip()`, `clockText()`, `proofCard()`, `reprintCard()`, `sendCard()`, `fieldsCard()`, `addressCard()`, `toggleKeep()`, `reprint()`

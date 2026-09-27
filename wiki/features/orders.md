@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-09-25
+updated: 2026-09-27
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
@@ -215,8 +215,9 @@ one column.
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `openViewer()`, `pageActions()`, `replacePage()`, `restorePage()`, `pageChanged()`, `revalidate()`, `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `readyBooks()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `queueState`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — shared with the [order archive](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
-- [app/studio/profit.py](../../app/studio/profit.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`, `is_placed()`, `placed_orders()`, `carrier_label()`
-- [app/studio/archive.py](../../app/studio/archive.py) — `earlier_sends()`, `at_printer()`, `_reuse()`
+- [app/studio/stages.py](../../app/studio/stages.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`
+- [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`, `all_facts()`, `carrier_label()`
+- [app/studio/archive.py](../../app/studio/archive.py) — `card_facts()`, `_reuse()`
 - [app/studio/wording.py](../../app/studio/wording.py) — `custom_text()`, `clean_name()` ("custom text" fields, and the child's name)
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`

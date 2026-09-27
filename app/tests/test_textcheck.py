@@ -831,7 +831,7 @@ class OllamaAndRoutes(unittest.TestCase):
                 tc._save_settings(SimpleNamespace(json={"model": "bad model; rm"}))
 
     def test_a_check_needs_the_order(self):
-        with mock.patch("studio.profit.picker_orders", return_value=[]):
+        with mock.patch("studio.stages.picker_order", return_value=None):
             with self.assertRaises(UserError):
                 tc.check_order(SimpleNamespace(progress=lambda *a, **k: None, share=lambda data: None),
                                "4100000101", "x", 24)

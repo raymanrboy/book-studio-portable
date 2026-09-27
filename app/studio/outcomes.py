@@ -1,4 +1,6 @@
-"""What cancellations, refunds and replacements do to an order's money.
+"""What an Etsy order finally earns: its Etsy money after a cancellation or a refund, and what its print orders cost —
+the one matching found, the others this program sent for it, and replacement reprints. The one place the money of a
+row is worked out (until 2026-09-26 three functions rewrote the same fields in turn).
 
 Etsy rules (Etsy Help, 2026):
 - cancelling a paid order refunds the buyer in full and credits the seller for the
@@ -8,22 +10,17 @@ Etsy rules (Etsy Help, 2026):
   not credited;
 - a replacement is a reprint the seller pays for: revenue stays, the reprint cost is added.
 
-Printify / Gelato orders that were cancelled, and Gelato drafts that were never ordered,
-cost nothing. Orders in the normal state keep the original Profit Calculator numbers.
+Only a placed and paid print order costs money (owner, 18.09.2026; counted in the money since 26.09.2026): a
+cancelled one, a Gelato draft never ordered, an order on hold or awaiting payment cost nothing (yet). A normal order
+whose print order is placed keeps the Profit Calculator's numbers.
 """
 from __future__ import annotations
 
+from . import reconcile
 from .fees import r1, r2
-from .reconcile import _js_round, _num, gelato_cost_to_usd
+from .printorders import all_facts
 
 STATES = ("normal", "canceled", "refund_full", "refund_partial", "replacement")
-LABELS = {
-    "normal": "Звичайне",
-    "canceled": "Скасовано",
-    "refund_full": "Повне повернення",
-    "refund_partial": "Часткове повернення",
-    "replacement": "Заміна",
-}
 
 
 def auto_state(receipt: dict) -> str:
@@ -40,52 +37,53 @@ def auto_state(receipt: dict) -> str:
     return "normal"
 
 
-def printify_dead(p: dict | None) -> str | None:
-    if p and str(p.get("status") or "").lower() in ("canceled", "cancelled"):
-        return "canceled"
-    return None
+def reserved_orders(states: dict) -> set[str]:
+    """Print orders marked as replacement reprints: kept out of automatic matching and out of a sale's own cost."""
+    return {f"{ref.get('provider')}:{ref.get('orderId')}"
+            for entry in states.values() if entry.get("status") == "replacement"
+            for ref in entry.get("replacementOrders") or []}
 
 
-def gelato_dead(g: dict | None) -> str | None:
-    if not g:
-        return None
-    if str(g.get("fulfillmentStatus") or "").lower() in ("canceled", "cancelled"):
-        return "canceled"
-    if str(g.get("orderType") or "").lower() == "draft":
-        return "draft"
-    return None
+def unpaid(f: dict) -> str | None:
+    """Why a print order costs nothing: "canceled", "draft" (a Gelato draft never ordered), "unpaid" (on hold or
+    awaiting payment) — None when it is placed and paid."""
+    return f["dead"] or (None if f["placed"] else "unpaid")
 
 
-def pod_order_info(provider: str, order: dict, eur_rate: float) -> dict:
-    """Full (not bundle-split) cost of one provider order, in USD."""
-    if provider == "printify":
-        cost = _js_round(_num(order.get("total_price")) + _num(order.get("total_shipping"))
-                         + _num(order.get("total_tax"))) / 100
-        addr = order.get("address_to") or {}
-        name = f"{addr.get('first_name') or ''} {addr.get('last_name') or ''}".strip()
-        dead = printify_dead(order)
-        label = order.get("app_order_id") or str(order.get("id"))[-6:].upper()
-        status = order.get("status")
-    else:
-        cost = gelato_cost_to_usd(_num(order.get("totalInclVat")), order.get("currency"), eur_rate)
-        name = f"{order.get('firstName') or ''} {order.get('lastName') or ''}".strip()
-        dead = gelato_dead(order)
-        label = order.get("orderReferenceId") or str(order.get("id"))[-8:].upper()
-        status = order.get("fulfillmentStatus")
-    return {"provider": provider, "id": str(order.get("id")), "label": label, "name": name or "Без імені",
-            "cost": 0.0 if dead else r2(cost), "fullCost": r2(cost), "status": status, "dead": dead,
-            "createdAt": order.get("created_at") or order.get("createdAt")}
+def order_info(f: dict) -> dict:
+    """A print order as the pickers and the replacement list show it: `fullCost` is the whole order in dollars (0 for
+    a currency without a rate), `cost` what it costs this sale now."""
+    full = r2(f["cost"] or 0)
+    return {"provider": f["provider"], "id": f["id"], "label": f["label"], "name": f["name"] or "Без імені",
+            "cost": 0.0 if unpaid(f) else full, "fullCost": full, "status": f["status"], "dead": unpaid(f),
+            "createdAt": f["created"]}
 
 
-def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, eur_rate: float) -> None:
-    """Adds state fields to a reconciled row and recomputes net, cost and profit when needed.
+def rows(receipts: list, printify: list, gelato: list, links: dict, states: dict, sent: dict, rates: dict) -> list:
+    """Every receipt's row: matched (reconcile.match()), then its money (apply())."""
+    reserved = reserved_orders(states)
+    out = reconcile.match(receipts, printify, gelato, links, rates, reserved=reserved, sent=sent)
+    orders = all_facts({"printify": printify, "gelato": gelato}, rates)
+    shared: dict[str, int] = {}  # one print order this program sent for two receipts is split between them
+    for refs in (sent or {}).values():
+        for ref in refs or []:
+            key = f"{ref.get('provider')}:{ref.get('orderId')}"
+            shared[key] = shared.get(key, 0) + 1
+    by_id = {str(r["receipt_id"]): r for r in receipts}
+    for row in out:
+        apply(row, by_id[row["id"]], states.get(row["id"]), orders, shared, reserved)
+    return out
 
-    `orders` maps "printify:<id>" / "gelato:<id>" to the provider order.
-    """
+
+def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, shared: dict, reserved) -> None:
+    """The row's state and final money. `orders` — printorders.all_facts(); `shared` — how many receipts' own send
+    records name each order."""
     entry = entry or {}
     auto = auto_state(receipt)
     manual = entry.get("status") if entry.get("status") in STATES else None
     state = manual or auto
+
+    # ---- Etsy money after the refund (the buyer's US sales tax goes back from Etsy's side, not the seller's)
     fb = row.get("fee_breakdown") or {}
     gross = fb.get("gross") or 0.0
     tax = fb.get("sales_tax") or 0.0
@@ -94,28 +92,6 @@ def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, eur_rate: 
                   + (fb.get("processing_fee") or 0) + (fb.get("vat_processing") or 0))
     listing = r2((fb.get("listing_renew_fee") or 0) + (fb.get("vat_listing_renew") or 0))
     base_net = row.get("etsy_net") or 0.0
-
-    # ---- the primary provider order
-    provider = row.get("pod_provider")
-    primary = None
-    if provider == "printify":
-        primary = orders.get(f"printify:{row.get('printify_order_id')}")
-    elif provider == "gelato":
-        primary = orders.get(f"gelato:{row.get('gelato_order_id')}")
-    dead = (printify_dead(primary) if provider == "printify" else gelato_dead(primary)) if primary else None
-    base_cost = row.get("pod_total_cost") or 0.0
-    primary_cost = 0.0 if dead else base_cost
-
-    # ---- replacement reprints
-    repl_orders = []
-    for ref in entry.get("replacementOrders") or []:
-        order = orders.get(f"{ref.get('provider')}:{ref.get('orderId')}")
-        if order:
-            repl_orders.append(pod_order_info(ref["provider"], order, eur_rate))
-    repl_manual = r2(max(0.0, float(entry.get("replacementCost") or 0)))
-    repl_cost = r2(sum(o["cost"] for o in repl_orders) + repl_manual) if state == "replacement" else 0.0
-
-    # ---- Etsy money after the refund (the buyer's US sales tax goes back from Etsy's side, not the seller's)
     refund = fee_credit = revenue_back = 0.0
     net = base_net
     if state == "canceled":
@@ -130,57 +106,77 @@ def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, eur_rate: 
         revenue_back = r2((gross - tax) * share)
         net = r2(base_net - revenue_back + fee_credit)
 
+    # ---- the print order matching found (its bundle share), unless it costs nothing
+    provider = row.get("pod_provider")
+    key = f"{provider}:{row.get('printify_order_id') if provider == 'printify' else row.get('gelato_order_id')}"
+    found = orders.get(key) if provider else None
+    why_free = unpaid(found) if found else None
+    matched_cost = row.get("pod_total_cost") or 0.0
+    primary = 0.0 if why_free else matched_cost
+
+    # ---- the other print orders this program sent for this receipt: books sent in two goes, or to both printers
+    further = []
+    for p, oid in row.pop("sent_orders", None) or []:
+        k = f"{p}:{oid}"
+        o = orders.get(k)
+        if k == key or k in reserved or not o or unpaid(o) or o["cost"] is None:
+            continue
+        further.append({"provider": p, "order_id": oid, "status": o["status"], "app_order_id": o["label"],
+                        "cost": r2(o["cost"] / max(1, shared.get(k, 1)))})
+    further_cost = r2(sum(f["cost"] for f in further))
+
+    # ---- replacement reprints
+    repl_orders = [order_info(orders[k]) for k in (f"{ref.get('provider')}:{ref.get('orderId')}"
+                                                   for ref in entry.get("replacementOrders") or []) if k in orders]
+    repl_manual = r2(max(0.0, float(entry.get("replacementCost") or 0)))
+    repl_cost = r2(sum(o["cost"] for o in repl_orders) + repl_manual) if state == "replacement" else 0.0
+
     row.update({
         "state": state,
         "state_auto": auto,
         "state_manual": bool(manual),
-        "state_label": LABELS[state],
         "state_note": entry.get("note") or "",
         "refunds": receipt.get("refunds") or [],
         "etsy_refund_total": receipt.get("refund_total") or 0.0,
         "refund_amount": refund,
         "revenue_back": revenue_back,
         "fee_credit": fee_credit,
-        "listing_kept": listing if state == "refund_full" else 0.0,
         "etsy_net_original": base_net,
-        "pod_dead": dead,
-        "pod_cost_original": base_cost,
+        "etsy_net": net,
+        "pod_dead": why_free,
+        "pod_cost_original": matched_cost,
+        "further_orders": further,
         "replacement_orders": repl_orders if state == "replacement" else [],
         "replacement_manual": repl_manual if state == "replacement" else 0.0,
         "replacement_cost": repl_cost,
     })
 
     matched = row.get("match_type") not in (None, "unmatched")
-    if state == "normal" and not dead:
-        row["cost_total"] = base_cost if matched else 0.0
-        row["impact"] = 0.0
-        return  # original Profit Calculator numbers, untouched
-
-    row["etsy_net"] = net
-    if matched and dead and state in ("normal", "replacement") and row.get("match_type") != "manual":
-        # Only a cancelled/draft provider order was found by name: the real one still has to be linked.
+    unknown = matched and bool(row.get("cost_unknown"))
+    pod = r2(primary + further_cost)
+    if matched and why_free in ("canceled", "draft") and state in ("normal", "replacement") \
+            and row.get("match_type") != "manual":
+        # Only a cancelled order or a draft was found by name: the real one still has to be linked.
         row.update({"profit": None, "profit_margin": None, "cost_total": 0.0, "impact": 0.0,
                     "pod_total_cost": 0.0, "printify_total_cost": 0.0, "needs_link": True})
-        return
-    if not matched and state != "canceled":
-        row.update({"cost_total": repl_cost, "impact": -repl_cost if state == "replacement" else 0.0})
-        return  # the book's own print cost is still unknown — keep asking for a link
-    cost = r2(primary_cost + repl_cost)
-    profit = r2(net - cost)
-    row.update({
-        "pod_total_cost": primary_cost,
-        "printify_total_cost": primary_cost if provider == "printify" else row.get("printify_total_cost", 0),
-        "cost_total": cost,
-        "profit": profit,
-        "profit_margin": r1(profit / net * 100) if net > 0 else None,
-    })
-    if state == "canceled":
-        row["impact"] = r2(-primary_cost - repl_cost)
-    elif state == "refund_full":
-        row["impact"] = r2(-listing - primary_cost)
-    elif state == "refund_partial":
-        row["impact"] = r2(net - base_net)
-    elif state == "replacement":
-        row["impact"] = r2(-repl_cost)
+    elif (why_free == "unpaid" or unknown) and state == "normal":
+        # The book's print order waits at the printer (on hold, awaiting payment), or is billed in a currency
+        # without a rate: what the sale earns is not known yet.
+        row.update({"profit": None, "profit_margin": None, "cost_total": 0.0, "impact": 0.0,
+                    "pod_total_cost": 0.0, "printify_total_cost": 0.0})
+    elif state == "normal":
+        # The Profit Calculator's numbers — with the other print orders of the sale added.
+        profit = r2(net - pod) if matched or further else None
+        row.update({"pod_total_cost": pod, "printify_total_cost": pod, "cost_total": pod, "impact": 0.0,
+                    "profit": profit,
+                    "profit_margin": (r1(profit / net * 100) if net > 0 else 0) if profit is not None else None})
+    elif not matched and state != "canceled":
+        row.update({"cost_total": r2(further_cost + repl_cost), "impact": -repl_cost if state == "replacement" else 0.0})
     else:
-        row["impact"] = 0.0
+        cost = r2(pod + repl_cost)
+        profit = r2(net - cost)
+        impact = {"canceled": -cost, "refund_full": r2(-listing - pod), "refund_partial": r2(net - base_net),
+                  "replacement": -repl_cost}.get(state, 0.0)
+        row.update({"pod_total_cost": pod, "printify_total_cost": pod,
+                    "cost_total": cost, "profit": profit, "impact": r2(impact),
+                    "profit_margin": r1(profit / net * 100) if net > 0 else None})

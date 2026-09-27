@@ -1,7 +1,7 @@
 ---
 title: Recipes — how to change common things
 type: recipe
-updated: 2026-09-24
+updated: 2026-09-27
 code: []
 ---
 # Recipes
@@ -59,7 +59,7 @@ code: []
 - Rule: one icon — one meaning; don't reuse an existing one for something else.
 
 ## A new order stage
-- [app/studio/profit.py](../app/studio/profit.py) — `order_stage()`
+- [app/studio/stages.py](../app/studio/stages.py) — `order_stage()`
 - [app/web/js/order-bits.js](../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`
 - [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) — `STAGE_LABEL`
 - Test `PickerStages` in [app/tests/test_states.py](../app/tests/test_states.py); wiki
