@@ -10,7 +10,7 @@ code:
   - app/studio/server.py
   - app/studio/settings_api.py
   - app/studio/tunnel.py
-  - app/studio/textcheck.py
+  - app/studio/textcheck/
   - app/studio/mockups.py
   - app/studio/workshop/generate.py
   - app/studio/clipboard.py

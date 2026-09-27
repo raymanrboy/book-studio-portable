@@ -323,13 +323,13 @@ class WholeCheck(unittest.TestCase):
 
     def run_check(self, item_):
         job = self.fake_job()
-        with mock.patch.object(tc, "_ready", self.ready), mock.patch.object(tc, "_chat", side_effect=self.fake_chat), \
-                mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
-                mock.patch.object(tc, "_other_children", return_value={"noah"}), \
-                mock.patch.object(tc, "_release_model") as release:
+        with mock.patch.object(tc.ollama, "_ready", self.ready), mock.patch.object(tc.ollama, "_chat", side_effect=self.fake_chat), \
+                mock.patch.object(tc.run, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
+                mock.patch.object(tc.run, "_other_children", return_value={"noah"}), \
+                mock.patch.object(tc.ollama, "_release_model") as release:
             res = tc.check_book(job, "4100000101", item_, str(self.folder), 24)
         release.assert_called_once()   # the graphics card is freed right after the check
-        self.assertEqual((tc._active, tc._runs), (0, {}))
+        self.assertEqual((tc.run._active, tc._runs), (0, {}))
         return res
 
     def test_a_stopped_check_stops(self):
@@ -344,13 +344,13 @@ class WholeCheck(unittest.TestCase):
             return self.fake_chat(*args, **kwargs)
 
         job = self.fake_job()
-        with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=chat), \
-                mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
-                mock.patch.object(tc, "_release_model") as release, self.assertRaises(UserError):
+        with mock.patch.object(tc.ollama, "_ready"), mock.patch.object(tc.ollama, "_chat", side_effect=chat), \
+                mock.patch.object(tc.run, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
+                mock.patch.object(tc.ollama, "_release_model") as release, self.assertRaises(UserError):
             tc.check_book(job, "4100000101", item(book_id=self.book_id), str(self.folder), 24)
         self.assertLess(len(asked), 10)
         release.assert_called_once()
-        self.assertEqual((tc._active, tc._runs), (0, {}))
+        self.assertEqual((tc.run._active, tc._runs), (0, {}))
 
     def test_finds_the_planted_mistakes_and_nothing_else(self):
         res = self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
@@ -458,7 +458,7 @@ class WholeCheck(unittest.TestCase):
     def test_a_model_that_cannot_be_had_is_the_checks_error(self):
         job = self.fake_job()
         missing = tc.ModelError("В Ollama немає моделі gemma — встановіть її або оберіть іншу в Налаштуваннях.")
-        with mock.patch.object(tc, "_ready", side_effect=missing), mock.patch.object(tc, "_chat") as chat,                 mock.patch.object(tc, "_release_model"), self.assertRaises(tc.Unavailable) as caught:
+        with mock.patch.object(tc.ollama, "_ready", side_effect=missing), mock.patch.object(tc.ollama, "_chat") as chat,                 mock.patch.object(tc.ollama, "_release_model"), self.assertRaises(tc.Unavailable) as caught:
             tc.check_book(job, "4100000101", item(book_id=self.book_id), str(self.folder), 24)
         self.assertIn("немає моделі", str(caught.exception))
         chat.assert_not_called()
@@ -534,7 +534,7 @@ class Replay(unittest.TestCase):
     """app/tools/textcheck_replay.py: a past check shown again through today's rules."""
 
     def test_an_old_journal_is_replayed(self):
-        spec = importlib.util.spec_from_file_location("textcheck_replay", Path(tc.__file__).parents[1] / "tools" / "textcheck_replay.py")
+        spec = importlib.util.spec_from_file_location("textcheck_replay", Path(__file__).resolve().parents[1] / "tools" / "textcheck_replay.py")
         replay = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(replay)
         page = {"page": 5, "part": None, "file": "5.png", "label": "Стор. 5", "key": "spread5", "mode": "strict",
@@ -650,10 +650,10 @@ class WhileItRuns(unittest.TestCase):
     def test_spreads_are_checked_before_the_last_page_is_read(self):
         shared = []
         job = SimpleNamespace(id="job1", progress=lambda *a, **k: None, share=shared.append)
-        with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=self.fake_chat), \
-                mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
-                mock.patch.object(tc, "_other_children", return_value=set()), \
-                mock.patch.object(tc, "_release_model"):
+        with mock.patch.object(tc.ollama, "_ready"), mock.patch.object(tc.ollama, "_chat", side_effect=self.fake_chat), \
+                mock.patch.object(tc.run, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
+                mock.patch.object(tc.run, "_other_children", return_value=set()), \
+                mock.patch.object(tc.ollama, "_release_model"):
             res = tc.check_book(job, "4100000102", item(book_id=self.book_id), str(self.folder), 30)
         kinds = [kind for kind, _ in self.asked]
         story_check = next(i for i, (kind, pic) in enumerate(self.asked)
@@ -674,7 +674,7 @@ class BooksOfOneOrder(unittest.TestCase):
         return SimpleNamespace(id=job_id, progress=lambda *a, **k: None, share=lambda data: None)
 
     def test_a_second_book_does_not_stop_the_first(self):
-        with mock.patch.object(tc, "_release_model"):
+        with mock.patch.object(tc.ollama, "_release_model"):
             with tc._Run(self.job("job1"), "4100000108", "m", 0) as first:
                 with tc._Run(self.job("job2"), "4100000108", "m", 1) as second:
                     self.assertFalse(first.cancel.is_set(), "book 1 keeps checking while book 2 starts")
@@ -685,14 +685,14 @@ class BooksOfOneOrder(unittest.TestCase):
         self.assertEqual(tc._runs, {})
 
     def test_the_same_book_again_stops_the_older_check(self):
-        with mock.patch.object(tc, "_release_model"):
+        with mock.patch.object(tc.ollama, "_release_model"):
             with tc._Run(self.job("job1"), "4100000108", "m", 1) as older:
                 with tc._Run(self.job("job2"), "4100000108", "m", 1):
                     self.assertTrue(older.cancel.is_set())
         self.assertEqual(tc._runs, {})
 
     def test_closing_the_card_stops_every_book(self):
-        with mock.patch.object(tc, "_release_model"):
+        with mock.patch.object(tc.ollama, "_release_model"):
             with tc._Run(self.job("job1"), "4100000108", "m", 0) as first, \
                     tc._Run(self.job("job2"), "4100000108", "m", 1) as second, \
                     tc._Run(self.job("job3"), "4100000109", "m", 0) as other_order:
@@ -778,10 +778,10 @@ class Prescan(unittest.TestCase):
             text = self.printed.get(picture, "")
             return gemma_answer(chat(picture, text) if chat else text, prompt, schema)
 
-        with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=fake_chat), \
-                mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
-                mock.patch.object(tc, "_other_children", return_value=set()), \
-                mock.patch.object(tc, "_release_model"):
+        with mock.patch.object(tc.ollama, "_ready"), mock.patch.object(tc.ollama, "_chat", side_effect=fake_chat), \
+                mock.patch.object(tc.run, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
+                mock.patch.object(tc.run, "_other_children", return_value=set()), \
+                mock.patch.object(tc.ollama, "_release_model"):
             return tc.check_book(job, "4100000103", item(book_id="d" * 32), str(self.folder), 30)
 
     def test_only_pages_that_may_carry_text_reach_the_model(self):
@@ -829,14 +829,14 @@ class OllamaAndRoutes(unittest.TestCase):
             self.assertFalse(tc.status()["running"])
 
     def test_ollama_down_is_said_plainly(self):
-        with mock.patch.object(tc, "_alive", return_value=False), mock.patch.object(tc, "start_ollama", return_value=False):
+        with mock.patch.object(tc.ollama, "_alive", return_value=False), mock.patch.object(tc.ollama, "start_ollama", return_value=False):
             with self.assertRaises(tc.Unavailable) as err:
                 tc._ready("gemma", lambda step: None)
         self.assertIn("Ollama", str(err.exception))
 
     def test_missing_model(self):
-        with mock.patch.object(tc, "_alive", return_value=True), \
-                mock.patch.object(tc, "_call", return_value={"models": [{"name": "other:1b"}]}):
+        with mock.patch.object(tc.ollama, "_alive", return_value=True), \
+                mock.patch.object(tc.ollama, "_call", return_value={"models": [{"name": "other:1b"}]}):
             with self.assertRaises(tc.ModelError) as err:
                 tc._ready("gemma4:12b-it-qat", lambda step: None)
         self.assertIn("gemma4:12b-it-qat", str(err.exception))
@@ -847,7 +847,7 @@ class OllamaAndRoutes(unittest.TestCase):
             self.assertEqual(tc._check(SimpleNamespace(groups=["4100000101"], json={"folder": "x", "pages": 24})), {"off": True})
         finally:
             core.settings.update({"textcheck": {"enabled": True}})
-        with mock.patch.object(tc, "status", return_value={}):
+        with mock.patch.object(tc.ollama, "status", return_value={}):
             tc._save_settings(SimpleNamespace(json={"model": "gemma4:12b-it-qat"}))
             with self.assertRaises(Exception):
                 tc._save_settings(SimpleNamespace(json={"model": "bad model; rm"}))

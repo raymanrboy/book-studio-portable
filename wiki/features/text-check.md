@@ -3,7 +3,7 @@ title: Text check (AI validator on a local model)
 type: feature
 updated: 2026-09-27
 code:
-  - app/studio/textcheck.py
+  - app/studio/textcheck/
   - app/studio/wording.py
   - app/tests/test_textcheck.py
   - app/tools/textcheck_replay.py
@@ -74,7 +74,12 @@ code:
 - Ollama isn't running — the program starts it itself (as if from the Start menu); it fails, or the
   model is missing — a yellow banner "Text not checked: …" with a ↻.
 
-## How it works (`textcheck.py`)
+## How it works (`textcheck/`)
+
+The code is a package since 2026-09-27 (it was one 1 400-line file): `run.py` — one check (the passes, the cache,
+stopping), `rules.py` — what the card shows, `texts.py` — words and which page is which text, `ollama.py` — the
+model on this computer, `journal.py` — the journal and the owner's marks, `routes.py`. Every rule stayed as it was:
+`textcheck_replay.py --all` gave the same output before and after.
 
 0. **Warm-up** (`warm()`, since 2026-09-20): as soon as the card takes files (a drop, picking a folder,
    "take files from an earlier send"), the window asks `POST /api/textcheck/warm` — and the model
@@ -280,8 +285,13 @@ The order archive — three books already sent to print (Gelato, 30 pages, 4000 
 
 ## Where in the code
 
-- [app/studio/textcheck.py](../../app/studio/textcheck.py) — calibration and the wrong-book guard: `_case_only()`, `_buyer_intact()`, `_twice()`, `_strange()`, `_wrong_book()`, `_one_alarm()`, `_like_book()`, `_raw()`, `mark()`, `_mark()`, `WRONG_BOOK`, `_NO_PROBLEM`, `_CLAIM`, `_SEEN`
-- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_saw_nothing()`, `_collect()`, `_ordered()`, `_targets()`, `_all_issues()`, `_learnable()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `_release_model()`, `_cancel()`, `_warm()`, `assign()`, `similarity()`, `diff()`, `words()`, `findings()`, `page_issues()`, `book_issues()`, `personalization()`, `fill()`, `is_default()`, `has_text()`, `as_template()`, `picture()`, `status()`, `start_ollama()`, `_ready()`, `_names()`, `_has()`, `_chat()`, `TimedOut`, `_base()`, `_other_children()`, `_vocabulary()`, `_only_punctuation()`, `_journal()`, `_passport()`, `_passport_texts()`, `_passport_words()`, `_check()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `KEEP_ALIVE`, `READ_TOKENS`, `JUDGE_TOKENS`, `MATCH`, `COMMON`, `CHECKS`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
+- [app/studio/textcheck/rules.py](../../app/studio/textcheck/rules.py) — calibration and the wrong-book guard: `_case_only()`, `_buyer_intact()`, `_twice()`, `_strange()`, `_wrong_book()`, `_one_alarm()`, `_like_book()`, `WRONG_BOOK`, `_NO_PROBLEM`, `_CLAIM`, `_SEEN`
+- [app/studio/textcheck/run.py](../../app/studio/textcheck/run.py) — `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_collect()`, `_targets()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `picture()`, `_other_children()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `READ_TOKENS`, `JUDGE_TOKENS`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
+- [app/studio/textcheck/rules.py](../../app/studio/textcheck/rules.py) — `_saw_nothing()`, `_ordered()`, `_all_issues()`, `_learnable()`, `findings()`, `page_issues()`, `book_issues()`, `has_text()`, `_vocabulary()`, `_only_punctuation()`
+- [app/studio/textcheck/ollama.py](../../app/studio/textcheck/ollama.py) — `_release_model()`, `status()`, `start_ollama()`, `_ready()`, `_names()`, `_has()`, `_chat()`, `TimedOut`, `_base()`, `KEEP_ALIVE`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`
+- [app/studio/textcheck/routes.py](../../app/studio/textcheck/routes.py) — `_cancel()`, `_warm()`, `as_template()`, `_passport()`, `_passport_texts()`, `_passport_words()`, `_check()`, `_mark()`
+- [app/studio/textcheck/texts.py](../../app/studio/textcheck/texts.py) — `assign()`, `similarity()`, `diff()`, `personalization()`, `fill()`, `MATCH`, `COMMON`
+- [app/studio/textcheck/journal.py](../../app/studio/textcheck/journal.py) — `_journal()`, `CHECKS`, `_raw()`, `mark()` (the owner's «це не помилка» marks)
 - [app/studio/wording.py](../../app/studio/wording.py) — `words()`, `is_default()`, `clean_name()`, `custom_text()`, `alike()`, `guess_child_name()`, `DEDICATION`, `META`, `_POSSESSIVE`
 - [app/tools/textcheck_replay.py](../../app/tools/textcheck_replay.py) — `replay()`, `rebuild()`, `main()` (the journal through today's rules)
 - [app/studio/images.py](../../app/studio/images.py) — `text_score()`, `_percentile()`, `TEXT_SIDE`

@@ -68,7 +68,8 @@ ever read.
 - [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
 - [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `status()`, `import_session()`
-- [app/studio/textcheck.py](../../app/studio/textcheck.py) — `status()`, `start_ollama()`, `_save_settings()`, `_start()`
+- [app/studio/textcheck/ollama.py](../../app/studio/textcheck/ollama.py) — `status()`, `start_ollama()`
+- [app/studio/textcheck/routes.py](../../app/studio/textcheck/routes.py) — `_save_settings()`, `_start()`
 
 ## Related
 

@@ -223,7 +223,7 @@ DEFAULT_SETTINGS: dict = {
             },
         },
     },
-    # Text check before print by a local model in Ollama (textcheck.py); only 127.0.0.1 is accepted.
+    # Text check before print by a local model in Ollama (textcheck/); only 127.0.0.1 is accepted.
     "textcheck": {"enabled": True, "model": "gemma4:12b-it-qat", "url": "http://127.0.0.1:11434",
                   "prescan": True},  # a local look first: only pages that may carry text go to the model
 }

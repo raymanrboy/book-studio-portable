@@ -19,7 +19,7 @@ import { settle, sentOf, keptOrder, finish } from '../keep.js';
 
 // Strip thumbnails: the server prepares this size ahead (creator.STRIP_PREVIEW), so scrolling never waits.
 
-// Text check (textcheck.py): how its findings are counted and why a check was only the light one.
+// Text check (textcheck/): how its findings are counted and why a check was only the light one.
 const LEVEL_WORDS = { error: ['помилка', 'помилки', 'помилок'], warn: ['питання', 'питання', 'питань'] };
 const LIGHT_TIP = {
   noBook: 'Легка перевірка: книги немає в бібліотеці',

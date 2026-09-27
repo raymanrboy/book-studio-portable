@@ -14,7 +14,7 @@ code:
   - app/studio/printify.py
   - app/studio/gelato.py
   - app/studio/sendlog.py
-  - app/studio/textcheck.py
+  - app/studio/textcheck/
   - app/studio/drops.py
   - app/studio/mockups.py
   - app/studio/workshop/routes.py
@@ -52,7 +52,7 @@ code:
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (the card; `earlierSends` — sends of this order that never became a print-shop order) |
 | POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (laying out pages; for Gelato — also whether it prints that many pages in this format; `provider: "files"` — a hardcover, the length picks the printer) |
 
-## Text check — [textcheck.py](../../app/studio/textcheck.py)
+## Text check — [textcheck/routes.py](../../app/studio/textcheck/routes.py)
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|

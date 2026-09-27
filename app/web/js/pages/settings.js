@@ -169,7 +169,7 @@ export async function mount(view, [section]) {
     });
   }
 
-  // The text check reads the order's pages with a model in Ollama on this computer (textcheck.py).
+  // The text check reads the order's pages with a model in Ollama on this computer (textcheck/).
   function textcheckCard() {
     if (!tc) return '';
     const ready = tc.running && tc.installed;

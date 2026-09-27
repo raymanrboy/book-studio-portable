@@ -124,7 +124,8 @@ The rest:
 
 ## Phase 6 — big files cut by job
 
-- [ ] `textcheck.py` → a package (checked with `textcheck_replay.py --all`: the same output).
+- [x] `textcheck.py` → a package: `run`, `rules`, `texts`, `ollama`, `journal`, `routes` (`textcheck_replay.py --all`
+  gave the same output before and after — byte for byte).
 - [ ] `creator.py` → routes, the print folder, the shared send (one frame for Printify and Gelato), Printify,
   Gelato, the photobook PDF.
 - [ ] `library.py` → the model and its files; the agent guide as its own Markdown file.
