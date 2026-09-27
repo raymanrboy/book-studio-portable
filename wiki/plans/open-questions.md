@@ -113,11 +113,10 @@ different server).
 - **Profit counts only sales from 1 October 2026** (the owner, 2026-09-27: "accounting starts in October and must
   not include earlier orders at all"). Not in the code yet: the view counts every receipt the sync has (77 since
   January) — a start date to be added before the page is turned on.
-- **The owner's own Gelato account** (planned, 2026-09-27: "no one else's orders in it"). The sync replaces the
-  Gelato list with what the connected account returns (`sync._gelato_part()`), so after the switch an order printed
-  through the old account and not yet marked shipped on Etsy would find no print order and fall back to «нове»
-  in the queue, and lose its tracking. Before the switch: keep the old account's orders (or switch once every
-  order sent through it is marked shipped).
+- **The owner's own Gelato account** (about 1 October 2026): swapping the key today would drop the old account's
+  orders from the queue and **delete their books from the archive** a few days later. The smooth switch is agreed
+  and planned — [roadmap](roadmap.md#the-owners-own-gelato-account--a-smooth-switch-agreed-2026-09-27-not-built);
+  until it is built, the key isn't replaced.
 - ~~**Accounting — before October 1**~~ (deferred by the owner on 2026-09-23) — **fixed on 2026-09-26** in the
   [big cleanup](cleanup.md): one money step, a cancelled first order keeps the second one's cost, every currency
   converted, the cover from the buyer's choice, only placed and paid orders counted

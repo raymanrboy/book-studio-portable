@@ -3,6 +3,16 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] plan | His own Gelato account: a smooth switch
+
+- Found: swapping the Gelato key would drop the old account's orders — the queue's in-flight orders back to «нове»
+  without tracking, and the archive deleting their books' files a few days later (a print order missing from a
+  list loaded whole counts as "never went to print").
+- The owner chose the smooth switch: the old orders are never forgotten, and for the transition both accounts are
+  read (the old key only reads). Planned in the roadmap, not built; his account opens about 1 October; until then
+  the key isn't replaced. A scheduled reminder (Mondays and Thursdays) at his request.
+- Pages: plans/roadmap, plans/open-questions, decisions.
+
 ## [2026-09-27] decision | Profit from 1 October only; Gelato's currencies are other people's orders
 
 - The owner: accounting starts on 1 October and must not include earlier orders — recorded (decisions, open

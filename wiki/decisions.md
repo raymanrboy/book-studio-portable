@@ -9,7 +9,7 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
-## 2026-09-27 — Profit from 1 October only; the Gelato account's currencies
+## 2026-09-27 — Profit from 1 October only; the Gelato account's currencies; a smooth switch to his own Gelato
 
 - **Decision (the owner):** accounting starts on 1 October 2026 and does not include earlier orders at all. Not in
   the code yet (open questions) — to be done before the Profit page is turned on.
@@ -19,6 +19,10 @@ code: []
   itself asks nothing: it reads the same snapshot.
 - **Currencies:** the owner's Gelato orders are paid in dollars; the euros and crowns in the account are mostly
   other people's orders (he plans an account of his own). The euro's rate stays; nothing to decide.
+- **His own Gelato account — a smooth switch** (the owner chose it over a frozen copy of the old orders): the old
+  account's orders are never forgotten, and for the transition the program reads both accounts — the old key only
+  reads, everything new goes to the new account. Not built; planned before his account opens (about 1 October) —
+  [roadmap](plans/roadmap.md). Until then the Gelato key isn't replaced.
 
 ## 2026-09-27 — The big cleanup, phase 6: big files cut by job
 

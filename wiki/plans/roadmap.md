@@ -1,7 +1,7 @@
 ---
 title: Plans — what's next
 type: plan
-updated: 2026-09-26
+updated: 2026-09-27
 code: []
 ---
 # Plans
@@ -310,6 +310,41 @@ The owner wants a real program feature — a "check button", a strong one — no
     with the book's cover on the Mockups page, to copy into ChatGPT (it downloads JPEG).
   - **Turned down:** generating through an API ([decisions](../decisions.md)).
 
+## Printers
+
+### The owner's own Gelato account — a smooth switch (agreed 2026-09-27, not built)
+
+> **Until this is built, the Gelato key in Settings is not replaced.** The owner opens his own Gelato account
+> about 1 October 2026 (the current one holds other people's orders too); this has to be ready before he switches.
+
+- **Why.** The program knows one Gelato key, and every sync replaces the Gelato list with what that account returns
+  (`sync._gelato_part()`). After the key is swapped, the old account's orders are gone from it:
+  - the queue: an order printed through the old account and not yet marked shipped on Etsy falls back to «нове»
+    and loses its tracking (`stages.order_stage()`);
+  - **the archive would delete those books' files**: a print order missing from its printer's list, loaded whole
+    `VANISH_DAYS` (2) after sending, is "dropped", and the book goes `DROP_DAYS` (3) later (`archive.standing()`,
+    `archive.clock()`);
+  - Profit: those sales lose their cost (it matters for October sales printed through the old account).
+  Not touched: Etsy, Printify, the library, the Workshop, the mockups, Printify's books in the archive; the orders
+  themselves stay in the old account at Gelato.
+- **What was agreed** (variant A — the owner: "the smooth switch, it'll be more convenient"):
+  1. *A safety net, always on.* A Gelato order the program already knew is never dropped because a list lacks it:
+     it is kept with its last status, tracking and cost, marked with its account. The archive never deletes a book
+     because its order vanished after an account change.
+  2. *Two keys for the transition.* Settings → «Перейти на новий акаунт Gelato»: the owner pastes the new key; the
+     program moves the current one into «Старий акаунт (лише читання)» itself, inside the vault (no agent sees
+     either key, none goes through the chat). Every sync reads both accounts; each order knows its account; its
+     tracking is read from that account. Everything new (the Order Creator's drafts, reprints) goes only to the
+     new account; with the old key the program can only read (an allow-list of its own: searches and reads).
+     When every old-account order is delivered and its archive days are over (about 3–6 weeks), the program says
+     the old account isn't needed any more, and the key can be removed.
+- **Checks:** tests with two made-up Gelato accounts — a switch in the middle of work; an old order shipped after
+  the switch; the archive keeps its books; the new account unreachable; nothing can be created with the old key;
+  the interface on the preview server. The only real step is the owner's: he pastes the new key in Settings.
+- **Reminders:** the owner asked to be reminded now and then — a scheduled task «Нагадування: перехід на свій
+  Gelato» (Mondays and Thursdays, 10:00; it only reads this page and reminds). Stop it once this is built and the
+  switch is done.
+
 ## Accounting
 
 - **Turn on "Profit" on 1 October 2026** ([recipe](../recipes.md)).
@@ -321,6 +356,7 @@ The owner wants a real program feature — a "check button", a strong one — no
   counts only receipts from 1 October on, and nothing before is matched, shown or stored for it (the
   debts in [open questions](open-questions.md#technical-debt) about older receipts then stop mattering).
   To agree with him before building: whether the queue keeps showing older orders as now (it should).
+  Confirmed by the owner on 2026-09-27: "it must not include earlier orders at all". Not built yet.
 
 ## Infrastructure
 
