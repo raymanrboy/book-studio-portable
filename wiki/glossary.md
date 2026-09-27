@@ -39,7 +39,7 @@ Code paths below are relative to the repository root.
 | Повідомлення покупця | `message_from_buyer` from the Etsy receipt | [orders.py](../app/studio/orders.py) `_one()` |
 | Файли з Canva, розставити сторінки | A ZIP/folder from Canva → `Cover.png` + `1…N.png` | [orders.py](../app/studio/orders.py) `arrange_pages()` |
 | Звірка | Card step 2: the cover, the first spread, the filmstrip | [orders.js](../app/web/js/pages/orders.js) `proofCard()` |
-| Записка (на форзаці) | The left half of the proof's first spread: the name and the buyer's fields | [orders.js](../app/web/js/pages/orders.js) `proofCard()`; CSS `.proof-note` in [app.css](../app/web/css/app.css) |
+| Записка (на форзаці) | The left half of the proof's first spread: the name and the buyer's fields | [orders.js](../app/web/js/pages/orders.js) `proofCard()`; CSS `.proof-note` in [orders.css](../app/web/css/orders.css) |
 | Стрічка, слайдер сторінок | The horizontal row of every spread in the proof | [orders.js](../app/web/js/pages/orders.js) `proofCard()`; [order-bits.js](../app/web/js/order-bits.js) `smoothWheel()` |
 | До друку | Handing the order off to the Order Creator | [orders.js](../app/web/js/pages/orders.js) `print()`; [handoff.js](../app/web/js/handoff.js) `give()` |
 | Order Creator | The book/draft creation page | [creator.js](../app/web/js/pages/creator.js) `mount()`; [creator/](../app/studio/creator/__init__.py) |
@@ -141,7 +141,7 @@ Code paths below are relative to the repository root.
 |---|---|---|
 | Бокова панель, піктограми зліва | Navigation — each mode its own items | [app.js](../app/web/js/app.js) `MODES`, `buildSidebar()`, `buildNav()` |
 | Тримати диск C в чистоті | No temp files of the programs on drive C: their own temp folder on D, emptied on launch and close | [core.py](../app/studio/core.py) `own_temp()`; [runtime](architecture/runtime.md#temporary-files-and-drive-c) |
-| Панель інструментів (пошук, сортування, «+») | `.lib-toolbar` | [library.js](../app/web/js/pages/library.js) `mount()`; [app.css](../app/web/css/app.css) |
+| Панель інструментів (пошук, сортування, «+») | `.lib-toolbar` | [library.js](../app/web/js/pages/library.js) `mount()`; [library.css](../app/web/css/library.css) |
 | Підказка при наведенні | The shared tooltip | [lib.js](../app/web/js/lib.js) `showTip()`, `ib()` |
 | Тема (темна/світла) | The menu at the bottom of the panel | [app.js](../app/web/js/app.js) `applyTheme()`, `openThemeMenu()` |
 | Ключі, сховище | The encrypted service keys | [vault.py](../app/studio/vault.py) `Vault`; [settings.js](../app/web/js/pages/settings.js) `secretField()` |

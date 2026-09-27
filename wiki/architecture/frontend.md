@@ -14,10 +14,15 @@ code:
   - app/web/js/folder-viewer.js
   - app/web/js/workshop-live.js
   - app/web/css/app.css
+  - app/web/css/library.css
+  - app/web/css/orders.css
+  - app/web/css/profit.css
+  - app/web/css/listings.css
 ---
 # Interface
 
-> One HTML page with no build step: ES modules from `app/web/js`, styles in one `app.css`.
+> One HTML page with no build step: ES modules from `app/web/js`, styles in `app/web/css/` (`app.css` and a file
+> per section, loaded in that order).
 > Pages switch by `#hash`, each one its own module with `mount()`. Since 2026-09-24 the window has
 > [two modes](../features/modes.md) — Orders and Listings — each with its own rail and ink.
 
@@ -165,6 +170,13 @@ code:
 
 ## Visual system — `app.css` ("Prepress")
 
+The styles are five files since 2026-09-27 (it was one of 1 500 lines), loaded by `index.html` in the order their
+rules had, so no rule moved past another that styles the same element (checked on every page, both themes and a
+narrow window — the computed styles of every element were the same): `app.css` — the tokens, the shell, the controls
+and everything shared (dialogs, the viewer, Settings, the picker lists), the reduced motion; `library.css` — the
+Library and the passport; `orders.css` — the Order Creator, the queue and the card, the archive; `profit.css`;
+`listings.css` — the Workshop and the mockups. Each file keeps its own narrow-window rules at its end.
+
 - Color tokens on `:root` (the light "proofing booth" theme) and `[data-theme="dark"]` ("graphite"); the
   theme is set before the first frame by a script in `index.html` (the `bs-theme` key in localStorage).
 - Fonts: Bahnschrift — the interface and headings, Segoe UI — text, Sitka — book texts, Consolas —
@@ -199,7 +211,9 @@ code:
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`, `finish()`
 - [app/web/js/lightbox.js](../../app/web/js/lightbox.js) — `openLightbox()`, `TAU`, `MAX_ZOOM`
 - [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`
-- [app/web/css/app.css](../../app/web/css/app.css) — color tokens at the top of the file; `.lightbox`, `.modal-root`, `.menu`, `.toasts` (layers); `.mk-shell`, `.mk-slot`
+- [app/web/css/app.css](../../app/web/css/app.css) — color tokens at the top of the file; `.lightbox`, `.modal-root`, `.menu`, `.toasts` (layers)
+- [app/web/css/listings.css](../../app/web/css/listings.css) — `.mk-shell`, `.mk-slot`
+- [app/web/css/library.css](../../app/web/css/library.css), [orders.css](../../app/web/css/orders.css), [profit.css](../../app/web/css/profit.css) — the sections' own styles
 
 ## Related
 

@@ -213,7 +213,7 @@ exactly that — [Gelato](../integrations/gelato.md).
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `pagesText()`
 - [app/studio/sendlog.py](../../app/studio/sendlog.py) — `attempt()`, `step()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `store()`, `update()`, `get()`
-- [app/web/css/app.css](../../app/web/css/app.css) — `.fmt-pill.bad`, `.cr-reprint`, `.cr-book`, `.cr-book-name`
+- [app/web/css/orders.css](../../app/web/css/orders.css) — `.fmt-pill.bad`, `.cr-reprint`, `.cr-book`, `.cr-book-name`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `take()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_folder()`, `pick_file()`
 - Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`PrintifyValidation`, `GelatoValidation`), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`PrintifyReprint`, `GelatoReprint`)

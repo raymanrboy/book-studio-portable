@@ -1,0 +1,98 @@
+/* The Library and a book's passport (pages/library.js, pages/book.js). Loaded after app.css. */
+
+/* ================================================================== LIBRARY — a contact sheet */
+.lib-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+.lib-toolbar .input-group { width: min(320px, 100%); }
+/* One height for the whole row: search, filter, sorting and the new-book button all stand 38px tall. */
+.lib-toolbar .input { height: 38px; }
+.lib-toolbar .seg button { height: 30px; }
+.lib-toolbar #lib-seg { display: flex; } /* no inline line box around the filter, so it centres with the rest */
+.lib-toolbar > .ib.primary { width: 52px; height: 38px; border-radius: var(--r-grp); box-shadow: var(--shadow-s); }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 30px 24px; }
+.book-card { position: relative; display: flex; flex-direction: column; gap: 11px; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; contain: layout style; }
+.book-card.enter { animation: card-in 440ms var(--ease) both; }
+@keyframes card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.book-frame { position: relative; transition: transform 320ms var(--ease); }
+.book-card:hover .book-frame { transform: translateY(-3px); }
+.book-card:hover .crops, .book-card:focus-visible .crops { opacity: 1; transform: none; }
+.book-card:focus-visible { outline: none; }
+.book-cover { position: relative; aspect-ratio: 1 / 1; background-color: var(--surface-2); overflow: hidden; border-radius: var(--r-art); box-shadow: var(--art-shadow); }
+.book-cover img { width: 100%; height: 100%; object-fit: cover; }
+.book-cover img.front { object-position: 100% 50%; }
+.book-cover-ph { position: absolute; inset: 0; display: grid; place-items: center; background: var(--paper); }
+.book-cover-ph .serif { font-size: 48px; color: var(--text-4); }
+.book-badge { position: absolute; top: 8px; right: 8px; z-index: 2; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; background: var(--green); color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+.book-badge .icon { width: 15px; height: 15px; stroke-width: 2.2; }
+.book-meta { display: flex; flex-direction: column; gap: 6px; padding: 0 1px; }
+.book-title { font-family: var(--font-book); font-size: 15.5px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; text-wrap: balance; }
+.book-id { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-3); }
+.book-id .icon { width: 13px; height: 13px; color: var(--green); }
+/* Readiness: four tiny ink squares — cover, illustrations, text, Canva. */
+.pips { display: inline-flex; gap: 3px; margin-left: auto; }
+.pips i { width: 8px; height: 8px; border-radius: 2px; background: var(--border-strong); position: relative; overflow: hidden; }
+.pips i > b { position: absolute; inset: 0; background: var(--accent); transform-origin: left; }
+
+/* ================================================================== BOOK */
+.book-hero { display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 26px; align-items: start; margin-bottom: 8px; }
+.hero-thumb { position: relative; aspect-ratio: 1 / 1; border-radius: var(--r-art); overflow: visible; background-color: var(--paper); box-shadow: var(--art-shadow); cursor: zoom-in; }
+.hero-thumb > img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-art); }
+.hero-thumb:hover .crops { opacity: 1; transform: none; }
+.hero-thumb .drop-ph { border: 1.5px dashed var(--border-strong); border-radius: var(--r-art); background: var(--surface); cursor: pointer; }
+.hero-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.hero-title-input { font-family: var(--font-book); font-size: 31px; font-weight: 600; line-height: 1.18; width: 100%; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 2px 8px; margin-left: -9px; color: var(--text); resize: none; overflow: hidden; outline: none; transition: border-color var(--t-fast), background var(--t-fast); field-sizing: content; text-wrap: balance; }
+.hero-title-input:hover { border-color: var(--border); }
+.hero-title-input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px var(--accent-soft); }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12.5px; color: var(--text-3); }
+/* Readiness row: the five parts of a finished book as pictograms, lit when done. */
+.ready { display: inline-flex; gap: 4px; padding: 3px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border); }
+.ready i { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--r-ctl); color: var(--text-4); font-style: normal; }
+.ready i.ok { color: var(--accent-ink); background: var(--accent-soft); }
+.ready i.part::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) var(--p, 0%), var(--border) var(--p, 0%)); }
+
+.section-head { display: flex; align-items: center; gap: 12px; margin: 34px 0 14px; flex-wrap: wrap; }
+.section-title { font-family: var(--font-display); font-size: 11.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
+.section-head .num { font-size: 12px; color: var(--text-3); }
+
+.cover-box { position: relative; border-radius: var(--r-art); background-color: var(--paper); box-shadow: var(--art-shadow); min-height: 180px; display: grid; place-items: center; }
+.cover-box > img { width: 100%; height: auto; cursor: zoom-in; border-radius: var(--r-art); }
+.cover-box:hover .crops { opacity: 1; transform: none; }
+.cover-box .drop-ph { border: 1.5px dashed var(--border-strong); border-radius: var(--r-art); background: var(--surface); }
+
+.text-block { position: relative; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); padding: 12px 14px 14px; }
+.text-block-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.text-body { white-space: pre-wrap; font-family: var(--font-book-text); font-size: 14.5px; line-height: 1.62; color: var(--text); cursor: text; }
+.text-body.empty-text, .slot-text-body.empty-text { color: var(--text-4); font-family: var(--font); font-size: 12.5px; font-style: normal; }
+.token { color: var(--accent-ink); background: var(--accent-soft); border-radius: 3px; padding: 0 2px; font-family: var(--font); font-size: .92em; font-weight: 600; }
+
+.slots { display: flex; flex-direction: column; gap: 22px; }
+/* Off-screen rows are not laid out or painted until they scroll near the viewport. */
+/* content-visibility also clips painting to the row; 12px of padding (cancelled by margin) keeps the crop marks visible. */
+.slot-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; padding: 12px 0; margin: -12px 0; content-visibility: auto; contain-intrinsic-size: auto 384px; }
+.slot-row.enter { animation: card-in 420ms var(--ease) both; }
+.slot-pages-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0; position: relative; }
+.slot-text { display: flex; flex-direction: column; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); min-height: 0; overflow: hidden; align-self: stretch; }
+.slot-text-head { display: flex; align-items: center; gap: 8px; padding: 9px 8px 8px 14px; border-bottom: 1px solid var(--border); }
+.slot-label { font-family: var(--font-display); font-weight: 600; font-size: 13px; }
+.slot-pages { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--text-3); }
+.slot-text-body { flex: 1; overflow: auto; padding: 12px 14px; white-space: pre-wrap; font-family: var(--font-book-text); font-size: 14px; line-height: 1.6; cursor: text; }
+.slot-text-body.empty-text { display: grid; place-items: center; text-align: center; }
+.slot-text textarea { flex: 1; min-height: 220px; border: 0; border-radius: 0; resize: none; padding: 12px 14px; background: var(--surface-2); font-family: var(--font-book-text); line-height: 1.6; font-size: 14px; outline: none; }
+.slot-text-foot { display: flex; gap: 6px; padding: 7px 8px; border-top: 1px solid var(--border); background: var(--surface-2); }
+.page-sq, .spread-img { position: relative; background-color: var(--paper); box-shadow: var(--art-shadow); }
+.page-sq { aspect-ratio: 1 / 1; }
+.slot-pages-pair .page-sq:first-child { border-radius: var(--r-art) 0 0 var(--r-art); }
+.slot-pages-pair .page-sq:last-child { border-radius: 0 var(--r-art) var(--r-art) 0; }
+.spread-img { aspect-ratio: 2 / 1; border-radius: var(--r-art); }
+.page-sq > img, .spread-img > img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+.spread-img:hover .crops, .slot-pages-pair:hover .crops { opacity: 1; transform: none; }
+.page-sq.blank { background-image: radial-gradient(var(--paper-dot) 1px, transparent 1px); background-size: 12px 12px; display: grid; place-items: center; box-shadow: var(--art-shadow); }
+.page-sq.blank span { font-family: var(--font-display); font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #9a9d98; background: var(--paper); padding: 3px 8px; }
+.page-sq .drop-ph, .spread-img .drop-ph { background: var(--surface); outline: 1.5px dashed var(--border-strong); outline-offset: -1.5px; }
+.slot-pages-pair::after { content: ""; position: absolute; inset: 0 auto 0 50%; width: 22px; transform: translateX(-50%); background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, .12), rgba(0, 0, 0, 0)); pointer-events: none; z-index: 1; }
+
+/* ------------------------------------------------------------------ responsive */
+@media (max-width: 900px) {
+  .slot-row { grid-template-columns: 1fr; }
+  .book-hero { grid-template-columns: 1fr; }
+  .hero-thumb { width: 180px; }
+}

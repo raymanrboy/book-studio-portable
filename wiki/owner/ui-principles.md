@@ -4,6 +4,7 @@ type: owner
 updated: 2026-09-26
 code:
   - app/web/css/app.css
+  - app/web/css/library.css
 ---
 # The interface the owner wants
 
@@ -87,7 +88,9 @@ code:
 
 ## Where in the code
 
-- [app/web/css/app.css](../../app/web/css/app.css) — the color tokens and `.lib-toolbar`, `.tint-printify`, `.chip-mono`, `.ord-track`
+- [app/web/css/app.css](../../app/web/css/app.css) — the color tokens and `.chip-mono`
+- [app/web/css/library.css](../../app/web/css/library.css) — `.lib-toolbar`
+- [app/web/css/orders.css](../../app/web/css/orders.css) — `.tint-printify`, `.ord-track`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `statusText()`, `trackChips()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `ib()`, `fadeImages()`, `slide()`, `flip()`, `reducedMotion()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`

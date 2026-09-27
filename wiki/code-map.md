@@ -107,7 +107,11 @@ code:
 | [js/workshop-live.js](../app/web/js/workshop-live.js) | The Workshop's live link: what changed, the generation mode's state and bar, the rail's dot and title | `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genBar()` |
 | [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups (the Listings mode): the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
 | [js/pages/profit.js](../app/web/js/pages/profit.js) | Profit (hidden) | `mount()` |
-| [css/app.css](../app/web/css/app.css) | The whole "Prepress" visual system | — |
+| [css/app.css](../app/web/css/app.css) | The "Prepress" visual system: tokens, the shell, the controls, what the pages share | — |
+| [css/library.css](../app/web/css/library.css) | The Library and a book's passport | — |
+| [css/orders.css](../app/web/css/orders.css) | The Order Creator, the queue and the order card, the archive | — |
+| [css/profit.css](../app/web/css/profit.css) | The Profit page | — |
+| [css/listings.css](../app/web/css/listings.css) | The Workshop and the listing mockups | — |
 | `img/` | Program icons (`icon.ico`, `icon.png`, `icon-512.png`) | — |
 
 ## Tests: `app/tests/`

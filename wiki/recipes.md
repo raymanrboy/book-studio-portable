@@ -42,7 +42,8 @@ code: []
 ## A new interface page
 - File `app/web/js/pages/<name>.js` with `export async function mount(view, params)` → `{ shown?, unmount }`.
 - [app/web/js/app.js](../app/web/js/app.js) — `ROUTES` with the page's mode (and its mode's `nav` in `MODES`, if it needs an icon in the panel).
-- Styles — in [app/web/css/app.css](../app/web/css/app.css), colors from tokens only.
+- Styles — in [app/web/css/](../app/web/css/app.css): `app.css` (the tokens and the shared parts) or the section's
+  own file (`library.css`, `orders.css`, `profit.css`, `listings.css`); colors from tokens only.
 - Wiki: a new page under `features/`, a row in [code-map.md](code-map.md) and `index.md`.
 
 ## A new server route
@@ -67,7 +68,7 @@ code: []
 
 ## What to show in the proof's note
 - [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) — `proofCard()` (the `notes` filter),
-  `isFormatField()`, `isNameField()`; sizes — `.proof-name`, `.proof-note` in app.css.
+  `isFormatField()`, `isNameField()`; sizes — `.proof-name`, `.proof-note` in orders.css.
 
 ## Filmstrip thumbnail size
 - Change **together**: [app/web/js/order-bits.js](../app/web/js/order-bits.js) `STRIP_THUMB` (the order card's and

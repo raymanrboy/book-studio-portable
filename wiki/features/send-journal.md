@@ -58,7 +58,8 @@ A record is also made when the send stopped at the file check — then there are
 - [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `create_printify_draft()`, `_printify_draft()`, `_printify_images()`, `_printify_product()`, `_printify_order()`
 - [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `journaled_send()` (every send's attempt, for both printers), `checked_files()`, `record_order()`, `_journaled()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderSwitch()` (the icon in the header), `sendLogButton()`
-- [app/web/css/app.css](../../app/web/css/app.css) — `.cr-tools`, `.mode-switch`
+- [app/web/css/app.css](../../app/web/css/app.css) — `.cr-tools`
+- [app/web/css/orders.css](../../app/web/css/orders.css) — `.mode-switch`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — the `sendLog` icon
 - Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow` — including `test_journal_button_shows_the_newest_record`)
 

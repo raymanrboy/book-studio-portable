@@ -154,7 +154,7 @@ page itself remembered this).
 - [app/web/js/pages/archive.js](../../app/web/js/pages/archive.js) — `mountList()`, `mountBook()`, `clockChip()`, `clockText()`, `proofCard()`, `reprintCard()`, `sendCard()`, `fieldsCard()`, `addressCard()`, `toggleKeep()`, `reprint()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — reprint mode: `withOrder()`, `createLabel()`, `folderCard()`, `create()`
 - [app/web/js/app.js](../../app/web/js/app.js) — `MODES`, `ROUTES`; [app/web/js/icons.js](../../app/web/js/icons.js) — `orderArchive`, `pin`
-- [app/web/css/app.css](../../app/web/css/app.css) — `.arc-thumb`, `.arc-id`, `.arc-clock`, `.cr-reprint`
+- [app/web/css/orders.css](../../app/web/css/orders.css) — `.arc-thumb`, `.arc-id`, `.arc-clock`, `.cr-reprint`
 - [app/tools/dev_server.py](../../app/tools/dev_server.py) — `_seed_archive()`, `_sample_book()` (4 made-up books for the preview, and Olivia's draft that never became an order)
 - Tests: [app/tests/test_archive.py](../../app/tests/test_archive.py) (`Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint`), [app/tests/test_flows.py](../../app/tests/test_flows.py) (the archive after a send)
 

@@ -1,0 +1,222 @@
+/* Orders: the Order Creator, the queue and the order card, the order archive. Loaded after library.css. */
+
+/* ================================================================== CREATOR — a job ticket */
+.creator-grid { display: grid; grid-template-columns: minmax(360px, 430px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.creator .card-title { font-size: 14.5px; }
+.mode-switch { display: flex; } /* no text-line gap under the switch, so the icon beside it lines up */
+.mode-switch .seg button { height: 32px; }
+.mode-switch .seg button .icon { width: 19px; height: 19px; }
+/* Printify mode wears salad green; Gelato its blue (with the Listings mode's tokens, above) — the Studio's ink
+   before Orders turned orange (owner, 25.09.2026: "як було"). Everything accent-coloured on the page (create
+   button, progress, badges, focus rings) follows. */
+.creator:not(.mode-gelato), .tint-printify {
+  --accent: #86bc3a; --accent-hover: #79ad30; --on-accent: #132409;
+  --accent-soft: rgba(134, 188, 58, .15); --accent-line: rgba(104, 158, 36, .45); --accent-ink: #3f6f12;
+}
+[data-theme="dark"] .creator:not(.mode-gelato), [data-theme="dark"] .tint-printify {
+  --accent: #9ccf5e; --accent-hover: #ade07a; --on-accent: #10200a;
+  --accent-soft: rgba(156, 207, 94, .14); --accent-line: rgba(156, 207, 94, .4); --accent-ink: #b7e38e;
+}
+.mode-switch .seg button[data-value="printify"].active { color: var(--printify); }
+.mode-switch .seg button[data-value="gelato"].active { color: var(--gelato); }
+.svc-printify { color: var(--printify); }
+.svc-gelato { color: var(--gelato); }
+.svc-etsy { color: var(--etsy); }
+.svc-canva { color: var(--canva); }
+.path-input { font-family: var(--font-mono); font-size: 12.5px; padding-right: 44px; }
+.path-input::placeholder { font-family: var(--font); font-size: 13px; }
+.create-btn { background: var(--accent); color: var(--on-accent); border: 0; }
+.create-btn:hover { background: var(--accent-hover); }
+.v-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; height: 24px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-3); }
+.v-badge .icon { width: 14px; height: 14px; }
+.v-badge.ok { color: var(--green); background: var(--green-soft); border-color: var(--green-line); }
+.v-badge.bad { color: var(--red); background: var(--red-soft); border-color: var(--red-line); }
+.v-badge.run { color: var(--accent-ink); background: var(--accent-soft); border-color: var(--accent-line); }
+.v-badge.warn { color: var(--amber); background: var(--amber-soft); border-color: var(--amber-line); }
+.result-card { border-radius: var(--r-card); padding: 14px 16px; background: var(--green-soft); border: 1px solid var(--green-line); animation: modal-in 380ms var(--spring) both; }
+.result-card h4 { font-size: 15px; color: var(--green); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 13px; }
+.kv dt { color: var(--text-3); }
+.kv dd { margin: 0; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.addr-grid .span2 { grid-column: span 2; }
+.fmt-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.fmt-pill { height: 34px; padding: 0 14px; border-radius: var(--r-ctl); border: 1px solid var(--border-strong); background: var(--surface); font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--text-2); transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast); }
+.fmt-pill:hover { color: var(--text); border-color: var(--text-4); }
+.fmt-pill.active { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-line); }
+.fmt-pill.bad { color: var(--amber); border-color: var(--amber-line); }
+.fmt-pill.bad.active { background: var(--amber-soft); }
+.structure-cover { position: relative; border-radius: var(--r-art); background: var(--paper); box-shadow: var(--art-shadow); cursor: zoom-in; }
+.structure-cover > img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-art); }
+.structure-cover:hover .crops { opacity: 1; transform: none; }
+.cover-ph { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+.cover-ph div { display: grid; place-items: center; text-align: center; font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-4); background-image: radial-gradient(var(--paper-dot) 1px, transparent 1px); background-size: 12px 12px; }
+.cover-ph div:last-child { color: var(--text-3); }
+.spread-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 22px 18px; }
+.spread-card { position: relative; cursor: zoom-in; }
+.spread-card.enter { animation: card-in 420ms var(--ease) both; }
+.spread-card-head { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--text-3); }
+.spread-no { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text); font-size: 13px; }
+.spread-view { display: grid; grid-template-columns: 1fr 1fr; aspect-ratio: 2 / 1; position: relative; background: var(--paper); box-shadow: var(--art-shadow); border-radius: var(--r-art); transition: transform 300ms var(--ease); }
+.spread-card:hover .spread-view { transform: translateY(-2px); }
+.spread-card:hover .crops { opacity: 1; transform: none; }
+.spread-view .half { position: relative; display: grid; place-items: center; overflow: hidden; background: var(--surface-2); }
+.spread-view .half:first-child { border-radius: var(--r-art) 0 0 var(--r-art); }
+.spread-view .half:nth-child(2) { border-radius: 0 var(--r-art) var(--r-art) 0; }
+.spread-view .half img { width: 100%; height: 100%; object-fit: cover; }
+.spread-view .half.blank { background-color: var(--paper); background-image: radial-gradient(var(--paper-dot) 1px, transparent 1px); background-size: 9px 9px; }
+.spread-view .half.blank span { font-family: var(--font-display); font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #9a9d98; }
+.spread-view .half .ph-num { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--text-4); }
+.spread-view .half.bad { outline: 2px solid var(--red); outline-offset: -2px; }
+.spread-view .gutter-s { position: absolute; inset: 0 auto 0 50%; width: 12px; transform: translateX(-50%); background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, .14), rgba(0, 0, 0, 0)); pointer-events: none; }
+.spread-files { display: flex; gap: 8px; font-size: 11px; color: var(--text-4); font-family: var(--font-mono); }
+.file-ok { color: var(--text-3); }
+.file-bad { color: var(--red); }
+
+/* ================================================================== ORDERS (the pipeline: queue and order card) */
+.ord-list { display: flex; flex-direction: column; gap: 8px; }
+.ord-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); color: inherit; transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast) var(--ease); }
+.ord-row:hover { border-color: var(--border-strong); box-shadow: var(--shadow); text-decoration: none; }
+.ord-row:active { transform: scale(.996); }
+.ord-row.enter { animation: card-in 380ms var(--ease) both; }
+.ord-thumb, .ord-book-art { display: grid; place-items: center; overflow: hidden; border-radius: var(--r-art); background: var(--surface-2) center / cover no-repeat; color: var(--text-4); box-shadow: var(--art-shadow); }
+.ord-thumb { width: 52px; height: 52px; }
+.ord-thumb img, .ord-book-art img { width: 100%; height: 100%; object-fit: cover; }
+.ord-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ord-chips { flex-wrap: wrap; row-gap: 4px; }  /* a narrow window moves the tracking chip to its own line */
+.ord-chips > .chip { flex: none; }
+.ord-meta { font-size: 12px; }
+.ord-child { font-weight: 600; color: var(--text-2); }
+.ord-miss { color: var(--amber); }
+/* Tracking chip: carrier | number, both in the printer's colour; a click copies the number.
+   One text line: the number (another font) sits on the chip text's baseline and, with line-height 0,
+   leaves the line height to the chip's own font — so it lines up with the texts of the other chips. */
+/* Receipt and tracking numbers copy on click. */
+.ord-copy { cursor: copy; transition: border-color var(--t-fast), background var(--t-fast), color var(--t-fast); }
+.ord-copy:hover { border-color: var(--border-strong); background: var(--surface-3); }
+.ord-sub .mono.ord-copy { margin: 0 -3px; padding: 1px 3px; border-radius: 4px; }
+.ord-sub .mono.ord-copy:hover { color: var(--text); }
+.ord-track-text { display: block; white-space: nowrap; }
+/* carrier and number copy separately: the part under the cursor is underlined */
+.ord-track .ord-carrier:hover, .ord-track .ord-track-no:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.ord-track-sep { display: inline-block; width: 1px; height: 11px; margin: 0 6px; vertical-align: -2px; background: currentColor; opacity: .3; }
+.ord-track-no { font-family: var(--font-mono); font-size: 12px; line-height: 0; font-variant-numeric: tabular-nums; }
+/* One contrast for everything printer-coloured in a row (owner, 17.09.2026, chose the softer tone):
+   the printer's name, the carrier and the number — its colour mixed 80/20 with the chip, medium weight. */
+.ord-chips .chip.svc-printify, .ord-sub .chip.svc-printify, #oc-plan .chip.svc-printify { color: color-mix(in srgb, var(--printify) 80%, var(--surface-2)); }
+.ord-chips .chip.svc-gelato, .ord-sub .chip.svc-gelato, #oc-plan .chip.svc-gelato { color: color-mix(in srgb, var(--gelato) 80%, var(--surface-2)); }
+.ord-chips .chip[class*="svc-"], .ord-sub .chip[class*="svc-"], #oc-plan .chip[class*="svc-"] { font-weight: 500; }
+/* Card header: the printer's status beside the buyer's name, centred on it. */
+.ord-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ord-title .page-title { min-width: 0; }
+.ord-title .chip { flex: none; }
+.ord-sub .chip { margin: -2.5px 0 0 8px; vertical-align: middle; }  /* the negative top margin puts chip text on the grey text's line */
+.ord-go { display: grid; color: var(--text-4); transition: color var(--t-fast), transform var(--t-fast) var(--ease); }
+.ord-row:hover .ord-go { color: var(--text-2); transform: translateX(2px); }
+
+/* Work on the left (files, proof, print); the order's own data on the right stays in view while the proof scrolls. */
+.ord-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 24px; align-items: start; }
+.ord-side { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-radius: var(--r-card); }
+.ord-book { display: flex; gap: 16px; align-items: flex-start; }
+.ord-book-art { width: 96px; aspect-ratio: 1; flex: none; }
+.ord-book-title { font-family: var(--font-book); font-size: 15px; font-weight: 600; line-height: 1.3; color: var(--text); }
+.ord-book .btn { align-self: flex-start; margin-top: 4px; }
+
+/* ------------------------------------------------------------------ order archive (pages/archive.js) */
+.arc-thumb img { object-position: 100% 50%; } /* the front of the cover spread (back | spine | front) */
+.kv dd.arc-id { display: flex; align-items: center; gap: 4px; }
+.arc-clock { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; line-height: 1.45; }
+.arc-clock .icon { flex: none; margin-top: 1px; }
+.cr-reprint { font-size: 12.5px; }
+/* An order of several books: one block per book inside the folder step (the shown one is outlined). */
+.cr-book { display: flex; flex-direction: column; gap: 10px; }
+.cr-book + .cr-book { padding-top: 12px; border-top: 1px solid var(--border); }
+.cr-book-head { gap: 8px; }
+.cr-book-name { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid transparent; border-radius: 8px; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-2); cursor: pointer; }
+.cr-book-name:hover { background: var(--surface-2); }
+.cr-book.is-shown .cr-book-name { border-color: var(--accent-line); color: var(--accent-ink); }
+.ord-fields { display: grid; grid-template-columns: minmax(92px, 36%) minmax(0, 1fr); margin: 0; font-size: 13px; }
+.ord-fields dt, .ord-fields dd { border-top: 1px solid var(--border); }
+.ord-fields dt:first-of-type, .ord-fields dt:first-of-type + dd { border-top: 0; }
+.ord-fields dt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 9px 12px 9px 0; color: var(--text-3); overflow-wrap: anywhere; }
+.ord-fields dd { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 5px 0; }
+.ord-fields dd > span { flex: 1; min-height: 26px; padding-top: 3px; color: var(--text); font-weight: 600; white-space: pre-line; overflow-wrap: anywhere; user-select: text; }
+.ord-fields dd .ib { opacity: .5; transition: opacity var(--t-fast); }
+.ord-fields dd:hover .ib, .ord-fields dd .ib:focus-visible { opacity: 1; }
+.ord-fields dd.is-name > span { padding-top: 1px; font-family: var(--font-display); font-size: 15.5px; line-height: 1.35; }
+.ord-fields dd.custom > span { margin: -1px 0; padding: 4px 8px; border-radius: var(--r-ctl); background: var(--amber-soft); }
+.ord-message { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--r-ctl); background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; white-space: pre-line; user-select: text; }
+.ord-address { font-size: 13px; line-height: 1.6; color: var(--text-2); user-select: text; }
+
+/* Proof: the cover and the first spread large — its blank endpaper carries the order's own words, so
+   the eye goes from what was asked (left) to what was made (right) — then every spread in a strip. */
+.proof { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; } /* one under another: the spread gets the full width */
+.proof-spread { container-type: inline-size; cursor: zoom-in; }
+.proof-spread:hover .crops { opacity: 1; transform: none; }
+/* A long dedication or «from» scrolls inside the note instead of being cut off. */
+.spread-view .half.proof-note { place-items: start; align-content: start; padding: 8% 9%; background: var(--paper); color: #2b2c29; text-align: left; overflow: hidden auto; scrollbar-width: thin; }
+/* Sizes follow the spread's width (cqw), so the note's words stand as large as the words on the page beside it. */
+.proof-name { margin-bottom: 3cqw; font-family: var(--font-display); font-size: clamp(18px, 5.4cqw, 48px); font-weight: 600; line-height: 1.05; color: #1a1b18; overflow-wrap: anywhere; }
+.proof-note dl { display: grid; gap: .6cqw; margin: 0; }
+.proof-note dt { color: #8b8d87; font-size: clamp(9px, 1.25cqw, 12px); font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
+.proof-note dd { margin: 0 0 1.8cqw; font-size: clamp(12px, 2.4cqw, 22px); font-weight: 600; line-height: 1.3; color: #1f201d; white-space: pre-line; overflow-wrap: anywhere; }
+/* No scroll snapping here: it fought the eased wheel scrolling (jerks) and pulled the strip back from its end. */
+.strip { display: flex; gap: 14px; overflow-x: auto; padding: 4px 16px 10px 2px; overscroll-behavior-x: contain; }
+.strip-item { flex: none; width: 220px; display: flex; flex-direction: column; gap: 6px; cursor: zoom-in; }
+.strip-item > .spread-view, .strip-item > .structure-cover { transition: transform 300ms var(--ease); }
+.strip-item:hover > .spread-view, .strip-item:hover > .structure-cover { transform: translateY(-2px); }
+.strip-no { font-size: 11.5px; color: var(--text-3); }
+/* Text check: findings under the proof's title (red — certain, amber — worth a look), a click opens the
+   spread; the pages with findings are outlined in the proof and the strip. */
+#oc-check:empty, .tc-head:empty { display: none; }
+.tc-head { gap: 4px; }
+.tc-list { display: grid; gap: 6px; }
+.tc-issue { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 5px 5px 5px 12px; border-radius: 9px; border: 1px solid var(--red-line); background: var(--red-soft); font-size: 13px; cursor: zoom-in; }
+.tc-issue.enter { animation: notice-in var(--t-slow) var(--ease) both; } /* a new result only, not after «це не помилка» */
+.tc-issue.warn { border-color: var(--amber-line); background: var(--amber-soft); }
+.tc-where { min-width: 58px; font-family: var(--font-display); font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--red); }
+.tc-issue.warn .tc-where { color: var(--amber); }
+.tc-text { padding: 2px 0; line-height: 1.4; color: var(--text); overflow-wrap: anywhere; }
+.tc-text b { font-weight: 650; }
+.tc-passport { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; margin-top: 12px; padding: 10px 12px; border-radius: 9px; background: var(--surface-2); font-size: 13px; }
+.tc-passport .tc-where { color: var(--text-2); }
+.tc-passport .tc-text { white-space: pre-line; }
+.tc-slot { padding: 0 3px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.tc-note { display: block; margin-top: 1px; font-size: 12px; color: var(--text-3); }
+.tc-light { gap: 6px; font-size: 12.5px; }
+/* Another book's pages: one alarm nobody can miss (the owner's «захист від дурня», 25.09.2026). Its own deep red,
+   the same in both themes: white text on the dark theme's light --red would not read. It shakes once. */
+.tc-alarm { display: grid; gap: 10px; padding: 16px 18px; border-radius: 12px; background: #b3261e; color: #fff; font-size: 14px; line-height: 1.45; cursor: zoom-in; box-shadow: 0 6px 22px rgba(179, 38, 30, .35); }
+.tc-alarm.enter { animation: tc-alarm-in 520ms var(--ease) both; }
+.tc-alarm + .tc-list { margin-top: 10px; }
+@keyframes tc-alarm-in {
+  0% { opacity: 0; transform: translateY(-6px); }
+  30% { opacity: 1; transform: none; }
+  45% { transform: translateX(-6px); } 60% { transform: translateX(5px); } 75% { transform: translateX(-3px); } 100% { transform: none; }
+}
+.tc-alarm-head { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 21px; font-weight: 700; letter-spacing: -.01em; }
+.tc-alarm-head .icon { width: 26px; height: 26px; }
+.tc-alarm-dismiss { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .35); color: #fff; }
+.tc-alarm-dismiss:hover { background: rgba(255, 255, 255, .24); color: #fff; }
+.tc-alarm-books { display: flex; flex-wrap: wrap; gap: 10px; }
+.tc-alarm-book { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; margin: 0; padding: 8px; border-radius: 9px; background: rgba(0, 0, 0, .18); font-size: 12.5px; }
+.tc-alarm-book img, .tc-alarm-book > .icon { width: 56px; height: 56px; flex: none; border-radius: 6px; object-fit: cover; }
+.tc-alarm-book figcaption span { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; opacity: .8; }
+.tc-light a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* An order of several books: which of them this send takes (the print step). */
+.oc-books { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
+.oc-books li { display: flex; align-items: center; gap: 8px; }
+.oc-books li.is-ready { color: var(--text-2); }
+.oc-books li.is-ready svg { color: var(--green); }
+.spread-view .half.tc-error, .structure-cover.tc-error { outline: 2px solid var(--red); outline-offset: -2px; }
+.spread-view .half.tc-warn, .structure-cover.tc-warn { outline: 2px solid var(--amber); outline-offset: -2px; }
+/* minmax(0, …): a plain 1fr would let the wide page strip stretch the whole column */
+@media (max-width: 1100px) {
+  .ord-grid { grid-template-columns: minmax(0, 1fr); }
+  .ord-side { position: static; max-height: none; overflow: visible; }
+}
+
+/* ------------------------------------------------------------------ responsive */
+@media (max-width: 1280px) {
+  .creator-grid { grid-template-columns: 1fr; }
+}
