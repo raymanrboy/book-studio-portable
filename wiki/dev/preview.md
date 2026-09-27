@@ -4,6 +4,8 @@ type: dev
 updated: 2026-09-26
 code:
   - app/tools/dev_server.py
+  - app/tools/sample_data.py
+  - app/tools/sample_mockups.py
   - app/tools/sample_books.py
 ---
 # Interface preview
@@ -106,7 +108,10 @@ so. Changes to `app/web/*` are picked up by reloading the window (Ctrl+R).
 
 ## Where in the code
 
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()` (`BOOK_STUDIO_SAMPLE`), `claim()`, `MARK`, `seed_workshop()`, `seed_mockups()`, `pretend_photoshop()`, `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`, `PORT`
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()` (`BOOK_STUDIO_SAMPLE`), `claim()`, `MARK`, `PORT` (split by job on 2026-09-27: the made-up data is in the two files below)
+- [app/tools/sample_data.py](../../app/tools/sample_data.py) — `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`
+- [app/tools/sample_mockups.py](../../app/tools/sample_mockups.py) — `seed_mockups()`, `pretend_photoshop()`
+- [app/tools/sample_books.py](../../app/tools/sample_books.py) — `make_books()`, `seed_workshop()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (`--no-window` mode)
 
 ## Related

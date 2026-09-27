@@ -102,3 +102,12 @@ def make_books(folder: Path) -> Path:
 
     (folder / "42.new-book" / "agent").mkdir(parents=True)
     return folder
+
+
+def seed_workshop() -> None:
+    """The Workshop's made-up books (tools/sample_books.py) in the preview's own books folder, and an empty made-up
+    Downloads the generation mode watches — only when there are none yet (a book the preview changed stays)."""
+    from studio import core
+    if not core.WORKSHOP_BOOKS.is_dir() or not any(core.WORKSHOP_BOOKS.iterdir()):
+        make_books(core.WORKSHOP_BOOKS)
+    core.data_path("downloads").mkdir(parents=True, exist_ok=True)

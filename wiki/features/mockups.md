@@ -249,7 +249,7 @@ icon, «Мокапи: готово · 7 картинок», back in the listings
   progress rows, **and the script itself run by Node.js against a pretend Photoshop** (layer lookup with
   trailing spaces and nested same-named layers, hidden copies stay hidden, a missing layer, the stop mark,
   "save" taking the active document, the second script finding the open copies and closing them).
-- The window on the preview server (`dev_server.py --mockups`: made-up templates with pictures, a made-up
+- The window on the preview server (`dev_server.py --sample`, `sample_mockups.py`: made-up templates with pictures, a made-up
   Canva ZIP, a pretend Photoshop): the empty state, the ZIP button, clicks and drags into slots, the
   missing-book and missing-slot answers, the run's rows and the "Yes" drawing, the result with the pictures,
   «Зберегти відкриті» (all 10 files named right, the run folder gone), picks back for a re-dropped book,
