@@ -360,20 +360,7 @@ The owner wants a real program feature — a "check button", a strong one — no
 
 ## Infrastructure
 
-- **Automatic backup of the whole program to Google Drive** (the owner, 2026-09-25: "the whole program,
-  with all the goods, the sensitive data too — just encrypt the archive with a password"). Not built.
-  - *What:* the program folder with `app/data` (≈6.6 GB on 2026-09-22; the order archive 4 GB of it), the
-    keys included. The preview cache can be left out — it rebuilds itself.
-  - *How it could look:* a 7-Zip archive with AES-256 and hidden file names, on a schedule (e.g. weekly,
-    when the program starts), keeping the last few; to Drive through the Google Drive desktop app's folder
-    (simplest — no new keys) or through the Drive API.
-  - *Catches to settle with the owner:* **the vault is DPAPI-encrypted and opens only for this Windows
-    user** — on another PC `vault.json` from the backup won't open; the keys would have to go into the
-    archive in a readable form (inside the password archive) or be re-entered after a restore. The
-    password: typed each time, or kept in the vault for the schedule — either way he must keep it
-    himself, it can't be recovered. Drive's free 15 GB fit about two full copies.
-  - Agents still never read or copy the keys themselves ([security](../security.md)); this is the
-    program's own feature, built only on his command.
+- ~~Automatic backup of the whole program to Google Drive~~ — **built on 2026-09-27**: [features/backup.md](../features/backup.md).
 
 - Running tests automatically on GitHub (GitHub Actions) — possibly; the `gh` token already has
   `workflow` permission.

@@ -142,6 +142,10 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 ### Keys
 - The `Vault` store encrypts with Windows DPAPI (only works for this Windows user).
 - Keys never reach the interface: `status()` only returns "present/absent" and the last 4 characters.
+- **The backup** (since 2026-09-27, the owner's decision): every key goes, decrypted, into the backup archive on
+  his Google Drive (`readable()` → `Ключі (відкрито).json`, from memory, never on disk), and so does
+  `.secrets.txt` with the whole folder — the archive is AES-256 with hidden names under his password, which
+  lives in the vault. Agents still never read the keys or open that file ([backup](features/backup.md)).
 
 ### The Mockups (a utility since 2026-09-23, inside Book Studio since 2026-09-24)
 - The templates folder is **only read**: `copy_templates()` copies the six templates into the run's own
@@ -175,11 +179,16 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   anything is written (`_variant()`, the 2026-09-26 audit: «../..» wrote outside the book).
 - **A book's `agent/` is the agents'**: the Workshop only reads it, except the hero it catches (`canonical.png`, a
   variant's `hero.png`). The agents write only into `agent/` and never into `book.json`.
-- The clipboard is filled only on the owner's press («Генерувати», «Далі»/F8, the copy buttons, «Відкрити агента»);
-  F8 is taken from Windows only while a several-part paste goes on and given back after the last part.
+- The clipboard is filled only on the owner's press («Генерувати», «Далі»/F8, Ctrl+V in Chrome during a
+  several-part paste, the copy buttons, «Відкрити агента»); F8 is taken from Windows only while a several-part paste
+  goes on and given back after the last part.
+- **Ctrl+V is only looked at, never taken** (since 2026-09-27): during a several-part paste the keys' state (Ctrl, V)
+  is read every 20 ms and the window in front is checked to be Chrome (only its program's file name is read); no
+  key is caught, blocked or written down, nothing else is looked at, and the watching stops after the last part
+  (`clipboard.PasteWatch`, `Hotkey`).
 - No internet and no keys: Antigravity is only started on `pipeline/`; the book agents' rules never reach Book
   Studio's code and data (outside the folder Antigravity opens).
-- **The sandbox** (`core.SANDBOX` — the preview server and the tests): the clipboard goes into files, F8 isn't taken,
+- **The sandbox** (`core.SANDBOX` — the preview server and the tests): the clipboard goes into files, F8 and the keys aren't touched,
   no window opens, Downloads, the books and the Recycle Bin are made-up folders in the data folder.
 - Tests: `TheSandbox`, `OnlyInsideTheBook`, `CatchingDownloads` ([test_workshop.py](../app/tests/test_workshop.py)).
 
@@ -199,7 +208,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - [app/studio/printify.py](../app/studio/printify.py) — `_check()`, `call()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `create_product()`
 - [app/studio/creator/printify_send.py](../app/studio/creator/printify_send.py) — `create_printify_draft()`, `_master_fingerprint()`
 - [app/studio/gelato.py](../app/studio/gelato.py) — `_allowed()`, `create_draft_order()`
-- [app/studio/vault.py](../app/studio/vault.py) — `protect()`, `unprotect()`, `SECRET_NAMES`
+- [app/studio/vault.py](../app/studio/vault.py) — `protect()`, `unprotect()`, `SECRET_NAMES`, `readable()`
 - [app/studio/server.py](../app/studio/server.py) — `SESSION_TOKEN`, `_host_ok()`, `route()`, `Request.int_param()`
 - [app/studio/workshop/pictures.py](../app/studio/workshop/pictures.py) — `_variant()`, `variant_dir()`
 - [app/studio/tunnel.py](../app/studio/tunnel.py) — `TunnelRegistry`, `cleanup_stale()`, `_ends_with_us()`

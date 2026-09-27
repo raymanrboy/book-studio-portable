@@ -9,6 +9,20 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-27 — Every spread gets the hero with its prompt; Ctrl+V in Chrome turns to the next part; a cover per variant
+
+- **The owner:** in the one Gemini chat he attaches the reference to **every** prompt — so a spread of a book with a
+  hero gives the hero, then the prompt; **pages 1 and 30 — the prompt alone**. He picked "two pastes in a row"
+  (Ctrl+V → Ctrl+V → Enter) over Ctrl+V → F8 → Ctrl+V. Gemini is open in **Chrome**.
+- **How:** the keys' state is **looked at** (every 20 ms, only while a several-part paste goes on), not caught with a
+  keyboard hook: nothing is taken from Windows, typing elsewhere can't be slowed, nothing is recorded. Only a Ctrl+V
+  while Chrome is in front counts — Book Studio's own window (Edge) and other programs are left out. The next part
+  goes in 0.35 s after V is let go (Chrome has read the clipboard by then). One clipboard with a picture and a text at
+  once was not used: the site takes one of the two, which one isn't sure. «Далі» and F8 stay for a miss.
+- **A cover per hero variant** (the owner): no two stages, one frame for the expanded (finished wide) cover at once,
+  no prompt — brought to the printer's template like the base cover.
+- Details — [features/workshop.md](features/workshop.md#the-generation-mode).
+
 ## 2026-09-27 — One place for a Workshop book's pages: its folder
 
 - **Decision (the owner):** "the Workshop and the library keep the same files — one place, no doubles". A book
@@ -24,6 +38,17 @@ code: []
 - **Nothing is lost:** deleting the Workshop book first copies its pages into the library book; the one book passed on
   earlier (31 of 31 pages the same byte for byte) moves onto the Workshop's pages at start-up, its copies (≈0.3 GB)
   to the Recycle Bin; a book whose copy differs keeps its own.
+
+## 2026-09-27 — A backup of the whole program to Google Drive, the keys inside
+
+- **Decision (the owner):** Google Drive for desktop on this PC (he has 5 TB); every 2–3 days (made: 3, on launch)
+  **the whole program folder, everything**; the mockup templates too — backed up where they are, not copied into
+  the program (two copies would drift); a password on the archive; **the keys inside, readable** ("everything is
+  under a password") — so a restore on another PC needs no re-entering (the vault opens only for this Windows
+  user). `.secrets.txt` goes along with the folder, by the same decision.
+- **How:** 7-Zip (`app/bin/7za.exe`), AES-256 with hidden names, stored uncompressed; the Drive app uploads it;
+  the last 7 copies and one a month for a year stay. Left out only what can't or needn't be read: Edge's profile,
+  the temp folders. Drive's cache moved to drive D (he keeps C clean). [features/backup.md](features/backup.md).
 
 ## 2026-09-27 — Profit from 1 October only; the Gelato account's currencies; a smooth switch to his own Gelato
 

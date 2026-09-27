@@ -98,9 +98,10 @@ export async function act(btn, fn, ok) {
 
 /** «Генерувати»: the row's first thing goes into the clipboard, the Workshop waits for its picture in Downloads. */
 export const startGen = (btn, body) => act(btn, () => post('/api/workshop/gen/start', body),
-  (s) => (s.active ? `${s.active.label}: у буфері ${s.active.items[0]} — вставте в Gemini` : null));
+  (s) => (!s.active ? null : s.active.items.length ? `${s.active.label}: у буфері ${s.active.items[0]} — вставте в Gemini`
+    : `${s.active.label}: чекаю картинку з «Завантажень»`));
 
-/** The bar's buttons: «Далі» (F8), the same thing into the clipboard again, «Стоп». */
+/** The bar's buttons: «Далі» (Ctrl+V in Chrome and F8 do it too), the same thing into the clipboard again, «Стоп». */
 export const genAction = (btn, what) => act(btn, () => post(`/api/workshop/gen/${what}`, {}),
   what === 'again' ? 'Знову в буфері' : null);
 
@@ -123,16 +124,19 @@ export function genBar(book) {
       <button class="btn btn-sm btn-ghost" data-gen="stop">Стоп</button></div>`;
   }
   const more = a.item < a.items.length - 1;
-  const hint = more ? `вставте в чат, далі — ${a.items[a.item + 1]}: «Далі»${gen.f8 ? ' або F8 у будь-якому вікні' : ''}`
+  // Ctrl+V in Chrome puts the next part in by itself (27.09.2026); «Далі» and F8 stay for another browser or a miss.
+  const hint = more ? (gen.paste ? `вставте в Chrome (Ctrl+V) — одразу за ним у буфер ляже ${a.items[a.item + 1]}`
+    : `вставте в чат, далі — ${a.items[a.item + 1]}: «Далі»${gen.f8 ? ' або F8 у будь-якому вікні' : ''}`)
     : `вставте в ${a.items.length > 1 ? 'чат' : 'Gemini'} і завантажте картинку — вона сама стане на місце`;
+  const clip = a.items.length ? html`У буфері: <b>${a.items[a.item]}</b> — ${hint}` : 'Завантажте картинку — вона сама стане на місце';
   return html`<div class="ws-genbar"><span class="ws-pulse"></span>
     <div class="ws-gb-main">
       <div class="ws-gb-title"><b>Чекаю картинку</b> · ${a.label}${a.of > 1 ? html` <span class="ws-gb-count num">${a.step} з ${a.of}</span>` : ''}</div>
-      <div class="ws-gb-sub">${a.items.length > 1 ? html`<span class="ws-gb-parts">${a.items.map((label, i) => html`<i class="${i < a.item ? 'done' : i === a.item ? 'now' : ''}" data-tip="${label}"></i>`)}</span>` : ''}У буфері: <b>${a.items[a.item]}</b> — ${hint}</div>
+      <div class="ws-gb-sub">${a.items.length > 1 ? html`<span class="ws-gb-parts">${a.items.map((label, i) => html`<i class="${i < a.item ? 'done' : i === a.item ? 'now' : ''}" data-tip="${label}"></i>`)}</span>` : ''}${clip}</div>
       ${gen.error ? html`<div class="ws-gb-err">${gen.error}</div>` : ''}
     </div>
-    ${more ? html`<button class="btn btn-primary btn-sm" data-gen="next" data-kbd="${gen.f8 ? 'F8' : ''}" data-tip="Наступне — у буфер">Далі</button>` : ''}
-    ${ib('copy', 'Покласти в буфер ще раз (якщо ви щось скопіювали між тим)', 'data-gen="again"')}
+    ${more ? html`<button class="btn ${gen.paste ? '' : 'btn-primary'} btn-sm" data-gen="next" data-kbd="${gen.f8 ? 'F8' : ''}" data-tip="${gen.paste ? 'Наступне — у буфер (якщо Ctrl+V не спрацював)' : 'Наступне — у буфер'}">Далі</button>` : ''}
+    ${a.items.length ? ib('copy', 'Покласти в буфер ще раз (якщо ви щось скопіювали між тим)', 'data-gen="again"') : ''}
     <button class="btn btn-sm btn-ghost" data-gen="stop" data-tip="Перестати чекати картинку">Стоп</button>
     ${a.of > 1 ? html`<div class="ws-gb-progress"><i style="transform:scaleX(${(a.step - 1) / a.of})"></i></div>` : ''}
   </div>`;

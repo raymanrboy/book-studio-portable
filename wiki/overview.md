@@ -36,6 +36,7 @@ on the Kyiv PC.
 | Order Creator | An unpublished book (and an On-hold order) in Printify, a draft order in Gelato | [features/order-creator.md](features/order-creator.md) |
 | Order archive | Files of books that went to print: proofing and reprints; live 14 days after "Sent" | [features/archive.md](features/archive.md) |
 | Settings | Service keys, the Etsy connection, the Printify template, the text check, the data folder | [features/settings.md](features/settings.md) |
+| Backup (since 2026-09-27) | Every 3 days the whole program folder and the mockup templates, with the keys, go to Google Drive as one password-protected archive | [features/backup.md](features/backup.md) |
 | Profit (hidden until 1 October) | An equivalent of the Etsy Profit Calculator: Etsy Net minus print cost | [features/profit.md](features/profit.md) |
 | **Two modes** (since 2026-09-24) | The brand icon switches between **Orders** (everything above, orange) and **Listings** (cyan: the Workshop and the Mockups below) | [features/modes.md](features/modes.md) |
 | Workshop (Listings) | Books in development, written by the book pipeline's agents in Antigravity (`pipeline/`): the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches the downloaded pictures; passed to the library with their Etsy listing | [features/workshop.md](features/workshop.md) |

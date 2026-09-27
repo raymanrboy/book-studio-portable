@@ -7,9 +7,12 @@ A caught picture is **moved** out of Downloads into the book's `originals/`, nam
 "it should live in the program"); nothing else in Downloads is touched. Only files that appear after the press count,
 only pictures (PNG, JPEG, WEBP), never a half-downloaded one.
 
-A row that needs several things pasted (the cover's margins: the picture with its white margins, then the outpaint
-prompt; a hero variant's spread) gives them one by one: the first goes into the clipboard at once, «Далі» in the
-window or F8 anywhere puts in the next. The cover's picture, once in, goes on to its margins by itself.
+A row that needs several things pasted (a spread of a book with a hero: the hero, then the prompt — the owner attaches
+the reference to every prompt, 2026-09-27; the cover's margins: the picture with its white margins, then the outpaint
+prompt; a hero variant's spread) gives them one by one: the first goes into the clipboard at once, and **Ctrl+V in
+Chrome** puts in the next by itself — «Далі» in the window or F8 anywhere do the same. The cover's picture, once in,
+goes on to its margins by itself. A hero variant's cover (one frame, the finished wide cover at once) has no prompt:
+the base cover and the variant's hero go into the clipboard, if they are there.
 """
 from __future__ import annotations
 
@@ -35,11 +38,20 @@ def downloads_folder() -> Path:
 
 # ---------------------------------------------------------------- what a row asks to paste
 
+def _hero(path: Path) -> Path | None:
+    """The book's hero: canonical.png, else another canonical picture the agent left (as the path strip finds it)."""
+    agent = path / books.AGENT
+    if (agent / "canonical.png").is_file():
+        return agent / "canonical.png"
+    return next((agent / n for n in sorted(books._names(agent))
+                 if n.lower().startswith("canonical") and n.lower().endswith(core.IMAGE_EXTS)), None)
+
+
 def _items(book_id: str, key: str, variant: str | None) -> tuple[str, list[dict]]:
     """The row's label and the things to paste, in order: {"kind": "text"|"image", "label", "text"|"path"|"spread"}."""
     detail = books.detail(book_id)
     path = books.book_path(book_id)
-    if key == "cover-wrap":
+    if key == "cover-wrap" and not variant:
         c = detail["cover"]
         if not (c["expanded"] and c["outpaint"]):
             raise ApiError("Спершу сама обкладинка — перший етап.")
@@ -50,12 +62,21 @@ def _items(book_id: str, key: str, variant: str | None) -> tuple[str, list[dict]
         v = next((x for x in detail["variants"] if x["name"] == variant), None)
         if not v:
             raise ApiError("Варіант не знайдено.", 404)
-        canonical = path / books.AGENT / "canonical.png"
+        canonical = _hero(path)
+        if key == "cover-wrap":
+            items = []
+            base = path / books.PICTURES / (detail["cover"]["final"] or "-")
+            if base.is_file():
+                items.append({"kind": "image", "label": "основна обкладинка", "path": str(base)})
+            hero = pictures.variant_dir(path, variant) / "hero.png"
+            if hero.is_file():
+                items.append({"kind": "image", "label": "герой варіанта", "path": str(hero)})
+            return f"{variant}: обкладинка", items
         if key == "hero":
             if not v["heroPrompt"]:
                 raise ApiError(f"У варіанті {variant} ще немає hero-prompt.md — його пише агент.")
             items = [{"kind": "text", "label": "промпт героя", "text": v["heroPrompt"]}]
-            if canonical.is_file():
+            if canonical:
                 items.insert(0, {"kind": "image", "label": "основний герой", "path": str(canonical)})
             return f"{variant}: герой", items
         r = next((x for x in v["rows"] if x["key"] == key), None)
@@ -80,7 +101,11 @@ def _items(book_id: str, key: str, variant: str | None) -> tuple[str, list[dict]
         raise ApiError("Невідомий рядок книги.")
     if not r["prompt"]:
         raise ApiError(f"{r['label']}: промпту ще немає — його пише агент.")
-    return r["label"], [{"kind": "text", "label": "промпт", "text": r["prompt"]}]
+    items = [{"kind": "text", "label": "промпт", "text": r["prompt"]}]
+    hero = _hero(path) if r["kind"] == "spread" else None  # pages 1 and 30 — the prompt alone (the owner, 2026-09-27)
+    if hero:
+        items.insert(0, {"kind": "image", "label": "герой", "path": str(hero)})
+    return r["label"], items
 
 
 # ---------------------------------------------------------------- the session
@@ -109,6 +134,7 @@ class Session:
                     "key": a["key"], "label": a["label"], "item": a["item"], "items": [i["label"] for i in a["items"]], "queue": len(a["queue"]),
                     "series": a["series"], "since": a["since"], "step": a["step"], "of": a["of"]},
                 "last": self.last, "error": self.error, "f8": self.hotkey.active, "f8Failed": self.hotkey.failed,
+                "paste": self.hotkey.paste,
             }
 
     def _bump(self):
@@ -169,6 +195,8 @@ class Session:
     # -- the clipboard
     def _put_item(self):
         a = self.active
+        if not a["items"]:  # nothing to paste (a variant's cover with neither the base cover nor the hero yet)
+            return
         item = a["items"][a["item"]]
         try:
             if item["kind"] == "text":
@@ -288,7 +316,7 @@ class Session:
 
 _session: Session | None = None
 _session_lock = threading.Lock()
-IDLE = {"version": 0, "active": None, "last": None, "error": "", "f8": False, "f8Failed": False}
+IDLE = {"version": 0, "active": None, "last": None, "error": "", "f8": False, "f8Failed": False, "paste": False}
 
 
 def session() -> Session:

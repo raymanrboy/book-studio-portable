@@ -296,7 +296,8 @@ def variant_names(path: Path) -> list[str]:
 
 def variants(path: Path) -> list[dict]:
     """agent/variants/<G2_brunette>/: hero-prompt.md (the canonical's edit), hero.png (caught by the Workshop),
-    2.json … 15.json — one swap prompt per spread. Their pages go to pictures/variants/<name>/."""
+    2.json … 15.json — one swap prompt per spread. Their pages go to pictures/variants/<name>/, and so does the
+    variant's own cover (Cover.png — one frame, the finished wide cover at once, no prompt; the owner, 2026-09-27)."""
     out = []
     marks = books.state(path).get("rows") or {}
     for name in variant_names(path):
@@ -316,7 +317,8 @@ def variants(path: Path) -> list[dict]:
         hero_file = next((f for f in ("hero-prompt.md", "hero-prompt.json") if f in files), None)
         out.append({"name": name, "hero": "hero.png" if "hero.png" in files else None,
                     "heroPrompt": first_prompt(books.read_text(folder / hero_file) or "") if hero_file else "",
-                    "rows": rows, "done": sum(1 for r in rows if r["pictures"])})
+                    "rows": rows, "done": sum(1 for r in rows if r["pictures"]),
+                    "cover": {"final": books.picture(pics, "Cover"), "marks": marks.get(f"{name}/cover-wrap", {})}})
     return out
 
 

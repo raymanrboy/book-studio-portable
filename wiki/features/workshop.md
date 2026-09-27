@@ -124,7 +124,12 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
 - **Hero variants** (Tier H, only when the agent made one): tabs «Основна · G2_brunette 3/14»; a variant's tab —
   its hero card (generate: the base `canonical.png`, «Далі», the edit prompt → `hero.png`) and its spreads (generate:
   the base spread as Gemini made it, un-mirrored, «Далі», the variant's hero, «Далі», the swap prompt → the pages
-  into `pictures/variants/<name>/`); «Генерувати варіант» for all of them.
+  into `pictures/variants/<name>/`); «Генерувати варіант» for all of them. **Every variant has its own cover**
+  (2026-09-27, the owner: "each variant has its own cover — no two stages, a place for the expanded one at once, no
+  prompt"): the last card of the tab, one frame for the finished wide cover — dropped, picked or caught from
+  Downloads, brought to the printer's template like the base cover's second stage (`fit_template()`, «обрізано під
+  шаблон» when it had to be cut) → `pictures/variants/<name>/Cover.png`. «Генерувати» there puts the base cover and
+  the variant's hero into the clipboard (what of them there is) and waits.
 - **The viewer**: a click on a page — every page of the book in order (a spread's two pages one after the other,
   the cover), T for the text, the "original" button opens the file in Windows.
 
@@ -165,9 +170,17 @@ nothing else in Downloads is touched.
   spreads 2–3 … 28–29, then pages 1 and 30 (`SERIES_ORDER`); after each catch **the next row's prompt is already in
   the clipboard**, and the page follows to the next row when the last one was on screen. When the queue is done,
   the taskbar button flashes with Windows' sound.
-- **A paste of several parts** (the cover's margins: the picture, then the prompt; a variant's spread: the base
-  spread, the variant's hero, the prompt) goes one by one — the first at once, the next by **«Далі» or F8
-  anywhere** (F8 is taken from Windows only while such a paste goes on, `Hotkey`).
+- **A spread of a book with a hero** (the agent's `canonical.png`) gives **the hero, then the prompt** — the owner
+  attaches the reference to every prompt in the one Gemini chat (2026-09-27). Pages 1 and 30 and a book without a
+  hero (Tier S) — the prompt alone. After each catch the next spread's hero is already in the clipboard.
+- **A paste of several parts** (that spread; the cover's margins: the picture, then the prompt; a variant's spread:
+  the base spread, the variant's hero, the prompt) goes one by one — the first at once, the next **by Ctrl+V in
+  Chrome itself**: the owner pastes, and a moment after V is let go the next part is in the clipboard — "two pastes
+  in a row" (2026-09-27; `PasteWatch`). Only a Ctrl+V while **Chrome** is the window in front counts (Book Studio's
+  own window is Edge); the keys' state is only looked at, every 20 ms and only while such a paste goes on — nothing
+  is caught or written down. **«Далі» or F8 anywhere** do the same (F8 is taken from Windows only while such a paste
+  goes on, `Hotkey`) — for a Ctrl+V that didn't count. The bar says «У буфері: герой — вставте в Chrome (Ctrl+V) —
+  одразу за ним у буфер ляже промпт».
 - The cover's picture, once caught (or dropped), goes on to wait for its margins by itself.
 - **The work is the server's**: it goes on while the window is behind Gemini or the owner is elsewhere in Book
   Studio — then a notice per caught picture, a dot on the rail (the brand icon in Orders, «Майстерня» in Listings)
@@ -219,10 +232,10 @@ book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and scre
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
 - [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
 - [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `place()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`
-- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session`, `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`
+- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session`, `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`
 - [app/studio/workshop/check.py](../../app/studio/workshop/check.py) — `run()`, `RULES`, `main()`
 - [app/studio/workshop/routes.py](../../app/studio/workshop/routes.py) — the routes ([api-routes](../architecture/api-routes.md))
-- [app/studio/clipboard.py](../../app/studio/clipboard.py) — `set_text()`, `set_image()`, `Hotkey`, `sandbox_file()`
+- [app/studio/clipboard.py](../../app/studio/clipboard.py) — `set_text()`, `set_image()`, `Hotkey`, `PasteWatch`, `BROWSERS`, `PASTE_SETTLE`, `sandbox_file()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `save_file()`, `to_recycle_bin()`, `attention()`
 - [app/studio/library.py](../../app/studio/library.py) — `create_book()`, `listing_of()`, `follow()`, `keep_pages()`, `take_listing_image()`, `PAGES_FROM_WORKSHOP`
 - [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()`, `SORTS`

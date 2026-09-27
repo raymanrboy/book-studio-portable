@@ -1,10 +1,10 @@
 // Settings: keys (encrypted with Windows DPAPI), Etsy connection, Printify Master, Gelato, the text check
-// by a local model (Ollama), data folder.
+// by a local model (Ollama), the backup to Google Drive, data folder.
 // Every block is collapsed to one line with its status; the rare technical values live one more
 // click away, behind the details toggle, so the page stays quiet. Theme lives only in the rail.
 import {
   api, post, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, dateTime, slide, menu, remembered,
-  remember,
+  remember, runJob, setProgress, bytes, relTime,
 } from '../lib.js';
 import { refreshInfo } from '../info.js';
 import { oauthFlow, pickMaster } from './settings-dialogs.js';
@@ -19,6 +19,9 @@ const OPEN_KEY = 'bs-settings-open';
 
 export async function mount(view, [section]) {
   let s;
+  let bk = null; // the backup: password set, where the copies go, the last one (backup.py)
+  let bkJob = null; // a copy being made: its step and percent
+  let bkPassword = false; // the password field open to change it
   let tc = null; // text check: on/off, model, whether Ollama answers (asked separately — never slows the page)
   const editing = new Set();
   const openCards = new Set(remembered(OPEN_KEY, []));
@@ -27,7 +30,8 @@ export async function mount(view, [section]) {
   const persistOpen = () => remember(OPEN_KEY, [...openCards]);
 
   async function load() {
-    s = await api('/api/settings');
+    [s, bk] = await Promise.all([api('/api/settings'), api('/api/backup')]);
+    if (!bk.passwordSet || (bk.error && !bk.jobId)) openCards.add('backup');
     // The text-check block is drawn at once from the settings; whether Ollama answers comes a moment later.
     if (!tc) tc = { ...s.textcheck, models: [], pending: true };
     // A block that needs the user's attention opens by itself.
@@ -211,6 +215,68 @@ export async function mount(view, [section]) {
     if (old && tc) old.outerHTML = String(textcheckCard());
   }
 
+  // Every 3 days on launch the whole program folder and the mockup templates go to Google Drive as one 7-Zip archive
+  // under the owner's password (backup.py). He sets the password; the rest runs by itself.
+  function backupCard() {
+    const failed = bk.error && (!bk.last || bk.error.at > bk.last.at);
+    const summary = bkJob ? 'Робиться копія…' : !bk.passwordSet ? 'Задайте пароль' : !bk.driveFound ? 'Google Диск не знайдено'
+      : failed ? 'Остання спроба не вдалася' : bk.last ? `Остання ${relTime(bk.last.at)} · ${bytes(bk.last.size)}` : 'Ще не робилася';
+    const ok = bk.passwordSet && bk.driveFound && !failed;
+    const editPw = bkPassword || !bk.passwordSet;
+    const canRun = bk.passwordSet && bk.driveFound && bk.sevenZip && !bkJob;
+    return card('backup', {
+      logo: ic('shield'), logoClass: 'int-ui', title: 'Резервна копія', summary,
+      mark: bkJob ? '' : stateMark(ok, ok ? 'Налаштовано' : summary),
+      body: html`<div class="stack">
+        <div class="field"><label class="field-label">Пароль архіву</label>
+          ${editPw ? html`<div class="secret-row"><input class="input mono" type="password" id="bk-pw" placeholder="Щонайменше 8 символів" autocomplete="new-password" spellcheck="false" aria-label="Пароль резервної копії">
+              ${ib('check', 'Зберегти пароль', 'data-act="bk-pw-save"', { cls: 'primary', kbd: 'Enter' })}
+              ${bk.passwordSet ? ib('x', 'Скасувати', 'data-act="bk-pw-cancel"') : ''}</div>`
+            : html`<div class="secret-row"><div class="secret-state">${ic('lock', 'icon-s')}<span>Збережено</span></div>
+              ${ib('edit', 'Змінити пароль', 'data-act="bk-pw-edit"')}</div>`}
+          <div class="field-hint">Запишіть його окремо: без пароля копію не відкрити, а відновити його неможливо.${bk.passwordSet ? ' Старі копії відкриваються тим паролем, з яким були зроблені.' : ''}</div></div>
+        <div class="set-row">${ic('folderOpen')}<code class="grow code-line">${bk.folder || 'Google Диск не знайдено — запустіть його й увійдіть'}</code>
+          ${bk.driveFound ? ib('folderOpen', 'Відкрити папку копій', 'data-act="bk-open"') : ''}</div>
+        <div class="set-row"><span class="grow">Уся папка програми й трафарети мокапів <span class="faint">· раз на <span class="num">${bk.everyDays}</span> дні, при запуску · ключі всередині · лишаються останні 7 і по одній на місяць за рік</span></span>
+          <button class="btn btn-sm" data-act="bk-run" ${canRun ? '' : 'disabled'}>${ic('upload', 'icon-s')}Зробити копію зараз</button></div>
+        ${bkJob ? html`<div><div class="row" style="margin-bottom:6px"><span id="bk-step" class="grow" style="font-size:13px">${bkJob.step}</span><span id="bk-pct" class="mono faint">${Math.round(bkJob.percent)}%</span></div>
+          <div class="progress"><i id="bk-bar" style="transform:scaleX(${bkJob.percent / 100})"></i></div></div>` : ''}
+        ${bk.last && !bkJob ? html`<div class="faint" style="font-size:12.5px">Остання копія: ${dateTime(bk.last.at)} · ${bytes(bk.last.size)} · <span class="mono">${bk.last.file}</span>${bk.last.skippedCount ? ` · пропущено файлів, відкритих іншими програмами: ${bk.last.skippedCount}` : ''}</div>` : ''}
+        ${failed && !bkJob ? html`<div class="notice notice-warn">${ic('alert')}<div>${dateTime(bk.error.at)}: ${bk.error.message}</div></div>` : ''}
+      </div>`,
+    });
+  }
+
+  function redrawBackup() {
+    const old = view.querySelector('#set-backup');
+    if (old && bk) old.outerHTML = String(backupCard());
+  }
+
+  /** Follows a copy being made (started here or on launch) and redraws the block when it ends. */
+  async function watchBackup(jobId) {
+    bkJob = { step: 'Підготовка…', percent: 0 };
+    redrawBackup();
+    let stopped = false;
+    try {
+      await runJob(Promise.resolve({ jobId }), (j) => {
+        bkJob = { step: j.step, percent: j.percent };
+        const bar = view.querySelector('#bk-bar');
+        if (!bar) return;
+        setProgress(bar, j.percent);
+        view.querySelector('#bk-step').textContent = j.step;
+        view.querySelector('#bk-pct').textContent = `${Math.round(j.percent)}%`;
+      }, 1000, () => view.isConnected);
+      toast('Резервну копію зроблено — Google Диск завантажить її сам', 'success', 5000);
+    } catch (err) {
+      stopped = !view.isConnected;
+      if (!stopped) toast(err.message, 'error', 8000);
+    }
+    bkJob = null;
+    if (stopped) return;
+    bk = await api('/api/backup').catch(() => bk);
+    redrawBackup();
+  }
+
   function dataCard() {
     return card('data', {
       logo: ic('database'), logoClass: 'int-ui', title: 'Дані програми',
@@ -229,6 +295,7 @@ export async function mount(view, [section]) {
         ${printifyCard()}
         ${gelatoCard()}
         ${textcheckCard()}
+        ${backupCard()}
         ${dataCard()}
       </div>`);
   }
@@ -335,6 +402,18 @@ export async function mount(view, [section]) {
         finally { b.disabled = false; }
       } else if (a === 'master-pick') pickMaster(s.printify, reload);
       else if (a === 'open-data') post('/api/app/open-data', {}).catch((er) => toast(er.message, 'error'));
+      else if (a === 'bk-pw-edit') { bkPassword = true; redrawBackup(); view.querySelector('#bk-pw')?.focus(); }
+      else if (a === 'bk-pw-cancel') { bkPassword = false; redrawBackup(); }
+      else if (a === 'bk-pw-save') {
+        const value = view.querySelector('#bk-pw').value;
+        try { bk = await post('/api/backup/password', { value }); bkPassword = false; toast('Пароль збережено — запишіть його окремо', 'success', 5000); redrawBackup(); }
+        catch (err) { toast(err.message, 'error'); }
+      } else if (a === 'bk-open') post('/api/backup/open', {}).catch((er) => toast(er.message, 'error'));
+      else if (a === 'bk-run') {
+        b.disabled = true;
+        try { const { jobId } = await post('/api/backup/run', {}); watchBackup(jobId); }
+        catch (err) { toast(err.message, 'error'); b.disabled = false; }
+      }
       else if (a === 'tc-model') {
         menu(b, tc.models.map((m) => ({ label: m, icon: 'sparkle', on: m === tc.model, onClick: () => saveTextcheck({ model: m }) })));
       } else if (a === 'tc-start') {
@@ -359,11 +438,16 @@ export async function mount(view, [section]) {
     on(view, 'change', '[data-tc-enabled]', (e, i) => saveTextcheck({ enabled: i.checked })),
     on(view, 'change', '[data-tc-prescan]', (e, i) => saveTextcheck({ prescan: i.checked })),
   ];
-  view.addEventListener('keydown', (e) => { if (e.target.id === 'etsy-key' && e.key === 'Enter') view.querySelector('[data-act="etsy-import"]')?.click(); });
+  view.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    if (e.target.id === 'etsy-key') view.querySelector('[data-act="etsy-import"]')?.click();
+    if (e.target.id === 'bk-pw') view.querySelector('[data-act="bk-pw-save"]')?.click();
+  });
 
   await load();
   render();
   loadTextcheck();
+  if (bk.jobId) watchBackup(bk.jobId); // a copy started on launch is still being made
   return {
     shown() {
       const target = section && view.querySelector(`#set-${section}`);

@@ -39,7 +39,8 @@ code:
    [order archive](../features/archive.md) check (`archive.refresh_quietly()`: books whose 14 days are
    up get deleted); it also runs again after every sync. Also in the background — preview cache cleanup
    (`images.prune_cache_quietly()`: unneeded after 21 days) and the mockup runs Photoshop no longer needs
-   (`mockups.clean_runs()`).
+   (`mockups.clean_runs()`). Two minutes later — a [backup](../features/backup.md) to Google Drive when the last
+   one is 3 days old (`backup.schedule()`).
 8. **Window**: Edge or Chrome with `--app=<address>`, its own profile `data/window-profile`, sized
    1480×940. Neither Edge nor Chrome present — opens the regular browser.
 
@@ -52,7 +53,7 @@ code:
   - the fallback browser with no process stays silent for 10 minutes.
 - The loop itself is `run_until_closed(proc, busy)`; `busy()` says what must finish first.
 - Before exiting, it waits for background jobs to finish (`jobs.any_running()` — a mockup run still copying or
-  watching Photoshop too; not the text check — it only reads) and for Gelato's temporary links
+  watching Photoshop too, a backup being packed; not the text check — it only reads) and for Gelato's temporary links
   (`tunnel.registry.active()`), then closes the links and the server, lets the mockups' demo book and the runs
   Photoshop can no longer have open go (`mockups.clear_books()`, `mockups.clean_runs()`) and empties its temp
   folder (`core.clear_own_temp()`). If the program is killed or crashes, `cloudflared.exe` disappears along with it too (a
@@ -107,6 +108,7 @@ Cyrillic shortcut name is saved under a Latin one and then renamed.
 - [app/studio/drops.py](../../app/studio/drops.py) — `clear_drops()`
 - [app/studio/sync.py](../../app/studio/sync.py) — `startup_sync()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `refresh_quietly()`
+- [app/studio/backup.py](../../app/studio/backup.py) — `schedule()`, `start_if_due()`
 - [app/studio/images.py](../../app/studio/images.py) — `prune_cache_quietly()`, `prune_cache()`
 - [app/web/js/app.js](../../app/web/js/app.js) — `heartbeat()`, `boot()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `markOffline()`

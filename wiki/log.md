@@ -3,6 +3,19 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] update | The Workshop: the hero with every spread's prompt, Ctrl+V in Chrome turns to the next part, a cover per variant
+
+- A spread of a book with a hero puts the hero, then the prompt into the clipboard (pages 1 and 30 — the prompt
+  alone); **Ctrl+V in Chrome** puts the next part in by itself (`clipboard.PasteWatch`, the keys only looked at);
+  «Далі»/F8 stay. The bar and the buttons' tips say so.
+- Every hero variant's tab ends with its own cover: one frame for the finished wide cover, brought to the template →
+  `pictures/variants/<name>/Cover.png`; «Генерувати» there — the base cover and the variant's hero into the clipboard.
+- Code: `clipboard.py`, `workshop/generate.py` (`_items()`, `_hero()`), `pictures.py` (`place()`, `remove()`),
+  `rows.py` (`variants()` → `cover`), `workshop-book.js` (`variantCover()`), `workshop-rows.js`, `workshop-live.js`.
+- Checked: all 380 tests (4 new); in the preview — the variant's cover caught from Downloads and fitted, a spread's
+  hero then prompt in the clipboard, the bar's words. **Not checked live:** Ctrl+V in the real Chrome.
+- Pages: features/workshop.md, security.md, decisions.md, dev/testing.md.
+
 ## [2026-09-27] update | One place for a Workshop book's pages
 
 - A book passed on from the Workshop takes its cover and pages from the Workshop's folder — no copy in the library
@@ -19,6 +32,17 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   new way, a passed book deleted in the Workshop — the library kept its cover and all its pages.
 - Not checked: the owner's real book (it moves at his next start of the program).
 - Pages: features (library, workshop), architecture/data, decisions, dev/testing.
+
+## [2026-09-27] update | Backup of the whole program to Google Drive
+
+- Google Drive for desktop installed (the owner signed in; its cache on `D:\Google Drive Cache`); 7-Zip 26.03's
+  `7za.exe` into `app/bin` (the official release, hash checked).
+- New `backup.py`: every 3 days on launch — the whole program folder and the mockup templates, with the keys
+  readable inside, in one 7-Zip archive under the owner's password to `My Drive\Book Studio — резервні копії`;
+  the last 7 and one a month stay. Settings → «Резервна копія». `restore_keys.py` for a restore on another PC.
+- Tests: `test_backup.py` (rules and a real 7-Zip run on a made-up folder).
+- Pages: features/backup (new), settings, data, security, runtime, api-routes, code-map, testing, overview,
+  index, decisions, plans/roadmap.
 
 ## [2026-09-27] plan | His own Gelato account: a smooth switch
 

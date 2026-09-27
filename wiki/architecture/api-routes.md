@@ -44,6 +44,15 @@ code:
 | POST | `/api/app/open-url` | token | `_open_url` | lib.js `openExternal` (Etsy is blocked, except for sign-in) |
 | POST | `/api/app/pick-folder` | token | `_pick_folder` | book.js, library.js |
 
+## Backup — [backup.py](../../app/studio/backup.py)
+
+| Method | Pattern | Access | Function | Who calls it |
+|---|---|---|---|---|
+| GET | `/api/backup` | token | `_status` | settings.js (password set, the Drive folder, the last copy or error, a running job) |
+| POST | `/api/backup/password` | token | `_password` | settings.js (the archive's password into the vault) |
+| POST | `/api/backup/run` | token | `_run_now` | settings.js «Зробити копію зараз» (a background job) |
+| POST | `/api/backup/open` | token | `_open` | settings.js (the copies' folder in Explorer) |
+
 ## Orders — [orders.py](../../app/studio/orders.py)
 
 | Method | Pattern | Access | Function | Who calls it |

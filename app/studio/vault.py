@@ -72,7 +72,8 @@ def unprotect_powershell_securestring(text: str) -> str:
     return unprotect(raw).decode("utf-16-le")
 
 
-SECRET_NAMES = ("etsy_keystring", "etsy_shared_secret", "printify_token", "gelato_api_key", "etsy_tokens")
+SECRET_NAMES = ("etsy_keystring", "etsy_shared_secret", "printify_token", "gelato_api_key", "etsy_tokens",
+                "backup_password")
 
 
 class Vault:
@@ -127,6 +128,12 @@ class Vault:
 
     def set_json(self, name: str, value: Any) -> None:
         self.set(name, json.dumps(value) if value is not None else None)
+
+    def readable(self) -> dict[str, str]:
+        """Every stored secret decrypted — only for the owner's password-protected backup (backup.py, 27.09.2026:
+        the vault opens for this Windows user alone, and a restore on another computer needs the keys)."""
+        with self._lock:
+            return {name: value for name in self._load() if (value := self.get(name))}
 
     def status(self, name: str) -> dict:
         value = self.get(name)

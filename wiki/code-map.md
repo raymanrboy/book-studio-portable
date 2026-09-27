@@ -18,6 +18,7 @@ code:
 |---|---|---|
 | [app/Book Studio.pyw](<../app/Book Studio.pyw>) | A double-click: checks packages, starts the server with no console, shows a launch error | `_message()` |
 | [app/Запуск з консоллю.bat](<../app/Запуск з консоллю.bat>) | The same, with a console — to see the error | — |
+| [app/tools/restore_keys.py](../app/tools/restore_keys.py) | After a restore on another PC: the keys from the backup's JSON back into the vault | `main()` |
 | [app/tools/make_shortcut.py](../app/tools/make_shortcut.py) | Creates the "Book Studio" shortcut on the desktop (the «Мокапи» one until 2026-09-24) | `main()`, `SHORTCUTS` |
 | [app/tools/textcheck_replay.py](../app/tools/textcheck_replay.py) | The text-check journal through today's rules: what the card would show for every past check, next to what it showed, and the owner's "Not an error" marks — for calibrating what the check shows | `replay()`, `rebuild()`, `main()` |
 | [app/tools/wiki_check.py](../app/tools/wiki_check.py) | Checks the wiki against the code (including stale numbers in the text) | `check()`, `stale_numbers()`, `coverage()`, `changed_files()` |
@@ -36,6 +37,7 @@ code:
 | [jobs.py](../app/studio/jobs.py) | Background jobs with progress and partial findings | `Jobs`, `Job`, `Job.progress()`, `Job.share()`, `UserError`, `JobError` |
 | [httpc.py](../app/studio/httpc.py) | HTTPS client: retries without duplicates, one shared read of printer errors, call logs, incomplete lists | `request()`, `request_json()`, `human()`, `audit_log()`, `HttpError`, `Listing` |
 | [vault.py](../app/studio/vault.py) | Keys under Windows DPAPI | `Vault`, `protect()`, `unprotect()`, `unprotect_powershell_securestring()` |
+| [backup.py](../app/studio/backup.py) | The backup to Google Drive: the whole program and the templates in a 7-Zip archive with a password, every 3 days | `make()`, `start_if_due()`, `to_remove()`, `drive_root()`, `status()` |
 | [desktop.py](../app/studio/desktop.py) | The program window, folder/file picker, Explorer | `open_app_window()`, `pick_folder()`, `pick_file()`, `open_in_explorer()`, `find_browser()` |
 | [settings_api.py](../app/studio/settings_api.py) | Settings, keys, opening links, import from old programs | `integrations()`, `_open_url()`, `_legacy_values()`, `legacy_sources()` |
 | [etsy.py](../app/studio/etsy.py) | Etsy API v3: OAuth, session, listings, receipts | `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `fetch_listing()`, `fetch_all_receipts()`, `decode_session_key()` |

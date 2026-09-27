@@ -66,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     core.own_temp()  # the window, the dialogs and cloudflared keep their temp files on drive D, not C
 
     # Register all API routes.
-    from . import archive, creator, drops, etsy, gelato, images, library, library_files, mockups, orders, printify, profit, sendlog, settings_api, sync, textcheck, tunnel, workshop  # noqa: F401
+    from . import archive, backup, creator, drops, etsy, gelato, images, library, library_files, mockups, orders, printify, profit, sendlog, settings_api, sync, textcheck, tunnel, workshop  # noqa: F401
 
     tunnel.cleanup_stale()
     drops.clear_drops()
@@ -81,6 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     # A Workshop book passed on before 27.09.2026 kept a copy of its pages in the library: it takes them from the
     # Workshop instead, its copies to the Recycle Bin (once; a copy that differs keeps its book as it is).
     threading.Thread(target=library.link_workshop_books, daemon=True).start()
+    backup.schedule()  # a copy to Google Drive when the last one is 3 days old (the window waits for it on close)
     url = f"{server.base_url()}/"
     if args.no_window:
         print(f"Book Studio: {url}", flush=True)

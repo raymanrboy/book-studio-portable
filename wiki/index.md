@@ -32,6 +32,8 @@ code: []
 - [Order archive](features/archive.md) — files of books that went to print (14 days after "Sent"), and
   reprints.
 - [Profit](features/profit.md) — hidden until 1 October.
+- [Backup](features/backup.md) — every 3 days the whole program and the mockup templates go to Google Drive as
+  one 7-Zip archive under the owner's password.
 - [Two modes](features/modes.md) — Orders and Listings: the brand icon switches, each mode its rail and ink
   (orange / cyan).
 - [Workshop](features/workshop.md) — the Listings mode: books in development, written by the book pipeline's
@@ -60,7 +62,7 @@ code: []
 
 - [Launch and shutdown](architecture/runtime.md)
 - [Server](architecture/server.md) — routes, background jobs, errors, settings.
-- [Server routes](architecture/api-routes.md) — all 128, with who calls them.
+- [Server routes](architecture/api-routes.md) — all 132, with who calls them.
 - [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
 - [Data](architecture/data.md) — what's in `app/data`.
 

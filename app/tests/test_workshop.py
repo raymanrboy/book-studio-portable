@@ -587,6 +587,67 @@ class CatchingDownloads(Base):
         v = books.detail(H)["variants"][0]
         self.assertEqual((v["done"], len(v["rows"])), (1, 2))
 
+    def test_a_spread_of_a_book_with_a_hero_gives_the_hero_then_the_prompt(self):
+        """The owner attaches the reference to every prompt (27.09.2026): Ctrl+V the hero, Ctrl+V the prompt. Pages 1
+        and 30 — the prompt alone; a book without a hero (Tier S) — the prompt alone, as before."""
+        agent = self.dir / H / "agent"
+        (agent / "spread-prompts-json.md").write_text(fenced([PROMPT] * 14), encoding="utf-8")
+        (agent / "endpage-prompts-json.md").write_text(fenced([PROMPT] * 2), encoding="utf-8")
+        st = self.s.start(H, "spread2")
+        self.assertEqual(st["active"]["items"], ["герой", "промпт"])
+        with Image.open(core.data_path("clipboard", "clipboard.png")) as im:       # the hero first
+            self.assertEqual(im.size, (300, 400))
+        self.assertTrue(st["paste"])                   # Ctrl+V in Chrome puts the prompt in by itself
+        self.s.next_item()                             # (what Ctrl+V, F8 and «Далі» call)
+        self.assertIn('"aspect_ratio": "2:1"', self.clip())
+        self.assertFalse(self.s.status()["paste"])     # the last part: nothing is watched any more
+        self.assertEqual(self.s.start(H, "page1")["active"]["items"], ["промпт"])
+        self.assertEqual(self.s.start(S, "spread6")["active"]["items"], ["промпт"])
+
+    def test_a_variants_cover_is_one_frame_the_wide_cover_at_once(self):
+        """The owner, 27.09.2026: every variant has its own cover — no two stages, a place for the finished wide one
+        at once, no prompt."""
+        st = self.s.start(H, "cover-wrap", "G2_brunette")
+        self.assertEqual(st["active"]["items"], [])     # no base cover and no variant hero yet: only waiting
+        self.assertIsNone(self.clip())                   # the owner's clipboard left alone
+        spread_png(self.downloads / "cover-g2.png", (2160, 1160))
+        self.look()
+        self.assertIsNone(self.s.status()["active"])
+        final = self.dir / H / "pictures" / "variants" / "G2_brunette" / "Cover.png"
+        with Image.open(final) as im:
+            self.assertEqual(im.size, tuple(rows.TEMPLATE["px"]))  # brought to the printer's template
+        self.assertFalse((self.dir / H / "pictures" / "Cover.png").exists())  # the base cover untouched
+        self.assertEqual(books.detail(H)["variants"][0]["cover"]["final"], "Cover.png")
+        with self.assertRaises(ApiError):
+            pictures.place(H, "cover", spread_png(self.tmp / "c.png"), "c.png", "G2_brunette")  # no first stage
+        pictures.place(H, "cover-wrap", spread_png(self.tmp / "wrap.png", (2000, 1000)), "wrap.png")  # the base's own
+        pictures.remove(H, "cover-wrap", "G2_brunette")
+        self.assertFalse(final.exists())
+        self.assertTrue((self.dir / H / "pictures" / "Cover.png").exists())  # removing the variant's leaves the base
+        pictures.place(H, "hero", spread_png(self.tmp / "h.png", (600, 800)), "h.png", "G2_brunette")
+        st = self.s.start(H, "cover-wrap", "G2_brunette")
+        self.assertEqual(st["active"]["items"], ["основна обкладинка", "герой варіанта"])
+
+
+class CtrlVInTheBrowser(unittest.TestCase):
+    """Ctrl+V in Chrome puts the next part in — a moment after V is let go; nothing else counts."""
+
+    def play(self, presses):
+        from studio.clipboard import PasteWatch
+        w, fired = PasteWatch(settle=0.25), []
+        for i, (ctrl, v, browser) in enumerate(presses):  # a look every 0.1 s
+            if w.step(ctrl, v, browser, i / 10):
+                fired.append(i / 10)
+        return fired
+
+    def test_ctrl_v_in_the_browser_counts_once_after_v_is_let_go(self):
+        up, held = (True, False, True), (True, True, True)
+        self.assertEqual(self.play([up, held, held, up, up, up, up, up, up]), [0.6])
+
+    def test_v_alone_or_in_another_program_doesnt_count(self):
+        self.assertEqual(self.play([(False, False, True), (False, True, True), (False, False, True)] + [(False, False, True)] * 5), [])
+        self.assertEqual(self.play([(True, False, False), (True, True, False), (True, False, False)] + [(True, False, False)] * 5), [])
+
 
 class PassingToTheLibrary(Base):
     def wait(self, started: dict) -> dict:

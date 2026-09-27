@@ -169,6 +169,8 @@ def place(book_id: str, key: str, source: Path, name: str, variant: str | None =
     variant = _variant(book, variant)
     if key not in ("hero", "cover-wrap"):
         row(key)
+    if variant and key == "cover":
+        raise ApiError("У варіанта одна обкладинка — одразу розширена (з полями).")
     im = open_picture(source, name)  # only a real picture goes anywhere, and nothing is moved before that
     size = list(im.size)
     stamp = {"from": Path(name).name[:160], "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "source": size}
@@ -185,13 +187,14 @@ def place(book_id: str, key: str, source: Path, name: str, variant: str | None =
             _retire(book, final)  # a new picture: the old cover with margins no longer fits it
         build_expanded(book, im)
         return {"key": key, "label": "Обкладинка", "note": "Обкладинка на місці — додано поля, далі аутпейнт"}
-    if key == "cover-wrap":
+    if key == "cover-wrap":  # the base cover's second stage, or a variant's one cover
         final, cut = fit_template(im)
-        _save(book, final, _pictures_dir(book, None) / "Cover.png")
-        _mark(book, None, "cover-wrap", {**stamp, "skipped": False, "cut": cut})
+        _save(book, final, _pictures_dir(book, variant) / "Cover.png")
+        _mark(book, variant, "cover-wrap", {**stamp, "cut": cut, **({} if variant else {"skipped": False})})
         w, h = TEMPLATE["px"]
         return {"key": key, "label": "Обкладинка",
-                "note": f"Обкладинка з полями — готова: {w}×{h}, 300 dpi, у папці сторінок"}
+                "note": (f"Обкладинка {variant}" if variant else "Обкладинка з полями")
+                + f" — готова: {w}×{h}, 300 dpi" + ("" if variant else ", у папці сторінок")}
     r = row(key)
     folder = _pictures_dir(book, variant)
     if r["kind"] == "single":
@@ -299,7 +302,13 @@ def remove(book_id: str, key: str, variant: str | None = None) -> dict:
     book = books.book_path(book_id)
     variant = _variant(book, variant)
     originals = book / books.ORIGINALS / ("variants/" + variant if variant else "")
-    if key in ("cover", "cover-wrap"):
+    if variant and key == "cover":
+        raise ApiError("У варіанта одна обкладинка — одразу розширена (з полями).")
+    if variant and key == "cover-wrap":  # a variant's one cover
+        targets = [_pictures_dir(book, variant) / "Cover.png"] + [
+            originals / n for n in books._names(originals) if Path(n).stem == "cover-wrap"]
+        _mark(book, variant, "cover-wrap", None)
+    elif key in ("cover", "cover-wrap"):
         targets = [_pictures_dir(book, None) / "Cover.png"]
         stems = ("cover-art", "cover-wrap") if key == "cover" else ("cover-wrap",)
         if key == "cover":

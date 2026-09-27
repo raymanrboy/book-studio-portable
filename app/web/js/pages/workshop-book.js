@@ -283,7 +283,7 @@ export async function mount(view, [rawId]) {
           <span class="spacer"></span>
           ${c.final ? '' : html`<button class="btn btn-sm btn-ghost" data-act="no-margins" data-tip="Взяти обкладинку як є, без полів — вона стане Cover.png">Без полів</button>`}
           ${w2 ? waitChip('чекаю обкладинку з полями')
-            : html`<button class="btn btn-sm ${c.final ? '' : 'btn-primary'}" data-act="gen" data-key="cover-wrap" data-variant="" data-tip="У буфер: обкладинка з полями, потім (Далі / F8) промпт аутпейнту">${ic(c.final ? 'regenerate' : 'generate')}${c.final ? 'Ще раз' : 'Генерувати поля'}</button>`}
+            : html`<button class="btn btn-sm ${c.final ? '' : 'btn-primary'}" data-act="gen" data-key="cover-wrap" data-variant="" data-tip="У буфер: обкладинка з полями, потім промпт аутпейнту — Ctrl+V у Chrome сам перемикає">${ic(c.final ? 'regenerate' : 'generate')}${c.final ? 'Ще раз' : 'Генерувати поля'}</button>`}
         </div>
         <div class="ws-drop" data-drop="cover-wrap" data-variant="">
           <div class="ws-art ws-wide ${c.final ? '' : 'margins'}"${ratio(c.final && !c.skipped ? tpx : c.final ? c.artMarks.source : [cw, ch])}>${shown}${lines}
@@ -319,6 +319,31 @@ export async function mount(view, [rawId]) {
       </div></section>`;
   }
 
+  /** A variant's own cover (the owner, 27.09.2026): one frame, the finished wide cover at once — no stages, no
+   *  prompt; «Генерувати» puts the base cover and the variant's hero in the clipboard and waits for the picture. */
+  function variantCover(v) {
+    const c = v.cover || {};
+    const waiting = waitingFor(id, 'cover-wrap', v.name);
+    const tpx = b.cover.template.px;
+    const act = (k) => `data-key="cover-wrap" data-variant="${v.name}" ${k}`;
+    const art = c.final
+      ? html`<div class="ws-art ws-wide" style="aspect-ratio:${tpx[0]} / ${tpx[1]}">
+          <img data-fade alt="Обкладинка ${v.name}" src="${pic('pictures', c.final, 2600, v.name)}">
+          ${saveBtn('pictures', c.final, v.name, `Зберегти обкладинку ${v.name} як…`)}
+          ${c.marks?.cut ? html`<div class="ws-marks"><span class="chip ws-mark">обрізано під шаблон</span></div>` : ''}
+          <div class="img-actions">${ib('upload', 'Замінити файлом', act('data-act="pick"'), { cls: 'sm' })}${ib('trash', 'Прибрати обкладинку варіанта', act('data-act="remove"'), { cls: 'sm danger' })}</div></div>`
+      : html`<button type="button" class="ws-ph" data-act="pick" ${raw(act(''))}>
+          <span class="ws-half">задня</span><span class="ws-half">передня</span>
+          <span class="ws-ph-text"><span class="drop-ico">${ic('upload')}</span><b>Перетягніть обкладинку ${v.name}</b><span>одразу розширену, з полями — або клацніть, щоб обрати файл</span></span></button>`;
+    const drop = html`<div class="ws-drop" data-drop="cover-wrap" data-variant="${v.name}">${art}${busyCover('cover-wrap')}${waiting ? waitCover('Чекаю обкладинку з «Завантажень»…') : ''}</div>`;
+    return html`<section class="ws-row ws-cover ${waiting ? 'waiting' : ''}" id="row-cover">
+      <div class="ws-row-head"><span class="ws-row-label">Обкладинка · ${v.name}</span><span class="ws-row-act">
+        ${waiting ? waitChip('чекаю обкладинку')
+          : html`<button class="btn btn-sm ${c.final ? '' : 'btn-primary'}" data-act="gen" data-key="cover-wrap" data-variant="${v.name}" data-tip="У буфер: основна обкладинка і герой варіанта (що є); Майстерня чекає обкладинку з «Завантажень» — її зведе до шаблону друкарні">${ic(c.final ? 'regenerate' : 'generate')}${c.final ? 'Ще раз' : 'Генерувати'}</button>`}</span></div>
+      ${c.final ? drop : html`<div class="ws-frame">${drop}</div>`}
+    </section>`;
+  }
+
   // ---------------------------------------------------------------- painting
   function paintRows() {
     const v = mem.variant ? b.variants.find((x) => x.name === mem.variant) : null;
@@ -343,7 +368,8 @@ export async function mount(view, [rawId]) {
     patch($('#ws-notes'), !v && b.notes.length ? [['notes', html`<div class="notice notice-warn">${ic('alert')}<div>${raw(b.notes.map((n) => html`${n}`).join('<br>'))}</div></div>`]] : []);
     const cards = v
       ? [[`${v.name}|hero`, variantHero(v)], ...(v.rows.length ? v.rows.map((r) => [`${v.name}|${r.key}`, rowCard(r, v.name)])
-        : [[`${v.name}|none`, html`<div class="ws-missing">У цьому варіанті ще немає промптів заміни (2.json … 15.json) — їх пише агент.</div>`]])]
+        : [[`${v.name}|none`, html`<div class="ws-missing">У цьому варіанті ще немає промптів заміни (2.json … 15.json) — їх пише агент.</div>`]]),
+        [`${v.name}|cover`, variantCover(v)]]
       : [...rows.map((r) => [r.key, rowCard(r)]), ['cover', coverCard()]];
     const drawn = patch($('#ws-rows'), cards);
     drawn.forEach(fadeImages);
@@ -528,7 +554,7 @@ export async function mount(view, [rawId]) {
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
       return;
     }
-    if (a === 'gen') { startGen(t, { book: id, key, variant: key.startsWith('cover') ? '' : variant }); return; }
+    if (a === 'gen') { startGen(t, { book: id, key, variant }); return; }
     if (a === 'series') { startGen(t, { book: id, variant: mem.variant, series: true }); return; }
     if (a === 'copy-hero') { act(t, () => post(url('/copy-hero'), { variant }), 'Герой у буфері як картинка — вставте в чат'); return; }
     if (a === 'copy-picture') { act(t, () => post(url('/copy-picture'), { key }), 'Картинка в буфері — вставте куди треба'); return; }

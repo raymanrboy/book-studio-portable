@@ -11,15 +11,15 @@ code:
 # Program data
 
 > Everything the program remembers lives in `app/data/` (≈6.6 GB as of 2026-09-22: the order archive
-> 4.0 GB, the library 1.6 GB, the preview cache 364 MB; not in git). For a backup it's enough to copy
-> this folder. The `BOOK_STUDIO_DATA` environment variable swaps in a different folder (tests, preview).
+> 4.0 GB, the library 1.6 GB, the preview cache 364 MB; not in git). Every 3 days the program backs it up to
+> Google Drive itself, with the whole program folder ([backup](../features/backup.md)). The `BOOK_STUDIO_DATA` environment variable swaps in a different folder (tests, preview).
 
 ## What lives where
 
 | Path in `app/data/` | What it is | Who writes it |
 |---|---|---|
-| `settings.json` (+`.bak`) | Non-secret settings: theme, Etsy (shop, return address), Printify (shop, Master, sizes, `manualApprovalConfirmedAt`), Gelato (formats, the EUR→USD rate, `pageCounts` 28 and 30; on launch `_upgrade()` removes the old `pageCount` and switches Gelato's "inch" products to metric), `textcheck` (enabled, model, Ollama address — 127.0.0.1 only) | `core.settings` |
-| `vault.json` (+`.bak`) | Etsy/Printify/Gelato keys, Etsy tokens, and a Gemini key (`gemini_api_key`, for a planned text check — not used yet), DPAPI-encrypted. **Never read or print** | `Vault` |
+| `settings.json` (+`.bak`) | Non-secret settings: theme, Etsy (shop, return address), Printify (shop, Master, sizes, `manualApprovalConfirmedAt`), Gelato (formats, the EUR→USD rate, `pageCounts` 28 and 30; on launch `_upgrade()` removes the old `pageCount` and switches Gelato's "inch" products to metric), `textcheck` (enabled, model, Ollama address — 127.0.0.1 only), `backup` (the last copy or error) | `core.settings` |
+| `vault.json` (+`.bak`) | Etsy/Printify/Gelato keys, Etsy tokens, the backup's password (`backup_password`), and a Gemini key (`gemini_api_key`, for a planned text check — not used yet), DPAPI-encrypted. **Never read or print** | `Vault` |
 | `library/books/<id>/book.json` | The book model ([features/library.md](../features/library.md)); a book passed on from the [Workshop](../features/workshop.md) notes it (`"workshop": "<folder>"`) | `library.save()` |
 | `library/books/<id>/assets/<uuid>.png` | The book's illustrations (originals); a book passed on from the Workshop keeps its cover and pages in the Workshop's `pipeline/books/<folder>/pictures/` instead (`"pagesFrom": "workshop"`, since 2026-09-27) — only its thumbnail is here | `library._store_asset()` |
 | `library/trash/` | Deleted books (can be restored by hand) | `library._delete()` |
@@ -65,7 +65,7 @@ the tests) the books are made-up ones in the data folder's `workshop-books/`, an
 ## Where in the code
 
 - [app/studio/core.py](../../app/studio/core.py) — `DATA_DIR`, `SAMPLE`, `data_path()`, `ensure_dirs()`, `write_json()`, `read_json()`, `Settings`
-- [app/studio/vault.py](../../app/studio/vault.py) — `Vault`, `SECRET_NAMES`
+- [app/studio/vault.py](../../app/studio/vault.py) — `Vault`, `SECRET_NAMES`, `readable()`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `_cached()`
 - [app/studio/library.py](../../app/studio/library.py) — `BOOKS_DIR`, `TRASH_DIR`
 - [app/studio/records.py](../../app/studio/records.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `load_snapshot()`, `remember_print_order()`

@@ -1,9 +1,13 @@
 """The Windows clipboard, filled by the program itself — so the Workshop's next prompt is there while the owner
-stays in Gemini's window — and F8, taken from Windows only while a several-part paste goes on (a picture, then the
-prompt), to put the next part in.
+stays in Gemini's window — and, while a several-part paste goes on (the hero, then the prompt), two ways to put the
+next part in: **Ctrl+V in Chrome itself** (the owner, 2026-09-27: "two pastes in a row") and F8, taken from Windows.
+
+Ctrl+V isn't taken from anyone: the keys' state is only looked at (every 20 ms, and only while such a paste goes on),
+nothing is caught or written down, and only a Ctrl+V while Chrome is the window in front counts. The next part goes in
+a moment after V is let go — Chrome has read the clipboard by then.
 
 In the sandbox (the preview server, the tests) the clipboard goes into files in the data folder (clipboard.txt,
-clipboard.png) and F8 is only pretended: the owner's clipboard and keyboard are never touched.
+clipboard.png) and the keys are only pretended: the owner's clipboard and keyboard are never touched.
 """
 from __future__ import annotations
 
@@ -25,6 +29,9 @@ WM_HOTKEY = 0x0312
 VK_F8 = 0x77
 MOD_NOREPEAT = 0x4000
 HOTKEY_ID = 0xB00C
+VK_CONTROL, VK_V = 0x11, 0x56
+BROWSERS = ("chrome.exe",)   # where the owner has Gemini open (2026-09-27); Book Studio's own window is Edge
+PASTE_SETTLE = 0.35          # seconds after V is let go before the next part goes in
 
 
 def _api():
@@ -109,44 +116,110 @@ def set_image(image) -> None:
     _put([(CF_DIB, bmp.getvalue()[14:]), (u32.RegisterClipboardFormatW("PNG"), png.getvalue())])  # a DIB is a BMP without its file header
 
 
+class PasteWatch:
+    """Ctrl+V pressed in the browser and let go → `step()` says when the next part may go in. Only the keys' state
+    goes in (no Windows here), so the tests can play presses through it."""
+
+    def __init__(self, settle: float = PASTE_SETTLE):
+        self.settle = settle
+        self.reset()
+
+    def reset(self) -> None:
+        self.v_down = False
+        self.armed = False     # V went down with Ctrl held, in the browser
+        self.due = 0.0         # when the next part goes in (0 — not due)
+
+    def step(self, ctrl: bool, v: bool, browser: bool, now: float) -> bool:
+        if v and not self.v_down and ctrl and browser:
+            self.armed = True
+        elif not v and self.v_down and self.armed:
+            self.armed, self.due = False, now + self.settle
+        self.v_down = v
+        if self.due and now >= self.due:
+            self.due = 0.0
+            return True
+        return False
+
+
+def _browser_in_front(u32, k32) -> bool:
+    """Is the window in front one of `BROWSERS`? (Its program's file name — nothing else about it is read.)"""
+    pid = wintypes.DWORD()
+    u32.GetWindowThreadProcessId(u32.GetForegroundWindow(), ctypes.byref(pid))
+    handle = k32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return False
+    try:
+        buf, size = ctypes.create_unicode_buffer(520), wintypes.DWORD(520)
+        if not k32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return False
+        return Path(buf.value).name.lower() in BROWSERS
+    finally:
+        k32.CloseHandle(handle)
+
+
 class Hotkey:
-    """F8 registered for the whole of Windows only while wanted; a press calls `on_press` in this thread.
-    RegisterHotKey wants the same thread for registering, unregistering and its messages."""
+    """While wanted (a several-part paste goes on): F8 registered for the whole of Windows, and Ctrl+V in the browser
+    watched (`PasteWatch`); either calls `on_press` in this thread. RegisterHotKey wants the same thread for
+    registering, unregistering and its messages."""
 
     def __init__(self, on_press):
         self.on_press = on_press
         self.commands: queue.Queue = queue.Queue()
-        self.active = False
+        self.active = False      # F8 is ours
         self.failed = False      # another program holds F8
+        self.paste = False       # Ctrl+V in the browser is watched
         self.fake = core.SANDBOX or os.name != "nt"
         if not self.fake:
             threading.Thread(target=self._run, name="hotkey", daemon=True).start()
 
     def want(self, on: bool) -> None:
         if self.fake:
-            self.active = on
+            self.active = self.paste = on
         else:
             self.commands.put(on)
 
+    def _press(self) -> None:
+        try:
+            self.on_press()
+        except Exception:  # a press must never stop the thread
+            core.log.exception("The next part of a paste failed")
+
     def _run(self) -> None:
-        u32 = ctypes.windll.user32
+        u32, k32 = ctypes.windll.user32, ctypes.windll.kernel32
+        u32.GetAsyncKeyState.restype = ctypes.c_short
+        u32.GetForegroundWindow.restype = wintypes.HWND
+        u32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+        k32.OpenProcess.restype = wintypes.HANDLE
+        k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        k32.QueryFullProcessImageNameW.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+                                                   ctypes.POINTER(wintypes.DWORD)]
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
         msg = wintypes.MSG()
+        watch = PasteWatch()
         while True:
             try:
                 while True:
                     on = self.commands.get_nowait()
-                    if on and not self.active:
+                    if on and not self.paste:
                         self.active = bool(u32.RegisterHotKey(None, HOTKEY_ID, MOD_NOREPEAT, VK_F8))
                         self.failed = not self.active
-                    elif not on and self.active:
-                        u32.UnregisterHotKey(None, HOTKEY_ID)
-                        self.active = False
+                        self.paste = True
+                        watch.reset()
+                    elif not on and self.paste:
+                        if self.active:
+                            u32.UnregisterHotKey(None, HOTKEY_ID)
+                        self.active = self.paste = False
             except queue.Empty:
                 pass
             while u32.PeekMessageW(ctypes.byref(msg), None, WM_HOTKEY, WM_HOTKEY, 1):  # PM_REMOVE
                 if msg.wParam == HOTKEY_ID:
-                    try:
-                        self.on_press()
-                    except Exception:  # a press must never stop the thread
-                        core.log.exception("F8 failed")
-            time.sleep(0.05)
+                    self._press()
+            if self.paste:
+                v = u32.GetAsyncKeyState(VK_V) < 0
+                ctrl = u32.GetAsyncKeyState(VK_CONTROL) < 0
+                browser = v and ctrl and not watch.v_down and _browser_in_front(u32, k32)
+                if watch.step(ctrl, v, browser, time.monotonic()):
+                    self._press()
+                time.sleep(0.02)
+            else:
+                time.sleep(0.05)

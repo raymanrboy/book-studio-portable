@@ -9,8 +9,8 @@ code:
 ---
 # Settings
 
-> A minimal page: service keys, the Etsy connection, the Printify template, the text check, the data
-> folder. Every block is collapsed to one line with its status; a block that needs something opens on
+> A minimal page: service keys, the Etsy connection, the Printify template, the text check, the backup,
+> the data folder. Every block is collapsed to one line with its status; a block that needs something opens on
 > its own.
 > The theme isn't here — it's in the menu at the bottom of the sidebar.
 
@@ -36,6 +36,10 @@ code:
   Ollama's status is fetched by a separate request — Settings doesn't wait for it (on Windows, a
   disabled Ollama only answers "no" after 2 s).
   In detail — [text-check.md](text-check.md).
+- **Резервна копія** (since 2026-09-27): the archive's password (set / change — the owner writes it down),
+  the Google Drive folder with an "Open" button, «Зробити копію зараз» with its progress, the last copy (when,
+  size, files skipped) or the last error. Opens on its own while there is no password or the last try failed; a
+  copy started on launch is followed when the page opens. In detail — [backup.md](backup.md).
 - **Program data**: the path to `app/data` and an "Open" button.
 
 Technical values (Master positions, artwork sizes, the product UID, the EUR→USD rate, how long a link
@@ -66,6 +70,7 @@ ever read.
 ## Where in the code
 
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `backupCard()`, `watchBackup()`, `redrawBackup()`
 - [app/web/js/pages/settings-dialogs.js](../../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`, `pickMaster()`
 - [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
 - [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
