@@ -50,7 +50,8 @@ for future typography. No book/physical trigger words even in negatives.
 3. **Final wide image** you generate LAST via Agent 6 — a separate premium 2:1 panorama
    (main focus right, quieter continuation left, slightly higher contrast). The Workshop then puts it on a
    bigger white canvas and gives an outpaint prompt, so the generator fills the margins → `pictures/Cover.png`.
-4. **Upscale** the pages with your desktop tool (the Workshop doesn't upscale yet).
+4. **Upscale** — the Workshop does it by itself: every page and the cover ×2 with the owner's Upscayl, right after
+   the picture lands in its row (a book can be left without it — the switch «Апскейл ×2»).
 5. **Canva:** the book's `pictures/` folder → Canva (overlaying text from `book-text.md`) → PDF 300 DPI.
 
 ### Fulfillment (made to order)

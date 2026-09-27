@@ -1,12 +1,13 @@
-"""The Workshop's routes: the books and their pictures, the generation mode, Antigravity, «Зберегти як»."""
+"""The Workshop's routes: the books and their pictures, the generation mode, upscaling, Antigravity, «Зберегти як»."""
 from __future__ import annotations
 
 import shutil
 from pathlib import Path
 
 from .. import clipboard, core, desktop, images, library
+from ..jobs import jobs
 from ..server import ApiError, Request, file_response, route
-from . import books, generate, pictures
+from . import books, generate, pictures, upscale
 
 def _variant(body_or_value) -> str | None:
     value = body_or_value.get("variant") if isinstance(body_or_value, dict) else body_or_value
@@ -16,14 +17,17 @@ def _variant(body_or_value) -> str | None:
 # ---------------------------------------------------------------- the books
 
 def _live(book_id: str | None = None) -> dict:
-    """What a page is drawn from, to tell a change by: the books' files (or one book's) and the generation mode."""
+    """What a page is drawn from, to tell a change by: the books' files (or one book's), the generation mode, the
+    upscaling's queue and progress (a book's page only — the gallery doesn't show it)."""
     gen = generate.status()
-    return {"sig": f"{books.signature(book_id)}-{gen['version']}", "gen": gen}
+    up = f"-{upscale.version()}" if book_id else ""
+    return {"sig": f"{books.signature(book_id)}-{gen['version']}{up}", "gen": gen}
 
 
 @route("GET", "/api/workshop/books")
 def _list(req: Request):
-    return {"books": books.all_books(), "folder": str(books.books_dir()), **_live()}
+    live = _live()  # first, like a book's page (_get)
+    return {"books": books.all_books(), "folder": str(books.books_dir()), **live}
 
 
 @route("GET", "/api/workshop/sig")
@@ -33,12 +37,18 @@ def _sig(req: Request):
 
 @route("GET", r"/api/workshop/books/([^/]+)")
 def _get(req: Request):
-    return {"book": books.detail(req.groups[0]), **_live(req.groups[0])}
+    # What the page was drawn from is taken first: a change that comes while the book is read (an upscale that ends
+    # meanwhile) then shows at the next look, instead of the old state standing under the new signature.
+    live = _live(req.groups[0])
+    book_id = req.groups[0]
+    return {"book": {**books.detail(book_id), "upscale": upscale.status(book_id),
+                     "leftBehind": pictures.left_behind(book_id)}, **live}
 
 
 @route("DELETE", r"/api/workshop/books/([^/]+)")
 def _delete(req: Request):
     generate.stop(req.groups[0])  # nothing waits for a picture of a book that's gone
+    upscale.forget(req.groups[0])
     return books.delete_book(req.groups[0])
 
 
@@ -58,7 +68,8 @@ def _mark(req: Request):
 def _open(req: Request):
     """The books' folder, a book's folder, its pages or originals, an agent's file — in Windows."""
     body = req.json or {}
-    books.open_in_windows(body.get("book") or None, str(body.get("what") or ""), str(body.get("name") or ""))
+    books.open_in_windows(body.get("book") or None, str(body.get("what") or ""), str(body.get("name") or ""),
+                          str(body.get("variant") or ""))
     return {"ok": True}
 
 
@@ -89,6 +100,20 @@ def _place(req: Request):
     if key == "cover" and not generate.status()["active"]:
         generate.session().start(book_id, "cover-wrap")  # the cover's picture goes on to its margins by itself
     return result
+
+
+@route("POST", r"/api/workshop/books/([^/]+)/adopt")
+def _adopt(req: Request):
+    """«Підхопити з папки»: the pictures the owner put into originals/ by hand (the base book's, or `variant`'s) go
+    the usual way — cut, flipped, upscaled. A job: the button shows how far it is."""
+    book_id, variant = req.groups[0], _variant(req.json or {})
+    keys = pictures.left_behind(book_id).get(variant or "", [])
+    if not keys:
+        raise ApiError("У папці оригіналів немає нових картинок для цих рядків.")
+
+    def run(job) -> dict:
+        return pictures.adopt(book_id, variant, lambda i, n: job.progress(f"Підхоплюю {i} з {n}…", 100 * i / max(n, 1)))
+    return {"jobId": jobs.start("workshop-adopt", run, exclusive=f"workshop-adopt-{book_id}").id}
 
 
 @route("POST", r"/api/workshop/books/([^/]+)/flip")
@@ -162,6 +187,23 @@ def _media(req: Request):
     if req.param("w"):
         return file_response(images.preview(path, req.int_param("w", 480, 64, 4096)), "image/jpeg", cache=cache)
     return file_response(path, cache=cache)
+
+
+# ---------------------------------------------------------------- upscaling
+
+@route("POST", r"/api/workshop/books/([^/]+)/upscale")
+def _upscale_on(req: Request):
+    """The book's «Апскейл ×2» switch: on (the default) or off — a book left as the generator made it."""
+    return upscale.set_on(req.groups[0], bool((req.json or {}).get("on")))
+
+
+@route("POST", r"/api/workshop/books/([^/]+)/upscale/start")
+def _upscale_start(req: Request):
+    """«Апскейлити решту» / «Перерізати з великих оригіналів» — `keys` (every row not upscaled yet without them); with
+    `key` — that row again."""
+    body = req.json or {}
+    keys = [str(body["key"])] if body.get("key") else [str(k) for k in body["keys"]] if body.get("keys") else None
+    return upscale.start(req.groups[0], keys)
 
 
 # ---------------------------------------------------------------- the generation mode

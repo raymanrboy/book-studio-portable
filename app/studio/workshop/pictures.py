@@ -11,11 +11,15 @@ slice-spreads.py, 2026-09-24):
 
 The picture itself is kept in `originals/`, named by its row (spread-04-05.jpg …) — a download is **moved** there out
 of Downloads (the owner, 2026-09-26: "it should live in the program"). Whatever a new picture replaces, or a removal
-takes, goes to the book's `.replaced/` folder — never deleted.
+takes, goes to the book's `.replaced/` folder — never deleted. A row's picture is then upscaled in the background
+(upscale.py): its big pages replace the small ones.
 """
 from __future__ import annotations
 
+import filecmp
+import functools
 import shutil
+import threading
 import time
 from pathlib import Path
 
@@ -24,11 +28,23 @@ from PIL import Image, ImageOps
 from .. import core
 from ..server import ApiError
 from . import books
-from .rows import MIRRORED, TEMPLATE, cover_state, original_of, original_stem, row, template_layout
+from .rows import (MIRRORED, TEMPLATE, cover_state, original_of, original_stem, row, row_list, template_layout,
+                   variant_names)
 
 OFF = 0.04       # a picture more than 4 % away from its frame's proportion is cut (and says so)
 FORMATS = {"PNG", "JPEG", "WEBP", "MPO"}
 CUT_WORDS = {"sides": "обрізано з боків", "top-bottom": "обрізано зверху й знизу"}
+# One writer of a book's pages at a time: a picture placed, flipped or removed, and the upscaler putting its big pages
+# in (it checks, under this lock, that the row's picture is still the one it upscaled).
+WRITING = threading.RLock()
+
+
+def _one_at_a_time(fn):
+    @functools.wraps(fn)
+    def wrapped(*args, **kwargs):
+        with WRITING:
+            return fn(*args, **kwargs)
+    return wrapped
 
 
 def open_picture(source: Path, name: str) -> Image.Image:
@@ -79,7 +95,29 @@ def _retire(book: Path, target: Path) -> None:
         while dest.exists():  # twice in one second: each kept copy has a name of its own
             n += 1
             dest = keep / f"{stamp}.{n}-{rel}"
-        core.replace_file(target, dest)
+        for attempt in range(4):  # ~5 s in all: an antivirus or the indexer lets go in a moment
+            try:
+                core.replace_file(target, dest)
+                return
+            except PermissionError:
+                if attempt == 3:
+                    raise _held(target) from None
+                time.sleep(0.8)
+
+
+def _held(target: Path) -> ApiError:
+    """Another program holds the picture a new one replaces (28.09.2026: «WinError 32» over and over on the owner's
+    book 41) — the error names it, so it can be closed; nothing was changed."""
+    from .. import desktop
+    who = desktop.file_holders(target)
+    if any("edge" in w.lower() for w in who):  # Book Studio's own window: the file was dragged into it from the book
+        return ApiError(f"Стару картинку «{target.name}» тримає саме вікно Book Studio — її, мабуть, перетягнули сюди "
+                        "з папки книги. Закрийте й знову відкрийте Book Studio — файл звільниться. Нічого не змінено.",
+                        409)
+    by = ", ".join(who) if who else "інша програма (Провідник із переглядом файлу, переглядач картинок, антивірус)"
+    return ApiError(f"Стару картинку «{target.name}» зараз тримає відкритою {by} — її не можна прибрати. "
+                    "Закрийте її там (у Провіднику — зніміть виділення з файлу) і спробуйте ще раз. "
+                    "Нічого не змінено.", 409)
 
 
 def _write(im: Image.Image, target: Path, keep_old_of: Path | None = None) -> None:
@@ -129,6 +167,19 @@ def _keep_original(book: Path, key: str, variant: str | None, source: Path, name
     return dest
 
 
+def _same_as_original(book: Path, key: str, variant: str | None, source: Path) -> bool:
+    """Is the picture byte for byte the row's original already? The owner dragged it into the window straight out
+    of the book's originals/ (28.09.2026): the window then holds that very file, and moving it to .replaced failed
+    («тримає відкритою Microsoft Edge») — there is nothing to replace, the pages are only cut again from it."""
+    folder = book / books.ORIGINALS / ("variants/" + variant if variant else "")
+    try:
+        size = source.stat().st_size
+        return any(old.stat().st_size == size and filecmp.cmp(old, source, shallow=False)
+                   for old in folder.glob(f"{original_stem(key)}.*"))
+    except OSError:
+        return False
+
+
 def _variant(book: Path, variant: str | None) -> str | None:
     """The variant a request names, checked before anything is written: an existing folder in agent/variants/,
     never a path out of the book."""
@@ -162,9 +213,18 @@ def _mark(book: Path, variant: str | None, key: str, marks: dict | None) -> None
 
 # ---------------------------------------------------------------- a picture into its row
 
-def place(book_id: str, key: str, source: Path, name: str, variant: str | None = None, take: bool = False) -> dict:
+def place(book_id: str, key: str, source: Path, name: str, variant: str | None = None, take: bool = False,
+          kept: bool = False) -> dict:
     """Puts one picture into a row; `take` moves the file (a download) instead of copying it. Returns what
-    happened, in the owner's words."""
+    happened, in the owner's words. The pages and the cover (a variant's too) then go to be upscaled (upscale.py)."""
+    result = _place(book_id, key, source, name, variant, take, kept)
+    from . import upscale
+    upscale.after_place(book_id, key, variant)
+    return result
+
+
+@_one_at_a_time
+def _place(book_id: str, key: str, source: Path, name: str, variant: str | None, take: bool, kept: bool) -> dict:
     book = books.book_path(book_id)
     variant = _variant(book, variant)
     if key not in ("hero", "cover-wrap"):
@@ -173,8 +233,14 @@ def place(book_id: str, key: str, source: Path, name: str, variant: str | None =
         raise ApiError("У варіанта одна обкладинка — одразу розширена (з полями).")
     im = open_picture(source, name)  # only a real picture goes anywhere, and nothing is moved before that
     size = list(im.size)
-    stamp = {"from": Path(name).name[:160], "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "source": size}
-    _keep_original(book, key, variant, source, name, take)
+    # "pic" — this picture's own mark (the upscaler tells by it that the row still holds the picture it upscaled);
+    # "upscaled": None — a new picture isn't upscaled yet, whatever the one before it was
+    stamp = {"from": Path(name).name[:160], "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "source": size,
+             "pic": core.new_id()[:12], "upscaled": None}
+    if not kept and _same_as_original(book, key, variant, source):
+        kept = True  # the row's own original dropped back onto it (dragged out of originals/): only cut again
+    if not kept:  # `kept`: the picture already is the row's original (put into originals/ by hand — adopt())
+        _keep_original(book, key, variant, source, name, take)
     if key == "hero":
         target = variant_dir(book, variant) / "hero.png" if variant else book / books.AGENT / "canonical.png"
         _save(book, im, target)
@@ -219,6 +285,57 @@ def place(book_id: str, key: str, source: Path, name: str, variant: str | None =
             "note": f"{r['label']}: {', '.join(parts) + ' — і ' if parts else ''}дві сторінки готові"}
 
 
+# ---------------------------------------------------------------- pictures put into originals/ by hand
+
+def left_behind(book_id: str) -> dict[str, list[str]]:
+    """«Підхопити з папки»: the originals the owner put into originals/ (or originals/variants/<name>/) by hand, with
+    the right names, whose rows have no pages yet — by variant ('' — the base book), in the order they go in."""
+    book = books.book_path(book_id)
+    out: dict[str, list[str]] = {}
+    for variant in [""] + variant_names(book):
+        originals = set(books._names(book / books.ORIGINALS / ("variants/" + variant if variant else "")))
+        pics = set(books._names(_pictures_dir(book, variant or None)))
+        keys = []
+        for r in row_list():
+            if r["kind"] == "cover" or (variant and r["kind"] == "single"):
+                continue
+            if original_of(originals, r["key"]) and not all(books.picture(pics, p) for p in r["pages"]):
+                keys.append(r["key"])
+        if not books.picture(pics, "Cover"):
+            if not variant and original_of(originals, "cover") and "cover-expanded.png" not in originals:
+                keys.append("cover")
+            if original_of(originals, "cover-wrap"):
+                keys.append("cover-wrap")
+        hero = variant_dir(book, variant) / "hero.png" if variant else book / books.AGENT / "canonical.png"
+        if original_of(originals, "hero") and not hero.is_file():
+            keys.append("hero")
+        if keys:
+            out[variant] = keys
+    return out
+
+
+def adopt(book_id: str, variant: str | None, progress=lambda i, n: None) -> dict:
+    """The left-behind originals of the base book or of one variant go the usual way — cut, flipped, the cover laid on
+    the template, then upscaled — as if each had been dropped onto its row; the file stays where it is."""
+    book = books.book_path(book_id)
+    variant = _variant(book, variant)
+    keys = left_behind(book_id).get(variant or "", [])
+    folder = book / books.ORIGINALS / ("variants/" + variant if variant else "")
+    done, failed = [], []
+    for i, key in enumerate(keys):
+        progress(i, len(keys))
+        name = original_of(books._names(folder), key)
+        if not name:
+            continue
+        try:
+            place(book_id, key, folder / name, name, variant, kept=True)
+            done.append(key)
+        except (ApiError, OSError) as exc:
+            failed.append(f"{name}: {exc}")
+    progress(len(keys), len(keys))
+    return {"done": done, "failed": failed}
+
+
 # ---------------------------------------------------------------- the cover's margins
 
 def _art(book: Path) -> Path:
@@ -261,11 +378,15 @@ def fit_template(im: Image.Image) -> tuple[Image.Image, str]:
 
 
 def skip_margins(book_id: str) -> dict:
-    """«Без полів»: the cover's picture itself becomes Cover.png."""
-    book = books.book_path(book_id)
-    im = open_picture(_art(book), "cover")
-    _save(book, im, _pictures_dir(book, None) / "Cover.png")
-    _mark(book, None, "cover-wrap", {"skipped": True, "at": time.strftime("%Y-%m-%dT%H:%M:%S")})
+    """«Без полів»: the cover's picture itself becomes Cover.png (then upscaled, like a caught one)."""
+    with WRITING:
+        book = books.book_path(book_id)
+        im = open_picture(_art(book), "cover")
+        _save(book, im, _pictures_dir(book, None) / "Cover.png")
+        _mark(book, None, "cover-wrap", {"skipped": True, "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                                             "pic": core.new_id()[:12], "upscaled": None})
+    from . import upscale
+    upscale.after_place(book_id, "cover-wrap")
     return {"note": "Обкладинка без полів — у папці сторінок"}
 
 
@@ -277,6 +398,7 @@ def _pages(book: Path, key: str, variant: str | None) -> list[Path]:
     return [folder / books.picture(names, p) for p in row(key)["pages"] if books.picture(names, p)]
 
 
+@_one_at_a_time
 def flip(book_id: str, key: str, variant: str | None = None) -> dict:
     """⇄ on a spread: the right page mirrored becomes the left one and the other way round (the same as mirroring
     the whole panorama); twice gives back what was there, pixel for pixel."""
@@ -297,6 +419,7 @@ def flip(book_id: str, key: str, variant: str | None = None) -> dict:
     return {"key": key, "mirrored": not was}
 
 
+@_one_at_a_time
 def remove(book_id: str, key: str, variant: str | None = None) -> dict:
     """The row's pictures out of the book — into .replaced/, with the picture as it came."""
     book = books.book_path(book_id)

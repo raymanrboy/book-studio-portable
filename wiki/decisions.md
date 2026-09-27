@@ -9,6 +9,40 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-27 — A picture 2400 px a side is big enough: not offered for upscaling
+
+- The owner: "it doesn't recognise big pictures … if the picture is already the size it is in the book, or close, don't
+  offer the upscaler again". **Decision (the agent's):** one threshold — a page of 2400 px (8″ at 300 dpi, what print
+  needs) or more is big; the pages in the book are measured, not the original alone; a row whose original is big
+  already (upscaled by hand) is only cut again, without Upscayl. Every picture shows its page's size.
+
+## 2026-09-27 — No «Генерувати варіант»: a variant's spreads one by one
+
+- The owner: the button that queued all of a variant's spreads is not needed — "I do them one by one, it's handier".
+  Removed from the variant's tab; the base book keeps «Генерувати всю книгу».
+
+## 2026-09-27 — Pictures put into originals/ by hand: picked up on a press, not by themselves
+
+- The owner put variants' spreads into `originals/variants/<name>/` with the right names and expected the Workshop to
+  take them. **Decision:** a button «Підхопити з папки (N)» (the agent offered it, the owner: "go ahead") rather than
+  the Workshop watching the folder — a file put there by chance overwrites nothing until he presses.
+- Details — [features/workshop.md](features/workshop.md#a-picture-into-its-row).
+
+## 2026-09-27 — Upscaling in the Workshop: ×2 by his Upscayl, right after a picture lands, a book can skip it
+
+- **Decision (the owner):** upscaling becomes a step of the Workshop, with a way to skip it — **for the whole book**
+  (a switch «Апскейл ×2»), **on by default**. "Just 2×, whatever size the picture comes in — I use different
+  generators, their sizes differ": no target size (not 4000 px), the model he picked in Upscayl himself
+  (upscayl-standard-4x, output ×2).
+- **What is upscaled:** the spreads, pages 1 and 30 (the dedication, the afterword) and the cover — and, the same
+  evening ("there's no upscale in the variants"), every hero variant's spreads and cover. **Not** the hero pictures
+  themselves ("the hero — no"). Listing photos aren't the Workshop's ("we only work with the spreads and
+  the cover").
+- **How (the agent's choice):** his own Upscayl's command-line engine, no window; the row's original is upscaled
+  before it is cut (the two halves stay alike), then mirrored and cut as before; in the background, one at a time
+  (the graphics card is shared with the text check's model); a failure leaves the small pages and says so.
+- Details — [features/workshop.md](features/workshop.md#upscaling).
+
 ## 2026-09-27 — Every spread gets the hero with its prompt; Ctrl+V in Chrome turns to the next part; a cover per variant
 
 - **The owner:** in the one Gemini chat he attaches the reference to **every** prompt — so a spread of a book with a

@@ -1,7 +1,7 @@
 ---
 title: The book console — the book pipeline and the Workshop as one place (plan)
 type: plan
-updated: 2026-09-26
+updated: 2026-09-27
 code: []
 ---
 # The book console (Пульт книги) — plan
@@ -48,7 +48,7 @@ agents, no image API ([decisions](../decisions.md), 2026-09-25).
 ## Related ideas from the same talk (2026-09-25)
 
 Kept in the [roadmap](roadmap.md); they belong to the same road and the console should leave room for them:
-- **Upscaling right after a drop** — a spread goes in cut, flipped **and upscaled** ("a top feature"); in the
+- **Upscaling right after a drop** (built on 2026-09-27 — [workshop](../features/workshop.md#upscaling)) — a spread goes in cut, flipped **and upscaled** ("a top feature"); in the
   generation mode that's the same step: the caught picture comes out print-ready.
 - **Tier H orders** — the order card shows the buyer's chosen look and copies a ready hero-swap prompt; **later**,
   with one look per hero, every variant is made once here and an order takes the right set (the owner: making

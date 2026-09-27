@@ -73,7 +73,7 @@ Code paths below are relative to the repository root.
 | `{Name}`, `{Gifter}` | Placeholders for the child's name and the gift-giver | [lib.js](../app/web/js/lib.js) `highlightTokens()` |
 | Інструкція для агента | A file about file names and the JSON format | [library_files.py](../app/studio/library_files.py) `agent_guide()`; [library.js](../app/web/js/pages/library.js) `saveGuide()` |
 | Імпорт з папки | Laying out a folder's files into the slots | [library_files.py](../app/studio/library_files.py) `scan_folder()` |
-| Апскейл, Upscayl | The `_upscayl…` tail in file names is ignored | [library_files.py](../app/studio/library_files.py) `scan_folder()`; [drops.py](../app/studio/drops.py) `page_number()` |
+| Апскейл, Upscayl | Enlarging a picture ×2 with the owner's Upscayl: in the Workshop — every page and the cover (a hero variant's too) after it lands in its row (the switch «Апскейл ×2»); in file names the `_upscayl…` tail is ignored | [workshop/upscale.py](../app/studio/workshop/upscale.py); [library_files.py](../app/studio/library_files.py) `scan_folder()`; [drops.py](../app/studio/drops.py) `page_number()` |
 | Архів (у бібліотеці) | The book is hidden from the working list | [library.py](../app/studio/library.py) `_archive()` |
 | Архів замовлень | A separate menu with the files of books that went to print (14 days after "Sent"), and reprints | [archive.py](../app/studio/archive.py); [archive.js](../app/web/js/pages/archive.js); [features/archive.md](features/archive.md) |
 | Передрук, редрук | Reprinting the same book from the order archive: Printify — a new order for the same book, Gelato — a new draft | [creator/printify_send.py](../app/studio/creator/printify_send.py) `create_printify_reprint()`; [features/archive.md](features/archive.md) |

@@ -1,13 +1,14 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents (the Listings mode)
 type: feature
-updated: 2026-09-27
+updated: 2026-09-28
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
   - app/studio/workshop/rows.py
   - app/studio/workshop/pictures.py
   - app/studio/workshop/generate.py
+  - app/studio/workshop/upscale.py
   - app/studio/workshop/check.py
   - app/studio/workshop/routes.py
   - app/studio/clipboard.py
@@ -124,18 +125,21 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
 - **Hero variants** (Tier H, only when the agent made one): tabs «Основна · G2_brunette 3/14»; a variant's tab —
   its hero card (generate: the base `canonical.png`, «Далі», the edit prompt → `hero.png`) and its spreads (generate:
   the base spread as Gemini made it, un-mirrored, «Далі», the variant's hero, «Далі», the swap prompt → the pages
-  into `pictures/variants/<name>/`); «Генерувати варіант» for all of them. **Every variant has its own cover**
+  into `pictures/variants/<name>/`) — one by one, «Генерувати» on each row (no «Генерувати варіант» for all of them:
+  removed 2026-09-27, the owner: "I do them one by one, it's handier"). **Every variant has its own cover**
   (2026-09-27, the owner: "each variant has its own cover — no two stages, a place for the expanded one at once, no
   prompt"): the last card of the tab, one frame for the finished wide cover — dropped, picked or caught from
   Downloads, brought to the printer's template like the base cover's second stage (`fit_template()`, «обрізано під
   шаблон» when it had to be cut) → `pictures/variants/<name>/Cover.png`. «Генерувати» there puts the base cover and
   the variant's hero into the clipboard (what of them there is) and waits.
 - **The viewer**: a click on a page — every page of the book in order (a spread's two pages one after the other,
-  the cover), T for the text, the "original" button opens the file in Windows.
+  the cover), T for the text, the "original" button opens the file in Windows. On a hero variant's tab — the
+  variant's own spreads and its cover (before 2026-09-27 a variant's page opened the base book's, and its cover didn't
+  open at all).
 
 ## A picture into its row
 
-`pictures.place()` — the owner's flipper and slicer (`Etsy-Book-Pipeline`'s `mirror-alternate.py`,
+`pictures.place()` — the owner's flipper and slicer (then the [upscaling](#upscaling)) (`Etsy-Book-Pipeline`'s `mirror-alternate.py`,
 `slice-spreads.py`; his answers — [raw/2026-09-24-workshop-flipper-owner-answers.md](../raw/2026-09-24-workshop-flipper-owner-answers.md)):
 
 - **A spread**: mirrored first when it's one of the flipper's — **4–5, 8–9 … 28–29** (`MIRRORED`; an empty frame
@@ -152,10 +156,68 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
   5370×2850 px, 300 dpi (`fit_template()`). «Без полів» takes the picture as it is.
 - **The hero**: `agent/canonical.png` (a variant's: `hero.png`).
 - A picture dropped (or picked) is copied; **a caught download is moved** out of Downloads into `originals/`, named
-  by its row. **Whatever a new picture replaces, or a removal takes, goes to the book's `.replaced/`** — never deleted.
+  by its row.
+- **`originals/` is the Workshop's store, not a way in**: a file put there by hand is not noticed by itself. When some
+  are there with the right names (`spread-04-05.png`, `page-01.png`, `cover-art.*`, `cover-wrap.*`, `hero.png`; a
+  variant's — in `originals/variants/<name>/`) and their rows have no pages yet, the rows' heading (the base tab or the
+  variant's) shows **«Підхопити з папки (N)»** (the owner, 2026-09-27: "I put the spreads into the folder and the
+  program doesn't pick them up"): each goes the usual way — cut, flipped, the cover laid on the template, then
+  upscaled — as if dropped onto its row; the file stays where it is (`left_behind()`, `adopt()`, a job with its
+  progress in the heading). A row that already has its pages is left alone. **Whatever a new picture replaces, or a removal takes, goes to the book's `.replaced/`** — never deleted.
+  When another program holds the old picture open (Explorer with the file selected and its preview, a picture viewer,
+  Chrome with the file dragged into it, an antivirus), the Workshop waits ~5 s, then says **which program** holds it —
+  Windows' Restart Manager tells (`desktop.file_holders()`) — and that nothing was changed (2026-09-28: the owner's
+  «WinError 32» as an internal error, over and over, on book 41). **It was Book Studio's own window** (Edge): the owner
+  dragged pictures into the frames straight out of the book's `originals/`, and the window held the very file to be
+  moved. Now **a picture byte for byte the row's original already** replaces nothing — its pages are only cut again
+  (`_same_as_original()`); if the window still holds an old one, the error says to reopen Book Studio.
 - Every picture can be saved anywhere: a page's corner — «Зберегти як…» (the Windows dialog, the folder remembered —
   `settings.json` → `workshop.saveDir`); the frame's tools — «Копіювати картинку» (a spread as Gemini made it — e.g.
   for Agent 6's "best frame"), «Зберегти оригінал як…».
+
+## Upscaling
+
+The owner, 2026-09-27: upscaling is a step of the Workshop, "just 2×, whatever size the picture comes in", with a way
+to skip it for the whole book ([decisions](../decisions.md)). `upscale.py`:
+
+- **What**: the spreads, pages 1 and 30 and the cover (its outpainted picture, or the picture itself after «Без
+  полів»), and **every hero variant's spreads and cover** (the owner, the same evening: "there's no upscale in the
+  variants") — every time a picture lands in its row (caught, dropped, picked). **Not** the hero pictures themselves
+  (`canonical.png`, a variant's `hero.png`). A row is named by its slot, as in `book.json`: `spread3`, or
+  `G2_brunette/spread3` in a variant.
+- **How**: his own **Upscayl**'s command-line engine (`upscayl-bin.exe`, no window), the model **upscayl-standard-4x**,
+  output **×2** (Upscayl's own "2×" — what he used by hand). Found by itself: the path remembered in `settings.json`
+  (`workshop.upscayl`), else the one Upscayl's own log names (`%APPDATA%\Upscayl\logs`, "UPSCAYL EXEC PATH" — his is
+  on drive D), else its usual installs. **The row's original** is upscaled (the spread before it is cut — the halves
+  stay alike), then mirrored as the row is now (⇄ by hand counts) and cut as before; the big pages replace the small
+  ones in `pictures/`, the original stays as it came. The cover's upscaled picture is brought to the template as
+  before — `Cover.png` stays exactly 5370×2850. **Upscayl gets a copy** of the original (in `tmp/`, 2026-09-28): the
+  book's own file is never held while it works, so replacing the picture meanwhile can't fail.
+- **The pictures' sizes are read from their headers only** — a PNG's EXIF is asked for only when it comes before the
+  picture: asking for it unpacked every picture, and the owner's book 41 (8 hero variants, 370 pictures) took **31 s**
+  to open; now 0.14 s (2026-09-28, `_size()`).
+- **In the background, one at a time** (`Upscaler`, the graphics card is shared with the text check's model): the small
+  pages are there at once, the big ones replace them ~8 s later (his RTX 4070 SUPER: 16 spreads in about 2 minutes).
+  A picture replaced, flipped or removed meanwhile wins (`pictures.WRITING`, the row's `pic` mark) — nothing old is
+  written over it.
+- **On the page**: in the rows' heading (the base tab and every variant's) the switch **«Апскейл ×2»** (on by default; off — `book.json` `"upscale":
+  false`, the book's queue dropped; disabled with a tip when Upscayl isn't found), «апскейл · ще N» while it works,
+  **«Апскейлити решту (N)»** for the pages not upscaled yet, the variants' too (a book made before, or turned on again). Over a picture a
+  chip: «апскейл 45%», «чекає апскейлу», amber «не апскейлено» (the tip says why), or «×2» (the tip — the model and
+  the size); among a picture's tools ✦ «Апскейлити ×2» / «Апскейлити ще раз» (from the original). The cover shows it
+  beside its size. «Передати в бібліотеку» names the pages not upscaled yet (it doesn't stop).
+- **A big picture isn't offered** (the owner, 2026-09-27: "it doesn't recognise big pictures"): a page of **2400 px**
+  a side or more (`BIG` — 8″ at 300 dpi, print-ready; the cover — its picture's height) is left as it is, and isn't
+  queued when it lands. **The pages themselves are measured** (`sides()`), not only the original: in book 41 the
+  owner had upscaled Boy_2's originals in Upscayl and put them back, while its pages stayed cut from the small ones.
+  Such a row (a big original, small pages) is **only cut again** from its original, without Upscayl — the button
+  **«Перерізати з великих оригіналів (N)»** beside «Апскейлити решту (N)»; both count the open tab's rows only (the base
+  book's, or the variant's).
+- **Every picture says how big its page is** (a chip over it): «✦ ×2 | 2880 px» — upscaled here; «✓ 2880 px» — big
+  already; «1440 px» (dim) — not upscaled yet; «1440 px | оригінал 2880» — to be cut again. The tips say it in words.
+- A failure (Upscayl missing, the graphics card busy) leaves the small pages and says so; nothing waits on it.
+- **The sandbox** (the preview, the tests): a plain ×2 resize instead of Upscayl — the owner's program is never
+  started; the tests turn the queue by hand.
 
 ## The generation mode
 
@@ -231,8 +293,9 @@ book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and scre
 
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
 - [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
-- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `place()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`
+- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`
 - [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session`, `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`
+- [app/studio/workshop/upscale.py](../../app/studio/workshop/upscale.py) — `MODEL`, `SCALE`, `KEYS`, `BIG`, `sides()`, `side()`, `slots()`, `split()`, `engine()`, `upscale_row()`, `todo()`, `Upscaler`, `status()`, `after_place()`, `set_on()`, `start()`, `forget()`
 - [app/studio/workshop/check.py](../../app/studio/workshop/check.py) — `run()`, `RULES`, `main()`
 - [app/studio/workshop/routes.py](../../app/studio/workshop/routes.py) — the routes ([api-routes](../architecture/api-routes.md))
 - [app/studio/clipboard.py](../../app/studio/clipboard.py) — `set_text()`, `set_image()`, `Hotkey`, `PasteWatch`, `BROWSERS`, `PASTE_SETTLE`, `sandbox_file()`

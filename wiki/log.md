@@ -3,6 +3,86 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-28] update | Book 41 opens at once; a held picture names who holds it; Upscayl works on a copy
+
+- **Slow book 41**: `upscale._size()` asked every PNG for its EXIF — Pillow unpacked all 370 pictures, 31 s on the first
+  look; now only the header is read — 0.14 s.
+- **«WinError 32» on replacing a page** (the owner, book 41, variants Girl_2/Girl_3): the old original was held by
+  another program — it stayed held across a Book Studio restart, so not Book Studio itself. Now the Workshop waits
+  ~5 s, then names the program (`desktop.file_holders()`, Windows' Restart Manager) and says nothing was changed.
+- Upscayl is given a copy of the original, so it never holds the book's file.
+- The first real message named **Microsoft Edge — Book Studio's own window**: the pictures were dragged in straight out
+  of `originals/`. A picture byte for byte the row's original now replaces nothing — the pages are only cut again;
+  an Edge holder gets its own words ("reopen Book Studio"). 405 tests.
+- Checked: 404 tests (3 new); the holder lookup live on Windows (named the process holding a test file). Not checked:
+  which program held the owner's file that night — the next time the error says it.
+- Pages: features/workshop.md, dev/testing.md, code-map.md.
+
+## [2026-09-27] update | Upscaling knows big pictures; the size chip lined up; the viewer on a variant's tab
+
+- **Big pictures**: a page of 2400 px or more (`upscale.BIG`) isn't queued or offered; the pages in `pictures/` are
+  measured (`sides()`). Book 41 (read only): Boy_2's originals were upscaled by hand (5824 px) while its pages stayed
+  1440 px — such rows are now «Перерізати з великих оригіналів» (cut again, no Upscayl). «Апскейлити решту» and the new
+  button count the open tab only.
+- **The chip** «✦ ×2 | 2880 px» — the digits in the chip's own face (the display face made «×» jump), every part on one
+  line; a size on every picture (upscaled / big / not yet / to be cut again).
+- **The viewer** on a hero variant's tab shows the variant's own spreads and cover (its cover didn't open, its spreads
+  opened the base book's); «the original» opens the variant's file (`books.open_in_windows(variant=)`).
+- Code: `upscale.py`, `routes.py` (`_upscale_start` `keys`, `_open` `variant`), `books.py`, `workshop-book.js`,
+  `workshop-rows.js`, `listings.css`.
+- Checked: all 401 tests (3 new); in the preview — the chips' parts centred on one line in one face, the variant's
+  cover opening in the viewer with its own picture.
+
+## [2026-09-27] update | The variant's tab without «Генерувати варіант»
+
+- The owner: "this one is extra, I do them one by one". The button is gone from a hero variant's tab (`paintRows()` in
+  `workshop-book.js`); each row's «Генерувати» stays, the base book keeps «Генерувати всю книгу».
+- Checked: all tests; in the preview — the variant's tab without the button, the base tab with it.
+
+## [2026-09-27] update | «Підхопити з папки»: pictures put into originals/ by hand go the usual way
+
+- The owner put book 41's variants' spreads into `originals/variants/<Boy_…>/` and they weren't picked up —
+  `originals/` is the Workshop's store, nothing there is read to make pages. Now the rows' heading shows «Підхопити з
+  папки (N)» when such pictures (right names, rows without pages) are there: cut, flipped, the cover on its template,
+  the variant's hero into place, then upscaled; the files stay where they are.
+- Code: `pictures.py` (`left_behind()`, `adopt()`, `place(kept=)`), `routes.py` (`_adopt`, `book.leftBehind`),
+  `workshop-book.js` (`adoptBtn()`, `adopt()`).
+- Checked: all 398 tests (3 new); in the preview — a variant's spread put into its originals folder, «Підхопити з
+  папки (1)», «Підхоплюю…», the pages cut, mirrored and marked «×2».
+
+## [2026-09-27] update | Upscaling in the hero variants too
+
+- The owner: "there's no upscale in the variants" — the agent had read "the hero — no" as the variants too. Now each
+  variant's spreads and cover are upscaled like the base book's (its own originals and pages folders, its own marks
+  `G2_brunette/spread3`); the hero pictures (`canonical.png`, `hero.png`) still aren't. «Апскейлити решту» takes the
+  variants too; the switch shows on the variants' tabs; the chip and ✦ on a variant's spread and cover.
+- Code: `upscale.py` (`slots()`, `split()`, `_source()`, `upscale_row()`, `after_place()`), `pictures.place()`,
+  `workshop-rows.js` (`slot()`), `workshop-book.js` (`variantCover()`, `upSwitch()`, `missingSummary()`).
+- Fixed on the way: a book's page (and the gallery) took the signature of what it was drawn from **after** reading
+  the book — an upscale ending in between left «апскейл 0%» on screen for good; now the signature is taken first
+  (`routes._get()`, `_list()`).
+- Checked: all 395 tests (a variant's spread and cover upscaled, «Апскейлити решту» with the variants); in the
+  preview — a variant's spread and cover dropped, both marked «×2», the heading's «апскейл · ще 1» gone after.
+
+## [2026-09-27] update | The Workshop upscales: ×2 by the owner's Upscayl, right after a picture lands; a switch per book
+
+- The owner's answers: just ×2 whatever the size; skipped for the whole book; on by default; the spreads, pages 1
+  and 30 and the cover — not the hero or the variants.
+- A picture that lands in its row (caught, dropped, «Без полів») goes to be upscaled in the background: its original
+  ×2 by Upscayl's engine (upscayl-standard-4x, found by Upscayl's own log), mirrored and cut again, the big pages in
+  place of the small ones. The page: the switch «Апскейл ×2», «Апскейлити решту (N)», a chip over each picture
+  (progress / waiting / failed / ×2), ✦ «Апскейлити ще раз»; passing to the library names what isn't upscaled.
+- Code: new `workshop/upscale.py`; `pictures.py` (`WRITING`, `place()` → `after_place()`, the row's `pic` mark),
+  `routes.py` (two routes, the book's `upscale`, the page's sig), `workshop-book.js`, `workshop-rows.js`,
+  `listings.css`; `pipeline/playbook/workflow.md` step 4.
+- Checked: all 394 tests (14 new, `test_upscale.py`); the real Upscayl found by its log and run by `upscale.py` on a
+  test picture in a temporary folder (1456×720 → 2912×1440, the progress read, a Cyrillic path); in the preview — a
+  caught spread upscaled and marked «×2», the switch off, «Апскейлити решту (1)», the progress chip. **Not
+  checked:** a whole book in the running program on his books (the preview uses a pretend engine).
+- Pages: [workshop](features/workshop.md#upscaling), [decisions](decisions.md), [roadmap](plans/roadmap.md),
+  [book-console](plans/book-console.md), [api-routes](architecture/api-routes.md), [data](architecture/data.md),
+  [glossary](glossary.md), [code-map](code-map.md), [testing](dev/testing.md), [index](index.md).
+
 ## [2026-09-27] update | The Workshop: the hero with every spread's prompt, Ctrl+V in Chrome turns to the next part, a cover per variant
 
 - A spread of a book with a hero puts the hero, then the prompt into the clipboard (pages 1 and 30 — the prompt

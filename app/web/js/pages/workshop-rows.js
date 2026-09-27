@@ -1,10 +1,13 @@
 // A Workshop book's rows drawn: a spread or a page with its prompt, its frame (the picture, or the place to drop
-// one) and its text — and the small parts the cover's card shares (out of workshop-book.js on 27.09.2026).
+// one) and its text — and the small parts the cover's card shares (out of workshop-book.js on 27.09.2026); a row's
+// upscaling shows as a chip over its picture.
 import { html, ic, ib, highlightTokens } from '../lib.js';
 import { picture } from '../workshop-bits.js';
 import { waitingFor } from '../workshop-live.js';
 
 const CUT = { sides: 'обрізано з боків', 'top-bottom': 'обрізано зверху й знизу' };
+/** A row's slot, as the server names it: the key, or «variant/key». */
+export const slot = (key, variant) => (variant ? `${variant}/${key}` : key);
 export const waitChip = (text) => html`<span class="chip chip-accent"><span class="ws-pulse"></span>${text}</span>`;
 
 /** The rows of one open book: `book()` — the book as it is now, `mem` — what the page remembers of it (the
@@ -16,12 +19,41 @@ export function rowTemplates({ id, book, mem, uploading }) {
   const waitCover = (text) => html`<div class="ws-wait"><span class="ws-pulse"></span>${text}</div>`;
   const busyCover = (key) => (uploading.has(key) ? html`<div class="busy-overlay"><div class="ws-up"><i data-up="${key}"></i></div></div>` : '');
 
-  function marks(r) {
+  /** A row's upscaling (27.09.2026): in work, waiting, failed, or done ×2 — as a chip over its picture. `key` is the
+   *  row's slot: «spread3», or «G2_brunette/spread3» in a hero variant. */
+  function upChip(key, m = {}) {
+    const u = book().upscale;
+    if (!u) return '';
+    if (u.current?.key === key) return html`<span class="chip chip-accent ws-mark"><span class="ws-pulse"></span>апскейл ${u.current.pct}%</span>`;
+    if (u.queue.includes(key)) return html`<span class="chip ws-mark">${ic('hourglass', 'icon-s')}чекає апскейлу</span>`;
+    if (u.errors[key]) return html`<span class="chip chip-amber ws-mark" data-tip="${u.errors[key]}">${ic('alert', 'icon-s')}не апскейлено</span>`;
+    // Every picture says how big its page is, so it's clear what is upscaled and what isn't (27.09.2026).
+    const s = u.sides?.[key];
+    if (!s) return '';
+    const px = html`<span class="ws-px">${s.side} px</span>`;
+    if (s.upscaled) {
+      return html`<span class="chip ws-mark ws-up-chip" data-tip="Апскейлено ×${m.upscaled?.scale || u.scale} (${m.upscaled?.model || u.model}) — сторінка ${s.side}×${s.side} px">${ic('sparkle', 'icon-s')}<span>×${m.upscaled?.scale || u.scale}</span><i class="ws-sep"></i>${px}</span>`;
+    }
+    if (s.big) return html`<span class="chip ws-mark ws-up-chip" data-tip="Картинка вже велика — сторінка ${s.side} px (від ${u.big} px вистачає для друку), апскейл не потрібен">${ic('check', 'icon-s')}${px}</span>`;
+    if (s.recut) return html`<span class="chip ws-mark ws-up-chip dim" data-tip="Сторінка ${s.side} px, а оригінал у папці вже ${s.original} px — «Перерізати з великих оригіналів»">${px}<i class="ws-sep"></i><span>оригінал ${s.original}</span></span>`;
+    return html`<span class="chip ws-mark ws-up-chip dim" data-tip="Ще не апскейлено — сторінка ${s.side} px">${px}</span>`;
+  }
+
+  /** «Апскейлити ще раз» among a picture's tools — while upscaling is on and Upscayl is there. */
+  function upBtn(key, m = {}) {
+    const u = book().upscale;
+    if (!u?.on || !u.available || u.current?.key === key || u.queue.includes(key) || u.sides?.[key]?.big) return '';
+    const tip = u.sides?.[key]?.recut ? 'Перерізати з великого оригіналу' : m.upscaled ? 'Апскейлити ще раз (з оригіналу)' : 'Апскейлити ×2';
+    return ib('sparkle', tip, `data-act="upscale-row" data-key="${key}"`, { cls: 'sm' });
+  }
+
+  function marks(r, variant = '') {
     const m = r.marks || {};
     const chips = [];
+    chips.push(upChip(slot(r.key, variant), m));
     if (m.mirrored) chips.push(html`<span class="chip ws-mark">${ic('mirror', 'icon-s')}віддзеркалено</span>`);
     if (m.cut) chips.push(html`<span class="chip chip-amber ws-mark" data-tip="${m.source ? `Картинка ${m.source[0]}×${m.source[1]}` : ''}">${ic('alert', 'icon-s')}${CUT[m.cut] || m.cut}</span>`);
-    return chips.length ? html`<div class="ws-marks">${chips}</div>` : '';
+    return chips.some(Boolean) ? html`<div class="ws-marks">${chips}</div>` : '';
   }
 
   function placeholder(r, variant, half = null) {
@@ -45,16 +77,17 @@ export function rowTemplates({ id, book, mem, uploading }) {
       <img data-fade alt="${r.label}" src="${pic('pictures', name, 900, variant)}" data-act="zoom" data-key="${r.key}" data-part="${i}">
       ${saveBtn('pictures', name, variant, `Зберегти сторінку ${name.replace(/\.\w+$/, '')} як…`)}</div>`;
     const tools = html`<div class="img-actions">
-      ${variant ? '' : ib('expand', 'Переглянути', `data-act="zoom" data-key="${r.key}"`, { cls: 'sm' })}
+      ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${r.key}"`, { cls: 'sm' })}
       ${r.kind === 'spread' ? ib('mirror', r.marks?.mirrored ? 'Віддзеркалено — клацніть, щоб повернути' : 'Віддзеркалити розворот', `data-act="flip" data-key="${r.key}" data-variant="${variant}"`, { cls: `sm ${r.marks?.mirrored ? 'on' : ''}` }) : ''}
       ${variant ? '' : ib('copy', r.kind === 'spread' ? 'Копіювати розворот як картинку (як його зробив Gemini) — наприклад, агенту 6 як найкращий кадр' : 'Копіювати сторінку як картинку', `data-act="copy-picture" data-key="${r.key}"`, { cls: 'sm' })}
+      ${upBtn(slot(r.key, variant), r.marks)}
       ${r.original && !variant ? ib('imageDown', 'Зберегти оригінал як…', `data-act="save" data-area="originals" data-name="${r.original}" data-variant=""`, { cls: 'sm' }) : ''}
       ${ib('upload', 'Замінити файлом', `data-act="pick" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm' })}
       ${ib('trash', 'Прибрати картинку', `data-act="remove" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm danger' })}</div>`;
     if (r.kind === 'spread') {
-      return html`<div class="ws-frame">${drop(html`<div class="ws-art ws-pairart">${r.pictures.map(page)}<div class="gutter"></div>${marks(r)}${tools}</div>`)}</div>`;
+      return html`<div class="ws-frame">${drop(html`<div class="ws-art ws-pairart">${r.pictures.map(page)}<div class="gutter"></div>${marks(r, variant)}${tools}</div>`)}</div>`;
     }
-    const art = drop(html`<div class="ws-art">${page(r.pictures[0], 0)}${marks(r)}${tools}</div>`);
+    const art = drop(html`<div class="ws-art">${page(r.pictures[0], 0)}${marks(r, variant)}${tools}</div>`);
     const endpaper = html`<div class="ws-endpaper"><span>форзац</span></div>`;
     return html`<div class="ws-frame ws-single">${r.key === 'page1' ? html`${endpaper}${art}` : html`${art}${endpaper}`}</div>`;
   }
@@ -100,5 +133,5 @@ export function rowTemplates({ id, book, mem, uploading }) {
     </section>`;
   }
 
-  return { saveBtn, waitCover, busyCover, genButton, promptBlock, textBlock, rowCard };
+  return { saveBtn, waitCover, busyCover, genButton, promptBlock, textBlock, rowCard, upChip, upBtn };
 }

@@ -109,19 +109,22 @@ The Listings mode's books in development — the book pipeline's folders ([featu
 |---|---|---|---|---|
 | GET | `/api/workshop/books` | token | `_list` | workshop.js (the gallery: `{books, folder, sig, gen}`) |
 | GET | `/api/workshop/sig` | token | `_sig` | workshop-live.js (`?book=` — one book's files only; `{sig, gen}` — what changed, the generation mode's state) |
-| GET | `/api/workshop/books/([^/]+)` | token | `_get` | workshop-book.js (`{book, sig, gen}` — the strip, the rows, the cover, the variants, the check, every picture's version) |
+| GET | `/api/workshop/books/([^/]+)` | token | `_get` | workshop-book.js (`{book, sig, gen}` — the strip, the rows, the cover, the variants, the check, every picture's version, `book.upscale` — the switch, the queue, the picture in work, what failed, what's left; `book.leftBehind` — the pictures put into `originals/` by hand, not cut yet, by variant) |
 | DELETE | `/api/workshop/books/([^/]+)` | token | `_delete` | workshop-book.js «Видалити книгу» (the folder into the Recycle Bin; a wait for its picture stops) |
 | GET | `/api/workshop/books/([^/]+)/file` | token | `_file` | workshop-book.js (`?name=` — one of the agent's text files, for the step's panel) |
 | POST | `/api/workshop/books/([^/]+)/mark` | token | `_mark` | workshop-book.js (`{step, on}` — Canva, the mockups) |
-| POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|agent, name}` — Explorer, or one file in its program) |
+| POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|agent, name, variant}` — Explorer, or one file in its program; `variant` — a hero variant's picture) |
 | POST | `/api/workshop/agent` | token | `_agent` | workshop.js «+», workshop-book.js «Відкрити агента» (Antigravity on `pipeline/`; «нова книга» / «Продовжуємо книгу …» into the clipboard) |
 | POST | `/api/workshop/books/([^/]+)/to-library` | token | `_to_library` | add-book.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage` → `{jobId}`; a listing another library book has → 409 with its `bookId`) |
 | POST | `/api/workshop/books/([^/]+)/place` | token | `_place` | workshop-book.js (`?key=&name=&variant=`, body — the picture: cut, flipped, two pages; the cover goes on to wait for its margins) |
+| POST | `/api/workshop/books/([^/]+)/adopt` | token | `_adopt` | workshop-book.js «Підхопити з папки» (`{variant}` — the pictures put into `originals/` by hand, the usual way → `{jobId}`; nothing new → an error) |
 | POST | `/api/workshop/books/([^/]+)/flip` | token | `_flip` | workshop-book.js ⇄ (`{key, variant}`) |
 | POST | `/api/workshop/books/([^/]+)/remove` | token | `_remove` | workshop-book.js (`{key, variant}` — into `.replaced/`) |
 | POST | `/api/workshop/books/([^/]+)/no-margins` | token | `_no_margins` | workshop-book.js «Без полів» |
 | POST | `/api/workshop/books/([^/]+)/copy-picture` | token | `_copy_picture` | workshop-book.js «Копіювати картинку» (`{key}`) |
 | POST | `/api/workshop/books/([^/]+)/copy-hero` | token | `_copy_hero` | workshop-book.js «Героя в буфер» (`{variant}`) |
+| POST | `/api/workshop/books/([^/]+)/upscale` | token | `_upscale_on` | workshop-book.js the switch «Апскейл ×2» (`{on}` — the whole book; on by default, off drops its queue) |
+| POST | `/api/workshop/books/([^/]+)/upscale/start` | token | `_upscale_start` | workshop-book.js «Апскейлити решту» / «Перерізати з великих оригіналів» (`{keys}` — the tab's rows; `{}` — all), a picture's ✦ «Апскейлити ще раз» (`{key}`) |
 | POST | `/api/workshop/books/([^/]+)/save-as` | token | `_save_as` | workshop-book.js «Зберегти як…» (`{area, name, variant}`; the Windows dialog) |
 | GET | `/media/workshop/([^/]+)/(agent\|pictures\|originals)(?:/v/([^/]+))?/([^/]+)` | media | `_media` | workshop.js, workshop-book.js (`?w=` — a preview; `?v=` — the version: kept for good) |
 | GET | `/api/workshop/gen` | token | `_gen` | workshop-live.js — the generation mode alone, while no Workshop page is on screen (no book is walked; an idle mode starts nothing) |

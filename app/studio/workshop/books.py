@@ -410,15 +410,20 @@ def set_mark(book_id: str, step: str, on: bool) -> dict:
 
 # ---------------------------------------------------------------- outside Book Studio
 
-def open_in_windows(book_id: str | None, what: str, name: str = "") -> None:
+def open_in_windows(book_id: str | None, what: str, name: str = "", variant: str = "") -> None:
     """In Windows: the books' folder; a book's folder, its pages or its originals (Explorer), or one file there — a
-    picture of the pages or the originals, an agent's file — in its usual program. Only inside the book."""
+    picture of the pages or the originals (a hero variant's: in its subfolder), an agent's file — in its usual
+    program. Only inside the book."""
     if what == "books":
         target = books_dir()
         target.mkdir(parents=True, exist_ok=True)
     elif what in ("folder", AGENT, PICTURES, ORIGINALS):
         path = book_path(book_id or "")
         target = path if what == "folder" else path / what
+        if variant:
+            if what not in (PICTURES, ORIGINALS) or variant != Path(variant).name or variant.startswith("."):
+                raise ApiError("Не знайдено.", 404)
+            target = target / "variants" / variant
         if name:
             if what == "folder" or name not in _names(target) or not name.lower().endswith(core.IMAGE_EXTS + TEXT_SUFFIXES):
                 raise ApiError("Файл не знайдено.", 404)

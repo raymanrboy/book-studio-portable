@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-09-27
+updated: 2026-09-28
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -38,7 +38,7 @@ code:
 | [httpc.py](../app/studio/httpc.py) | HTTPS client: retries without duplicates, one shared read of printer errors, call logs, incomplete lists | `request()`, `request_json()`, `human()`, `audit_log()`, `HttpError`, `Listing` |
 | [vault.py](../app/studio/vault.py) | Keys under Windows DPAPI | `Vault`, `protect()`, `unprotect()`, `unprotect_powershell_securestring()` |
 | [backup.py](../app/studio/backup.py) | The backup to Google Drive: the whole program and the templates in a 7-Zip archive with a password, every 3 days | `make()`, `start_if_due()`, `to_remove()`, `drive_root()`, `status()` |
-| [desktop.py](../app/studio/desktop.py) | The program window, folder/file picker, Explorer | `open_app_window()`, `pick_folder()`, `pick_file()`, `open_in_explorer()`, `find_browser()` |
+| [desktop.py](../app/studio/desktop.py) | The program window, folder/file picker, Explorer | `open_app_window()`, `pick_folder()`, `pick_file()`, `open_in_explorer()`, `find_browser()`, `file_holders()` (which programs hold a file — Restart Manager) |
 | [settings_api.py](../app/studio/settings_api.py) | Settings, keys, opening links, import from old programs | `integrations()`, `_open_url()`, `_legacy_values()`, `legacy_sources()` |
 | [etsy.py](../app/studio/etsy.py) | Etsy API v3: OAuth, session, listings, receipts | `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `fetch_listing()`, `fetch_all_receipts()`, `decode_session_key()` |
 | [printify.py](../app/studio/printify.py) | The safe Printify client | `_check()`, `call()`, `all_orders()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `analyze_master()` |
@@ -61,6 +61,7 @@ code:
 | [workshop/rows.py](../app/studio/workshop/rows.py) | The agents' files read into the book's rows; the cover's template and outpaint prompt; hero variants; the book check (GO) | `book_rows()`, `text_sections()`, `cover_state()`, `template_layout()`, `outpaint_prompt()`, `variants()`, `book_check()` |
 | [workshop/pictures.py](../app/studio/workshop/pictures.py) | A picture into its row: cut, flipped, two pages; the cover on the template; ⇄; nothing deleted | `place()`, `two_squares()`, `build_expanded()`, `fit_template()`, `flip()`, `remove()`, `spread_panorama()` |
 | [workshop/generate.py](../app/studio/workshop/generate.py) | The generation mode: the clipboard, the Downloads watcher, F8 | `Session`, `session()`, `downloads_folder()` |
+| [workshop/upscale.py](../app/studio/workshop/upscale.py) | Upscaling a row's picture ×2 by the owner's Upscayl, in the background, then cut again | `upscale_row()`, `Upscaler`, `engine()`, `status()`, `after_place()`, `set_on()`, `start()` |
 | [workshop/check.py](../app/studio/workshop/check.py) | The book check: the old pipeline validator's rules (the agents run it too) | `run()`, `main()` |
 | [workshop/routes.py](../app/studio/workshop/routes.py) | The Workshop's routes | — |
 | [workshop/\_\_init\_\_.py](../app/studio/workshop/__init__.py) | The package: what the Workshop is, its modules | — |
@@ -142,6 +143,7 @@ code:
 | [test_orders.py](../app/tests/test_orders.py) | The printer rule, laying out pages, Gelato book length, the guide, partial import, the sync rule |
 | [test_mockups.py](../app/tests/test_mockups.py) | Mockups: the demo book (its own folder, apart from an order's dropped files), the cuts, the run plan, following Photoshop, the Photoshop script run by Node.js against a pretend Photoshop |
 | [test_workshop.py](../app/tests/test_workshop.py) | The Workshop: a book by its title, never in the orders, prompts, one JSON (dry run, what's missing), the agent's instruction, passing a book to the library |
+| [test_upscale.py](../app/tests/test_upscale.py) | The Workshop's upscaling: ×2 and cut as before, the cover and pages 1/30, the variants (not the hero pictures), the switch, a picture replaced meanwhile, a failure, finding Upscayl by its log |
 | [test_wiki.py](../app/tests/test_wiki.py) | The wiki matches the code |
 
 More detail — [dev/testing.md](dev/testing.md).

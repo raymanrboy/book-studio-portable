@@ -13,7 +13,7 @@ import { openLightbox } from '../lightbox.js';
 import { openAddBook } from '../add-book.js';
 import { picture, checkWord, ERRORS, STATE_TEXT } from '../workshop-bits.js';
 import { watch, refresh, act, startGen, genAction, genBar, genState, waitingFor } from '../workshop-live.js';
-import { rowTemplates, waitChip } from './workshop-rows.js';
+import { rowTemplates, waitChip, slot } from './workshop-rows.js';
 
 const IMG_RE = /\.(png|jpe?g|webp)$/i;
 // Who writes a step's file — said where the file isn't there yet.
@@ -231,7 +231,7 @@ export async function mount(view, [rawId]) {
   }
 
   // ---------------------------------------------------------------- the rows (workshop-rows.js)
-  const { saveBtn, waitCover, busyCover, genButton, promptBlock, textBlock, rowCard } = rowTemplates({ id, book: () => b, mem, uploading });
+  const { saveBtn, waitCover, busyCover, genButton, promptBlock, textBlock, rowCard, upChip, upBtn } = rowTemplates({ id, book: () => b, mem, uploading });
 
   // ---------------------------------------------------------------- the cover: ① the picture ② its margins
   function coverCard() {
@@ -280,6 +280,7 @@ export async function mount(view, [rawId]) {
       pane = html`<div class="ws-cv-bar">
           <div class="tools">${ib('guides', mem.guides ? 'Сховати лінії шаблону друкарні' : 'Показати лінії шаблону друкарні: обріз, корінець, безпечні зони', 'data-act="guides"', { cls: mem.guides ? 'on' : '' })}</div>
           <span class="ws-cv-info num">${c.final ? (c.skipped ? 'без полів' : `${tpx[0]}×${tpx[1]} px · ${c.template.dpi} dpi`) : `поля за шаблоном · ${cw}×${ch} px`}</span>
+          ${c.final ? upChip('cover-wrap', c.wrapMarks) : ''}
           <span class="spacer"></span>
           ${c.final ? '' : html`<button class="btn btn-sm btn-ghost" data-act="no-margins" data-tip="Взяти обкладинку як є, без полів — вона стане Cover.png">Без полів</button>`}
           ${w2 ? waitChip('чекаю обкладинку з полями')
@@ -287,7 +288,7 @@ export async function mount(view, [rawId]) {
         </div>
         <div class="ws-drop" data-drop="cover-wrap" data-variant="">
           <div class="ws-art ws-wide ${c.final ? '' : 'margins'}"${ratio(c.final && !c.skipped ? tpx : c.final ? c.artMarks.source : [cw, ch])}>${shown}${lines}
-            ${c.final ? html`<div class="img-actions">${ib('copy', 'Копіювати готову обкладинку як картинку', 'data-act="copy-picture" data-key="cover"', { cls: 'sm' })}
+            ${c.final ? html`<div class="img-actions">${upBtn('cover-wrap', c.wrapMarks)}${ib('copy', 'Копіювати готову обкладинку як картинку', 'data-act="copy-picture" data-key="cover"', { cls: 'sm' })}
               ${ib('upload', 'Замінити файлом', 'data-act="pick" data-key="cover-wrap" data-variant=""', { cls: 'sm' })}
               ${ib('trash', 'Прибрати поля (сама обкладинка лишиться)', 'data-act="remove" data-key="cover-wrap" data-variant=""', { cls: 'sm danger' })}</div>` : ''}
           </div>${busyCover('cover-wrap')}${w2 ? waitCover('Чекаю обкладинку з полями…') : ''}</div>
@@ -328,10 +329,10 @@ export async function mount(view, [rawId]) {
     const act = (k) => `data-key="cover-wrap" data-variant="${v.name}" ${k}`;
     const art = c.final
       ? html`<div class="ws-art ws-wide" style="aspect-ratio:${tpx[0]} / ${tpx[1]}">
-          <img data-fade alt="Обкладинка ${v.name}" src="${pic('pictures', c.final, 2600, v.name)}">
+          <img data-fade alt="Обкладинка ${v.name}" src="${pic('pictures', c.final, 2600, v.name)}" data-act="zoom" data-key="cover">
           ${saveBtn('pictures', c.final, v.name, `Зберегти обкладинку ${v.name} як…`)}
-          ${c.marks?.cut ? html`<div class="ws-marks"><span class="chip ws-mark">обрізано під шаблон</span></div>` : ''}
-          <div class="img-actions">${ib('upload', 'Замінити файлом', act('data-act="pick"'), { cls: 'sm' })}${ib('trash', 'Прибрати обкладинку варіанта', act('data-act="remove"'), { cls: 'sm danger' })}</div></div>`
+          <div class="ws-marks">${upChip(slot('cover-wrap', v.name), c.marks)}${c.marks?.cut ? html`<span class="chip ws-mark">обрізано під шаблон</span>` : ''}</div>
+          <div class="img-actions">${upBtn(slot('cover-wrap', v.name), c.marks)}${ib('upload', 'Замінити файлом', act('data-act="pick"'), { cls: 'sm' })}${ib('trash', 'Прибрати обкладинку варіанта', act('data-act="remove"'), { cls: 'sm danger' })}</div></div>`
       : html`<button type="button" class="ws-ph" data-act="pick" ${raw(act(''))}>
           <span class="ws-half">задня</span><span class="ws-half">передня</span>
           <span class="ws-ph-text"><span class="drop-ico">${ic('upload')}</span><b>Перетягніть обкладинку ${v.name}</b><span>одразу розширену, з полями — або клацніть, щоб обрати файл</span></span></button>`;
@@ -344,6 +345,57 @@ export async function mount(view, [rawId]) {
     </section>`;
   }
 
+  /** «Апскейл ×2» for the whole book (on by default; the owner, 27.09.2026) — and what's left to upscale. */
+  function upSwitch(v) {
+    const u = b.upscale;
+    if (!u) return '';
+    const tip = !u.available ? 'Upscayl не знайдено — встановіть його або запустіть хоч раз, щоб програма його знайшла'
+      : u.on ? `Кожна сторінка й обкладинка після того, як лягла в рядок, збільшується ×${u.scale} (Upscayl, ${u.model}) — у фоні, по одній. Вимкніть, щоб лишити книгу як є`
+        : 'Апскейл вимкнено для цієї книги — сторінки лишаються такими, як їх зробив генератор';
+    const busy = u.queue.length + (u.current ? 1 : 0);
+    // What's left on this tab (the base book's rows, or this variant's): to upscale, and to cut again from an original
+    // that is big already (upscaled by hand and put back into originals/).
+    const mine = (s) => (v ? s.startsWith(`${v.name}/`) : !s.includes('/'));
+    const free = u.todo.filter((k) => mine(k) && !u.queue.includes(k) && u.current?.key !== k);
+    const recut = free.filter((k) => u.sides[k]?.recut);
+    const left = free.filter((k) => !u.sides[k]?.recut);
+    const keys = (list) => JSON.stringify(list);
+    return html`<label class="ws-upscale ${u.available ? '' : 'off'}" data-tip="${tip}"><span class="switch"><input type="checkbox" data-act="upscale" ${u.on && u.available ? 'checked' : ''} ${u.available ? '' : 'disabled'} aria-label="Апскейл ×${u.scale}"></span>Апскейл ×${u.scale}</label>
+      ${u.on && busy ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>апскейл · ще ${busy}</span>`
+        : html`${u.on && u.available && left.length ? html`<button class="btn btn-sm" data-act="upscale-all" data-keys="${keys(left)}" data-tip="Сторінки цієї вкладки, які ще не апскейлені й не великі (від ${u.big} px) — у чергу">${ic('sparkle')}Апскейлити решту (${left.length})</button>` : ''}
+          ${recut.length ? html`<button class="btn btn-sm" data-act="upscale-all" data-keys="${keys(recut)}" data-tip="Оригінали в папці вже великі (їх апскейлили окремо), а сторінки нарізані з маленьких — перерізати сторінки з великих, без Upscayl">${ic('images')}Перерізати з великих оригіналів (${recut.length})</button>` : ''}`}`;
+  }
+
+  /** «Підхопити з папки (N)»: pictures put into originals/ by hand with the right names (the owner, 27.09.2026 — "I
+   *  put the spreads into the folder and the program doesn't pick them up"), taken the usual way on a press. */
+  let adopting = null; // the variant ('' — the base book) and how far it is, while a pick-up goes on
+  function adoptBtn(v) {
+    const name = v ? v.name : '';
+    if (adopting && adopting.variant === name) return html`<span class="chip chip-accent"><span class="ws-pulse"></span>${adopting.text}</span>`;
+    const keys = b.leftBehind?.[name] || [];
+    if (!keys.length) return '';
+    const folder = v ? `originals\\variants\\${v.name}` : 'originals';
+    return html`<button class="btn btn-sm btn-primary" data-act="adopt" data-tip="${`У папці ${folder} є картинки з правильними назвами, для яких ще немає сторінок — розрізати, віддзеркалити й апскейлити їх, як перетягнуті`}">${ic('folderIn')}Підхопити з папки (${keys.length})</button>`;
+  }
+
+  async function adopt(btn) {
+    if (adopting) return;
+    const variant = mem.variant;
+    adopting = { variant, text: 'Підхоплюю…' };
+    paintRows();
+    try {
+      const res = await runJob(post(url('/adopt'), { variant }), (job) => {
+        adopting.text = job.step || 'Підхоплюю…';
+        paintRows();
+      });
+      const n = res.done.length;
+      toast(`Підхоплено з папки: ${n}${res.failed.length ? ` · не вдалося: ${res.failed.join('; ')}` : ''}`, res.failed.length ? 'error' : 'success', 6000);
+    } catch (err) { toast(err.message, 'error'); }
+    adopting = null;
+    paintRows();
+    refresh();
+  }
+
   // ---------------------------------------------------------------- painting
   function paintRows() {
     const v = mem.variant ? b.variants.find((x) => x.name === mem.variant) : null;
@@ -351,16 +403,19 @@ export async function mount(view, [rawId]) {
     const rows = inner();
     const done = rows.filter((r) => r.pictures.length).length;
     const busy = genState()?.active?.book === id;
-    const left = v ? v.rows.some((r) => r.prompt && !r.pictures.length) : rows.some((r) => r.prompt && !r.pictures.length);
+    // A variant's tab has no «Генерувати варіант» (the owner, 27.09.2026: "I do them one by one, it's handier").
+    const left = !v && rows.some((r) => r.prompt && !r.pictures.length);
     const heroThumb = step('hero').thumb;
     patch($('#ws-rows-head'), [['head', html`<div class="ws-rows-head-in">
       <h2 class="section-title">Сторінки книги</h2>
       ${v ? html`<span class="num" data-tip="Розвороти варіанта з картинками">${v.done}/${v.rows.length}</span>`
         : html`<span class="num" data-tip="Картинки ${done} з ${rows.length} · промпти ${b.counts.prompts}/17 · тексти ${b.counts.texts}/17">${done}/${rows.length}</span>
           <span class="ws-meter"><i style="transform:scaleX(${done / rows.length})"></i></span>`}
+      ${upSwitch(v)}
       <span class="spacer"></span>
+      ${adoptBtn(v)}
       ${heroThumb && !v ? html`<button class="btn btn-sm" data-act="copy-hero" data-tip="Героя (canonical.png) — у буфер, щоб вставити в новий чат Gemini першим">${ic('hero')}Героя в буфер</button>` : ''}
-      ${!busy && left ? html`<button class="btn btn-primary" data-act="series" data-tip="${v ? 'Усі розвороти варіанта без картинок — по черзі' : 'Розвороти 2–3 … 28–29, потім сторінки 1 і 30 — ті, що без картинок; після кожної картинки наступний промпт уже в буфері'}">${ic('generate')}${v ? 'Генерувати варіант' : done ? 'Генерувати решту' : 'Генерувати всю книгу'}</button>` : ''}
+      ${!busy && left ? html`<button class="btn btn-primary" data-act="series" data-tip="Розвороти 2–3 … 28–29, потім сторінки 1 і 30 — ті, що без картинок; після кожної картинки наступний промпт уже в буфері">${ic('generate')}${done ? 'Генерувати решту' : 'Генерувати всю книгу'}</button>` : ''}
     </div>`]]);
     patch($('#ws-vtabs'), b.variants.length ? [['tabs', html`<div class="seg ws-vtabs"><span class="seg-pill"></span>
       <button type="button" class="${v ? '' : 'active'}" data-act="variant" data-variant="">Основна</button>
@@ -439,12 +494,24 @@ export async function mount(view, [rawId]) {
   draw();
 
   // ---------------------------------------------------------------- the viewer
+  /** The viewer's pictures: the base book's, or — on a hero variant's tab — the variant's own spreads and cover. */
   function viewerItems() {
     const items = [];
+    const v = mem.variant ? b.variants.find((x) => x.name === mem.variant) : null;
+    const variant = v ? v.name : '';
     const push = (key, area, name, title, sub, text) => items.push({
-      key, src: pic(area, name, 1400), full: pic(area, name, 2600), title, sub, text,
-      onOriginal: () => post('/api/workshop/open', { book: id, what: area, name }).catch((err) => toast(err.message, 'error')),
+      key, src: pic(area, name, 1400, variant), full: pic(area, name, 2600, variant), title: v ? `${v.name} · ${title}` : title, sub, text,
+      onOriginal: () => post('/api/workshop/open', { book: id, what: area, name, variant }).catch((err) => toast(err.message, 'error')),
     });
+    if (v) {
+      for (const r of v.rows) {
+        const base = b.rows.find((x) => x.key === r.key);
+        r.pictures.forEach((p, i) => push(`${r.key}:${i}`, 'pictures', p, `${r.label} · ${i ? 'права' : 'ліва'} сторінка ${r.pages[i]}`,
+          `${p}${r.marks?.mirrored ? ' · віддзеркалено' : ''}`, base?.text || ''));
+      }
+      if (v.cover?.final) push('cover:0', 'pictures', v.cover.final, 'Обкладинка', 'за шаблоном друкарні', b.rows.find((r) => r.key === 'cover')?.text || '');
+      return items;
+    }
     for (const r of inner()) {
       const flipped = r.marks?.mirrored ? ' · віддзеркалено' : '';
       r.pictures.forEach((p, i) => push(`${r.key}:${i}`, 'pictures', p,
@@ -499,9 +566,17 @@ export async function mount(view, [rawId]) {
     if (!b.cover.final) noPicture.unshift('обкладинка');
     const noText = b.rows.filter((r) => !r.text).map((r) => (r.kind === 'cover' ? 'обкладинка' : shortLabel(r)));
     const gaps = [noPicture.length && `картинок — ${noPicture.join(', ')}`, noText.length && `текстів — ${noText.join(', ')}`].filter(Boolean);
+    const u = b.upscale;
+    const upLabel = (s) => {
+      const [variant, key] = s.includes('/') ? s.split('/') : ['', s];
+      const what = key === 'cover-wrap' ? 'обкладинка' : shortLabel(b.rows.find((r) => r.key === key));
+      return variant ? `${variant} ${what}` : what;
+    };
+    const small = u?.on ? u.todo.map(upLabel) : [];
+    const notUp = small.length ? html`<div class="notice notice-warn">${ic('alert')}<div>Ще не апскейлені: ${small.join(', ')}${u.queue.length || u.current ? ' — апскейл іде, зачекайте трохи' : ''}.</div></div>` : '';
     return gaps.length
-      ? html`<div class="notice notice-warn">${ic('alert')}<div>Бракує ${gaps.join('; ')}. У бібліотеці їх можна докласти пізніше.</div></div>`
-      : html`<div class="notice notice-success">${ic('checkCircle')}<div>Усі картинки й тексти на місці.</div></div>`;
+      ? html`<div class="notice notice-warn">${ic('alert')}<div>Бракує ${gaps.join('; ')}. У бібліотеці їх можна докласти пізніше.</div></div>${notUp}`
+      : html`<div class="notice notice-success">${ic('checkCircle')}<div>Усі картинки й тексти на місці.</div></div>${notUp}`;
   }
 
   async function toLibrary() {
@@ -561,6 +636,13 @@ export async function mount(view, [rawId]) {
     if (a === 'save') { act(t, () => post(url('/save-as'), { area: t.dataset.area, name: t.dataset.name, variant }), (r) => (r.saved ? `Збережено: ${r.name}` : null)); return; }
     if (a === 'flip') { act(t, () => post(url('/flip'), { key, variant }), (r) => (r.mirrored ? 'Віддзеркалено' : 'Повернуто, як було')); return; }
     if (a === 'remove') { removePicture(t, key, variant); return; }
+    if (a === 'upscale') {
+      act(t, () => post(url('/upscale'), { on: t.checked }), t.checked ? 'Апскейл увімкнено — нові картинки збільшуватимуться ×2' : 'Апскейл вимкнено для цієї книги');
+      return;
+    }
+    if (a === 'adopt') { adopt(t); return; }
+    if (a === 'upscale-all') { act(t, () => post(url('/upscale/start'), { keys: JSON.parse(t.dataset.keys || '[]') }), (r) => `У черзі: ${r.queue.length + (r.current ? 1 : 0)}`); return; }
+    if (a === 'upscale-row') { act(t, () => post(url('/upscale/start'), { key }), 'У черзі на апскейл'); return; }
     if (a === 'no-margins') { act(t, () => post(url('/no-margins'), {}), (r) => r.note); return; }
     if (a === 'pick') { pickFor = { key, variant }; $('#ws-file').click(); return; }
     if (a === 'zoom') { zoom(`${key}:${t.dataset.part || 0}`); return; }

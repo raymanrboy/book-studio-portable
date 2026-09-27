@@ -47,7 +47,9 @@ The [Workshop](../features/workshop.md)'s books are the book pipeline's folders,
 folder has to be inside the one Antigravity opens. Not in git (`.gitignore`): every book's pictures, the originals and
 `.replaced/`. A book's own `book.json` is the Workshop's state (not the library's model). In the sandbox (the preview,
 the tests) the books are made-up ones in the data folder's `workshop-books/`, and so are its `downloads/`,
-`clipboard/`, `recycle-bin/` and `saved/`. `settings.json` keeps `workshop.saveDir` — where «Зберегти як…» last saved.
+`clipboard/`, `recycle-bin/` and `saved/`. `settings.json` keeps `workshop.saveDir` — where «Зберегти як…» last saved
+— and `workshop.upscayl` — where the owner's Upscayl engine was found (`upscale.engine()`). A book's `book.json` notes
+each row's upscaling (`rows.<key>.upscaled`) and `"upscale": false` when the book is left without it.
 
 ## Rules
 

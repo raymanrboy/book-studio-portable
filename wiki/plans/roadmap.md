@@ -291,13 +291,9 @@ The owner wants a real program feature — a "check button", a strong one — no
 
 ## The Workshop
 
-- **A dropped spread is cut, flipped and upscaled at once** (the owner, 2026-09-25: "I drop a page, it's
-  cut, flipped and upscaled at once" — "a top feature"). Today a drop already cuts and mirrors
-  ([workshop](../features/workshop.md#a-spread-becomes-two-pages)); the upscale would be the third step,
-  so the library gets print-ready pages. *To work out when it's started:* which Upscayl (its command-line
-  engine runs without a window) and model he uses, the target size (4000×4000 per page, like Printify),
-  where it runs (in the background after the drop, the frame showing its progress), and the graphics card
-  shared with the text check's model.
+- ~~**A dropped spread is cut, flipped and upscaled at once**~~ (the owner, 2026-09-25: "a top feature") —
+  **built on 2026-09-27**: ×2 by his Upscayl in the background, the spreads, pages 1 and 30 and the cover, the hero
+  variants' too, a switch per book ([workshop](../features/workshop.md#upscaling), [decisions](../decisions.md)).
 
 - **Ideas of 2026-09-25:**
   - ~~A live bridge to `Etsy-Book-Pipeline`, catching downloads~~ — **built on 2026-09-26**:

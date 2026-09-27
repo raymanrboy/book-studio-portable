@@ -20,7 +20,7 @@ from tests import __init__  # noqa: F401  (sets a temporary data folder and the 
 from studio import core, library, library_files
 from studio.jobs import jobs
 from studio.server import ApiError
-from studio.workshop import books, generate, pictures, routes, rows
+from studio.workshop import books, generate, pictures, routes, rows, upscale
 from studio.workshop.rows import template_layout
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
@@ -65,6 +65,9 @@ class Base(unittest.TestCase):
         self.downloads = generate.downloads_folder()
         self.downloads.mkdir(parents=True)
         self.made: list[str] = []
+        # The upscaling's queue is turned by hand (test_upscale.py): a picture placed here stays as it was cut
+        upscale._upscaler = upscale.Upscaler(run=False)
+        upscale.FAKE_DELAY = 0
 
     def tearDown(self):
         shutil.rmtree(self.dir, ignore_errors=True)
@@ -199,6 +202,14 @@ class OnlyInsideTheBook(Base):
         for what, name in (("pictures", "../book.json"), ("agent", "nothing.md"), ("folder", "book.json"), ("..", "")):
             with self.assertRaises(ApiError, msg=f"{what}/{name}"):
                 books.open_in_windows(S, what, name)
+
+    def test_a_variants_picture_opens_from_its_own_folder(self):
+        """The viewer on a hero variant's tab: «the original» opens the variant's own picture (27.09.2026)."""
+        pictures.place(H, "spread2", spread_png(self.tmp / "v.png"), "v.png", variant="G2_brunette")
+        books.open_in_windows(H, "pictures", "2.png", "G2_brunette")
+        for what, variant in (("pictures", ".."), ("agent", "G2_brunette"), ("pictures", "no-such")):
+            with self.assertRaises(ApiError, msg=f"{what}/{variant}"):
+                books.open_in_windows(H, what, "2.png", variant)
 
 
 class TheSignature(Base):
@@ -422,13 +433,36 @@ class APictureIntoItsRow(Base):
 
     def test_what_a_picture_replaces_or_a_removal_takes_goes_to_replaced_not_away(self):
         pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
-        pictures.place(H, "spread2", spread_png(self.tmp / "b.png"), "b.png")
+        pictures.place(H, "spread2", spread_png(self.tmp / "b.png", (2000, 1000)), "b.png")  # another picture
         kept = sorted(p.name.split("-", 2)[2] for p in (self.dir / H / ".replaced").iterdir())
         self.assertEqual(kept, ["originals__spread-02-03.png", "pictures__2.png", "pictures__3.png"])
         pictures.remove(H, "spread2")
         self.assertFalse((self.dir / H / "pictures" / "2.png").exists())
         self.assertEqual(len(list((self.dir / H / ".replaced").iterdir())), 6)
         self.assertNotIn("spread2", books.state(self.dir / H).get("rows", {}))
+
+    def test_an_old_picture_held_by_another_program_is_named_and_nothing_changes(self):
+        """28.09.2026, the owner's book 41: «WinError 32» as an internal error, over and over — now the error says
+        which program holds the old picture (Windows tells), after waiting a few seconds for it to let go."""
+        pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
+        held = PermissionError(32, "used by another process")
+        with unittest.mock.patch.object(core, "replace_file", side_effect=held),                 unittest.mock.patch("studio.desktop.file_holders", return_value=["Провідник Windows"]),                 unittest.mock.patch.object(pictures.time, "sleep"):
+            with self.assertRaises(ApiError) as caught:
+                pictures.place(H, "spread2", spread_png(self.tmp / "b.png", (2000, 1000)), "b.png")
+        self.assertIn("Провідник Windows", str(caught.exception))
+        self.assertIn("spread-02-03.png", str(caught.exception))
+        self.assertEqual(self.pixel(H, "2.png"), (220, 40, 40))  # the row keeps its picture
+
+    def test_the_rows_own_original_dropped_back_is_only_cut_again(self):
+        """28.09.2026: the owner dragged a picture into the window straight out of the book's originals/ — the window
+        held that very file and moving it to .replaced failed. The same picture byte for byte replaces nothing."""
+        pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
+        original = self.dir / H / "originals" / "spread-02-03.png"
+        pictures.place(H, "spread2", original, "spread-02-03.png")
+        self.assertTrue(original.exists())                              # the original isn't touched …
+        kept = [p.name for p in (self.dir / H / ".replaced").iterdir()]
+        self.assertFalse([n for n in kept if "originals__" in n])      # … nor moved away
+        self.assertEqual(self.pixel(H, "2.png"), (220, 40, 40))           # its pages cut again
 
     def test_not_a_picture_is_refused_and_nothing_is_moved(self):
         bad = self.tmp / "x.png"

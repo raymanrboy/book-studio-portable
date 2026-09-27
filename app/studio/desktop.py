@@ -105,6 +105,56 @@ def to_recycle_bin(path: Path) -> None:
                       "в іншій програмі. Закрийте його і спробуйте ще раз.")
 
 
+def file_holders(path: Path) -> list[str]:
+    """Which programs have this file open right now — Windows' Restart Manager tells (the names it shows, e.g.
+    «Провідник Windows», «Google Chrome»); empty when nobody or it can't tell. Nothing is closed or changed."""
+    if os.name != "nt":
+        return []
+    import ctypes
+    from ctypes import wintypes
+
+    class _Unique(ctypes.Structure):
+        _fields_ = [("pid", wintypes.DWORD), ("start", wintypes.FILETIME)]
+
+    class _Info(ctypes.Structure):
+        _fields_ = [("process", _Unique), ("app", ctypes.c_wchar * 256), ("service", ctypes.c_wchar * 64),
+                    ("type", ctypes.c_int), ("status", wintypes.ULONG), ("session", wintypes.DWORD),
+                    ("restartable", wintypes.BOOL)]
+
+    rm = ctypes.WinDLL("rstrtmgr")
+    handle, key = wintypes.DWORD(), ctypes.create_unicode_buffer(33)
+    if rm.RmStartSession(ctypes.byref(handle), 0, key):
+        return []
+    try:
+        files = (wintypes.LPCWSTR * 1)(str(path))
+        if rm.RmRegisterResources(handle, 1, files, 0, None, 0, None):
+            return []
+        needed, count, reasons = ctypes.c_uint(), ctypes.c_uint(0), wintypes.DWORD()
+        infos = None
+        for _ in range(3):  # the list may grow between asking its size and taking it
+            infos = (_Info * max(count.value, 1))()
+            res = rm.RmGetList(handle, ctypes.byref(needed), ctypes.byref(count), infos, ctypes.byref(reasons))
+            if res == 0:
+                break
+            if res != 234:  # ERROR_MORE_DATA
+                return []
+            count.value = needed.value
+        else:
+            return []
+        names = []
+        for info in infos[:count.value]:
+            name = info.app or f"процес {info.process.pid}"
+            if info.process.pid == os.getpid():
+                name = f"{name} (сама Book Studio)"
+            if name not in names:
+                names.append(name)
+        return names
+    except OSError:
+        return []
+    finally:
+        rm.RmEndSession(handle)
+
+
 def downloads_folder() -> str:
     """Where the browser saves downloads (Canva's ZIP lands there): the ZIP dialog starts there the first time."""
     try:
