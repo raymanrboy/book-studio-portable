@@ -95,8 +95,8 @@ code:
 ## The Listings mode's pages (since 2026-09-24)
 
 - [The Workshop](../features/workshop.md) (the book console moved in, 2026-09-26) — `pages/workshop.js` (the gallery
-  of the pipeline's books) and `pages/workshop-book.js` (the path strip and its panel, the rows, the cover's two
-  stages, hero variants; its own drag-and-drop — one picture per frame). Both are **live**: `workshop-live.js` asks
+  of the pipeline's books) and `pages/workshop-book.js` (the path strip and its panel, the rows — drawn by `pages/workshop-rows.js` —, the
+  cover's two stages, hero variants; its own drag-and-drop — one picture per frame). Both are **live**: `workshop-live.js` asks
   the server what changed every 1.5 s while a Workshop page is on screen (every 4 s while a picture is awaited
   elsewhere) and the page redraws only what changed with `patch()`; it also keeps the generation mode's state, draws
   its bar (`genBar()`) and tells the shell through `bs:busy` (the rail's dot, the window's title). «Передати в
