@@ -8,6 +8,7 @@ code:
   - app/studio/library_guide.md
   - app/web/js/pages/library.js
   - app/web/js/pages/book.js
+  - app/web/js/pages/book-dialogs.js
   - app/studio/images.py
   - app/web/js/add-book.js
 ---
@@ -119,7 +120,8 @@ names (`$table`) and the JSON template (`$json`) are filled in by `agent_guide()
 - [app/studio/library_files.py](../../app/studio/library_files.py) — `scan_folder()`, `parse_text_json()`, `export_text_json()`, `export_book()`, `agent_guide()`, `GUIDE_NAME`, `GUIDE` — the guide's words are [library_guide.md](../../app/studio/library_guide.md) (since 2026-09-27; `$table` and `$json` are filled in from the importer's rules)
 - [app/web/js/pages/library.js](../../app/web/js/pages/library.js) — `mount()`, `card()`, `apply()`, `saveGuide()`, `copyGuide()`, `SORTS`
 - [app/web/js/pages/add-book.js](../../app/web/js/add-book.js) — `openAddBook()`
-- [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mount()`, `renderHero()`, `renderCover()`, `rowHtml()`, `editText()`, `uploadTo()`, `importDropped()`, `importFolder()`, `importTextJson()`, `canvaDialog()`, `lightboxItems()`, `onDrop()`
+- [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mount()`, `renderHero()`, `renderCover()`, `rowHtml()`, `editText()`, `uploadTo()`, `importDropped()`, `lightboxItems()`, `onDrop()`
+- [app/web/js/pages/book-dialogs.js](../../app/web/js/pages/book-dialogs.js) — `importFolder()`, `importTextJson()`, `pasteJsonDialog()`, `canvaDialog()`, `bookText()`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `lqip()`, `display_size()`, `compose_spread()`
 - [app/web/js/drop.js](../../app/web/js/drop.js) — `dropContents()`, `receiveDrop()` (with `withText`: the JSON comes along too, and the return value is the dropped folder itself)
 - Tests: [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`TextJson`, `FolderScan`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PreparationGuide`, `PartialBookImport`), [app/tests/test_workshop.py](../../app/tests/test_workshop.py) (a Workshop book never in the library's list)

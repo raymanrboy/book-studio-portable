@@ -1,7 +1,7 @@
 ---
 title: Filling the library — a new book and its files
 type: flow
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/web/js/pages/book.js
   - app/web/js/pages/library.js
@@ -25,10 +25,10 @@ code:
 3. **Load them into the passport** — any way works:
    - drag a **ZIP**, a **folder**, or **several files** (or pick them with "Add files") →
      a copy goes into the program along with the JSON → the same "Import from folder" dialog as the
-     button ([book.js](../../app/web/js/pages/book.js) `onDrop()`, `importDropped()`, `importFolder()`)
+     button ([book.js](../../app/web/js/pages/book.js) `onDrop()`, `importDropped()`); [book-dialogs.js](../../app/web/js/pages/book-dialogs.js) `importFolder()`
      — one set of naming rules for every method;
    - the "Import from folder" button → pick a folder → the server lays it out and copies it in the
-     background ([book.js](../../app/web/js/pages/book.js) `importFolder()`; the server —
+     background ([book-dialogs.js](../../app/web/js/pages/book-dialogs.js) `importFolder()`; the server —
      [library_files.py](../../app/studio/library_files.py) `scan_folder()`, `_folder_import()`;
    - one file onto a specific slot; `.json` — text only.
 4. The dialog shows what goes where, what will **replace** what's already there, and what's skipped;

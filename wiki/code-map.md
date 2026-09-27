@@ -105,6 +105,7 @@ code:
 | [js/pages/order-card.js](../app/web/js/pages/order-card.js) | One order's card (each book of an order worked on separately) | `mountCard()`, `readyBooks()`, `startCheck()`, `print()` |
 | [js/pages/library.js](../app/web/js/pages/library.js) | The library gallery, the guide | `mount()`, `saveGuide()` |
 | [js/pages/book.js](../app/web/js/pages/book.js) | A book's passport | `mount()` |
+| [js/pages/book-dialogs.js](../app/web/js/pages/book-dialogs.js) | The passport's dialogs: «Імпорт з папки», the text JSON, the Canva link; the whole text in one piece; the slots' layout | `importFolder()`, `pasteJsonDialog()`, `canvaDialog()`, `bookText()`, `SLOT_KEYS` |
 | [js/pages/creator.js](../app/web/js/pages/creator.js) | The Order Creator (one draft for every book of an order) | `mount()`, `folderBlock()` |
 | [js/pages/creator-picker.js](../app/web/js/pages/creator-picker.js) | The Order Creator's «Замовлення Etsy» (the queue's own orders) | `pickEtsyOrder()` |
 | [js/pages/archive.js](../app/web/js/pages/archive.js) | Order archive: the list, a book, reprinting | `mount()`, `mountList()`, `mountBook()` |
