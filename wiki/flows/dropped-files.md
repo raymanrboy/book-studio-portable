@@ -63,7 +63,7 @@ lies, without going through the window (`drops.archive_folder()` names the folde
 - [app/web/js/app.js](../../app/web/js/app.js) — `dragFromPage`, `ownPicture()`: a picture dragged from the window never drops back in
 - [app/web/js/drop.js](../../app/web/js/drop.js) — `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()`, `collect()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`, `_drop_root()`, `_drop_rel()`, `extract_zip()`, `archive_folder()`, `dropped_folder()`, `dropped_top()`, `_drop_file()`, `_drop_zip()`, `_drop_done()`, `MAX_DROP_FILE`, `MAX_DROP_ZIP`
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `takeDrop()`
+- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `takeDrop()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `dropFolder()`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `onDrop()`, `importDropped()`
 - [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `takeDrop()`

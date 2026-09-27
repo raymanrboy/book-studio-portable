@@ -101,7 +101,8 @@ code:
 | [js/add-book.js](../app/web/js/add-book.js) | «Нова книга» and the Workshop's «Передати в бібліотеку» — one dialog | `openAddBook()` |
 | [js/workshop-bits.js](../app/web/js/workshop-bits.js) | What the Workshop's two pages share: a picture's address, the check's word, a step's state in words | `picture()`, `checkWord()`, `STATE_WORDS`, `STATE_TEXT` |
 | [js/folder-viewer.js](../app/web/js/folder-viewer.js) | The viewer of a book's print folder, a page replaced and put back there — the order card and the Order Creator | `openFolderViewer()`, `pageNo()`, `pageWord()` |
-| [js/pages/orders.js](../app/web/js/pages/orders.js) | Orders: the queue and the card (each book of an order worked on separately) | `mountQueue()`, `mountCard()`, `readyBooks()` |
+| [js/pages/orders.js](../app/web/js/pages/orders.js) | Orders: the queue (and the route to a card) | `mount()`, `mountQueue()` |
+| [js/pages/order-card.js](../app/web/js/pages/order-card.js) | One order's card (each book of an order worked on separately) | `mountCard()`, `readyBooks()`, `startCheck()`, `print()` |
 | [js/pages/library.js](../app/web/js/pages/library.js) | The library gallery, the guide | `mount()`, `saveGuide()` |
 | [js/pages/book.js](../app/web/js/pages/book.js) | A book's passport | `mount()` |
 | [js/pages/creator.js](../app/web/js/pages/creator.js) | The Order Creator (one draft for every book of an order) | `mount()`, `folderBlock()` |

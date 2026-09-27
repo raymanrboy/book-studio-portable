@@ -149,7 +149,7 @@ page itself remembered this).
 - [app/studio/stages.py](../../app/studio/stages.py) — `facts()`, `mark_reprint()`
 - [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`
 - [app/studio/sync.py](../../app/studio/sync.py) — `_sync()` (`loaded` for each list; after a sync — `archive.refresh_quietly()`)
-- [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`, `atPrinter`); [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `earlier()`, `takeEarlier()`
+- [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`, `atPrinter`); [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `earlier()`, `takeEarlier()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (checking the archive on launch)
 - [app/web/js/pages/archive.js](../../app/web/js/pages/archive.js) — `mountList()`, `mountBook()`, `clockChip()`, `clockText()`, `proofCard()`, `reprintCard()`, `sendCard()`, `fieldsCard()`, `addressCard()`, `toggleKeep()`, `reprint()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — reprint mode: `withOrder()`, `createLabel()`, `folderCard()`, `create()`

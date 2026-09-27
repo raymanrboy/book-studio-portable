@@ -5,6 +5,7 @@ updated: 2026-09-27
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
+  - app/web/js/pages/order-card.js
   - app/web/js/order-bits.js
   - app/web/js/folder-viewer.js
   - app/web/js/handoff.js
@@ -219,7 +220,9 @@ one column.
 
 ## Where in the code
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `readyBooks()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `queueState`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `queueState`
+- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `mountCard()`, `readyBooks()`
+- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — shared with the [order archive](archive.md): `proofHtml()`, `STRIP_THUMB`, `fieldsHtml()`, `addressHtml()`, `etsyAddressLines()`, `svcChip()`, `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`

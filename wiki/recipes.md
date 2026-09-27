@@ -61,13 +61,12 @@ code: []
 
 ## A new order stage
 - [app/studio/stages.py](../app/studio/stages.py) — `order_stage()`
-- [app/web/js/order-bits.js](../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`
-- [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) — `STAGE_LABEL`
+- [app/web/js/order-bits.js](../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL` (the card's and the archive's stage chip)
 - Test `PickerStages` in [app/tests/test_states.py](../app/tests/test_states.py); wiki
   [rules/order-stages.md](rules/order-stages.md).
 
 ## What to show in the proof's note
-- [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) — `proofCard()` (the `notes` filter),
+- [app/web/js/pages/order-card.js](../app/web/js/pages/order-card.js) — `proofCard()` (the `notes` filter),
   `isFormatField()`, `isNameField()`; sizes — `.proof-name`, `.proof-note` in orders.css.
 
 ## Filmstrip thumbnail size

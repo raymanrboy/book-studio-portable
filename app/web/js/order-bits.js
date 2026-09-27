@@ -76,6 +76,9 @@ export function emptyOrders(orders, term, stage, syncing, cls = '') {
   return html`<div class="empty ${cls}"><div class="empty-icon">${ic(icon)}</div><h3>${title}</h3>${text ? html`<p>${text}</p>` : ''}</div>`;
 }
 
+/** A library book's picture at `w` px — the queue's row and the card's book. */
+export const bookImage = (b, w) => media(`/media/book/${b.id}/${b.image}`, { w });
+
 /** The printer's chip in its colour: `text` beside its logo, `tip` on hover, `lg` — the card's larger one. */
 export const svcChip = (p, { tip = '', text = providerName(p), lg = false } = {}) => html`<span class="chip ${lg ? 'chip-lg ' : ''}svc-${p}"${
   tip ? html` data-tip="${tip}"` : ''}>${ic(p, 'icon-s')}${lg ? html`<span>${text}</span>` : text}</span>`;

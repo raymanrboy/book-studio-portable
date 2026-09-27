@@ -75,7 +75,7 @@ were printed in Printify. Whether these are deliberate exceptions, or the rule n
 - [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `gelato_page_options()`
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `cover_label()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `planText()` (the explanation "Hardcover · US → Printify · 24 pages", "… → usually Printify. The files decide…"), `pagesText()`
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `renderPlan()` (the switch, when the type is unknown), `byFiles()`, `providerOf()`, `arrange()` (`decided`)
+- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `renderPlan()` (the switch, when the type is unknown), `byFiles()`, `providerOf()`, `arrange()` (`decided`)
 - Test: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PrinterRule`, `GelatoLength.test_24_pages_of_a_hardcover_go_to_printify`)
 
 ## Related
