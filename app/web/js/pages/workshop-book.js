@@ -51,6 +51,8 @@ export async function mount(view, [rawId]) {
   const uploading = new Map(); // drop key → the share uploaded (0…1)
   let stepsSeen = null;         // the steps' states at the last draw: a step that has just become done pops
   let coverSeen = null;         // { art, stage } at the last draw: a new cover picture turns the card to its margins
+  let coverSlide = '';          // the cover's pane glides this way once, at the next draw ('slide-next' / 'slide-back')
+  const docs = new Map();       // a step's text by its file and version: an open step isn't fetched again on each change
   let waitSeen = '';            // the row waited for at the last draw: the page follows the queue
   let lb = null;
   const lbItems = [];
@@ -99,7 +101,6 @@ export async function mount(view, [rawId]) {
   // ---------------------------------------------------------------- the path strip
   function stepHtml(s, i) {
     const prev = b.steps[i - 1];
-    const just = stepsSeen && stepsSeen[s.key] !== 'done' && s.state === 'done';
     const dot = s.key === 'hero' && s.thumb ? html`<span class="ws-dot photo"><img alt="" src="${pic('agent', s.thumb, 96)}"></span>`
       : html`<span class="ws-dot">${s.state === 'done' ? ic('check') : s.state === 'skip' ? ic('minus') : i + 1}</span>`;
     let count = s.key === 'pictures' ? html`<span class="ws-step-count num">${s.count}/${s.total}</span>` : '';
@@ -109,7 +110,7 @@ export async function mount(view, [rawId]) {
       tip += ` · перевірка: ${checkWord(s.check)}`;
     }
     if (s.manual) tip += ' · позначається вручну';
-    const cls = [s.state, s.next && 'next', just && 'just', prev && ['done', 'skip'].includes(prev.state) && 'after-done',
+    const cls = [s.state, s.next && 'next', prev && ['done', 'skip'].includes(prev.state) && 'after-done',
       mem.step === s.key && 'sel', s.check && !s.check.go && 'nogo'].filter(Boolean).join(' ');
     return html`<button class="ws-step ${cls}" data-act="step" data-step="${s.key}" role="tab" aria-selected="${mem.step === s.key}" data-tip="${tip}">
       ${dot}<span class="ws-step-label">${s.label}</span>${count}</button>`;
@@ -187,8 +188,12 @@ export async function mount(view, [rawId]) {
     if (file.kind === 'image') {
       return html`${hero}<div class="ws-shot"><img data-fade alt="${file.name}" src="${pic(file.area, file.name, 1400)}" data-act="zoom-one" data-area="${file.area}" data-name="${file.name}"></div>`;
     }
-    const { text } = await api(url(`/file?name=${encodeURIComponent(file.name)}`));
-    return html`${hero}${renderDoc(text)}`;
+    const key = `${file.area}/${file.name}`, version = b.v?.[key] || '';
+    if (docs.get(key)?.version !== version) {
+      const { text } = await api(url(`/file?name=${encodeURIComponent(file.name)}`));
+      docs.set(key, { version, text });
+    }
+    return html`${hero}${renderDoc(docs.get(key).text)}`;
   }
 
   function panelFiles(s) {
@@ -320,7 +325,7 @@ export async function mount(view, [rawId]) {
     const artV = c.art ? b.v?.[`originals/${c.art}`] || c.art : '';
     if (coverSeen && artV && coverSeen.art !== artV) mem.cover = 0; // a new picture: on to its margins
     const stage = mem.cover || (c.final || c.art ? 2 : 1);
-    const slide = coverSeen && coverSeen.stage !== stage ? (stage > coverSeen.stage ? 'slide-next' : 'slide-back') : '';
+    coverSlide = coverSeen && coverSeen.stage !== stage ? (stage > coverSeen.stage ? 'slide-next' : 'slide-back') : '';
     coverSeen = { art: artV, stage };
     const w1 = waitingFor(id, 'cover', ''), w2 = waitingFor(id, 'cover-wrap', '');
     const stepBtn = (n, label, done, now) => html`<button type="button" class="ws-cv-step ${stage === n ? 'on' : ''} ${done ? 'done' : ''}" data-act="cover-stage" data-stage="${n}">
@@ -377,7 +382,7 @@ export async function mount(view, [rawId]) {
       <div class="ws-row-head"><span class="ws-row-label">Обкладинка</span>
         <span class="ws-cv-steps">${stepBtn(1, 'Картинка', !!c.art, w1)}<i class="ws-cv-line ${c.art ? 'on' : ''}"></i>${stepBtn(2, 'Поля', !!c.final, w2)}</span>
         <span class="ws-row-act">${stage === 1 ? genButton({ ...r, pictures: c.art ? [c.art] : [] }) : ''}</span></div>
-      <div class="ws-cv-body ${slide}"><div class="ws-cv-pane">${pane}</div></div>
+      <div class="ws-cv-body"><div class="ws-cv-pane">${pane}</div></div>
     </section>`;
   }
 
@@ -427,6 +432,11 @@ export async function mount(view, [rawId]) {
       : [...rows.map((r) => [r.key, rowCard(r)]), ['cover', coverCard()]];
     const drawn = patch($('#ws-rows'), cards);
     drawn.forEach(fadeImages);
+    // One-shot animations go on after the redraw, not into the markup: written there, the next redraw found the markup
+    // changed (the class gone) and drew the part once more, losing its hover and tip (26.09.2026).
+    const body = coverSlide && $('#ws-rows .ws-cv-body');
+    if (body) once(body, coverSlide);
+    coverSlide = '';
     view.querySelectorAll('#ws-vtabs .seg').forEach(syncSeg);
     uploading.forEach((_, key) => paintProgress(key));
   }
@@ -436,9 +446,23 @@ export async function mount(view, [rawId]) {
     if (bar) bar.style.transform = `scaleX(${uploading.get(key) || 0})`;
   }
 
+  /** A class that plays its animation once and goes. */
+  function once(node, cls) {
+    node.classList.remove(cls);
+    void node.offsetWidth; // the same class again restarts the animation
+    node.classList.add(cls);
+    node.addEventListener('animationend', () => node.classList.remove(cls), { once: true });
+  }
+
   function draw() {
     const drawn = [...patch($('#ws-head'), head()), ...patch($('#ws-strip'), b.steps.map((s, i) => [s.key, stepHtml(s, i)]))];
     drawn.forEach(fadeImages);
+    for (const s of b.steps) {  // a step that has just become done pops
+      if (stepsSeen && stepsSeen[s.key] !== 'done' && s.state === 'done') {
+        const node = $(`#ws-strip [data-step="${s.key}"]`);
+        if (node) once(node, 'just');
+      }
+    }
     stepsSeen = Object.fromEntries(b.steps.map((s) => [s.key, s.state]));
     const bar = genBar(id);
     patch($('#ws-gen'), bar ? [['bar', bar]] : []);

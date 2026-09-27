@@ -2,7 +2,8 @@
 // back at what was printed and to reprint it in a couple of clicks. The server keeps the files 14 days
 // after the order became "shipped" (studio/archive.py); "Не видаляти" keeps a book until unmarked.
 import {
-  api, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural,
+  api, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural, patch,
+  enterOnce,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
@@ -49,12 +50,14 @@ async function mountList(view) {
     <div class="page-head"><div><h1 class="page-title">Архів замовлень</h1>
       <div class="page-sub">${count ? `${count} ${plural(count, ['книга', 'книги', 'книг'])}` : ''}</div></div></div>
     ${count ? html`<div class="lib-toolbar"><div class="input-group">${ic('search')}<input class="input" id="ar-q" placeholder="Ім'я, номер чека або назва" aria-label="Пошук в архіві" autocomplete="off"></div></div>` : ''}
-    <div class="ord-list" id="ar-list"></div>`);
+    <div class="ord-list" id="ar-list"></div>
+    <div id="ar-empty"></div>`);
   const list = view.querySelector('#ar-list');
+  const empty = view.querySelector('#ar-empty');
 
-  const rowHtml = (e, i) => {
+  const rowHtml = (e) => {
     const child = childOf(e);
-    return html`<a class="ord-row enter" href="#/archive/${e.id}" data-id="${e.id}" style="animation-delay:${Math.min(i * 30, 300)}ms">
+    return html`<a class="ord-row" href="#/archive/${e.id}" data-id="${e.id}">
       <span class="ord-thumb arc-thumb"><img data-fade loading="lazy" decoding="async" src="${file(e, 'Cover.png', THUMB)}" alt=""></span>
       <span class="ord-main">
         <span class="row ord-chips"><b class="truncate">${e.buyer || e.title}</b>${e.receiptId ? receiptCopy(e, 'chip chip-mono') : ''}${printerChip(e)}
@@ -68,19 +71,20 @@ async function mountList(view) {
   };
 
   const matches = (e, t) => !t || [e.buyer, e.title, e.receiptId].some((v) => String(v || '').toLowerCase().includes(t));
+  // Every book drawn once, with the entrance; a search only hides rows — no picture reloads, no entrance replays
+  // on each letter (until 26.09.2026 every letter redrew the list).
+  patch(list, data.entries.map((e) => [e.id, rowHtml(e)])).forEach((n, i) => enterOnce(n, Math.min(i * 30, 300)));
+  fadeImages(list);
   const render = () => {
     const t = term.trim().toLowerCase();
-    const rows = data.entries.filter((e) => matches(e, t));
-    shown = rows.map((e) => e.id);
-    if (!rows.length) {
-      setHtml(list, t ? html`<div class="empty">Нічого не знайдено</div>`
-        : html`<div class="empty"><div class="empty-icon">${ic('orderArchive')}</div><h3>Архів порожній</h3>
-          <p>Сюди потрапляє кожна книга, відправлена в друк з Book Studio, — рівно ті файли, що пішли в друк.
-          Вони зберігаються ${data.keepDays} днів після того, як замовлення стане «Відправленим».</p></div>`);
-      return;
-    }
-    setHtml(list, rows.map(rowHtml));
-    fadeImages(list);
+    shown = data.entries.filter((e) => matches(e, t)).map((e) => e.id);
+    const visible = new Set(shown);
+    [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); });
+    if (shown.length) { setHtml(empty, ''); return; }
+    setHtml(empty, t ? html`<div class="empty">Нічого не знайдено</div>`
+      : html`<div class="empty"><div class="empty-icon">${ic('orderArchive')}</div><h3>Архів порожній</h3>
+        <p>Сюди потрапляє кожна книга, відправлена в друк з Book Studio, — рівно ті файли, що пішли в друк.
+        Вони зберігаються ${data.keepDays} днів після того, як замовлення стане «Відправленим».</p></div>`);
   };
 
   const offs = [on(view, 'click', '[data-act="copy-text"]', copyChip)];

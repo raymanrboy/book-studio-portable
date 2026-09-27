@@ -1,7 +1,7 @@
 ---
 title: Mockups — listing pictures from a demo book (the Listings mode)
 type: feature
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/mockups.py
   - app/studio/mockups.jsx
@@ -63,6 +63,8 @@ and a notice says when it ends («Мокапи: готово · 6 картино
      with its pictures counted («2/4») or «✋ лишиться відкритим»; a progress bar; × stops. While
      Photoshop asks "run this script?", the card draws that dialog small with its **Yes** pulsing and
      says «Натисніть «Yes» у його вікні — далі все саме».
+   - Taking a book, finishing the page, a step's change — each part redrawn in its place: the templates' rows keep
+     their pictures (a taken book rebuilt the page and all six faded in again, until 2026-09-26).
    - **Done**: a green card «Готово · 6 картинок · 45 с» with **the saved pictures themselves** (their
      previews; a click opens them large, the viewer's "original" button opens the file) and the folder
      button. When Book Studio's window isn't in front (the owner watches Photoshop), **its taskbar button

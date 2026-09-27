@@ -18,7 +18,8 @@ code:
 
 ## Queue (`#/orders`)
 
-- Toolbar: search (buyer name or receipt number; Enter opens the first one), a stage switch with
+- Toolbar: search (buyer name or receipt number; Enter opens the first one; it only hides rows of the tab, drawn once —
+  no thumbnail reloads as you type, since 2026-09-26), a stage switch with
   counters **New (a spark) / In progress (a clock) / the truck / Sent (a box)**, an "Update orders"
   button. The truck — the printer has already shipped it, but Etsy hasn't marked it yet: this is how the
   owner knows it can be marked shipped on Etsy
@@ -127,6 +128,10 @@ one column.
      name in large type (`.proof-name`) and the buyer's fields in bold, scaling with the spread (`cqw`
      units); the cover format and the name field aren't in the note; long text (a dedication) isn't
      truncated — the note scrolls internally (since 2026-09-18); the right half is the real page 1;
+   - after a page is replaced only that page's pictures load (each page has its own version — `pageVersion()`), the
+     flow is redrawn in place and the strip stays where it was (since 2026-09-26: every picture faded in again and
+     the strip jumped back to the first spread); a text-check finding slides in once — the ones shown while the check
+     ran stay when it ends (`markSeen()`);
    - a **filmstrip** of every spread (`#oc-strip`): the mouse wheel scrolls it smoothly
      (`smoothWheel()`, no "snapping"), all the way to the last spread; the file check the page asks for makes
      the 1400 px and the 360 px previews (`STRIP_THUMB` = `images.VIEW_SIDES`) from the same decode of each page,

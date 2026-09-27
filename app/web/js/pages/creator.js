@@ -1,13 +1,13 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
   api, html, ic, ib, setHtml, on, media, modal, toast, runJob, segHtml, syncSeg, setSeg, bytes, dateTime,
-  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, confirmBox, setProgress,
+  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, confirmBox, setProgress, patch, enterOnce,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
   COUNTRIES, STAGES, STAGE_EMPTY, addressFromEtsy, spreadsOf, folderViewerItems, receiveDrop, dropLabel,
   wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText, restorable, childOf, receiptOfTitle,
-  holdClicks, orderSync,
+  holdClicks, orderSync, pageVersion,
 } from '../order-bits.js';
 import { take } from '../handoff.js';
 import { markSent, finish } from '../keep.js';
@@ -30,7 +30,7 @@ export async function mount(view) {
   // server keeps records by it, not by the number typed in the title.
   const newBook = (extra = {}) => ({
     folder: '', label: null, title: '', receiptId: '', validation: null, validating: 0, seq: 0,
-    stamp: 0,            // grows with every replaced page, so its pictures are fetched anew
+    versions: {},        // page file -> how often it was replaced or put back: only its own pictures are fetched anew
     replaced: new Set(), // pages a new file was put over — they can be put back
     format: status.gelato.defaultFormat || status.gelato.formats[0]?.key, ...extra,
   });
@@ -300,7 +300,9 @@ export async function mount(view) {
     const blocks = st.mode === 'printify'
       ? [folderCard(1), titleCard(2), addressCard(3), createCard(4)]
       : [formatCard(1), folderCard(2), titleCard(3), addressCard(4), createCard(5)];
-    keepFocus(() => setHtml($('#cr-left'), blocks));
+    // In place (patch()): an unchanged step card stays as it is — the green result card and the warnings no longer
+    // bounce in again on every click and twice per dropped folder (26.09.2026).
+    keepFocus(() => patch($('#cr-left'), blocks.map((markup, i) => [String(i), markup])));
     if (st.mode === 'gelato') loadPageCounts();
     if (st.mode === 'gelato' && st.gelato.result) startCountdown();
   }
@@ -312,7 +314,7 @@ export async function mount(view) {
     const row = v.files.find((r) => r.file.toLowerCase() === name.toLowerCase());
     return row ? (row.ok ? 'ok' : 'bad') : 'missing';
   };
-  const thumb = (name, w = 420) => media('/media/folder', { path: bk().folder, file: name, w, ...(bk().stamp ? { v: bk().stamp } : {}) });
+  const thumb = (name, w = 420) => media('/media/folder', { path: bk().folder, file: name, w, ...pageVersion(bk().versions, name) });
 
   function renderRight() {
     const s = cur();
@@ -334,11 +336,19 @@ export async function mount(view) {
       const stt = fileState(name);
       return html`<div class="half ${stt === 'bad' ? 'bad' : ''}">${has(name) ? html`<img data-fade loading="lazy" decoding="async" src="${thumb(name)}" alt="">` : html`<span class="ph-num">${n}</span>`}</div>`;
     };
-    setHtml($('#cr-right'), html`<section class="card card-pad stack-l">
+    // The structure is redrawn in place: an unchanged spread card keeps its pictures and no card replays its entrance
+    // (every format pill, «Книга N», drop and check end redrew all of it, 26.09.2026). The entrance plays once, when
+    // the cards first come.
+    const grid = $('#cr-right .spread-grid');
+    const hadCards = !!grid?.children.length;
+    if (!grid) setHtml($('#cr-right'), html`<section class="card card-pad stack-l"><div id="cr-st-head"></div><div id="cr-st-cover"></div>
+      <div class="stack-s"><div id="cr-st-spreads"></div><div class="spread-grid"></div></div></section>`);
+    patch($('#cr-st-head'), [['head', html`
       <div class="row" style="align-items:baseline">
         <h2 class="card-title grow" style="font-size:17px">Структура <span class="faint" style="font-weight:500">· ${many() ? `${bookName(cur().pick)} · ` : ''}${fmtLabel}</span></h2>
         <span class="v-badge ${count === expectedCount && v?.ok ? 'ok' : ''}" data-tip="Зображень у папці"><span class="num">${count}/${expectedCount}</span></span>
-      </div>
+      </div>`]]);
+    patch($('#cr-st-cover'), [['cover', html`
       <div class="stack-s">
         <div class="row"><span class="eyebrow grow">Обкладинка</span><span class="num faint" style="font-size:12px">${coverRow?.width ? `${coverRow.width}×${coverRow.height}` : ''}</span></div>
         <div class="structure-cover" data-lb="0" style="aspect-ratio:${ratio}">
@@ -347,22 +357,21 @@ export async function mount(view) {
           ${coverRow && !coverRow.ok ? html`<div class="page-tag" style="background:var(--red);left:auto;right:8px">${coverRow.error}</div>` : ''}
           <i class="crops"></i>
         </div>
-      </div>
-      <div class="stack-s">
+      </div>`]]);
+    patch($('#cr-st-spreads'), [['spreads', html`
         <div class="row"><span class="eyebrow grow">Розвороти</span><span class="faint" style="font-size:12px">${known
           ? html`<span class="num">${spreads.length}</span> · <span class="num">${total}</span> стор.`
-          : html`<span class="num">${pagesText(status.gelato.pageCounts)}</span> стор.`}</span></div>
-        <div class="spread-grid">${spreads.map((sp, i) => {
+          : html`<span class="num">${pagesText(status.gelato.pageCounts)}</span> стор.`}</span></div>`]]);
+    const cards = patch($('#cr-right .spread-grid'), spreads.map((sp, i) => {
           const lp = i === 0 ? 1 : sp.left + 1;
           const rp = i === 0 ? 2 : lp + 1;
           const lf = sp.left ? `${sp.left}.png` : null, rf = sp.right ? `${sp.right}.png` : null;
           const mark = (f) => { if (!f) return ''; const x = fileState(f); return html`<span class="${x === 'ok' ? 'file-ok' : x ? 'file-bad' : ''}">${f}</span>`; };
-          return html`<div class="spread-card enter" data-lb="${i + 1}" style="animation-delay:${Math.min(i * 25, 300)}ms">
+          return [`s${i}`, html`<div class="spread-card" data-lb="${i + 1}">
             <div class="spread-view">${half(sp.left, 'left', 'Форзац')}${half(sp.right, 'right', 'Нахзац')}<div class="gutter-s"></div><i class="crops"></i></div>
-            <div class="spread-card-head"><span class="spread-no">${lp}–${rp}</span><span class="spacer"></span><span class="spread-files">${mark(lf)}${mark(rf)}</span></div></div>`;
-        })}</div>
-      </div>
-    </section>`);
+            <div class="spread-card-head"><span class="spread-no">${lp}–${rp}</span><span class="spacer"></span><span class="spread-files">${mark(lf)}${mark(rf)}</span></div></div>`];
+        }));
+    if (!hadCards) cards.forEach((n, i) => enterOnce(n, Math.min(i * 25, 300)));
     fadeImages(view.querySelector('#cr-right'));
   }
 
@@ -372,7 +381,7 @@ export async function mount(view) {
   const pageWord = (file) => (pageNo(file) ? `сторінку ${pageNo(file)}` : 'обкладинку');
 
   function structureItems(b, i, again) {
-    const items = folderViewerItems(b.folder, pageTotal(i), b.label || b.folder, b.stamp);
+    const items = folderViewerItems(b.folder, pageTotal(i), b.label || b.folder, b.versions);
     for (const it of items) {
       it.actions = [];
       for (const file of it.files || []) {
@@ -413,7 +422,7 @@ export async function mount(view) {
       res = await api('/api/creator/replace-page', { method: 'POST', body: { folder: b.folder, file, path } });
     } catch (err) { toast(err.message, 'error'); return; }
     setRestorable(b, file, res.canRestore);
-    pageChanged(b, i, lb, again, `Замінено ${pageWord(file)}`);
+    pageChanged(b, i, file, lb, again, `Замінено ${pageWord(file)}`);
   }
 
   async function restorePage(b, i, file, lb, again) {
@@ -422,7 +431,7 @@ export async function mount(view) {
       res = await api('/api/creator/restore-page', { method: 'POST', body: { folder: b.folder, file } });
     } catch (err) { toast(err.message, 'error'); return; }
     setRestorable(b, file, res.canRestore);   // an older version may still be there
-    pageChanged(b, i, lb, again, `Повернено ${pageWord(file)}`);
+    pageChanged(b, i, file, lb, again, `Повернено ${pageWord(file)}`);
   }
 
   /** The server says whether this page still has a previous version; the page only repeats it. */
@@ -431,8 +440,8 @@ export async function mount(view) {
     else b.replaced.delete(file.toLowerCase());
   }
 
-  function pageChanged(b, i, lb, again, message) {
-    b.stamp++;
+  function pageChanged(b, i, file, lb, again, message) {
+    b.versions[file] = (b.versions[file] || 0) + 1;
     toast(message, 'success');
     again(lb);
     validate(i);   // the folder is checked again: a page of the wrong size is caught here

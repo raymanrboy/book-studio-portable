@@ -3,6 +3,23 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] update | Cleanup phase 4: no blinking
+
+- The queue and the archive list are drawn once; a search hides rows (no thumbnail reloads, no entrance replayed per
+  letter). The order card's flow, the Order Creator's step cards and structure, the passport's regions and rows, the
+  mockups' templates — redrawn in place (`patch()`), each part keeping the pictures it already showed.
+- A replaced page reloads only its own pictures (`pageVersion()`, per-page versions instead of one stamp); the strip
+  keeps its place. A text-check finding slides in once (`markSeen()`; the alarm's state no longer written inside a
+  render). The Workshop's one-shot animations go on after the redraw; an open text step is fetched again only when
+  its file changed (`versions()` now tags every file). `enterOnce()`, `patch(…, redraw)` in lib.js.
+- Found on the way and fixed: a name declared twice in creator.js, and the passport's local `patch()` (an HTTP PATCH)
+  renamed `saveBook()` — its new name first clashed with a parameter. `node --check` let the first through (a `.js`
+  file isn't parsed as a module): `test_scripts.py` checks every script as one now.
+- Checked: 355 tests; the preview — the queue's and the archive's search keep their rows, the Order Creator's
+  Printify/Gelato switch keeps its cards, the passport's text edit and cancel, the Workshop's text step, the mockups.
+- Pages: architecture/frontend.md, features/orders.md, features/order-creator.md, features/archive.md,
+  features/library.md, features/workshop.md, features/mockups.md, dev/testing.md, plans/cleanup.md.
+
 ## [2026-09-27] update | Cleanup phase 3: the waits made shorter
 
 - Text check: the model is loaded only when a question isn't answered from memory (`_Run.ready()`); answers are kept

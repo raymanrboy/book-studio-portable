@@ -7,7 +7,7 @@
 // run is on, and a notice says when it ends.
 import {
   api, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered, remember,
-  setProgress,
+  setProgress, patch,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../order-bits.js';
@@ -108,6 +108,11 @@ export async function mount(view) {
         <section class="card card-pad stack-l mk-structure" id="mk-right"></section>
       </div>
     </div>`);
+    paintAll();
+  }
+  // Every part painted again in its place — the page itself stays (a book taken used to rebuild it, and all six
+  // templates' pictures faded in again, 26.09.2026).
+  function paintAll() {
     paintHead(); paintLost(); paintBook(); paintTemplates(); paintOut(); paintAction(); paintStructure();
   }
 
@@ -141,7 +146,7 @@ export async function mount(view) {
     Object.assign(st, { book: null, label: '', receiving: null, bookError: '', out: '', asking: false, run: null,
       result: null, finished: null, pending: null, runError: '' });
     resetPicks();
-    render();
+    paintAll();
     toast('Мокапи завершено — можна брати наступну книгу', 'success');
   }
 
@@ -179,10 +184,15 @@ export async function mount(view) {
   // ---------------------------------------------------------------- 2 · spreads in the templates
   function paintTemplates() {
     const box = $('#mk-s2');
-    setHtml(box, html`<div class="row" id="mk-s2-head"></div>
-      <div class="mk-hint" id="mk-hint" hidden></div>
-      <div class="mk-tpls">${st.meta.templates.map(tplRow)}</div>`);
-    box.querySelectorAll('.mk-tpl-pic img').forEach((img) => img.addEventListener('error', () => img.parentElement.classList.add('none'), { once: true }));
+    if (!box.querySelector('.mk-tpls')) {
+      setHtml(box, html`<div class="row" id="mk-s2-head"></div>
+        <div class="mk-hint" id="mk-hint" hidden></div>
+        <div class="mk-tpls"></div>`);
+    }
+    // The templates in place (patch()): a row whose markup didn't change keeps its picture and its slots.
+    patch(box.querySelector('.mk-tpls'), st.meta.templates.map((tp) => [tp.key, tplRow(tp)])).forEach((row) => {
+      row.querySelectorAll('.mk-tpl-pic img').forEach((img) => img.addEventListener('error', () => img.parentElement.classList.add('none'), { once: true }));
+    });
     fadeImages(box);
     paintPicks();
   }
@@ -556,7 +566,7 @@ export async function mount(view) {
       const again = recallPicks();
       resetPicks(again);
       st.receiving = null;
-      render();
+      paintAll();
       if (again) toast('Повернув ваш минулий вибір розворотів для цієї книги', 'info');
       return;
     } catch (err) {

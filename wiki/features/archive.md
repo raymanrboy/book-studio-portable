@@ -37,7 +37,8 @@ code:
 
 ## When files get deleted (`archive.refresh()`)
 
-The archive's previews (the page and its viewer) are ready before it opens: the ones the order card or the Order
+The list is drawn once; its search only hides rows (no picture reloads, no entrance replays on each letter; since
+2026-09-26). The archive's previews (the page and its viewer) are ready before it opens: the ones the order card or the Order
 Creator already made of the sent files are copied (`images.copy_previews()`), only the rest are made — each send
 used to decode every page once more, right when the owner started the next order (since 2026-09-26).
 

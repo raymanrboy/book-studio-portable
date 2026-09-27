@@ -1,7 +1,7 @@
 // Book passport: cover, 16 page slots (dedication, 14 spreads, afterword), texts, files.
 import {
   api, html, ic, ib, raw, setHtml, on, media, modal, toast, menu, confirmBox, upload, runJob, copyText,
-  openExternal, fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el, setProgress,
+  openExternal, fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el, setProgress, patch, enterOnce,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { refreshInfo } from '../info.js';
@@ -44,7 +44,7 @@ export async function mount(view, [id]) {
   const $ = (s) => view.querySelector(s);
 
   // ---------------------------------------------------------------- render parts
-  function renderActions() {
+  function renderActions() { // drawn once: it never changes
     setHtml($('#bk-actions'), html`<div class="tools">
       ${ib('folderIn', 'Імпорт з папки', 'data-act="import-folder"')}
       ${ib('filesPlus', 'Додати файли', 'data-act="add-files"')}
@@ -71,10 +71,12 @@ export async function mount(view, [id]) {
     </div>`;
   }
 
+  // Every region is redrawn in place (patch()): an unchanged one stays, a changed one keeps the pictures it already
+  // showed — a saved title or text no longer fades the thumbnail and every page in again (26.09.2026).
   function renderHero() {
     const l = book.listing || {};
     const thumb = book.thumbnail;
-    setHtml($('#bk-hero'), html`<div class="book-hero">
+    patch($('#bk-hero'), [['hero', html`<div class="book-hero">
       <div class="hero-thumb ${thumb?.lqip ? 'lqip' : ''}" ${thumb?.lqip ? raw(`style="background-image:url(${thumb.lqip})"`) : ''} data-drop="thumbnail" ${thumb ? raw('data-act="zoom-thumb"') : ''}>
         ${thumb ? html`<img data-fade decoding="async" src="${assetUrl(thumb, 720)}" alt="Заставка книги">
             <div class="img-actions">
@@ -102,16 +104,16 @@ export async function mount(view, [id]) {
         </div>
         ${l.title && l.title !== book.title ? html`<div class="faint" style="font-size:12.5px">На Etsy: ${l.title}</div>` : ''}
       </div>
-    </div>`);
+    </div>`]]);
     autosize($('#bk-title'));
     fadeImages($('#bk-hero'));
   }
 
-  function renderCover() {
+  function renderCover(redraw = false) { // `redraw`: its text was being edited by hand
     const cover = book.cover;
     setHtml($('#bk-cover-head'), html`<span class="section-title">Обкладинка</span>
       ${cover ? html`<span class="num">${cover.width}×${cover.height}</span><span class="faint" style="font-size:12px">${bytes(cover.bytes)}</span>` : ''}`);
-    setHtml($('#bk-cover'), html`<div class="stack">
+    patch($('#bk-cover'), [['cover', html`<div class="stack">
       <div class="cover-box ${cover?.lqip ? 'lqip' : ''}" data-drop="cover" style="${cover ? `aspect-ratio:${cover.width} / ${cover.height}${cover.lqip ? `;background-image:url(${cover.lqip})` : ''}` : 'min-height:220px'}">
         ${cover ? html`<img data-fade decoding="async" src="${assetUrl(cover, 1400)}" alt="Обкладинка" data-zoom="cover"><div class="gutter"></div>
           <div class="img-actions">
@@ -124,7 +126,7 @@ export async function mount(view, [id]) {
         ${busy.has('cover') ? html`<div class="busy-overlay"><div class="spinner spinner-l"></div></div>` : ''}
       </div>
       ${textBlock('cover', 'Текст обкладинки')}
-    </div>`);
+    </div>`]], redraw ? new Set(['cover']) : null);
     fadeImages($('#bk-cover'));
   }
 
@@ -145,7 +147,7 @@ export async function mount(view, [id]) {
       <span class="num" data-tip="Сторінок з ілюстраціями">${c.illustrations}/16</span>`);
   }
 
-  function rowHtml(key, i) {
+  function rowHtml(key) {
     const s = book.slots[key];
     const label = key === 'page1' ? 'Присвята' : key === 'page30' ? 'Післяслово' : `Розворот ${key.slice(6)}`;
     const pages = key === 'page1' ? '1' : key === 'page30' ? '30' : pagesOf(+key.slice(6)).join('–');
@@ -189,27 +191,24 @@ export async function mount(view, [id]) {
         images = html`<div class="slot-pages-pair">${pageSq(`${key}:left`, s.left, String(lp), 'Ліва')}${pageSq(`${key}:right`, s.right, String(rp), 'Права')}<i class="crops"></i></div>`;
       }
     }
-    // Entrance animation only on first paint (i >= 0); re-rendered rows just swap in place.
-    return html`<div class="slot-row ${i >= 0 ? 'enter' : ''}" data-row="${key}" ${i >= 0 ? raw(`style="animation-delay:${Math.min(i * 30, 300)}ms"`) : ''}>${textCol}${images}</div>`;
+    return html`<div class="slot-row" data-row="${key}">${textCol}${images}</div>`;
   }
 
-  function renderSlots() {
-    setHtml($('#bk-slots'), SLOT_KEYS.map((k, i) => rowHtml(k, i)));
+  // The rows in place: only a row whose markup changed is drawn again, and it keeps its pictures. The entrance plays
+  // once, on the first paint. `redraw` — a row changed by hand meanwhile (its text being edited) is drawn again even
+  // when its markup is the same.
+  function renderSlots(redraw = null) {
+    const first = !$('#bk-slots').children.length;
+    const drawn = patch($('#bk-slots'), SLOT_KEYS.map((k) => [k, rowHtml(k)]), redraw);
+    if (first) drawn.forEach((row, i) => enterOnce(row, Math.min(i * 30, 300)));
     fadeImages($('#bk-slots'));
   }
-  function renderRow(key) {
-    const old = view.querySelector(`[data-row="${key}"]`);
-    if (!old) return;
-    const fresh = el(rowHtml(key, -1));
-    old.replaceWith(fresh);
-    fadeImages(fresh);
-  }
+  const renderRow = (key) => renderSlots(new Set([key]));
   function renderAll() {
     renderActions(); renderHero(); renderCover(); renderPagesHead(); renderSlots();
   }
   function applyBook(next, touched) {
     book = next;
-    renderActions();
     renderHero();
     renderPagesHead();
     if (!touched || touched === 'cover') renderCover();
@@ -218,11 +217,11 @@ export async function mount(view, [id]) {
   }
 
   // ---------------------------------------------------------------- saving fields
-  async function patch(body, touched = 'meta') {
+  async function saveBook(body, touched = 'meta') {
     try {
       const next = await api(`/api/library/books/${id}`, { method: 'PATCH', body: { ...body, rev: book.rev } });
       book = next;
-      if (touched === 'meta') { renderActions(); refreshChecklist(); }
+      if (touched === 'meta') refreshChecklist();
       return true;
     } catch (err) {
       toast(err.message, 'error');
@@ -264,10 +263,10 @@ export async function mount(view, [id]) {
     const finish = async (save) => {
       if (finished) return; finished = true;
       if (save && ta.value !== (book.text[key] || '')) {
-        const ok = await patch({ text: { [key]: ta.value } }, key);
+        const ok = await saveBook({ text: { [key]: ta.value } }, key);
         if (ok) toast('Текст збережено', 'success', 1400);
       }
-      if (key === 'cover') renderCover(); else renderRow(key);
+      if (key === 'cover') renderCover(true); else renderRow(key);
       renderHero(); renderPagesHead();
     };
     ta.addEventListener('keydown', (e) => {
@@ -435,7 +434,7 @@ export async function mount(view, [id]) {
     const save = async (v) => {
       if (v && !/^https?:\/\//i.test(v)) { toast('Посилання має починатися з https://', 'error'); input.focus(); return; }
       m.close();
-      if (v !== (book.canvaUrl || '') && await patch({ canvaUrl: v })) toast(v ? 'Посилання на Canva збережено' : 'Посилання на Canva прибрано', 'success', 1400);
+      if (v !== (book.canvaUrl || '') && await saveBook({ canvaUrl: v })) toast(v ? 'Посилання на Canva збережено' : 'Посилання на Canva прибрано', 'success', 1400);
     };
     m.foot.querySelector('[data-c]').onclick = () => m.close();
     m.foot.querySelector('[data-go]').onclick = () => save(input.value.trim());
@@ -587,7 +586,7 @@ export async function mount(view, [id]) {
     if (e.target.id === 'bk-title') {
       const v = e.target.value.trim();
       if (!v) { e.target.value = book.title; autosize(e.target); return; }
-      if (v !== book.title && await patch({ title: v })) { toast('Назву збережено', 'success', 1400); refreshInfo(); }
+      if (v !== book.title && await saveBook({ title: v })) { toast('Назву збережено', 'success', 1400); refreshInfo(); }
     }
   });
 

@@ -7,7 +7,7 @@ code:
 ---
 # Tests
 
-> 354 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
+> 355 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
 > **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
 > whatever it was before) in `.tmp\` of the repository on drive D, wiped at the end; buyers are made up. The
 > Workshop's tests run in its sandbox (`BOOK_STUDIO_SANDBOX`): made-up books, Downloads, clipboard and Recycle Bin
@@ -55,7 +55,11 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
   its temporary folder fails now and then with `PermissionError … being used by another process` and leaves
   a `.tmp\tmpXXXX` folder behind. That was `GelatoDraftFlow.test_an_unclear_draft_keeps_its_files_reachable`
   (1 run in 5, until 2026-09-25): a send's own folder check started the preview warm-up. Now only the page's
-  check warms previews (`creator._warm_in_background()`); `PrintifyValidation` keeps it that way.
+  check makes previews (since 2026-09-26 from its own decode, `images.check_png(previews=…)`); `PrintifyValidation`
+  keeps it that way.
+- **The interface's scripts parse** (`test_scripts.py`, since 2026-09-27): there are no browser tests, so each
+  script is checked by Node.js as the ES module it is — `node --check` on a `.js` file doesn't parse it as one (an
+  identifier declared twice made the Order Creator a blank page and no check noticed). Skipped without Node.js.
 - Opening the browser — `mock.patch("webbrowser.open")`.
 - **Photoshop** — never started by the tests: `mockups.launch` is swapped for a stand-in that writes the
   status file; the Photoshop script itself (ExtendScript is plain old JavaScript) runs under **Node.js**

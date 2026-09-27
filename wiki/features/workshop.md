@@ -189,7 +189,9 @@ its last step is ticked. A listing another library book already has is refused (
   files, read with `os.scandir`, 7–8× faster than looking at each file, since 2026-09-26); away from the Workshop,
   while a picture is awaited, only `/api/workshop/gen` is asked (no book is walked), and the generation mode (the
   Downloads watcher, F8's thread) starts only when first used — `generate.status()` answers "idle" without starting
-  it. A book's page works its parts out once (the strip and the pictures' versions were twice). When something
+  it. A book's page works its parts out once (the strip and the pictures' versions were twice); an open text step is
+fetched again only when its file's version changed; the one-shot animations (a step just done pops, the cover's pane
+glides) go on after the redraw instead of into the markup, so the next redraw doesn't draw those parts again. When something
   changed the page fetches and **redraws in place** (`patch()` in `lib.js`): each part is keyed,
   an unchanged one stays as it is (its pictures, hover, focus), a changed one is replaced, and a picture the old part
   already showed is carried over — nothing reloads or blinks; the scroll, an opened prompt, the chosen step stay.

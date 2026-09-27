@@ -5,13 +5,13 @@
 // comes back as it was left (keep.js).
 import {
   api, html, ic, ib, raw, esc, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
-  openExternal, runJob, fadeImages, plural, confirmBox,
+  openExternal, runJob, fadeImages, plural, confirmBox, patch, enterOnce,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
   STAGES, STAGE_EMPTY, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, spreadsOf,
   folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel, trackChips, statusChip, receiptCopy, copyChip,
-  isCustomText, isNameField, isFormatField, restorable, alsoSentChip, holdClicks, orderSync,
+  isCustomText, isNameField, isFormatField, restorable, alsoSentChip, holdClicks, orderSync, pageVersion,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 import { settle, sentOf, keptOrder, finish } from '../keep.js';
@@ -59,9 +59,11 @@ async function mountQueue(view) {
       ${segHtml(STAGES.map((s) => ({ ...s, count: 0 })), stage, { name: 'stage' })}
       <div class="tools">${ib('sync', 'Оновити замовлення', 'data-act="sync"')}</div>
     </div>
-    <div class="ord-list" id="or-list"></div>`);
+    <div class="ord-list" id="or-list"></div>
+    <div id="or-empty"></div>`);
   const $ = (s) => view.querySelector(s);
   const list = $('#or-list');
+  const empty = $('#or-empty');
   const seg = view.querySelector('[data-seg="stage"]');
   const syncBtn = view.querySelector('[data-act="sync"]');
   const syncedText = () => (data.syncedAt ? `Оновлено ${relTime(data.syncedAt)}` : 'Ще не завантажено');
@@ -74,7 +76,7 @@ async function mountQueue(view) {
     const tip = o.provider ? `Замовлено в ${providerName(p)}` : planText(o.plan);
     return html`<span class="chip svc-${p}" data-tip="${tip}">${ic(p, 'icon-s')}${providerName(p)}</span>`;
   };
-  const rowHtml = (o, entering) => html`<a class="ord-row ${entering ? 'enter' : ''}" href="#/orders/${o.receiptId}" data-rid="${o.receiptId}">
+  const rowHtml = (o) => html`<a class="ord-row" href="#/orders/${o.receiptId}" data-rid="${o.receiptId}">
       <span class="ord-thumb ${o.book?.lqip ? 'lqip' : ''}" ${o.book?.lqip ? raw(`style="background-image:url(${o.book.lqip})"`) : ''}>
         ${o.book?.image ? html`<img data-fade loading="lazy" decoding="async" src="${bookImage(o.book, 160)}" alt="">` : ic('book')}</span>
       <span class="ord-main">
@@ -87,27 +89,36 @@ async function mountQueue(view) {
       <span class="ord-go">${ic('chevRight')}</span>
     </a>`;
 
+  // The tab's rows are drawn once and redrawn in place (patch()): a search only hides rows, so typing never reloads a
+  // thumbnail or replays an entrance (every letter redrew every row until 26.09.2026). A row new to the tab comes in
+  // with the entrance: all of them on the first look, the new orders after a refresh.
+  let drawnOnce = false;
   const render = ({ fresh = false } = {}) => {
     const t = term.trim().toLowerCase();
     seg.querySelectorAll('button[data-value]').forEach((b) => {
       b.querySelector('.seg-count').textContent = data.orders.filter((o) => o.stage === b.dataset.value && matchesOrder(o, t)).length;
     });
     syncSeg(seg);
-    const rows = data.orders.filter((o) => o.stage === stage && matchesOrder(o, t));
+    const tab = data.orders.filter((o) => o.stage === stage);
     const before = shown;
-    shown = rows.map((o) => o.receiptId);
-    if (!rows.length) {
-      if (!data.orders.length && sync.syncing) setHtml(list, html`<div class="empty"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
-      else if (t) setHtml(list, html`<div class="empty">Нічого не знайдено</div>`);
-      else {
-        const [icon, title, text] = STAGE_EMPTY[stage];
-        setHtml(list, html`<div class="empty"><div class="empty-icon">${ic(icon)}</div><h3>${title}</h3>${text ? html`<p>${text}</p>` : ''}</div>`);
-      }
-      return;
-    }
-    setHtml(list, rows.map((o) => rowHtml(o, (!before.length && !returning) || (fresh && !before.includes(o.receiptId)))));
+    const known = new Set([...list.children].map((n) => n.dataset.key));
+    const drawn = patch(list, tab.map((o) => [o.receiptId, rowHtml(o)]));
+    const entering = (!drawnOnce && !returning) || fresh;
+    drawn.filter((n) => entering && !known.has(n.dataset.key))
+      .forEach((n, i) => enterOnce(n, drawnOnce ? 0 : Math.min(i * 30, 300)));
+    drawnOnce = true;
+    const visible = new Set(tab.filter((o) => matchesOrder(o, t)).map((o) => o.receiptId));
+    [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); });
+    shown = tab.filter((o) => visible.has(o.receiptId)).map((o) => o.receiptId);
     fadeImages(list);
     if (fresh && before.join() !== shown.join()) holdClicks(list);
+    if (shown.length) { setHtml(empty, ''); return; }
+    if (!data.orders.length && sync.syncing) setHtml(empty, html`<div class="empty"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
+    else if (t) setHtml(empty, html`<div class="empty">Нічого не знайдено</div>`);
+    else {
+      const [icon, title, text] = STAGE_EMPTY[stage];
+      setHtml(empty, html`<div class="empty"><div class="empty-icon">${ic(icon)}</div><h3>${title}</h3>${text ? html`<p>${text}</p>` : ''}</div>`);
+    }
   };
 
   const sync = orderSync({
@@ -163,8 +174,8 @@ async function mountCard(view, rid) {
     chosen: null,        // printer picked by hand when the cover type could not be read
     decided: null,       // a hardcover's printer, as its files decided it (24 pages → Printify, 28/30 → Gelato)
     seq: 0, checkSeq: 0, // a flow whose number moved on is no longer this book's newest
-    fresh: false,        // the next paint of the findings is a new result: they slide in (once)
-    stamp: 0,            // grows with every replaced page, so pictures are fetched anew
+    seen: { seq: -1, ids: new Set() }, // the findings already shown for the check number `seq` (markSeen())
+    versions: {},        // page file -> how often it was replaced or put back: only its own pictures are fetched anew
     replaced: new Set(), // pages a new file was put over — they can be put back
     dismissed: new Set() }); // findings the owner marked «це не помилка» (kept for the card's life)
   const work = (o.items.length ? o.items : [{}]).map(blank);
@@ -256,7 +267,7 @@ async function mountCard(view, rid) {
   }
 
   // ---------------------------------------------------------------- left: files → proof → print
-  const thumb = (name, w) => media('/media/folder', { path: f.folder, file: name, w, ...(f.stamp ? { v: f.stamp } : {}) });
+  const thumb = (name, w) => media('/media/folder', { path: f.folder, file: name, w, ...pageVersion(f.versions, name) });
   // The newest send of this order to the chosen printer that never went to print (a cancelled order, a
   // deleted or unconfirmed draft): its archived files can be taken instead of downloading them again.
   const earlier = () => (o.earlierSends || []).find((e) => byFiles() || e.provider === provider());
@@ -327,6 +338,13 @@ async function mountCard(view, rid) {
   // Most story pages unlike the book's passport: the pages of another book (the owner once laid out the order's
   // other book from its Canva template). One alarm instead of a row per page — a red banner nobody can miss.
   const alarmOf = (w = f) => openIssues(w).find((i) => i.kind === 'book');
+  // A finding slides in once: one already shown for this check doesn't again — not when the check ends after showing
+  // it while it ran, nor on a repaint (every row faded in a second time at the end, 26.09.2026).
+  const isNew = (id, w = f) => w.seen.seq !== w.checkSeq || !w.seen.ids.has(id);
+  function markSeen(w = f) {
+    if (w.seen.seq !== w.checkSeq) w.seen = { seq: w.checkSeq, ids: new Set() };
+    for (const i of openIssues(w)) w.seen.ids.add(i.id);
+  }
 
   function checkTip(r) {
     const lettered = r.pages.filter((p) => p.text).length;
@@ -351,15 +369,14 @@ async function mountCard(view, rid) {
     return html`<span class="v-badge ok" data-tip="${tip}">${ic('textScan')}Текст збігається</span>${again}`;
   }
 
-  const issueRow = (i) => html`<div class="tc-issue ${i.level} ${f.fresh ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}">
+  const issueRow = (i) => html`<div class="tc-issue ${i.level} ${isNew(i.id) ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}">
       <span class="tc-where">${i.label}</span>
       <span class="tc-text">${quoteBold(i.text)}${i.note ? html`<span class="tc-note">${i.note}</span>` : ''}</span>
       ${ib('check', 'Це не помилка', `data-dismiss="${i.id}"`, { cls: 'sm' })}
     </div>`;
 
   function wrongBook(i) {
-    const fresh = f.alarmSeen !== f.checkSeq; // it shakes once, not on every repaint of the list
-    f.alarmSeen = f.checkSeq;
+    const fresh = isNew(i.id); // it shakes once, not on every repaint of the list
     const cover = (b, what) => html`<figure class="tc-alarm-book">${b.image ? html`<img decoding="async" src="${bookImage(b, 160)}" alt="">` : ic('book')}
       <figcaption><span>${what}</span>${b.title}</figcaption></figure>`;
     const mine = item().book;
@@ -437,7 +454,7 @@ async function mountCard(view, rid) {
     if (!badge || !body) return;
     setHtml(badge, checkBadge());
     setHtml(body, checkBody());
-    f.fresh = false;
+    markSeen();
     markPages();
   }
 
@@ -479,11 +496,10 @@ async function mountCard(view, rid) {
         if (!showing(w)) return;
         const badge = view.querySelector('#oc-check-badge .v-badge.run');
         if (badge) { badge.querySelector('.num').textContent = `${Math.round(w.check.percent)}%`; badge.dataset.tip = w.check.step; }
-        if (openIssues(w).length !== had) { setHtml($('#oc-check'), checkBody()); markPages(); }
+        if (openIssues(w).length !== had) { setHtml($('#oc-check'), checkBody()); markSeen(w); markPages(); }
       }, 700, live);
       if (!live()) return;
       w.check = { state: 'done', result };
-      w.fresh = true;
       for (const i of result.issues) if (w.dismissed.has(i.id)) keepMark(w, i.id); // marked while it still ran
     } catch (err) {
       if (!live()) return;
@@ -512,7 +528,7 @@ async function mountCard(view, rid) {
   }
 
   function viewerItems(w = f, again = null) {
-    const items = folderViewerItems(w.folder, w.pages, w.label, w.stamp);
+    const items = folderViewerItems(w.folder, w.pages, w.label, w.versions);
     if (again) items.forEach((it) => { it.actions = pageActions(w, it, again); });
     for (const p of w.check?.state === 'done' ? w.check.result.pages : []) {
       const item = items[viewerIndex(p.page)];
@@ -554,14 +570,22 @@ async function mountCard(view, rid) {
       ? ib('x', 'Завершити роботу над замовленням', 'data-act="finish"', { cls: 'sm' }) : '');
   }
 
+  // The flow is redrawn in place (patch()): a card whose markup didn't change stays, and a changed one keeps every
+  // picture it already showed — after a replaced page only that page loads, and the strip stays where it was (the
+  // whole flow was redrawn, every picture faded in again and the strip jumped back to the first spread, 26.09.2026).
   function renderRight() {
     const ready = !!(f.folder && f.validation?.ok && !f.busy);
     renderFinish();
-    setHtml($('#oc-flow'), [filesCard(), ready ? proofCard() : '', ready ? printCard() : '']);
+    const scrolled = $('#oc-strip')?.scrollLeft || 0;
+    patch($('#oc-flow'), [['files', filesCard()], ...(ready ? [['proof', proofCard()], ['print', printCard()]] : [])]);
     fadeImages($('#oc-flow'));
     requestAnimationFrame(() => syncSeg($('#oc-flow .seg')));
+    if ($('#oc-check')) markSeen();
     const strip = $('#oc-strip');
-    if (strip) smoothWheel(strip);
+    if (strip) {
+      strip.scrollLeft = scrolled;
+      if (!strip.dataset.wheel) { smoothWheel(strip); strip.dataset.wheel = '1'; }
+    }
     markPages();
   }
 
@@ -610,7 +634,7 @@ async function mountCard(view, rid) {
     warmModel();
     const my = ++w.seq;
     Object.assign(w, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
-      decided: null, stamp: 0, replaced: new Set(), dismissed: new Set() });
+      decided: null, versions: {}, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
       const path = await receiveDrop(dropped, (pct) => { if (my === w.seq && showing(w)) setBusy(pct * 0.6); });
@@ -628,7 +652,7 @@ async function mountCard(view, rid) {
     dropCheck(w);
     const my = ++w.seq;
     Object.assign(w, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
-      decided: null, stamp: 0, replaced: new Set(), dismissed: new Set() });
+      decided: null, versions: {}, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try { await arrange(path, w, my); } catch (err) { failed(w, my, err); }
   }
@@ -641,7 +665,7 @@ async function mountCard(view, rid) {
     warmModel();
     const my = ++w.seq;
     Object.assign(w, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
-      decided: null, stamp: 0, replaced: new Set(), dismissed: new Set() });
+      decided: null, versions: {}, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
       const { path } = await api(`/api/archive/${e.id}/reuse`, { method: 'POST', body: {} });
@@ -705,7 +729,7 @@ async function mountCard(view, rid) {
   /** After a page changed: new picture everywhere, files checked again, text checked again — and the
    *  «це не помилка» marks of that page forgotten, because it is a different page now. */
   function pageChanged(w, file, lb, again, message) {
-    w.stamp++;
+    w.versions[file] = (w.versions[file] || 0) + 1;
     for (const i of w.check?.state === 'done' ? w.check.result.issues : []) {
       if (i.page === pageNo(file)) w.dismissed.delete(i.id);
     }

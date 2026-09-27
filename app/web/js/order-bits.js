@@ -192,13 +192,20 @@ export function spreadsOf(total) {
 /** Viewer items for a folder of Cover.png + 1..total.png: the cover, then every spread. */
 // `v` changes whenever a page of the folder was replaced: the address changes with it, so the viewer
 // shows the new picture instead of the one the browser kept (previews are cached for ten minutes).
-export function folderViewerItems(folder, total, sub = '', v = 0) {
-  const stamp = v ? { v } : {};
-  const items = [{ src: media('/media/folder', { path: folder, file: 'Cover.png', w: 2600, ...stamp }),
-    full: media('/media/folder', { path: folder, file: 'Cover.png', w: 4096, ...stamp }), title: 'Обкладинка', sub,
+/** A page's version in a picture's address: grows each time that page is replaced or put back, so only its own
+ *  pictures are fetched again (one number for the whole folder reloaded all ~33 of them, 26.09.2026). */
+export const pageVersion = (versions, ...files) => {
+  const v = files.map((f) => (f && versions?.[f]) || 0).join('.');
+  return /[1-9]/.test(v) ? { v } : {};
+};
+
+export function folderViewerItems(folder, total, sub = '', versions = {}) {
+  const cover = pageVersion(versions, 'Cover.png');
+  const items = [{ src: media('/media/folder', { path: folder, file: 'Cover.png', w: 2600, ...cover }),
+    full: media('/media/folder', { path: folder, file: 'Cover.png', w: 4096, ...cover }), title: 'Обкладинка', sub,
     files: ['Cover.png'] }];
   spreadsOf(total).forEach((sp, i) => {
-    const q = { path: folder, h: 1400, ...stamp };
+    const q = { path: folder, h: 1400, ...pageVersion(versions, sp.left && `${sp.left}.png`, sp.right && `${sp.right}.png`) };
     if (sp.left) q.left = `${sp.left}.png`;
     if (sp.right) q.right = `${sp.right}.png`;
     const lp = i === 0 ? 1 : sp.left + 1;

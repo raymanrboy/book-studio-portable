@@ -283,10 +283,10 @@ def _walk(path: Path):
 
 
 def versions(path: Path) -> dict[str, str]:
-    """Every picture of the book with a tag that changes when the file does: the page asks for `?v=<tag>` and the
-    browser keeps the picture for good — nothing reloads or blinks when the page redraws itself."""
-    return {f"{area}/{rel}": f"{st.st_size:x}{st.st_mtime_ns:x}"
-            for area, rel, st in _walk(path) if rel.lower().endswith(IMAGE_SUFFIXES)}
+    """Every file of the book with a tag that changes when the file does: a picture's address carries it (`?v=<tag>`)
+    and the browser keeps the picture for good — nothing reloads or blinks when the page redraws itself; a text step
+    the page has open is fetched again only when its tag changed (since 2026-09-26)."""
+    return {f"{area}/{rel}": f"{st.st_size:x}{st.st_mtime_ns:x}" for area, rel, st in _walk(path)}
 
 
 def signature(book_id: str | None = None) -> str:

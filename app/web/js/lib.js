@@ -447,7 +447,7 @@ export function flip(container, mutate, duration = 380) {
 // child already showed is carried into the new one as it is, decoded: nothing reloads or blinks. Returns the children
 // (re)drawn this time, for the caller to fade their new pictures in.
 const drawnFrom = new WeakMap(); // element → the markup it was drawn from
-export function patch(container, items) {
+export function patch(container, items, redraw = null) {
   const old = new Map([...container.children].map((n) => [n.dataset.key, n]));
   const drawn = [];
   // The gone ones go first: a child that disappeared used to leave every one after it to be moved — and a moved
@@ -459,7 +459,7 @@ export function patch(container, items) {
     const text = render(markup);
     let node = old.get(key);
     old.delete(key);
-    if (!node || drawnFrom.get(node) !== text) {
+    if (!node || drawnFrom.get(node) !== text || redraw?.has(key)) { // `redraw`: keys changed by hand meanwhile
       const next = el(raw(text));
       next.dataset.key = key;
       drawnFrom.set(next, text);
@@ -492,6 +492,14 @@ function carryPictures(from, to) {
 /** A progress bar (`.progress > i`) at `percent`: drawn by a transform, not its width — no layout on every step. */
 export function setProgress(bar, percent) {
   if (bar) bar.style.transform = `scaleX(${Math.max(0, Math.min(100, percent)) / 100})`;
+}
+
+/** A row new to a list comes in with the page's entrance (`.enter`, `delay` ms late) — once: the class goes when it
+ *  has played, so a later move of the row (patch()) never replays it. */
+export function enterOnce(node, delay = 0) {
+  if (delay) node.style.animationDelay = `${delay}ms`;
+  node.classList.add('enter');
+  node.addEventListener('animationend', () => { node.classList.remove('enter'); node.style.animationDelay = ''; }, { once: true });
 }
 
 // Re-render a region without stealing the caret from the field the user is typing in.

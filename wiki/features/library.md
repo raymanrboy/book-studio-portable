@@ -89,6 +89,9 @@ marked `"stage": "workshop"`, with its prompts; that model is gone.)
 Asset: `{id, file, originalName, width, height, bytes, addedAt, lqip}`. `rev` guards against two windows
 changing the same book at once (a `PATCH` with a stale `rev` → 409).
 
+The passport redraws itself in place (since 2026-09-26): a saved text changes its own row, and a changed region
+keeps the pictures it already showed — the whole row of pictures and the hero used to fade in again.
+
 A picture is decoded and its previews made **outside the library's lock** (`_put_asset()`, since 2026-09-26): two
 pictures dropped on one spread, or a text edit meanwhile, no longer wait up to ~1.5 s per picture.
 

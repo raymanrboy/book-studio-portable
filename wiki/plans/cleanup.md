@@ -95,11 +95,14 @@ The rest:
 - [ ] **Waits for the owner:** the Gelato link started beside the PDF build (3–8 s per send) — it needs one real
   draft to be checked on, so it isn't done without his yes.
 
-## Phase 4 — no blinking
+## Phase 4 — no blinking (done 2026-09-27)
 
-- [ ] A replaced page reloads only itself (per-file versions), the strip keeps its place.
-- [ ] Queue and archive search, the Order Creator's structure and step cards, the passport's texts, the text
+- [x] A replaced page reloads only itself (per-file versions), the strip keeps its place.
+- [x] Queue and archive search, the Order Creator's structure and step cards, the passport's texts, the text
   check's end, the mockups' templates: redrawn in place (`patch()`), no replayed entrances.
+
+- Not done, on purpose: drawing the queue at once from memory on "back" — the server answers in a few ms now
+  (phase 2), so there is nothing to hide.
 
 ## Phase 5 — duplicates and dead code
 
