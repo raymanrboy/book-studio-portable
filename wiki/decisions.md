@@ -9,6 +9,17 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-27 — The big cleanup, phase 6: big files cut by job
+
+- **A page keeps its state and its actions in `mount()`**; what only draws (a row, a panel, a result) or a dialog of
+  its own goes to a module of its own and gets what it needs passed in (`book()`, an id, a callback) — it never
+  reaches into the page. The order card's text check and the Order Creator's steps stay in their pages: they live
+  on one order's state.
+- **The server's big files are packages by job** (`textcheck/`, `creator/`), the library's files and guide apart
+  from its model; the styles by section; the preview server by job.
+- **The wiki names a function where it is defined.** A line that links a file names only what that file defines;
+  `wiki_check.py` fails otherwise (since this phase: an import or a call used to pass).
+
 ## 2026-09-27 — The big cleanup, phase 5: one copy of everything
 
 - **One-time migrations go once they have done their work** on the owner's PC (checked in his data: no old

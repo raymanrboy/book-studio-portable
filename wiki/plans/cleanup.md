@@ -122,7 +122,7 @@ The rest:
 - Moved to phase 6: the Printify / Gelato send frame (with the Order Creator's split). Not done, on purpose: the
   one-off inline styles and the notice markup ([decisions](../decisions.md)).
 
-## Phase 6 — big files cut by job
+## Phase 6 — big files cut by job (done 2026-09-27)
 
 - [x] `textcheck.py` → a package: `run`, `rules`, `texts`, `ollama`, `journal`, `routes` (`textcheck_replay.py --all`
   gave the same output before and after — byte for byte).
@@ -131,8 +131,21 @@ The rest:
 - [x] `library.py` → `library.py` (the model, its pictures, the book routes) + `library_files.py` (the text JSON, the
   folder import, the export, the guide); the guide's words in `library_guide.md` (the rendered guide is the same,
   byte for byte).
-- [ ] Interface pages (order card, Order Creator, passport, settings, mockups, Workshop book, Profit) →
-  state + templates + actions; CSS by section; `dev_server.py` by job.
+- [x] Interface pages: each page keeps its state and actions in `mount()`; what only draws, or a dialog of its own,
+  went to a module that gets what it needs passed in — the queue and the order card (`orders.js`,
+  `order-card.js`), the Order Creator's picker (`creator-picker.js`), the passport's dialogs (`book-dialogs.js`),
+  Settings' dialogs (`settings-dialogs.js`), the library's «Додати книгу» (`add-book.js`), the mockups' step 4
+  (`mockups-run.js`), a Workshop book's rows (`workshop-rows.js`), Profit's rows (`profit-rows.js`); shared bits —
+  `drop.js`, `workshop-bits.js`. Each checked in the preview against the page as it was (the same HTML).
+- [x] CSS by section: `app.css` (the system and the shell), `library.css`, `orders.css`, `profit.css`,
+  `listings.css` (the computed styles of every page the same, both themes).
+- [x] `dev_server.py` by job: the server (65 lines), the made-up data (`sample_data.py`), the Workshop's books
+  (`sample_books.py`), the mockups and the pretend Photoshop (`sample_mockups.py`).
+- [x] Checks that came of it: `test_scripts.py` finds a missing or unused import between the scripts
+  (`tests/jstokens.py`); the wiki check wants a name **defined** in the file its line links to (eight stale lines
+  found and fixed).
+- Left in `mount()`, on purpose: the order card's text check and the Order Creator's steps — they read and change
+  one order's state all the time; cut out, they would need that state handed back and forth, for no gain.
 
 ## Left as it is (on purpose)
 

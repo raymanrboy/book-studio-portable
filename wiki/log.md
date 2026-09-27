@@ -3,6 +3,28 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] update | Cleanup phase 6: big files cut by job
+
+- Server: `textcheck.py` → the package `textcheck/` (the replay gave the same output, byte for byte); `creator.py`
+  → `creator/` with one send frame for Printify and Gelato (`sending.py`); `library.py` → the model and its routes +
+  `library_files.py` (the text JSON, the folder import, the export, the guide — its words in `library_guide.md`).
+- Interface: the queue and the order card apart; the Order Creator's picker, the passport's dialogs, Settings'
+  dialogs, «Додати книгу», the mockups' step 4, a Workshop book's rows and Profit's rows in modules of their own
+  (each page 9–40 % shorter); the styles in five files by section; the preview
+  server by job.
+- Checks: a missing or unused import between the scripts fails `test_scripts.py`; the wiki check wants a name
+  defined in the file its line links to — it found eight stale lines (functions moved by the splits), fixed.
+- Checked: 357 tests; the preview — every page split compared with the page as it was (the same HTML): the queue
+  and the card, the Creator's picker filling the form, the settings, «Додати книгу», the Workshop's gallery and
+  book (a picture dropped in and removed, the whole prompt), the passport (a folder imported, the JSON pasted, the
+  Canva link, the whole text copied), the mockups with the pretend Photoshop from the book to «Зберегти відкриті»,
+  Profit's rows and all 16 panels; the styles' computed values on every page in both themes.
+- Found on the way and fixed: the first cut of Profit's rows left a list behind (the state switch) — the panel would
+  not open; caught in the preview before the commit; `test_scripts.py` now fails on any such name (`ScriptsImport.test_every_name_is_declared`).
+- Pages: code-map, glossary, decisions, plans/cleanup, dev (testing, wiki-rules, preview), architecture (frontend,
+  server), features (orders, order-creator, library, mockups, workshop, text-check, profit), flows (order-to-print,
+  book-import), rules (sync-policy, book-structure).
+
 ## [2026-09-27] update | Cleanup phase 5: one copy of everything, no dead code
 
 - Server: the one-time migrations removed (they had run on the owner's PC: nothing of the old data was left);
