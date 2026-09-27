@@ -57,8 +57,9 @@ within one Windows clock "tick" get the same modified time — a bug fixed on 20
 - [app/studio/records.py](../../app/studio/records.py) — `save()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `attach_shipments()`, `TRACKING_READS`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `syncOrders()`, `runningSync()`, `watchSync()`
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `refresh()`
-- [app/web/js/pages/creator-picker.js](../../app/web/js/pages/creator-picker.js) — `refresh()` (the picker's sync button, `orderSync()`)
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `orderSync()`: the sync button of the queue
+  ([orders.js](../../app/web/js/pages/orders.js) `mount()`) and of the Order Creator's picker
+  ([creator-picker.js](../../app/web/js/pages/creator-picker.js) `pickEtsyOrder()`)
 - [app/studio/main.py](../../app/studio/main.py) — `main()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `refresh_quietly()`
 - Tests: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`SyncOnlyAtStartOrByHand`), [app/tests/test_states.py](../../app/tests/test_states.py) (`IncrementalSync`)

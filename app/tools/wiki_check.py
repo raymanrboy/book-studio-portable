@@ -93,11 +93,27 @@ def link_target(page: Path, raw: str) -> Path | None:
     return (page.parent / raw).resolve() if raw else None
 
 
-def defined_in(name: str, text: str, const: bool) -> bool:
-    if const:
+# What defines a name in a file. An import or a call is not enough: a moved function's old file still imports or calls
+# it, and such stale lines passed the check until 27.09.2026.
+_DEFINES = (
+    r"\b(?:def|function\*?|class|const|let|var)\s+{n}\b",   # def f / function f / class C / const X = …
+    r"^[ \t]*(?:self\.|cls\.)?{n}\s*(?::[^=\n]+)?=(?!=)",  # X = … / X: T = … / self.x = …
+    r"^[ \t]*(?:async\s+)?{n}\s*\([^)\n]*\)\s*\{{",         # a method: f(a) {
+    r"(?:^|[{{,])[ \t]*{n}\s*:",                            # an object's key: { f: … }
+    r"export\s*\{{[^}}]*\b{n}\b",                           # export { f }
+    r"[\"']{n}[\"']",                                       # in quotes: an environment variable, a setting's key
+)
+
+
+def defined_in(name: str, text: str) -> bool:
+    """`name` is defined in this file: `Class.method` — the method, when the class is this file's; any other dotted
+    `module.name` (another module's function the file calls) only has to be there."""
+    if "." in name:
+        owner, _, last = name.rpartition(".")
+        if re.search(rf"\bclass\s+{re.escape(owner)}\b", text):
+            return defined_in(last, text)
         return re.search(rf"\b{re.escape(name)}\b", text) is not None
-    n = re.escape(name)
-    return re.search(rf"(?:def|function|class)\s+{n}\b|\b{n}\s*(?:=|:|\()", text) is not None
+    return any(re.search(p.format(n=re.escape(name)), text, re.M) for p in _DEFINES)
 
 
 def routes_in_code() -> set[tuple[str, str]]:
@@ -200,8 +216,8 @@ def check() -> list[str]:
                 target = owner[-1]
                 if target not in code_cache:
                     code_cache[target] = target.read_text(encoding="utf-8")
-                ident = func.group(1) if func else token
-                if not defined_in(ident, code_cache[target], bool(const)):
+                ident = token[:-2] if func else token
+                if not defined_in(ident, code_cache[target]):
                     problems.append(f"{name}:{no}: `{token}` not found in {rel(target)}")
 
     for page in all_pages:

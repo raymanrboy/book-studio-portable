@@ -1,7 +1,7 @@
 ---
 title: How to run this wiki
 type: dev
-updated: 2026-09-23
+updated: 2026-09-27
 code:
   - app/tools/wiki_check.py
   - app/tests/test_wiki.py
@@ -93,6 +93,11 @@ against a real 182, and 88 routes against a real 92 (found by the audit): it che
 the numbers in the prose. Since 2026-09-23 it checks **every** mention on these pages, not just the
 first; tests are counted the way the runner sees them (`ast`: `test_…` methods on a class), and
 "N … against M" is history, and it's left alone.
+Since 2026-09-27 a name after a file's link must be **defined** in that file (`defined_in()`: `def`, `function`,
+`class`, `const`, an object's key or method, a name in quotes such as an environment variable): an import or a call
+used to be enough, so a function moved to another file kept passing on its old file's line (the cleanup's splits
+left eight such lines). `Class.method()` is looked for in the class's file; any other dotted `module.func()` is a
+call the file makes, and it only has to be there.
 The same check runs as the test `test_wiki.py`, so a wiki that's out of sync with the code fails the
 tests.
 

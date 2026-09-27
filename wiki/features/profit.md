@@ -4,6 +4,7 @@ type: feature
 updated: 2026-09-27
 code:
   - app/web/js/pages/profit.js
+  - app/web/js/pages/profit-rows.js
   - app/studio/profit.py
   - app/studio/reconcile.py
   - app/studio/outcomes.py
@@ -59,7 +60,8 @@ changes — `records.stamp()`) and its routes.
 
 ## Where in the code
 
-- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `renderTable()`, `detailHtml()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
+- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
+- [app/web/js/pages/profit-rows.js](../../app/web/js/pages/profit-rows.js) — `rowInner()`, `detailHtml()`, `stateBox()`, `econLines()`, `costOf()`, `DEAD_SHORT`, `STATE_OPTS`
 - [app/studio/profit.py](../../app/studio/profit.py) — `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `mark_reprint()`
 - [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`

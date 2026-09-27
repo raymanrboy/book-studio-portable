@@ -220,8 +220,8 @@ book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and scre
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `save_file()`, `to_recycle_bin()`, `attention()`
 - [app/studio/library.py](../../app/studio/library.py) — `create_book()`, `listing_of()`, `import_pictures()`, `take_listing_image()`
 - [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()`, `SORTS`
-- [app/web/js/pages/workshop-bits.js](../../app/web/js/workshop-bits.js) — `picture()`, `checkWord()`
-- [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`, `STATE_TEXT`
+- [app/web/js/workshop-bits.js](../../app/web/js/workshop-bits.js) — `picture()`, `checkWord()`, `STATE_WORDS`, `STATE_TEXT`, `ERRORS`
+- [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genAction()`, `genBar()`, `waitingFor()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `patch()`
 - [app/web/css/listings.css](../../app/web/css/listings.css) — `.ws-card`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-cover`, `.ws-tpl`
