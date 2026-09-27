@@ -188,9 +188,9 @@ removed the files just dropped into an order's card; and Book Studio's own clean
 than 2 hours, on every drop) would have taken the demo book from under a run. Now each cleans only its own.
 
 **What the separate utility left** in its data folder `app/data/mockups/` — its temp files (`tmp/`, ~218 MB on
-the owner's PC), previews (`cache/`, ~11 MB) and window profile (`window-profile/`, ~71 MB) — goes once, on
-Book Studio's first launch after the move (`forget_old_utility()`, `OLD_UTILITY`); `places.json`, `work/` and
-`logs/` stay.
+the owner's PC), previews (`cache/`, ~11 MB) and window profile (`window-profile/`, ~71 MB) — went on Book Studio's
+first launch after the move; `places.json`, `work/` and `logs/` stay. That one-time cleaning was removed on
+2026-09-27 (nothing of it was left on the owner's PC).
 
 Nothing goes to drive C: the program, the Edge window and the Windows dialogs get their temp folder inside
 the data folder (`core.own_temp()`, [runtime](../architecture/runtime.md#temporary-files-and-drive-c)); the
@@ -262,9 +262,9 @@ icon, «Мокапи: готово · 7 картинок», back in the listings
 
 ## Where in the code
 
-- [app/studio/mockups.py](../../app/studio/mockups.py) — `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `OLD_UTILITY`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `forget_old_utility()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `make()`, `finish()`, `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `make()`, `finish()`, `_run_script()` (both start their script the same way), `_shown` (the one demo book), `_run_stop` (the one run's «Зупинити»), `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
 - [app/studio/mockups.jsx](../../app/studio/mockups.jsx) — `openCover()`, `closeCover()`, `findLayer()`, `replaceContents()`, `fill()`, `savePng()`, `runTemplate()`, `findOpen()`, `finishOpen()`, `report()`, `cancelled()`
-- [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `clear_books()`, `forget_old_utility()` and `clean_runs()` on launch and close
+- [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `clear_books()` and `clean_runs()` on launch and close
 - [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `paintHead()`, `finishPage()`, `mount()`, `paintBook()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
 - [app/web/js/app.js](../../app/web/js/app.js) — the route `#/mockups`, `paintBusy()` (the rail's dot)
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_zip()`, `downloads_folder()`, `attention()`

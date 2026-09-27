@@ -85,6 +85,16 @@ def new_id() -> str:
     return uuid.uuid4().hex
 
 
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")  # a picture, wherever one is looked for (was written out five times)
+
+
+def inside(path: Path, folder: Path, or_same: bool = False) -> bool:
+    """`path` lies somewhere in `folder` (or is the folder itself, with `or_same`). Both resolved first, so neither a
+    `..` nor a link fools it — the one check behind every "only in our own folder" rule."""
+    path, folder = Path(path).resolve(), Path(folder).resolve()
+    return folder in path.parents or (or_same and path == folder)
+
+
 def now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()) + "Z"
 
@@ -219,21 +229,6 @@ DEFAULT_SETTINGS: dict = {
 }
 
 # Settings saved before 2026-09-17 still name the inch-sized Gelato products.
-_OLD_GELATO_SIZES = {"_pf_8x8-inch-200x200-mm_": "_pf_200x200-mm-8x8-inch_",
-                     "_pf_5_5x5_5-inch-140x140-mm_": "_pf_140x140-mm-5_5x5_5-inch_"}
-
-
-def _upgrade(data: dict) -> dict:
-    gelato = data["gelato"]
-    gelato.pop("pageCount", None)  # replaced by pageCounts (28 or 30)
-    for fmt in (gelato.get("formats") or {}).values():
-        uid = str(fmt.get("productUid") or "")
-        for old, new in _OLD_GELATO_SIZES.items():
-            uid = uid.replace(old, new)
-        fmt["productUid"] = uid
-    return data
-
-
 def _merge(base: dict, extra: dict) -> dict:
     out = copy.deepcopy(base)
     for key, value in (extra or {}).items():
@@ -250,7 +245,7 @@ class Settings:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._path = data_path("settings.json")
-        self._data = _upgrade(_merge(DEFAULT_SETTINGS, read_json(self._path, {}) or {}))
+        self._data = _merge(DEFAULT_SETTINGS, read_json(self._path, {}) or {})
 
     def get(self) -> dict:
         with self._lock:

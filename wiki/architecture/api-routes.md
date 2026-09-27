@@ -48,7 +48,7 @@ code:
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/orders` | token | `_list` | orders.js (the queue) |
+| GET | `/api/orders` | token | `_list` | orders.js (the queue), creator.js `fromEtsy` (the same list; its own `/api/creator/etsy-orders` went on 2026-09-27) |
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (the card; `earlierSends` — sends of this order that never became a print-shop order) |
 | POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (laying out pages; for Gelato — also whether it prints that many pages in this format; `provider: "files"` — a hardcover, the length picks the printer) |
 
@@ -136,7 +136,6 @@ The Listings mode's books in development — the book pipeline's folders ([featu
 | POST | `/api/creator/gelato/create` | token | `_create_gelato` | creator.js (background job; with `reprintOf` — a reprint draft from the archive's files, only from a book that really went to print) |
 | GET | `/api/creator/gelato/page-counts` | token | `_gelato_page_counts` | creator.js `loadPageCounts` (how many pages Gelato prints in each format — from its catalog; `problems` — ready-made text for each length it doesn't print) |
 | POST | `/api/creator/gelato/close-tunnel` | token | `_close_tunnel` | creator.js |
-| GET | `/api/creator/etsy-orders` | token | `_etsy_orders` | creator.js `fromEtsy` |
 | POST | `/api/creator/open-folder` | token | `_open_folder` | creator.js, book.js |
 | GET | `/media/folder` | media | `_folder_media` | order-bits.js, creator.js, orders.js (`?path=&file=&w=`) |
 | GET | `/media/folder-spread` | media | `_folder_spread` | order-bits.js `folderViewerItems` (`?path=&left=&right=&h=`) |

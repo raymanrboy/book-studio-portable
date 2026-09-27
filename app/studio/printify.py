@@ -75,7 +75,7 @@ def _human(err: httpc.HttpError, action: str) -> PrintifyError:
 
 
 def call(method: str, path: str, body: Any = None, action: str = "Запит до Printify", timeout: float = 60,
-         retries: int = 3, params: str = "", order: bool = False, idempotent: bool | None = None) -> Any:
+         retries: int = 3, params: str = "", order: bool = False) -> Any:
     method = method.upper()
     path = path.lstrip("/")
     _check(method, path, order)
@@ -84,7 +84,7 @@ def call(method: str, path: str, body: Any = None, action: str = "Запит д�
     try:
         encoded = {"json_bytes": body} if isinstance(body, bytes) else {"json_body": body}
         return httpc.request_json(method, url, headers={"Authorization": f"Bearer {token()}"},
-                                  timeout=timeout, retries=retries, idempotent=idempotent, **encoded)
+                                  timeout=timeout, retries=retries, **encoded)
     except httpc.HttpError as err:
         _audit_log().warning("%s /%s -> %s %s", method, path, err.status, httpc.short_body(err.body, 300))
         raise _human(err, action) from None

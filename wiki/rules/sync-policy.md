@@ -18,7 +18,8 @@ code:
   `profit-sync` starts.
 - The "Orders" page and picking an order in the Order Creator both ask `GET /api/profit/sync` when
   opened: if a sync is running, they show its steps and refresh the list once it's done (one shared
-  function for both, `orderSync()` in `order-bits.js`).
+  function for both, `orderSync()` in `order-bits.js`; both list the same orders — `GET /api/orders`, since
+  2026-09-27).
 - The "Update orders" button → `POST /api/profit/sync`; if a sync is already running, the server returns
   that same one (`jobId`) instead of starting a second.
 - Between runs, the last snapshot is shown (`data/profit/snapshot.json`) with an "Updated … ago" time.

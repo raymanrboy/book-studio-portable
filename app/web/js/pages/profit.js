@@ -1,8 +1,8 @@
 // Profit: Etsy Net − Printify/Gelato cost for every Etsy order (analogue of Etsy Profit Calculator),
 // plus order states: cancelled, full / partial refund, replacement reprint.
 import {
-  api, html, ic, ib, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, signedMoney, menu,
-  dateTime, relTime, plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember, setProgress,
+  api, post, html, ic, ib, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, signedMoney, menu,
+  dateTime, relTime, plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember, setProgress, glide,
 } from '../lib.js';
 import { refreshInfo, store } from '../info.js';
 
@@ -23,9 +23,7 @@ const STATE_OPTS = [
 ];
 const STATE_TEXT = { normal: 'звичайне', canceled: 'скасовано', refund_full: 'повне повернення', refund_partial: 'часткове повернення', replacement: 'заміна' };
 const STATE_CHIP = { canceled: 'chip-red', refund_full: 'chip-red', refund_partial: 'chip-amber', replacement: 'chip-purple' };
-const EASE = 'cubic-bezier(.22, 1, .36, 1)';
 const toCal = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-const usd = (n) => (n === null || n === undefined ? '—' : n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${Number(n).toFixed(2)}`);
 const costOf = (o) => o.cost_total ?? ((o.pod_total_cost || 0) > 0 ? o.pod_total_cost : (o.printify_total_cost || 0));
 const isIssue = (o) => (o.state && o.state !== 'normal') || o.needs_link || o.pod_dead || o.cost_unknown;
 const podName = (o) => (o.pod_provider === 'gelato' ? 'Gelato' : 'Printify');
@@ -176,7 +174,7 @@ export async function mount(view) {
     }
     box.querySelector('[data-f="net"]').textContent = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}`;
     const pf = box.querySelector('[data-f="profit"]');
-    pf.textContent = k.issues ? `Повернення й заміни: ${usd(k.impact)}` : '';
+    pf.textContent = k.issues ? `Повернення й заміни: ${money(k.impact)}` : '';
     pf.dataset.tip = k.issues ? `${k.issues} ${plural(k.issues, ['замовлення', 'замовлення', 'замовлень'])}: скасування, повернення, заміни` : '';
     pf.classList.toggle('neg', Boolean(k.issues && k.impact < 0));
     const card = box.querySelector('[data-card="profit"]');
@@ -184,7 +182,7 @@ export async function mount(view) {
     card.classList.toggle('tone-red', k.profit < 0);
     const from = { ...shownKpi };
     const to = { net: k.net, cost: k.cost, profit: k.profit, margin: k.margin };
-    const fmt = { net: money, cost: money, profit: usd, margin: (v) => `${(Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '')}%` };
+    const fmt = { net: money, cost: money, profit: money, margin: (v) => `${(Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '')}%` };
     const start = performance.now();
     // First paint shows final numbers (the page transition is the entrance); later changes count smoothly.
     const dur = reducedMotion() || !st.kpiShown ? 0 : 520;
@@ -241,15 +239,15 @@ export async function mount(view) {
 
   function stateChip(o) {
     if (!o.state || o.state === 'normal') return '';
-    const text = o.state === 'refund_partial' && o.refund_amount ? `повернення ${usd(-o.refund_amount)}` : STATE_TEXT[o.state];
+    const text = o.state === 'refund_partial' && o.refund_amount ? `повернення ${money(-o.refund_amount)}` : STATE_TEXT[o.state];
     return html`<span class="chip ${STATE_CHIP[o.state]}" data-tip="${o.state_manual ? 'Статус встановлено вручну' : 'Статус з Etsy'}">${o.state_manual ? ic('edit', 'icon-s') : ''}${text}</span>`;
   }
 
   function netCell(o) {
     if (o.etsy_net === undefined) return html`<span class="faint">—</span>`;
     const changed = o.state && o.state !== 'normal' && o.etsy_net_original !== undefined && Math.abs(o.etsy_net - o.etsy_net_original) > 0.004;
-    return html`<div class="o-net ${o.etsy_net < 0 ? 'neg' : o.etsy_net === 0 ? 'zero' : ''}">${usd(o.etsy_net)}</div>
-      ${changed ? html`<div class="o-was" data-tip="До повернення">${money(o.etsy_net_original)}</div>` : o.etsy_fees > 0 ? html`<div class="o-fees">збори: -$${o.etsy_fees.toFixed(2)}</div>` : ''}`;
+    return html`<div class="o-net ${o.etsy_net < 0 ? 'neg' : o.etsy_net === 0 ? 'zero' : ''}">${money(o.etsy_net)}</div>
+      ${changed ? html`<div class="o-was" data-tip="До повернення">${money(o.etsy_net_original)}</div>` : o.etsy_fees > 0 ? html`<div class="o-fees">збори: ${money(-o.etsy_fees)}</div>` : ''}`;
   }
 
   function rowInner(o) {
@@ -267,7 +265,7 @@ export async function mount(view) {
     const s = o.state;
     if (!s || s === 'normal') return '';
     const lines = [];
-    const line = (label, value, cls = '') => lines.push(html`<span>${label}</span><b class="${cls || (value < 0 ? 'neg' : value > 0 ? 'pos' : '')}">${value > 0 ? '+' : ''}${usd(value)}</b>`);
+    const line = (label, value, cls = '') => lines.push(html`<span>${label}</span><b class="${cls || (value < 0 ? 'neg' : value > 0 ? 'pos' : '')}">${value > 0 ? '+' : ''}${money(value)}</b>`);
     line(s === 'replacement' ? 'Etsy Net (на руки)' : 'Etsy Net до повернення', o.etsy_net_original);
     if (s === 'canceled' || s === 'refund_full' || s === 'refund_partial') {
       line(`Повернено покупцю${o.revenue_back !== o.refund_amount ? ' (без податку США, його повертає Etsy)' : ''}`, -o.revenue_back);
@@ -312,7 +310,7 @@ export async function mount(view) {
         <input class="input state-note" id="st-note-${id}" data-state-note="${id}" value="${o.state_note || ''}" placeholder="Причина: пошкоджено в доставці, помилка в імені…" maxlength="500">
       </div>` : ''}
       ${econLines(o)}
-      ${(o.refunds || []).length ? html`<div class="state-hint state-refunds">Повернення в Etsy: ${o.refunds.map((r) => `${r.at ? dateTime(new Date(r.at * 1000).toISOString()) : ''} · ${money(r.amount)}${r.reason ? ` · ${r.reason}` : ''}${r.note ? ` · «${r.note}»` : ''}`).join('; ')}</div>` : ''}
+      ${(o.refunds || []).length ? html`<div class="state-hint state-refunds">Повернення в Etsy: ${o.refunds.map((r) => `${r.at ? dateTime(r.at * 1000) : ''} · ${money(r.amount)}${r.reason ? ` · ${r.reason}` : ''}${r.note ? ` · «${r.note}»` : ''}`).join('; ')}</div>` : ''}
     </div>`;
   }
 
@@ -398,7 +396,7 @@ export async function mount(view) {
     if (d.mode === 'empty') {
       const integ = store.info?.integrations || {};
       const ready = integ.etsy?.connected || integ.printify?.configured;
-      setHtml(box, html`<div class="empty"><div class="empty-icon">${ic(ready ? 'refresh' : 'key')}</div>
+      setHtml(box, html`<div class="empty"><div class="empty-icon">${ic(ready ? 'sync' : 'key')}</div>
         <h3>${ready ? 'Даних ще немає' : 'Підключіть Etsy та Printify'}</h3>
         ${ready ? '' : html`<p>Потрібні доступ до Etsy і токен Printify; Gelato — за бажанням.</p>`}
         ${ready ? html`<button class="btn btn-primary" data-act="sync">${ic('sync')}Оновити</button>` : html`<a class="btn btn-primary" href="#/settings">${ic('sliders')}Відкрити налаштування</a>`}</div>`);
@@ -458,10 +456,7 @@ export async function mount(view) {
     const acc = view.querySelector(`[data-acc="${CSS.escape(id)}"]`);
     const full = st.details.get(id);
     if (acc && full && st.open === id) {
-      const from = acc.getBoundingClientRect().height;
-      keepFocus(() => setHtml(acc.firstElementChild, detailHtml(full)));
-      const to = acc.scrollHeight;
-      if (!reducedMotion() && Math.abs(to - from) > 1) acc.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: 260, easing: EASE });
+      glide(acc, () => keepFocus(() => setHtml(acc.firstElementChild, detailHtml(full))));
       requestAnimationFrame(() => acc.querySelectorAll('.state-seg .seg').forEach(syncSeg));
     }
     renderKpis();
@@ -491,7 +486,7 @@ export async function mount(view) {
     renderHead(); renderNotice();
     $('#pf-progress').hidden = false;
     try {
-      const res = await runJob(api('/api/profit/sync', { method: 'POST', body: { full } }), (j) => {
+      const res = await runJob(post('/api/profit/sync', { full }), (j) => {
         $('#pf-step').textContent = j.step;
         $('#pf-detail').textContent = j.detail ? ` · ${j.detail}` : '';
         $('#pf-pct').textContent = `${Math.round(j.percent)}%`;
@@ -541,7 +536,7 @@ export async function mount(view) {
       // Replacement orders are withheld from automatic matching, which can change other rows too.
       const wide = patch.replacementOrders !== undefined || patch.status === 'replacement' || o.state === 'replacement';
       try {
-        const res = await api('/api/profit/state', { method: 'POST', body: stateBody(o, patch) });
+        const res = await post('/api/profit/state', stateBody(o, patch));
         const summary = await api('/api/profit/data');
         st.data = summary;
         st.candidates = null;
@@ -651,7 +646,7 @@ export async function mount(view) {
     orderPicker({
       o,
       title: 'Зіставлення замовлення',
-      sub: `Покупець: ${o.customer_name} · Чек #${o.etsy_receipt_id} · Etsy Net ${usd(o.etsy_net)}`,
+      sub: `Покупець: ${o.customer_name} · Чек #${o.etsy_receipt_id} · Etsy Net ${money(o.etsy_net)}`,
       selected: [current],
       foot: html`
         ${o.match_type === 'manual' || o.link_blocked ? html`<button class="btn btn-ghost btn-ghost-danger" data-x="reset">${ic('unlink', 'icon-s')}Скинути ручний зв'язок</button>` : ''}
@@ -662,10 +657,10 @@ export async function mount(view) {
       async onFoot(x, keys) {
         try {
           if (x === 'reset') await api(`/api/profit/links?receipt=${encodeURIComponent(o.etsy_receipt_id)}`, { method: 'DELETE' });
-          else if (x === 'none') await api('/api/profit/links', { method: 'POST', body: { receiptId: o.etsy_receipt_id, provider: 'none' } });
+          else if (x === 'none') await post('/api/profit/links', { receiptId: o.etsy_receipt_id, provider: 'none' });
           else if (x === 'save' && keys[0]) {
             const [prov, orderId] = keys[0].split(/:(.+)/);
-            await api('/api/profit/links', { method: 'POST', body: { receiptId: o.etsy_receipt_id, provider: prov, orderId } });
+            await post('/api/profit/links', { receiptId: o.etsy_receipt_id, provider: prov, orderId });
           } else return false;
           toast(x === 'reset' ? 'Ручний зв’язок скинуто' : x === 'none' ? 'Позначено без собівартості' : 'Пару збережено', 'success');
           await load();
@@ -752,7 +747,7 @@ export async function mount(view) {
 
   $('#pf-sync').addEventListener('click', () => sync());
   $('#pf-more').addEventListener('click', (e) => menu(e.currentTarget, [
-    { label: 'Швидке оновлення (лише змінені чеки)', icon: 'refresh', onClick: () => sync(false) },
+    { label: 'Швидке оновлення (лише змінені чеки)', icon: 'sync', onClick: () => sync(false) },
     { label: 'Повна синхронізація (усі чеки заново)', icon: 'download', onClick: () => sync(true) },
   ]));
   const runSearch = debounce(() => { st.page = 1; st.open = null; renderTable(); }, 90);

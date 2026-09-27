@@ -2,13 +2,13 @@
 // back at what was printed and to reprint it in a couple of clicks. The server keeps the files 14 days
 // after the order became "shipped" (studio/archive.py); "Не видаляти" keeps a book until unmarked.
 import {
-  api, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural, patch,
-  enterOnce,
+  api, post, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural, patch,
+  enterOnce, escBack, notFound,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
-  STAGE_LABEL, providerName, countryName, addressFromEtsy, spreadsOf, folderViewerItems, smoothWheel, trackChips,
-  statusChip, receiptCopy, copyChip, isCustomText, isNameField, isFormatField, childOf as childOfTitle,
+  STAGE_LABEL, providerName, countryName, addressFromEtsy, folderViewerItems, smoothWheel, trackChips,
+  statusChip, receiptCopy, copyChip, childOf as childOfTitle, proofHtml, fieldsHtml, addressHtml, etsyAddressLines, svcChip,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 
@@ -17,7 +17,6 @@ const THUMB = 360;
 const file = (e, name, w) => media('/media/folder', { path: e.folder, file: name, w });
 /** The child's name from the title "4100000001 - Emma". */
 const childOf = (e) => childOfTitle(e.title);
-const printerChip = (e) => html`<span class="chip svc-${e.provider}">${ic(e.provider, 'icon-s')}${providerName(e.provider)}</span>`;
 
 /** How long the files stay: marked "keep", counting down, or waiting for the order to be shipped. */
 function clockChip(e) {
@@ -60,7 +59,7 @@ async function mountList(view) {
     return html`<a class="ord-row" href="#/archive/${e.id}" data-id="${e.id}">
       <span class="ord-thumb arc-thumb"><img data-fade loading="lazy" decoding="async" src="${file(e, 'Cover.png', THUMB)}" alt=""></span>
       <span class="ord-main">
-        <span class="row ord-chips"><b class="truncate">${e.buyer || e.title}</b>${e.receiptId ? receiptCopy(e, 'chip chip-mono') : ''}${printerChip(e)}
+        <span class="row ord-chips"><b class="truncate">${e.buyer || e.title}</b>${e.receiptId ? receiptCopy(e, 'chip chip-mono') : ''}${svcChip(e.provider)}
           ${e.reprintOf ? html`<span class="chip" data-tip="Передрук книги з архіву">${ic('sync', 'icon-s')}передрук</span>` : ''}${trackChips(e)}</span>
         <span class="ord-meta faint truncate"><span data-tip="${dateTime(e.sentAt)}">у друці ${relTime(e.sentAt)}</span> ·
           ${child ? html`<b class="ord-child">${child}</b> · ` : ''}<span class="num">${e.pageCount}</span> стор.${e.formatLabel ? ` · ${e.formatLabel}` : ''}</span>
@@ -102,8 +101,7 @@ async function mountBook(view, id) {
   let e;
   try { e = await api(`/api/archive/${id}`); }
   catch (err) {
-    setHtml(view, html`<button class="back-link" onclick="location.hash='#/archive'">${ic('arrowLeft', 'icon-s')}</button>
-      <div class="empty"><div class="empty-icon">${ic('orderArchive')}</div><h3>Книгу не знайдено</h3><p>${err.message}</p></div>`);
+    notFound(view, { back: '#/archive', backLabel: 'До архіву', icon: 'orderArchive', title: 'Книгу не знайдено', text: err.message });
     return null;
   }
   // The Etsy order it was printed for, when the last sync still has it (for the buyer's fields).
@@ -117,7 +115,7 @@ async function mountBook(view, id) {
   setHtml(view, html`
     <div class="page-head">
       <button class="back-link" data-act="back" aria-label="До архіву" data-tip="До архіву" data-kbd="Esc">${ic('arrowLeft')}</button>
-      <div class="grow" style="min-width:0">
+      <div class="grow">
         <div class="ord-title"><h1 class="page-title truncate">${e.buyer || o?.name || e.title}</h1>${statusChip(e)}</div>
         <div class="page-sub ord-sub">${e.receiptId ? html`${receiptCopy(e, 'mono')} · ` : ''}<span data-tip="${dateTime(e.sentAt)}">у друці ${relTime(e.sentAt)}</span>${e.stage ? ` · ${STAGE_LABEL[e.stage] || ''}` : ''}${trackChips(e)}</div>
       </div>
@@ -134,40 +132,17 @@ async function mountBook(view, id) {
         ${ib('pin', e.keep ? 'Зняти «Не видаляти»' : 'Не видаляти', `data-act="keep" aria-pressed="${e.keep}"`, { cls: e.keep ? 'on' : '' })}
         ${ib('folderOpen', 'Відкрити папку з файлами', 'data-act="open-folder"')}
         ${e.sendLog ? ib('sendLog', 'Журнал відправки', 'data-act="open-sendlog"') : ''}</div>
-      <span class="chip chip-lg svc-${e.provider}">${ic(e.provider, 'icon-s')}<span>${providerName(e.provider)} · ${e.pageCount} стор.</span></span>`);
+      ${svcChip(e.provider, { lg: true, text: `${providerName(e.provider)} · ${e.pageCount} стор.` })}`);
   }
 
   // ---------------------------------------------------------------- left: what was printed, then the reprint
   function proofCard() {
     const it = item();
-    const cover = (e.files || []).find((f) => f.file === 'Cover.png') || {};
-    const ratio = cover.width ? cover.width / cover.height : 1.9;
-    const half = (n) => (n === null ? html`<div class="half blank"></div>` : html`<div class="half"><img data-fade loading="lazy" decoding="async" src="${file(e, `${n}.png`, THUMB)}" alt=""></div>`);
-    const notes = (it.variations || []).filter((v) => !isNameField(v) && !isFormatField(v));
-    const name = it.childName || child;
+    const cover = (e.files || []).find((x) => x.file === 'Cover.png') || {};
     return html`<section class="card card-pad stack-l">
       <div class="row"><h3 class="card-title grow">Що пішло в друк</h3></div>
-      <div class="proof">
-        <div class="structure-cover" data-lb="0" style="aspect-ratio:${ratio}">
-          <img data-fade decoding="async" src="${file(e, 'Cover.png', 1400)}" alt="Обкладинка"><div class="gutter"></div><i class="crops"></i>
-        </div>
-        <div class="spread-view proof-spread" data-lb="1">
-          <div class="half proof-note">
-            ${name ? html`<div class="proof-name">${name}</div>` : ''}
-            <dl>${notes.map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>
-          </div>
-          <div class="half"><img data-fade decoding="async" src="${file(e, '1.png', 1400)}" alt="Сторінка 1"></div>
-          <div class="gutter-s"></div><i class="crops"></i>
-        </div>
-      </div>
-      <div class="strip" id="ar-strip">
-        <div class="strip-item" data-lb="0" style="width:${Math.round(110 * ratio)}px">
-          <div class="structure-cover" style="height:110px"><img data-fade loading="lazy" decoding="async" src="${file(e, 'Cover.png', THUMB)}" alt=""></div>
-          <span class="strip-no">обкладинка</span></div>
-        ${spreadsOf(e.pageCount).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}">
-          <div class="spread-view">${half(sp.left)}${half(sp.right)}<div class="gutter-s"></div></div>
-          <span class="strip-no num">${[sp.left, sp.right].filter(Boolean).join('–')}</span></div>`)}
-      </div>
+      ${proofHtml({ src: (name, side) => file(e, name, side), pages: e.pageCount, ratio: cover.width ? cover.width / cover.height : 1.9,
+        name: it.childName || child, variations: it.variations, stripId: 'ar-strip' })}
     </section>`;
   }
 
@@ -200,14 +175,9 @@ async function mountBook(view, id) {
 
   function fieldsCard() {
     if (!o) return '';
-    const it = item();
-    const vars = it.variations || [];
     return html`<section class="card card-pad stack">
       <div class="row"><h3 class="card-title grow">Персоналізація</h3></div>
-      ${vars.length ? html`<dl class="ord-fields">${vars.map((v, i) => html`
-        <dt>${v.name}${isCustomText(v) ? html`<span class="chip chip-amber">свій текст</span>` : ''}</dt>
-        <dd class="${isCustomText(v) ? 'custom' : ''} ${isNameField(v) ? 'is-name' : ''}"><span>${v.value}</span>${isFormatField(v) ? '' : ib('copy', 'Копіювати', `data-copy="${i}"`, { cls: 'sm' })}</dd>`)}</dl>`
-        : html`<div class="faint">Покупець нічого не вказав.</div>`}
+      ${fieldsHtml(item().variations)}
     </section>`;
   }
 
@@ -218,11 +188,11 @@ async function mountBook(view, id) {
     const lines = a
       ? [[a.firstName, a.lastName].filter(Boolean).join(' '), a.addressLine1, a.addressLine2,
         [a.city, a.state, a.postCode].filter(Boolean).join(', '), countryName(a.country)]
-      : [b.name, b.first_line, b.second_line, [b.city, b.state, b.zip].filter(Boolean).join(', '), countryName(b.country_iso)];
+      : etsyAddressLines(b);
     if (!lines.some(Boolean)) return '';
     return html`<section class="card card-pad stack-s">
       <h3 class="card-title">${a ? 'Адреса, куди відправлено' : 'Доставка'}</h3>
-      <div class="ord-address">${lines.filter(Boolean).map((line) => html`<div>${line}</div>`)}</div>
+      ${addressHtml(lines)}
     </section>`;
   }
 
@@ -238,7 +208,7 @@ async function mountBook(view, id) {
   // ---------------------------------------------------------------- actions
   async function toggleKeep() {
     try {
-      e = await api(`/api/archive/${e.id}/keep`, { method: 'POST', body: { keep: !e.keep } });
+      e = await post(`/api/archive/${e.id}/keep`, { keep: !e.keep });
       toast(e.keep ? 'Книгу не буде видалено, доки не знімете позначку' : 'Позначку знято — файли видаляться за звичайним правилом', 'success');
       renderActions();
       setHtml($('#ar-data'), [sendCard(), fieldsCard(), addressCard()]);
@@ -250,8 +220,8 @@ async function mountBook(view, id) {
   function reprint() {
     const address = e.address ? { ...e.address } : o ? addressFromEtsy(o) : { country: 'US' };
     give('creator', {
-      mode: e.provider, folder: e.folder, label: `Архів · ${e.title}`, title: e.title, address, format: e.format || null,
-      reprint: { archiveId: e.id, productId: e.productId || null },
+      mode: e.provider, books: [{ folder: e.folder, label: `Архів · ${e.title}`, title: e.title, format: e.format || null }],
+      address, reprint: { archiveId: e.id, productId: e.productId || null },
     });
     location.hash = '#/creator';
   }
@@ -261,8 +231,8 @@ async function mountBook(view, id) {
       const a = t.dataset.act;
       if (a === 'back') location.hash = '#/archive';
       else if (a === 'keep') toggleKeep();
-      else if (a === 'open-folder') api('/api/creator/open-folder', { method: 'POST', body: { path: e.folder } }).catch((er) => toast(er.message, 'error'));
-      else if (a === 'open-sendlog') api('/api/sends/open', { method: 'POST', body: { file: e.sendLog || '' } }).catch((er) => toast(er.message, 'error'));
+      else if (a === 'open-folder') post('/api/creator/open-folder', { path: e.folder }).catch((er) => toast(er.message, 'error'));
+      else if (a === 'open-sendlog') post('/api/sends/open', { file: e.sendLog || '' }).catch((er) => toast(er.message, 'error'));
       else if (a === 'reprint') reprint();
       else if (a === 'open-product') openExternal(e.url || `https://printify.com/app/product-details/${e.productId}`);
       else if (a === 'open-gelato') openExternal('https://dashboard.gelato.com/');
@@ -272,14 +242,8 @@ async function mountBook(view, id) {
     on(view, 'click', '[data-copy]', (ev, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
     on(view, 'click', '[data-lb]', (ev, c) => openLightbox(folderViewerItems(e.folder, e.pageCount, e.title), +c.dataset.lb)),
   ];
-  // Esc steps back to the archive list when nothing else (a dialog, the viewer, a menu) owns the key.
-  const onKey = (ev) => {
-    if (ev.key !== 'Escape' || ev.defaultPrevented) return;
-    if (document.querySelector('.modal-root, .lightbox, .menu')) return;
-    location.hash = '#/archive';
-  };
-  document.addEventListener('keydown', onKey);
+  const esc = escBack('#/archive');
 
   render();
-  return { unmount() { offs.forEach((fn) => fn()); document.removeEventListener('keydown', onKey); } };
+  return { unmount() { offs.forEach((fn) => fn()); esc(false); } };
 }

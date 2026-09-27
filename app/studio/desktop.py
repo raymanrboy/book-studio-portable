@@ -171,7 +171,7 @@ def open_in_explorer(path: Path) -> None:
 
 def open_image_file(path: Path) -> None:
     path = Path(path)
-    if path.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp") or not path.is_file():
+    if path.suffix.lower() not in core.IMAGE_EXTS or not path.is_file():
         raise FileNotFoundError(str(path))
     os.startfile(str(path))  # noqa: S606 — images only
 

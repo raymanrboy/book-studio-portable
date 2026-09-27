@@ -38,7 +38,7 @@ code:
 | `logs/checks/` | One JSON per text check: what the model read, what should have been there, problems (last 400; with children's names) | [text check](../features/text-check.md) |
 | `archive/<id>/` | Order archive: `Cover.png` + the pages that went to print, and `entry.json` (what, where, when, address). **Deletes itself** 14 days after "Sent" (30 if the order can't be tracked), except "Keep" | [order archive](../features/archive.md) |
 | `window-profile/` | The Edge window profile (≈0.5 GB) | Edge |
-| `mockups/` | **The [Mockups](../features/mockups.md)' files** (the separate utility's data folder 2026-09-23…24, now Book Studio's `data_path("mockups", …)`): `book/<id>/` (the unpacked demo book, `BOOKS` — one at a time, apart from the orders' `tmp/dropped/`, gone on launch and close), `places.json` (where the templates / Photoshop are when not in the usual place, the last output folder `lastOut`, the last ZIP's folder `lastZip`), `work/<time>-<id>/` — one run: `templates/` (copies of the six templates; the three left open in Photoshop stay, the rest go right after the run), `pictures/` (gone right after the script), `mockups.jsx`, `job.json`, `status.json`, `finish.jsx`, `finish.json`, `finish-status.json`. A run folder goes after «Зберегти відкриті», at once when Photoshop is closed, else after a day (a copy the owner saved himself — a week). Left from the separate utility: `logs/` (its log; Book Studio's own is `logs/app.log` above); its `tmp/`, `cache/`, `window-profile/` go on the first launch (`forget_old_utility()`). A Photoshop started from here keeps its temp files in `tmp/photoshop/` (emptied once Photoshop is closed) | [mockups](../features/mockups.md) |
+| `mockups/` | **The [Mockups](../features/mockups.md)' files** (the separate utility's data folder 2026-09-23…24, now Book Studio's `data_path("mockups", …)`): `book/<id>/` (the unpacked demo book, `BOOKS` — one at a time, apart from the orders' `tmp/dropped/`, gone on launch and close), `places.json` (where the templates / Photoshop are when not in the usual place, the last output folder `lastOut`, the last ZIP's folder `lastZip`), `work/<time>-<id>/` — one run: `templates/` (copies of the six templates; the three left open in Photoshop stay, the rest go right after the run), `pictures/` (gone right after the script), `mockups.jsx`, `job.json`, `status.json`, `finish.jsx`, `finish.json`, `finish-status.json`. A run folder goes after «Зберегти відкриті», at once when Photoshop is closed, else after a day (a copy the owner saved himself — a week). Left from the separate utility: `logs/` (its log; Book Studio's own is `logs/app.log` above); its `tmp/`, `cache/`, `window-profile/` went on the first launch after the move (that cleaning was removed on 2026-09-27, when nothing of them was left). A Photoshop started from here keeps its temp files in `tmp/photoshop/` (emptied once Photoshop is closed) | [mockups](../features/mockups.md) |
 
 ## Outside `app/data`: the Workshop's books
 
@@ -57,8 +57,9 @@ the tests) the books are made-up ones in the data folder's `workshop-books/`, an
   (`Vault.set()` refuses).
 - The preview cache is keyed to a file's full path: after moving the data folder, previews are rebuilt
   once (the old cache files just sit there unused).
-- The Order Creator remembers nothing between visits (the owner's decision): `forget_old_form()` clears
-  leftovers from older versions (`settings.creator`, `creator/history.json`).
+- The Order Creator remembers nothing between visits (the owner's decision). What older versions kept
+  (`settings.creator`, `creator/history.json`) was cleared on launch until 2026-09-27; the owner's PC had nothing
+  left, so that cleaning is gone.
 - The test folder is created in the system temp directory and deleted after the tests.
 
 ## Where in the code
@@ -68,9 +69,9 @@ the tests) the books are made-up ones in the data folder's `workshop-books/`, an
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `_cached()`
 - [app/studio/library.py](../../app/studio/library.py) — `BOOKS_DIR`, `TRASH_DIR`
 - [app/studio/records.py](../../app/studio/records.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `load_snapshot()`, `remember_print_order()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `UPLOADS_KEPT`, `forget_old_form()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `UPLOADS_KEPT`
 - [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`
-- [app/studio/mockups.py](../../app/studio/mockups.py) — `PLACES`, `WORK`, `BOOKS`, `PHOTOSHOP_TEMP`, `KEEP_RUNS`, `clean_runs()`, `clear_books()`, `forget_old_utility()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `PLACES`, `WORK`, `BOOKS`, `PHOTOSHOP_TEMP`, `KEEP_RUNS`, `clean_runs()`, `clear_books()`
 - [app/studio/core.py](../../app/studio/core.py) — `PIPELINE_DIR`, `WORKSHOP_BOOKS`, `SANDBOX`
 - [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `store()`, `refresh()`
 - [app/tests/__init__.py](../../app/tests/__init__.py) — `BOOK_STUDIO_DATA` for tests

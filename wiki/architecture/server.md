@@ -1,7 +1,7 @@
 ---
 title: Server — routes, jobs, errors
 type: architecture
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/server.py
   - app/studio/jobs.py
@@ -104,7 +104,7 @@ Rule: the message for the user is in Ukrainian, specific, saying what happened a
 
 ## Where in the code
 
-- [app/studio/server.py](../../app/studio/server.py) — `route()`, `ROUTES`, `Request`, `Request.int_param()`, `Response`, `_Handler`, `ApiError`, `_index_html()`, `_State`, `_ping()`, `json_response()`, `file_response()`, `html_response()`, `redirect()`
+- [app/studio/server.py](../../app/studio/server.py) — `route()`, `ROUTES`, `Request`, `Request.int_param()`, `Response`, `_Handler`, `ApiError`, `_index_html()`, `_State`, `_ping()`, `json_response()`, `file_response()`, `html_response()`
 - [app/studio/jobs.py](../../app/studio/jobs.py) — `Jobs`, `Job`, `Job.progress()`, `Job.share()`, `Job.snapshot()` (`errorExtra`), `UserError`, `JobError`
 - [app/studio/httpc.py](../../app/studio/httpc.py) — `request()`, `request_json()`, `human()`, `audit_log()`, `HttpError`, `Listing`, `RETRY_STATUSES`, `_NOT_SENT`
 - [app/studio/core.py](../../app/studio/core.py) — `Settings`, `DEFAULT_SETTINGS`, `write_json()`, `replace_file()`, `read_json()`, `setup_logging()`, `data_path()`, `SAMPLE`, `SANDBOX`, `PIPELINE_DIR`, `WORKSHOP_BOOKS`

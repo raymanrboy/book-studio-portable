@@ -120,7 +120,7 @@ export function debounce(fn, ms = 300) {
 }
 
 // ------------------------------------------------------------------ API
-export class ApiError extends Error {
+class ApiError extends Error {
   constructor(message, status = 0, data = null) { super(message); this.status = status; this.data = data; }
 }
 
@@ -154,6 +154,15 @@ export async function api(path, { method = 'GET', body, headers = {}, signal } =
   try { data = text ? JSON.parse(text) : null; } catch { data = null; }
   if (!res.ok) throw new ApiError(data?.error || `Помилка ${res.status}`, res.status, data);
   return data;
+}
+
+/** Tells the shell what is going on (the rail's dot, the window's title — app.js): `{ mockups: true }`,
+ *  `{ workshop: label }`, `{ done: text }`. */
+export const tellBusy = (detail) => window.dispatchEvent(new CustomEvent('bs:busy', { detail }));
+
+/** A POST to the program (`body` as JSON; none — none). */
+export function post(path, body) {
+  return api(path, { method: 'POST', body });
 }
 
 export const media = (path, params = {}) => {
@@ -193,7 +202,7 @@ export async function runJob(startPromise, onProgress, interval = 420, keepGoing
 
 export async function openExternal(url) {
   if (!url) return;
-  try { await api('/api/app/open-url', { method: 'POST', body: { url } }); }
+  try { await post('/api/app/open-url', { url }); }
   catch (e) { toast(e.message, 'error'); }
 }
 
@@ -272,6 +281,27 @@ export function modal({ title, sub = '', body = '', foot = null, size = '', dism
 }
 
 // `extra` — markup under the text (built with html``), e.g. what exactly is about to be saved.
+/** Esc steps back to `hash` (a detail page to its list) when nothing else owns the key: a dialog, the viewer, a menu
+ *  — and, with `fields`, a text field being edited. Returns `listen(yes)`: a page kept out of sight lets go of the
+ *  key and takes it again when it is back. */
+export function escBack(hash, { fields = false } = {}) {
+  const onKey = (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    if (document.querySelector('.modal-root, .lightbox, .menu')) return;
+    if (fields && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
+    location.hash = hash;
+  };
+  const listen = (yes = true) => document[yes ? 'addEventListener' : 'removeEventListener']('keydown', onKey);
+  listen(true);
+  return listen;
+}
+
+/** A detail page that could not open: the way back to its list and what went wrong. */
+export function notFound(view, { back, backLabel, icon, title, text }) {
+  setHtml(view, html`<a class="back-link" href="${back}" aria-label="${backLabel}" data-tip="${backLabel}">${ic('arrowLeft', 'icon-s')}</a>
+    <div class="empty"><div class="empty-icon">${ic(icon)}</div><h3>${title}</h3><p>${text}</p></div>`);
+}
+
 export function confirmBox({ title, text = '', extra = '', confirm = 'Підтвердити', cancel = 'Скасувати', danger = false } = {}) {
   return new Promise((resolve) => {
     let result = false;
@@ -284,6 +314,37 @@ export function confirmBox({ title, text = '', extra = '', confirm = 'Підтв
     });
     m.foot.querySelector('[data-no]').onclick = () => m.close();
     m.foot.querySelector('[data-yes]').onclick = () => { result = true; m.close(); };
+  });
+}
+
+/** A step that needs the owner's word first: «Продовжити» stays off until the box (`check` — what he confirms) is
+ *  ticked. `act()`, if given, runs before the dialog closes; when it fails, its error shows and the dialog stays.
+ *  Resolves true when the step may go on (the Etsy sign-in, the Printify store's manual approval). */
+export function confirmChecked({ title, sub = '', warning, extra = '', check, confirm = 'Продовжити', cancel = 'Скасувати', icon = '', act = null }) {
+  return new Promise((resolve) => {
+    let ok = false;
+    const m = modal({
+      title,
+      sub,
+      body: html`<div class="stack">
+          <div class="notice notice-warn">${ic('alert')}<div>${warning}</div></div>
+          ${extra}
+          <label class="check card-soft" style="padding:12px"><input type="checkbox" data-agree><span style="font-weight:600">${check}</span></label>
+        </div>`,
+      foot: html`<button class="btn btn-ghost" data-c>${cancel}</button><button class="btn btn-primary" data-go disabled>${icon ? ic(icon, 'icon-s') : ''}${confirm}</button>`,
+      onClose: () => resolve(ok),
+    });
+    const go = m.foot.querySelector('[data-go]');
+    m.el.querySelector('[data-agree]').addEventListener('change', (e) => { go.disabled = !e.target.checked; });
+    m.foot.querySelector('[data-c]').onclick = () => m.close();
+    go.onclick = async () => {
+      go.disabled = true;
+      try {
+        await act?.();
+        ok = true;
+        m.close();
+      } catch (err) { toast(err.message, 'error'); go.disabled = false; }
+    };
   });
 }
 
@@ -346,7 +407,10 @@ export function setSeg(seg, value) {
 new ResizeObserver(() => document.querySelectorAll('.seg').forEach(syncSeg)).observe(document.documentElement);
 
 // ------------------------------------------------------------------ formatting
-export const money = (n) => (n === null || n === undefined || Number.isNaN(n)) ? '—' : `$${Number(n).toFixed(2)}`;
+/** Dollars: «$12.50», «-$5.00» (a minus before the sign — the Profit page's own `usd()` until 27.09.2026; this one
+ *  printed «$-5.00»), «—» for nothing. */
+export const money = (n) => (n === null || n === undefined || Number.isNaN(Number(n)) ? '—'
+  : `${n < 0 ? '-' : ''}$${Math.abs(Number(n)).toFixed(2)}`);
 export const signedMoney = (n) => `${n >= 0 ? '+' : '-'}$${Math.abs(n).toFixed(2)}`;
 export function dateTime(iso) {
   if (!iso) return '—';
@@ -354,7 +418,7 @@ export function dateTime(iso) {
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
-export function dateOnly(iso) {
+function dateOnly(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -396,11 +460,11 @@ const EASE = 'cubic-bezier(.22, 1, .36, 1)';
 
 // Images fade in only after they are decoded off the main thread (no decode stall on first paint).
 export function fadeImages(root) {
-  root.querySelectorAll('img[data-fade]').forEach((img) => {
-    img.removeAttribute('data-fade');
+  root.querySelectorAll('img[data-fade=""]').forEach((img) => {
+    img.dataset.fade = 'wait';
     img.decoding = 'async';
     // Even a cached picture is decoded off-thread before it becomes visible, so no frame waits for it.
-    const reveal = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => img.classList.add('loaded'));
+    const reveal = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => { img.dataset.fade = 'in'; });
     if (img.complete && img.naturalWidth) reveal();
     else img.addEventListener('load', reveal, { once: true });
   });
@@ -414,6 +478,14 @@ export function slide(el, open, duration = 320) {
   const to = open ? el.scrollHeight : 0;
   if (reducedMotion() || Math.abs(to - from) < 1) return;
   el.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration, easing: EASE });
+}
+
+/** A block whose content `mutate()` changes glides from its old height to the new one (measured, Web Animations). */
+export function glide(el, mutate, duration = 260) {
+  const from = el.getBoundingClientRect().height;
+  mutate();
+  const to = el.scrollHeight;
+  if (!reducedMotion() && Math.abs(to - from) > 1) el.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration, easing: EASE });
 }
 
 // FLIP: children with data-key glide from their old to their new position after a DOM change.
@@ -478,13 +550,12 @@ export function patch(container, items, redraw = null) {
   return drawn;
 }
 function carryPictures(from, to) {
-  const shown = new Map([...from.querySelectorAll('img.loaded')].map((img) => [img.getAttribute('src'), img]));
+  const shown = new Map([...from.querySelectorAll('img[data-fade="in"]')].map((img) => [img.getAttribute('src'), img]));
   to.querySelectorAll('img[src]').forEach((img) => {
     const same = shown.get(img.getAttribute('src'));
     if (!same) return;
     for (const { name } of [...same.attributes]) if (!img.hasAttribute(name) && name !== 'class') same.removeAttribute(name);
-    for (const { name, value } of img.attributes) if (name !== 'data-fade') same.setAttribute(name, value);
-    same.classList.add('loaded');
+    for (const { name, value } of img.attributes) if (name !== 'data-fade') same.setAttribute(name, value);  // shown stays shown
     img.replaceWith(same);
   });
 }

@@ -62,10 +62,6 @@ def html_response(text: str, status: int = 200) -> Response:
     return Response(status, text.encode("utf-8"), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
 
 
-def redirect(location: str) -> Response:
-    return Response(302, b"", headers={"Location": location})
-
-
 Handler = Callable[["Request"], Any]
 ROUTES: list[tuple[str, re.Pattern, Handler, str]] = []
 
@@ -154,7 +150,6 @@ class Request:
 
 
 class _State:
-    app = core.APP_NAME       # what /api/ping answers: a second launch of the same program opens a window only
     port = core.DEFAULT_PORT
     wanted_port = core.DEFAULT_PORT  # differs from `port` when another program held it at start-up
     last_heartbeat = 0.0
@@ -226,7 +221,7 @@ class _Handler(BaseHTTPRequestHandler):
     def _route(self, method: str, path: str, query: dict) -> Response:
         if method == "GET" and path in ("/", "/index.html"):
             return Response(200, _index_html(), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
-        if method == "GET" and re.match(r"^/(css|js|img|fonts)/", path):
+        if method == "GET" and re.match(r"^/(css|js|img)/", path):
             return self._static(path)
         if method == "GET" and path == "/favicon.ico":
             return self._static("/img/icon.ico")
@@ -253,7 +248,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _static(self, path: str) -> Response:
         target = (core.WEB_DIR / path.lstrip("/")).resolve()
-        if core.WEB_DIR.resolve() not in target.parents or not target.is_file():
+        if not core.inside(target, core.WEB_DIR) or not target.is_file():
             raise ApiError("Не знайдено.", 404)
         return file_response(target, cache="no-cache")
 
@@ -319,7 +314,7 @@ def base_url() -> str:
 
 @route("GET", "/api/ping", auth="none")
 def _ping(req: Request):
-    return {"app": state.app, "version": core.APP_VERSION}
+    return {"app": core.APP_NAME, "version": core.APP_VERSION}  # a second launch knows the running copy and only opens a window
 
 
 @route("POST", "/api/app/heartbeat")

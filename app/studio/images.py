@@ -17,7 +17,6 @@ from . import core
 Image.MAX_IMAGE_PIXELS = 400_000_000  # print artwork is large but trusted (own files)
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 
 _gen_slots = threading.BoundedSemaphore(3)
 _key_locks_guard = threading.Lock()
@@ -140,16 +139,21 @@ def _cached(path: Path, stat, max_side: int) -> tuple[str, Path]:
 VIEW_SIDES = (1400, 360)  # the viewer's preview and the page strip's (a page's own check makes both)
 
 
+def flat_rgb(im: Image.Image) -> Image.Image:
+    """The picture in RGB, its see-through parts on white (a preview, a mockup's picture, the clipboard's bitmap)."""
+    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+        rgba = im.convert("RGBA")
+        flat = Image.new("RGB", rgba.size, (255, 255, 255))
+        flat.paste(rgba, mask=rgba.split()[-1])
+        return flat
+    return im if im.mode == "RGB" else im.convert("RGB")
+
+
 def _shrink(im: Image.Image, max_side: int) -> Image.Image:
     """A picture as a preview shows it: turned by its EXIF, no larger than max_side, see-through parts on white."""
     im = ImageOps.exif_transpose(im)
     im.thumbnail((max_side, max_side), Image.Resampling.LANCZOS, reducing_gap=3.0)
-    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
-        rgba = im.convert("RGBA")
-        bg = Image.new("RGB", rgba.size, (255, 255, 255))
-        bg.paste(rgba, mask=rgba.split()[-1])
-        return bg
-    return im if im.mode == "RGB" else im.convert("RGB")
+    return flat_rgb(im)
 
 
 def _store(im: Image.Image, out: Path) -> None:

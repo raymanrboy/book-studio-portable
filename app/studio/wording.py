@@ -39,6 +39,30 @@ def clean_name(value: str) -> str:
     return _POSSESSIVE.sub("", name).strip()
 
 
+def alike(text: str) -> str:
+    """The text with quotes and dashes of every style made alike, letter for letter (the same length)."""
+    return DASHES.sub("-", text.translate(QUOTES))
+
+
+_NAME_HINT = re.compile(r"(child|kid|baby|boy|girl|name|ім'я|имя)", re.I)
+
+
+def guess_child_name(items: list) -> str:
+    """The child's name from what the buyer filled in: a field named like one, else «Name: …» inside a value. The
+    order card, the Order Creator's picker and the text check read it here."""
+    for item in items or []:
+        for v in item.get("variations") or []:
+            name, value = (v.get("name") or ""), (v.get("value") or "").strip()
+            if _NAME_HINT.search(name) and value and len(value) <= 40 and "\n" not in value:
+                return clean_name(value)
+        for v in item.get("variations") or []:
+            value = (v.get("value") or "")
+            m = re.search(r"(?:child'?s?\s*name|name)\s*[:\-–]\s*([^\n,;]{2,40})", value, re.I)
+            if m:
+                return clean_name(m.group(1))
+    return ""
+
+
 def custom_text(variation: dict) -> bool:
     """A dedication / closing field in which the buyer wrote words of their own."""
     return bool(DEDICATION.search(str(variation.get("name") or ""))) and not is_default(str(variation.get("value") or ""))

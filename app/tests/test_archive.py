@@ -13,7 +13,8 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import archive, core, creator, drops, gelato, images, outcomes, printify, printorders, profit, records, stages, tunnel
+from tests.fixtures import FakePrintify, book, png
+from studio import archive, core, creator, drops, gelato, images, outcomes, printify, printorders, records, stages, tunnel
 from studio.jobs import Job, JobError
 from studio.server import ApiError
 from studio.vault import vault
@@ -21,18 +22,6 @@ from studio.vault import vault
 DAY = 86400
 ADDRESS = {"firstName": "Jane", "lastName": "Doe", "addressLine1": "12 Example St", "city": "Springfield",
            "state": "IL", "postCode": "62701", "country": "US"}
-
-
-def png(path: Path, size=(40, 40), color=(200, 180, 160)):
-    Image.new("RGB", size, color).save(path, "PNG")
-
-
-def book(folder: Path, pages: int = 24, cover_name: str = "Cover.png") -> Path:
-    folder.mkdir(parents=True, exist_ok=True)
-    png(folder / cover_name, (60, 30), (10, 20, 30))
-    for i in range(1, pages + 1):
-        png(folder / f"{i}.png", (40, 40), (i * 9 % 255, 50, 90))
-    return folder
 
 
 def facts(stages=None, placed=None, have=True, loaded=None, at=None):
@@ -380,42 +369,6 @@ class ReprintMark(ArchiveCase):
             self.assertTrue(stages.mark_reprint("4100000002", "gelato", "g2"))    # the first book is out there
 
 
-class FakePrintify:
-    """Printify with one read-only Master; every order gets its own id; a product can be "deleted"."""
-
-    def __init__(self, master_cfg):
-        self.master = {"id": master_cfg["productId"], "title": "Master", "updated_at": "2026-09-01",
-                       "blueprint_id": master_cfg["blueprintId"], "print_provider_id": master_cfg["printProviderId"],
-                       "visible": True, "print_areas": []}
-        self.uploads, self.products, self.orders, self.calls, self.gone = {}, {}, [], [], set()
-
-    def __call__(self, method, path, body=None, action="", timeout=60, retries=3, params="", order=False):
-        printify._check(method, path, order)
-        self.calls.append((method, path))
-        if method == "POST" and path.endswith("/orders.json"):
-            self.orders.append(body)
-            return {"id": f"order-{len(self.orders)}"}
-        if method == "POST" and path == "uploads/images.json":
-            body = json.loads(body)  # the upload's JSON comes already encoded (printify.upload_image)
-            image_id = f"{len(self.uploads) + 1:024x}"
-            self.uploads[image_id] = body["file_name"]
-            return {"id": image_id}
-        if method == "GET" and path.startswith("uploads/"):
-            return {"id": path.split("/")[1].split(".")[0]}
-        if method == "POST" and path.endswith("/products.json"):
-            pid = f"{900 + len(self.products):024x}"
-            self.products[pid] = body
-            return {"id": pid}
-        if method == "GET" and path.endswith(f"/products/{self.master['id']}.json"):
-            return self.master
-        if method == "GET" and "/products/" in path:
-            pid = path.rsplit("/", 1)[1].split(".")[0]
-            if pid in self.gone or pid not in self.products:
-                raise printify.PrintifyError("Читання продукту Printify: Printify не знайшов об'єкт (404).", 404)
-            return {"id": pid, "title": self.products[pid]["title"], "print_areas": self.products[pid]["print_areas"]}
-        raise AssertionError(f"unexpected call {method} {path}")
-
-
 class PrintifyReprint(ArchiveCase):
     def setUp(self):
         super().setUp()
@@ -440,15 +393,15 @@ class PrintifyReprint(ArchiveCase):
             res = creator.create_printify_reprint(self.first["archiveId"], "4100000001 - Emma", ADDRESS, Job("t"))
         new_calls = self.fake.calls[self.calls_before:]
         self.assertEqual([c for c in new_calls if c[0] == "POST"], [("POST", "shops/25329813/orders.json")])  # no upload, no product
-        self.assertEqual((res["reprint"], res["productId"], res["order"]["id"]), (True, self.first["productId"], "order-2"))
+        self.assertEqual((res["reprint"], res["productId"], res["order"]["id"]), (True, self.first["productId"], "order-on-hold-2"))
         sent = self.fake.orders[-1]
         self.assertEqual(sent["line_items"][0]["product_id"], self.first["productId"])
         self.assertFalse(sent["is_printify_express"])
         kept = archive.get(res["archiveId"])
-        self.assertEqual((kept["reprintOf"], kept["orderId"], kept["sendLog"]), (self.first["archiveId"], "order-2", res["sendLog"]))
+        self.assertEqual((kept["reprintOf"], kept["orderId"], kept["sendLog"]), (self.first["archiveId"], "order-on-hold-2", res["sendLog"]))
         original = archive.folder(self.first["archiveId"])
         self.assertTrue(os.path.samefile(archive.folder(res["archiveId"]) / "12.png", original / "12.png"))
-        self.assertEqual(records.load_states()["4100000001"]["replacementOrders"], [{"provider": "printify", "orderId": "order-2"}])
+        self.assertEqual(records.load_states()["4100000001"]["replacementOrders"], [{"provider": "printify", "orderId": "order-on-hold-2"}])
         journal = json.loads((core.data_path("logs", "sends") / res["sendLog"]).read_text(encoding="utf-8"))
         self.assertEqual((journal["kind"], journal["ok"], journal["reprintOf"]), ("reprint", True, self.first["archiveId"]))
         self.assertEqual([s["step"] for s in journal["steps"]], ["product", "reprintMarked", "archive"])
@@ -459,7 +412,7 @@ class PrintifyReprint(ArchiveCase):
         with mock.patch.object(printify, "call", self.fake), \
                 mock.patch.object(stages, "mark_reprint", side_effect=OSError("states.json locked")):
             res = creator.create_printify_reprint(self.first["archiveId"], "4100000001 - Emma", ADDRESS, Job("t"))
-        self.assertEqual(res["order"]["id"], "order-2")                  # the printer did accept it
+        self.assertEqual(res["order"]["id"], "order-on-hold-2")                  # the printer did accept it
         warned = " ".join(res["warnings"])
         self.assertIn("вже створено", warned)
         self.assertIn("Не надсилайте ще раз", warned)
@@ -521,8 +474,8 @@ class GelatoReprint(ArchiveCase):
                     mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
                     mock.patch.object(tunnel.registry, "keep", lambda *a, **kw: None), \
                     mock.patch.object(creator.jobs, "start", start):
-                creator._create_gelato(SimpleNamespace(json={"folder": "C:\\somewhere\\else", "title": "4100000002 - Noah",
-                                                             "format": "hardcover_8x8", "address": ADDRESS, "reprintOf": first}))
+                creator._create_gelato(SimpleNamespace(json={"books": [{"folder": "C:\\somewhere\\else", "title": "4100000002 - Noah",
+                                                             "format": "hardcover_8x8"}], "address": ADDRESS, "reprintOf": first}))
         finally:
             vault.set("gelato_api_key", None)
             gelato._products.clear()
@@ -545,7 +498,7 @@ class GelatoReprint(ArchiveCase):
         with mock.patch.object(archive, "_facts", lambda: not_placed), \
                 mock.patch.object(creator.jobs, "start", lambda *a, **kw: self.fail("nothing may start")):
             with self.assertRaises(ApiError) as caught:
-                creator._create_gelato(SimpleNamespace(json={"reprintOf": draft, "title": "4100000001 - Emma"}))
+                creator._create_gelato(SimpleNamespace(json={"reprintOf": draft, "books": [{"title": "4100000001 - Emma"}]}))
             self.assertEqual(caught.exception.status, 409)
             with self.assertRaises(ApiError):
                 creator._reprint_printify(SimpleNamespace(json={"archiveId": cancelled, "title": "4100000001 - Emma"}))

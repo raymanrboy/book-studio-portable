@@ -69,7 +69,8 @@ and its check as here, «Передати в бібліотеку» → `POST /a
 - **Viewer**: click a picture; T — the page's text; a button — open the original in Windows.
 - Esc — back to the library (if nothing is being edited).
 
-Removed per the owner's decision: book notes (the `notes` field is still in the model and the API),
+Removed per the owner's decision: book notes (since 2026-09-27 not in the model or the API either; an old
+`book.json` may still carry the field — it is left alone),
 illustration filters, opening the Etsy listing. See [decisions](../decisions.md).
 
 ## The book model (`book.json`)
@@ -77,7 +78,7 @@ illustration filters, opening the Etsy listing. See [decisions](../decisions.md)
 ```json
 { "id": "<32 hex>", "schema": 1, "rev": 3, "title": "…", "createdAt": "…", "updatedAt": "…",
   "listing": {"id", "title", "state", "shopId", "url", "imageUrl", "verifiedAt"},
-  "canvaUrl": "", "notes": "", "archived": false, "archivedAt": null,
+  "canvaUrl": "", "archived": false, "archivedAt": null,
   "cover": <asset|null>, "thumbnail": <asset|null>,
   "slots": { "page1": {"image"}, "spread2": {"image", "left", "right"}, …, "page30": {"image"} },
   "text":  { "cover", "page1", "spread2" … "spread15", "page30" },

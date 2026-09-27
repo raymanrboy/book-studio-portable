@@ -21,7 +21,7 @@ Code paths below are relative to the repository root.
 | Машинка (вкладка) | Stage `sent`: the printer has already shipped it (a tracking number or "shipped" status), but Etsy hasn't marked it yet | [stages.py](../app/studio/stages.py) `order_stage()`; [order-bits.js](../app/web/js/order-bits.js) `STAGES`; [rules/order-stages.md](rules/order-stages.md) |
 | Замовлення на кілька книг, «Книга 1 / Книга 2» | One Etsy receipt with several books: in the card, each has its own folder, proofing and text check, and they go to print together as one draft to one address | [orders.js](../app/web/js/pages/orders.js) `readyBooks()`, `printCard()`; [creator.py](../app/studio/creator.py) `books_of()`, `joint_title()`; [features/orders.md](features/orders.md) |
 | Швидкий огляд сторінок, пред-перевірка | The program looks at a preview of every page itself and works out where there's any text at all: only those pages are shown to the model | [images.py](../app/studio/images.py) `text_score()`; [textcheck.py](../app/studio/textcheck.py) `page_kinds()`; [features/text-check.md](features/text-check.md) |
-| Замінити сторінку | The button in the viewer: a page fixed in Canva and downloaded separately takes the place of the old one; "Undo" sits next to it | [creator.py](../app/studio/creator.py) `replace_page()`; [orders.js](../app/web/js/pages/orders.js) `replacePage()`; [features/orders.md](features/orders.md) |
+| Замінити сторінку | The button in the viewer: a page fixed in Canva and downloaded separately takes the place of the old one; "Undo" sits next to it | [creator.py](../app/studio/creator.py) `replace_page()`; [folder-viewer.js](../app/web/js/folder-viewer.js) `openFolderViewer()`; [features/orders.md](features/orders.md) |
 | Бокс, коробка (вкладка) | "Sent" — marked as shipped on Etsy | [stages.py](../app/studio/stages.py) `order_stage()` |
 | Годинник (вкладка) | "In progress" | [order-bits.js](../app/web/js/order-bits.js) `STAGES` |
 | Квадратик справа (у рядку черги), статус | The chip on the right: the printer's status in plain English ("In transit"), with a colored dot | [order-bits.js](../app/web/js/order-bits.js) `statusChip()`, `statusText()`; [stages.py](../app/studio/stages.py) `picker_orders()` (`printStatus`) |
@@ -32,7 +32,7 @@ Code paths below are relative to the repository root.
 | Друкарня, постачальник | Printify or Gelato | [orders.py](../app/studio/orders.py) `plan_for()` |
 | Правило друкарні | Hardcover in the US → Printify, everything else → Gelato | [rules/printer-rule.md](rules/printer-rule.md) |
 | Персоналізація, поля Etsy | The buyer's variations (name: value) | [sync.py](../app/studio/sync.py) `normalize_receipt()`; [orders.js](../app/web/js/pages/orders.js) `renderLeft()` |
-| Ім'я дитини | The value of the field with "name/child…" in its name | [creator.py](../app/studio/creator.py) `guess_child_name()` |
+| Ім'я дитини | The value of the field with "name/child…" in its name | [wording.py](../app/studio/wording.py) `guess_child_name()` |
 | «Від кого» | The field name in the Etsy listing; shown as-is | [orders.js](../app/web/js/pages/orders.js) `renderLeft()` |
 | Свій текст (присвята не DEFAULT) | The "custom text" tag next to a field | [order-bits.js](../app/web/js/order-bits.js) `isCustomText()` |
 | Формат обкладинки (Cover Type & Size) | The field that decides the printer; no copy button and no line in the notes | [order-bits.js](../app/web/js/order-bits.js) `isFormatField()` |

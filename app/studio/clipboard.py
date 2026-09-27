@@ -90,6 +90,7 @@ def set_text(text: str) -> None:
 def set_image(image) -> None:
     """A picture (a path or a Pillow image) as the two forms browsers paste: the Windows bitmap and PNG."""
     from PIL import Image
+    from . import images
     im = image if isinstance(image, Image.Image) else Image.open(image)
     try:
         im.load()
@@ -99,12 +100,8 @@ def set_image(image) -> None:
             return
         png = io.BytesIO()
         im.save(png, "PNG", compress_level=1)  # a throwaway copy: ~3× faster than the default, the same pixels
-        flat = im
-        if im.mode != "RGB":
-            flat = Image.new("RGB", im.size, (255, 255, 255))
-            flat.paste(im.convert("RGBA"), mask=im.convert("RGBA").split()[-1])
         bmp = io.BytesIO()
-        flat.save(bmp, "BMP")
+        images.flat_rgb(im).save(bmp, "BMP")
     finally:
         if im is not image:
             im.close()

@@ -2,7 +2,7 @@
 // Antigravity write each book (the book console moved in, 26.09.2026). A card shows how far the book is on its path;
 // the gallery follows the files by itself (an agent's new book appears, a caught picture shows) without a reload.
 import {
-  api, html, ic, ib, setHtml, on, media, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg, highlightTokens,
+  api, post, html, ic, ib, setHtml, on, media, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg, highlightTokens,
   remembered, remember,
 } from '../lib.js';
 import { watch, genBar, genAction, genState, act } from '../workshop-live.js';
@@ -15,7 +15,7 @@ const SORTS = [
 ];
 const BOOKS = ['книга', 'книги', 'книг'];
 const ERRORS = ['помилка', 'помилки', 'помилок'];
-export const STATE_WORDS = { done: 'готово', part: 'почато', todo: 'ще ні', skip: 'не потрібно' };
+const STATE_WORDS = { done: 'готово', part: 'почато', todo: 'ще ні', skip: 'не потрібно' };
 
 /** A book's picture address; with its version the browser keeps it for good — nothing blinks on a redraw. */
 export function picture(b, area, name, w, variant = '') {
@@ -164,13 +164,13 @@ export async function mount(view) {
   sortTip();
   paint();
 
-  const newBook = (btn) => act(btn, () => api('/api/workshop/agent', { method: 'POST', body: {} }),
+  const newBook = (btn) => act(btn, () => post('/api/workshop/agent', {}),
     () => 'Antigravity відкривається · у буфері — «Нова книга» з адресою папки книг; вставте в чат агента');
   const runSearch = debounce(paint, 90);
   const offs = [
     on(view, 'click', '[data-open]', (e, b) => { location.hash = `#/workshop/${encodeURIComponent(b.dataset.open)}`; }),
     on(view, 'click', '[data-act="add"]', (e, b) => newBook(b)),
-    on(view, 'click', '[data-act="folder"]', (e, b) => act(b, () => api('/api/workshop/open', { method: 'POST', body: { what: 'books' } }))),
+    on(view, 'click', '[data-act="folder"]', (e, b) => act(b, () => post('/api/workshop/open', { what: 'books' }))),
     on(view, 'click', '[data-act="sort"]', (e, b) => menu(b, SORTS.map((s) => ({
       label: s.label, icon: s.icon, on: state.sort === s.value,
       onClick: () => { state.sort = s.value; persist(); sortTip(); paint(); },

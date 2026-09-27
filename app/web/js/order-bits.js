@@ -1,7 +1,7 @@
 // Pieces shared by the order pipeline page, the order archive and the Order Creator: order stages,
 // countries, the printer's status and tracking chips, the buyer's fields, the Etsy → Gelato address
 // mapping, the sync, dropped folders/ZIPs and the page viewer of a print folder.
-import { api, runJob, upload, media, html, raw, ic, copyText } from './lib.js';
+import { api, post, runJob, upload, media, html, raw, ic, ib, copyText, syncSeg } from './lib.js';
 
 export const COUNTRIES = [
   ['US', 'США'], ['CA', 'Канада'], ['GB', 'Велика Британія'], ['AU', 'Австралія'], ['NZ', 'Нова Зеландія'], ['IE', 'Ірландія'],
@@ -56,8 +56,88 @@ export const trackChips = (o) => (o.tracking || []).map((t) => html`<span class=
 
 /** The printer's status (its own word, in English, as the owner asked); nothing before the book is ordered. */
 export const statusChip = (o) => (o.printStatus
-  ? html`<span class="chip ${statusTone(o.printStatus)} ord-status" data-tip="Статус у ${providerName(o.provider)}"><span class="dot"></span>${statusText(o.printStatus)}</span>`
+  ? html`<span class="chip ${statusTone(o.printStatus)}" data-tip="Статус у ${providerName(o.provider)}"><span class="dot"></span>${statusText(o.printStatus)}</span>`
   : '');
+
+/** The stage tabs' counts for a search — the queue and the Order Creator's «Замовлення Etsy» list the same orders. */
+export function countStages(seg, orders, term) {
+  seg.querySelectorAll('button[data-value]').forEach((b) => {
+    b.querySelector('.seg-count').textContent = orders.filter((o) => o.stage === b.dataset.value && matchesOrder(o, term)).length;
+  });
+  syncSeg(seg);
+}
+
+/** What an order list says when its tab shows nothing: the orders still loading, nothing found, or the stage's own
+ *  words. `cls` — `empty-sm` in a dialog. */
+export function emptyOrders(orders, term, stage, syncing, cls = '') {
+  if (!orders.length && syncing) return html`<div class="empty ${cls}"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`;
+  if (term) return html`<div class="empty ${cls}">Нічого не знайдено</div>`;
+  const [icon, title, text] = STAGE_EMPTY[stage];
+  return html`<div class="empty ${cls}"><div class="empty-icon">${ic(icon)}</div><h3>${title}</h3>${text ? html`<p>${text}</p>` : ''}</div>`;
+}
+
+/** The printer's chip in its colour: `text` beside its logo, `tip` on hover, `lg` — the card's larger one. */
+export const svcChip = (p, { tip = '', text = providerName(p), lg = false } = {}) => html`<span class="chip ${lg ? 'chip-lg ' : ''}svc-${p}"${
+  tip ? html` data-tip="${tip}"` : ''}>${ic(p, 'icon-s')}${lg ? html`<span>${text}</span>` : text}</span>`;
+
+/** A book's file check as a badge: running (`busy` — the percent; `id` lets the progress land on it), passed, or
+ *  failed (`failed` — an error before any check result). The order card and the Order Creator show the same one. */
+export function filesBadge(v, { busy = 0, failed = false, id = '' } = {}) {
+  if (busy) return html`<span class="v-badge run"${id ? html` id="${id}"` : ''}><span class="spinner"></span><span class="num">${Math.round(busy)}%</span></span>`;
+  if (v?.ok) return html`<span class="v-badge ok" data-tip="Усі PNG повністю прочитано й перевірено">${ic('check')}<span class="num">${v.found}/${v.expected}</span></span>`;
+  return failed || v ? html`<span class="v-badge bad">${ic('x')}Є проблеми</span>` : '';
+}
+
+/** What a file check found: the first dozen errors (under `title`, if given) and every warning. */
+export function checkNotices(errors = [], warnings = [], title = '') {
+  return html`${errors.length ? html`<div class="notice notice-error">${ic('alertCircle')}<div>${title ? html`<b>${title}</b>` : ''}<ul>${
+    errors.slice(0, 12).map((e) => html`<li>${e}</li>`)}</ul>${errors.length > 12 ? html`<div>…та ще ${errors.length - 12}</div>` : ''}</div></div>` : ''}
+    ${warnings.length ? html`<div class="notice notice-warn">${ic('alert')}<div>${warnings.map((w) => html`<div>${w}</div>`)}</div></div>` : ''}`;
+}
+
+/** What the buyer filled in, each value with its copy button (`data-copy` = its index; the page copies it) — the
+ *  order card and the archive. */
+export const fieldsHtml = (vars = []) => (vars.length ? html`<dl class="ord-fields">${vars.map((v, i) => html`
+    <dt>${v.name}${isCustomText(v) ? html`<span class="chip chip-amber">свій текст</span>` : ''}</dt>
+    <dd class="${isCustomText(v) ? 'custom' : ''} ${isNameField(v) ? 'is-name' : ''}"><span>${v.value}</span>${isFormatField(v) ? '' : ib('copy', 'Копіювати', `data-copy="${i}"`, { cls: 'sm' })}</dd>`)}</dl>`
+  : html`<div class="faint">Покупець нічого не вказав.</div>`);
+
+/** The lines of an Etsy address, and any address's lines as the card shows them. */
+export const etsyAddressLines = (a = {}) => [a.name, a.first_line, a.second_line, [a.city, a.state, a.zip].filter(Boolean).join(', '),
+  countryName(a.country_iso)];
+export const addressHtml = (lines) => html`<div class="ord-address">${lines.filter(Boolean).map((line) => html`<div>${line}</div>`)}</div>`;
+
+/** The proof of a book's print files — the cover, the first spread with what the buyer wrote beside page 1, a strip
+ *  of every spread: the order card's «Звірка» and the archive's «Що пішло в друк» (written in both until 27.09.2026).
+ *  `src(file, side)` — a picture's address; `marks` tags each page (`data-page`) for the text check's findings. */
+export const STRIP_THUMB = 360; // the strip's previews: the side the file check makes them at (images.VIEW_SIDES)
+export function proofHtml({ src, pages, ratio, name, variations, stripId, marks = false }) {
+  const at = (n) => (marks ? html` data-page="${n}"` : '');
+  const half = (n) => (n === null ? html`<div class="half blank"></div>`
+    : html`<div class="half"${at(n)}><img data-fade loading="lazy" decoding="async" src="${src(`${n}.png`, STRIP_THUMB)}" alt=""></div>`);
+  const notes = (variations || []).filter((v) => !isNameField(v) && !isFormatField(v)); // only what the page itself says
+  return html`<div class="proof">
+      <div class="structure-cover" data-lb="0"${at(0)} style="aspect-ratio:${ratio}">
+        <img data-fade decoding="async" src="${src('Cover.png', 1400)}" alt="Обкладинка"><div class="gutter"></div><i class="crops"></i>
+      </div>
+      <div class="spread-view proof-spread" data-lb="1">
+        <div class="half proof-note">
+          ${name ? html`<div class="proof-name">${name}</div>` : ''}
+          <dl>${notes.map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>
+        </div>
+        <div class="half"${at(1)}><img data-fade decoding="async" src="${src('1.png', 1400)}" alt="Сторінка 1"></div>
+        <div class="gutter-s"></div><i class="crops"></i>
+      </div>
+    </div>
+    <div class="strip" id="${stripId}">
+      <div class="strip-item" data-lb="0" style="width:${Math.round(110 * ratio)}px">
+        <div class="structure-cover"${at(0)} style="height:110px"><img data-fade loading="lazy" decoding="async" src="${src('Cover.png', STRIP_THUMB)}" alt=""></div>
+        <span class="strip-no">обкладинка</span></div>
+      ${spreadsOf(pages).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}">
+        <div class="spread-view">${half(sp.left)}${half(sp.right)}<div class="gutter-s"></div></div>
+        <span class="strip-no num">${[sp.left, sp.right].filter(Boolean).join('–')}</span></div>`)}
+    </div>`;
+}
 
 /** Books of this order sent in another go, or to the other printer: the status chip beside it describes
  *  only the first print order, so this says how many more there are. o: { alsoSent }. */
@@ -65,7 +145,7 @@ export const alsoSentChip = (o) => {
   const more = o.alsoSent || [];
   if (!more.length) return '';
   const where = [...new Set(more.map((m) => providerName(m.provider)))].join(' і ');
-  return html`<span class="chip ord-status" data-tip="Ще ${more.length === 1 ? 'одне замовлення друку' : `${more.length} замовлення друку`} цього чека — у ${where}">+${more.length} у друці</span>`;
+  return html`<span class="chip" data-tip="Ще ${more.length === 1 ? 'одне замовлення друку' : `${more.length} замовлення друку`} цього чека — у ${where}">+${more.length} у друці</span>`;
 };
 
 /** The receipt number without "#": a click copies it (in the queue, the card header and the archive). */
@@ -127,7 +207,7 @@ export function addressFromEtsy(o) {
 
 /** Pulls the latest orders now (the refresh button; a few seconds). */
 async function syncOrders(onStep) {
-  await runJob(api('/api/profit/sync', { method: 'POST', body: {} }), (j) => { if (j.step) onStep?.(j.step); });
+  await runJob(post('/api/profit/sync', {}), (j) => { if (j.step) onStep?.(j.step); });
 }
 
 /** The sync already running (usually the start-up one): its job id, or null. */
@@ -278,7 +358,7 @@ export async function receiveDrop({ entries, files }, onProgress, { withText = f
     };
     await Promise.all([worker(), worker(), worker()]);
   }
-  return (await api('/api/drop/done', { method: 'POST', body: { session, whole: withText } })).path;
+  return (await post('/api/drop/done', { session, whole: withText })).path;
 }
 
 /** Lights `input` while files are dragged over `[data-folder-drop]` inside `root`; calls onDrop(contents). */

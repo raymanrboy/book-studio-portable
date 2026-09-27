@@ -25,7 +25,7 @@ from collections import Counter
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 
-from . import archive, core, desktop, drops, gelato, images, printify, records, sendlog, stages, tunnel, wording
+from . import archive, core, desktop, drops, gelato, images, printify, records, sendlog, stages, tunnel
 from .jobs import JobError, jobs
 from .server import ApiError, Request, file_response, route
 from .vault import vault
@@ -203,17 +203,6 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
         "pageCount": len(expected) - 1,
         "totalBytes": sum(r.get("bytes", 0) for r in rows),
     }
-
-
-# ---------------------------------------------------------------- start empty
-
-def forget_old_form() -> None:
-    """Order Creator starts empty every time. Earlier versions remembered the folders, the last
-    buyer address and a list of recent drafts — those leftovers are removed once."""
-    core.settings.drop_section("creator")
-    history = core.data_path("creator", "history.json")
-    for path in (history, history.with_name(history.name + ".bak")):
-        path.unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------- Printify draft
@@ -1123,25 +1112,6 @@ def restore_page(folder_raw: str, file: str) -> dict:
     return {"file": page.name, "canRestore": bool(_backups(folder, page.name))}
 
 
-# ---------------------------------------------------------------- personalization helpers
-
-_NAME_HINT = re.compile(r"(child|kid|baby|boy|girl|name|ім'я|имя)", re.I)
-
-
-def guess_child_name(items: list) -> str:
-    for item in items or []:
-        for v in item.get("variations") or []:
-            name, value = (v.get("name") or ""), (v.get("value") or "").strip()
-            if _NAME_HINT.search(name) and value and len(value) <= 40 and "\n" not in value:
-                return wording.clean_name(value)
-        for v in item.get("variations") or []:
-            value = (v.get("value") or "")
-            m = re.search(r"(?:child'?s?\s*name|name)\s*[:\-–]\s*([^\n,;]{2,40})", value, re.I)
-            if m:
-                return wording.clean_name(m.group(1))
-    return ""
-
-
 # ---------------------------------------------------------------- routes
 
 @route("GET", "/api/creator/status")
@@ -1150,11 +1120,8 @@ def _status(req: Request):
     g = core.settings.section("gelato")
     return {
         "printify": {
-            "shopId": p.get("shopId"), "shopTitle": p.get("shopTitle"),
-            "masterId": (p.get("master") or {}).get("productId"), "masterTitle": (p.get("master") or {}).get("title"),
-            "pageCount": p.get("pageCount"), "coverSize": p.get("coverSize"), "pageSize": p.get("pageSize"),
-            "enabledVariants": [v.get("title") for v in (p.get("master") or {}).get("variants") or [] if v.get("is_enabled")],
-            "coverCoords": ((p.get("master") or {}).get("placements") or {}).get("cover"),
+            "masterId": (p.get("master") or {}).get("productId"), "pageCount": p.get("pageCount"),
+            "coverSize": p.get("coverSize"),
             "tokenConfigured": bool(vault.get("printify_token")),
             "manualApproval": printify.manual_approval_confirmed(),
             "matteVariant": bool(matte_variant(p.get("master") or {})),
@@ -1191,8 +1158,8 @@ def _pick(req: Request):
 @route("POST", "/api/creator/printify/create")
 def _create_printify(req: Request):
     body = req.json or {}
-    # One book, or every book of an Etsy order at once — they then share one order to one address.
-    books = body.get("books") if isinstance(body.get("books"), list) else [{"folder": body.get("folder"), "title": body.get("title")}]
+    # Every book of an Etsy order at once — they then share one order to one address.
+    books = body.get("books") if isinstance(body.get("books"), list) else []
     address = body.get("address") if isinstance(body.get("address"), dict) else None  # with it: books + order on hold
     job = jobs.start("printify-create", lambda j: create_printify_draft(books, j, address), exclusive="printify-create")
     return {"jobId": job.id}
@@ -1214,9 +1181,8 @@ def _reprint_printify(req: Request):
 @route("POST", "/api/creator/gelato/create")
 def _create_gelato(req: Request):
     body = req.json or {}
-    # One book, or every book of an Etsy order at once — they then travel as items of one draft.
-    books = body.get("books") if isinstance(body.get("books"), list) else [
-        {"folder": body.get("folder"), "title": body.get("title"), "format": body.get("format")}]
+    # Every book of an Etsy order at once — they then travel as items of one draft.
+    books = body.get("books") if isinstance(body.get("books"), list) else []
     reprint_of = str(body.get("reprintOf") or "") or None
     if reprint_of:  # a reprint always uses the archived files, whatever folder the page holds
         entry = archive.reprintable(reprint_of)
@@ -1246,16 +1212,6 @@ def _gelato_page_counts(req: Request):
 @route("POST", "/api/creator/gelato/close-tunnel")
 def _close_tunnel(req: Request):
     return {"closed": tunnel.registry.close(str((req.json or {}).get("orderId") or ""))}
-
-
-@route("GET", "/api/creator/etsy-orders")
-def _etsy_orders(req: Request):
-    orders = stages.picker_orders()
-    for o in orders:
-        o["childName"] = guess_child_name(o["items"])
-        for item in o["items"]:  # each book of the order its own child (the page names every book by it)
-            item["childName"] = guess_child_name([item])
-    return {"orders": orders, "syncedAt": records.load_snapshot().get("syncedAt")}
 
 
 @route("POST", "/api/creator/pick-file")
@@ -1291,7 +1247,7 @@ def _open_folder(req: Request):
 def _folder_media(req: Request):
     folder = Path(req.param("path") or "")
     name = req.param("file") or ""
-    if not folder.is_dir() or "/" in name or "\\" in name or Path(name).suffix.lower() not in images.IMAGE_EXTS:
+    if not folder.is_dir() or "/" in name or "\\" in name or Path(name).suffix.lower() not in core.IMAGE_EXTS:
         raise ApiError("Не знайдено.", 404)
     target = _files_by_lower(folder).get(name.lower())
     if not target:
@@ -1311,7 +1267,7 @@ def _folder_spread(req: Request):
         if not name:
             sides.append(None)
             continue
-        if "/" in name or "\\" in name or Path(name).suffix.lower() not in images.IMAGE_EXTS:
+        if "/" in name or "\\" in name or Path(name).suffix.lower() not in core.IMAGE_EXTS:
             raise ApiError("Не знайдено.", 404)
         sides.append(present.get(name.lower()))
     if not any(sides):

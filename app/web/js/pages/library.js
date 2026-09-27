@@ -2,7 +2,7 @@
 // Cards are built once; search / filter / sort only hide, show and move them (FLIP animation),
 // so images are never reloaded and every change glides with intermediate frames.
 import {
-  api, html, ic, ib, setHtml, on, media, modal, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
+  api, post, html, ic, ib, setHtml, on, media, modal, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
   raw, flip, debounce, menu, copyText, remembered, remember,
 } from '../lib.js';
 import { store, refreshInfo } from '../info.js';
@@ -179,11 +179,11 @@ export async function mount(view) {
 // ------------------------------------------------------------------ preparation guide
 async function saveGuide() {
   let folder;
-  try { folder = (await api('/api/app/pick-folder', { method: 'POST', body: { title: 'Куди зберегти інструкцію?' } })).path; }
+  try { folder = (await post('/api/app/pick-folder', { title: 'Куди зберегти інструкцію?' })).path; }
   catch (err) { toast(err.message, 'error'); return; }
   if (!folder) return;
   try {
-    await api('/api/library/guide/save', { method: 'POST', body: { folder } });
+    await post('/api/library/guide/save', { folder });
     toast('Інструкцію збережено — файл виділено в Провіднику', 'success');
   } catch (err) { toast(err.message, 'error'); }
 }
@@ -307,12 +307,9 @@ export function openAddBook(existing = [], transfer = null) {
         transfer.done(result);
         return;
       }
-      const book = await api('/api/library/books', {
-        method: 'POST',
-        body: listing
-          ? { listing, canvaUrl: $('#nb-canva').value, useListingImage: !!(listing.imageUrl && $('#nb-photo').checked) }
-          : { listingRef: ref.value, title: $('#nb-title').value, canvaUrl: $('#nb-canva').value },
-      });
+      const book = await post('/api/library/books', listing
+        ? { listing, canvaUrl: $('#nb-canva').value, useListingImage: !!(listing.imageUrl && $('#nb-photo').checked) }
+        : { listingRef: ref.value, title: $('#nb-title').value, canvaUrl: $('#nb-canva').value });
       m.close();
       toast('Книгу додано до бібліотеки', 'success');
       refreshInfo();

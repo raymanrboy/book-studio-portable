@@ -6,8 +6,8 @@
 // away (keep()): the book, the picks and a run going on in Photoshop wait for him; a small dot on the rail says a
 // run is on, and a notice says when it ends.
 import {
-  api, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered, remember,
-  setProgress, patch,
+  api, post, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered, remember,
+  setProgress, patch, tellBusy,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../order-bits.js';
@@ -22,7 +22,7 @@ const TYPE_SPREAD = 'application/x-mk-spread';
 const TYPE_SLOT = 'application/x-mk-slot';
 const SPREADS = ['розворот', 'розвороти', 'розворотів'];
 const PICTURES = ['картинка', 'картинки', 'картинок'];
-const busy = (on) => window.dispatchEvent(new CustomEvent('bs:busy', { detail: { mockups: on } })); // the rail's dot
+const busy = (on) => tellBusy({ mockups: on }); // the rail's dot
 
 export async function mount(view) {
   const st = {
@@ -140,7 +140,7 @@ export async function mount(view) {
       if (!ok || gone) return;
     }
     try {
-      await api('/api/mockups/close', { method: 'POST', body: { run: st.pending?.run || '' } });
+      await post('/api/mockups/close', { run: st.pending?.run || '' });
     } catch (err) { toast(err.message, 'error'); return; }
     if (gone) return;
     Object.assign(st, { book: null, label: '', receiving: null, bookError: '', out: '', asking: false, run: null,
@@ -545,7 +545,7 @@ export async function mount(view) {
     viewer(r.saved.map((name, n) => ({
       src: media(`/media/mockups/out/${r.job}/${n}`, { w: BIG }), full: media(`/media/mockups/out/${r.job}/${n}`, { w: SHARP }),
       title: name, sub: folderName(r.folder),
-      onOriginal: () => api('/api/mockups/open-picture', { method: 'POST', body: { job: r.job, i: n } }).catch((err) => toast(err.message, 'error')),
+      onOriginal: () => post('/api/mockups/open-picture', { job: r.job, i: n }).catch((err) => toast(err.message, 'error')),
     })), i);
   }
 
@@ -588,7 +588,7 @@ export async function mount(view) {
     paintReceiving();
     await loadBook(dropLabel(dropped), async () => {
       const path = await receiveDrop(dropped, (pct) => { st.receiving = pct; paintReceiving(); });
-      return api('/api/mockups/book', { method: 'POST', body: { path } });
+      return post('/api/mockups/book', { path });
     });
   }
   wireFolderDrop(view, () => $('#mk-book'), takeDrop);
@@ -598,12 +598,12 @@ export async function mount(view) {
     st.receiving = 'ask';
     paintReceiving();
     let path = null;
-    try { path = (await api('/api/mockups/pick-zip', { method: 'POST', body: {} })).path; } catch (err) { toast(err.message, 'error'); }
+    try { path = (await post('/api/mockups/pick-zip', {})).path; } catch (err) { toast(err.message, 'error'); }
     if (gone) return;
     if (!path) { st.receiving = null; paintReceiving(); return; }
     st.receiving = 'unzip';
     paintReceiving();
-    await loadBook(folderName(path), () => api('/api/mockups/open-zip', { method: 'POST', body: { path } }));
+    await loadBook(folderName(path), () => post('/api/mockups/open-zip', { path }));
   }
 
   // ---------------------------------------------------------------- the run
@@ -627,14 +627,14 @@ export async function mount(view) {
     }
     const folder = st.out || await askFolder(true);
     if (!folder || gone) return;
-    start('make', api('/api/mockups/make', { method: 'POST', body: { book: st.book.id, picks: st.picks, folder } }));
+    start('make', post('/api/mockups/make', { book: st.book.id, picks: st.picks, folder }));
   }
 
   async function askFolder(forRun) {
     st.asking = true;
     paintOut(); paintAction();
     let path = null;
-    try { path = (await api('/api/mockups/pick-folder', { method: 'POST', body: {} })).path; } catch (err) { toast(err.message, 'error'); }
+    try { path = (await post('/api/mockups/pick-folder', {})).path; } catch (err) { toast(err.message, 'error'); }
     st.asking = false;
     if (gone) return null;
     if (path) st.out = path;
@@ -691,8 +691,8 @@ export async function mount(view) {
   function tellDone(text) {
     if (!view.isConnected) toast(`Мокапи: ${text.toLowerCase()}`, text === 'Не вдалося' ? 'error' : 'success');
     if (document.hasFocus()) return;
-    window.dispatchEvent(new CustomEvent('bs:busy', { detail: { done: text } }));
-    setTimeout(() => api('/api/mockups/attention', { method: 'POST', body: {} }).catch(() => {}), 250);
+    tellBusy({ done: text });
+    setTimeout(() => post('/api/mockups/attention', {}).catch(() => {}), 250);
   }
 
   // ---------------------------------------------------------------- where the templates and Photoshop are
@@ -722,7 +722,7 @@ export async function mount(view) {
   }
 
   async function place(what, then) {
-    try { st.meta = await api('/api/mockups/place', { method: 'POST', body: { what } }); }
+    try { st.meta = await post('/api/mockups/place', { what }); }
     catch (err) { toast(err.message, 'error'); return; }
     if (gone) return;
     then?.();
@@ -753,9 +753,9 @@ export async function mount(view) {
     if (act === 'close') { finishPage(); return; }
     if (act === 'place') { place(t.dataset.what); return; }
     if (act === 'make') { make(); return; }
-    if (act === 'finish') { if (!st.run && st.pending) start('finish', api('/api/mockups/finish', { method: 'POST', body: { run: st.pending.run } })); return; }
-    if (act === 'stop') { api('/api/mockups/cancel', { method: 'POST', body: {} }).catch(() => {}); t.disabled = true; return; }
-    if (act === 'open-out') { api('/api/mockups/open-folder', { method: 'POST', body: { path: t.dataset.path } }).catch((err) => toast(err.message, 'error')); return; }
+    if (act === 'finish') { if (!st.run && st.pending) start('finish', post('/api/mockups/finish', { run: st.pending.run })); return; }
+    if (act === 'stop') { post('/api/mockups/cancel', {}).catch(() => {}); t.disabled = true; return; }
+    if (act === 'open-out') { post('/api/mockups/open-folder', { path: t.dataset.path }).catch((err) => toast(err.message, 'error')); return; }
     if (act === 'shot') { openShots(t.dataset.which, +t.dataset.i); return; }
     if (act === 'tpl-view') { openTemplates(t.dataset.key); return; }
     if (act === 'cover') { viewer([{ src: src('cover', { w: BIG }), full: src('cover', { w: SHARP }), title: 'Обкладинка', sub: 'задня й корінець — у шаблони самі, лицьову підганяєте ви' }]); return; }

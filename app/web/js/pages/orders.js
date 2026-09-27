@@ -4,20 +4,20 @@
 // saved to disk; while an order is new, its card is kept in memory when the owner steps to another tab and
 // comes back as it was left (keep.js).
 import {
-  api, html, ic, ib, raw, esc, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
-  openExternal, runJob, fadeImages, plural, confirmBox, patch, enterOnce,
+  api, post, html, ic, ib, raw, esc, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
+  openExternal, runJob, fadeImages, plural, confirmBox, patch, enterOnce, escBack, notFound,
 } from '../lib.js';
-import { openLightbox } from '../lightbox.js';
+import { openFolderViewer, pageNo } from '../folder-viewer.js';
 import {
-  STAGES, STAGE_EMPTY, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, countryName, addressFromEtsy, spreadsOf,
-  folderViewerItems, receiveDrop, dropLabel, wireFolderDrop, smoothWheel, trackChips, statusChip, receiptCopy, copyChip,
-  isCustomText, isNameField, isFormatField, restorable, alsoSentChip, holdClicks, orderSync, pageVersion,
+  STAGES, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, addressFromEtsy,
+  receiveDrop, dropLabel, wireFolderDrop, smoothWheel, trackChips, statusChip, receiptCopy, copyChip,
+  restorable, alsoSentChip, holdClicks, orderSync, pageVersion, proofHtml, filesBadge, checkNotices, fieldsHtml,
+  addressHtml, etsyAddressLines, svcChip, countStages, emptyOrders,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 import { settle, sentOf, keptOrder, finish } from '../keep.js';
 
 // Strip thumbnails: the server prepares this size ahead (creator.STRIP_PREVIEW), so scrolling never waits.
-const STRIP_THUMB = 360;
 
 // Text check (textcheck.py): how its findings are counted and why a check was only the light one.
 const LEVEL_WORDS = { error: ['помилка', 'помилки', 'помилок'], warn: ['питання', 'питання', 'питань'] };
@@ -74,7 +74,7 @@ async function mountQueue(view) {
     const p = o.provider || (o.stage === 'new' ? o.plan?.provider : null);
     if (!p) return o.stage === 'new' ? html`<span class="chip chip-amber" data-tip="${planText(o.plan)}">${ic('alert', 'icon-s')}друкарня?</span>` : '';
     const tip = o.provider ? `Замовлено в ${providerName(p)}` : planText(o.plan);
-    return html`<span class="chip svc-${p}" data-tip="${tip}">${ic(p, 'icon-s')}${providerName(p)}</span>`;
+    return svcChip(p, { tip });
   };
   const rowHtml = (o) => html`<a class="ord-row" href="#/orders/${o.receiptId}" data-rid="${o.receiptId}">
       <span class="ord-thumb ${o.book?.lqip ? 'lqip' : ''}" ${o.book?.lqip ? raw(`style="background-image:url(${o.book.lqip})"`) : ''}>
@@ -95,10 +95,7 @@ async function mountQueue(view) {
   let drawnOnce = false;
   const render = ({ fresh = false } = {}) => {
     const t = term.trim().toLowerCase();
-    seg.querySelectorAll('button[data-value]').forEach((b) => {
-      b.querySelector('.seg-count').textContent = data.orders.filter((o) => o.stage === b.dataset.value && matchesOrder(o, t)).length;
-    });
-    syncSeg(seg);
+    countStages(seg, data.orders, t);
     const tab = data.orders.filter((o) => o.stage === stage);
     const before = shown;
     const known = new Set([...list.children].map((n) => n.dataset.key));
@@ -112,13 +109,7 @@ async function mountQueue(view) {
     shown = tab.filter((o) => visible.has(o.receiptId)).map((o) => o.receiptId);
     fadeImages(list);
     if (fresh && before.join() !== shown.join()) holdClicks(list);
-    if (shown.length) { setHtml(empty, ''); return; }
-    if (!data.orders.length && sync.syncing) setHtml(empty, html`<div class="empty"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
-    else if (t) setHtml(empty, html`<div class="empty">Нічого не знайдено</div>`);
-    else {
-      const [icon, title, text] = STAGE_EMPTY[stage];
-      setHtml(empty, html`<div class="empty"><div class="empty-icon">${ic(icon)}</div><h3>${title}</h3>${text ? html`<p>${text}</p>` : ''}</div>`);
-    }
+    setHtml(empty, shown.length ? '' : emptyOrders(data.orders, t, stage, sync.syncing));
   };
 
   const sync = orderSync({
@@ -161,8 +152,7 @@ async function mountCard(view, rid) {
   let o;
   try { o = await api(`/api/orders/${rid}`); }
   catch (err) {
-    setHtml(view, html`<button class="back-link" onclick="location.hash='#/orders'">${ic('arrowLeft', 'icon-s')}</button>
-      <div class="empty"><div class="empty-icon">${ic('receipt')}</div><h3>Замовлення не відкрилось</h3><p>${err.message}</p></div>`);
+    notFound(view, { back: '#/orders', backLabel: 'До замовлень', icon: 'receipt', title: 'Замовлення не відкрилось', text: err.message });
     return null;
   }
   let pick = 0;        // which book of the order this pass is for (most orders hold one)
@@ -202,7 +192,7 @@ async function mountCard(view, rid) {
     <div class="page-head">
       <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
       <span id="oc-finish"></span>
-      <div class="grow" style="min-width:0">
+      <div class="grow">
         <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1>${statusChip(o)}${alsoSentChip(o)}</div>
         <div class="page-sub ord-sub">${receiptCopy(o, 'mono')} · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}${trackChips(o)}</div>
       </div>
@@ -223,7 +213,7 @@ async function mountCard(view, rid) {
     const p = provider();
     const tip = f.decided ? `Файли вирішили: ${f.pages} стор. — ${providerName(p)}` : planText(plan());
     setHtml($('#oc-plan'), plan().provider
-      ? html`<span class="chip chip-lg svc-${p}" data-tip="${tip}">${ic(p, 'icon-s')}<span>${providerName(p)} ·${pagesLabel()} стор.</span></span>`
+      ? svcChip(p, { tip, lg: true, text: `${providerName(p)} ·${pagesLabel()} стор.` })
       : html`<div class="row" style="gap:10px"><span class="faint" style="font-size:12.5px">Друкарня</span>${segHtml([
         { value: 'printify', icon: 'printify', tip: `Printify · ${pagesText(o.pageOptions?.printify)} стор.` },
         { value: 'gelato', icon: 'gelato', tip: `Gelato · ${pagesText(o.pageOptions?.gelato)} стор.` }], f.chosen, { name: 'provider' })}</div>`);
@@ -234,13 +224,11 @@ async function mountCard(view, rid) {
   function renderLeft() {
     const it = item();
     const b = it.book;
-    const vars = it.variations || [];
-    const a = o.address || {};
     setHtml($('#oc-data'), html`
       <section class="card card-pad ord-book">
         <div class="ord-book-art ${b?.lqip ? 'lqip' : ''}" ${b?.lqip ? raw(`style="background-image:url(${b.lqip})"`) : ''}>
           ${b?.image ? html`<img data-fade decoding="async" src="${bookImage(b, 360)}" alt="">` : ic('book')}</div>
-        <div class="stack-s grow" style="min-width:0">
+        <div class="stack-s grow">
           ${b ? html`<a class="ord-book-title" href="#/book/${b.id}" data-tip="Паспорт книги">${b.title}</a>`
             : html`<b>Книги немає в бібліотеці</b><span class="faint mono" style="font-size:12px">лістинг #${it.listingId || '—'}</span>`}
           ${b?.canvaUrl ? html`<button class="btn btn-primary" data-act="canva">${ic('canva')}Відкрити шаблон у Canva</button>`
@@ -251,16 +239,12 @@ async function mountCard(view, rid) {
       <section class="card card-pad stack">
         <div class="row"><h3 class="card-title grow">Персоналізація</h3>
           ${o.items.length > 1 ? segHtml(o.items.map((x, i) => ({ value: String(i), label: `Книга ${i + 1}`, tip: x.title })), String(pick), { name: 'book' }) : ''}</div>
-        ${vars.length ? html`<dl class="ord-fields">${vars.map((v, i) => html`
-          <dt>${v.name}${isCustomText(v) ? html`<span class="chip chip-amber">свій текст</span>` : ''}</dt>
-          <dd class="${isCustomText(v) ? 'custom' : ''} ${isNameField(v) ? 'is-name' : ''}"><span>${v.value}</span>${isFormatField(v) ? '' : ib('copy', 'Копіювати', `data-copy="${i}"`, { cls: 'sm' })}</dd>`)}</dl>`
-          : html`<div class="faint">Покупець нічого не вказав.</div>`}
+        ${fieldsHtml(it.variations)}
         ${o.buyerMessage ? html`<div class="ord-message"><span class="eyebrow">Повідомлення покупця</span><div>${o.buyerMessage}</div></div>` : ''}
       </section>
       <section class="card card-pad stack-s">
         <h3 class="card-title">Доставка</h3>
-        <div class="ord-address">${[a.name, a.first_line, a.second_line, [a.city, a.state, a.zip].filter(Boolean).join(', '), countryName(a.country_iso)]
-          .filter(Boolean).map((line) => html`<div>${line}</div>`)}</div>
+        ${addressHtml(etsyAddressLines(o.address))}
       </section>`);
     fadeImages($('#oc-data'));
     requestAnimationFrame(() => syncSeg($('#oc-data .seg')));
@@ -274,10 +258,7 @@ async function mountCard(view, rid) {
 
   function filesCard() {
     const v = f.validation;
-    let badge = '';
-    if (f.busy) badge = html`<span class="v-badge run"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(f.busy)}%</span></span>`;
-    else if (v?.ok) badge = html`<span class="v-badge ok" data-tip="Усі PNG прочитано й перевірено">${ic('check')}<span class="num">${v.found}/${v.expected}</span></span>`;
-    else if (f.error || v) badge = html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
+    const badge = filesBadge(v, { busy: f.busy, failed: !!f.error });
     const errors = f.error ? [f.error] : (v?.errors || []);
     return html`<section class="card card-pad stack" data-folder-drop>
       <div class="row"><span class="step-no">1</span><h3 class="card-title grow">Файли з Canva</h3>
@@ -290,41 +271,18 @@ async function mountCard(view, rid) {
       ${!f.folder && !f.busy && earlier() ? html`<button class="btn btn-sm btn-ghost" style="align-self:flex-start" data-act="earlier"
         data-tip="Ці файли вже відправлялись ${dateTime(earlier().sentAt)}, але замовлення в друкарні не оформлене чи скасоване">${ic('orderArchive', 'icon-s')}Взяти файли минулої відправки · ${relTime(earlier().sentAt)}</button>` : ''}
       ${f.note && !f.busy ? html`<div class="row faint" style="font-size:12.5px">${ic('swap', 'icon-s')}<span>${f.note}</span></div>` : ''}
-      ${errors.length && !f.busy ? html`<div class="notice notice-error">${ic('alertCircle')}<div><ul>${errors.slice(0, 10).map((e) => html`<li>${e}</li>`)}</ul>${errors.length > 10 ? html`<div>…та ще ${errors.length - 10}</div>` : ''}</div></div>` : ''}
-      ${v?.warnings?.length && !f.busy ? html`<div class="notice notice-warn">${ic('alert')}<div>${v.warnings.map((w) => html`<div>${w}</div>`)}</div></div>` : ''}
+      ${f.busy ? '' : checkNotices(errors, v?.warnings)}
     </section>`;
   }
 
   function proofCard() {
     const it = item();
     const cover = f.validation.files.find((r) => r.position === 'cover') || {};
-    const ratio = cover.width ? cover.width / cover.height : 1.9;
-    const half = (n) => (n === null ? html`<div class="half blank"></div>` : html`<div class="half" data-page="${n}"><img data-fade loading="lazy" decoding="async" src="${thumb(`${n}.png`, STRIP_THUMB)}" alt=""></div>`);
-    const notes = (it.variations || []).filter((v) => !isNameField(v) && !isFormatField(v)); // only what the page itself says
     return html`<section class="card card-pad stack-l" id="oc-proof">
       <div class="row"><span class="step-no">2</span><h3 class="card-title grow">Звірка</h3><span class="row tc-head" id="oc-check-badge">${checkBadge()}</span></div>
       <div id="oc-check">${checkBody()}</div>
-      <div class="proof">
-        <div class="structure-cover" data-lb="0" data-page="0" style="aspect-ratio:${ratio}">
-          <img data-fade decoding="async" src="${thumb('Cover.png', 1400)}" alt="Обкладинка"><div class="gutter"></div><i class="crops"></i>
-        </div>
-        <div class="spread-view proof-spread" data-lb="1">
-          <div class="half proof-note">
-            ${it.childName ? html`<div class="proof-name">${it.childName}</div>` : ''}
-            <dl>${notes.map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>
-          </div>
-          <div class="half" data-page="1"><img data-fade decoding="async" src="${thumb('1.png', 1400)}" alt="Сторінка 1"></div>
-          <div class="gutter-s"></div><i class="crops"></i>
-        </div>
-      </div>
-      <div class="strip" id="oc-strip">
-        <div class="strip-item" data-lb="0" style="width:${Math.round(110 * ratio)}px">
-          <div class="structure-cover" data-page="0" style="height:110px"><img data-fade loading="lazy" decoding="async" src="${thumb('Cover.png', STRIP_THUMB)}" alt=""></div>
-          <span class="strip-no">обкладинка</span></div>
-        ${spreadsOf(f.pages).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}">
-          <div class="spread-view">${half(sp.left)}${half(sp.right)}<div class="gutter-s"></div></div>
-          <span class="strip-no num">${[sp.left, sp.right].filter(Boolean).join('–')}</span></div>`)}
-      </div>
+      ${proofHtml({ src: thumb, pages: f.pages, ratio: cover.width ? cover.width / cover.height : 1.9, name: it.childName,
+        variations: it.variations, stripId: 'oc-strip', marks: true })}
     </section>`;
   }
 
@@ -357,7 +315,7 @@ async function mountCard(view, rid) {
     const c = f.check;
     if (!c) return '';
     if (c.state === 'run') {
-      return html`<span class="v-badge run" data-tip="${c.step || 'Перевірка тексту…'}"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span>${ic('textScan')}<span class="num">${Math.round(c.percent)}%</span></span>`;
+      return html`<span class="v-badge run" data-tip="${c.step || 'Перевірка тексту…'}"><span class="spinner"></span>${ic('textScan')}<span class="num">${Math.round(c.percent)}%</span></span>`;
     }
     const again = ib('sync', 'Перевірити текст ще раз', 'data-act="recheck"', { cls: 'sm' });
     if (c.state === 'error') return html`<span class="v-badge" data-tip="${c.message}">${ic('textScan')}Текст не перевірено</span>`;
@@ -422,7 +380,7 @@ async function mountCard(view, rid) {
     const r = f.check.result, pages = learnable();
     const body = { bookId: r.bookId, child: r.child, pages: pages.map((p) => ({ key: p.learn, text: p.text })) };
     let texts;
-    try { ({ texts } = await api('/api/textcheck/passport', { method: 'POST', body: { ...body, preview: true } })); }
+    try { ({ texts } = await post('/api/textcheck/passport', { ...body, preview: true })); }
     catch (err) { toast(err.message, 'error'); return; }
     // What exactly the passport will keep: {Name} stands out, so a name caught inside a word would show.
     const shownText = (t) => html`${t.split(/(\{Name\})/).map((part) => part === '{Name}' ? html`<b class="tc-slot">{Name}</b>` : part)}`;
@@ -433,7 +391,7 @@ async function mountCard(view, rid) {
     });
     if (!ok) return;
     try {
-      await api('/api/textcheck/passport', { method: 'POST', body });
+      await post('/api/textcheck/passport', body);
       toast('Паспорт книги оновлено', 'success');
       startCheck();
     } catch (err) { toast(err.message, 'error'); }
@@ -463,7 +421,7 @@ async function mountCard(view, rid) {
     w.checkSeq++;
     const c = w.check;
     if (c?.state === 'run' && c.jobId) {
-      api(`/api/orders/${o.receiptId}/textcheck/cancel`, { method: 'POST', body: { jobId: c.jobId } }).catch(() => {});
+      post(`/api/orders/${o.receiptId}/textcheck/cancel`, { jobId: c.jobId }).catch(() => {});
     }
   }
 
@@ -471,12 +429,12 @@ async function mountCard(view, rid) {
   // made on the owner's own answers (25.09.2026).
   function keepMark(w, id) {
     const journal = w.check?.state === 'done' && w.check.result.journal;
-    if (journal) api('/api/textcheck/mark', { method: 'POST', body: { journal, id } }).catch(() => {});
+    if (journal) post('/api/textcheck/mark', { journal, id }).catch(() => {});
   }
 
   // The model takes ~4 s to reach the graphics card (~70 s when it comes from disk): it is asked for while
   // the files are still being copied and checked, so the check right after them does not wait for it.
-  const warmModel = () => { api('/api/textcheck/warm', { method: 'POST' }).catch(() => {}); };
+  const warmModel = () => { post('/api/textcheck/warm').catch(() => {}); };
 
   async function startCheck(w = f, at = w.seq) {
     const mine = ++w.checkSeq;
@@ -485,7 +443,7 @@ async function mountCard(view, rid) {
     w.check = { state: 'run', percent: 0, step: 'Перевірка тексту…' };
     paint();
     try {
-      const start = await api(`/api/orders/${o.receiptId}/textcheck`, { method: 'POST', body: { folder: w.folder, pages: w.pages, pick: work.indexOf(w) } });
+      const start = await post(`/api/orders/${o.receiptId}/textcheck`, { folder: w.folder, pages: w.pages, pick: work.indexOf(w) });
       if (!live()) return;
       if (start.off) { w.check = null; paint(); return; } // switched off in Settings
       w.check.jobId = start.jobId;
@@ -508,35 +466,14 @@ async function mountCard(view, rid) {
     paint();
   }
 
-  // The viewer shows, with T, what the model read on a spread's pages and what they must say, and lets
-  // a page be replaced by a file from the computer (the owner fixed it in Canva and downloaded it again).
-  const pageNo = (file) => (/^cover/i.test(file) ? 0 : parseInt(file, 10));
-  const pageWord = (file) => (pageNo(file) ? `сторінку ${pageNo(file)}` : 'обкладинку');
-
-  function pageActions(w, item, again) {
-    const acts = [];
-    for (const file of item.files || []) {
-      const num = pageNo(file) ? String(pageNo(file)) : '';
-      acts.push({ icon: 'swap', label: num, tip: `Замінити ${pageWord(file)} — обрати файл на комп'ютері`,
-        run: (lb) => replacePage(w, file, lb, again) });
-      if (w.replaced.has(file.toLowerCase())) {
-        acts.push({ icon: 'restore', label: num, on: true, tip: `Повернути попередню ${pageWord(file)}`,
-          run: (lb) => restorePage(w, file, lb, again) });
-      }
-    }
-    return acts;
-  }
-
-  function viewerItems(w = f, again = null) {
-    const items = folderViewerItems(w.folder, w.pages, w.label, w.versions);
-    if (again) items.forEach((it) => { it.actions = pageActions(w, it, again); });
+  // The viewer (folder-viewer.js) shows, with T, what the model read on a spread's pages and what they must say.
+  function readings(w, items) {
     for (const p of w.check?.state === 'done' ? w.check.result.pages : []) {
       const item = items[viewerIndex(p.page)];
       if (!item || (!p.text && !p.expected)) continue;
       const block = [`${p.label} — надруковано:`, p.text || '—', ...(p.expected ? ['', 'Має бути:', p.expected] : [])].join('\n');
       item.text = item.text ? `${item.text}\n\n${block}` : block;
     }
-    return items;
   }
 
   // Once the Order Creator has made the draft for this order, the step says so instead of offering
@@ -598,12 +535,11 @@ async function mountCard(view, rid) {
   // Put the export in page order (Cover.png + 1..N.png), then run the same full check as the Order Creator.
   async function arrange(path, w, my) {
     const i = work.indexOf(w);
-    const res = await api(`/api/orders/${o.receiptId}/files`, { method: 'POST',
-      body: { folder: path, provider: byFiles(i) ? 'files' : providerOf(i), format: plan(i).format || null } });
+    const res = await post(`/api/orders/${o.receiptId}/files`, { folder: path, provider: byFiles(i) ? 'files' : providerOf(i), format: plan(i).format || null });
     if (my !== w.seq) return;
     Object.assign(w, { folder: res.path, note: res.note, pages: res.pageCount, decided: byFiles(i) ? res.provider : null });
     if (showing(w)) renderPlan();
-    const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(i), folder: w.folder } }),
+    const v = await runJob(post('/api/creator/validate', { mode: providerOf(i), folder: w.folder }),
       (j) => { if (my === w.seq && showing(w)) setBusy(60 + (j.percent || 0) * 0.4); }, 300, () => my === w.seq);
     if (my !== w.seq) return;
     Object.assign(w, { validation: v, busy: 0, check: null, replaced: restorable(v) });
@@ -645,7 +581,7 @@ async function mountCard(view, rid) {
   async function takeFolder() {
     let path;
     warmModel();
-    try { path = (await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з обкладинкою і ${pagesText(pageOptions())} сторінками` } })).path; }
+    try { path = (await post('/api/creator/pick-folder', { title: `Оберіть папку з обкладинкою і ${pagesText(pageOptions())} сторінками` })).path; }
     catch (err) { toast(err.message, 'error'); return; }
     if (!path) return;
     const w = f;
@@ -668,7 +604,7 @@ async function mountCard(view, rid) {
       decided: null, versions: {}, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
-      const { path } = await api(`/api/archive/${e.id}/reuse`, { method: 'POST', body: {} });
+      const { path } = await post(`/api/archive/${e.id}/reuse`, {});
       if (my === w.seq) await arrange(path, w, my);
     } catch (err) { failed(w, my, err); }
   }
@@ -683,58 +619,24 @@ async function mountCard(view, rid) {
   const readyBooks = (p = provider()) => work.map((w, i) => ({ w, i }))
     .filter(({ w, i }) => w.folder && w.validation?.ok && !w.busy && providerOf(i) === p);
 
-  /** The viewer, with a live list of items: a replaced page rebuilds them and the viewer redraws. */
+  /** The viewer of the shown book's folder; a page replaced or put back there is checked again. */
   function openViewer(start) {
     const w = f;
-    const items = [];
-    const again = (lb) => { items.splice(0, items.length, ...viewerItems(w, again)); lb.refresh(); };
-    items.push(...viewerItems(w, again));
-    openLightbox(items, start);
+    openFolderViewer(w, start, {
+      total: w.pages, label: w.label,
+      sent: () => !!(sentOf(o.receiptId) || o.atPrinter),
+      again: 'надіслати замовлення ще раз?',
+      decorate: (items) => readings(w, items),
+      changed: (file) => pageChanged(w, file),
+    });
   }
 
-  /** A page fixed in Canva takes the place of the old one; the old one waits for «Повернути». */
-  async function replacePage(w, file, lb, again) {
-    let path;
-    try {
-      path = (await api('/api/creator/pick-file', { method: 'POST',
-        body: { title: `Оберіть ${pageWord(file)} (${file})`, initial: w.folder } })).path;
-    } catch (err) { toast(err.message, 'error'); return; }
-    if (!path) return;
-    if ((sentOf(o.receiptId) || o.atPrinter) && !(await confirmBox({ title: 'Чернетку вже створено',
-      text: 'У друкарні лежить стара сторінка. Замінити її тут і надіслати замовлення ще раз?',
-      confirm: 'Замінити', cancel: 'Не чіпати' }))) return;
-    let res;
-    try {
-      res = await api('/api/creator/replace-page', { method: 'POST', body: { folder: w.folder, file, path } });
-    } catch (err) { toast(err.message, 'error'); return; }
-    setRestorable(w, file, res.canRestore);
-    pageChanged(w, file, lb, again, `Замінено ${pageWord(file)}`);
-  }
-
-  async function restorePage(w, file, lb, again) {
-    let res;
-    try {
-      res = await api('/api/creator/restore-page', { method: 'POST', body: { folder: w.folder, file } });
-    } catch (err) { toast(err.message, 'error'); return; }
-    setRestorable(w, file, res.canRestore);   // an older version may still be there
-    pageChanged(w, file, lb, again, `Повернено ${pageWord(file)}`);
-  }
-
-  /** The server says whether this page still has a previous version; the card only repeats it. */
-  function setRestorable(w, file, can) {
-    if (can) w.replaced.add(file.toLowerCase());
-    else w.replaced.delete(file.toLowerCase());
-  }
-
-  /** After a page changed: new picture everywhere, files checked again, text checked again — and the
-   *  «це не помилка» marks of that page forgotten, because it is a different page now. */
-  function pageChanged(w, file, lb, again, message) {
-    w.versions[file] = (w.versions[file] || 0) + 1;
+  /** After a page changed: files checked again, text checked again — and the «це не помилка» marks of that page
+   *  forgotten, because it is a different page now. */
+  function pageChanged(w, file) {
     for (const i of w.check?.state === 'done' ? w.check.result.issues : []) {
       if (i.page === pageNo(file)) w.dismissed.delete(i.id);
     }
-    toast(message, 'success');
-    again(lb);
     revalidate(w);
   }
 
@@ -746,7 +648,7 @@ async function mountCard(view, rid) {
     const my = ++w.seq;
     w.error = '';
     try {
-      const v = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode: providerOf(work.indexOf(w)), folder: w.folder } }),
+      const v = await runJob(post('/api/creator/validate', { mode: providerOf(work.indexOf(w)), folder: w.folder }),
         null, 300, () => my === w.seq); // other files or the card closed (w.seq moves on): the poll stops
       if (my !== w.seq) return;
       Object.assign(w, { validation: v, busy: 0, check: null, replaced: restorable(v) });
@@ -776,7 +678,7 @@ async function mountCard(view, rid) {
     const books = ready.map(({ w, i }) => ({ folder: w.folder, label: w.label, title: titleOf(i), format: (p === 'gelato' && plan(i).format) || null }));
     give('creator', {
       receiptId: String(o.receiptId), // the Order Creator keeps its work (and result) for this order
-      mode: p, books, ...books[0], address: addressFromEtsy(o),
+      mode: p, books, address: addressFromEtsy(o),
     });
     location.hash = '#/creator';
   }
@@ -818,14 +720,7 @@ async function mountCard(view, rid) {
   ];
   wireFolderDrop(view, () => $('#oc-folder'), takeDrop);
 
-  // Esc steps back to the queue when nothing else (a dialog, the viewer, a menu) owns the key.
-  const onKey = (e) => {
-    if (e.key !== 'Escape' || e.defaultPrevented) return;
-    if (document.querySelector('.modal-root, .lightbox, .menu')) return;
-    location.hash = '#/orders';
-  };
-  const keys = (listen) => document[listen ? 'addEventListener' : 'removeEventListener']('keydown', onKey);
-  keys(true);
+  const esc = escBack('#/orders');
 
   renderPlan(); renderLeft(); renderRight();
   // A new order's card is kept when the owner steps to another tab (keep.js): hidden, it lets go of Esc;
@@ -833,11 +728,11 @@ async function mountCard(view, rid) {
   return {
     receiptId: String(o.receiptId),
     keep: () => o.stage === 'new' && !finished,
-    hidden() { keys(false); },
+    hidden() { esc(false); },
     async revive() {
       const fresh = await api(`/api/orders/${rid}`);
       if (fresh.stage !== 'new') return false;
-      keys(true);
+      esc(true);
       const step = $('#oc-print');
       if (step) step.outerHTML = String(printCard());
       renderFinish();
@@ -845,6 +740,6 @@ async function mountCard(view, rid) {
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
     idle: () => !(work.some((w) => w.folder || w.busy || w.label) || sentOf(o.receiptId)),
-    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); keys(false); },
+    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); esc(false); },
   };
 }

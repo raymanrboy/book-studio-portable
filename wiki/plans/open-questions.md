@@ -95,8 +95,8 @@ event-listener leaks; no errors in the real program's log. The owner's text chec
 `creator._printify_draft()` 171, `textcheck.check_book()` 168, `creator._gelato_draft()` 111,
 `outcomes.apply()` 107; `creator.py` (1100 lines) mixes file checking, Printify, Gelato, PDF, and
 drag-and-drop; the order card is one function ~430 lines long; recognizing the buyer's fields (name /
-dedication / "from whom") is written three times (order-bits.js, `creator.guess_child_name()`,
-`textcheck.personalization()`); no automated interface tests.
+dedication / "from whom") is written three times (order-bits.js, `guess_child_name()` — in `wording.py` since
+2026-09-27, `textcheck.personalization()`); no automated interface tests.
 
 **Fixed the same day** ([decisions](../decisions.md)): the graphics card is freed right after a check;
 a check stops once it's no longer needed; idle cards — no more than three; the preview cache is cleared

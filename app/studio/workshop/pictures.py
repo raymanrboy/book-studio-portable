@@ -120,7 +120,7 @@ def _keep_original(book: Path, key: str, variant: str | None, source: Path, name
     for old in list(folder.glob(f"{stem}.*")):
         _retire(book, old)
     suffix = Path(name).suffix.lower()
-    suffix = ".jpg" if suffix == ".jpeg" else suffix if suffix in books.IMAGE_SUFFIXES else ".png"
+    suffix = ".jpg" if suffix == ".jpeg" else suffix if suffix in core.IMAGE_EXTS else ".png"
     dest = folder / f"{stem}{suffix}"
     if take:
         _move(source, dest)

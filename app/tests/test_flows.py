@@ -14,59 +14,17 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import archive, core, creator, drops, etsy, gelato, httpc, printify, profit, records, stages, sync, tunnel
+from tests.fixtures import FakePrintify, png
+from studio import archive, core, creator, drops, etsy, gelato, httpc, orders, printify, profit, records, stages, sync, tunnel
 from studio.jobs import Job, JobError
 from studio.server import ApiError
 from studio.vault import vault
-
-
-def png(path: Path, size, color):
-    Image.new("RGB", size, color).save(path, "PNG")
 
 
 def journal(name: str) -> dict:
     """One record of the send journal (data/logs/sends)."""
     from studio import sendlog
     return json.loads((sendlog.SENDS / name).read_text(encoding="utf-8"))
-
-
-class FakePrintify:
-    """Minimal in-memory Printify: uploads, products, one read-only Master."""
-
-    def __init__(self, master_cfg):
-        self.uploads = {}
-        self.created = []
-        self.master = {
-            "id": master_cfg["productId"], "title": master_cfg["title"], "updated_at": "2026-09-01 10:00:00+00:00",
-            "blueprint_id": master_cfg["blueprintId"], "print_provider_id": master_cfg["printProviderId"],
-            "visible": True, "print_areas": [{"placeholders": [{"position": "cover", "images": [{"id": "old"}]}]}],
-        }
-        self.calls = []
-
-    def __call__(self, method, path, body=None, action="", timeout=60, retries=3, params="", order=False):
-        printify._check(method, path, order)  # the real allowlist still applies
-        self.calls.append((method, path))
-        if method == "POST" and path.endswith("/orders.json"):
-            self.orders = getattr(self, "orders", []) + [body]
-            return {"id": "order-on-hold-1"}
-        if method == "POST" and path == "uploads/images.json":
-            body = json.loads(body)  # the upload's JSON comes already encoded (printify.upload_image)
-            image_id = f"{len(self.uploads):024x}"
-            self.uploads[image_id] = body["file_name"]
-            return {"id": image_id, "file_name": body["file_name"]}
-        if method == "GET" and path.startswith("uploads/"):
-            return {"id": path.split("/")[1].split(".")[0]}
-        if method == "POST" and path.endswith("/products.json"):
-            pid = f"{900 + len(self.created):024x}"
-            self.created.append({"id": pid, **body})
-            return {"id": pid}
-        if method == "GET" and path.endswith(f"/products/{self.master['id']}.json"):
-            return self.master
-        if method == "GET" and "/products/" in path:
-            pid = path.rsplit("/", 1)[1].split(".")[0]
-            product = next(p for p in self.created if p["id"] == pid)
-            return {"id": pid, "print_areas": product["print_areas"]}
-        raise AssertionError(f"unexpected call {method} {path}")
 
 
 def assert_steps(test, record, expected):
@@ -635,17 +593,6 @@ class GelatoDraftFlow(unittest.TestCase):
             gelato.all_orders()
         self.assertEqual(bodies[0]["orderTypes"], ["order", "draft"])
 
-    def test_saved_inch_products_become_the_metric_ones(self):
-        old = {"gelato": {"formats": {
-            "hardcover_8x8": {"label": "Hardcover 8×8", "productUid": "photobooks-hardcover_pf_8x8-inch-200x200-mm_pt_170-gsm-65lb-coated-silk_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_130-gsm-65-lb-cover-coated-silk_ver"},
-            "softcover_5x5": {"label": "Softcover 5.5×5.5", "productUid": "photobooks-softcover_pf_5_5x5_5-inch-140x140-mm_pt_170-gsm-65lb-coated-silk_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_250-gsm-100-lb-cover-coated-silk_ver"},
-        }}}
-        with mock.patch.object(core, "read_json", lambda *a, **kw: old):
-            saved = core.Settings().section("gelato")["formats"]
-        self.assertEqual(saved, core.DEFAULT_SETTINGS["gelato"]["formats"])
-        self.assertIn("_pf_200x200-mm-8x8-inch_", saved["hardcover_8x8"]["productUid"])
-        self.assertIn("_pf_140x140-mm-5_5x5_5-inch_", saved["softcover_5x5"]["productUid"])
-
     def test_page_counts_of_every_format(self):
         gelato._products.clear()
 
@@ -719,25 +666,6 @@ class GelatoDraftFlow(unittest.TestCase):
         self.assertIn("обріжуться", square["warnings"][0])
 
 
-class CreatorStartsEmpty(unittest.TestCase):
-    def test_old_folders_address_and_draft_list_are_forgotten(self):
-        core.settings.update({"creator": {"printifyFolder": "D:\\old", "gelatoAddress": {"firstName": "Ann"}}})
-        core.settings.update({"creator": {"gelatoFolder": "D:\\older"}})  # now the backup copy holds it too
-        history = core.data_path("creator", "history.json")
-        core.write_json(history, [{"title": "1 - Ann"}])
-        core.write_json(history, [{"title": "2 - Bo"}])
-        creator.forget_old_form()
-        self.assertNotIn("creator", core.settings.get())
-        self.assertNotIn("creator", core.read_json(core.data_path("settings.json"), {}))
-        self.assertNotIn("creator", core.read_json(core.data_path("settings.json.bak"), {}))
-        self.assertFalse(history.exists())
-        self.assertFalse(history.with_name("history.json.bak").exists())
-        status = creator._status(None)
-        self.assertNotIn("history", status)
-        self.assertNotIn("creator", status)
-        creator.forget_old_form()  # nothing left to do the second time
-
-
 class DroppedFolders(unittest.TestCase):
     def test_a_folder_in_use_outlives_the_next_drop(self):
         """Audit 26.09.2026: every drop cleared the drops older than 2 hours — a card kept open since the morning lost
@@ -802,7 +730,7 @@ class DroppedFolders(unittest.TestCase):
             {"variations": [{"name": "Child's Name", "value": "Sofia"}]},
             {"variations": [{"name": "Child's Name", "value": "Jack."}]}]}
         with mock.patch.object(stages, "picker_orders", lambda: [order]):
-            res = creator._etsy_orders(SimpleNamespace())
+            res = orders._list(SimpleNamespace())  # the Order Creator's picker lists the queue's orders
         self.assertEqual([i["childName"] for i in res["orders"][0]["items"]], ["Sofia", "Jack"])
 
     def test_only_pictures_inside_the_session_folder_are_accepted(self):

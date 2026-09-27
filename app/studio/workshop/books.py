@@ -28,7 +28,6 @@ from ..server import ApiError
 
 AGENT, PICTURES, ORIGINALS, STATE = "agent", "pictures", "originals", "book.json"
 AREAS = (AGENT, PICTURES, ORIGINALS)
-IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 TEXT_SUFFIXES = (".md", ".txt", ".json")
 TEXT_LIMIT = 2_000_000
 
@@ -160,7 +159,7 @@ def cover_title(agent_files: set[str], agent: Path) -> str:
 
 def picture(names: set[str], page) -> str | None:
     """The file of a page (or of `Cover`) among a folder's names, whatever its picture format."""
-    for suffix in IMAGE_SUFFIXES:
+    for suffix in core.IMAGE_EXTS:
         for candidate in (f"{page}{suffix}", f"{page}{suffix.upper()}"):
             if candidate in names:
                 return candidate
@@ -172,7 +171,7 @@ def rows_filled(pictures: set[str]) -> int:
 
 
 def _file_entry(agent_files: set[str], name: str) -> dict:
-    kind = "image" if name.lower().endswith(IMAGE_SUFFIXES) else "text"
+    kind = "image" if name.lower().endswith(core.IMAGE_EXTS) else "text"
     return {"name": name, "kind": kind, "area": AGENT, "exists": name in agent_files}
 
 
@@ -184,7 +183,7 @@ def steps(path: Path) -> list[dict]:
     a = set(_names(agent))
     p = set(_names(path / PICTURES))
     marks = state(path).get("marks") or {}
-    canonicals = sorted(n for n in a if n.lower().startswith("canonical") and n.lower().endswith(IMAGE_SUFFIXES))
+    canonicals = sorted(n for n in a if n.lower().startswith("canonical") and n.lower().endswith(core.IMAGE_EXTS))
     out = []
     for s in STEPS:
         key = s["key"]
@@ -371,7 +370,7 @@ def all_books() -> list[dict]:
 
 def media_file(book_id: str, area: str, name: str, variant: str | None = None) -> Path:
     """A picture of a book, only by a name that really is in that folder (a hero variant's: in its subfolder)."""
-    if area not in AREAS or not name.lower().endswith(IMAGE_SUFFIXES):
+    if area not in AREAS or not name.lower().endswith(core.IMAGE_EXTS):
         raise ApiError("Не знайдено.", 404)
     folder = book_path(book_id) / area
     if variant:
@@ -421,7 +420,7 @@ def open_in_windows(book_id: str | None, what: str, name: str = "") -> None:
         path = book_path(book_id or "")
         target = path if what == "folder" else path / what
         if name:
-            if what == "folder" or name not in _names(target) or not name.lower().endswith(IMAGE_SUFFIXES + TEXT_SUFFIXES):
+            if what == "folder" or name not in _names(target) or not name.lower().endswith(core.IMAGE_EXTS + TEXT_SUFFIXES):
                 raise ApiError("Файл не знайдено.", 404)
             target = target / name
         else:

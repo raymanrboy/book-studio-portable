@@ -104,20 +104,29 @@ The rest:
 - Not done, on purpose: drawing the queue at once from memory on "back" — the server answers in a few ms now
   (phase 2), so there is nothing to hide.
 
-## Phase 5 — duplicates and dead code
+## Phase 5 — duplicates and dead code (done 2026-09-27)
 
-- [ ] Shared order modules (the page viewer's replace/restore, the proof strip, address, badges, one order
-  list for the queue and the picker — the `etsy-orders` route goes).
-- [ ] Printify and Gelato share one send frame; small duplicates (image suffixes ×5, flatten ×3, "inside
-  the folder" ×4) become one each.
-- [ ] Dead code (~110 lines), one-time migrations, unused icons and exports; CSS repeats (the image fade ×15),
-  needless `!important`.
-- [ ] Tests: one fake model for the text check, one set of fixtures instead of seven PNG helpers.
+- [x] Shared order modules: the viewer's replace/restore (`folder-viewer.js`), the proof strip, fields, address,
+  badges and notices, the printer's chip (`order-bits.js`); one order list for the queue and the picker — the
+  `etsy-orders` route went.
+- [x] Small duplicates became one each: image suffixes ×5 (`core.IMAGE_EXTS`), flatten ×3 (`images.flat_rgb()`),
+  "inside the folder" ×4 (`core.inside()`), the child's name and `alike()` (`wording.py`), the Workshop's rows
+  (`books.ROWS`), Ollama's model lists, the Gelato blue in CSS, `money()`/`usd()`; `post()`, `glide()`,
+  `tellBusy()`, `escBack()`, `notFound()`, `confirmChecked()` in `lib.js`.
+- [x] Dead code: the one-time migrations, `redirect()`, `notes`, `page_number`, the picker's own route, unused
+  icons and exports, Settings' segmented-control leftovers, the passport's `copy-all`; the image fade ×15 → one rule;
+  two `!important`. An HTTP error's reply is closed at once (the tests warned about it).
+- [x] Tests: one Printify fake and the PNG/print-folder helpers (`tests/fixtures.py`), one stand-in model answer
+  (`gemma_answer()`).
+- [x] The mockups: one demo-book slot, one «Зупинити» event, the script's start written once (`_run_script()`).
+- Moved to phase 6: the Printify / Gelato send frame (with the Order Creator's split). Not done, on purpose: the
+  one-off inline styles and the notice markup ([decisions](../decisions.md)).
 
 ## Phase 6 — big files cut by job
 
 - [ ] `textcheck.py` → a package (checked with `textcheck_replay.py --all`: the same output).
-- [ ] `creator.py` → routes, the print folder, the shared send, Printify, Gelato, the photobook PDF.
+- [ ] `creator.py` → routes, the print folder, the shared send (one frame for Printify and Gelato), Printify,
+  Gelato, the photobook PDF.
 - [ ] `library.py` → the model and its files; the agent guide as its own Markdown file.
 - [ ] Interface pages (order card, Order Creator, passport, settings, mockups, Workshop book, Profit) →
   state + templates + actions; CSS by section; `dev_server.py` by job.

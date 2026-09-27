@@ -28,10 +28,10 @@ code:
    program moved in, and `workshop` came with the [Listings mode](../features/modes.md); since 2026-09-26 `workshop`
    is a package — the book console moved in, its routes in `workshop/routes.py`. Its generation mode starts its
    Downloads watcher, and the F8 thread, the first time it's asked for.)
-5. Cleanup: old Gelato temp folders (`cleanup_stale()`), leftovers from the old Order Creator form
-   (`forget_old_form()`), dropped files from the previous session (`drops.clear_drops()`), the mockups' unpacked
-   demo book (`mockups.clear_books()`), once — what the separate «Мокапи» left in `data/mockups`
-   (`mockups.forget_old_utility()`: its temp files, previews, window profile).
+5. Cleanup: old Gelato temp folders (`cleanup_stale()`), dropped files from the previous session
+   (`drops.clear_drops()`), the mockups' unpacked demo book (`mockups.clear_books()`). (The one-time cleanings —
+   the old Order Creator form, what the separate «Мокапи» left in `data/mockups` — did their work on the owner's PC
+   and were removed on 2026-09-27.)
 6. **Server** on port 47821 (`DEFAULT_PORT`). Port taken → a random free port and a warning in Etsy
    Settings (the OAuth return address contains the port).
 7. **One automatic order sync** — `startup_sync()` (after that, only by button, see the
@@ -100,11 +100,10 @@ Cyrillic shortcut name is saved under a Latin one and then renamed.
 - [app/Book Studio.pyw](<../../app/Book Studio.pyw>) — `_message()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`, `_running_instance()`, `run_until_closed()`
 - [app/studio/core.py](../../app/studio/core.py) — `own_temp()`, `clear_own_temp()`
-- [app/studio/mockups.py](../../app/studio/mockups.py) — `clear_books()`, `forget_old_utility()`, `clean_runs()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `clear_books()`, `clean_runs()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `open_app_window()`, `find_browser()`, `pick_folder()`, `pick_file()`, `_dialog()`
 - [app/studio/server.py](../../app/studio/server.py) — `start()`, `_heartbeat()`, `_bye()`, `_State`
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `cleanup_stale()`, `_ends_with_us()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `forget_old_form()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `clear_drops()`
 - [app/studio/sync.py](../../app/studio/sync.py) — `startup_sync()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `refresh_quietly()`

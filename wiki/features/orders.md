@@ -6,6 +6,7 @@ code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
   - app/web/js/order-bits.js
+  - app/web/js/folder-viewer.js
   - app/web/js/handoff.js
   - app/web/js/keep.js
 ---
@@ -218,17 +219,19 @@ one column.
 
 ## Where in the code
 
-- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `openViewer()`, `pageActions()`, `replacePage()`, `restorePage()`, `pageChanged()`, `revalidate()`, `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `readyBooks()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `queueState`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `viewerItems()`, `learnPassport()`, `STRIP_THUMB`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — shared with the [order archive](archive.md): `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
+- [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountQueue()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `readyBooks()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `queueState`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — shared with the [order archive](archive.md): `proofHtml()`, `STRIP_THUMB`, `fieldsHtml()`, `addressHtml()`, `etsyAddressLines()`, `svcChip()`, `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`, `all_facts()`, `carrier_label()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `card_facts()`, `_reuse()`
-- [app/studio/wording.py](../../app/studio/wording.py) — `custom_text()`, `clean_name()` ("custom text" fields, and the child's name)
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
+- [app/studio/wording.py](../../app/studio/wording.py) — `custom_text()`, `clean_name()`, `guess_child_name()` ("custom text" fields, and the child's name)
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `countStages()`, `emptyOrders()`, `filesBadge()`, `checkNotices()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
+- [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`, `pageNo()`, `pageWord()` (the viewer with a page replaced and put back — shared with the Order Creator, since 2026-09-27)
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `escBack()`, `notFound()` (Esc to the queue; the card that could not open)
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`, `finish()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `guess_child_name()`, `gelato_pages_problem()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `gelato_pages_problem()`
 - [app/studio/images.py](../../app/studio/images.py) — `check_png()`, `VIEW_SIDES`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `truck`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.ord-chips`, `.ord-child`, `.ord-copy`, `.ord-title`, `.ord-track`, `.ord-track-text`, `.ord-carrier`, `.ord-track-sep`, `.ord-track-no`, `.ord-sub`, `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`

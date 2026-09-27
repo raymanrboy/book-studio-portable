@@ -1,7 +1,8 @@
 // Book passport: cover, 16 page slots (dedication, 14 spreads, afterword), texts, files.
 import {
-  api, html, ic, ib, raw, setHtml, on, media, modal, toast, menu, confirmBox, upload, runJob, copyText,
+  api, post, html, ic, ib, raw, setHtml, on, media, modal, toast, menu, confirmBox, upload, runJob, copyText,
   openExternal, fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el, setProgress, patch, enterOnce,
+  escBack, notFound,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { refreshInfo } from '../info.js';
@@ -17,8 +18,7 @@ export async function mount(view, [id]) {
   try {
     book = await api(`/api/library/books/${id}`);
   } catch (err) {
-    setHtml(view, html`<button class="back-link" onclick="location.hash='#/library'">${ic('arrowLeft', 'icon-s')}Бібліотека</button>
-      <div class="empty"><div class="empty-icon">${ic('book')}</div><h3>Книгу не знайдено</h3><p>${err.message}</p></div>`);
+    notFound(view, { back: '#/library', backLabel: 'До бібліотеки', icon: 'book', title: 'Книгу не знайдено', text: err.message });
     return null;
   }
   const busy = new Set();
@@ -348,12 +348,12 @@ export async function mount(view, [id]) {
   // ---------------------------------------------------------------- folder import (native dialog, or a dropped ZIP)
   async function importFolder(path = null) {
     if (!path) {
-      try { path = (await api('/api/app/pick-folder', { method: 'POST', body: { title: 'Оберіть папку з файлами книги' } })).path; }
+      try { path = (await post('/api/app/pick-folder', { title: 'Оберіть папку з файлами книги' })).path; }
       catch (err) { toast(err.message, 'error'); return; }
     }
     if (!path) return;
     let scan;
-    try { scan = await api(`/api/library/books/${id}/folder-scan`, { method: 'POST', body: { path } }); }
+    try { scan = await post(`/api/library/books/${id}/folder-scan`, { path }); }
     catch (err) { toast(err.message, 'error'); return; }
     const slots = Object.keys(scan.mapping).sort((a, b) => slotOrder(a) - slotOrder(b));
     const m = modal({
@@ -381,9 +381,8 @@ export async function mount(view, [id]) {
       m.foot.querySelectorAll('button').forEach((b) => { b.disabled = true; });
       m.el.querySelector('#fi-progress').hidden = false;
       try {
-        const res = await runJob(api(`/api/library/books/${id}/folder-import`, {
-          method: 'POST', body: { path: scan.folder, slots: selected, includeText: !!m.el.querySelector('#fi-text')?.checked },
-        }), (j) => {
+        const res = await runJob(post(`/api/library/books/${id}/folder-import`,
+          { path: scan.folder, slots: selected, includeText: !!m.el.querySelector('#fi-text')?.checked }), (j) => {
           m.el.querySelector('#fi-step').textContent = `${j.step} ${j.detail || ''}`;
           m.el.querySelector('#fi-pct').textContent = `${Math.round(j.percent)}%`;
           setProgress(m.el.querySelector('#fi-bar'), j.percent);
@@ -404,7 +403,7 @@ export async function mount(view, [id]) {
   // ---------------------------------------------------------------- text JSON
   async function importTextJson(raw) {
     try {
-      const res = await api(`/api/library/books/${id}/text`, { method: 'POST', body: { json: raw } });
+      const res = await post(`/api/library/books/${id}/text`, { json: raw });
       book = res.book;
       renderAll();
       // Missing texts are fine: those places simply stay empty.
@@ -457,7 +456,7 @@ export async function mount(view, [id]) {
   // ---------------------------------------------------------------- lightbox
   function lightboxItems() {
     const items = [];
-    const orig = (a) => () => api(`/api/library/books/${id}/open-original`, { method: 'POST', body: { file: a.file } }).catch((e) => toast(e.message, 'error'));
+    const orig = (a) => () => post(`/api/library/books/${id}/open-original`, { file: a.file }).catch((e) => toast(e.message, 'error'));
     const push = (key, a, title, text) => items.push({
       key, src: assetUrl(a, 2600), full: Math.max(a.width, a.height) > 2600 ? assetUrl(a, 4096) : null,
       title, sub: `${book.title} · ${a.width}×${a.height}`, text, onOriginal: orig(a),
@@ -497,13 +496,12 @@ export async function mount(view, [id]) {
       if (act === 'zoom-thumb') { zoom('thumbnail'); return; }
       if (act === 'swap') {
         e.stopPropagation();
-        try { applyBook(await api(`/api/library/books/${id}/swap`, { method: 'POST', body: { slot: t.dataset.key } }), t.dataset.key); }
+        try { applyBook(await post(`/api/library/books/${id}/swap`, { slot: t.dataset.key }), t.dataset.key); }
         catch (err) { toast(err.message, 'error'); }
         return;
       }
       if (act === 'copy-text') { copyText(book.text[t.dataset.key] || '', 'Текст скопійовано'); return; }
       if (act === 'edit-text') { editText(t.dataset.key); return; }
-      if (act === 'copy-all') { const all = allText(); if (all) copyText(all, 'Увесь текст книги скопійовано'); else toast('У книзі ще немає тексту', 'info'); return; }
       if (act === 'open-canva') { openExternal(book.canvaUrl); return; }
       if (act === 'canva-link') { canvaDialog(); return; }
       if (act === 'import-folder') { importFolder(); return; }
@@ -525,7 +523,7 @@ export async function mount(view, [id]) {
             { label: 'Фото лістингу як заставка', icon: 'imageDown', onClick: thumbFromEtsy }] : []),
           { label: book.canvaUrl ? 'Змінити посилання на Canva…' : 'Додати посилання на Canva…', icon: 'link', onClick: canvaDialog },
           { label: 'Експорт файлів у папку…', icon: 'download', onClick: exportBook },
-          { label: 'Відкрити папку книги', icon: 'folderOpen', onClick: () => api(`/api/library/books/${id}/open-folder`, { method: 'POST', body: {} }).catch((er) => toast(er.message, 'error')) },
+          { label: 'Відкрити папку книги', icon: 'folderOpen', onClick: () => post(`/api/library/books/${id}/open-folder`, {}).catch((er) => toast(er.message, 'error')) },
           '-',
           book.archived ? { label: 'Відновити з архіву', icon: 'restore', onClick: () => setArchived(false) } : { label: 'Перенести в архів', icon: 'archive', onClick: () => setArchived(true) },
           { label: 'Видалити книгу…', icon: 'trash', danger: true, onClick: deleteBook },
@@ -537,17 +535,17 @@ export async function mount(view, [id]) {
 
   async function thumbFromEtsy() {
     busy.add('thumbnail'); renderHero();
-    try { applyBook(await api(`/api/library/books/${id}/thumbnail-from-listing`, { method: 'POST', body: {} }), 'thumbnail'); toast('Заставку взято з Etsy', 'success'); refreshInfo(); }
+    try { applyBook(await post(`/api/library/books/${id}/thumbnail-from-listing`, {}), 'thumbnail'); toast('Заставку взято з Etsy', 'success'); refreshInfo(); }
     catch (err) { toast(err.message, 'error'); }
     finally { busy.delete('thumbnail'); renderHero(); }
   }
   async function refreshListing() {
-    try { applyBook(await api(`/api/library/books/${id}/refresh-listing`, { method: 'POST', body: {} }), 'meta'); toast('Дані лістингу оновлено', 'success'); }
+    try { applyBook(await post(`/api/library/books/${id}/refresh-listing`, {}), 'meta'); toast('Дані лістингу оновлено', 'success'); }
     catch (err) { toast(err.message, 'error'); }
   }
   async function setArchived(archived) {
     try {
-      applyBook(await api(`/api/library/books/${id}/archive`, { method: 'POST', body: { archived } }), 'meta');
+      applyBook(await post(`/api/library/books/${id}/archive`, { archived }), 'meta');
       toast(archived ? 'Книгу перенесено в архів' : 'Книгу відновлено', 'success');
       refreshInfo();
     } catch (err) { toast(err.message, 'error'); }
@@ -564,14 +562,14 @@ export async function mount(view, [id]) {
   }
   async function exportBook() {
     let path;
-    try { path = (await api('/api/app/pick-folder', { method: 'POST', body: { title: 'Куди зберегти файли книги?' } })).path; }
+    try { path = (await post('/api/app/pick-folder', { title: 'Куди зберегти файли книги?' })).path; }
     catch (err) { toast(err.message, 'error'); return; }
     if (!path) return;
     toast('Експорт розпочато…', 'info', 1800);
     try {
-      const res = await runJob(api(`/api/library/books/${id}/export`, { method: 'POST', body: { path } }));
+      const res = await runJob(post(`/api/library/books/${id}/export`, { path }));
       toast(`Збережено ${res.files} файлів у ${res.folder}`, 'success', 6000);
-      api('/api/creator/open-folder', { method: 'POST', body: { path: res.folder } }).catch(() => {});
+      post('/api/creator/open-folder', { path: res.folder }).catch(() => {});
     } catch (err) { toast(err.message, 'error'); }
   }
 
@@ -636,18 +634,12 @@ export async function mount(view, [id]) {
   view.addEventListener('dragleave', onDragLeave);
   view.addEventListener('drop', onDrop);
 
-  // Esc steps back to the library when nothing else (a dialog, the viewer, a text field) owns the key.
-  const onKey = (e) => {
-    if (e.key !== 'Escape' || e.defaultPrevented) return;
-    if (document.querySelector('.modal-root, .lightbox, .menu') || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
-    location.hash = '#/library';
-  };
-  document.addEventListener('keydown', onKey);
+  const esc = escBack('#/library', { fields: true }); // a text being edited keeps its Esc
 
   return {
     unmount() {
       offs.forEach((f) => f());
-      document.removeEventListener('keydown', onKey);
+      esc(false);
     },
   };
 }

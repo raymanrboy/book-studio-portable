@@ -11,6 +11,7 @@ code:
   - app/web/js/handoff.js
   - app/web/js/keep.js
   - app/web/js/lightbox.js
+  - app/web/js/folder-viewer.js
   - app/web/js/workshop-live.js
   - app/web/css/app.css
 ---
@@ -73,13 +74,15 @@ code:
 |---|---|
 | Safe templates | `` html`…` `` escapes everything except `raw()`; `setHtml()`, `el()` |
 | Icon buttons with a tooltip | `ib(icon, tip, attrs, {cls, kbd})`; the shared tooltip `showTip()` / `hideTip()` (`.tip`: up to 320 px, longer wraps to two lines, never past the panel's edge; 2026-09-19) |
-| Server | `api()` (token, JSON, `ApiError`), `media()` (a link with a token), `upload()` (XHR with progress), `runJob()` (4th argument `keepGoing()` — stop polling once the result is no longer needed; `job.partial` in `onProgress` — what the job has already found) |
+| Server | `api()` (token, JSON, `ApiError`), `post(path, body)` — a POST (85 calls read `api(…, { method: 'POST', body })` until 2026-09-27), `media()` (a link with a token), `upload()` (XHR with progress), `runJob()` (4th argument `keepGoing()` — stop polling once the result is no longer needed; `job.partial` in `onProgress` — what the job has already found) |
 | External links | `openExternal()` — through the server, in the regular browser (Etsy is blocked) |
-| Notices | `toast()`, `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `menu()`, `closeMenu()`, `topLayer()` |
+| Notices | `toast()`, `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `confirmChecked()` (a warning and a box to tick before «Продовжити»; `act()` runs before it closes — the Etsy sign-in, the Printify manual approval), `menu()`, `closeMenu()`, `topLayer()` |
+| The shell's dot | `tellBusy(detail)` — the `bs:busy` event: what runs (the mockups, the Workshop's generation) and how a run ended while the window was behind |
+| Detail pages | `escBack(hash, {fields})` — Esc back to the list when no dialog, viewer or menu (or, with `fields`, a text field) owns the key; returns `listen(yes)` for a kept page; `notFound(view, {back, backLabel, icon, title, text})` — the page that could not open (the order card, the archived book, the passport, the Workshop's book; since 2026-09-27) |
 | Segmented switch | `segHtml()`, `syncSeg()`, `setSeg()` |
-| Formatting | `money()`, `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
+| Formatting | `money()` («-$5.00» for a minus; the Profit page's own `usd()` merged into it, 2026-09-27), `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
 | A page's own preference | `remembered(key, fallback)` / `remember(key, value)` — kept in the window (a filter, a period, the open cards, the mockups' picks); missing or broken it is the fallback, never an error that stops the page (since 2026-09-26) |
-| Smoothness | `fadeImages()` (decoding off the main thread), `slide()` (height), `flip()` (moving cards), `keepFocus()`, `idle()`, `reducedMotion()` |
+| Smoothness | `fadeImages()` (decoding off the main thread; a picture drawn with `data-fade` is hidden by one CSS rule, `img[data-fade]`, and shown at `data-fade="in"` — fifteen pairs of rules until 2026-09-27), `slide()` (height), `glide(el, mutate)` (a block whose content changed glides to its new height), `flip()` (moving cards), `keepFocus()`, `idle()`, `reducedMotion()` |
 | Lists and entrances | `enterOnce(node, delay)` — a row new to a list comes in with the page's entrance once (the class goes when it has played, so a later move never replays it); `patch(container, items, redraw)` — `redraw`: keys changed by hand meanwhile (a text being edited) drawn again even with the same markup. The pages with pictures redraw in place with them (the queue and the archive: a search hides rows; the order card's flow; the Order Creator's step cards and structure; the passport; the mockups' templates; since 2026-09-26) |
 | Progress | `setProgress(bar, percent)` — a `.progress > i` bar drawn by a transform (`scaleX`), not its width: no layout on every step (since 2026-09-26) |
 | Live pages | `patch()` — a keyed redraw in place (the gone parts removed first and the rest moved with `moveBefore()` where the browser has it, so focus and hover stay; since 2026-09-26): an unchanged part stays, a changed one is replaced, a picture already shown is carried over (the Workshop) |
@@ -139,8 +142,13 @@ code:
   screen gets drawn (`showing()`). `wireFolderDrop()` passes the drop zone into `onDrop` too
   (`[data-folder-drop][data-book]`) — so a drop lands in exactly the book it was dropped on.
 - `order-bits.js` — shared by Orders, the order archive and the Order Creator: stages, printer-status
-  and tracking chips, the receipt number, the buyer's fields ([features/orders.md](../features/orders.md)),
+  and tracking chips, the printer's chip (`svcChip()`), the receipt number, the proof with its strip
+  (`proofHtml()`), the files' badge and notices (`filesBadge()`, `checkNotices()`), the order list's counts and
+  empty states (`countStages()`, `emptyOrders()`), the address (`addressHtml()`), the buyer's fields (`fieldsHtml()`) ([features/orders.md](../features/orders.md)),
   [features/archive.md](../features/archive.md)).
+- `folder-viewer.js` — `openFolderViewer(book, start, {total, label, sent, again, decorate, changed})`: the viewer of
+  a book's print folder with a page replaced by a file from the computer and put back (the order card and the Order
+  Creator, each with its own question and next step; one copy since 2026-09-27).
 - `lightbox.js` — `openLightbox(items, start)`; an item: `src`, `full` (a sharper version when zoomed),
   `title`, `sub`, `text` (the T key), `onOriginal`, `files` (which files are shown), and `actions` —
   buttons at the top (`{icon, label, tip, on, run(lb)}`). Returns `{close, refresh}`: when a page is
@@ -184,12 +192,13 @@ code:
 - [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
 - [app/web/js/app.js](../../app/web/js/app.js) — `MODES`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `entryOf()`, `switchMode()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `buildNav()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
-- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`, `finish()`
 - [app/web/js/lightbox.js](../../app/web/js/lightbox.js) — `openLightbox()`, `TAU`, `MAX_ZOOM`
+- [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`
 - [app/web/css/app.css](../../app/web/css/app.css) — color tokens at the top of the file; `.lightbox`, `.modal-root`, `.menu`, `.toasts` (layers); `.mk-shell`, `.mk-slot`
 
 ## Related

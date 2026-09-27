@@ -39,11 +39,9 @@ WORK = core.data_path("mockups", "work")   # one folder per run: template copies
 BOOKS = core.data_path("mockups", "book")
 PHOTOSHOP_TEMP = core.data_path("tmp", "photoshop")  # a Photoshop started from here keeps its temp files on D
 # What the separate utility (until 24.09.2026) left in its data folder: its temp files, previews, window profile.
-OLD_UTILITY = ("tmp", "cache", "window-profile")
 DISMISSED = "dismissed"             # a run's mark: the owner finished the page («×») — its templates aren't offered again
 KEEP_RUNS = 24 * 3600                # with Photoshop open, a run's copies left open in it stay a day at most
 KEEP_SAVED = 7 * 24 * 3600           # a copy the owner saved himself (Ctrl+S lands in the run folder): a week
-IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 DPI = 300                            # the smart objects are 300 ppi; another dpi would change the placed size
 PNG_COMPRESSION = 3                  # Photoshop's PNG level: tested on 23.09.2026 (4000×3000 ≈ 17 MB, ~1.5 s)
 START_WAIT = 600                     # a cold start plus the owner's "run this script?" click
@@ -85,8 +83,8 @@ def kept_open(t: dict) -> bool:
 _RUN_NAME = r"\d{8}-\d{6}-[0-9a-f]{6}"
 
 _lock = threading.Lock()
-_books: dict[str, dict] = {}          # book id -> the dropped demo book (memory only: a restart forgets it)
-_cancel: dict[str, threading.Event] = {}
+_shown: dict | None = None            # the dropped demo book — one at a time (memory only: a restart forgets it)
+_run_stop = threading.Event()         # «Зупинити» of the run going now (runs are exclusive: one at a time)
 _results: dict[str, list[Path]] = {}  # job id -> the pictures it saved (the page shows them; nothing else is served)
 
 
@@ -118,23 +116,19 @@ def find_photoshop(base: Path) -> dict | None:
     return {"exe": exe, "launcher": exe} if exe.is_file() else None
 
 
-def _inside(path: Path, folder: Path) -> bool:
-    path, folder = Path(path).resolve(), Path(folder).resolve()
-    return path == folder or folder in path.parents
-
-
 # ---------------------------------------------------------------- the dropped demo book
 
 def read_book(folder: Path) -> dict:
     """The demo book in a dropped Canva export: the wide cover and pages 1..N (renumbered in order, like the
     print folder). Page 1 is the dedication, then spreads [2|3], [4|5], …"""
-    cover, numbered = drops.export_files(folder, IMAGE_SUFFIXES)
+    global _shown
+    cover, numbered = drops.export_files(folder, core.IMAGE_EXTS)
     pages = {i: p for i, (_, p) in enumerate(numbered, 1)}
     if len(pages) < 3:
         raise ApiError("Замало сторінок: потрібні присвята й хоча б один розворот.")
     book = {"id": core.new_id()[:16], "name": folder.name, "folder": folder, "cover": cover, "pages": pages}
     with _lock:
-        _books[book["id"]] = book
+        _shown = book  # a run of the one before keeps its own copy of it
     return book
 
 
@@ -151,16 +145,16 @@ def book_view(book: dict) -> dict:
 
 def _book(book_id: str) -> dict:
     with _lock:
-        book = _books.get(str(book_id or ""))
+        book = _shown if _shown and _shown["id"] == str(book_id or "") else None
     if not book:
         raise ApiError("Книгу не знайдено — перетягніть архів ще раз.", 404)
     return book
 
 
 def _only_this_book(book: dict) -> None:
-    """One demo book at a time: the unpacked copy of the one before it goes at once (a 4K book is ~200 MB),
-    not only at the next launch. Never while a run still reads its pictures. Only the mockups' own folder is
-    touched — the files dropped into an order's card stay."""
+    """One demo book at a time (read_book() puts it in the one slot): the unpacked copy of the one before goes at once
+    (a 4K book is ~200 MB), not only at the next launch. Never while a run still reads its pictures. Only the
+    mockups' own folder is touched — the files dropped into an order's card stay."""
     if jobs.running("mockups"):
         return
     try:
@@ -168,9 +162,6 @@ def _only_this_book(book: dict) -> None:
     except (ValueError, IndexError):
         return
     clear_books(keep=own)
-    with _lock:
-        for other in [k for k in _books if k != book["id"]]:
-            del _books[other]
 
 
 def clear_books(keep: str = "") -> None:
@@ -194,26 +185,10 @@ def _take_dropped(folder: Path) -> Path:
     return target / folder.resolve().relative_to((drops.DROPS / session).resolve())
 
 
-def forget_old_utility() -> None:
-    """Once, after the move into Book Studio: the separate utility's own temp files, previews and window profile
-    in app/data/mockups (~300 MB on the owner's PC) — never places.json, the runs or the logs."""
-    for name in OLD_UTILITY:
-        folder = core.data_path("mockups", name)
-        if folder.is_dir():
-            shutil.rmtree(folder, ignore_errors=True)
-            core.log.info("Mockups: the old utility's %s removed", name)
-
-
 # ---------------------------------------------------------------- pictures for the smart objects
 
 def _rgb(im: Image.Image) -> Image.Image:
-    im = ImageOps.exif_transpose(im)
-    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
-        rgba = im.convert("RGBA")
-        flat = Image.new("RGB", rgba.size, (255, 255, 255))
-        flat.paste(rgba, mask=rgba.split()[-1])
-        return flat
-    return im.convert("RGB") if im.mode != "RGB" else im
+    return images.flat_rgb(ImageOps.exif_transpose(im))
 
 
 def _fill(im: Image.Image, size: tuple[int, int], centre: tuple[float, float] | None = None,
@@ -344,7 +319,7 @@ def copy_templates(job: Job, work: dict) -> None:
     done = 0
     for t in work["templates"]:
         src, dst = Path(t["source"]), Path(t["file"])
-        if _inside(dst, src.parent):
+        if core.inside(dst, src.parent, or_same=True):
             raise UserError("Копія шаблону не може лежати в папці з трафаретами.")
         dst.parent.mkdir(parents=True, exist_ok=True)
         with open(src, "rb") as a, open(dst, "wb") as b:
@@ -542,7 +517,7 @@ def make(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event) 
         raise UserError(f"У папці з трафаретами немає: {', '.join(missing)}.")
     if not out.is_dir():
         raise UserError("Папку для мокапів не знайдено.")
-    if _inside(out, where["templates"]):
+    if core.inside(out, where["templates"], or_same=True):
         raise UserError("Це папка з трафаретами — у ній нічого не можна змінювати. Оберіть іншу.")
     stamp = time.strftime("%Y%m%d-%H%M%S")
     run = WORK / f"{stamp}-{core.new_id()[:6]}"
@@ -552,15 +527,8 @@ def make(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event) 
     started = time.time()
     prepare(job, book, work)
     copy_templates(job, work)
-    job_file = run / "mockups.jsx"
-    job_file.write_text(script(work), encoding="ascii")
-    core.write_json(run / "job.json", work, backup=False)  # the same job, readable: for a look when something fails
-    if cancel.is_set():
-        raise UserError("Скасовано.")
-    job.progress("Запускаю Photoshop", 25)
-    launch(job_file)
     try:
-        st = watch(job, work, cancel)
+        st = _run_script(job, work, run / "mockups.jsx", run / "job.json", "Запускаю Photoshop", cancel)
     finally:
         # The pictures Photoshop saved are in the owner's folder; the copies it closed are no use any more, and
         # neither are the prepared pictures once the script has finished (the smart objects hold them now).
@@ -581,6 +549,18 @@ def make(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event) 
             "seconds": round(time.time() - started), "problems": _problems(st)}
 
 
+def _run_script(job: Job, work: dict, jsx: Path, js: Path, step: str, cancel: threading.Event) -> dict:
+    """The run's script written (with the same job as JSON — readable, for a look when something fails), started in
+    Photoshop and followed to its end: its last status."""
+    jsx.write_text(script(work), encoding="ascii")
+    core.write_json(js, work, backup=False)
+    if cancel.is_set():
+        raise UserError("Скасовано.")
+    job.progress(step, 25)
+    launch(jsx)
+    return watch(job, work, cancel)
+
+
 def _problems(st: dict) -> list[str]:
     # one missing layer fails every picture of its template: said once
     return list(dict.fromkeys(_problem_text(p) for p in st.get("problems") or [] if isinstance(p, dict)))
@@ -597,12 +577,7 @@ def finish(job: Job, run_name: str, cancel: threading.Event) -> dict:
     started = time.time()
     for leftover in (work["status"], work["cancel"]):  # an earlier try's status must not read as this one's
         Path(leftover).unlink(missing_ok=True)
-    job_file = run / "finish.jsx"
-    job_file.write_text(script(work), encoding="ascii")
-    core.write_json(run / "finish.json", work, backup=False)
-    job.progress("Запускаю скрипт у Photoshop", 25)
-    launch(job_file)
-    st = watch(job, work, cancel)
+    st = _run_script(job, work, run / "finish.jsx", run / "finish.json", "Запускаю скрипт у Photoshop", cancel)
     closed = set(st.get("closed") or [])
     for t in work["templates"]:
         if t["name"] in closed:
@@ -659,7 +634,7 @@ def _state(req: Request):
 @route("POST", "/api/mockups/book")
 def _open_book(req: Request):
     folder = Path(str((req.json or {}).get("path") or ""))
-    if not _inside(folder, drops.DROPS) or folder.resolve() == drops.DROPS.resolve() or not folder.is_dir():
+    if not core.inside(folder, drops.DROPS) or not folder.is_dir():
         raise ApiError("Перетягніть ZIP-архів із Canva у вікно.")
     moved = _take_dropped(folder)
     try:
@@ -722,13 +697,14 @@ def _pick_out(req: Request):
     core.log.info("Mockups: the folder dialog is open")
     path = desktop.pick_folder("Куди зберегти мокапи", places()["lastOut"])
     core.log.info("Mockups: the folder dialog closed: %s", path or "no folder picked")
-    if path and _inside(Path(path), places()["templates"]):
+    if path and core.inside(Path(path), places()["templates"], or_same=True):
         raise ApiError("Це папка з трафаретами — у ній нічого не можна змінювати. Оберіть іншу.")
     return {"path": path}
 
 
 @route("POST", "/api/mockups/make")
 def _make(req: Request):
+    global _run_stop
     body = req.json or {}
     book = _book(body.get("book"))
     picks = body.get("picks") if isinstance(body.get("picks"), dict) else {}
@@ -740,19 +716,20 @@ def _make(req: Request):
     cancel = threading.Event()
     core.log.info("Mockups: a run for «%s» into %s, spreads %s", book["name"], out, picks)
     job = jobs.start("mockups", lambda j: _logged(make, j, book, picks, out, cancel), exclusive="mockups")
-    _cancel[job.id] = cancel
+    _run_stop = cancel
     return {"jobId": job.id}
 
 
 @route("POST", "/api/mockups/finish")
 def _finish(req: Request):
+    global _run_stop
     run = str((req.json or {}).get("run") or "")
     if not re.fullmatch(_RUN_NAME, run):
         raise ApiError("Некоректний запит.")
     cancel = threading.Event()
     core.log.info("Mockups: saving the templates run %s left open", run)
     job = jobs.start("mockups", lambda j: _logged(finish, j, run, cancel), exclusive="mockups")
-    _cancel[job.id] = cancel
+    _run_stop = cancel
     return {"jobId": job.id}
 
 
@@ -772,6 +749,7 @@ def close(run_name: str = "") -> None:
     """«×» — the owner has finished with this book (26.09.2026): the demo book goes (its unpacked copy too), and a
     run whose templates still wait in Photoshop is not offered again. Photoshop and what is open in it are left as
     they are; the run's copies are cleaned as always (once Photoshop is closed)."""
+    global _shown
     if jobs.running("mockups"):
         raise ApiError("Зачекайте, поки Photoshop закінчить, — або зупиніть його.")
     if run_name:
@@ -780,7 +758,7 @@ def close(run_name: str = "") -> None:
         if (WORK / run_name).is_dir():
             (WORK / run_name / DISMISSED).write_text("", encoding="utf-8")
     with _lock:
-        _books.clear()
+        _shown = None
     clear_books()
     core.log.info("Mockups: finished by the owner%s", f" (run {run_name} no longer offered)" if run_name else "")
 
@@ -793,9 +771,8 @@ def _close(req: Request):
 
 @route("POST", "/api/mockups/cancel")
 def _stop(req: Request):
-    job = jobs.running("mockups")
-    if job and job.id in _cancel:
-        _cancel[job.id].set()
+    if jobs.running("mockups"):
+        _run_stop.set()
     return {"ok": True}
 
 

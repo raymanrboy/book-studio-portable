@@ -37,14 +37,14 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import core, creator, images, library, orders, stages
+from . import core, images, library, orders, stages
 from .jobs import UserError, jobs
-from .wording import DASHES as _DASHES, DEDICATION as _DEDICATION, META as _META, QUOTES as _QUOTES
-from .wording import clean_name, is_default, words
+from .wording import DEDICATION as _DEDICATION, META as _META
+from .wording import alike, clean_name, guess_child_name, is_default, words
 from .server import ApiError, Request, route
 
-DEFAULT_MODEL = "gemma4:12b-it-qat"
-DEFAULT_URL = "http://127.0.0.1:11434"
+DEFAULT_MODEL = core.DEFAULT_SETTINGS["textcheck"]["model"]  # gemma4:12b-it-qat — an emptied setting falls back to it
+DEFAULT_URL = core.DEFAULT_SETTINGS["textcheck"]["url"]
 PARALLEL = 4             # pages in flight at once — the owner set OLLAMA_NUM_PARALLEL=4
 IMAGE_SIDE = 1024        # tested: 768–2000 px read equally well; smaller is faster to send
 KEEP_ALIVE = "2m"        # a fallback: the model is let go right after each check (_release_model())
@@ -131,6 +131,8 @@ def _call(path: str, body: dict | None = None, timeout: float = 10) -> dict:
             detail = str(json.loads(err.read().decode("utf-8")).get("error") or "")
         except Exception:
             detail = ""
+        finally:
+            err.close()
         raise ModelError(f"Ollama відповіла помилкою {err.code}" + (f": {detail}" if detail else "") + ".") from None
     except TimeoutError:
         raise TimedOut("Модель не відповіла вчасно.") from None
@@ -203,6 +205,15 @@ def _start_ollama(wait: float) -> bool:
     return False
 
 
+def _names(path: str) -> list[str]:
+    """What Ollama lists: the installed models (`/api/tags`) or the ones in the graphics card (`/api/ps`)."""
+    return [m.get("name") or "" for m in _call(path, timeout=5).get("models") or []]
+
+
+def _has(names: list[str], model: str) -> bool:
+    return any(_same_model(n, model) for n in names)
+
+
 def status() -> dict:
     """For Settings and the order card: is the check on, does Ollama answer, is the model there."""
     out = {**_settings(), "running": False, "version": None, "models": [], "installed": False, "loaded": False,
@@ -212,9 +223,8 @@ def status() -> dict:
         out["running"] = True
         tags = _call("/api/tags", timeout=5).get("models") or []
         out["models"] = [m.get("name") for m in tags if "vision" in (m.get("capabilities") or ["vision"])]
-        out["installed"] = any(_same_model(n, out["model"]) for n in out["models"])
-        out["loaded"] = any(_same_model(m.get("name") or "", out["model"])
-                            for m in _call("/api/ps", timeout=5).get("models") or [])
+        out["installed"] = _has(out["models"], out["model"])
+        out["loaded"] = _has(_names("/api/ps"), out["model"])
     except ModelError:
         pass
     return out
@@ -226,10 +236,9 @@ def _ready(model: str, say) -> None:
         say("Запуск Ollama…")
         if not start_ollama():
             raise Unavailable("Ollama не запущена і не запустилась сама — запустіть її з меню «Пуск».")
-    names = [m.get("name") or "" for m in _call("/api/tags", timeout=5).get("models") or []]
-    if not any(_same_model(n, model) for n in names):
+    if not _has(_names("/api/tags"), model):
         raise ModelError(f"В Ollama немає моделі {model} — встановіть її або оберіть іншу в Налаштуваннях.")
-    if not any(_same_model(m.get("name") or "", model) for m in _call("/api/ps", timeout=5).get("models") or []):
+    if not _has(_names("/api/ps"), model):
         say("Модель завантажується у відеокарту…")
         _call("/api/chat", {"model": model, "messages": [], "keep_alive": KEEP_ALIVE, "options": OPTIONS},
               timeout=CALL_TIMEOUT)
@@ -370,7 +379,7 @@ _TEMPLATE_GREETING = re.compile(r"(?im)^[^\n{]{1,30},[ \t]*\n(?=[ \t]*\{\s*gifte
 
 def personalization(item: dict) -> dict:
     """The child's name, who the book is from, and the buyer's own dedication / closing when there is one."""
-    child = clean_name(item.get("childName") or creator.guess_child_name([item]))  # «Leo & Mila.» -> «Leo & Mila»
+    child = clean_name(item.get("childName") or guess_child_name([item]))  # «Leo & Mila.» -> «Leo & Mila»
     gifter, raw = "", ""
     for v in item.get("variations") or []:
         name, value = str(v.get("name") or ""), str(v.get("value") or "").strip()
@@ -556,7 +565,7 @@ def _other_children(receipt_id: str) -> set[str]:
         if str(o.get("receiptId")) == str(receipt_id):
             continue
         for item in o.get("items") or []:
-            names.update(t.casefold() for t in words(creator.guess_child_name([item])) if len(t) >= 3)
+            names.update(t.casefold() for t in words(guess_child_name([item])) if len(t) >= 3)
     return names
 
 
@@ -1087,7 +1096,7 @@ class _Run:
     card when the last running check ends."""
 
     def __init__(self, job, receipt_id: str, model: str, pick: int = 0):
-        self.job, self.receipt_id, self.model = job, receipt_id, model
+        self.job, self.model = job, model
         self.key = run_key(receipt_id, pick)
         self.cancel = threading.Event()
         self.lock = threading.Lock()
@@ -1316,17 +1325,12 @@ def _start(req: Request):
     return status()
 
 
-def _alike(text: str) -> str:
-    """The text with quotes and dashes of every style made alike, letter for letter (the same length)."""
-    return _DASHES.sub("-", text.translate(_QUOTES))
-
-
 def _passport_words(text: str, template: str, child: str) -> dict[int, bool]:
     """Where a printed word stands in the passport text: word start -> True when it stands in the place of
     {Name}, False when it is the passport's own word. Words the passport does not have are left out."""
-    name = [w.casefold() for w in re.findall(r"\w+", _alike(child))]
+    name = [w.casefold() for w in re.findall(r"\w+", alike(child))]
     ref, slot = [], []
-    for n, part in enumerate(_NAME_SLOT.split(_alike(template))):
+    for n, part in enumerate(_NAME_SLOT.split(alike(template))):
         if n:
             ref += name
             slot += [True] * len(name)
@@ -1351,15 +1355,15 @@ def as_template(text: str, child: str, template: str = "") -> str:
     child = unicodedata.normalize("NFC", child.strip())
     if not child:
         return text
-    alike = _alike(text)
-    pattern = r"\s+".join(re.escape(part) for part in _alike(child).split())
-    hits = [m.span() for m in re.finditer(rf"(?<!\w){pattern}(?!\w)", alike, re.I)]
-    known = _passport_words(alike, template, child)
+    same = alike(text)
+    pattern = r"\s+".join(re.escape(part) for part in alike(child).split())
+    hits = [m.span() for m in re.finditer(rf"(?<!\w){pattern}(?!\w)", same, re.I)]
+    known = _passport_words(same, template, child)
     own = {w.casefold() for w in re.findall(r"\w+", _NAME_SLOT.sub(" ", template or ""))}
     everyday = child.casefold() in COMMON or child.casefold() in own
     out = text
     for start, end in reversed(hits):
-        where = [known.get(m.start() + start) for m in re.finditer(r"\w+", alike[start:end])]
+        where = [known.get(m.start() + start) for m in re.finditer(r"\w+", same[start:end])]
         if False in where:
             continue  # the passport's own word
         if None in where and everyday and not text[start].isupper():

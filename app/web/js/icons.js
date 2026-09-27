@@ -60,10 +60,7 @@ const P = {
   // square `images`, which there means the cut pages)
   original: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="7" cy="10.2" r="1.5"/><path d="M22 15.2l-4.6-4.4L10 18"/>',
   imageDown:'<path d="M20.5 13v5.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h5.5"/><path d="M3.5 17l4.5-4.5 3.5 3.5"/><path d="M17.5 3v7.5M14.5 7.5l3 3 3-3"/>',
-  imageOff: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 3.5l17 17"/>',
   text: '<path d="M6 3.5h9l4 4v13H6z"/><path d="M14.5 3.5V8H19M9 12.5h7M9 16.5h7"/>',
-  textOff: '<path d="M5 7h14M5 12h9M5 17h6"/><path d="M4 3.5l16 17"/>',
-  grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
   spread: '<path d="M12 6.5C9.5 5 6.5 4.5 3.5 5v13.5c3-.5 6 0 8.5 1.5 2.5-1.5 5.5-2 8.5-1.5V5c-3-.5-6 0-8.5 1.5z"/><path d="M12 6.5V20"/>',
 
   // ---- services (letter marks, one shape family)
@@ -80,7 +77,6 @@ const P = {
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.8l3 1.8"/>',
   shield: '<path d="M12 3.5l7.5 2.8v5.6c0 4.3-3.2 7.6-7.5 8.6-4.3-1-7.5-4.3-7.5-8.6V6.3z"/><path d="M9 12l2 2 4-4"/>',
   globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z"/>',
-  layers: '<path d="M12 3.5l8.5 4.7L12 13 3.5 8.2z"/><path d="M3.5 12.8L12 17.5l8.5-4.7"/>',
   database: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-13M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   sparkle: '<path d="M12 3.5l1.8 5.2 5.2 1.8-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8z"/>',
@@ -112,7 +108,6 @@ const P = {
   // ---- profit (page hidden for now)
   dollar: '<path d="M12 3v18M16.5 7.5c-.8-1.3-2.4-2-4.5-2-2.5 0-4 1.2-4 3s1.5 2.6 4 3.2 4.5 1.4 4.5 3.3-1.8 3.2-4.5 3.2c-2.3 0-4-.9-4.8-2.4"/>',
   bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
-  trending: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
   package: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
 
   // ---- shipping: the printer has sent the book (tracking number)
@@ -143,11 +138,8 @@ const P = {
   guides: '<rect x="7" y="8" width="10" height="8" rx=".5"/><path d="M12 8v8"/><path d="M7 2v3M17 2v3M7 19v3M17 19v3M1.5 8h3M19.5 8h3M1.5 16h3M19.5 16h3"/>',
 };
 
-// Older names still used by the (hidden) profit page map onto the same meanings.
-const ALIAS = { refresh: 'sync', folder: 'folderOpen', logo: 'book', laptop: 'monitor', wallet: 'dollar' };
-
 export function icon(name, cls = '') {
-  const body = P[name] || P[ALIAS[name]] || P.info;
+  const body = P[name] || P.info;
   const filled = name === 'more' ? ' style="fill:currentColor"' : '';
   return `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true"${filled}>${body}</svg>`;
 }

@@ -199,9 +199,9 @@ class RunPlan(unittest.TestCase):
         work = self.plan()
         text = mockups.script(work)
         for t in work["templates"]:
-            self.assertFalse(mockups._inside(Path(t["file"]), self.templates))
+            self.assertFalse(core.inside(Path(t["file"]), self.templates))
             for s in t["shots"]:
-                self.assertFalse(mockups._inside(Path(s["save"]), self.templates))
+                self.assertFalse(core.inside(Path(s["save"]), self.templates))
         self.assertNotIn(self.templates.as_posix(), text)
         self.assertNotIn(json.dumps(self.templates.as_posix()).strip('"'), text)   # nor as \u escapes
         text.encode("ascii")                                                        # Photoshop 2019 reads it as is
@@ -442,19 +442,6 @@ class Cleaning(unittest.TestCase):
         finally:
             mockups.clear_books()
 
-    def test_the_old_utility_leaves_only_its_places_runs_and_logs(self):
-        root = core.data_path("mockups")
-        for name in (*mockups.OLD_UTILITY, "work", "logs"):
-            (root / name).mkdir(parents=True, exist_ok=True)
-            (root / name / "x.txt").write_text("x", encoding="utf-8")
-        try:
-            mockups.forget_old_utility()
-            self.assertEqual(sorted(p.name for p in root.iterdir() if p.name in (*mockups.OLD_UTILITY, "work", "logs")),
-                             ["logs", "work"])
-        finally:
-            for name in ("work", "logs"):
-                shutil.rmtree(root / name, ignore_errors=True)
-
     def test_a_picked_zip_is_unpacked_straight_from_where_it_lies(self):
         import zipfile
         pages = demo_book(self.root / "export")
@@ -571,13 +558,13 @@ class SaveTheOpenOnes(unittest.TestCase):
         books = self.root / "book"
         (books / "session").mkdir(parents=True)
         (books / "session" / "1.png").write_bytes(b"png")
-        mockups._books["x" * 16] = {"id": "x" * 16}
+        mockups._shown = {"id": "x" * 16}
         with mock.patch.object(mockups, "BOOKS", books), mock.patch.object(mockups.jobs, "running", lambda name: None):
             mockups.close(self.run.name)
         self.assertIsNone(mockups.pending())                               # «Ваша черга» isn't offered again
         self.assertTrue(self.run.exists())                                  # its copies go the usual way, later
         self.assertEqual(list(books.iterdir()), [])
-        self.assertEqual(mockups._books, {})
+        self.assertIsNone(mockups._shown)
 
     def test_finishing_waits_for_a_run_and_refuses_a_strange_name(self):
         with mock.patch.object(mockups.jobs, "running", lambda name: object()), self.assertRaises(ApiError):
@@ -712,6 +699,29 @@ def trees(work: dict) -> dict:
 
 
 @unittest.skipUnless(shutil.which("node"), "Node.js runs the Photoshop script against a pretend Photoshop")
+class StopTheRun(unittest.TestCase):
+    def test_stop_reaches_the_run_going_now(self):
+        """One run at a time, so «Зупинити» has one event to set: the one the running job was given."""
+        started, seen = {}, {}
+
+        def start(name, fn, exclusive=None):
+            started["fn"] = fn
+            return SimpleNamespace(id="j1")
+
+        def fake_finish(job, run, cancel):
+            seen["cancel"] = cancel
+            return {}
+        with mock.patch.object(mockups.jobs, "start", start), mock.patch.object(mockups, "finish", fake_finish):
+            mockups._finish(SimpleNamespace(json={"run": "20260927-120000-abcdef"}))
+            started["fn"](SimpleNamespace(id="j1", step=""))
+        with mock.patch.object(mockups.jobs, "running", lambda name: None):     # nothing running: nothing stopped
+            mockups._stop(SimpleNamespace(json={}))
+        self.assertFalse(seen["cancel"].is_set())
+        with mock.patch.object(mockups.jobs, "running", lambda name: object()):
+            mockups._stop(SimpleNamespace(json={}))
+        self.assertTrue(seen["cancel"].is_set())
+
+
 class PhotoshopScript(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

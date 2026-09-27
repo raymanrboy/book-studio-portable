@@ -66,14 +66,18 @@ def _prompts_word(n: int) -> str:
     return f"{n} промпти" if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14) else f"{n} промптів"
 
 
+SINGLE_LABELS = {"page1": "Сторінка 1 · присвята", "page30": "Сторінка 30 · післяслово"}
+
+
 def row_list() -> list[dict]:
-    """The rows in the book's order, the cover last — it's generated last (Agent 6, after the spreads)."""
-    out = [{"key": "page1", "label": "Сторінка 1 · присвята", "pages": [1], "kind": "single"}]
-    for n in SPREADS:
-        pages = list(library.spread_pages(n))
-        out.append({"key": f"spread{n}", "label": f"Розворот {pages[0]}–{pages[1]}", "pages": pages,
-                    "kind": "spread", "mirrored": n in MIRRORED})
-    out.append({"key": "page30", "label": "Сторінка 30 · післяслово", "pages": [30], "kind": "single"})
+    """The rows in the book's order (`books.ROWS`), the cover last — it's generated last (Agent 6, after the spreads)."""
+    out = []
+    for key, pages in books.ROWS:
+        if key in SINGLE_LABELS:
+            out.append({"key": key, "label": SINGLE_LABELS[key], "pages": list(pages), "kind": "single"})
+        else:
+            out.append({"key": key, "label": f"Розворот {pages[0]}–{pages[1]}", "pages": list(pages),
+                        "kind": "spread", "mirrored": int(key[len("spread"):]) in MIRRORED})
     out.append({"key": "cover", "label": "Обкладинка", "pages": ["Cover"], "kind": "cover"})
     return out
 

@@ -98,6 +98,8 @@ def request(
                 text = err.read().decode("utf-8", "replace")
             except Exception:
                 pass
+            finally:
+                err.close()  # the reply's connection goes now, not whenever the error is collected
             # 503 and 429 say the request was turned away; 500/502/504 may come after the work was done.
             ambiguous = err.code >= 500 and err.code != 503
             last_error = HttpError(f"HTTP {err.code}", status=err.code, body=text, url=url, ambiguous=ambiguous)

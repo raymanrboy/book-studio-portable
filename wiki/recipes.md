@@ -70,7 +70,8 @@ code: []
   `isFormatField()`, `isNameField()`; sizes — `.proof-name`, `.proof-note` in app.css.
 
 ## Filmstrip thumbnail size
-- Change **together**: [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) `STRIP_THUMB` and
+- Change **together**: [app/web/js/order-bits.js](../app/web/js/order-bits.js) `STRIP_THUMB` (the order card's and
+  the archive's strip) and
   [app/studio/images.py](../app/studio/images.py) `VIEW_SIDES` (otherwise the file check will prepare the wrong
   size).
 

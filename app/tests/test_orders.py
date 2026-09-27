@@ -8,16 +8,13 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
+from tests.fixtures import png
 from studio import drops, orders
 from studio.server import ApiError
 
 
 def item(cover="8\" × 8\" Hardcover", title="Personalized book"):
     return {"title": title, "quantity": 1, "variations": [{"name": "Cover Type & Size", "value": cover}]}
-
-
-def png(path: Path, size=(40, 40)):
-    Image.new("RGB", size, (200, 180, 160)).save(path)
 
 
 class PrinterRule(unittest.TestCase):
@@ -68,10 +65,10 @@ class ArrangePages(unittest.TestCase):
         return d
 
     def test_page_numbers_and_ranges(self):
-        self.assertEqual(orders.page_number("12"), 12)
-        self.assertEqual(orders.page_number("Madelynn - 12"), 12)
-        self.assertEqual(orders.page_number("12_upscayl_4x_ultrasharp-4x"), 12)
-        self.assertIsNone(orders.page_number("cover"))
+        self.assertEqual(drops.page_number("12"), 12)
+        self.assertEqual(drops.page_number("Madelynn - 12"), 12)
+        self.assertEqual(drops.page_number("12_upscayl_4x_ultrasharp-4x"), 12)
+        self.assertIsNone(drops.page_number("cover"))
         self.assertEqual(orders.ranges([1, 2, 3, 5, 7, 8]), "1–3, 5, 7–8")
 
     def test_already_in_order_is_used_as_is(self):
@@ -202,13 +199,6 @@ class GelatoLength(unittest.TestCase):
         with self.assertRaises(ApiError) as caught:
             orders._files(SimpleNamespace(json={"folder": str(d), "provider": "files", "format": "hardcover_8x8"}))
         self.assertIn("Потрібно 24, 28 або 30 сторінок, а тут 25", str(caught.exception))
-
-    def test_old_single_page_count_setting_is_dropped(self):
-        from studio import core
-        with mock.patch.object(core, "read_json", lambda *a, **kw: {"gelato": {"pageCount": 30}}):
-            saved = core.Settings()
-        self.assertNotIn("pageCount", saved.section("gelato"))
-        self.assertEqual(saved.section("gelato")["pageCounts"], [28, 30])
 
 
 class PreparationGuide(unittest.TestCase):

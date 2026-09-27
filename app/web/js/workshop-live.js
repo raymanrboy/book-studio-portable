@@ -3,7 +3,7 @@
 // next prompt in the clipboard) — and redraws itself. While a picture is awaited and the owner is elsewhere in Book
 // Studio the link keeps asking every 4 s, so a catch is noticed wherever he is: a notice, and the 'bs:busy' event —
 // the rail's dot and the window's title (app.js).
-import { api, html, ic, ib, toast } from './lib.js';
+import { api, post, html, ic, ib, toast, tellBusy } from './lib.js';
 
 const FAST = 1500, SLOW = 4000;
 let gen = null;              // the generation mode: generate.Session.status() on the server
@@ -72,7 +72,7 @@ function take(g) {
   const label = a ? `${a.label}${a.of > 1 ? ` · ${a.step} з ${a.of}` : ''}` : null;
   if (label !== said) {
     said = label;
-    window.dispatchEvent(new CustomEvent('bs:busy', { detail: { workshop: label } }));
+    tellBusy({ workshop: label });
   }
 }
 
@@ -97,11 +97,11 @@ export async function act(btn, fn, ok) {
 }
 
 /** «Генерувати»: the row's first thing goes into the clipboard, the Workshop waits for its picture in Downloads. */
-export const startGen = (btn, body) => act(btn, () => api('/api/workshop/gen/start', { method: 'POST', body }),
+export const startGen = (btn, body) => act(btn, () => post('/api/workshop/gen/start', body),
   (s) => (s.active ? `${s.active.label}: у буфері ${s.active.items[0]} — вставте в Gemini` : null));
 
 /** The bar's buttons: «Далі» (F8), the same thing into the clipboard again, «Стоп». */
-export const genAction = (btn, what) => act(btn, () => api(`/api/workshop/gen/${what}`, { method: 'POST', body: {} }),
+export const genAction = (btn, what) => act(btn, () => post(`/api/workshop/gen/${what}`, {}),
   what === 'again' ? 'Знову в буфері' : null);
 
 /** Is this row the one the Workshop waits a picture for? */

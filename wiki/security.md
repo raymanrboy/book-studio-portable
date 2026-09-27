@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -154,9 +154,9 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - Its files live in `app/data/mockups`. The unpacked demo book has a folder of its own there
   (`mockups/book/`, `BOOKS`), so the mockups never delete the files dropped into an order's card and Book
   Studio's cleaning of dropped files never deletes the demo book. The demo book, old runs and Photoshop's temp
-  folder are the only things it deletes (`_only_this_book()`, `clear_books()`, `clean_runs()`), and once, after
-  the move, the separate utility's own temp files, previews and window profile (`forget_old_utility()`, never
-  `places.json`, the runs or the logs). A copy of a template the owner saved himself (Ctrl+S) is kept a week.
+  folder are the only things it deletes (`_only_this_book()`, `clear_books()`, `clean_runs()`); once, after
+  the move, the separate utility's own temp files, previews and window profile went too (never `places.json`,
+  the runs or the logs; that one-time cleaning was removed on 2026-09-27). A copy of a template the owner saved himself (Ctrl+S) is kept a week.
 - A ZIP picked with the folder button is **only read** where it lies (`_open_zip()`), unpacked into the
   mockups' own folder.
 - Photoshop gets one script per run; a stop leaves a mark the script checks first, so a late "Yes" does
@@ -207,7 +207,9 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - [app/studio/core.py](../app/studio/core.py) — `SAMPLE`
 - [app/tests/__init__.py](../app/tests/__init__.py) — a temporary data folder for tests (unconditional)
 - [app/tools/dev_server.py](../app/tools/dev_server.py) — `claim()`, `MARK`, `main()` (`BOOK_STUDIO_SAMPLE`)
-- [app/studio/mockups.py](../app/studio/mockups.py) — `copy_templates()`, `_inside()`, `_free_name()`, `_pick_out()`, `make()`, `clean_runs()`, `finish()`, `_open_zip()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `forget_old_utility()`
+- [app/studio/mockups.py](../app/studio/mockups.py) — `copy_templates()`, `_free_name()`, `_pick_out()`, `make()`, `clean_runs()`, `finish()`, `_open_zip()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`
+- [app/studio/core.py](../app/studio/core.py) — `inside()`: the one check behind "only in our own folder" (the
+  templates, the dropped files, the interface's own files, the archive; since 2026-09-27)
 - [app/studio/workshop/books.py](../app/studio/workshop/books.py) — `to_library()` (the Etsy listing only read, through the API; nothing is sent anywhere), `delete_book()`, `open_agent()`
 - [app/studio/workshop/generate.py](../app/studio/workshop/generate.py) — `Session` (only the awaited picture leaves Downloads)
 - [app/studio/desktop.py](../app/studio/desktop.py) — `to_recycle_bin()`

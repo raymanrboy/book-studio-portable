@@ -9,6 +9,24 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-27 — The big cleanup, phase 5: one copy of everything
+
+- **One-time migrations go once they have done their work** on the owner's PC (checked in his data: no old
+  settings, no old Gelato product names, no old mockups folders left): the Order Creator's old form, the separate
+  «Мокапи»'s leftovers, the inch-sized Gelato products, the single page count. The code keeps no upgrade path for
+  data that no longer exists.
+- **The Order Creator's «Замовлення Etsy» lists the queue's orders** (`/api/orders`) — its own route
+  `/api/creator/etsy-orders` gave the same orders and went.
+- **Shared pieces instead of copies** (not to be copied back): the folder viewer with a page replaced
+  (`folder-viewer.js`), the proof with its strip, the buyer's fields, the address, the printer's chip, the files'
+  badge and notices, the order list's counts and empty states (`order-bits.js`); a detail page's Esc and "could
+  not open", the dialog with a box to tick, `post()`, `glide()`, `tellBusy()` (`lib.js`); on the server — the picture
+  suffixes and "inside our folder" (`core.py`), see-through parts on white (`images.flat_rgb()`), the child's name
+  (`wording.py`). One CSS rule fades every picture in (`img[data-fade]`).
+- **Left as they are, on purpose:** the ~130 one-off inline styles (an inline style wins over any rule — moving
+  them into classes changes which rule wins, one by one, for no gain the owner would see); the notice markup
+  (short and explicit); the Printify / Gelato send frame — it moves with the Order Creator's split (phase 6).
+
 ## 2026-09-26 — The big cleanup, phase 2: matching and money
 
 - **Changed on purpose** (the owner: "fix everything you found"; not to be "fixed" back):

@@ -55,6 +55,17 @@ def item(child="Olivia", gifter="With love, Grandma & Grandpa", dedication="DEFA
         {"name": "Cover Type & Size", "value": "8\" x 8\" Hardcover"}]}
 
 
+def gemma_answer(printed: str, prompt: str, schema) -> str:
+    """What the stand-in model answers for a page with `printed` on it, the way Gemma does: a read — its first dozen
+    words; a check — the transcript and whether it says what the prompt EXPECTED."""
+    if schema is None:
+        return " ".join(printed.split()[:12])
+    expected = prompt.split("EXPECTED:", 1)[1].strip() if "EXPECTED:" in prompt else None
+    bad = expected is not None and tc.words(expected) != tc.words(printed)
+    return json.dumps({"transcript": printed, "verdict": "error" if bad else "ok",
+                       "problems": ["Текст відрізняється"] if bad else []})
+
+
 class Words(unittest.TestCase):
     def test_quotes_dashes_and_punctuation_are_not_differences(self):
         self.assertEqual(tc.diff("Olivia’s garden — “wide”, bright!", "Olivia's garden - \"wide\" bright"), [])
@@ -303,13 +314,7 @@ class WholeCheck(unittest.TestCase):
 
     def fake_chat(self, model, prompt, picture, schema=None, max_tokens=None):
         self.calls += 1
-        text = self.printed.get(picture, "")
-        if schema is None:
-            return " ".join(text.split()[:12])
-        expected = prompt.split("EXPECTED:\n", 1)[1] if "EXPECTED:\n" in prompt else None
-        bad = expected is not None and tc.words(expected) != tc.words(text)
-        return json.dumps({"transcript": text, "verdict": "error" if bad else "ok",
-                           "problems": ["Текст відрізняється"] if bad else []})
+        return gemma_answer(self.printed.get(picture, ""), prompt, schema)
 
     def fake_job(self):
         """A job like the real one; self.shared keeps every list of findings the check handed out as it ran."""
@@ -640,13 +645,7 @@ class WhileItRuns(unittest.TestCase):
         with self.lock:
             self.asked.append(("check" if schema else "read", picture))
         time.sleep(0.02 if schema else 0.005)   # a check takes longer than a read, as it does with Gemma
-        text = self.printed.get(picture, "")
-        if schema is None:
-            return " ".join(text.split()[:12])
-        expected = prompt.split("EXPECTED:", 1)[1].strip() if "EXPECTED:" in prompt else None
-        bad = expected is not None and tc.words(expected) != tc.words(text)
-        return json.dumps({"transcript": text, "verdict": "error" if bad else "ok",
-                           "problems": ["Текст відрізняється"] if bad else []})
+        return gemma_answer(self.printed.get(picture, ""), prompt, schema)
 
     def test_spreads_are_checked_before_the_last_page_is_read(self):
         shared = []
@@ -777,14 +776,7 @@ class Prescan(unittest.TestCase):
         def fake_chat(model, prompt, picture, schema=None, max_tokens=None):
             self.asked.append((picture, bool(schema)))
             text = self.printed.get(picture, "")
-            if chat:
-                text = chat(picture, text)
-            if schema is None:
-                return " ".join(text.split()[:12])
-            expected = prompt.split("EXPECTED:", 1)[1].strip() if "EXPECTED:" in prompt else None
-            bad = expected is not None and tc.words(expected) != tc.words(text)
-            return json.dumps({"transcript": text, "verdict": "error" if bad else "ok",
-                               "problems": ["Текст відрізняється"] if bad else []})
+            return gemma_answer(chat(picture, text) if chat else text, prompt, schema)
 
         with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=fake_chat), \
                 mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \

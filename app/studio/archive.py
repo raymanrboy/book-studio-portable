@@ -89,12 +89,11 @@ def store(provider: str, files: list[tuple[Path, str]], meta: dict) -> str:
     eid = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
     final, tmp = ROOT / eid, ROOT / f".tmp-{eid}"
     tmp.mkdir(parents=True)
-    root = ROOT.resolve()
     try:
         rows = []
         for src, name in files:
             src, dest = Path(src), tmp / name
-            if root in src.resolve().parents:
+            if core.inside(src, ROOT):
                 try:
                     os.link(src, dest)
                 except OSError:

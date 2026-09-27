@@ -1,13 +1,14 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
-  api, html, ic, ib, setHtml, on, media, modal, toast, runJob, segHtml, syncSeg, setSeg, bytes, dateTime,
-  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, confirmBox, setProgress, patch, enterOnce,
+  api, post, html, ic, ib, setHtml, on, media, modal, toast, runJob, segHtml, syncSeg, setSeg, bytes, dateTime,
+  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, setProgress, patch, enterOnce,
+  confirmChecked,
 } from '../lib.js';
-import { openLightbox } from '../lightbox.js';
+import { openFolderViewer } from '../folder-viewer.js';
 import {
-  COUNTRIES, STAGES, STAGE_EMPTY, addressFromEtsy, spreadsOf, folderViewerItems, receiveDrop, dropLabel,
-  wireFolderDrop, matchesOrder, variationsOf, providerName, pagesText, restorable, childOf, receiptOfTitle,
-  holdClicks, orderSync, pageVersion,
+  COUNTRIES, STAGES, addressFromEtsy, spreadsOf, receiveDrop, dropLabel,
+  wireFolderDrop, matchesOrder, variationsOf, pagesText, restorable, childOf, receiptOfTitle,
+  holdClicks, orderSync, pageVersion, filesBadge, checkNotices, svcChip, countStages, emptyOrders,
 } from '../order-bits.js';
 import { take } from '../handoff.js';
 import { markSent, finish } from '../keep.js';
@@ -44,9 +45,8 @@ export async function mount(view) {
   st.receiptId = handed?.receiptId && !handed.reprint ? String(handed.receiptId) : '';
   if (handed) {
     st.mode = handed.mode;
-    const list = handed.books?.length ? handed.books : [handed];
     Object.assign(st[handed.mode], {
-      books: list.map((h) => newBook({ folder: h.folder, label: h.label, title: h.title, receiptId: st.receiptId, ...(h.format ? { format: h.format } : {}) })),
+      books: handed.books.map((h) => newBook({ folder: h.folder, label: h.label, title: h.title, receiptId: st.receiptId, ...(h.format ? { format: h.format } : {}) })),
       pick: 0, address: { ...handed.address }, reprint: handed.reprint || null,
     });
   }
@@ -137,11 +137,7 @@ export async function mount(view) {
   /** A book's file check as a badge: running (with its own id, so each book's percent lands on its own badge),
    *  passed, or failed. */
   function checkBadge(b, i) {
-    const v = b.validation;
-    if (b.validating) return html`<span class="v-badge run" id="cr-badge-${i}"><span class="spinner" style="width:12px;height:12px;border-width:2px"></span><span class="num">${Math.round(b.validating)}%</span></span>`;
-    if (!v) return '';
-    return v.ok ? html`<span class="v-badge ok" data-tip="Усі PNG повністю прочитано й перевірено">${ic('check')}<span class="num">${v.found}/${v.expected}</span></span>`
-      : html`<span class="v-badge bad">${ic('x')}Є проблеми</span>`;
+    return filesBadge(b.validation, { busy: b.validating, id: `cr-badge-${i}` });
   }
   const badgeProgress = (i, pct) => { const num = view.querySelector(`#cr-badge-${i} .num`); if (num) num.textContent = `${Math.round(pct)}%`; };
 
@@ -162,8 +158,7 @@ export async function mount(view) {
         ? 'Передрук з архіву: нове замовлення на книгу, яка вже є в Printify'
         : 'Передрук з архіву: нова чернетка з тих самих файлів'}</span></div>` : ''}
       ${v && !b.validating ? html`
-        ${v.errors.length ? html`<div class="notice notice-error">${ic('alertCircle')}<div><b>Перевірка не пройдена</b><ul>${v.errors.slice(0, 12).map((e) => html`<li>${e}</li>`)}</ul>${v.errors.length > 12 ? html`<div>…та ще ${v.errors.length - 12}</div>` : ''}</div></div>` : ''}
-        ${v.warnings.length ? html`<div class="notice notice-warn">${ic('alert')}<div>${v.warnings.map((w) => html`<div>${w}</div>`)}</div></div>` : ''}
+        ${checkNotices(v.errors, v.warnings, 'Перевірка не пройдена')}
         <div class="row">${v.ok ? html`<span class="faint mono" style="font-size:12px">${bytes(v.totalBytes)}</span>` : ''}<span class="spacer"></span>
           ${v.ok ? ib('folderOpen', 'Відкрити папку', `data-act="open-folder" data-book="${i}"`, { cls: 'sm' }) : ''}
           ${ib('scan', 'Перевірити файли знову', `data-act="revalidate" data-book="${i}"`, { cls: 'sm' })}</div>` : ''}
@@ -375,76 +370,18 @@ export async function mount(view) {
     fadeImages(view.querySelector('#cr-right'));
   }
 
-  // The viewer of one book's structure. A page can be replaced right there by a file from the computer
-  // (the owner fixed it in Canva and downloaded that page again) — and put back while the card is open.
-  const pageNo = (file) => (/^cover/i.test(file) ? 0 : parseInt(file, 10));
-  const pageWord = (file) => (pageNo(file) ? `сторінку ${pageNo(file)}` : 'обкладинку');
-
-  function structureItems(b, i, again) {
-    const items = folderViewerItems(b.folder, pageTotal(i), b.label || b.folder, b.versions);
-    for (const it of items) {
-      it.actions = [];
-      for (const file of it.files || []) {
-        const num = pageNo(file) ? String(pageNo(file)) : '';
-        it.actions.push({ icon: 'swap', label: num, tip: `Замінити ${pageWord(file)} — обрати файл на комп'ютері`,
-          run: (lb) => replacePage(b, i, file, lb, again) });
-        if (b.replaced.has(file.toLowerCase())) {
-          it.actions.push({ icon: 'restore', label: num, on: true, tip: `Повернути попередню ${pageWord(file)}`,
-            run: (lb) => restorePage(b, i, file, lb, again) });
-        }
-      }
-    }
-    return items;
-  }
-
+  // The viewer of one book's structure (folder-viewer.js): a page replaced or put back there, the folder is checked
+  // again — a page of the wrong size is caught here.
   function openStructure(index) {
     const b = bk();
     const i = cur().pick;
     if (!b.validation || !b.folder) { toast('Спершу оберіть папку з ілюстраціями', 'info'); return; }
-    const items = [];
-    const again = (lb) => { items.splice(0, items.length, ...structureItems(b, i, again)); lb.refresh(); };
-    items.push(...structureItems(b, i, again));
-    openLightbox(items, index);
-  }
-
-  async function replacePage(b, i, file, lb, again) {
-    let path;
-    try {
-      path = (await api('/api/creator/pick-file', { method: 'POST',
-        body: { title: `Оберіть ${pageWord(file)} (${file})`, initial: b.folder } })).path;
-    } catch (err) { toast(err.message, 'error'); return; }
-    if (!path) return;
-    if (cur().result && !(await confirmBox({ title: 'Чернетку вже створено',
-      text: 'У друкарні лежить стара сторінка. Замінити її тут і створити чернетку ще раз?',
-      confirm: 'Замінити', cancel: 'Не чіпати' }))) return;
-    let res;
-    try {
-      res = await api('/api/creator/replace-page', { method: 'POST', body: { folder: b.folder, file, path } });
-    } catch (err) { toast(err.message, 'error'); return; }
-    setRestorable(b, file, res.canRestore);
-    pageChanged(b, i, file, lb, again, `Замінено ${pageWord(file)}`);
-  }
-
-  async function restorePage(b, i, file, lb, again) {
-    let res;
-    try {
-      res = await api('/api/creator/restore-page', { method: 'POST', body: { folder: b.folder, file } });
-    } catch (err) { toast(err.message, 'error'); return; }
-    setRestorable(b, file, res.canRestore);   // an older version may still be there
-    pageChanged(b, i, file, lb, again, `Повернено ${pageWord(file)}`);
-  }
-
-  /** The server says whether this page still has a previous version; the page only repeats it. */
-  function setRestorable(b, file, can) {
-    if (can) b.replaced.add(file.toLowerCase());
-    else b.replaced.delete(file.toLowerCase());
-  }
-
-  function pageChanged(b, i, file, lb, again, message) {
-    b.versions[file] = (b.versions[file] || 0) + 1;
-    toast(message, 'success');
-    again(lb);
-    validate(i);   // the folder is checked again: a page of the wrong size is caught here
+    openFolderViewer(b, index, {
+      total: pageTotal(i), label: b.label || b.folder,
+      sent: () => !!cur().result,
+      again: 'створити чернетку ще раз?',
+      changed: () => validate(i),
+    });
   }
 
   function renderAll() {
@@ -461,7 +398,7 @@ export async function mount(view) {
     b.validating = 1; s.error = null;
     renderLeft();
     try {
-      const res = await runJob(api('/api/creator/validate', { method: 'POST', body: { mode, folder: b.folder } }), (j) => {
+      const res = await runJob(post('/api/creator/validate', { mode, folder: b.folder }), (j) => {
         if (my !== b.seq || st.mode !== mode) return;
         b.validating = Math.max(1, j.percent);
         badgeProgress(i, b.validating);
@@ -522,7 +459,7 @@ export async function mount(view) {
       : reprint ? { archiveId: reprint.archiveId, title: bk().title, address: s.address }
         : { books, address: order ? s.address : null };
     try {
-      s.result = await runJob(api(url, { method: 'POST', body }), (j) => {
+      s.result = await runJob(post(url, body), (j) => {
         if (st.mode !== mode) return;
         const bar = $('#cr-bar');
         if (!bar) return;
@@ -557,30 +494,15 @@ export async function mount(view) {
   // Once: an order from here is safe only while the Printify store approves orders by hand — with
   // automatic approval Printify itself would send it to production (and charge) at the set time.
   function confirmManualApproval() {
-    return new Promise((resolve) => {
-      let ok = false;
-      const m = modal({
-        title: 'Ручне затвердження замовлень у Printify',
-        body: html`<div class="stack">
-          <div class="notice notice-warn">${ic('alert')}<div>Замовлення з Book Studio чекає в Printify «On hold» і не списує гроші, доки ви не натиснете <b>Submit order</b>. Але якщо в магазині стоїть <b>автоматичне</b> затвердження, Printify сам відправить його у виробництво в заданий час і спише оплату.</div></div>
-          <div class="faint" style="font-size:12.5px">Printify → Store settings → Order settings → Order approval: <b>Manual</b></div>
-          <label class="check card-soft" style="padding:12px"><input type="checkbox" id="ma-ok"><span style="font-weight:600">У моєму магазині стоїть ручне затвердження (Manual)</span></label>
-        </div>`,
-        foot: html`<button class="btn btn-ghost" data-c>Скасувати</button><button class="btn btn-primary" data-go disabled>Продовжити</button>`,
-        onClose: () => resolve(ok),
-      });
-      const go = m.foot.querySelector('[data-go]');
-      m.el.querySelector('#ma-ok').addEventListener('change', (e) => { go.disabled = !e.target.checked; });
-      m.foot.querySelector('[data-c]').onclick = () => m.close();
-      go.onclick = async () => {
-        go.disabled = true;
-        try {
-          await api('/api/printify/manual-approval', { method: 'POST', body: {} });
-          status.printify.manualApproval = true;
-          ok = true;
-          m.close();
-        } catch (err) { toast(err.message, 'error'); go.disabled = false; }
-      };
+    return confirmChecked({
+      title: 'Ручне затвердження замовлень у Printify',
+      warning: html`Замовлення з Book Studio чекає в Printify «On hold» і не списує гроші, доки ви не натиснете <b>Submit order</b>. Але якщо в магазині стоїть <b>автоматичне</b> затвердження, Printify сам відправить його у виробництво в заданий час і спише оплату.`,
+      extra: html`<div class="faint" style="font-size:12.5px">Printify → Store settings → Order settings → Order approval: <b>Manual</b></div>`,
+      check: 'У моєму магазині стоїть ручне затвердження (Manual)',
+      act: async () => {
+        await post('/api/printify/manual-approval', {});
+        status.printify.manualApproval = true;
+      },
     });
   }
 
@@ -602,7 +524,7 @@ export async function mount(view) {
   // ---------------------------------------------------------------- Etsy order picker
   async function fromEtsy() {
     let data;
-    try { data = await api('/api/creator/etsy-orders'); } catch (err) { toast(err.message, 'error'); return; }
+    try { data = await api('/api/orders'); } catch (err) { toast(err.message, 'error'); return; }  // the queue's own list
     let term = '', stage = 'new', shown = [];
     const syncedText = () => (data.syncedAt ? `Оновлено ${relTime(data.syncedAt)}` : 'Ще не завантажено');
     const m = modal({
@@ -619,8 +541,6 @@ export async function mount(view) {
     const seg = m.el.querySelector('[data-seg="stage"]');
     const syncBtn = m.el.querySelector('[data-x="sync"]');
     const setSub = (text) => { const node = m.el.querySelector('.modal-sub'); if (node) node.textContent = text; };
-    const matches = matchesOrder;
-    const variations = variationsOf;
     // The buyer's personalization stays folded; the chevron unfolds it as a label/value list,
     // one group per book when the order holds several.
     const unfolded = new Set();
@@ -629,40 +549,29 @@ export async function mount(view) {
           <dl class="cand-vars">${(it.variations || []).map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>`)}
       </div></div>`;
     const rowHtml = (o, entering) => html`<div class="cand ${entering ? 'enter' : ''}" data-rid="${o.receiptId}" style="align-items:flex-start">
-        <div class="grow" style="min-width:0">
+        <div class="grow">
           <div class="row" style="gap:8px"><b>${o.name}</b><span class="chip chip-mono">#${o.receiptId}</span>
             ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}
-            ${o.provider ? html`<span class="chip svc-${o.provider}">${ic(o.provider, 'icon-s')}${providerName(o.provider)}</span>` : ''}</div>
+            ${o.provider ? svcChip(o.provider) : ''}</div>
           <div class="faint" style="font-size:12px;margin-top:3px"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${o.coverLabel} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</div>
-          ${variations(o).length ? details(o) : ''}
+          ${variationsOf(o).length ? details(o) : ''}
         </div>
         ${o.childName ? html`<span class="chip chip-accent">${o.childName}</span>` : ''}
-        ${variations(o).length ? ib('chevDown', 'Персоналізація', `data-vars-toggle="${o.receiptId}" aria-expanded="${unfolded.has(o.receiptId)}"`, { cls: `sm details-toggle ${unfolded.has(o.receiptId) ? 'on' : ''}` }) : ''}</div>`;
+        ${variationsOf(o).length ? ib('chevDown', 'Персоналізація', `data-vars-toggle="${o.receiptId}" aria-expanded="${unfolded.has(o.receiptId)}"`, { cls: `sm details-toggle ${unfolded.has(o.receiptId) ? 'on' : ''}` }) : ''}</div>`;
 
     const render = ({ fresh = false } = {}) => {
       const t = term.trim().toLowerCase();
-      seg.querySelectorAll('button[data-value]').forEach((b) => {
-        b.querySelector('.seg-count').textContent = data.orders.filter((o) => o.stage === b.dataset.value && matches(o, t)).length;
-      });
-      syncSeg(seg);
-      const rows = data.orders.filter((o) => o.stage === stage && matches(o, t));
+      countStages(seg, data.orders, t);
+      const rows = data.orders.filter((o) => o.stage === stage && matchesOrder(o, t));
       const before = shown;
       shown = rows.map((o) => o.receiptId);
-      if (!rows.length) {
-        if (!data.orders.length && sync.syncing) setHtml(list, html`<div class="empty" style="padding:30px"><div class="empty-icon"><span class="spinner"></span></div><p>Завантаження замовлень з Etsy…</p></div>`);
-        else if (t) setHtml(list, html`<div class="empty" style="padding:30px">Нічого не знайдено</div>`);
-        else {
-          const [icon, title, text] = STAGE_EMPTY[stage];
-          setHtml(list, html`<div class="empty" style="padding:30px"><div class="empty-icon">${ic(icon)}</div><h3>${title}</h3>${text ? html`<p>${text}</p>` : ''}</div>`);
-        }
-        return;
-      }
+      if (!rows.length) { setHtml(list, emptyOrders(data.orders, t, stage, sync.syncing, 'empty-sm')); return; }
       setHtml(list, rows.map((o) => rowHtml(o, fresh && !before.includes(o.receiptId))));
       if (fresh && before.join() !== shown.join()) holdClicks(list);
     };
 
     const sync = orderSync({
-      fetch: () => api('/api/creator/etsy-orders'), alive: () => m.el.isConnected, setSub, syncedText, button: syncBtn,
+      fetch: () => api('/api/orders'), alive: () => m.el.isConnected, setSub, syncedText, button: syncBtn,
       onStart: () => { if (!data.orders.length) render(); },
       onFresh: (next) => { data = next; setSub(syncedText()); render({ fresh: true }); },
     });
@@ -747,7 +656,6 @@ export async function mount(view) {
   const offs = [
     on(view, 'click', '[data-seg="mode"] button', (e, b) => {
       if (st.mode === b.dataset.value) return;
-      cur().books.forEach((x, i) => { const t = $(`#cr-title-${i}`); if (t) x.title = t.value; });
       st.mode = b.dataset.value; setSeg(b.closest('.seg'), st.mode);
       renderStatus(); renderTunnels(); renderLeft(); renderRight();
       cur().books.forEach((x, i) => { if (x.folder && !x.validation && !x.validating) validate(i); });
@@ -759,7 +667,7 @@ export async function mount(view) {
       const b = s.books[i] || bk();
       if (a === 'browse') {
         try {
-          const { path } = await api('/api/creator/pick-folder', { method: 'POST', body: { title: `Оберіть папку з Cover.png та ${(st.mode === 'printify' ? [status.printify.pageCount] : status.gelato.pageCounts).map((n) => `1–${n}.png`).join(' або ')}`, initial: b.folder } });
+          const { path } = await post('/api/creator/pick-folder', { title: `Оберіть папку з Cover.png та ${(st.mode === 'printify' ? [status.printify.pageCount] : status.gelato.pageCounts).map((n) => `1–${n}.png`).join(' або ')}`, initial: b.folder });
           if (path) { Object.assign(b, { folder: path, label: null, validation: null }); s.pick = i; s.reprint = null; renderLeft(); renderRight(); validate(i); }
         } catch (err) { toast(err.message, 'error'); }
       } else if (a === 'finish') { finished = true; finish(st.receiptId); location.hash = '#/orders'; }
@@ -771,7 +679,7 @@ export async function mount(view) {
         s.pick = s.books.length - 1; renderLeft(); renderRight();
       }
       else if (a === 'drop-book' && s.books.length > 1) { s.books.splice(i, 1); s.pick = Math.min(s.pick, s.books.length - 1); renderLeft(); renderRight(); }
-      else if (a === 'open-folder') api('/api/creator/open-folder', { method: 'POST', body: { path: b.folder } }).catch((er) => toast(er.message, 'error'));
+      else if (a === 'open-folder') post('/api/creator/open-folder', { path: b.folder }).catch((er) => toast(er.message, 'error'));
       else if (a === 'from-etsy') fromEtsy();
       else if (a === 'clear-address') { s.address = { country: 'US' }; renderLeft(); $('#addr-firstName')?.focus(); }
       else if (a === 'open-orders') openExternal('https://printify.com/app/orders');
@@ -780,9 +688,9 @@ export async function mount(view) {
       else if (a === 'copy-id') copyText(st.printify.result?.productId || '', 'Product ID скопійовано');
       else if (a === 'copy-order') copyText(st.gelato.result?.orderId || '', 'Order ID скопійовано');
       else if (a === 'open-gelato') openExternal('https://dashboard.gelato.com/');
-      else if (a === 'open-sendlog') api('/api/sends/open', { method: 'POST', body: { file: t.dataset.file || '' } }).catch((er) => toast(er.message, 'error'));
+      else if (a === 'open-sendlog') post('/api/sends/open', { file: t.dataset.file || '' }).catch((er) => toast(er.message, 'error'));
       else if (a === 'close-tunnel') {
-        try { await api('/api/creator/gelato/close-tunnel', { method: 'POST', body: { orderId: st.gelato.result.orderId } }); } catch {}
+        try { await post('/api/creator/gelato/close-tunnel', { orderId: st.gelato.result.orderId }); } catch {}
         clearInterval(tunnelTimer);
         const box = $('#cr-tunnel');
         if (box) setHtml(box, html`${ic('check')}<div>Тимчасове посилання закрито.</div>`);
@@ -797,7 +705,7 @@ export async function mount(view) {
     }),
     on(view, 'click', '[data-lb]', (e, c) => openStructure(+c.dataset.lb)),
     on(view, 'click', '[data-close-tunnel]', async (e, b) => {
-      await api('/api/creator/gelato/close-tunnel', { method: 'POST', body: { orderId: b.dataset.closeTunnel } }).catch(() => {});
+      await post('/api/creator/gelato/close-tunnel', { orderId: b.dataset.closeTunnel }).catch(() => {});
       status = await api('/api/creator/status'); renderTunnels();
     }),
   ];
@@ -830,7 +738,6 @@ export async function mount(view) {
     get receiptId() { return st.receiptId; },
     keep: () => !!st.receiptId && !finished,
     async revive() {
-      if (!st.receiptId) return true;
       const o = await api(`/api/orders/${st.receiptId}`);
       return o.stage === 'new';
     },

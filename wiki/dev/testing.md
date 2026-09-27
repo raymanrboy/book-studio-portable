@@ -7,7 +7,7 @@ code:
 ---
 # Tests
 
-> 355 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
+> 352 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
 > **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
 > whatever it was before) in `.tmp\` of the repository on drive D, wiped at the end; buyers are made up. The
 > Workshop's tests run in its sandbox (`BOOK_STUDIO_SANDBOX`): made-up books, Downloads, clipboard and Recycle Bin
@@ -43,9 +43,12 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
   — and they clear whole folders (`shutil.rmtree(archive.ROOT)`), so running from a configured shell
   could wipe the real archive. Found by the audit; checked by `TestsNeverRunOnRealData` in
   `test_orders.py`.
-- **Printify** is swapped for `FakePrintify` (in memory: uploads, products, Master, orders) via
+- **Printify** is swapped for `FakePrintify` (in memory: uploads, products, Master, orders on hold; one copy in
+  `tests/fixtures.py` since 2026-09-27, with `png()` and `book()` — the made-up print folders) via
   `mock.patch.object(printify, "call", …)`; the real `_check()` still runs underneath — the test catches
   forbidden paths.
+- **The local model** (the text check) — `gemma_answer()` in `test_textcheck.py`: a read gives the page's first
+  dozen words, a check says whether the page says what the prompt EXPECTED (one stand-in for every suite).
 - **Gelato** — `gelato.call` is swapped; the tunnel — `FileTunnel.start`, `registry.keep`.
 - **Etsy** — `etsy.tokens`, `etsy.fetch_all_receipts`, `httpc.request_json` are swapped.
 - **Order archive** — time is supplied via the `now` argument to `archive.refresh()`, order facts via
@@ -106,7 +109,9 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 ## Where in the code
 
 - [app/tests/__init__.py](../../app/tests/__init__.py) — the temporary data folder
-- [app/tests/test_flows.py](../../app/tests/test_flows.py) — `FakePrintify`, `png()`, `assert_steps()`
+- [app/tests/fixtures.py](../../app/tests/fixtures.py) — `FakePrintify`, `png()`, `book()`
+- [app/tests/test_flows.py](../../app/tests/test_flows.py) — `assert_steps()`, `journal()`
+- [app/tests/test_textcheck.py](../../app/tests/test_textcheck.py) — `gemma_answer()`
 - [app/tools/wiki_check.py](../../app/tools/wiki_check.py) — `check()`
 
 ## Related

@@ -48,8 +48,6 @@ def spread_pages(n: int) -> tuple[int, int]:
 def slot_label(key: str) -> str:
     if key == "cover":
         return "Обкладинка"
-    if key == "thumbnail":
-        return "Заставка"
     if key == "page1":
         return "Сторінка 1 · присвята"
     if key == "page30":
@@ -139,7 +137,6 @@ def summary(book: dict) -> dict:
         "imageIsCover": bool(card) and not book.get("thumbnail"),
         "imageW": card.get("width") if card else None,
         "imageH": card.get("height") if card else None,
-        "notes": (book.get("notes") or "")[:200],
         "completeness": completeness(book),
     }
 
@@ -178,7 +175,7 @@ def _find_by_listing(listing_id: str) -> dict | None:
 
 def _store_asset(book_id: str, source: Path, original_name: str, move: bool = False) -> dict:
     """Copies/moves a file into the book's assets folder and returns its record."""
-    ext = source.suffix.lower() if source.suffix.lower() in images.IMAGE_EXTS else ""
+    ext = source.suffix.lower() if source.suffix.lower() in core.IMAGE_EXTS else ""
     try:
         info = images.image_info(source)
     except Exception:
@@ -376,7 +373,7 @@ def scan_folder(folder: Path) -> dict:
     if not text_file:
         text_file = next((p for p in files if p.suffix.lower() == ".json"), None)
 
-    imgs = [p for p in files if p.suffix.lower() in images.IMAGE_EXTS]
+    imgs = [p for p in files if p.suffix.lower() in core.IMAGE_EXTS]
     cover = thumb = None
     singles: dict[int, Path] = {}
     pairs: dict[tuple[int, int], Path] = {}
@@ -638,7 +635,6 @@ def create_book(listing: dict, title: str = "", canva_url: str = "", **extra) ->
             "title": (title or listing.get("title") or f"Лістинг {listing['id']}").strip(),
             "listing": listing,
             "canvaUrl": canva_url.strip(),
-            "notes": "",
             "archived": False,
             "cover": None,
             "thumbnail": None,
@@ -685,9 +681,9 @@ def _patch(req: Request):
         book = load(req.groups[0])
         if body.get("rev") is not None and int(body["rev"]) != int(book.get("rev") or 0):
             raise ApiError("Книгу змінено в іншому вікні. Оновіть сторінку.", 409)
-        for key in ("title", "canvaUrl", "notes"):
+        for key in ("title", "canvaUrl"):
             if key in body and isinstance(body[key], str):
-                book[key] = body[key].strip() if key != "notes" else body[key]
+                book[key] = body[key].strip()
         if isinstance(body.get("text"), dict):
             for key, value in body["text"].items():
                 if key in TEXT_KEYS and isinstance(value, str):

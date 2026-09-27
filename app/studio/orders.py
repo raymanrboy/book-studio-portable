@@ -98,7 +98,7 @@ def enrich(order: dict, books: dict[str, dict], rules: dict | None = None) -> di
     for item in order.get("items") or []:
         item["book"] = book_brief(books.get(item.get("listingId") or ""))
         item["plan"] = plan_for(item, country, rules)
-        item["childName"] = creator.guess_child_name([item])
+        item["childName"] = wording.guess_child_name([item])
         for v in item.get("variations") or []:
             v["custom"] = wording.custom_text(v)  # «свій текст»: the text check reads it by the same rule
             v["isName"] = bool(item["childName"]) and wording.clean_name(v.get("value")) == item["childName"]
@@ -110,9 +110,6 @@ def enrich(order: dict, books: dict[str, dict], rules: dict | None = None) -> di
 
 
 # ---------------------------------------------------------------- Canva export -> Cover.png + 1..N.png
-
-page_number = drops.page_number  # the one reading of a page's number (drops.py)
-
 
 def ranges(numbers: list[int]) -> str:
     """[1, 2, 3, 5, 7, 8] -> "1–3, 5, 7–8"."""
@@ -156,7 +153,7 @@ def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
     # anything else is linked (same disk) or copied.
     target = drops.DROPS / uuid.uuid4().hex / folder.name
     target.mkdir(parents=True)
-    ours = drops.DROPS.resolve() in folder.resolve().parents
+    ours = core.inside(folder, drops.DROPS)
     for src, name in plan:
         dest = target / name
         if ours:

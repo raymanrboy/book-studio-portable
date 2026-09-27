@@ -5,6 +5,7 @@ updated: 2026-09-27
 code:
   - app/studio/creator.py
   - app/web/js/pages/creator.js
+  - app/web/js/folder-viewer.js
 ---
 # Order Creator
 
@@ -66,7 +67,8 @@ code:
 ## Picking an Etsy order
 
 The `fromEtsy()` dialog: search, stages "New / In progress / Sent", personalization is collapsed (an
-arrow expands the "field: value" list). Opening the dialog doesn't start a sync, only waits for one
+arrow expands the "field: value" list). It lists the queue's own orders (`/api/orders`, with the same tab counts and
+empty states — `countStages()`, `emptyOrders()`); its own route `/api/creator/etsy-orders` went on 2026-09-27. Opening the dialog doesn't start a sync, only waits for one
 already running; the refresh button starts one. Picking an order fills in the title and address
 (`addressFromEtsy()`).
 
@@ -187,8 +189,10 @@ exactly that — [Gelato](../integrations/gelato.md).
 
 ## Where in the code
 
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `structureItems()`, `replacePage()`, `restorePage()`, `pageChanged()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `books_of()`, `receipt_for()`, `joint_title()`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_printify_draft()`, `_printify_setup()`, `_unknown_outcome()`, `_variant_title()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `openStructure()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `books_of()`, `receipt_for()`, `joint_title()`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_printify_draft()`, `_printify_setup()`, `_unknown_outcome()`, `_variant_title()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_folder_media()`, `_folder_spread()`
+- [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`, `pageNo()`, `pageWord()` (the viewer with a page replaced and put back — shared with the order card, since 2026-09-27)
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `filesBadge()`, `checkNotices()`, `svcChip()`, `countStages()`, `emptyOrders()` (shared with the order card); [app/web/js/lib.js](../../app/web/js/lib.js) — `confirmChecked()` (the manual approval)
 - [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `page_counts()`, `photobook_geometry()`, `create_draft_order()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `pagesText()`

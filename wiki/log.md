@@ -3,6 +3,28 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] update | Cleanup phase 5: one copy of everything, no dead code
+
+- Server: the one-time migrations removed (they had run on the owner's PC: nothing of the old data was left);
+  `core.IMAGE_EXTS`, `core.inside()`, `images.flat_rgb()`, `wording.guess_child_name()`/`alike()` instead of 3–5
+  copies each; the Workshop's rows from `books.ROWS`; the text check's model lists read one way; an HTTP error's
+  reply closed at once; the Order Creator's picker reads `/api/orders` (`/api/creator/etsy-orders` gone — 128 routes).
+- Interface: `folder-viewer.js` — the viewer with a page replaced and put back, one for the order card and the Order
+  Creator; `order-bits.js` — the proof and its strip, fields, address, printer chip, files' badge and notices, the
+  order list's counts and empty states; `lib.js` — `post()` (85 calls), `escBack()`, `notFound()` (no inline
+  `onclick`), `confirmChecked()`, `glide()`, `tellBusy()`, one `money()` («-$5.00»). Unused icons, exports and
+  leftovers removed; one CSS rule fades every picture in; the Gelato blue written once.
+- Tests: `tests/fixtures.py` (one Printify fake, the PNG and print-folder helpers), one stand-in model answer; a new
+  test for the mockups' «Зупинити». The mockups: one book slot, one stop event, `_run_script()`.
+- Checked: 352 tests; the preview — the order card (the proof, fields, address, a page replaced and put back, Esc,
+  a card that can't open), the archive's book, the Order Creator (the picker, the structure viewer with a page
+  replaced), the Gelato and Printify colours in both themes, the dialog with a box to tick, every page opens.
+- Not checked live: the pictures' fade in a visible window (the hidden preview doesn't decode pictures) — the rule
+  is the same one for every page.
+- Pages: architecture (frontend, data, runtime, server, api-routes), features (orders, order-creator, archive,
+  library, mockups, text-check), flows/order-to-print, integrations/gelato, security, code-map, glossary, recipes,
+  dev/testing, decisions, plans (cleanup, open-questions), index.
+
 ## [2026-09-27] update | Cleanup phase 4: no blinking
 
 - The queue and the archive list are drawn once; a search hides rows (no thumbnail reloads, no entrance replayed per

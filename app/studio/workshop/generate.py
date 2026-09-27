@@ -22,7 +22,6 @@ from .. import clipboard, core, desktop
 from ..server import ApiError
 from . import books, pictures, rows
 
-PICTURES = (".png", ".jpg", ".jpeg", ".webp")
 PARTIAL = (".crdownload", ".part", ".tmp", ".download", ".partial")
 SERIES_ORDER = [f"spread{n}" for n in rows.SPREADS] + ["page1", "page30"]  # as the pipeline generates them
 
@@ -224,7 +223,7 @@ class Session:
             return
         for e in sorted(entries, key=lambda e: e.stat().st_mtime):
             low = e.name.lower()
-            if low.endswith(PARTIAL) or not low.endswith(PICTURES):
+            if low.endswith(PARTIAL) or not low.endswith(core.IMAGE_EXTS):
                 continue
             st = e.stat()
             if st.st_mtime < since - 2 or st.st_size == 0:

@@ -3,8 +3,8 @@
 // Every block is collapsed to one line with its status; the rare technical values live one more
 // click away, behind the details toggle, so the page stays quiet. Theme lives only in the rail.
 import {
-  api, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, openExternal, syncSeg,
-  dateTime, sleep, slide, menu, remembered, remember,
+  api, post, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, openExternal,
+  dateTime, sleep, slide, menu, remembered, remember, confirmChecked,
 } from '../lib.js';
 import { refreshInfo } from '../info.js';
 
@@ -44,7 +44,7 @@ export async function mount(view, [section]) {
     return html`<section class="set-card ${open ? 'open' : ''}" id="set-${id}">
       <button class="set-head" data-card="${id}" aria-expanded="${open ? 'true' : 'false'}">
         <span class="int-logo ${logoClass}">${logo}</span>
-        <span class="grow" style="min-width:0">
+        <span class="grow">
           <span class="set-title">${title}</span>
           <span class="set-sum truncate">${summary}</span>
         </span>
@@ -88,7 +88,7 @@ export async function mount(view, [section]) {
     return html`<section class="set-card set-hint">
       <div class="set-head" style="cursor:default">
         <span class="int-logo">${ic('key')}</span>
-        <span class="grow" style="min-width:0"><span class="set-title">Знайдено ключі з попередніх програм</span>
+        <span class="grow"><span class="set-title">Знайдено ключі з попередніх програм</span>
           <span class="set-sum truncate">${items.map((i) => i.label).join(', ')}${cache ? ` · кеш Printify ${cache}` : ''}</span></span>
         <button class="btn btn-primary btn-sm" data-act="legacy-import">${ic('download', 'icon-s')}Перенести</button>
       </div></section>`;
@@ -126,7 +126,7 @@ export async function mount(view, [section]) {
               ${ib('copy', 'Копіювати адресу', `data-copy-text="${e.redirectUri}"`)}
               ${ib('edit', 'Змінити адресу', 'data-act="redirect-edit"')}</div>
             <div class="field-hint">Має бути додана в Etsy Developers → Your apps → Callback URLs.</div></div>
-          ${connected ? html`<div class="set-row"><span class="grow">Ключ сесії для іншого комп'ютера${e.expiresAt ? html` <span class="faint">· токен до ${dateTime(new Date(e.expiresAt).toISOString())}</span>` : ''}</span>
+          ${connected ? html`<div class="set-row"><span class="grow">Ключ сесії для іншого комп'ютера${e.expiresAt ? html` <span class="faint">· токен до ${dateTime(e.expiresAt)}</span>` : ''}</span>
             ${ib('key', 'Копіювати ключ сесії', 'data-act="etsy-export"')}</div>` : ''}`)}
       </div>`,
     });
@@ -204,7 +204,7 @@ export async function mount(view, [section]) {
   }
 
   async function saveTextcheck(patch) {
-    try { tc = await api('/api/settings/textcheck', { method: 'POST', body: patch }); }
+    try { tc = await post('/api/settings/textcheck', patch); }
     catch (err) { toast(err.message, 'error'); }
     const old = view.querySelector('#set-textcheck');
     if (old && tc) old.outerHTML = String(textcheckCard());
@@ -230,7 +230,6 @@ export async function mount(view, [section]) {
         ${textcheckCard()}
         ${dataCard()}
       </div>`);
-    requestAnimationFrame(() => view.querySelectorAll('.seg').forEach(syncSeg));
   }
 
   // Blocks open and close with real intermediate frames (measured height, Web Animations).
@@ -244,7 +243,6 @@ export async function mount(view, [section]) {
     cardEl.classList.toggle('open', open);
     cardEl.querySelector('.set-head').setAttribute('aria-expanded', open ? 'true' : 'false');
     slide(body, open);
-    if (open) requestAnimationFrame(() => body.querySelectorAll('.seg').forEach(syncSeg));
   }
   function toggleDetails(id, btn) {
     const body = view.querySelector(`[data-details-body="${id}"]`);
@@ -267,27 +265,18 @@ export async function mount(view, [section]) {
 
   // ---------------------------------------------------------------- Etsy OAuth flow
   async function oauthFlow() {
-    const confirmed = await new Promise((resolve) => {
-      let ok = false;
-      const safety = modal({
-        title: 'Перевірка безпеки Etsy',
-        sub: 'Захист від блокування через сторонній IP',
-        body: html`<div class="stack">
-          <div class="notice notice-warn">${ic('alert')}<div>Ви збираєтеся перейти на офіційну сторінку авторизації Etsy.<br><b>Переконайтеся, що ви зараз працюєте через віддалений київський комп'ютер</b>, де зареєстрований магазин. Якщо ви на польському ноутбуці чи телефоні — закрийте це вікно.</div></div>
-          <label class="check card-soft" style="padding:12px"><input type="checkbox" id="kyiv-ok"><span style="font-weight:600">Я підтверджую, що відкриватиму вхід в Etsy на віддаленому київському комп'ютері</span></label>
-        </div>`,
-        foot: html`<button class="btn btn-ghost" data-c>Скасувати (я на звичайному ПК)</button><button class="btn btn-primary" data-go disabled>${ic('login', 'icon-s')}Продовжити</button>`,
-        onClose: () => resolve(ok),
-      });
-      const go = safety.foot.querySelector('[data-go]');
-      safety.el.querySelector('#kyiv-ok').addEventListener('change', (e) => { go.disabled = !e.target.checked; });
-      safety.foot.querySelector('[data-c]').onclick = () => safety.close();
-      go.onclick = () => { ok = true; safety.close(); };
+    const confirmed = await confirmChecked({
+      title: 'Перевірка безпеки Etsy',
+      sub: 'Захист від блокування через сторонній IP',
+      warning: html`Ви збираєтеся перейти на офіційну сторінку авторизації Etsy.<br><b>Переконайтеся, що ви зараз працюєте через віддалений київський комп'ютер</b>, де зареєстрований магазин. Якщо ви на польському ноутбуці чи телефоні — закрийте це вікно.`,
+      check: 'Я підтверджую, що відкриватиму вхід в Etsy на віддаленому київському комп\'ютері',
+      cancel: 'Скасувати (я на звичайному ПК)',
+      icon: 'login',
     });
     if (!confirmed) return;
 
     let start;
-    try { start = await api('/api/etsy/oauth/start', { method: 'POST', body: {} }); }
+    try { start = await post('/api/etsy/oauth/start', {}); }
     catch (err) { toast(err.message, 'error'); return; }
     let polling = true;
     const m = modal({
@@ -324,7 +313,7 @@ export async function mount(view, [section]) {
         if (!url) { toast('Вставте адресу, на яку перейшов браузер після входу', 'error'); return; }
         b.disabled = true;
         try {
-          const res = await api('/api/etsy/oauth/complete', { method: 'POST', body: { url } });
+          const res = await post('/api/etsy/oauth/complete', { url });
           polling = false; m.close();
           toast(`Etsy підключено${res.shopName ? `: ${res.shopName}` : ''}`, 'success');
           reload();
@@ -385,7 +374,7 @@ export async function mount(view, [section]) {
       if (!productId) { toast('Оберіть продукт', 'info'); return; }
       setHtml(m.el.querySelector('#mp-analysis'), html`<div class="row faint"><span class="spinner"></span>Аналіз продукту…</div>`);
       try {
-        analysis = await api('/api/printify/master/analyze', { method: 'POST', body: { shopId, productId } });
+        analysis = await post('/api/printify/master/analyze', { shopId, productId });
         const bad = analysis.pageCount !== 24;
         setHtml(m.el.querySelector('#mp-analysis'), html`<div class="card-soft" style="padding:14px">
           <div style="font-weight:650;margin-bottom:8px">${analysis.title}</div>
@@ -417,7 +406,7 @@ export async function mount(view, [section]) {
         if (!ok) return;
         try {
           const shop = shops.find((x) => x.id === shopId);
-          await api('/api/printify/master/save', { method: 'POST', body: { analysis, shopId, shopTitle: shop?.title } });
+          await post('/api/printify/master/save', { analysis, shopId, shopTitle: shop?.title });
           m.close(); toast('Master-продукт збережено', 'success'); reload();
         } catch (err) { toast(err.message, 'error'); }
       }
@@ -435,13 +424,13 @@ export async function mount(view, [section]) {
       const name = b.dataset.secretSave;
       const value = view.querySelector(`[data-secret-input="${name}"]`).value.trim();
       if (!value) { toast('Вставте значення', 'error'); return; }
-      try { await api('/api/secrets', { method: 'POST', body: { name, value } }); editing.delete(name); toast('Збережено у зашифрованому сховищі', 'success'); reload(); }
+      try { await post('/api/secrets', { name, value }); editing.delete(name); toast('Збережено у зашифрованому сховищі', 'success'); reload(); }
       catch (err) { toast(err.message, 'error'); }
     }),
     on(view, 'click', '[data-secret-clear]', async (e, b) => {
       const ok = await confirmBox({ title: 'Видалити ключ?', text: 'Програма більше не зможе звертатися до цього сервісу, доки ви не збережете ключ знову.', confirm: 'Видалити', danger: true });
       if (!ok) return;
-      try { await api('/api/secrets', { method: 'POST', body: { name: b.dataset.secretClear, value: '' } }); reload(); } catch (err) { toast(err.message, 'error'); }
+      try { await post('/api/secrets', { name: b.dataset.secretClear, value: '' }); reload(); } catch (err) { toast(err.message, 'error'); }
     }),
     on(view, 'keydown', '[data-secret-input]', (e, i) => { if (e.key === 'Enter') view.querySelector(`[data-secret-save="${i.dataset.secretInput}"]`).click(); }),
     on(view, 'click', '[data-copy-text]', (e, b) => copyText(b.dataset.copyText)),
@@ -450,7 +439,7 @@ export async function mount(view, [section]) {
       if (a === 'legacy-import') {
         b.disabled = true;
         try {
-          const r = await api('/api/settings/legacy/import', { method: 'POST', body: {} });
+          const r = await post('/api/settings/legacy/import', {});
           toast(`Імпортовано: ${r.imported.length} ${r.imported.length === 1 ? 'ключ' : 'ключі'}${r.uploadCache ? `, кеш ${r.uploadCache} зображень` : ''}`, 'success');
           reload();
         } catch (err) { toast(err.message, 'error'); b.disabled = false; }
@@ -459,7 +448,7 @@ export async function mount(view, [section]) {
         if (!key) { toast('Вставте посилання або ключ сесії', 'error'); return; }
         b.disabled = true;
         try {
-          const r = await api('/api/etsy/session/import', { method: 'POST', body: { key } });
+          const r = await post('/api/etsy/session/import', { key });
           toast(r.warning ? `Сесію збережено, але перевірити зараз не вдалося: ${r.warning}` : `Etsy підключено${r.shopName ? `: ${r.shopName}` : ''}`, r.warning ? 'info' : 'success', 6000);
           reload();
         } catch (err) { toast(err.message, 'error', 8000); b.disabled = false; }
@@ -467,7 +456,7 @@ export async function mount(view, [section]) {
       else if (a === 'etsy-disconnect') {
         const ok = await confirmBox({ title: 'Відключити Etsy?', text: 'Токени доступу буде видалено з цього комп’ютера. Дані в Etsy не змінюються.', confirm: 'Відключити', danger: true });
         if (!ok) return;
-        await api('/api/etsy/disconnect', { method: 'POST', body: {} }).catch((er) => toast(er.message, 'error'));
+        await post('/api/etsy/disconnect', {}).catch((er) => toast(er.message, 'error'));
         reload();
       } else if (a === 'etsy-export') {
         try { const r = await api('/api/etsy/session/export'); copyText(r.key, 'Ключ сесії скопійовано — зберігайте його як пароль'); }
@@ -482,7 +471,7 @@ export async function mount(view, [section]) {
         m.foot.querySelector('[data-ok]').onclick = async () => {
           let v = m.el.querySelector('#ru').value.trim();
           if (v === s.etsy.defaultRedirectUri) v = '';
-          try { await api('/api/settings/etsy', { method: 'POST', body: { redirectUri: v } }); m.close(); reload(); } catch (err) { toast(err.message, 'error'); }
+          try { await post('/api/settings/etsy', { redirectUri: v }); m.close(); reload(); } catch (err) { toast(err.message, 'error'); }
         };
       } else if (a === 'printify-test' || a === 'gelato-test') {
         const out = view.querySelector(`#${a}`);
@@ -490,17 +479,17 @@ export async function mount(view, [section]) {
         setHtml(out, html`<span class="row"><span class="spinner" style="width:14px;height:14px"></span>Перевірка зв'язку…</span>`);
         b.disabled = true;
         try {
-          const r = await api(a === 'printify-test' ? '/api/printify/test' : '/api/gelato/test', { method: 'POST', body: {} });
+          const r = await post(a === 'printify-test' ? '/api/printify/test' : '/api/gelato/test', {});
           setHtml(out, html`<span class="row" style="color:var(--green)">${ic('checkCircle', 'icon-s')}${a === 'printify-test' ? html`Працює · <b>${r.shopTitle}</b> · замовлень: <span class="num">${r.ordersCount ?? '—'}</span>` : r.message}</span>`);
         } catch (err) { setHtml(out, html`<span class="row" style="color:var(--red)">${ic('alertCircle', 'icon-s')}${err.message}</span>`); }
         finally { b.disabled = false; }
       } else if (a === 'master-pick') pickMaster();
-      else if (a === 'open-data') api('/api/app/open-data', { method: 'POST', body: {} }).catch((er) => toast(er.message, 'error'));
+      else if (a === 'open-data') post('/api/app/open-data', {}).catch((er) => toast(er.message, 'error'));
       else if (a === 'tc-model') {
         menu(b, tc.models.map((m) => ({ label: m, icon: 'sparkle', on: m === tc.model, onClick: () => saveTextcheck({ model: m }) })));
       } else if (a === 'tc-start') {
         b.disabled = true;
-        try { tc = await api('/api/textcheck/start', { method: 'POST', body: {} }); toast('Ollama запущено', 'success'); }
+        try { tc = await post('/api/textcheck/start', {}); toast('Ollama запущено', 'success'); }
         catch (err) { toast(err.message, 'error'); }
         loadTextcheck();
       } else if (a === 'tc-test') {

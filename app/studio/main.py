@@ -69,10 +69,8 @@ def main(argv: list[str] | None = None) -> int:
     from . import archive, creator, drops, etsy, gelato, images, library, mockups, orders, printify, profit, sendlog, settings_api, sync, textcheck, tunnel, workshop  # noqa: F401
 
     tunnel.cleanup_stale()
-    creator.forget_old_form()
     drops.clear_drops()
     mockups.clear_books()
-    mockups.forget_old_utility()
     httpd = server.start(args.port)
     sync.startup_sync()  # the one automatic refresh of orders; afterwards only the refresh button
     # The order archive tidies up on its own (again after every sync): books whose 14 days are over go.

@@ -26,8 +26,8 @@ code:
   [printer rule](../rules/printer-rule.md).
 - **The metric products** are the same ones the owner picks in Gelato by hand. Before 2026-09-17 the
   program used the "inch" ones (`pf_8x8-inch-200x200-mm`, `pf_5_5x5_5-inch-140x140-mm`: 203.2 and
-  139.7 mm) — those are **different products**, with different sizes. Saved old names get swapped on
-  launch (`core._upgrade()`).
+  139.7 mm) — those are **different products**, with different sizes. The saved old names were swapped on
+  launch until 2026-09-27; the owner's settings had none left, so the swap is gone.
 - The program never stores sizes; it fetches them from the catalog every time
   (`photobook_geometry()`).
 
@@ -149,7 +149,7 @@ draft, this tells apart a refusal from an **unknown result**
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `GELATO_SHIPPED`
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`, `_URL_RE`, `FileTunnel`, `_head_ok()`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()`, `_ends_with_us()`
 - [app/studio/creator.py](../../app/studio/creator.py) — `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_unknown_outcome()`, `_journal_readback()`, `build_photobook_pdf()`, `COVER_TRIM_WARN_MM`, `BLANK_DPI`, `GELATO_PLACEHOLDER_PHONE`, `_one_idat()`
-- [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`, `_OLD_GELATO_SIZES`, `_upgrade()`
+- [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
 - [app/studio/orders.py](../../app/studio/orders.py) — `page_options()`, `_files()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderTunnels()`, `startCountdown()`, `loadPageCounts()`, `formatProblem()`, `formatCard()`
 - Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`GelatoDraftFlow`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`SafetyRails`, `GelatoValidation`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`GelatoTracking`)

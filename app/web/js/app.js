@@ -1,5 +1,5 @@
 // App shell: icon rail, routing between pages (View Transitions), theme, heartbeat.
-import { api, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, closeMenu, hideTip } from './lib.js';
+import { post, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, closeMenu, hideTip } from './lib.js';
 import { isKept, stash, unstash, release } from './keep.js';
 import { waiting } from './handoff.js';
 import { store, refreshInfo, whenInfoChanges } from './info.js';
@@ -15,7 +15,7 @@ function transition(update) {
 }
 
 // ------------------------------------------------------------------ theme
-export function applyTheme(theme) {
+function applyTheme(theme) {
   try { localStorage.setItem('bs-theme', theme); } catch {}
   const resolved = theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : theme;
   const swap = () => { document.documentElement.dataset.theme = resolved; updateSidebar(); };
@@ -24,7 +24,7 @@ export function applyTheme(theme) {
     transition(swap).finished.catch(() => {});
   } else swap();
 }
-export function applyMotion(reduce) {
+function applyMotion(reduce) {
   try { localStorage.setItem('bs-motion', reduce ? 'reduce' : 'full'); } catch {}
   if (reduce) document.documentElement.dataset.motion = 'reduce'; else delete document.documentElement.dataset.motion;
 }
@@ -154,7 +154,7 @@ function openThemeMenu(anchor) {
   const reduce = document.documentElement.dataset.motion === 'reduce';
   const setTheme = async (value) => {
     applyTheme(value);
-    try { await api('/api/settings/ui', { method: 'POST', body: { theme: value } }); }
+    try { await post('/api/settings/ui', { theme: value }); }
     catch (err) { toast(`Тему не збережено: ${err.message}`, 'error'); }
   };
   menu(anchor, [
@@ -162,7 +162,7 @@ function openThemeMenu(anchor) {
     '-',
     { label: 'Мінімум анімацій', icon: 'motion', on: reduce, onClick: async () => {
       applyMotion(!reduce);
-      try { await api('/api/settings/ui', { method: 'POST', body: { reduceMotion: !reduce } }); }
+      try { await post('/api/settings/ui', { reduceMotion: !reduce }); }
       catch (err) { toast(`Налаштування не збережено: ${err.message}`, 'error'); }
     } },
   ], { side: 'right' });
@@ -313,7 +313,7 @@ async function navigate() {
 }
 
 // ------------------------------------------------------------------ heartbeat / lifecycle
-function heartbeat() { api('/api/app/heartbeat', { method: 'POST', body: {} }).catch(() => {}); }
+function heartbeat() { post('/api/app/heartbeat', {}).catch(() => {}); }
 setInterval(heartbeat, 20000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') heartbeat(); });
 window.addEventListener('pagehide', () => {
