@@ -126,8 +126,8 @@ The rest:
 
 - [x] `textcheck.py` → a package: `run`, `rules`, `texts`, `ollama`, `journal`, `routes` (`textcheck_replay.py --all`
   gave the same output before and after — byte for byte).
-- [ ] `creator.py` → routes, the print folder, the shared send (one frame for Printify and Gelato), Printify,
-  Gelato, the photobook PDF.
+- [x] `creator.py` → a package: `printfolder`, `sending` (one frame for Printify and Gelato: `journaled_send()`,
+  `mark_books()`, `checked_files()`, `record_order()`), `printify_send`, `gelato_send`, `photobook`, `routes`.
 - [ ] `library.py` → the model and its files; the agent guide as its own Markdown file.
 - [ ] Interface pages (order card, Order Creator, passport, settings, mockups, Workshop book, Profit) →
   state + templates + actions; CSS by section; `dev_server.py` by job.

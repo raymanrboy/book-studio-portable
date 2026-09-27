@@ -69,7 +69,7 @@ the tests) the books are made-up ones in the data folder's `workshop-books/`, an
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `_cached()`
 - [app/studio/library.py](../../app/studio/library.py) — `BOOKS_DIR`, `TRASH_DIR`
 - [app/studio/records.py](../../app/studio/records.py) — `SNAPSHOT`, `LINKS`, `STATES`, `SENDS`, `load_snapshot()`, `remember_print_order()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `UPLOAD_CACHE`, `UPLOADS_KEPT`
+- [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `UPLOAD_CACHE`, `UPLOADS_KEPT`
 - [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `PLACES`, `WORK`, `BOOKS`, `PHOTOSHOP_TEMP`, `KEEP_RUNS`, `clean_runs()`, `clear_books()`
 - [app/studio/core.py](../../app/studio/core.py) — `PIPELINE_DIR`, `WORKSHOP_BOOKS`, `SANDBOX`

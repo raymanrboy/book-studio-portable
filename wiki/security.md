@@ -197,7 +197,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - [app/studio/settings_api.py](../app/studio/settings_api.py) — `_open_url()`
 - [app/web/js/pages/settings.js](../app/web/js/pages/settings.js) — `oauthFlow()`
 - [app/studio/printify.py](../app/studio/printify.py) — `_check()`, `call()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `create_product()`
-- [app/studio/creator.py](../app/studio/creator.py) — `create_printify_draft()`, `_master_fingerprint()`
+- [app/studio/creator/printify_send.py](../app/studio/creator/printify_send.py) — `create_printify_draft()`, `_master_fingerprint()`
 - [app/studio/gelato.py](../app/studio/gelato.py) — `_allowed()`, `create_draft_order()`
 - [app/studio/vault.py](../app/studio/vault.py) — `protect()`, `unprotect()`, `SECRET_NAMES`
 - [app/studio/server.py](../app/studio/server.py) — `SESSION_TOKEN`, `_host_ok()`, `route()`, `Request.int_param()`

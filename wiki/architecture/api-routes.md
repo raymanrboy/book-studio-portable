@@ -8,7 +8,7 @@ code:
   - app/studio/settings_api.py
   - app/studio/orders.py
   - app/studio/library.py
-  - app/studio/creator.py
+  - app/studio/creator/
   - app/studio/profit.py
   - app/studio/etsy.py
   - app/studio/printify.py
@@ -121,7 +121,7 @@ The Listings mode's books in development — the book pipeline's folders ([featu
 | POST | `/api/workshop/gen/next` | token | `_gen_next` | the generation bar «Далі» (F8 does the same on the server) |
 | POST | `/api/workshop/gen/again` | token | `_gen_again` | the generation bar «покласти ще раз» |
 
-## Order Creator and files — [creator.py](../../app/studio/creator.py)
+## Order Creator and files — [creator/routes.py](../../app/studio/creator/routes.py)
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|

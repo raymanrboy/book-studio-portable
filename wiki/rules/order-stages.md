@@ -81,7 +81,8 @@ an unpaid order waiting for confirmation at the printer):
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`, `PRINTIFY_NOT_PLACED`, `GELATO_NOT_PAID`, `all_facts()`, `carrier_label()`, `SENT_STATUSES`, `GELATO_SHIPPED`, `CARRIERS`
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `reserved_orders()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`
-- [app/studio/creator.py](../../app/studio/creator.py) — `printify_order_payload()`, `create_gelato_draft()`
+- [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `printify_order_payload()`
+- [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `create_gelato_draft()`
 - Tests: [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages` — drafts, "on hold", unpaid, `SentStage`)
 
 ## Related

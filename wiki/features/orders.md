@@ -231,7 +231,8 @@ one column.
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `escBack()`, `notFound()` (Esc to the queue; the card that could not open)
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`, `finish()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `gelato_pages_problem()`
+- [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `validate()`
+- [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `gelato_pages_problem()`
 - [app/studio/images.py](../../app/studio/images.py) — `check_png()`, `VIEW_SIDES`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `truck`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.ord-chips`, `.ord-child`, `.ord-copy`, `.ord-title`, `.ord-track`, `.ord-track-text`, `.ord-carrier`, `.ord-track-sep`, `.ord-track-no`, `.ord-sub`, `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`

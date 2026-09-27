@@ -54,7 +54,9 @@ A record is also made when the send stopped at the file check — then there are
 ## Where in the code
 
 - [app/studio/sendlog.py](../../app/studio/sendlog.py) — `SENDS`, `KEEP`, `write()`, `attempt()`, `step()`, `latest()`, `_open()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `create_printify_draft()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`
+- [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`
+- [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `create_printify_draft()`, `_printify_draft()`, `_printify_images()`, `_printify_product()`, `_printify_order()`
+- [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `journaled_send()` (every send's attempt, for both printers), `checked_files()`, `record_order()`, `_journaled()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderSwitch()` (the icon in the header), `sendLogButton()`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.cr-tools`, `.mode-switch`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — the `sendLog` icon

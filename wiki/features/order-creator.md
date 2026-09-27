@@ -3,7 +3,7 @@ title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
 updated: 2026-09-27
 code:
-  - app/studio/creator.py
+  - app/studio/creator/
   - app/web/js/pages/creator.js
   - app/web/js/folder-viewer.js
 ---
@@ -99,6 +99,16 @@ The "Reprint" button in the [order archive](archive.md) also passes `reprint: {a
 - the result card: "Reprint: order created in Printify!" (for the same book — "nothing was uploaded") /
   "Reprint: draft created in Gelato!".
 
+## Both printers: one send frame (since 2026-09-27)
+
+The server's code is a package (`app/studio/creator/`: the print folder, the shared send, Printify, Gelato, the PDF,
+the routes — it was one 1 300-line file). What every send does the same way is written once, in `sending.py`:
+`journaled_send()` — the attempt in the send journal (a failed one too) and the print folders held while the send
+reads them; `mark_books()` — each book's name in the progress and the errors when the order has several;
+`checked_files()` — every PNG of a book read in full before anything goes to the printer; `record_order()` — the new
+print order recorded here (as a reprint, or as its receipts' order), never failing a finished send. Printify's and
+Gelato's own parts (uploads and the Master; the PDF and the link) stay in their own files.
+
 ## Printify: what happens on the server
 
 `create_printify_draft(books, job, address)` — `books` is a list of `{folder, title}` (one book, or
@@ -190,7 +200,12 @@ exactly that — [Gelato](../integrations/gelato.md).
 ## Where in the code
 
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `openStructure()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `books_of()`, `receipt_for()`, `joint_title()`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_printify_draft()`, `_printify_setup()`, `_unknown_outcome()`, `_variant_title()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_folder_media()`, `_folder_spread()`
+- [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`
+- [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `journaled_send()`, `mark_books()`, `record_order()`, `books_of()`, `receipt_for()`, `joint_title()`, `_unknown_outcome()`, `checked_files()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `validate_address()`
+- [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`
+- [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `create_printify_draft()`, `_printify_setup()`, `_variant_title()`, `_printify_draft()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`
+- [app/studio/creator/photobook.py](../../app/studio/creator/photobook.py) — `build_photobook_pdf()`, `_one_idat()`
+- [app/studio/creator/routes.py](../../app/studio/creator/routes.py) — `_status()`, `_gelato_page_counts()`, `_folder_media()`, `_folder_spread()`
 - [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`, `pageNo()`, `pageWord()` (the viewer with a page replaced and put back — shared with the order card, since 2026-09-27)
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `filesBadge()`, `checkNotices()`, `svcChip()`, `countStages()`, `emptyOrders()` (shared with the order card); [app/web/js/lib.js](../../app/web/js/lib.js) — `confirmChecked()` (the manual approval)
 - [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`

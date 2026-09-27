@@ -28,7 +28,7 @@ code: []
   doesn't change a list already saved in the owner's `settings.json` — a migration in `_upgrade()` is
   needed.
 - Check with a test draft with numbered pages (Page 0 blank, then 1…N).
-- The rest is computed from this list: [app/studio/creator.py](../app/studio/creator.py)
+- The rest is computed from this list: [app/studio/creator/printfolder.py](../app/studio/creator/printfolder.py)
   `gelato_page_options()`, `_gelato_page_count()`; [app/studio/orders.py](../app/studio/orders.py)
   `page_options()`.
 - Wiki: [integrations/gelato.md](integrations/gelato.md), [rules/printer-rule.md](rules/printer-rule.md),
@@ -101,7 +101,7 @@ code: []
   ([integrations/gelato.md](integrations/gelato.md)).
 
 ## Change the Printify/Gelato file check
-- [app/studio/creator.py](../app/studio/creator.py) — `expected_files()`, `validate()`; Printify sizes
+- [app/studio/creator/printfolder.py](../app/studio/creator/printfolder.py) — `expected_files()`, `validate()`
   are in settings (`coverSize`, `pageSize`) from the Master analysis.
 
 ## Mockups: a new template, a renamed layer, another number of spreads

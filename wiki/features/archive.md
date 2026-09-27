@@ -142,7 +142,9 @@ page itself remembered this).
 ## Where in the code
 
 - [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `card_facts()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
-- [app/studio/creator.py](../../app/studio/creator.py) — `_to_archive()`, `_mark_reprint()`, `_journaled()`, `create_printify_reprint()`, `_printify_reprint()`, `_reprint_printify()`, `_create_gelato()`
+- [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `_to_archive()`, `_mark_reprint()`, `_journaled()`
+- [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `create_printify_reprint()`, `_printify_reprint()`
+- [app/studio/creator/routes.py](../../app/studio/creator/routes.py) — `_reprint_printify()`, `_create_gelato()`
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `facts()`, `mark_reprint()`
 - [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`
