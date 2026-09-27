@@ -9,6 +9,7 @@ updates and deletes are blocked by an allowlist.
 from __future__ import annotations
 
 import base64
+import json
 import re
 import threading
 from pathlib import Path
@@ -81,8 +82,9 @@ def call(method: str, path: str, body: Any = None, action: str = "Запит д�
     url = f"{API}/{path}{('?' + params) if params else ''}"
     _audit_log().info("%s /%s%s", method, path, f"?{params}" if params else "")
     try:
+        encoded = {"json_bytes": body} if isinstance(body, bytes) else {"json_body": body}
         return httpc.request_json(method, url, headers={"Authorization": f"Bearer {token()}"},
-                                  json_body=body, timeout=timeout, retries=retries, idempotent=idempotent)
+                                  timeout=timeout, retries=retries, idempotent=idempotent, **encoded)
     except httpc.HttpError as err:
         _audit_log().warning("%s /%s -> %s %s", method, path, err.status, httpc.short_body(err.body, 300))
         raise _human(err, action) from None
@@ -175,11 +177,14 @@ def slim_order(p: dict) -> dict:
 # ---------------------------------------------------------------- write helpers
 
 def upload_image(path: Path, file_name: str) -> dict:
-    contents = base64.b64encode(Path(path).read_bytes()).decode("ascii")
+    """One picture into Printify's media library, as JSON built straight in bytes: a 30 MB page used to be held about
+    five times over (the file, base64 text, the JSON text, its bytes), three uploads at once."""
+    contents = base64.b64encode(Path(path).read_bytes())
+    body = b"".join((b'{"file_name": ', json.dumps(file_name).encode("utf-8"), b', "contents": "', contents, b'"}'))
+    del contents
     # Tried again only when the upload certainly did not arrive (httpc): after a timeout Printify may
     # already keep the picture, and a second one would only clutter its media library.
-    return call("POST", "uploads/images.json", {"file_name": file_name, "contents": contents},
-                action=f"Завантаження {file_name}", timeout=240, retries=3)
+    return call("POST", "uploads/images.json", body, action=f"Завантаження {file_name}", timeout=240, retries=3)
 
 
 def create_product(shop_id: int, payload: dict) -> dict:

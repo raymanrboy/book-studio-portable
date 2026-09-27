@@ -41,7 +41,9 @@ async function ask() {
   asking = true;
   const watching = page;
   try {
-    const data = await api(`/api/workshop/sig${watching?.book ? `?book=${encodeURIComponent(watching.book)}` : ''}`);
+    // A page on screen: its files and the generation mode. None: the generation mode alone (no book is walked).
+    const data = watching ? await api(`/api/workshop/sig${watching.book ? `?book=${encodeURIComponent(watching.book)}` : ''}`)
+      : { gen: await api('/api/workshop/gen') };
     take(data.gen);
     if (watching && watching === page && data.sig !== watching.sig) {
       watching.sig = data.sig;

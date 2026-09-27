@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -80,7 +80,8 @@ code:
 | Formatting | `money()`, `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
 | A page's own preference | `remembered(key, fallback)` / `remember(key, value)` — kept in the window (a filter, a period, the open cards, the mockups' picks); missing or broken it is the fallback, never an error that stops the page (since 2026-09-26) |
 | Smoothness | `fadeImages()` (decoding off the main thread), `slide()` (height), `flip()` (moving cards), `keepFocus()`, `idle()`, `reducedMotion()` |
-| Live pages | `patch()` — a keyed redraw in place: an unchanged part stays, a changed one is replaced, a picture already shown is carried over (the Workshop) |
+| Progress | `setProgress(bar, percent)` — a `.progress > i` bar drawn by a transform (`scaleX`), not its width: no layout on every step (since 2026-09-26) |
+| Live pages | `patch()` — a keyed redraw in place (the gone parts removed first and the rest moved with `moveBefore()` where the browser has it, so focus and hover stay; since 2026-09-26): an unchanged part stays, a changed one is replaced, a picture already shown is carried over (the Workshop) |
 
 ## The Listings mode's pages (since 2026-09-24)
 
@@ -182,7 +183,7 @@ code:
 - [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
 - [app/web/js/app.js](../../app/web/js/app.js) — `MODES`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `entryOf()`, `switchMode()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `buildNav()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
-- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `remembered()`, `remember()`
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `modal()`, `confirmBox()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `setProgress()`, `remembered()`, `remember()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`

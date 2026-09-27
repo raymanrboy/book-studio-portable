@@ -22,7 +22,7 @@ code:
 | [app/tools/textcheck_replay.py](../app/tools/textcheck_replay.py) | The text-check journal through today's rules: what the card would show for every past check, next to what it showed, and the owner's "Not an error" marks — for calibrating what the check shows | `replay()`, `rebuild()`, `main()` |
 | [app/tools/wiki_check.py](../app/tools/wiki_check.py) | Checks the wiki against the code (including stale numbers in the text) | `check()`, `stale_numbers()`, `coverage()`, `changed_files()` |
 | [app/tools/dev_server.py](../app/tools/dev_server.py) | A server for previewing the interface on temporary data (including a two-book order, a receipt with two print orders, a Workshop book, the mockups' made-up templates and a pretend Photoshop); writes only to its own folder, never takes keys (`BOOK_STUDIO_SAMPLE`) | `main()`, `claim()`, `seed()`, `seed_workshop()`, `seed_mockups()`, `pretend_photoshop()` |
-| [app/requirements.txt](../app/requirements.txt) | Pillow, img2pdf, cryptography (the tested versions are in a comment) | — |
+| [app/requirements.txt](../app/requirements.txt) | Pillow, img2pdf, pikepdf (the Gelato PDF's engine), cryptography (the tested versions are in a comment) | — |
 
 ## Server: `app/studio/`
 

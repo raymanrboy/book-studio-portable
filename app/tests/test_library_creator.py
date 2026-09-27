@@ -186,7 +186,6 @@ class PrintifyValidation(unittest.TestCase):
         png(self.root / "Cover.png", (60, 30))
         for i in range(1, 25):
             png(self.root / f"{i}.png", (40, 40), (i * 9, 100, 150))
-        creator._validation_cache.clear()
 
     def tearDown(self):
         core.settings.replace_section("printify", self._saved["printify"])
@@ -204,11 +203,11 @@ class PrintifyValidation(unittest.TestCase):
         from studio.jobs import Job, JobError
         real, calls = images.check_png, []
 
-        def check(path, **kw):
+        def check(path, previews=()):
             calls.append(path.name)
             if len(calls) == 1:   # the page asks again while this check is on its first file
                 creator._validating[("printify", str(self.root.resolve()))] += 1
-            return real(path, **kw)
+            return real(path, previews)
 
         with mock.patch.object(images, "check_png", check), self.assertRaises(JobError):
             creator.validate("printify", str(self.root), Job("t"))
@@ -216,17 +215,35 @@ class PrintifyValidation(unittest.TestCase):
         with mock.patch.object(images, "check_png", check):
             self.assertTrue(creator.validate("printify", str(self.root))["ok"])  # no job: a send's check
 
-    def test_only_the_pages_check_warms_the_previews(self):
-        """A send's own check (no job) starts no background reader of every page: it competed with the PDF, and
-        on Windows it kept a page open while a test removed its folder (flaky 1 run in 5, 25.09.2026)."""
+    def test_only_the_pages_check_makes_the_previews_from_its_own_decode(self):
+        """A send's own check (no job) makes no previews: it competed with the PDF, and on Windows a second reader
+        kept a page open while a test removed its folder (flaky 1 run in 5, 25.09.2026). The page's check makes
+        them from the pixels it has just decoded — the viewer and the strip are ready when it ends (26.09.2026)."""
+        from studio import images
         from studio.jobs import Job
-        with mock.patch.object(creator, "_warm_in_background") as warm:
-            self.assertTrue(creator.validate("printify", str(self.root))["ok"])
-            warm.assert_not_called()
-            creator._validation_cache.clear()
-            self.assertTrue(creator.validate("printify", str(self.root), Job("t"))["ok"])
-            warm.assert_called_once()
-            self.assertEqual(len(warm.call_args.args[0]), 25)
+        pages = [self.root / "Cover.png"] + [self.root / f"{i}.png" for i in range(1, 25)]
+        made = lambda: [p.name for p in pages if all(images._cached(p, p.stat(), s)[1].exists() for s in images.VIEW_SIDES)]
+        self.assertTrue(creator.validate("printify", str(self.root))["ok"])
+        self.assertEqual(made(), [])
+        self.assertTrue(creator.validate("printify", str(self.root), Job("t"))["ok"])
+        self.assertEqual(len(made()), 25)
+
+    def test_a_replaced_page_is_the_only_one_read_again(self):
+        """Every page was decoded again after one was replaced (4–5 s for a 30-page book, 26.09.2026)."""
+        from studio import images
+        self.assertTrue(creator.validate("printify", str(self.root))["ok"])
+        new = Path(self.dir.name) / "fixed.png"
+        png(new, (40, 40), (1, 2, 3))
+        creator.replace_page(str(self.root), "7.png", str(new))
+        real, read = images._check, []
+
+        def check(path, st, previews):
+            read.append(path.name)
+            return real(path, st, previews)
+        with mock.patch.object(images, "_check", check):
+            res = creator.validate("printify", str(self.root))
+        self.assertTrue(res["ok"])
+        self.assertEqual(read, ["7.png"])
 
     def test_the_result_is_the_callers_own(self):
         first = creator.validate("printify", str(self.root))
@@ -291,7 +308,6 @@ class ReplacePage(unittest.TestCase):
             png(self.folder / f"{n}.png", (40, 40), (n * 10, 60, 60))
         self.fresh = self.root / "Lily - 8.png"
         png(self.fresh, (40, 40), (7, 8, 9))
-        creator._validation_cache.clear()
 
     def tearDown(self):
         core.settings.replace_section("printify", self._saved["printify"])
@@ -324,13 +340,11 @@ class ReplacePage(unittest.TestCase):
         """«Повернути» is offered from what lies on disk, so it is still there after the card is closed,
         reopened or the program restarted — the card itself remembers nothing."""
         creator.replace_page(str(self.folder), "7.png", str(self.fresh))
-        creator._validation_cache.clear()
         rows = {r["file"]: r for r in creator.validate("printify", str(self.folder), None)["files"]}
         self.assertTrue(rows["7.png"]["replaced"])
         self.assertFalse(rows["8.png"]["replaced"])
         self.assertFalse(rows["Cover.png"]["replaced"])
         creator.restore_page(str(self.folder), "7.png")
-        creator._validation_cache.clear()
         rows = {r["file"]: r for r in creator.validate("printify", str(self.folder), None)["files"]}
         self.assertFalse(rows["7.png"]["replaced"])
 
@@ -419,7 +433,6 @@ class GelatoValidation(unittest.TestCase):
             res = creator.validate("gelato", str(root))
             self.assertFalse(res["ok"])
             png(root / "30.png")
-            creator._validation_cache.clear()
             self.assertTrue(creator.validate("gelato", str(root))["ok"])
 
     def test_gelato_book_is_as_long_as_the_folder(self):

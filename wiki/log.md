@@ -3,6 +3,32 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] update | Cleanup phase 3: the waits made shorter
+
+- Text check: the model is loaded only when a question isn't answered from memory (`_Run.ready()`); answers are kept
+  by the page's content (`_digest()`), so a book dropped again asks only about its changed page; a page's JPEG made
+  once per check; the card warms the model after a replaced page.
+- Files: `images.check_png()` reads a file once per version of it and, for the page's own check, makes its 1400 and
+  360 px previews from that decode (`VIEW_SIDES`); a replaced page is the only one read again; `images.digest()`
+  replaces `sha256_file()`; the archive copies the previews already made (`copy_previews()`). The folder cache,
+  `_forget_validation()` and the background preview reader of creator.py went.
+- The Gelato PDF written straight into its file (`_Page`, `_blank_png()`), no temporary copies, the same bytes;
+  pikepdf named as the engine and added to `requirements.txt` and the launcher's check. Printify uploads built as
+  bytes (`httpc.request(json_bytes=…)`).
+- Workshop: folders by `os.scandir`, a book page's parts once, the gallery's thumbnail version from one stat; the
+  generation mode started only when used (`generate.status()`, `generate.stop()`); the background look asks
+  `/api/workshop/gen` only. The clipboard's PNG saved at `compress_level=1`. Library pictures stored outside the lock
+  (`library._put_asset()`).
+- Interface: module preload hints in `index.html`; `patch()` removes gone parts first and moves with `moveBefore()`;
+  `flip()` measures every card before animating; `setProgress()` — bars by transform; the lightbox writes its zoom
+  label only when it changes and measures its stage once per size; `toggleText()`.
+- Checked: 354 tests (5 new); the PDF compared byte for byte with the old way on a 30-page book; the preview — the
+  Workshop's search, the archive's viewer, no console errors. Not checked: a real Gelato send (the same bytes).
+- Pages: features/text-check.md, features/order-creator.md, features/orders.md, features/archive.md,
+  features/workshop.md, features/library.md, integrations/printify.md, architecture/frontend.md,
+  architecture/api-routes.md, architecture/runtime.md, code-map.md, dev/setup.md, overview.md, recipes.md,
+  plans/cleanup.md, dev/testing.md.
+
 ## [2026-09-27] update | Cleanup phase 2: matching and money rebuilt, the Profit page ready for 1 October
 
 - New modules: `printorders.py` (one reading of a print order), `records.py` (the files), `stages.py` (the queue's

@@ -751,15 +751,26 @@ def _download_listing_image(book: dict, url: str) -> None:
     with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "wb") as f:
         shutil.copyfileobj(resp, f)
     try:
-        with _lock:
-            fresh = load(book["id"])
-            asset = _store_asset(book["id"], tmp, "etsy-listing.jpg", move=True)
-            gone = _set_asset(fresh, "thumbnail", asset)
-            save(fresh)     # the record first: if the write fails, the old picture is still there
-            for old in gone:
-                _delete_asset_file(book["id"], old)
+        _put_asset(book["id"], "thumbnail", _store_asset(book["id"], tmp, "etsy-listing.jpg", move=True))
     finally:
         tmp.unlink(missing_ok=True)
+
+
+def _put_asset(book_id: str, slot: str, asset: dict) -> dict:
+    """A picture already stored (decoded, its previews made — the slow part, outside the library's lock since
+    26.09.2026: it held every other edit up to ~1.5 s per picture) goes into its slot. The record first: if the write
+    fails, the old picture is still there and the new file goes."""
+    with _lock:
+        try:
+            book = load(book_id)
+            gone = _set_asset(book, slot, asset)
+            save(book)
+        except Exception:
+            _delete_asset_file(book_id, asset)
+            raise
+        for old in gone:
+            _delete_asset_file(book_id, old)
+    return book
 
 
 @route("POST", r"/api/library/books/([0-9a-f]{32})/thumbnail-from-listing")
@@ -793,13 +804,7 @@ def _upload_asset(req: Request):
                     slot = slot.split(":")[0]
             except Exception:
                 pass
-        with _lock:
-            book = load(book_id)
-            asset = _store_asset(book_id, tmp, name, move=True)
-            gone = _set_asset(book, slot, asset)
-            save(book)      # the record first: if the write fails, the old picture is still there
-            for old in gone:
-                _delete_asset_file(book_id, old)
+        book = _put_asset(book_id, slot, _store_asset(book_id, tmp, name, move=True))
     finally:
         tmp.unlink(missing_ok=True)
     return _book_response(book)
@@ -877,13 +882,7 @@ def import_pictures(book_id: str, files: list[tuple[str, Path, str]], job, step:
             done += 1
             job.progress(step, 5 + 90 * done / max(len(files), 1), name)
             try:
-                asset = fut.result()
-                with _lock:
-                    book = load(book_id)
-                    gone = _set_asset(book, slot, asset)
-                    save(book)      # the record first: if the write fails, the old picture is still there
-                    for old in gone:
-                        _delete_asset_file(book_id, old)
+                _put_asset(book_id, slot, fut.result())
             except (ApiError, OSError) as err:
                 errors.append(f"{name}: {err}")
     return errors

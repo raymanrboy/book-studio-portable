@@ -113,16 +113,19 @@ def store(provider: str, files: list[tuple[Path, str]], meta: dict) -> str:
         shutil.rmtree(tmp, ignore_errors=True)
         raise
     core.log.info("Archive: stored %s (%s, %s files)", eid, entry.get("title"), len(rows))
-    threading.Thread(target=_warm_previews, args=(final, [r["file"] for r in rows]), daemon=True).start()
+    threading.Thread(target=_warm_previews, args=(final, [(Path(src), name) for src, name in files]),
+                     daemon=True).start()
     return eid
 
 
-def _warm_previews(path: Path, names: list[str]) -> None:
-    """Previews for the archive page and its viewer, made ahead so the page opens at once."""
-    for name in names:
+def _warm_previews(path: Path, files: list[tuple[Path, str]]) -> None:
+    """Previews for the archive page and its viewer, ready before it opens: the ones the order card or the Order
+    Creator already made of the sent files are copied (the same pixels), only the rest are made."""
+    for src, name in files:
         try:
-            images.preview(path / name, 1400)
-            images.preview(path / name, 360)
+            images.copy_previews(src, path / name)
+            for side in images.VIEW_SIDES:
+                images.preview(path / name, side)
         except Exception:
             pass
 

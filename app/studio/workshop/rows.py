@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import threading
 from pathlib import Path
@@ -283,7 +284,8 @@ def outpaint_prompt(size) -> str:
 def variant_names(path: Path) -> list[str]:
     folder = path / books.AGENT / "variants"
     try:
-        return sorted(p.name for p in folder.iterdir() if p.is_dir() and not p.name.startswith((".", "_")))
+        with os.scandir(folder) as entries:
+            return sorted(e.name for e in entries if e.is_dir() and not e.name.startswith((".", "_")))
     except OSError:
         return []
 

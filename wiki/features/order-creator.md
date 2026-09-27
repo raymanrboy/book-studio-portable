@@ -1,7 +1,7 @@
 ---
 title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/creator.py
   - app/web/js/pages/creator.js
@@ -108,7 +108,9 @@ every book of a receipt; `books_of()` checks them, `joint_title()` gives a share
    (`_printify_setup()`).
 2. A full file check for **every book** (`_printify_files()` → `validate("printify")`): exactly
    `Cover.png` at 4672×2464 and `1…24.png` at 4000×4000, real PNGs, fully decoded, no animation;
-   duplicates — a warning. No book is created while another one's files are wrong.
+   duplicates — a warning. No book is created while another one's files are wrong. Each file is read once per
+   version of it (`images.check_png()`, `images.digest()`): after one page is replaced only that page is read
+   again (a 30-page folder: 4–5 s → ~0.5 s, since 2026-09-26).
 3. Reads the Master, checks the blueprint/provider, saves a snapshot.
 4. Every book's images go up first, 3 at a time (`_printify_images()`); already uploaded ones (SHA-256
    cache, checked to still exist in Printify) aren't duplicated. A failure → **no book is made at all**, and
@@ -145,7 +147,10 @@ Before the first such order, the interface shows a "Manual order approval in Pri
    blank endpaper, 28 or 30 pages, blank endpaper — the blank ones are required
    ([integrations/gelato.md](../integrations/gelato.md)); no recompression of images (a Canva PNG gets
    glued into one IDAT chunk — `_one_idat()`), fitted with edges trimmed; a warning only when the cover
-   is trimmed by more than 10 mm.
+   is trimmed by more than 10 mm. Since 2026-09-26 the PDF is written straight into its file, each page read and
+   joined only when the PDF library gets to it (`_Page`) — no temporary copies (~0.9 GB of disk writes), about
+   2 GB less memory for a 30-page book, the same bytes; the library's engine is named (pikepdf, in
+   `requirements.txt`) so another computer can't quietly write a different PDF.
 4. One Cloudflare temporary link for all these PDFs (reachability checked, including via public DNS).
 5. `create_draft_order()`: `orderReferenceId` = the shared title `<receipt> - <name>` (for several
    books — `<receipt> - Emma, Liam`; so that once confirmed, paid in Gelato and synced, the order moves
@@ -181,7 +186,7 @@ exactly that — [Gelato](../integrations/gelato.md).
 ## Where in the code
 
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `structureItems()`, `replacePage()`, `restorePage()`, `pageChanged()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fromEtsy()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `books_of()`, `receipt_for()`, `joint_title()`, `expected_files()`, `validate()`, `_forget_validation()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_printify_draft()`, `_printify_setup()`, `_unknown_outcome()`, `_variant_title()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `books_of()`, `receipt_for()`, `joint_title()`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`, `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_printify_draft()`, `_printify_setup()`, `_unknown_outcome()`, `_variant_title()`, `_printify_draft()`, `_printify_files()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`, `validate_address()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`, `build_photobook_pdf()`, `_one_idat()`, `_status()`, `_gelato_page_counts()`, `_etsy_orders()`, `_folder_media()`, `_folder_spread()`
 - [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`
 - [app/studio/gelato.py](../../app/studio/gelato.py) — `page_counts()`, `photobook_geometry()`, `create_draft_order()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `pagesText()`

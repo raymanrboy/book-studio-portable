@@ -16,7 +16,8 @@ def _message(title: str, text: str) -> None:
 
 
 missing = []
-for module, package in (("PIL", "Pillow"), ("img2pdf", "img2pdf"), ("cryptography", "cryptography")):
+for module, package in (("PIL", "Pillow"), ("img2pdf", "img2pdf"), ("pikepdf", "pikepdf"),
+                         ("cryptography", "cryptography")):
     try:
         __import__(module)
     except ImportError:

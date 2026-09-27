@@ -49,9 +49,11 @@ export function openLightbox(items, start = 0) {
   document.body.appendChild(root);
 
   // ---------------------------------------------------------------- render loop
+  let shownZoom = '';
   const paint = () => {
     if (active) active.style.transform = `translate3d(${cur.x}px, ${cur.y}px, 0) scale(${cur.s})`;
-    zoomLabel.textContent = `${Math.round((tgt.s / fit) * 100)}%`;
+    const zoom = `${Math.round((tgt.s / fit) * 100)}%`;
+    if (zoom !== shownZoom) zoomLabel.textContent = shownZoom = zoom; // text written each frame made a layout each frame
   };
   function tick(now) {
     const dt = Math.min(64, now - (last || now));
@@ -74,7 +76,8 @@ export function openLightbox(items, start = 0) {
   const kick = () => { if (!raf) { last = 0; raf = requestAnimationFrame(tick); } };
   const jump = () => { cur.s = tgt.s; cur.x = tgt.x; cur.y = tgt.y; paint(); };
 
-  const stageSize = () => { const r = stage.getBoundingClientRect(); return [r.width, r.height, r]; };
+  let stageRect = null; // measured once per window size: a wheel turn then reads no layout
+  const stageSize = () => { const r = (stageRect ||= stage.getBoundingClientRect()); return [r.width, r.height, r]; };
   function fitTarget() {
     const [w, h] = stageSize();
     fit = Math.min((w - 48) / natW, (h - 32) / natH);
@@ -180,7 +183,7 @@ export function openLightbox(items, start = 0) {
     window.removeEventListener('resize', onResize);
     setTimeout(() => root.remove(), 170);
   }
-  const onResize = () => { const atFit = Math.abs(tgt.s - fit) < fit * 0.01; if (atFit) { fitTarget(); jump(); } else keepInView(); };
+  const onResize = () => { stageRect = null; const atFit = Math.abs(tgt.s - fit) < fit * 0.01; if (atFit) { fitTarget(); jump(); } else keepInView(); };
   function onKey(e) {
     if (topLayer() !== root) return; // a dialog asked from the viewer is on top: the keys are its own
     const k = e.key;
@@ -190,9 +193,14 @@ export function openLightbox(items, start = 0) {
     else if (k === '+' || k === '=') zoomAt(1.4, ...center());
     else if (k === '-') zoomAt(1 / 1.4, ...center());
     else if (k === '0') { fitTarget(); kick(); }
-    else if (k.toLowerCase() === 't' || k.toLowerCase() === 'е') { showText = !showText; textBox.hidden = !(items[index].text && showText); root.querySelector('[data-a="text"]').classList.toggle('on', !textBox.hidden); }
+    else if (k.toLowerCase() === 't' || k.toLowerCase() === 'е') toggleText();
     else return;
     e.preventDefault();
+  }
+  function toggleText() {
+    showText = !showText;
+    textBox.hidden = !(items[index].text && showText);
+    root.querySelector('[data-a="text"]').classList.toggle('on', !textBox.hidden);
   }
   document.addEventListener('keydown', onKey, true);
   window.addEventListener('resize', onResize);
@@ -209,7 +217,7 @@ export function openLightbox(items, start = 0) {
     else if (a === 'in') zoomAt(1.5, ...center());
     else if (a === 'out') zoomAt(1 / 1.5, ...center());
     else if (a === 'fit') { fitTarget(); kick(); }
-    else if (a === 'text') { showText = !showText; textBox.hidden = !(items[index].text && showText); root.querySelector('[data-a="text"]').classList.toggle('on', !textBox.hidden); }
+    else if (a === 'text') toggleText();
     else if (a === 'original') items[index].onOriginal?.();
     else if (a === 'act') items[index].actions?.[+b.dataset.i]?.run?.(api);
   });

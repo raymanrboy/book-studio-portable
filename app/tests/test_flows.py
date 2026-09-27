@@ -1,4 +1,5 @@
 """End-to-end flows with the external services replaced by fakes (no network, no real accounts)."""
+import io
 import json
 import re
 import shutil
@@ -49,6 +50,7 @@ class FakePrintify:
             self.orders = getattr(self, "orders", []) + [body]
             return {"id": "order-on-hold-1"}
         if method == "POST" and path == "uploads/images.json":
+            body = json.loads(body)  # the upload's JSON comes already encoded (printify.upload_image)
             image_id = f"{len(self.uploads):024x}"
             self.uploads[image_id] = body["file_name"]
             return {"id": image_id, "file_name": body["file_name"]}
@@ -84,7 +86,6 @@ class PrintifyDraftFlow(unittest.TestCase):
         png(self.root / "Cover.png", (60, 30), (10, 20, 30))
         for i in range(1, 25):
             png(self.root / f"{i}.png", (40, 40), (i * 10, 50, 90))
-        creator._validation_cache.clear()
         creator.UPLOAD_CACHE.unlink(missing_ok=True)
         self.fake = FakePrintify(core.settings.section("printify")["master"])
 
@@ -331,7 +332,6 @@ class GelatoDraftFlow(unittest.TestCase):
             png(root / "Cover.png", (466, 250), (1, 2, 3))
             for i in range(1, 31):  # every page gets its own width, so the PDF order can be read back
                 png(root / f"{i}.png", (100 + i, 100 + i), (i, i, i))
-            creator._validation_cache.clear()
             address = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Austin",
                        "postCode": "73301", "country": "us", "state": "TX"}
             with mock.patch.object(gelato, "call", fake_call), \
@@ -407,7 +407,6 @@ class GelatoDraftFlow(unittest.TestCase):
                 png(root / "Cover.png", (466, 250), (1, 2, 3))
                 for i in range(1, 31):
                     png(root / f"{i}.png", (100, 100), (i, i, i))
-                creator._validation_cache.clear()
                 address = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Austin",
                            "postCode": "73301", "country": "US", "state": "TX"}
                 with mock.patch.object(gelato, "call", fake_call), \
@@ -448,7 +447,6 @@ class GelatoDraftFlow(unittest.TestCase):
             png(root / "Cover.png", (466, 250), (1, 2, 3))
             for i in range(1, 31):
                 png(root / f"{i}.png", (100, 100), (i, i, i))
-            creator._validation_cache.clear()
             address = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Austin",
                        "postCode": "73301", "country": "US", "state": "TX"}
             with mock.patch.object(gelato, "call", fake_call), \
@@ -493,7 +491,6 @@ class GelatoDraftFlow(unittest.TestCase):
                 png(folder / "Cover.png", (466, 250), (1, 2, 3))
                 for i in range(1, pages + 1):
                     png(folder / f"{i}.png", (100 + i, 100 + i), (i, i, i))
-            creator._validation_cache.clear()
             address = {"firstName": "Ann", "lastName": "Lee", "addressLine1": "1 Main St", "city": "Austin",
                        "postCode": "73301", "country": "us", "state": "TX"}
             with mock.patch.object(gelato, "call", fake_call), \
@@ -543,7 +540,6 @@ class GelatoDraftFlow(unittest.TestCase):
             png(root / "Cover.png", (466, 250), (1, 2, 3))
             for i in range(1, 29):
                 png(root / f"{i}.png", (100 + i, 100 + i), (i, i, i))
-            creator._validation_cache.clear()
             checked = creator.validate("gelato", str(root))
             with mock.patch.object(gelato, "call", fake_call), \
                     mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
@@ -576,7 +572,6 @@ class GelatoDraftFlow(unittest.TestCase):
             png(root / "Cover.png", (466, 250), (1, 2, 3))
             for i in range(1, 29):
                 png(root / f"{i}.png", (40, 40), (i, i, i))
-            creator._validation_cache.clear()
             with mock.patch.object(gelato, "call", fake_call), \
                     mock.patch.object(tunnel.FileTunnel, "start", side_effect=AssertionError("no link")):
                 with self.assertRaises(JobError) as ctx:
@@ -701,9 +696,9 @@ class GelatoDraftFlow(unittest.TestCase):
             small = [idat[i:i + 7] for i in range(0, len(idat), 7)]
             chunked = [struct.pack(">I", len(c)) + b"IDAT" + c + struct.pack(">I", zlib.crc32(b"IDAT" + c) & 0xFFFFFFFF) for c in small]
             src.write_bytes(data[:8] + b"".join(head) + b"".join(chunked) + b"".join(tail))
-            joined = creator._one_idat(src, root / "joined.png")
-            self.assertEqual(joined.read_bytes().count(b"IDAT"), 1)
-            with Image.open(src) as a, Image.open(joined) as b:
+            joined = creator._one_idat(src.read_bytes())
+            self.assertEqual(joined.count(b"IDAT"), 1)
+            with Image.open(src) as a, Image.open(io.BytesIO(joined)) as b:
                 self.assertEqual(a.tobytes(), b.tobytes())
 
     def test_only_a_really_wrong_cover_is_flagged(self):

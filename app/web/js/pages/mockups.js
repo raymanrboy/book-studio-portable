@@ -7,6 +7,7 @@
 // run is on, and a notice says when it ends.
 import {
   api, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered, remember,
+  setProgress,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../order-bits.js';
@@ -318,7 +319,7 @@ export async function mount(view) {
     return html`<div class="mk-run">
       ${r.phase === 'ask' ? askView() : html`<div class="row mk-run-now"><span class="spinner"></span><span class="grow truncate" id="mk-step">${r.step}</span>
         <span class="num faint" id="mk-pct">${Math.round(r.percent)}%</span></div>`}
-      <div class="progress"><i id="mk-bar" style="width:${Math.max(3, r.percent)}%"></i></div>
+      <div class="progress"><i id="mk-bar" style="transform:scaleX(${Math.max(3, r.percent) / 100})"></i></div>
       <div class="mk-rows" id="mk-rows">${rowsHtml(r.rows || [])}</div>
     </div>`;
   }
@@ -352,7 +353,7 @@ export async function mount(view) {
     const step = $('#mk-step'), pct = $('#mk-pct'), bar = $('#mk-bar'), rows = $('#mk-rows');
     if (step) step.textContent = r.step;
     if (pct) pct.textContent = `${Math.round(r.percent)}%`;
-    if (bar) bar.style.width = `${Math.max(3, r.percent)}%`;
+    setProgress(bar, Math.max(3, r.percent));
     if (rows) setHtml(rows, rowsHtml(r.rows || []));
   }
 

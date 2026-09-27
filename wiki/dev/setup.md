@@ -1,7 +1,7 @@
 ---
 title: Setup, launch, GitHub
 type: dev
-updated: 2026-09-24
+updated: 2026-09-27
 code:
   - app/tools/make_shortcut.py
   - app/requirements.txt
@@ -12,7 +12,7 @@ code:
 
 - Windows 10/11, Microsoft Edge (or Chrome).
 - Python 3.11+ (on the Wrocław PC — 3.14, `C:\Users\Roman\AppData\Local\Programs\Python\Python314`).
-- Packages: `python -m pip install -r app/requirements.txt` (Pillow, img2pdf, cryptography).
+- Packages: `python -m pip install -r app/requirements.txt` (Pillow, img2pdf, pikepdf, cryptography).
 - `app/bin/cloudflared.exe` — for Gelato's temporary links; **not in git**, on a new PC it has to be put
   there by hand (the official Cloudflare release).
 

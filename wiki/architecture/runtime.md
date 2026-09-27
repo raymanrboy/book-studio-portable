@@ -16,7 +16,7 @@ code:
 
 ## Launch sequence
 
-1. **`Book Studio.pyw`** (no console, `pythonw.exe`): checks the Pillow, img2pdf, cryptography packages.
+1. **`Book Studio.pyw`** (no console, `pythonw.exe`): checks the Pillow, img2pdf, pikepdf, cryptography packages.
    Missing one — shows a window with the `pip install` command. A crash during startup is written to
    `app/data/logs/startup-error.txt` and shown in a window.
 2. **`main()`**: creates the data folders, turns on logging (`data/logs/app.log`).

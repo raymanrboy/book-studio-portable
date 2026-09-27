@@ -71,8 +71,8 @@ code: []
 
 ## Filmstrip thumbnail size
 - Change **together**: [app/web/js/pages/orders.js](../app/web/js/pages/orders.js) `STRIP_THUMB` and
-  [app/studio/creator.py](../app/studio/creator.py) `STRIP_PREVIEW` (otherwise the server will prepare
-  the wrong size).
+  [app/studio/images.py](../app/studio/images.py) `VIEW_SIDES` (otherwise the file check will prepare the wrong
+  size).
 
 ## A new service key
 - [app/studio/vault.py](../app/studio/vault.py) `SECRET_NAMES`;

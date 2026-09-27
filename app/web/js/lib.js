@@ -426,18 +426,19 @@ export function flip(container, mutate, duration = 380) {
   }
   mutate();
   if (reducedMotion()) return;
-  container.querySelectorAll(':scope > [data-key]').forEach((node) => {
-    if (node.hidden) return;
-    const old = before.get(node.dataset.key);
-    const now = node.getBoundingClientRect();
+  // Every position read first, then every animation started: reading one card after another's animation began made
+  // the browser lay the page out again for each card.
+  const moves = [...container.querySelectorAll(':scope > [data-key]')].filter((node) => !node.hidden)
+    .map((node) => [node, before.get(node.dataset.key), node.getBoundingClientRect()]);
+  for (const [node, old, now] of moves) {
     if (!old) {
       node.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: EASE });
-      return;
+      continue;
     }
     const dx = old.left - now.left, dy = old.top - now.top;
-    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
     node.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration, easing: EASE });
-  });
+  }
 }
 
 // A live page redrawn in place (the Workshop looks for changes every 1.5 s): each child of `container` is keyed
@@ -449,6 +450,10 @@ const drawnFrom = new WeakMap(); // element → the markup it was drawn from
 export function patch(container, items) {
   const old = new Map([...container.children].map((n) => [n.dataset.key, n]));
   const drawn = [];
+  // The gone ones go first: a child that disappeared used to leave every one after it to be moved — and a moved
+  // element loses focus and hover, which patch() is here to keep.
+  const keep = new Set(items.map(([key]) => key));
+  old.forEach((n, key) => { if (!keep.has(key)) { n.remove(); old.delete(key); } });
   let cursor = container.firstElementChild;
   for (const [key, markup] of items) {
     const text = render(markup);
@@ -467,9 +472,9 @@ export function patch(container, items) {
       drawn.push(next);
     }
     if (node === cursor) cursor = node.nextElementSibling;
+    else if (container.moveBefore && node.isConnected) container.moveBefore(node, cursor); // keeps focus and state
     else container.insertBefore(node, cursor);
   }
-  old.forEach((n) => n.remove());
   return drawn;
 }
 function carryPictures(from, to) {
@@ -477,10 +482,16 @@ function carryPictures(from, to) {
   to.querySelectorAll('img[src]').forEach((img) => {
     const same = shown.get(img.getAttribute('src'));
     if (!same) return;
+    for (const { name } of [...same.attributes]) if (!img.hasAttribute(name) && name !== 'class') same.removeAttribute(name);
     for (const { name, value } of img.attributes) if (name !== 'data-fade') same.setAttribute(name, value);
     same.classList.add('loaded');
     img.replaceWith(same);
   });
+}
+
+/** A progress bar (`.progress > i`) at `percent`: drawn by a transform, not its width — no layout on every step. */
+export function setProgress(bar, percent) {
+  if (bar) bar.style.transform = `scaleX(${Math.max(0, Math.min(100, percent)) / 100})`;
 }
 
 // Re-render a region without stealing the caret from the field the user is typing in.

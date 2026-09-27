@@ -79,18 +79,21 @@ The rest:
 - [x] New focused tests for matching and money (today most tests share one fixture).
 - [x] The Profit page follows the owner's UI rules (tips, no emoji, Ukrainian labels, no inline styles).
 
-## Phase 3 — speed
+## Phase 3 — speed (done 2026-09-27)
 
-- [ ] Text check: the model loads only when a question is really asked (a cached re-check: −4…70 s); the
+- [x] Text check: the model loads only when a question is really asked (a cached re-check: −4…70 s); the
   model warmed after a page is replaced; answers keyed by the file's content, not its folder.
-- [ ] Order Creator: a page decoded once — the check makes the previews; a replaced page re-checks only
+- [x] Order Creator: a page decoded once — the check makes the previews; a replaced page re-checks only
   itself (4–5 s → ~0.5 s); the archive copies the previews instead of decoding every page again.
-- [ ] Gelato PDF streamed to the file (≈2 GB less memory, no temporary copies, the same bytes); the PDF engine
-  pinned in `requirements.txt`. Printify uploads without five copies of each file in memory.
-- [ ] Workshop: one read of a book per request, `os.scandir`, the background poll without walking every
+- [x] Gelato PDF streamed to the file (≈2 GB less memory, no temporary copies, the same bytes — compared on a
+  30-page book); the PDF engine pinned in `requirements.txt`. Printify uploads without five copies of each file in memory.
+- [x] Workshop: one read of a book per request, `os.scandir`, the background poll without walking every
   book, the Downloads watcher and F8 started only when needed; the clipboard picture saved faster.
-- [ ] Library uploads stored outside the library lock; the settings read once per queue load.
-- [ ] Interface: module preload hints; smoother lightbox, `flip()` and `patch()`; progress bars by transform.
+- [x] Library uploads stored outside the library lock; the settings read once per queue load.
+- [x] Interface: module preload hints; smoother lightbox, `flip()` and `patch()`; progress bars by transform.
+
+- [ ] **Waits for the owner:** the Gelato link started beside the PDF build (3–8 s per send) — it needs one real
+  draft to be checked on, so it isn't done without his yes.
 
 ## Phase 4 — no blinking
 

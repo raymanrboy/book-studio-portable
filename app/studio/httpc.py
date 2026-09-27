@@ -62,6 +62,7 @@ def request(
     headers: dict | None = None,
     json_body: Any = None,
     form: dict | None = None,
+    json_bytes: bytes | None = None,
     timeout: float = 60,
     retries: int = 3,
     idempotent: bool | None = None,
@@ -74,7 +75,10 @@ def request(
     body: bytes | None = None
     hdrs = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     hdrs.update(headers or {})
-    if json_body is not None:
+    if json_bytes is not None:  # JSON already encoded (an upload's picture: not copied once more here)
+        body = json_bytes
+        hdrs["Content-Type"] = "application/json; charset=utf-8"
+    elif json_body is not None:
         body = json.dumps(json_body).encode("utf-8")
         hdrs["Content-Type"] = "application/json; charset=utf-8"
     elif form is not None:

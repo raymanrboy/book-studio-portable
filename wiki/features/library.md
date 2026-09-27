@@ -1,7 +1,7 @@
 ---
 title: Book library and a book's passport
 type: feature
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/library.py
   - app/web/js/pages/library.js
@@ -88,6 +88,9 @@ book it was made from, in `pipeline/books/`. (From 2026-09-24 to 26 a Workshop b
 marked `"stage": "workshop"`, with its prompts; that model is gone.)
 Asset: `{id, file, originalName, width, height, bytes, addedAt, lqip}`. `rev` guards against two windows
 changing the same book at once (a `PATCH` with a stale `rev` → 409).
+
+A picture is decoded and its previews made **outside the library's lock** (`_put_asset()`, since 2026-09-26): two
+pictures dropped on one spread, or a text edit meanwhile, no longer wait up to ~1.5 s per picture.
 
 **Write order** (since 2026-09-22): `book.json` is saved first, and only then is the old picture deleted
 from disk. It used to be the other way around — if the write failed (disk, permissions), the picture was

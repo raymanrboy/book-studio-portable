@@ -2,7 +2,7 @@
 // plus order states: cancelled, full / partial refund, replacement reprint.
 import {
   api, html, ic, ib, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, signedMoney, menu,
-  dateTime, relTime, plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember,
+  dateTime, relTime, plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember, setProgress,
 } from '../lib.js';
 import { refreshInfo, store } from '../info.js';
 
@@ -495,7 +495,7 @@ export async function mount(view) {
         $('#pf-step').textContent = j.step;
         $('#pf-detail').textContent = j.detail ? ` · ${j.detail}` : '';
         $('#pf-pct').textContent = `${Math.round(j.percent)}%`;
-        $('#pf-bar').style.width = `${j.percent}%`;
+        setProgress($('#pf-bar'), j.percent);
       }, 420, () => !gone);
       const etsyPart = res.changed === null || res.changed === undefined
         ? `Завантажено ${res.receipts} ${plural(res.receipts, ['замовлення', 'замовлення', 'замовлень'])} Etsy.`

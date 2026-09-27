@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents (the Listings mode)
 type: feature
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -186,7 +186,11 @@ its last step is ticked. A listing another library book already has is refused (
 ## Live, and smooth
 
 - A Workshop page asks `/api/workshop/sig` every 1.5 s while it's on screen (a book's page — only its own book's
-  files); when something changed it fetches and **redraws in place** (`patch()` in `lib.js`): each part is keyed,
+  files, read with `os.scandir`, 7–8× faster than looking at each file, since 2026-09-26); away from the Workshop,
+  while a picture is awaited, only `/api/workshop/gen` is asked (no book is walked), and the generation mode (the
+  Downloads watcher, F8's thread) starts only when first used — `generate.status()` answers "idle" without starting
+  it. A book's page works its parts out once (the strip and the pictures' versions were twice). When something
+  changed the page fetches and **redraws in place** (`patch()` in `lib.js`): each part is keyed,
   an unchanged one stays as it is (its pictures, hover, focus), a changed one is replaced, and a picture the old part
   already showed is carried over — nothing reloads or blinks; the scroll, an opened prompt, the chosen step stay.
 - Every picture's address carries its version (`?v=`): the browser keeps it for good; a replaced picture gets a new

@@ -51,7 +51,8 @@ Everything else is blocked in `_check()` ([security](../security.md)).
 `data/creator/upload-cache.json`: a file's SHA-256 → its image ID (the last 5000, `UPLOADS_KEPT`).
 Before reusing one, it's checked to still exist in Printify (`upload_exists()`). An upload is only
 retried when it certainly didn't arrive (the connection was refused, 429, 503); never after a timeout,
-so duplicates never pile up in Printify's media library (since 2026-09-23).
+so duplicates never pile up in Printify's media library (since 2026-09-23). The upload's JSON is built straight in
+bytes (`upload_image()`): a 30 MB page was held about five times over, three uploads at once (since 2026-09-26).
 
 ## Sync
 

@@ -99,11 +99,26 @@ class Storing(ArchiveCase):
         second = archive.store("printify", [(kept / "Cover.png", "Cover.png")], {"title": "4100000001 - Emma", "reprintOf": first})
         self.assertTrue(os.path.samefile(archive.folder(second) / "Cover.png", kept / "Cover.png"))  # no extra space
 
-    def test_previews_are_made_ahead(self):
+    def test_previews_are_made_ahead_and_the_ones_already_made_are_copied(self):
+        """The order card had decoded every sent page for its previews; the archive decoded them all once more
+        after each send (26.09.2026). Now it copies what exists and makes only the rest."""
         from studio import images
-        eid = self.keep()
+        src = book(self.root / "sent", 1)
+        images.preview(src / "Cover.png", 1400)
+        images.preview(src / "Cover.png", 360)
+        eid = archive.store("printify", [(src / "Cover.png", "Cover.png"), (src / "1.png", "1.png")],
+                            {"title": "4100000001 - Emma"})
         mock.patch.stopall()  # the real _warm_previews again
-        archive._warm_previews(archive.folder(eid), ["Cover.png", "1.png"])
+        decoded = []
+        real = images.preview
+
+        def preview(path, side):
+            if not images._cached(path, path.stat(), side)[1].exists():
+                decoded.append(path.name)
+            return real(path, side)
+        with mock.patch.object(images, "preview", preview):
+            archive._warm_previews(archive.folder(eid), [(src / "Cover.png", "Cover.png"), (src / "1.png", "1.png")])
+        self.assertEqual(decoded, ["1.png", "1.png"])                   # the cover's came as copies
         for name in ("Cover.png", "1.png"):
             path = archive.folder(eid) / name
             self.assertTrue(images._cached(path, path.stat(), 360)[1].exists())
@@ -381,6 +396,7 @@ class FakePrintify:
             self.orders.append(body)
             return {"id": f"order-{len(self.orders)}"}
         if method == "POST" and path == "uploads/images.json":
+            body = json.loads(body)  # the upload's JSON comes already encoded (printify.upload_image)
             image_id = f"{len(self.uploads) + 1:024x}"
             self.uploads[image_id] = body["file_name"]
             return {"id": image_id}
@@ -407,7 +423,6 @@ class PrintifyReprint(ArchiveCase):
         core.settings.update({"printify": {"coverSize": [60, 30], "pageSize": [40, 40],
                                            "manualApprovalConfirmedAt": "2026-09-15T20:00:00Z"}})
         vault.set("printify_token", "fake-token-for-tests")
-        creator._validation_cache.clear()
         creator.UPLOAD_CACHE.unlink(missing_ok=True)
         self.fake = FakePrintify(core.settings.section("printify")["master"])
         with mock.patch.object(printify, "call", self.fake):

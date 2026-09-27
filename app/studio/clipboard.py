@@ -98,7 +98,7 @@ def set_image(image) -> None:
             im.save(fake, "PNG")
             return
         png = io.BytesIO()
-        im.save(png, "PNG")
+        im.save(png, "PNG", compress_level=1)  # a throwaway copy: ~3× faster than the default, the same pixels
         flat = im
         if im.mode != "RGB":
             flat = Image.new("RGB", im.size, (255, 255, 255))

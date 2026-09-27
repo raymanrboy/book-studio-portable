@@ -115,7 +115,7 @@ The Listings mode's books in development — the book pipeline's folders ([featu
 | POST | `/api/workshop/books/([^/]+)/copy-hero` | token | `_copy_hero` | workshop-book.js «Героя в буфер» (`{variant}`) |
 | POST | `/api/workshop/books/([^/]+)/save-as` | token | `_save_as` | workshop-book.js «Зберегти як…» (`{area, name, variant}`; the Windows dialog) |
 | GET | `/media/workshop/([^/]+)/(agent\|pictures\|originals)(?:/v/([^/]+))?/([^/]+)` | media | `_media` | workshop.js, workshop-book.js (`?w=` — a preview; `?v=` — the version: kept for good) |
-| GET | `/api/workshop/gen` | token | `_gen` | — (the state; the pages get it with `sig`) |
+| GET | `/api/workshop/gen` | token | `_gen` | workshop-live.js — the generation mode alone, while no Workshop page is on screen (no book is walked; an idle mode starts nothing) |
 | POST | `/api/workshop/gen/start` | token | `_gen_start` | workshop-live.js `startGen` (`{book, key, variant, series}`) |
 | POST | `/api/workshop/gen/stop` | token | `_gen_stop` | the generation bar «Стоп» |
 | POST | `/api/workshop/gen/next` | token | `_gen_next` | the generation bar «Далі» (F8 does the same on the server) |

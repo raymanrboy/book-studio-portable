@@ -289,11 +289,30 @@ class Session:
 
 _session: Session | None = None
 _session_lock = threading.Lock()
+IDLE = {"version": 0, "active": None, "last": None, "error": "", "f8": False, "f8Failed": False}
 
 
 def session() -> Session:
+    """The generation mode — made (the Downloads watcher and the F8 thread started) the first time it is used."""
     global _session
     with _session_lock:
         if _session is None:
             _session = Session()
         return _session
+
+
+def status() -> dict:
+    """What the pages are told about the generation mode: before anything was ever started it is idle, and asking
+    starts nothing (Book Studio's start and every background look used to start the watcher and F8's thread for the
+    whole run, the Workshop used or not — 26.09.2026)."""
+    with _session_lock:
+        s = _session
+    return s.status() if s else dict(IDLE)
+
+
+def stop(book_id: str | None = None) -> None:
+    """Nothing waits any more for a picture of this book (or of any): there is nothing to stop in an idle mode."""
+    with _session_lock:
+        s = _session
+    if s:
+        s.stop(book_id)

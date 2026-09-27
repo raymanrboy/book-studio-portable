@@ -1,7 +1,7 @@
 ---
 title: Book Studio overview
 type: overview
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/main.py
   - app/studio/core.py
@@ -43,7 +43,7 @@ on the Kyiv PC.
 
 ## How it's built
 
-- **Server** — Python (standard library + Pillow, img2pdf, cryptography), listens only on `127.0.0.1`.
+- **Server** — Python (standard library + Pillow, img2pdf with pikepdf, cryptography), listens only on `127.0.0.1`.
   See [architecture/server.md](architecture/server.md).
 - **Interface** — HTML/CSS/JS with no build step, opens as a separate Edge window (`--app`).
   See [architecture/frontend.md](architecture/frontend.md).

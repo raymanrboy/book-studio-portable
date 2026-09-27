@@ -717,6 +717,7 @@ async function mountCard(view, rid) {
   /** The same checks as after new files, but the folder stays as it is (only one page changed). The
    *  proof is not taken down while they run — it is redrawn once, when the new page is in it. */
   async function revalidate(w) {
+    warmModel(); // the re-check after a fixed page starts at once, the model loaded meanwhile
     dropCheck(w);
     const my = ++w.seq;
     w.error = '';

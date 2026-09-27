@@ -3,13 +3,14 @@ whole check with the model faked (no Ollama needed; made-up children and buyers 
 import importlib.util
 import io
 import json
-import shutil
-import re
 import random
+import re
+import shutil
 import tempfile
 import threading
 import time
 import unittest
+import zlib
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -289,9 +290,10 @@ class WholeCheck(unittest.TestCase):
             self.printed[f"{text_page}.png|None"] = text
             self.printed[f"{picture_page}.png|None"] = "I'm sorry, but I cannot transcribe this lettering." if k == 3 else ""
         Image.new("RGB", (60, 30)).save(self.folder / "Cover.png")
-        for n in range(1, 25):
-            Image.new("RGB", (40, 40)).save(self.folder / f"{n}.png")
+        for n in range(1, 25):  # each page its own pixels: answers are kept by a file's content
+            Image.new("RGB", (40, 40), (n, 0, 0)).save(self.folder / f"{n}.png")
         self.calls = 0
+        self.ready = mock.MagicMock()  # Ollama and the model, as run_check() fakes them
         tc._cache.clear()
         core.settings.update({"textcheck": {"prescan": False}})  # these pages are blank squares
 
@@ -316,7 +318,7 @@ class WholeCheck(unittest.TestCase):
 
     def run_check(self, item_):
         job = self.fake_job()
-        with mock.patch.object(tc, "_ready"), mock.patch.object(tc, "_chat", side_effect=self.fake_chat), \
+        with mock.patch.object(tc, "_ready", self.ready), mock.patch.object(tc, "_chat", side_effect=self.fake_chat), \
                 mock.patch.object(tc, "picture", side_effect=lambda path, part=None: f"{path.name}|{part}"), \
                 mock.patch.object(tc, "_other_children", return_value={"noah"}), \
                 mock.patch.object(tc, "_release_model") as release:
@@ -440,6 +442,32 @@ class WholeCheck(unittest.TestCase):
             self.fake_chat = real
         self.assertEqual(asked, ["7.png|None"])
         self.assertTrue(any("не вдалося перевірити" in i["text"] for i in res["issues"]))
+
+    def test_a_re_check_answered_from_memory_never_loads_the_model(self):
+        """Audit 26.09.2026: every ↻ loaded 9 GB into the graphics card first (~4 s, up to ~70 s), answers cached or not."""
+        self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
+        self.assertEqual(self.ready.call_count, 1)
+        self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
+        self.assertEqual(self.ready.call_count, 1)                    # nothing to ask: no model needed
+
+    def test_a_model_that_cannot_be_had_is_the_checks_error(self):
+        job = self.fake_job()
+        missing = tc.ModelError("В Ollama немає моделі gemma — встановіть її або оберіть іншу в Налаштуваннях.")
+        with mock.patch.object(tc, "_ready", side_effect=missing), mock.patch.object(tc, "_chat") as chat,                 mock.patch.object(tc, "_release_model"), self.assertRaises(tc.Unavailable) as caught:
+            tc.check_book(job, "4100000101", item(book_id=self.book_id), str(self.folder), 24)
+        self.assertIn("немає моделі", str(caught.exception))
+        chat.assert_not_called()
+
+    def test_the_same_book_dropped_again_asks_only_about_the_changed_page(self):
+        """Every drop copies the files into a new folder: answers are kept by content, not by folder."""
+        self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
+        first = self.calls
+        again = Path(self.tmp.name) / "dropped-again"
+        shutil.copytree(self.folder, again)
+        Image.new("RGB", (40, 40), (200, 1, 1)).save(again / "7.png")     # the one page fixed in Canva
+        self.folder = again
+        self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
+        self.assertLessEqual(self.calls - first, 2)                    # its read and its check, nothing else
 
     def test_light_check_without_library_texts(self):
         res = self.run_check(item(gifter="Grandma & Grandpa"))
@@ -597,8 +625,8 @@ class WhileItRuns(unittest.TestCase):
             self.printed[f"{text_page}.png|None"] = text
             self.printed[f"{picture_page}.png|None"] = ""
         Image.new("RGB", (60, 30)).save(self.folder / "Cover.png")
-        for n in range(1, 31):
-            Image.new("RGB", (40, 40)).save(self.folder / f"{n}.png")
+        for n in range(1, 31):  # each page its own pixels: answers are kept by a file's content
+            Image.new("RGB", (40, 40), (n, 0, 0)).save(self.folder / f"{n}.png")
         self.asked = []
         self.lock = threading.Lock()
         tc._cache.clear()
@@ -712,6 +740,8 @@ class Prescan(unittest.TestCase):
             for w in (0.10, 0.06, 0.13, 0.08):
                 d.rectangle([x, y, x + size * w, y + size * 0.028], fill=(40, 30, 25))
                 x += size * (w + 0.02)
+        mark = zlib.crc32(path.name.encode())
+        im.putpixel((0, 0), (mark & 255, mark >> 8 & 255, mark >> 16 & 255))  # its own content, like every real page
         im.save(path)
 
     def test_text_and_picture_pages_are_told_apart(self):

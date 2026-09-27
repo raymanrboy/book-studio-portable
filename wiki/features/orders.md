@@ -128,9 +128,10 @@ one column.
      units); the cover format and the name field aren't in the note; long text (a dedication) isn't
      truncated — the note scrolls internally (since 2026-09-18); the right half is the real page 1;
    - a **filmstrip** of every spread (`#oc-strip`): the mouse wheel scrolls it smoothly
-     (`smoothWheel()`, no "snapping"), all the way to the last spread; the server prepares 360 px
-     thumbnails ahead of time (`STRIP_THUMB` = `STRIP_PREVIEW`) — after the check the page asked for; a
-     send's own check doesn't (since 2026-09-25: the PDF or the uploads read every file anyway);
+     (`smoothWheel()`, no "snapping"), all the way to the last spread; the file check the page asks for makes
+     the 1400 px and the 360 px previews (`STRIP_THUMB` = `images.VIEW_SIDES`) from the same decode of each page,
+     so they are ready when it ends (since 2026-09-26; a separate reader decoded every page again before); a
+     send's own check makes none (since 2026-09-25: the PDF or the uploads read every file anyway);
    - clicking anything opens the viewer, by spreads (`folderViewerItems()`; the T key shows what the
      text check read versus what should have been there, `viewerItems()`);
    - **replacing a single page right from the viewer** (since 2026-09-20): buttons at the top, one per
@@ -222,7 +223,8 @@ one column.
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `settle()`, `sentOf()`, `keptOrder()`, `finish()`
-- [app/studio/creator.py](../../app/studio/creator.py) — `STRIP_PREVIEW`, `_warm_previews()`, `_warm_in_background()`, `guess_child_name()`, `gelato_pages_problem()`
+- [app/studio/creator.py](../../app/studio/creator.py) — `validate()`, `guess_child_name()`, `gelato_pages_problem()`
+- [app/studio/images.py](../../app/studio/images.py) — `check_png()`, `VIEW_SIDES`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `truck`
 - [app/web/css/app.css](../../app/web/css/app.css) — `.ord-chips`, `.ord-child`, `.ord-copy`, `.ord-title`, `.ord-track`, `.ord-track-text`, `.ord-carrier`, `.ord-track-sep`, `.ord-track-no`, `.ord-sub`, `.ord-grid`, `.ord-side`, `.proof`, `.proof-note`, `.strip`
 - Tests: [app/tests/test_orders.py](../../app/tests/test_orders.py) (including `GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`PickerStages`, `SentStage`)

@@ -417,7 +417,7 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 
 /* ------------------------------------------------------------------ progress, spinner, skeleton, empty */
 .progress { height: 6px; border-radius: 6px; background: var(--surface-3); overflow: hidden; contain: layout paint; }
-.progress > i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width 420ms var(--ease); position: relative; overflow: hidden; }
+.progress > i { display: block; height: 100%; width: 100%; transform: scaleX(0); transform-origin: left center; border-radius: inherit; background: var(--accent); transition: transform 420ms var(--ease); position: relative; overflow: hidden; }
 .progress > i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3), transparent); animation: shimmer 1.4s infinite; transform: translateX(-100%); }
 .progress-thin { height: 3px; }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: spin .8s linear infinite; flex: none; }

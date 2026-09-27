@@ -1,7 +1,7 @@
 // Book passport: cover, 16 page slots (dedication, 14 spreads, afterword), texts, files.
 import {
   api, html, ic, ib, raw, setHtml, on, media, modal, toast, menu, confirmBox, upload, runJob, copyText,
-  openExternal, fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el,
+  openExternal, fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el, setProgress,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { refreshInfo } from '../info.js';
@@ -387,7 +387,7 @@ export async function mount(view, [id]) {
         }), (j) => {
           m.el.querySelector('#fi-step').textContent = `${j.step} ${j.detail || ''}`;
           m.el.querySelector('#fi-pct').textContent = `${Math.round(j.percent)}%`;
-          m.el.querySelector('#fi-bar').style.width = `${j.percent}%`;
+          setProgress(m.el.querySelector('#fi-bar'), j.percent);
         });
         m.close();
         book = await api(`/api/library/books/${id}`);

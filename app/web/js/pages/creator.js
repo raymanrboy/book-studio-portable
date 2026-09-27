@@ -1,7 +1,7 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
   api, html, ic, ib, setHtml, on, media, modal, toast, runJob, segHtml, syncSeg, setSeg, bytes, dateTime,
-  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, confirmBox,
+  relTime, copyText, openExternal, debounce, keepFocus, fadeImages, slide, confirmBox, setProgress,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
@@ -520,7 +520,7 @@ export async function mount(view) {
         $('#cr-step').textContent = j.step;
         $('#cr-pct').textContent = `${Math.round(j.percent)}%`;
         $('#cr-detail').textContent = j.detail || '';
-        bar.style.width = `${j.percent}%`;
+        setProgress(bar, j.percent);
       });
       if (st.receiptId && !reprint) markSent(st.receiptId, { provider: mode, what: sentText(mode, s.result) });
       if (s.result?.orderError) toast('Книгу створено, але замовлення — ні. Подробиці в картці.', 'error', 7000);

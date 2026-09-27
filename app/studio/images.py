@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+import shutil
 import threading
 import time
 import weakref
@@ -24,12 +25,33 @@ CACHE_DAYS = 21  # a preview nobody asked for in three weeks goes (it is made ag
 FRESH = 86400    # a preview in use gets a new date at most once a day
 
 
-def sha256_file(path: Path) -> str:
+def _version(path: Path):
+    """One version of a file: its place, id, size and time — a replaced page is a new version even when the Canva
+    download kept an older time (the id changes with every file put in place)."""
+    st = path.stat()
+    return (str(path.resolve()), st.st_ino, st.st_size, st.st_mtime_ns), st
+
+
+_digests: dict[tuple, str] = {}
+_digests_lock = threading.Lock()
+
+
+def digest(path: Path) -> str:
+    """The file's sha256, read once per version of it: a Printify send and its upload cache ask for every page, and
+    so does every check of the same folder."""
+    key, _ = _version(path)
+    with _digests_lock:
+        if key in _digests:
+            return _digests[key]
     h = hashlib.sha256()
     with open(path, "rb") as f:
         while chunk := f.read(1024 * 1024):
             h.update(chunk)
-    return h.hexdigest()
+    with _digests_lock:
+        if len(_digests) > 5000:
+            _digests.clear()
+        _digests[key] = h.hexdigest()
+    return _digests[key]
 
 
 def image_info(path: Path) -> dict:
@@ -115,6 +137,30 @@ def _cached(path: Path, stat, max_side: int) -> tuple[str, Path]:
     return key, core.data_path("cache", "thumbs", key[:2], f"{key}.jpg")
 
 
+VIEW_SIDES = (1400, 360)  # the viewer's preview and the page strip's (a page's own check makes both)
+
+
+def _shrink(im: Image.Image, max_side: int) -> Image.Image:
+    """A picture as a preview shows it: turned by its EXIF, no larger than max_side, see-through parts on white."""
+    im = ImageOps.exif_transpose(im)
+    im.thumbnail((max_side, max_side), Image.Resampling.LANCZOS, reducing_gap=3.0)
+    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+        rgba = im.convert("RGBA")
+        bg = Image.new("RGB", rgba.size, (255, 255, 255))
+        bg.paste(rgba, mask=rgba.split()[-1])
+        return bg
+    return im if im.mode == "RGB" else im.convert("RGB")
+
+
+def _store(im: Image.Image, out: Path) -> None:
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=86, optimize=True, progressive=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_suffix(".tmp")
+    tmp.write_bytes(buf.getvalue())
+    tmp.replace(out)
+
+
 def preview(path: Path, max_side: int) -> Path:
     """Returns a cached JPEG preview no larger than max_side (never upscales).
 
@@ -132,22 +178,31 @@ def preview(path: Path, max_side: int) -> Path:
         with _gen_slots:
             with Image.open(source) as im:
                 im.draft("RGB", (max_side, max_side))
-                im = ImageOps.exif_transpose(im)
-                im.thumbnail((max_side, max_side), Image.Resampling.LANCZOS, reducing_gap=3.0)
-                if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
-                    rgba = im.convert("RGBA")
-                    bg = Image.new("RGB", rgba.size, (255, 255, 255))
-                    bg.paste(rgba, mask=rgba.split()[-1])
-                    im = bg
-                elif im.mode != "RGB":
-                    im = im.convert("RGB")
-                buf = io.BytesIO()
-                im.save(buf, "JPEG", quality=86, optimize=True, progressive=True)
-            out.parent.mkdir(parents=True, exist_ok=True)
-            tmp = out.with_suffix(".tmp")
-            tmp.write_bytes(buf.getvalue())
-            tmp.replace(out)
+                _store(_shrink(im, max_side), out)
     return out
+
+
+def _previews_from(im: Image.Image, path: Path, stat, sizes: tuple[int, ...]) -> None:
+    """Previews made from pixels already decoded (the largest first, each smaller one from it), where none is
+    cached yet."""
+    source = im
+    for size in sorted(sizes, reverse=True):
+        key, out = _cached(path, stat, size)
+        with _lock_for(key):
+            if not out.exists():
+                source = _shrink(source.copy() if source is im else source, size)
+                _store(source, out)
+
+
+def copy_previews(src: Path, dst: Path, sizes: tuple[int, ...] = VIEW_SIDES) -> None:
+    """A file copied elsewhere (the order archive) takes the previews already made of it: the same pixels, so they
+    are the same pictures — no page is decoded again."""
+    s_stat, d_stat = src.stat(), dst.stat()
+    for size in sizes:
+        have, want = _cached(src, s_stat, size)[1], _cached(dst, d_stat, size)[1]
+        if have.exists() and not want.exists():
+            want.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(have, want)
 
 
 TEXT_SIDE = 360   # the page preview the order card's strip already asks for — so this costs nothing extra
@@ -202,14 +257,35 @@ def display_size(width: int, height: int) -> int:
     return 1400 if width >= 1.5 * max(height, 1) else 720
 
 
-def check_png(path: Path, full_decode: bool = True) -> tuple[dict | None, str | None]:
-    """Validates a PNG: signature, format, optional full pixel decode.
+_checked: dict[tuple, tuple] = {}
+_checked_lock = threading.Lock()
 
-    Returns (info, error). info has width/height/bytes.
-    """
+
+def check_png(path: Path, previews: tuple[int, ...] = ()) -> tuple[dict | None, str | None]:
+    """Validates a PNG: signature, format, every pixel decoded. Returns (info, error); info has width/height/bytes.
+
+    Remembered per version of the file (`_version()`): a check of a folder after one page was replaced reads only
+    that page (4–5 s → ~0.5 s for a 30-page book). `previews` — sizes made from the pixels just decoded, so the
+    viewer and the page strip are ready when the check ends, without a second decode of every 4000-pixel page."""
     try:
-        size = path.stat().st_size
-        if size == 0:
+        key, st = _version(path)
+    except OSError as err:
+        return None, f"не вдалося прочитати файл ({err})"
+    with _checked_lock:
+        known = _checked.get(key)
+    if known and all(_cached(path, st, s)[1].exists() for s in previews if known[0]):
+        return known
+    result = _check(path, st, previews)
+    with _checked_lock:
+        if len(_checked) > 5000:
+            _checked.clear()
+        _checked[key] = result
+    return result
+
+
+def _check(path: Path, st, previews: tuple[int, ...]) -> tuple[dict | None, str | None]:
+    try:
+        if st.st_size == 0:
             return None, "файл порожній (0 байт)"
         with open(path, "rb") as f:
             if f.read(8) != PNG_SIGNATURE:
@@ -217,10 +293,12 @@ def check_png(path: Path, full_decode: bool = True) -> tuple[dict | None, str | 
         with Image.open(path) as im:
             if im.format != "PNG":
                 return None, f"формат {im.format}, а не PNG"
-            info = {"width": im.width, "height": im.height, "bytes": size, "mode": im.mode,
+            info = {"width": im.width, "height": im.height, "bytes": st.st_size, "mode": im.mode,
                     "frames": getattr(im, "n_frames", 1)}
-            if full_decode:
-                im.load()
+            im.load()
+            if previews:
+                with _gen_slots:
+                    _previews_from(im, path, st, previews)
         return info, None
     except Exception as err:  # Pillow raises many different types for damaged files
         return None, f"не вдалося прочитати файл ({err})"

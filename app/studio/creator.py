@@ -10,7 +10,8 @@ Nothing is ever published, ordered or sent to production.
 from __future__ import annotations
 
 import contextlib
-import copy
+import functools
+import io
 import math
 import os
 import re
@@ -31,11 +32,10 @@ from .vault import vault
 
 UPLOAD_CACHE = core.data_path("creator", "upload-cache.json")
 REPLACED = ".replaced"          # the pages a new one was put over, kept here so «Повернути» can work
-_cache_lock = threading.Lock()
-_validation_cache: dict[tuple, dict] = {}
 # (mode, folder) -> the number of the newest check the page asked for: an older one of the same folder stops
 # (new files or a replaced page start a new check; two full checks of one folder need not run side by side).
 _validating: dict[tuple, int] = {}
+_validating_lock = threading.Lock()
 
 REQUIRED_ADDRESS = ("firstName", "lastName", "addressLine1", "city", "postCode", "country")
 STATE_REQUIRED = {"US", "CA", "AU"}
@@ -49,11 +49,6 @@ def _natural_key(name: str):
 
 def _files_by_lower(folder: Path) -> dict[str, Path]:
     return {p.name.lower(): p for p in folder.iterdir() if p.is_file()}
-
-
-def _signature(folder: Path) -> tuple:
-    return tuple(sorted((p.name, st.st_size, st.st_mtime_ns) for p in folder.iterdir() if p.is_file()
-                        for st in [p.stat()]))
 
 
 def _backups(folder: Path, name: str) -> list[Path]:
@@ -119,18 +114,12 @@ def expected_files(mode: str, count: int | None = None) -> list[dict]:
     return out
 
 
-def _forget_validation(folder: Path) -> None:
-    """A page of this folder changed: its earlier results go (other folders' stay)."""
-    here = str(folder.resolve())
-    with _cache_lock:
-        for key in [k for k in _validation_cache if k[1] == here]:
-            del _validation_cache[key]
-
-
 def validate(mode: str, folder_raw: str, job=None) -> dict:
-    """The full check of a print folder. The result is the caller's own copy (a send keeps using its rows).
-    With a job (the page asked): a newer check of the same folder stops this one; a send's own check
-    (no job) is never stopped."""
+    """The full check of a print folder, each file read once per version of it (images.check_png()). With a job
+    (the page asked): a newer check of the same folder stops this one, and the pages' previews are made from the
+    same decode. A send's own check (no job) is never stopped and makes no previews: the PDF or the uploads that
+    follow read every file anyway, and on Windows a second reader kept a page open while its folder was being
+    removed (a flaky test, 25.09.2026)."""
     folder = Path((folder_raw or "").strip().strip('"'))
     if not folder_raw or not folder.is_dir():
         expected = expected_files(mode)
@@ -139,19 +128,14 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
     drops.touch(folder)
     present = _files_by_lower(folder)
     expected = expected_files(mode, _gelato_page_count(present) if mode == "gelato" else None)
-    key = (mode, str(folder.resolve()), _signature(folder),
-           tuple((e["file"], tuple(e["size"] or ())) for e in expected))
-    with _cache_lock:
-        if key in _validation_cache:
-            return copy.deepcopy(_validation_cache[key])
-        ticket = None
-        if job is not None:
-            slot = key[:2]
-            _validating[slot] = _validating.get(slot, 0) + 1
-            ticket = (slot, _validating[slot])
+    slot = (mode, str(folder.resolve()))
+    ticket = None
+    if job is not None:
+        with _validating_lock:
+            ticket = _validating[slot] = _validating.get(slot, 0) + 1
 
     def superseded() -> bool:
-        return ticket is not None and _validating.get(ticket[0]) != ticket[1]
+        return ticket is not None and _validating.get(slot) != ticket
 
     errors: list[str] = []
     warnings: list[str] = []
@@ -168,12 +152,13 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
 
     rows: list[dict] = []
     todo = [e for e in expected if e["file"].lower() in present]
+    previews = images.VIEW_SIDES if job is not None else ()
 
     def check(entry: dict) -> dict:
         if superseded():
             raise JobError("Цю перевірку замінила новіша.")
         path = present[entry["file"].lower()]
-        info, err = images.check_png(path, full_decode=True)
+        info, err = images.check_png(path, previews)
         row = {"file": entry["file"], "position": entry["position"], "path": str(path), "ok": err is None,
                "error": err}
         if info:
@@ -185,20 +170,16 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
                 row["ok"] = False
                 row["error"] = (f"розмір {info['width']}×{info['height']} px, очікується рівно {size[0]}×{size[1]} px")
         if row["ok"] and mode == "printify":
-            row["sha256"] = images.sha256_file(path)
+            row["sha256"] = images.digest(path)
         # «Повернути» is offered from what is on disk, so it survives leaving the card and a restart.
         row["replaced"] = bool(_backups(folder, entry["file"]))
         return row
 
-    done = [0]
     with ThreadPoolExecutor(max_workers=4) as pool:
-        for row in pool.map(check, todo):
+        for row in pool.map(check, todo):  # in the expected order
             rows.append(row)
-            done[0] += 1
             if job:
-                job.progress("Перевірка файлів…", 100 * done[0] / max(len(todo), 1), row["file"])
-    order = {e["file"]: i for i, e in enumerate(expected)}
-    rows.sort(key=lambda r: order[r["file"]])
+                job.progress("Перевірка файлів…", 100 * len(rows) / max(len(todo), 1), row["file"])
     for row in rows:
         if not row["ok"]:
             label = "Обкладинка" if row["position"] == "cover" else f"Сторінка {row['file'][:-4]}"
@@ -211,8 +192,8 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
                 warnings.append(f"Файли {seen[sha]} і {row['file']} однакові (дублікат зображення).")
             elif sha:
                 seen[sha] = row["file"]
-    result = {
-        "ok": not errors and len(rows) == len(expected),
+    return {
+        "ok": not errors,  # a missing file is an error too
         "folder": str(folder),
         "errors": errors,
         "warnings": warnings,
@@ -222,34 +203,6 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
         "pageCount": len(expected) - 1,
         "totalBytes": sum(r.get("bytes", 0) for r in rows),
     }
-    with _cache_lock:
-        if len(_validation_cache) > 40:
-            _validation_cache.pop(next(iter(_validation_cache)))  # the oldest goes
-        _validation_cache[key] = copy.deepcopy(result)
-    if job is not None:
-        # Only the page's check: the owner is about to look at the pages. A send's own check (no job) is followed
-        # by the PDF or the uploads reading every file anyway — a second reader only competed with them, and on
-        # Windows it kept a page open while its folder was being removed (a flaky test, 25.09.2026).
-        _warm_in_background([r["path"] for r in rows])
-    return result
-
-
-STRIP_PREVIEW = 360  # page thumbnails in the order card's strip (web/js/pages/orders.js asks for this size)
-
-
-def _warm_in_background(paths: list[str]) -> None:
-    threading.Thread(target=_warm_previews, args=(paths,), daemon=True).start()
-
-
-def _warm_previews(paths: list[str]) -> None:
-    """Prepares previews in the background so the viewer and the page strip open instantly
-    (the small one is cut from the large one, so it costs almost nothing extra)."""
-    for p in paths:
-        try:
-            images.preview(Path(p), 1400)
-            images.preview(Path(p), STRIP_PREVIEW)
-        except Exception:
-            pass
 
 
 # ---------------------------------------------------------------- start empty
@@ -272,8 +225,11 @@ def _load_upload_cache() -> dict:
 UPLOADS_KEPT = 5000  # pictures whose Printify id is remembered (~40 books a month for a year); the oldest go
 
 
+_upload_lock = threading.Lock()
+
+
 def _remember_upload(sha: str, image_id: str) -> None:
-    with _cache_lock:
+    with _upload_lock:
         cache = _load_upload_cache()
         cache.pop(sha, None)
         cache[sha] = image_id  # newest last
@@ -783,18 +739,14 @@ def validate_address(address: dict) -> list[str]:
 
 
 MM_TO_PT = 72 / 25.4
-PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-
-
-def _one_idat(src: Path, dst: Path) -> Path:
+def _one_idat(data: bytes) -> bytes:
     """The same PNG with its compressed pixel data in a single IDAT chunk — nothing is re-encoded.
 
     Canva writes thousands of 8 KB IDAT chunks; img2pdf 0.6 joins them one by one (quadratic copying,
     ~3 s per page). Joined once here, img2pdf reads the page in milliseconds.
     """
-    data = src.read_bytes()
-    if data[:8] != PNG_SIGNATURE:
-        return src
+    if data[:8] != images.PNG_SIGNATURE:
+        return data
     chunks, idat, pos = [], [], 8
     while pos + 8 <= len(data):
         length, kind = struct.unpack(">I4s", data[pos:pos + 8])
@@ -803,10 +755,10 @@ def _one_idat(src: Path, dst: Path) -> Path:
             idat.append(data[pos + 8:pos + 8 + length])
         pos += 12 + length
     if len(idat) <= 1:
-        return src
+        return data
     body = b"".join(idat)
     merged = struct.pack(">I", len(body)) + b"IDAT" + body + struct.pack(">I", zlib.crc32(b"IDAT" + body) & 0xFFFFFFFF)
-    out, placed = [PNG_SIGNATURE], False
+    out, placed = [images.PNG_SIGNATURE], False
     for kind, raw in chunks:
         if kind == b"IDAT":
             if not placed:
@@ -814,8 +766,27 @@ def _one_idat(src: Path, dst: Path) -> Path:
                 placed = True
             continue
         out.append(raw)
-    dst.write_bytes(b"".join(out))
-    return dst
+    return b"".join(out)
+
+
+class _Page:
+    """A page of the PDF as img2pdf reads it — when it gets to it: the file is read and joined into one IDAT then,
+    so the book is never held twice in memory (it used to be copied to temporary files first, and the finished
+    PDF built in memory and copied once more: ~2.5–3 GB for 30 pages, 26.09.2026)."""
+
+    def __init__(self, path: Path | None = None, data: bytes | None = None):
+        self.path, self.data = path, data
+
+    def read(self) -> bytes:
+        return self.data if self.data is not None else _one_idat(self.path.read_bytes())
+
+
+@functools.lru_cache(maxsize=4)
+def _blank_png(px: tuple[int, int]) -> bytes:
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", px, (255, 255, 255)).save(buf, "PNG")
+    return buf.getvalue()
 
 
 COVER_TRIM_WARN_MM = 10  # the Canva cover is always a few mm off Gelato's; only a wrong picture trims more
@@ -847,25 +818,21 @@ def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) ->
 
     cover_page = (geo["coverMm"][0] * MM_TO_PT, geo["coverMm"][1] * MM_TO_PT)
     inner_page = (geo["pageMm"][0] * MM_TO_PT, geo["pageMm"][1] * MM_TO_PT)
-    work = out.parent / "pdf-work"
-    work.mkdir(exist_ok=True)
-    try:
-        blank = work / "blank.png"
-        blank_px = tuple(math.ceil(mm / 25.4 * BLANK_DPI) for mm in geo["pageMm"])
-        Image.new("RGB", blank_px, (255, 255, 255)).save(blank)
-        ready = [_one_idat(p, work / f"{i:03d}.png") for i, p in enumerate([cover, *pages])]
-        sequence = [(ready[0], cover_page), (blank, inner_page)] + [(p, inner_page) for p in ready[1:]] + [(blank, inner_page)]
-        sizes = iter([size for _, size in sequence])  # img2pdf lays images out in the order they are given
+    blank = _Page(data=_blank_png(tuple(math.ceil(mm / 25.4 * BLANK_DPI) for mm in geo["pageMm"])))
+    sequence = ([(_Page(cover), cover_page), (blank, inner_page)] + [(_Page(p), inner_page) for p in pages]
+                + [(blank, inner_page)])
+    sizes = iter([size for _, size in sequence])  # img2pdf lays images out in the order they are given
 
-        def layout(img_w: float, img_h: float, _dpi) -> tuple:
-            page_w, page_h = next(sizes)
-            scale = max(page_w / img_w, page_h / img_h)
-            return page_w, page_h, img_w * scale, img_h * scale
+    def layout(img_w: float, img_h: float, _dpi) -> tuple:
+        page_w, page_h = next(sizes)
+        scale = max(page_w / img_w, page_h / img_h)
+        return page_w, page_h, img_w * scale, img_h * scale
 
-        with open(out, "wb") as f:
-            f.write(img2pdf.convert([str(p) for p, _ in sequence], layout_fun=layout))
-    finally:
-        shutil.rmtree(work, ignore_errors=True)
+    # Written straight into the file. The engine is named: img2pdf would quietly take another one on a computer
+    # without pikepdf, and only this one has made the books Gelato printed (requirements.txt).
+    with open(out, "wb") as f:
+        img2pdf.convert(*(page for page, _ in sequence), layout_fun=layout, outputstream=f,
+                        engine=img2pdf.Engine.pikepdf)
 
     with Image.open(cover) as im:
         img_w, img_h = im.size
@@ -1139,7 +1106,6 @@ def replace_page(folder_raw: str, file: str, source_raw: str) -> dict:
         tmp = page.with_name(page.name + ".new")
         shutil.copy2(source, tmp)
         os.replace(tmp, page)   # the page is never half-written: it changes in one step
-    _forget_validation(folder)
     core.log.info("Page %s replaced from %s", page.name, source.name)
     return {"file": page.name, "width": info["width"], "height": info["height"], "bytes": info["bytes"],
             "canRestore": True}
@@ -1153,7 +1119,6 @@ def restore_page(folder_raw: str, file: str) -> dict:
         if not kept:
             raise ApiError("Немає чого повертати.", 404)
         os.replace(kept[-1], page)
-    _forget_validation(folder)
     core.log.info("Page %s restored", page.name)
     return {"file": page.name, "canRestore": bool(_backups(folder, page.name))}
 

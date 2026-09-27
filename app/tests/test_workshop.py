@@ -456,6 +456,21 @@ class APictureIntoItsRow(Base):
             generate._session = None
 
 
+class IdleGeneration(Base):
+    def test_asking_about_an_idle_generation_mode_starts_nothing(self):
+        """Book Studio's start and every background look made the generation mode — the Downloads watcher and F8's
+        thread ran for the whole session, the Workshop used or not (26.09.2026)."""
+        saved = generate._session
+        generate._session = None
+        try:
+            self.assertEqual(generate.status()["active"], None)
+            generate.stop(S)
+            self.assertEqual(routes._gen(SimpleNamespace())["version"], 0)
+            self.assertIsNone(generate._session)
+        finally:
+            generate._session = saved
+
+
 class CatchingDownloads(Base):
     def setUp(self):
         super().setUp()

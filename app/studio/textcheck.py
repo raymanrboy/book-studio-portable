@@ -495,9 +495,32 @@ _active = 0  # checks running now
 _active_lock = threading.Lock()
 
 
-def _cache_key(path: Path, part: str | None, model: str, prompt: str, max_tokens: int | None) -> str:
+_digests: dict[tuple, str] = {}
+_digests_lock = threading.Lock()
+
+
+def _digest(path: Path) -> str:
+    """The file's content (sha1), read once per version of the file. Answers are kept by content, not by folder:
+    every drop copies the files into a new folder, and a book dropped again with one page fixed used to be asked
+    about page by page (~25–35 s) — now only the fixed page is (since 2026-09-26)."""
     stat = path.stat()
-    raw = f"{path.resolve()}|{stat.st_mtime_ns}|{stat.st_size}|{part}|{model}|{max_tokens}|{prompt}"
+    key = (str(path.resolve()), stat.st_size, stat.st_mtime_ns)
+    with _digests_lock:
+        if key in _digests:
+            return _digests[key]
+    h = hashlib.sha1()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    with _digests_lock:
+        if len(_digests) > 5000:
+            _digests.clear()
+        _digests[key] = h.hexdigest()
+    return _digests[key]
+
+
+def _cache_key(path: Path, part: str | None, model: str, prompt: str, max_tokens: int | None) -> str:
+    raw = f"{_digest(path)}|{part}|{model}|{max_tokens}|{prompt}"
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
 
@@ -863,9 +886,7 @@ def _passes(run: "_Run", target, files: dict, count: int, refs: dict, pers: dict
     story = list(range(2, count))
     spreads = [[p for p in (first, first + 1) if p < count] for first in range(2, count, 2)]
     run.total = len(story) + 1 + len(fixed) + len(spreads)
-    run.say("Підготовка…")
-    _ready(run.model, lambda step: run.job.progress(step, 1))
-    run.say("Читання сторінок…")
+    run.say("Читання сторінок…")  # the model is readied by the first question that needs it (_Run.ready())
     pending = [(t, run.pool.submit(run.judge, t)) for t in fixed]
     back = run.pool.submit(run.read, files[0], "back")
     kinds = page_kinds(files, story)  # local, while the model is busy with the cover and the owner's pages
@@ -1073,6 +1094,9 @@ class _Run:
         self.done, self.total = 0, 1
         self.unmatched: list[int] = []  # story pages like no passport text, once the read pass knows them
         self.pool: ThreadPoolExecutor | None = None
+        self._ready_lock = threading.Lock()
+        self._readied: bool | ModelError = False
+        self._pictures: dict[tuple, str] = {}  # a page read and then judged is made into a JPEG once
 
     def __enter__(self) -> "_Run":
         global _active
@@ -1104,6 +1128,26 @@ class _Run:
     def say(self, step: str) -> None:
         self.job.progress(step, 100 * self.done / max(1, self.total))
 
+    def ready(self) -> None:
+        """Ollama and the model, readied once — by the first question the cache can't answer, not at the start: a
+        re-check of the same files is answered from memory and needs no model at all (it used to load 9 GB into the
+        graphics card for nothing, ~4 s, up to ~70 s from disk). A failure stays the whole check's error."""
+        with self._ready_lock:
+            if self._readied is False:
+                try:
+                    _ready(self.model, self.say)
+                    self._readied = True
+                except ModelError as err:
+                    self._readied = err
+            if isinstance(self._readied, ModelError):
+                raise Unavailable(str(self._readied))
+
+    def picture(self, path: Path, part: str | None) -> str:
+        key = (str(path), part)
+        if key not in self._pictures:
+            self._pictures[key] = picture(path, part)
+        return self._pictures[key]
+
     def ask(self, path: Path, part: str | None, prompt: str, schema: dict | None = None,
             max_tokens: int | None = None) -> str:
         if self.cancel.is_set():
@@ -1112,7 +1156,8 @@ class _Run:
         with _cache_lock:
             answer = _cache.get(key)
         if answer is None:
-            image = picture(path, part)
+            self.ready()
+            image = self.picture(path, part)
             try:
                 answer = _chat(self.model, prompt, image, schema, max_tokens)
             except (Unavailable, TimedOut):  # nothing to gain from a second try: one hung page held a check 10 min

@@ -17,8 +17,8 @@ def _variant(body_or_value) -> str | None:
 
 def _live(book_id: str | None = None) -> dict:
     """What a page is drawn from, to tell a change by: the books' files (or one book's) and the generation mode."""
-    s = generate.session()
-    return {"sig": f"{books.signature(book_id)}-{s.version}", "gen": s.status()}
+    gen = generate.status()
+    return {"sig": f"{books.signature(book_id)}-{gen['version']}", "gen": gen}
 
 
 @route("GET", "/api/workshop/books")
@@ -38,7 +38,7 @@ def _get(req: Request):
 
 @route("DELETE", r"/api/workshop/books/([^/]+)")
 def _delete(req: Request):
-    generate.session().stop(req.groups[0])  # nothing waits for a picture of a book that's gone
+    generate.stop(req.groups[0])  # nothing waits for a picture of a book that's gone
     return books.delete_book(req.groups[0])
 
 
@@ -86,9 +86,8 @@ def _place(req: Request):
         result = pictures.place(book_id, key, tmp, name, _variant(req.param("variant")))
     finally:
         tmp.unlink(missing_ok=True)
-    s = generate.session()
-    if key == "cover" and not s.status()["active"]:
-        s.start(book_id, "cover-wrap")  # the cover's picture goes on to its margins by itself
+    if key == "cover" and not generate.status()["active"]:
+        generate.session().start(book_id, "cover-wrap")  # the cover's picture goes on to its margins by itself
     return result
 
 
@@ -106,7 +105,7 @@ def _remove(req: Request):
 
 @route("POST", r"/api/workshop/books/([^/]+)/no-margins")
 def _no_margins(req: Request):
-    generate.session().stop(req.groups[0])
+    generate.stop(req.groups[0])
     return pictures.skip_margins(req.groups[0])
 
 
@@ -169,7 +168,8 @@ def _media(req: Request):
 
 @route("GET", "/api/workshop/gen")
 def _gen(req: Request):
-    return generate.session().status()
+    """The generation mode alone — what workshop-live.js asks while no Workshop page is on screen."""
+    return generate.status()
 
 
 @route("POST", "/api/workshop/gen/start")
@@ -181,7 +181,8 @@ def _gen_start(req: Request):
 
 @route("POST", "/api/workshop/gen/stop")
 def _gen_stop(req: Request):
-    return generate.session().stop()
+    generate.stop()
+    return generate.status()
 
 
 @route("POST", "/api/workshop/gen/next")

@@ -1,7 +1,7 @@
 ---
 title: Text check (AI validator on a local model)
 type: feature
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/studio/textcheck.py
   - app/studio/wording.py
@@ -142,8 +142,13 @@ code:
    `personalization()`: a name without a trailing period ("Leo & Mila."), "from whom" without quotes or
    a space before the comma; `DEFAULT` in any spelling (`is_default()`); the buyer's own dedication is
    split into "Dedication:" / "Closing:".
-8. The model's answers are cached in memory (file + size + modified time + prompt): re-checking the same
-   files is instant; after fixing one page, only that page is re-checked. A broken answer (cut off, not JSON)
+8. The model's answers are cached in memory by the page's **content** (`_digest()`) and the prompt: re-checking
+   the same files is instant; after fixing one page, only that page is re-checked — also when the book is dropped
+   again into a new folder (since 2026-09-26; the key was the file's place, and every drop is a new place). The
+   model is loaded only when a question isn't in the cache (`_Run.ready()`): a re-check answered from memory needs
+   no model at all (it used to load 9 GB into the graphics card, ~4 s or ~70 s, for nothing). A page read and then
+   judged is made into a JPEG once (`_Run.picture()`). The card warms the model after a page is replaced too
+   (`revalidate()`). A broken answer (cut off, not JSON)
    is not kept, so ↻ asks that page again; a call that timed out (`TimedOut`, 300 s) is not tried a second time
    — one hung page held a whole check ~10 minutes (both since the 2026-09-26 audit). A newer check of the same
    order stops the previous one; the card stops its own check (`cancel()`) when it's closed, other files

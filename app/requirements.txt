@@ -1,4 +1,5 @@
-# Tested on this computer (23.09.2026): Python 3.14.4, Pillow 12.2.0, img2pdf 0.6.3, cryptography 46.0.7.
+# Tested on this computer (26.09.2026): Python 3.14.4, Pillow 12.2.0, img2pdf 0.6.3, pikepdf 10.13, cryptography 46.0.7.
 Pillow>=10
 img2pdf>=0.5
+pikepdf>=8     # the engine the Gelato PDFs are written with (creator.build_photobook_pdf names it)
 cryptography>=41
