@@ -9,6 +9,22 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-27 — One place for a Workshop book's pages: its folder
+
+- **Decision (the owner):** "the Workshop and the library keep the same files — one place, no doubles". A book
+  passed on from the Workshop takes its cover and pages from the Workshop book's `pictures/`; the library keeps no
+  copy (`"pagesFrom": "workshop"`, [features/library.md](features/library.md)). A page replaced or added in the
+  Workshop is the library's at once.
+- **Such pages are changed in the Workshop only**: it mirrors and cuts a spread the way the book needs; a picture
+  put in through the passport would skip that. The passport shows them and leads to the Workshop («Змінити в
+  Майстерні»); its thumbnail stays its own.
+- **The texts stay in both places** (the owner: "they can be edited here and there, two places is fine"): copied
+  once on passing; the passport's are the text check's reference, the Workshop's are the agents'. They don't follow
+  each other — the owner was told, and whether they should is his call.
+- **Nothing is lost:** deleting the Workshop book first copies its pages into the library book; the one book passed on
+  earlier (31 of 31 pages the same byte for byte) moves onto the Workshop's pages at start-up, its copies (≈0.3 GB)
+  to the Recycle Bin; a book whose copy differs keeps its own.
+
 ## 2026-09-27 — Profit from 1 October only; the Gelato account's currencies; a smooth switch to his own Gelato
 
 - **Decision (the owner):** accounting starts on 1 October 2026 and does not include earlier orders at all. Not in

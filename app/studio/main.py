@@ -78,6 +78,9 @@ def main(argv: list[str] | None = None) -> int:
     threading.Thread(target=archive.refresh_quietly, daemon=True).start()
     threading.Thread(target=images.prune_cache_quietly, daemon=True).start()  # old previews go
     threading.Thread(target=mockups.clean_runs, daemon=True).start()  # runs Photoshop no longer needs go
+    # A Workshop book passed on before 27.09.2026 kept a copy of its pages in the library: it takes them from the
+    # Workshop instead, its copies to the Recycle Bin (once; a copy that differs keeps its book as it is).
+    threading.Thread(target=library.link_workshop_books, daemon=True).start()
     url = f"{server.base_url()}/"
     if args.no_window:
         print(f"Book Studio: {url}", flush=True)

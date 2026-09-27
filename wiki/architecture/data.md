@@ -21,7 +21,7 @@ code:
 | `settings.json` (+`.bak`) | Non-secret settings: theme, Etsy (shop, return address), Printify (shop, Master, sizes, `manualApprovalConfirmedAt`), Gelato (formats, the EUR→USD rate, `pageCounts` 28 and 30; on launch `_upgrade()` removes the old `pageCount` and switches Gelato's "inch" products to metric), `textcheck` (enabled, model, Ollama address — 127.0.0.1 only) | `core.settings` |
 | `vault.json` (+`.bak`) | Etsy/Printify/Gelato keys, Etsy tokens, and a Gemini key (`gemini_api_key`, for a planned text check — not used yet), DPAPI-encrypted. **Never read or print** | `Vault` |
 | `library/books/<id>/book.json` | The book model ([features/library.md](../features/library.md)); a book passed on from the [Workshop](../features/workshop.md) notes it (`"workshop": "<folder>"`) | `library.save()` |
-| `library/books/<id>/assets/<uuid>.png` | The book's illustrations (originals) | `library._store_asset()` |
+| `library/books/<id>/assets/<uuid>.png` | The book's illustrations (originals); a book passed on from the Workshop keeps its cover and pages in the Workshop's `pipeline/books/<folder>/pictures/` instead (`"pagesFrom": "workshop"`, since 2026-09-27) — only its thumbnail is here | `library._store_asset()` |
 | `library/trash/` | Deleted books (can be restored by hand) | `library._delete()` |
 | `profit/snapshot.json` | A snapshot of the last sync: Etsy receipts, Printify and Gelato orders (slim), the sync cursor, `loaded` — when each of the three lists last loaded in full (the archive only trusts a fresh one). Read from disk once per file change (`load_snapshot()`) | `profit._sync()` |
 | `profit/links.json` | Manual links: "receipt → print order" or "no cost" | `profit._set_link()` |

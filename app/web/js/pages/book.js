@@ -41,12 +41,16 @@ export async function mount(view, [id]) {
     <input type="file" id="bk-many" accept=".png,.jpg,.jpeg,.webp,.json" multiple hidden>`);
 
   const $ = (s) => view.querySelector(s);
+  // A book passed on from the Workshop takes its cover and pages from there (library.follow()): they are changed in
+  // the Workshop, which mirrors and cuts a spread the way the book needs — here they are only shown. Its thumbnail
+  // and texts are the passport's own.
+  const fromWorkshop = () => book.pagesFrom === 'workshop';
 
   // ---------------------------------------------------------------- render parts
   function renderActions() { // drawn once: it never changes
     setHtml($('#bk-actions'), html`<div class="tools">
-      ${ib('folderIn', 'Імпорт з папки', 'data-act="import-folder"')}
-      ${ib('filesPlus', 'Додати файли', 'data-act="add-files"')}
+      ${fromWorkshop() ? ib('workshop', 'Обкладинка й сторінки — у Майстерні: відкрити книгу там', 'data-act="open-workshop"')
+        : html`${ib('folderIn', 'Імпорт з папки', 'data-act="import-folder"')}${ib('filesPlus', 'Додати файли', 'data-act="add-files"')}`}
       ${ib('braces', 'Текст книги', 'data-act="text-menu"')}
       <span class="sep"></span>
       ${ib('more', 'Ще', 'data-act="more"')}
@@ -110,18 +114,20 @@ export async function mount(view, [id]) {
 
   function renderCover(redraw = false) { // `redraw`: its text was being edited by hand
     const cover = book.cover;
+    const own = !fromWorkshop();
     setHtml($('#bk-cover-head'), html`<span class="section-title">Обкладинка</span>
       ${cover ? html`<span class="num">${cover.width}×${cover.height}</span><span class="faint" style="font-size:12px">${bytes(cover.bytes)}</span>` : ''}`);
     patch($('#bk-cover'), [['cover', html`<div class="stack">
-      <div class="cover-box ${cover?.lqip ? 'lqip' : ''}" data-drop="cover" style="${cover ? `aspect-ratio:${cover.width} / ${cover.height}${cover.lqip ? `;background-image:url(${cover.lqip})` : ''}` : 'min-height:220px'}">
+      <div class="cover-box ${cover?.lqip ? 'lqip' : ''}" ${own ? raw('data-drop="cover"') : ''} style="${cover ? `aspect-ratio:${cover.width} / ${cover.height}${cover.lqip ? `;background-image:url(${cover.lqip})` : ''}` : 'min-height:220px'}">
         ${cover ? html`<img data-fade decoding="async" src="${assetUrl(cover, 1400)}" alt="Обкладинка" data-zoom="cover"><div class="gutter"></div>
           <div class="img-actions">
             ${ib('expand', 'Переглянути', 'data-act="zoom" data-key="cover"', { cls: 'sm' })}
-            ${ib('upload', 'Замінити обкладинку', 'data-act="pick" data-slot="cover"', { cls: 'sm' })}
-            ${ib('trash', 'Видалити обкладинку', 'data-act="remove" data-slot="cover"', { cls: 'sm danger' })}
+            ${own ? html`${ib('upload', 'Замінити обкладинку', 'data-act="pick" data-slot="cover"', { cls: 'sm' })}
+              ${ib('trash', 'Видалити обкладинку', 'data-act="remove" data-slot="cover"', { cls: 'sm danger' })}` : ''}
           </div>
           <i class="crops"></i>`
-          : html`<div class="drop-ph" data-act="pick" data-slot="cover" style="min-height:220px"><div class="drop-ico">${ic('upload')}</div><b>Обкладинка</b><span>Перетягніть сюди повний розворот обкладинки</span></div>`}
+          : own ? html`<div class="drop-ph" data-act="pick" data-slot="cover" style="min-height:220px"><div class="drop-ico">${ic('upload')}</div><b>Обкладинка</b><span>Перетягніть сюди повний розворот обкладинки</span></div>`
+          : html`<div class="drop-ph" data-act="open-workshop" style="min-height:220px"><div class="drop-ico">${ic('workshop')}</div><b>Обкладинка</b><span>Її ще немає в Майстерні</span></div>`}
         ${busy.has('cover') ? html`<div class="busy-overlay"><div class="spinner spinner-l"></div></div>` : ''}
       </div>
       ${textBlock('cover', 'Текст обкладинки')}
@@ -143,7 +149,11 @@ export async function mount(view, [id]) {
     const c = book.completeness;
     setHtml($('#bk-pages-head'), html`
       <span class="section-title">Сторінки</span>
-      <span class="num" data-tip="Сторінок з ілюстраціями">${c.illustrations}/16</span>`);
+      <span class="num" data-tip="Сторінок з ілюстраціями">${c.illustrations}/16</span>
+      ${!fromWorkshop() ? '' : book.workshopMissing
+        ? html`<span class="spacer"></span><span class="chip chip-amber">${ic('alert', 'icon-s')}Папки книги ${book.workshopName} у Майстерні немає — сторінки не показати</span>`
+        : html`<span class="spacer"></span><span class="faint" style="font-size:12.5px">з Майстерні · ${book.workshopName}</span>
+          <button type="button" class="btn btn-sm" data-act="open-workshop">${ic('workshop', 'icon-s')}Змінити в Майстерні</button>`}`);
   }
 
   function rowHtml(key) {
@@ -159,16 +169,19 @@ export async function mount(view, [id]) {
     </div>`;
     const busyOv = (slot) => busy.has(slot) ? html`<div class="busy-overlay"><div class="spinner spinner-l"></div></div>` : '';
     const bg = (asset) => (asset?.lqip ? raw(`style="background-image:url(${asset.lqip})"`) : '');
-    const pageSq = (slot, asset, tag, hint) => html`<div class="page-sq ${asset?.lqip ? 'lqip' : ''}" data-drop="${slot}" ${slot.includes(':') ? raw('data-auto="1"') : ''} ${bg(asset)}>
+    const own = !fromWorkshop();
+    const drop = (slot) => (own ? raw(`data-drop="${slot}"${slot.includes(':') ? ' data-auto="1"' : ''}`) : '');
+    const pageSq = (slot, asset, tag, hint) => html`<div class="page-sq ${asset?.lqip ? 'lqip' : ''}" ${drop(slot)} ${bg(asset)}>
       ${asset ? html`<img data-fade decoding="async" src="${assetUrl(asset, 720)}" alt="" data-zoom="${slot}" loading="lazy">
         <div class="img-actions">
           ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${slot}"`, { cls: 'sm' })}
-          ${ib('upload', 'Замінити', `data-act="pick" data-slot="${slot}"`, { cls: 'sm' })}
-          ${slot.includes(':') && s.left && s.right ? ib('swap', 'Поміняти сторінки місцями', `data-act="swap" data-key="${key}"`, { cls: 'sm' }) : ''}
-          ${ib('trash', 'Видалити', `data-act="remove" data-slot="${slot}"`, { cls: 'sm danger' })}
+          ${own ? html`${ib('upload', 'Замінити', `data-act="pick" data-slot="${slot}"`, { cls: 'sm' })}
+            ${slot.includes(':') && s.left && s.right ? ib('swap', 'Поміняти сторінки місцями', `data-act="swap" data-key="${key}"`, { cls: 'sm' }) : ''}
+            ${ib('trash', 'Видалити', `data-act="remove" data-slot="${slot}"`, { cls: 'sm danger' })}` : ''}
         </div>
         <span class="page-tag">${tag}</span>`
-        : html`<div class="drop-ph" data-act="pick" data-slot="${slot}"><div class="drop-ico">${ic('upload')}</div><b>${hint}</b><span class="num">${tag}</span></div>`}
+        : own ? html`<div class="drop-ph" data-act="pick" data-slot="${slot}"><div class="drop-ico">${ic('upload')}</div><b>${hint}</b><span class="num">${tag}</span></div>`
+        : html`<div class="drop-ph" data-act="open-workshop"><div class="drop-ico">${ic('workshop')}</div><b>${hint}</b><span>ще немає в Майстерні</span><span class="num">${tag}</span></div>`}
       ${busyOv(slot)}</div>`;
     const blank = (text) => html`<div class="page-sq blank"><span>${text}</span></div>`;
 
@@ -178,12 +191,12 @@ export async function mount(view, [id]) {
     else {
       const [lp, rp] = pagesOf(+key.slice(6));
       if (s.image) {
-        images = html`<div class="spread-img ${s.image.lqip ? 'lqip' : ''}" data-drop="${key}" ${bg(s.image)}>
+        images = html`<div class="spread-img ${s.image.lqip ? 'lqip' : ''}" ${drop(key)} ${bg(s.image)}>
           <img data-fade decoding="async" src="${assetUrl(s.image, 1400)}" alt="" data-zoom="${key}" loading="lazy"><div class="gutter"></div>
           <div class="img-actions">
             ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${key}"`, { cls: 'sm' })}
-            ${ib('upload', 'Замінити розворот', `data-act="pick" data-slot="${key}"`, { cls: 'sm' })}
-            ${ib('trash', 'Видалити', `data-act="remove" data-slot="${key}"`, { cls: 'sm danger' })}
+            ${own ? html`${ib('upload', 'Замінити розворот', `data-act="pick" data-slot="${key}"`, { cls: 'sm' })}
+              ${ib('trash', 'Видалити', `data-act="remove" data-slot="${key}"`, { cls: 'sm danger' })}` : ''}
           </div>
           <span class="page-tag">${lp}–${rp}</span>${busyOv(key)}<i class="crops"></i></div>`;
       } else {
@@ -376,6 +389,7 @@ export async function mount(view, [id]) {
       if (act === 'edit-text') { editText(t.dataset.key); return; }
       if (act === 'open-canva') { openExternal(book.canvaUrl); return; }
       if (act === 'canva-link') { canvaDialog(book, saveBook); return; }
+      if (act === 'open-workshop') { location.hash = `#/workshop/${encodeURIComponent(book.workshop)}`; return; }
       if (act === 'import-folder') { fromFolder(); return; }
       if (act === 'add-files') { $('#bk-many').click(); return; }
       if (act === 'thumb-etsy') { e.stopPropagation(); thumbFromEtsy(); return; }
@@ -395,7 +409,7 @@ export async function mount(view, [id]) {
             { label: 'Фото лістингу як заставка', icon: 'imageDown', onClick: thumbFromEtsy }] : []),
           { label: book.canvaUrl ? 'Змінити посилання на Canva…' : 'Додати посилання на Canva…', icon: 'link', onClick: () => canvaDialog(book, saveBook) },
           { label: 'Експорт файлів у папку…', icon: 'download', onClick: exportBook },
-          { label: 'Відкрити папку книги', icon: 'folderOpen', onClick: () => post(`/api/library/books/${id}/open-folder`, {}).catch((er) => toast(er.message, 'error')) },
+          { label: fromWorkshop() ? 'Відкрити папку сторінок (Майстерня)' : 'Відкрити папку книги', icon: 'folderOpen', onClick: () => post(`/api/library/books/${id}/open-folder`, {}).catch((er) => toast(er.message, 'error')) },
           '-',
           book.archived ? { label: 'Відновити з архіву', icon: 'restore', onClick: () => setArchived(false) } : { label: 'Перенести в архів', icon: 'archive', onClick: () => setArchived(true) },
           { label: 'Видалити книгу…', icon: 'trash', danger: true, onClick: deleteBook },
@@ -425,7 +439,9 @@ export async function mount(view, [id]) {
   async function deleteBook() {
     const ok = await confirmBox({
       title: 'Видалити книгу?',
-      text: `«${book.title}» разом з усіма ілюстраціями буде прибрано з бібліотеки.\nФайли перемістяться в папку data/library/trash, звідки їх можна повернути вручну.`,
+      text: fromWorkshop()
+        ? `«${book.title}» буде прибрано з бібліотеки (у папку data/library/trash, звідки її можна повернути вручну).\nОбкладинка й сторінки лишаються в Майстерні — там їх ніщо не зачепить.`
+        : `«${book.title}» разом з усіма ілюстраціями буде прибрано з бібліотеки.\nФайли перемістяться в папку data/library/trash, звідки їх можна повернути вручну.`,
       confirm: 'Видалити', danger: true,
     });
     if (!ok) return;
@@ -493,6 +509,10 @@ export async function mount(view, [id]) {
     if (files.length === 1 && /\.json$/i.test(files[0].name)) { importTextJson(id, await files[0].text(), setBook); return; }
     // One picture onto a slot goes to that slot; a folder or a ZIP (one «file» too) is an import wherever it lands.
     const onePicture = files.length === 1 && !/\.zip$/i.test(files[0].name) && !dropped.entries.some((en) => en.isDirectory);
+    if (fromWorkshop() && !(target && onePicture)) { // only the thumbnail takes a picture here
+      toast('Обкладинка й сторінки цієї книги — у Майстерні: змініть їх там', 'info', 4000);
+      return;
+    }
     if (target && onePicture) { uploadTo(target.dataset.drop, files[0], !!target.dataset.auto); return; }
     if (target && files.length === 2 && /^spread\d+/.test(target.dataset.drop)) {
       const base = target.dataset.drop.split(':')[0];

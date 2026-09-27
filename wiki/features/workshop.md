@@ -180,9 +180,14 @@ The library's «Нова книга» dialog in its passing-on form (`openAddBoo
 keys — passed unchecked), "take the listing's main photo as the thumbnail". Then `books.to_library()`: **a library
 book is made** from the book's pages (`Cover.png`, `1…30.png` — a spread's two pages as its left and right), its
 texts (`book-text.md`, the reference for the [text check](text-check.md)) and the listing, titled like the
-Workshop's book and noting it (`"workshop": "<folder>"`); the pages are copied as a job with its progress on the
-button. **The Workshop's book stays** — its folder, originals and variants untouched; it moves to «У бібліотеці» and
-its last step is ticked. A listing another library book already has is refused (409 with that book's id, «Відкрити
+Workshop's book and noting it (`"workshop": "<folder>"`). **Its cover and pages are not copied** (since 2026-09-27;
+the owner: "one place, no doubles"): the library book takes them from this folder's `pictures/` (`"pagesFrom":
+"workshop"`, [library](library.md)) — a page replaced or added here is the library's at once, and the passport
+only shows them («Змінити в Майстерні»). The job makes the pages' previews, with its progress on the button. **The
+Workshop's book stays** — its folder, originals and variants untouched; it moves to «У бібліотеці» and its last
+step is ticked (its panel: «Обкладинку й сторінки бібліотека бере звідси: заміните тут — зміниться й там»).
+Deleting such a book («Ще» → «Видалити книгу») first copies its cover and pages into the library book
+(`library.keep_pages()`; the dialog says so), then the folder goes to the Recycle Bin. A listing another library book already has is refused (409 with that book's id, «Відкрити
 ту книгу»); a book already passed on opens its library book instead.
 
 ## Live, and smooth
@@ -219,7 +224,7 @@ book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and scre
 - [app/studio/workshop/routes.py](../../app/studio/workshop/routes.py) — the routes ([api-routes](../architecture/api-routes.md))
 - [app/studio/clipboard.py](../../app/studio/clipboard.py) — `set_text()`, `set_image()`, `Hotkey`, `sandbox_file()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `save_file()`, `to_recycle_bin()`, `attention()`
-- [app/studio/library.py](../../app/studio/library.py) — `create_book()`, `listing_of()`, `import_pictures()`, `take_listing_image()`
+- [app/studio/library.py](../../app/studio/library.py) — `create_book()`, `listing_of()`, `follow()`, `keep_pages()`, `take_listing_image()`, `PAGES_FROM_WORKSHOP`
 - [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()`, `SORTS`
 - [app/web/js/workshop-bits.js](../../app/web/js/workshop-bits.js) — `picture()`, `checkWord()`, `STATE_WORDS`, `STATE_TEXT`, `ERRORS`
 - [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`

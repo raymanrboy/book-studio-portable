@@ -12,10 +12,12 @@ A book's files in and out — the text JSON, the folder import, the export, the 
 are in library_files.py.
 
 A book made in the Listings mode's Workshop comes here when it is passed on (workshop/books.py, to_library()): a
-library book made from its pages and texts, noting the Workshop book it came from ("workshop").
+library book with its texts and listing that takes its cover and pages from the Workshop book's folder — no copy of
+them here ("workshop", "pagesFrom"; below).
 """
 from __future__ import annotations
 
+import filecmp
 import re
 import shutil
 import threading
@@ -71,7 +73,7 @@ def _empty_slots() -> dict:
     return slots
 
 
-def load(book_id: str) -> dict:
+def _read(book_id: str) -> dict:
     data = core.read_json(_book_dir(book_id) / "book.json")
     if not data:
         raise ApiError("Книгу не знайдено.", 404)
@@ -82,6 +84,12 @@ def load(book_id: str) -> dict:
     text.update({k: v for k, v in (data.get("text") or {}).items() if k in TEXT_KEYS})
     data["text"] = text
     return data
+
+
+def load(book_id: str) -> dict:
+    """A book as it is now — a Workshop book's cover and pages as its folder has them (`follow()`)."""
+    book = _read(book_id)
+    return follow(book_id, book) if from_workshop(book) else book
 
 
 def save(book: dict) -> dict:
@@ -223,7 +231,7 @@ def _backfill_lqip(book_id: str) -> None:
         todo = [a for a in _all_assets(book) if not a.get("lqip")]
         made = {}
         for asset in todo:
-            path = _book_dir(book_id) / "assets" / asset["file"]
+            path = asset_path(book, asset)
             if path.exists():
                 probe = dict(asset)
                 _add_lqip(path, probe)
@@ -243,7 +251,7 @@ def _backfill_lqip(book_id: str) -> None:
 
 
 def _delete_asset_file(book_id: str, asset: dict | None) -> None:
-    if asset and asset.get("file"):
+    if asset and asset.get("file") and not asset.get("workshop"):  # a Workshop page is the Workshop's file
         try:
             (_book_dir(book_id) / "assets" / asset["file"]).unlink(missing_ok=True)
         except OSError:
@@ -292,12 +300,225 @@ def _set_asset(book: dict, slot: str, asset: dict | None) -> list[dict]:
     return old
 
 
+def _slot_asset(book: dict, slot: str) -> dict | None:
+    key, part = _parse_slot(slot)
+    return book.get(key) if key in ("cover", "thumbnail") else book["slots"][key].get(part)
+
+
+# ---------------------------------------------------------------- a Workshop book's pages, where they are
+# A book passed on from the Workshop keeps its cover and pages there — no copy of them here (the owner, 27.09.2026:
+# "one place, no doubles"). The library book names the Workshop's folder ("workshop") and says its pages are that
+# folder's ("pagesFrom": "workshop"): on every load they are the files in its pictures/ as they are now. A page's record
+# keeps what is slow to work out (its size, previews, blurred stand-in) until its file changes — then it gets a new id,
+# so the page's address changes and no old picture stays cached. Such pages are changed in the Workshop only (it
+# mirrors and cuts a spread the way the book needs); the thumbnail stays the library's own.
+
+PAGES_FROM_WORKSHOP = "workshop"
+# (slot, the page's file name without its suffix) in a Workshop book's pictures/: Cover, 1, a spread's two pages, 30.
+WORKSHOP_PAGES = ([("cover", "Cover"), ("page1", "1")]
+                  + [(f"spread{n}:{part}", str(page)) for n in SPREAD_NUMBERS
+                     for part, page in zip(("left", "right"), spread_pages(n))]
+                  + [("page30", "30")])
+
+
+def from_workshop(book: dict) -> bool:
+    return book.get("pagesFrom") == PAGES_FROM_WORKSHOP
+
+
+def _workshop_pictures(book: dict) -> Path | None:
+    """The pictures/ folder of the Workshop book this one takes its pages from; None for a name that isn't one."""
+    from .workshop.books import PICTURES
+    name = str(book.get("workshop") or "")
+    if not name or name != Path(name).name or name.startswith("."):
+        return None
+    return core.WORKSHOP_BOOKS / name / PICTURES
+
+
+def asset_path(book: dict, asset: dict) -> Path:
+    """Where an asset's file is: a Workshop page in the Workshop's folder, anything else in the book's assets/."""
+    if asset.get("workshop"):
+        folder = _workshop_pictures(book)
+        if folder is not None:
+            return folder / Path(asset["workshop"]).name
+    return _book_dir(book["id"]) / "assets" / asset["file"]
+
+
+def _workshop_now(book: dict) -> list[tuple[str, Path | None, list | None]]:
+    """(slot, its file, [modified, size]) of every page as the Workshop's folder has it now; no file — None."""
+    from .workshop.books import _names, picture
+    folder = _workshop_pictures(book)
+    names = set(_names(folder)) if folder is not None else set()
+    out = []
+    for slot, page in WORKSHOP_PAGES:
+        path = stamp = None
+        name = picture(names, page)
+        if name:
+            try:
+                st = (folder / name).stat()
+                path, stamp = folder / name, [st.st_mtime_ns, st.st_size]
+            except OSError:
+                pass
+        out.append((slot, path, stamp))
+    return out
+
+
+def _is_now(asset: dict | None, path: Path | None, stamp: list | None) -> bool:
+    if path is None:
+        return asset is None
+    return bool(asset) and asset.get("workshop") == path.name and asset.get("stamp") == stamp
+
+
+def _workshop_record(path: Path, stamp: list) -> dict | None:
+    try:
+        info = images.image_info(path)
+    except Exception:
+        core.log.warning("Library: the Workshop's page %s is not a readable picture", path)
+        return None
+    asset_id = core.new_id()
+    record = {"id": asset_id, "file": f"{asset_id}{path.suffix.lower()}", "originalName": path.name,
+              "width": info["width"], "height": info["height"], "bytes": stamp[1], "addedAt": core.now_iso(),
+              "workshop": path.name, "stamp": stamp}
+    _add_lqip(path, record)
+    return record
+
+
+def follow(book_id: str, book: dict | None = None, progress=None) -> dict:
+    """A Workshop book's cover and pages as its folder has them now. Records are made only for new or changed files,
+    outside the lock (a page's previews take a moment), and written without a new revision — an edit on an open
+    passport isn't refused because a page changed in the Workshop. `progress(i, n)` — each record made."""
+    book = book if book is not None else _read(book_id)
+    stale = [(slot, path, stamp) for slot, path, stamp in _workshop_now(book)
+             if not _is_now(_slot_asset(book, slot), path, stamp)]
+    if not stale:
+        return book
+    made: dict[str, dict | None] = {}
+    for i, (slot, path, stamp) in enumerate(stale, 1):
+        if path is not None:
+            made[slot] = _workshop_record(path, stamp)
+        if progress:
+            progress(i, len(stale))
+    with _lock:
+        fresh = _read(book_id)
+        if not from_workshop(fresh):
+            return fresh
+        for slot, path, stamp in _workshop_now(fresh):
+            if _is_now(_slot_asset(fresh, slot), path, stamp):
+                continue
+            record = made.get(slot)
+            if path is not None and not _is_now(record, path, stamp):
+                continue  # it changed again meanwhile: the next load makes its record
+            _set_asset(fresh, slot, record)
+        core.write_json(_book_dir(book_id) / "book.json", fresh)
+        return fresh
+
+
+def _workshop_assets(book: dict) -> list[dict]:
+    return [a for a in (_slot_asset(book, slot) for slot, _ in WORKSHOP_PAGES) if a and a.get("workshop")]
+
+
+def workshop_pages(book: dict) -> dict:
+    """How many of the Workshop's pages the book shows, and the files it can't (not a readable picture)."""
+    shown = {a["workshop"] for a in _workshop_assets(book)}
+    files = [path.name for _, path, _ in _workshop_now(book) if path is not None]
+    return {"found": len(shown), "unreadable": [f"{name}: не читається як картинка" for name in files if name not in shown]}
+
+
+def keep_pages(book_id: str) -> int:
+    """Before its Workshop book goes to the Recycle Bin: its pages are copied here, and from then on the library
+    book keeps them itself, like any book. Returns how many were copied."""
+    book = load(book_id)
+    if not from_workshop(book):
+        return 0
+    target = _book_dir(book_id) / "assets"
+    target.mkdir(parents=True, exist_ok=True)
+    kept: dict[str, dict] = {}
+    for slot, _ in WORKSHOP_PAGES:
+        asset = _slot_asset(book, slot)
+        if asset and asset.get("workshop"):
+            own = {k: v for k, v in asset.items() if k not in ("workshop", "stamp")}
+            try:
+                shutil.copy2(asset_path(book, asset), target / own["file"])
+            except OSError as err:
+                raise ApiError(f"Не вдалося скопіювати сторінки в бібліотеку ({err}) — книгу з Майстерні не видалено.")
+            kept[slot] = own
+    with _lock:
+        fresh = _read(book_id)
+        for slot, _ in WORKSHOP_PAGES:
+            asset = _slot_asset(fresh, slot)
+            if slot in kept or (asset and asset.get("workshop")):
+                _set_asset(fresh, slot, kept.get(slot))
+        fresh.pop("pagesFrom", None)
+        save(fresh)
+    core.log.info("Library: %s keeps its %d pages — its Workshop book is going", book_id, len(kept))
+    return len(kept)
+
+
+def link_workshop_books() -> None:
+    """Books passed on from the Workshop before 27.09.2026 kept a copy of its pages here. Where every copied page is
+    the Workshop's file byte for byte, the book takes its pages from the Workshop instead and the copies go to the
+    Recycle Bin; a book with a page that differs (changed here after it was passed on) is left as it is. At start-up,
+    in the background; a book done once isn't looked at again."""
+    for book in all_books():
+        if book.get("workshop") and not from_workshop(book):
+            try:
+                _link_copied(book)
+            except Exception:
+                core.log.exception("Library: %s not moved onto its Workshop book's pages", book["id"])
+
+
+def _link_copied(book: dict) -> bool:
+    folder = _workshop_pictures(book)
+    if folder is None or not folder.is_dir():
+        return False
+    if any(s.get("image") for key, s in book["slots"].items() if key.startswith("spread")):
+        return False  # a spread in one picture: not how the Workshop keeps it
+    now = {slot: path for slot, path, _ in _workshop_now(book)}
+    copies = {slot: _slot_asset(book, slot) for slot, _ in WORKSHOP_PAGES}
+    for slot, asset in copies.items():
+        if asset and not (now[slot] and filecmp.cmp(asset_path(book, asset), now[slot], shallow=False)):
+            core.log.info("Library: %s keeps its own pages — %s differs from its Workshop book's", book["id"], slot)
+            return False
+    with _lock:
+        fresh = _read(book["id"])
+        if fresh.get("rev") != book.get("rev"):
+            return False  # changed meanwhile: looked at again at the next start
+        for slot, _ in WORKSHOP_PAGES:
+            _set_asset(fresh, slot, None)
+        fresh["pagesFrom"] = PAGES_FROM_WORKSHOP
+        save(fresh)
+    follow(book["id"])
+    files = [asset_path(book, a) for a in copies.values() if a]
+    if files:
+        bin_folder = _book_dir(book["id"]) / f"copied-pages-{time.strftime('%Y%m%d-%H%M%S')}"
+        bin_folder.mkdir()
+        for f in files:
+            shutil.move(str(f), bin_folder / f.name)
+        try:
+            desktop.to_recycle_bin(bin_folder)
+        except OSError as err:
+            core.log.warning("Library: the copied pages of %s stay in %s (%s)", book["id"], bin_folder, err)
+    core.log.info("Library: %s takes its pages from the Workshop; %d copies went to the Recycle Bin", book["id"],
+                  len(files))
+    return True
+
+
+def _own_slot(book: dict, slot: str) -> None:
+    """A Workshop book's cover and pages are changed in the Workshop — the passport only shows them."""
+    if from_workshop(book) and slot != "thumbnail":
+        raise ApiError("Обкладинка й сторінки цієї книги — у Майстерні: змініть їх там.", 409)
+
+
 # ---------------------------------------------------------------- routes
 
 def _book_response(book: dict) -> dict:
     out = dict(book)
     out["completeness"] = completeness(book)
     out["labels"] = {k: slot_label(k) for k in ["cover"] + SLOT_KEYS}
+    if from_workshop(book):
+        from .workshop.books import display_name
+        folder = _workshop_pictures(book)
+        out["workshopName"] = display_name(book["workshop"])
+        out["workshopMissing"] = folder is None or not folder.parent.is_dir()  # its folder renamed or gone
     return out
 
 
@@ -460,6 +681,7 @@ def _put_asset(book_id: str, slot: str, asset: dict) -> dict:
     with _lock:
         try:
             book = load(book_id)
+            _own_slot(book, slot)
             gone = _set_asset(book, slot, asset)
             save(book)
         except Exception:
@@ -489,7 +711,7 @@ def _upload_asset(req: Request):
     slot = req.param("slot") or ""
     name = (req.param("name") or "image.png")[:200]
     _parse_slot(slot)
-    load(book_id)  # 404 early
+    _own_slot(load(book_id), slot)  # 404 early; a Workshop book's page is changed there
     tmp = core.data_path("tmp", f"upload-{core.new_id()}{Path(name).suffix.lower()}")
     try:
         req.body_to_file(tmp, MAX_IMAGE_BYTES)
@@ -514,6 +736,7 @@ def _remove_asset(req: Request):
     with _lock:
         book = load(book_id)
         key, part = _parse_slot(slot)
+        _own_slot(book, slot)
         if key in ("cover", "thumbnail"):
             old = _set_asset(book, slot, None)
         else:
@@ -534,6 +757,7 @@ def _swap_halves(req: Request):
         book = load(req.groups[0])
         if not re.fullmatch(r"spread\d+", key) or key not in book["slots"]:
             raise ApiError("Невідомий розворот.")
+        _own_slot(book, key)
         s = book["slots"][key]
         s["left"], s["right"] = s.get("right"), s.get("left")
         save(book)
@@ -562,7 +786,9 @@ def import_pictures(book_id: str, files: list[tuple[str, Path, str]], job, step:
 
 @route("POST", r"/api/library/books/([0-9a-f]{32})/open-folder")
 def _open_folder(req: Request):
-    desktop.open_in_explorer(_book_dir(req.groups[0]))
+    book = load(req.groups[0])
+    pages = _workshop_pictures(book) if from_workshop(book) else None
+    desktop.open_in_explorer(pages if pages is not None and pages.is_dir() else _book_dir(book["id"]))
     return {"ok": True}
 
 
@@ -571,13 +797,23 @@ def _open_original(req: Request):
     file = (req.json or {}).get("file") or ""
     if not re.fullmatch(r"[0-9a-f]{32}\.(png|jpg|jpeg|webp)", file):
         raise ApiError("Невідомий файл.")
-    desktop.open_image_file(_book_dir(req.groups[0]) / "assets" / file)
+    desktop.open_image_file(_file_of(req.groups[0], file))
     return {"ok": True}
+
+
+def _file_of(book_id: str, name: str) -> Path:
+    """An asset's file by its name: in the book's assets/, or a Workshop page in the Workshop's folder."""
+    path = _book_dir(book_id) / "assets" / name
+    if path.is_file():
+        return path
+    book = load(book_id)
+    asset = next((a for a in _workshop_assets(book) if a["file"] == name), None)
+    return asset_path(book, asset) if asset else path
 
 
 @route("GET", r"/media/book/([0-9a-f]{32})/([0-9a-f]{32}\.(?:png|jpg|jpeg|webp))", auth="media")
 def _media(req: Request):
-    path = _book_dir(req.groups[0]) / "assets" / req.groups[1]
+    path = _file_of(req.groups[0], req.groups[1])
     if not path.is_file():
         raise ApiError("Не знайдено.", 404)
     if req.param("w"):

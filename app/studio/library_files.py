@@ -12,8 +12,8 @@ from pathlib import Path
 
 from . import core, desktop, drops
 from .jobs import jobs
-from .library import (FIRST_SPREAD, LAST_SPREAD, SLOT_KEYS, SPREAD_NUMBERS, _book_dir, _book_response, _lock,
-                      import_pictures, load, save, spread_pages)
+from .library import (FIRST_SPREAD, LAST_SPREAD, SLOT_KEYS, SPREAD_NUMBERS, _book_response, _lock,
+                      asset_path, from_workshop, import_pictures, load, save, spread_pages)
 from .server import ApiError, Request, route
 
 
@@ -168,7 +168,6 @@ def scan_folder(folder: Path) -> dict:
 
 def export_book(book: dict, target: Path, job) -> dict:
     target.mkdir(parents=True, exist_ok=True)
-    src_dir = _book_dir(book["id"]) / "assets"
     plan: list[tuple[dict, str]] = []
     if book.get("cover"):
         plan.append((book["cover"], "Cover"))
@@ -191,7 +190,7 @@ def export_book(book: dict, target: Path, job) -> dict:
     for i, (asset, name) in enumerate(plan, 1):
         job.progress("Експорт файлів…", 100 * i / max(len(plan), 1), f"{name}")
         ext = Path(asset["file"]).suffix
-        shutil.copy2(src_dir / asset["file"], target / f"{name}{ext}")
+        shutil.copy2(asset_path(book, asset), target / f"{name}{ext}")  # a Workshop book's page: from its folder
     text = export_text_json(book)
     if any(v for k, v in text.items() if k != "spreads") or any(text["spreads"].values()):
         (target / "book-text.json").write_text(json.dumps(text, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -265,9 +264,15 @@ def _text_json(req: Request):
     return export_text_json(load(req.groups[0]))
 
 
+def _pictures_here(book: dict) -> None:
+    """A Workshop book's cover and pages are changed in the Workshop: its passport imports no pictures."""
+    if from_workshop(book):
+        raise ApiError("Обкладинка й сторінки цієї книги — у Майстерні: змініть їх там. Текст можна вставити як JSON.", 409)
+
+
 @route("POST", r"/api/library/books/([0-9a-f]{32})/folder-scan")
 def _folder_scan(req: Request):
-    load(req.groups[0])
+    _pictures_here(load(req.groups[0]))
     return scan_folder(Path((req.json or {}).get("path") or ""))
 
 
@@ -278,7 +283,7 @@ def _folder_import(req: Request):
     scan = scan_folder(Path(body.get("path") or ""))
     include_text = bool(body.get("includeText", True))
     selected = set(body.get("slots") or scan["mapping"].keys())
-    load(book_id)
+    _pictures_here(load(book_id))
 
     def run(job) -> dict:
         items = [(slot, Path(info["path"]), info["name"]) for slot, info in scan["mapping"].items() if slot in selected]

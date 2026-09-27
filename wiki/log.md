@@ -3,6 +3,23 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-27] update | One place for a Workshop book's pages
+
+- A book passed on from the Workshop takes its cover and pages from the Workshop's folder — no copy in the library
+  (`library.follow()`, `asset_path()`, `"pagesFrom": "workshop"`); a page changed there is the library's at once (a
+  new address, so no old picture stays cached). The passport only shows them («Змінити в Майстерні»; the server
+  refuses a picture write, 409); the thumbnail and texts are its own; export and «відкрити оригінал» read the
+  Workshop's files.
+- Deleting the Workshop book copies its pages into the library first (`keep_pages()`; the dialog says so). The one
+  book passed on before (31 of 31 pages identical) moves onto the Workshop's pages at start-up
+  (`link_workshop_books()`), its copies to the Recycle Bin.
+- Checked: 9 new tests (`OnePlaceForThePages`); the preview — the earlier book moved over at start-up (11 copies to
+  the preview's bin), its passport (only the thumbnail changeable, «ще немає в Майстерні» on empty places), a spread
+  dropped in the Workshop shown in the library at once (7 → 8 of 16), «Змінити в Майстерні», a book passed on the
+  new way, a passed book deleted in the Workshop — the library kept its cover and all its pages.
+- Not checked: the owner's real book (it moves at his next start of the program).
+- Pages: features (library, workshop), architecture/data, decisions, dev/testing.
+
 ## [2026-09-27] plan | His own Gelato account: a smooth switch
 
 - Found: swapping the Gelato key would drop the old account's orders — the queue's in-flight orders back to «нове»

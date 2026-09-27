@@ -469,9 +469,13 @@ def open_agent(book_id: str | None) -> str:
 
 def delete_book(book_id: str) -> dict:
     """The book out of the Workshop: its whole folder (the agents' files, the pages, the originals) into the
-    Windows Recycle Bin — restorable until it is emptied (the owner, 2026-09-26: "the book and all its files")."""
+    Windows Recycle Bin — restorable until it is emptied (the owner, 2026-09-26: "the book and all its files").
+    A book already in the library takes its pages from here: they are copied there first, so it keeps them."""
     path = book_path(book_id)
     number, title = _title(book_id)
+    passed = library_book(path)
+    if passed:
+        library.keep_pages(passed["id"])
     desktop.to_recycle_bin(path)
     core.log.info("Workshop: book %s went to the Recycle Bin", book_id)
     return {"deleted": book_id, "title": title, "number": number}
@@ -480,33 +484,31 @@ def delete_book(book_id: str) -> dict:
 # ---------------------------------------------------------------- into the library
 
 def to_library(book_id: str, body: dict) -> dict:
-    """«Передати в бібліотеку»: a library book made from this one — its pages (pictures/: Cover.png, 1…30.png), its
-    texts (book-text.md) and its Etsy listing (checked by the page, read only, or typed in). The pages are copied —
-    the Workshop's folder stays as it is — and the book's last step ticks at once. A job: the page shows its
-    progress."""
+    """«Передати в бібліотеку»: a library book made from this one — its texts (book-text.md) and its Etsy listing
+    (checked by the page, read only, or typed in); its cover and pages (pictures/: Cover.png, 1…30.png) it takes from
+    this folder, not a copy (library.follow(), 27.09.2026). The book's last step ticks at once. A job: the page shows
+    how the pages' previews are made."""
     from .rows import book_texts
     path = book_path(book_id)
     passed = library_book(path)
     if passed:
         raise ApiError("Цю книгу вже передано в бібліотеку.", 409, {"bookId": passed["id"]})
     listing = library.listing_of(body)
-    names = set(_names(path / PICTURES))
-    wanted = [("cover", "Cover")]
-    for key, pages in ROWS:
-        wanted += [(f"{key}:{part}", page) for part, page in zip(("left", "right"), pages)] if len(pages) == 2             else [(key, pages[0])]
-    files = [(slot, path / PICTURES / name, name) for slot, page in wanted if (name := picture(names, page))]
-    book = library.create_book(listing, _title(book_id)[1], workshop=book_id)  # a listing another book has: 409
+    book = library.create_book(listing, _title(book_id)[1], workshop=book_id,  # a listing another book has: 409
+                               pagesFrom=library.PAGES_FROM_WORKSHOP)
     update_state(path, lambda d: d.update(library={"id": book["id"], "listingId": listing["id"], "at": core.now_iso()}))
     core.log.info("Workshop: %s passed to the library as %s, listing %s", book_id, book["id"], listing["id"])
 
     def run(job) -> dict:
-        errors = library.import_pictures(book["id"], files, job, "Передаю сторінки…")
+        job.progress("Передаю сторінки…", 5)
+        library.follow(book["id"], progress=lambda i, n: job.progress("Передаю сторінки…", 5 + 85 * i / n))
+        pages = library.workshop_pages(library.load(book["id"]))
         texts = book_texts(path)
         if texts:
             library.update_texts(book["id"], texts)
         if body.get("useListingImage"):
             job.progress("Фото лістингу…", 97)
             library.take_listing_image(library.load(book["id"]))
-        return {"book": library.summary(library.load(book["id"])), "pages": len(files) - len(errors), "errors": errors}
+        return {"book": library.summary(library.load(book["id"])), "pages": pages["found"], "errors": pages["unreadable"]}
 
     return {"jobId": jobs.start("workshop-to-library", run, exclusive=f"workshop-{book_id}").id}

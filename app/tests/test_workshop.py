@@ -17,7 +17,7 @@ from types import SimpleNamespace
 from PIL import Image, ImageDraw
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder and the sandbox)
-from studio import core, library
+from studio import core, library, library_files
 from studio.jobs import jobs
 from studio.server import ApiError
 from studio.workshop import books, generate, pictures, routes, rows
@@ -630,6 +630,136 @@ class PassingToTheLibrary(Base):
         self.assertEqual(states(NEW)["library"], "done")
         shutil.rmtree(library._book_dir(res["book"]["id"]))
         self.assertEqual(states(NEW)["library"], "todo")
+
+
+class OnePlaceForThePages(Base):
+    """A book passed on takes its cover and pages from the Workshop's folder — no copy in the library (the owner,
+    27.09.2026: "one place, no doubles")."""
+    wait = PassingToTheLibrary.wait
+
+    def passed(self) -> dict:
+        pictures.place(S, "cover", spread_png(self.tmp / "c.png", (2000, 1000)), "c.png")
+        pictures.skip_margins(S)
+        return library.load(self.wait(routes._to_library(request(S, {"listingRef": LISTING})))["book"]["id"])
+
+    def media(self, book: dict, name: str):
+        """The picture's address, as the page asks for it."""
+        return library._media(SimpleNamespace(groups=(book["id"], name), param=lambda _: None))
+
+    def test_the_pages_are_the_workshops_files_and_nothing_is_copied(self):
+        book = self.passed()
+        pages = self.dir / S / "pictures"
+        self.assertEqual(book["pagesFrom"], "workshop")
+        self.assertEqual(library.asset_path(book, book["cover"]), pages / "Cover.png")
+        self.assertEqual(library.asset_path(book, book["slots"]["spread2"]["left"]), pages / "2.png")
+        self.assertFalse(any((library._book_dir(book["id"]) / "assets").glob("*")))    # not one copy
+        self.assertEqual(self.media(book, book["cover"]["file"]).file, pages / "Cover.png")
+        self.assertEqual(library.load(book["id"])["cover"]["id"], book["cover"]["id"])  # a page read once
+
+    def test_a_page_changed_in_the_workshop_is_the_librarys_at_once(self):
+        book = self.passed()
+        before = book["slots"]["page1"]["image"]
+        page = Image.new("RGB", (1200, 1200), (20, 160, 90))
+        page.save(self.tmp / "p1.png", "PNG")
+        pictures.place(S, "page1", self.tmp / "p1.png", "p1.png")
+        after = library.load(book["id"])["slots"]["page1"]["image"]
+        self.assertNotEqual(after["id"], before["id"])          # a new address: no old picture stays cached
+        self.assertNotEqual(after["stamp"], before["stamp"])
+        fresh = library.load(book["id"])
+        self.assertEqual(self.media(fresh, after["file"]).file, self.dir / S / "pictures" / after["workshop"])
+        with self.assertRaises(ApiError):
+            self.media(fresh, before["file"])
+        self.assertEqual(library.load(book["id"])["rev"], book["rev"])  # an open passport's edit isn't refused for it
+
+    def test_a_page_taken_out_in_the_workshop_leaves_its_place_empty(self):
+        book = self.passed()
+        pictures.remove(S, "page1")
+        after = library.load(book["id"])
+        self.assertIsNone(after["slots"]["page1"]["image"])
+        self.assertEqual(library.completeness(after)["illustrations"], library.completeness(book)["illustrations"] - 1)
+
+    def test_a_workshop_folder_gone_by_hand_is_said(self):
+        book = self.passed()
+        self.assertFalse(library._book_response(book)["workshopMissing"])
+        (self.dir / S).rename(self.dir / "41.renamed-by-hand")
+        after = library.load(book["id"])
+        self.assertTrue(library._book_response(after)["workshopMissing"])
+        self.assertIsNone(after["cover"])                                      # nothing to show, nothing lost:
+        (self.dir / "41.renamed-by-hand").rename(self.dir / S)                  # the files are where they were
+        self.assertEqual(library.completeness(library.load(book["id"])), library.completeness(book))
+
+    def test_the_passport_changes_only_the_thumbnail(self):
+        book = self.passed()
+        cover = (self.dir / S / "pictures" / "Cover.png").read_bytes()
+        for call in (lambda: library._upload_asset(request(book["id"], slot="page1", name="p.png")),
+                     lambda: library._remove_asset(SimpleNamespace(groups=(book["id"],), param=lambda n: "cover")),
+                     lambda: library._swap_halves(request(book["id"], {"slot": "spread2"})),
+                     lambda: library_files._folder_scan(request(book["id"], {"path": str(self.tmp)}))):
+            with self.assertRaises(ApiError) as refused:
+                call()
+            self.assertEqual(refused.exception.status, 409)
+        thumb = library._store_asset(book["id"], spread_png(self.tmp / "t.png", (800, 800)), "t.png")
+        library._put_asset(book["id"], "thumbnail", thumb)
+        after = library.load(book["id"])
+        self.assertEqual(after["thumbnail"]["id"], thumb["id"])                  # the thumbnail is the library's own
+        self.assertEqual((self.dir / S / "pictures" / "Cover.png").read_bytes(), cover)
+        self.assertEqual(after["cover"]["id"], book["cover"]["id"])
+
+    def test_the_export_takes_the_pages_from_the_workshop(self):
+        book = self.passed()
+        out = library_files.export_book(book, self.tmp / "export", SimpleNamespace(progress=lambda *a, **k: None))
+        self.assertEqual(out["files"], 10)
+        self.assertEqual((self.tmp / "export" / "Cover.png").read_bytes(),
+                         (self.dir / S / "pictures" / "Cover.png").read_bytes())
+
+    def test_deleting_the_workshop_book_leaves_the_library_its_pages(self):
+        book = self.passed()
+        cover = (self.dir / S / "pictures" / "Cover.png").read_bytes()
+        books.delete_book(S)
+        self.assertFalse((self.dir / S).exists())                               # into the (sandbox's) Recycle Bin
+        after = library.load(book["id"])
+        self.assertNotIn("pagesFrom", after)
+        self.assertEqual(library.completeness(after), library.completeness(book))
+        self.assertEqual(library.asset_path(after, after["cover"]).read_bytes(), cover)
+        self.assertEqual(self.media(after, after["cover"]["file"]).file.parent, library._book_dir(book["id"]) / "assets")
+
+    def copied_the_old_way(self) -> dict:
+        """A book passed on before 27.09.2026: its pages copied into the library, and a thumbnail of its own."""
+        pictures.place(S, "cover", spread_png(self.tmp / "c.png", (2000, 1000)), "c.png")
+        pictures.skip_margins(S)
+        book = library.create_book({"id": LISTING}, "Little lamb prayers", workshop=S)
+        self.made.append(book["id"])
+        folder = self.dir / S / "pictures"
+        names = set(books._names(folder))
+        files = [(slot, folder / name, name) for slot, page in library.WORKSHOP_PAGES
+                 if (name := books.picture(names, page))]
+        library.import_pictures(book["id"], files, SimpleNamespace(progress=lambda *a, **k: None))
+        thumb = library._store_asset(book["id"], spread_png(self.tmp / "t.png", (800, 800)), "t.png")
+        library._put_asset(book["id"], "thumbnail", thumb)
+        return library.load(book["id"])
+
+    def test_a_book_passed_on_before_takes_the_workshop_pages_and_its_copies_go(self):
+        book = self.copied_the_old_way()
+        library.link_workshop_books()
+        after = library.load(book["id"])
+        self.assertEqual(after["pagesFrom"], "workshop")
+        self.assertEqual(library.completeness(after), library.completeness(book))
+        self.assertEqual(library.asset_path(after, after["cover"]), self.dir / S / "pictures" / "Cover.png")
+        own = sorted(p.name for p in (library._book_dir(book["id"]) / "assets").iterdir())
+        self.assertEqual(own, [after["thumbnail"]["file"]])                     # only the thumbnail is left here
+        binned = [p for p in core.data_path("recycle-bin").iterdir() if p.name.startswith("copied-pages-")]
+        self.assertEqual(len(binned), 1)
+        self.assertEqual(len(list(binned[0].iterdir())), 10)                    # the copies: in the Recycle Bin
+        library.link_workshop_books()                                           # once is enough
+        self.assertEqual(library.load(book["id"])["cover"]["id"], after["cover"]["id"])
+
+    def test_a_book_with_a_page_changed_since_keeps_its_own(self):
+        book = self.copied_the_old_way()
+        spread_png(library.asset_path(book, book["slots"]["page1"]["image"]), (900, 900))  # changed in the passport
+        library.link_workshop_books()
+        after = library.load(book["id"])
+        self.assertNotIn("pagesFrom", after)
+        self.assertEqual(len(list((library._book_dir(book["id"]) / "assets").iterdir())), 11)
 
 
 if __name__ == "__main__":
