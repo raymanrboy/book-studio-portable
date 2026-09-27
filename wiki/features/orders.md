@@ -226,7 +226,8 @@ one column.
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`, `all_facts()`, `carrier_label()`
 - [app/studio/archive.py](../../app/studio/archive.py) — `card_facts()`, `_reuse()`
 - [app/studio/wording.py](../../app/studio/wording.py) — `custom_text()`, `clean_name()`, `guess_child_name()` ("custom text" fields, and the child's name)
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `countStages()`, `emptyOrders()`, `filesBadge()`, `checkNotices()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()`
+- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `STAGES`, `STAGE_EMPTY`, `STAGE_LABEL`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `countStages()`, `emptyOrders()`, `filesBadge()`, `checkNotices()`, `syncOrders()`, `runningSync()`, `watchSync()`, `spreadsOf()`, `folderViewerItems()`, `smoothWheel()`
+- [app/web/js/drop.js](../../app/web/js/drop.js) — `receiveDrop()`, `wireFolderDrop()`
 - [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`, `pageNo()`, `pageWord()` (the viewer with a page replaced and put back — shared with the Order Creator, since 2026-09-27)
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `escBack()`, `notFound()` (Esc to the queue; the card that could not open)
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`

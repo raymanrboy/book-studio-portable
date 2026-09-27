@@ -7,7 +7,7 @@ code:
 ---
 # Tests
 
-> 352 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
+> 355 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
 > **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
 > whatever it was before) in `.tmp\` of the repository on drive D, wiped at the end; buyers are made up. The
 > Workshop's tests run in its sandbox (`BOOK_STUDIO_SANDBOX`): made-up books, Downloads, clipboard and Recycle Bin
@@ -60,9 +60,11 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
   (1 run in 5, until 2026-09-25): a send's own folder check started the preview warm-up. Now only the page's
   check makes previews (since 2026-09-26 from its own decode, `images.check_png(previews=…)`); `PrintifyValidation`
   keeps it that way.
-- **The interface's scripts parse** (`test_scripts.py`, since 2026-09-27): there are no browser tests, so each
-  script is checked by Node.js as the ES module it is — `node --check` on a `.js` file doesn't parse it as one (an
-  identifier declared twice made the Order Creator a blank page and no check noticed). Skipped without Node.js.
+- **The interface's scripts** (`test_scripts.py`, since 2026-09-27): there are no browser tests, so each script is
+  checked by Node.js as the ES module it is (`node --check` on a `.js` file doesn't parse it as one — an identifier
+  declared twice made the Order Creator a blank page and no check noticed; skipped without Node.js); and, read by a
+  small tokenizer (`tests/jstokens.py`), no script uses a name another script exports without importing it (the
+  page would only fail when that line runs) and none imports a name it never uses.
 - Opening the browser — `mock.patch("webbrowser.open")`.
 - **Photoshop** — never started by the tests: `mockups.launch` is swapped for a stand-in that writes the
   status file; the Photoshop script itself (ExtendScript is plain old JavaScript) runs under **Node.js**

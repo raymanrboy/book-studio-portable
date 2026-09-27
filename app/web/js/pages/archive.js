@@ -2,13 +2,13 @@
 // back at what was printed and to reprint it in a couple of clicks. The server keeps the files 14 days
 // after the order became "shipped" (studio/archive.py); "Не видаляти" keeps a book until unmarked.
 import {
-  api, post, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural, patch,
-  enterOnce, escBack, notFound,
+  api, post, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural,
+  patch, enterOnce, escBack, notFound,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
-  STAGE_LABEL, providerName, countryName, addressFromEtsy, folderViewerItems, smoothWheel, trackChips,
-  statusChip, receiptCopy, copyChip, childOf as childOfTitle, proofHtml, fieldsHtml, addressHtml, etsyAddressLines, svcChip,
+  STAGE_LABEL, providerName, countryName, addressFromEtsy, folderViewerItems, smoothWheel, trackChips, statusChip,
+  receiptCopy, copyChip, childOf as childOfTitle, proofHtml, fieldsHtml, addressHtml, etsyAddressLines, svcChip,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
 

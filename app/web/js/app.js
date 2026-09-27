@@ -1,5 +1,7 @@
 // App shell: icon rail, routing between pages (View Transitions), theme, heartbeat.
-import { post, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, closeMenu, hideTip } from './lib.js';
+import {
+  post, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, closeMenu, hideTip,
+} from './lib.js';
 import { isKept, stash, unstash, release } from './keep.js';
 import { waiting } from './handoff.js';
 import { store, refreshInfo, whenInfoChanges } from './info.js';

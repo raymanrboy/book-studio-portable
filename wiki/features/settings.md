@@ -1,10 +1,11 @@
 ---
 title: Settings
 type: feature
-updated: 2026-09-23
+updated: 2026-09-27
 code:
   - app/studio/settings_api.py
   - app/web/js/pages/settings.js
+  - app/web/js/pages/settings-dialogs.js
 ---
 # Settings
 
@@ -64,7 +65,8 @@ ever read.
 
 ## Where in the code
 
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `oauthFlow()`, `pickMaster()`, `SECRET_LABELS`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
+- [app/web/js/pages/settings-dialogs.js](../../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`, `pickMaster()`
 - [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
 - [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `status()`, `import_session()`

@@ -6,10 +6,10 @@ import {
 } from '../lib.js';
 import { openFolderViewer } from '../folder-viewer.js';
 import {
-  COUNTRIES, STAGES, addressFromEtsy, spreadsOf, receiveDrop, dropLabel,
-  wireFolderDrop, matchesOrder, variationsOf, pagesText, restorable, childOf, receiptOfTitle,
-  holdClicks, orderSync, pageVersion, filesBadge, checkNotices, svcChip, countStages, emptyOrders,
+  COUNTRIES, STAGES, addressFromEtsy, spreadsOf, matchesOrder, variationsOf, pagesText, restorable, childOf,
+  receiptOfTitle, holdClicks, orderSync, pageVersion, filesBadge, checkNotices, svcChip, countStages, emptyOrders,
 } from '../order-bits.js';
+import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { take } from '../handoff.js';
 import { markSent, finish } from '../keep.js';
 

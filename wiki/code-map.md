@@ -96,14 +96,18 @@ code:
 | [js/lightbox.js](../app/web/js/lightbox.js) | The image viewer | `openLightbox()` |
 | [js/handoff.js](../app/web/js/handoff.js) | Passing data between pages in memory | `give()`, `take()`, `waiting()` |
 | [js/keep.js](../app/web/js/keep.js) | Saved work on a new order: a hidden card and Order Creator, "draft created" | `stash()`, `unstash()`, `settle()`, `markSent()`, `sentOf()`, `finish()` |
-| [js/order-bits.js](../app/web/js/order-bits.js) | Shared by Orders, the order archive and the Order Creator | `STAGES`, `proofHtml()`, `filesBadge()`, `checkNotices()`, `fieldsHtml()`, `addressHtml()`, `svcChip()`, `countStages()`, `emptyOrders()`, `statusChip()`, `alsoSentChip()`, `restorable()`, `trackChips()`, `receiptCopy()`, `isNameField()`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `childOf()`, `spreadsOf()`, `receiveDrop()`, `wireFolderDrop()`, `smoothWheel()` |
+| [js/order-bits.js](../app/web/js/order-bits.js) | Shared by Orders, the order archive and the Order Creator | `STAGES`, `proofHtml()`, `filesBadge()`, `checkNotices()`, `fieldsHtml()`, `addressHtml()`, `svcChip()`, `countStages()`, `emptyOrders()`, `statusChip()`, `alsoSentChip()`, `restorable()`, `trackChips()`, `receiptCopy()`, `isNameField()`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `childOf()`, `spreadsOf()`, `smoothWheel()` |
+| [js/drop.js](../app/web/js/drop.js) | Files and folders dragged into the window: read in full (a folder's tree, a ZIP) and copied into the program — the order card, the Order Creator, the passport, the mockups | `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()` |
+| [js/add-book.js](../app/web/js/add-book.js) | «Нова книга» and the Workshop's «Передати в бібліотеку» — one dialog | `openAddBook()` |
+| [js/workshop-bits.js](../app/web/js/workshop-bits.js) | What the Workshop's two pages share: a picture's address, the check's word, a step's state in words | `picture()`, `checkWord()`, `STATE_WORDS`, `STATE_TEXT` |
 | [js/folder-viewer.js](../app/web/js/folder-viewer.js) | The viewer of a book's print folder, a page replaced and put back there — the order card and the Order Creator | `openFolderViewer()`, `pageNo()`, `pageWord()` |
 | [js/pages/orders.js](../app/web/js/pages/orders.js) | Orders: the queue and the card (each book of an order worked on separately) | `mountQueue()`, `mountCard()`, `readyBooks()` |
-| [js/pages/library.js](../app/web/js/pages/library.js) | The library gallery, a new book, the guide | `mount()`, `openAddBook()`, `saveGuide()` |
+| [js/pages/library.js](../app/web/js/pages/library.js) | The library gallery, the guide | `mount()`, `saveGuide()` |
 | [js/pages/book.js](../app/web/js/pages/book.js) | A book's passport | `mount()` |
 | [js/pages/creator.js](../app/web/js/pages/creator.js) | The Order Creator (one draft for every book of an order) | `mount()`, `folderBlock()` |
 | [js/pages/archive.js](../app/web/js/pages/archive.js) | Order archive: the list, a book, reprinting | `mount()`, `mountList()`, `mountBook()` |
 | [js/pages/settings.js](../app/web/js/pages/settings.js) | Settings | `mount()` |
+| [js/pages/settings-dialogs.js](../app/web/js/pages/settings-dialogs.js) | Settings' dialogs: the Etsy sign-in, the Printify Master | `oauthFlow()`, `pickMaster()` |
 | [js/pages/workshop.js](../app/web/js/pages/workshop.js) | The Workshop's gallery: the books with their path, a new book in Antigravity | `mount()`, `picture()`, `checkWord()` |
 | [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: the path strip and its panel, the rows, the cover's two stages, hero variants, «Передати в бібліотеку» | `mount()` |
 | [js/workshop-live.js](../app/web/js/workshop-live.js) | The Workshop's live link: what changed, the generation mode's state and bar, the rail's dot and title | `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genBar()` |

@@ -100,7 +100,7 @@ code:
   the server what changed every 1.5 s while a Workshop page is on screen (every 4 s while a picture is awaited
   elsewhere) and the page redraws only what changed with `patch()`; it also keeps the generation mode's state, draws
   its bar (`genBar()`) and tells the shell through `bs:busy` (the rail's dot, the window's title). «Передати в
-  бібліотеку» is the library's `openAddBook()` in its passing-on form (`transfer.send` runs the job).
+  бібліотеку» is `openAddBook()` (add-book.js — the Library page itself isn't loaded) in its passing-on form (`transfer.send` runs the job).
 - [The Mockups](../features/mockups.md) — `pages/mockups.js`, the separate utility's page moved in (its own
   window `mockups.html` + `mockups-shell.js` went). It keeps the usual page contract and adds `keep()`/`revive()`
   so the book, the picks and a run survive stepping away; it tells the rail about a run through the `bs:busy`

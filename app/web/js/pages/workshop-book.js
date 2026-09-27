@@ -6,17 +6,15 @@
 // in its row, cut and flipped, and the next prompt is already in the clipboard. The page redraws in place whenever a
 // file changes (workshop-live.js, patch()): what stayed, stays — pictures, scroll, an opened prompt.
 import {
-  api, post, html, ic, ib, raw, setHtml, on, toast, menu, confirmBox, upload, copyText, fadeImages, highlightTokens, plural,
-  patch, syncSeg, runJob, topLayer, notFound,
+  api, post, html, ic, ib, raw, setHtml, on, toast, menu, confirmBox, upload, copyText, fadeImages, highlightTokens,
+  plural, patch, syncSeg, runJob, topLayer, notFound,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
-import { openAddBook } from './library.js';
-import { picture, checkWord } from './workshop.js';
+import { openAddBook } from '../add-book.js';
+import { picture, checkWord, ERRORS, STATE_TEXT } from '../workshop-bits.js';
 import { watch, refresh, act, startGen, genAction, genBar, genState, waitingFor } from '../workshop-live.js';
 
 const IMG_RE = /\.(png|jpe?g|webp)$/i;
-const ERRORS = ['помилка', 'помилки', 'помилок'];
-const STATE_TEXT = { done: 'Готово', part: 'Почато', todo: 'Ще ні', skip: 'Не потрібно — книга без героя (Tier S)' };
 const CUT = { sides: 'обрізано з боків', 'top-bottom': 'обрізано зверху й знизу' };
 // Who writes a step's file — said where the file isn't there yet.
 const WHO = {

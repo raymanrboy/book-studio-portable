@@ -131,7 +131,7 @@ All six are 300 ppi, 8-bit RGB, and every smart object inside is 300 ppi. They c
 - **Where:** in this repository, a separate small program (its own shortcut, window and port) that
   reuses Book Studio's parts, so moving it into Book Studio later is cheap:
   - [app/studio/drops.py](../../app/studio/drops.py) — `extract_zip()` (a dropped ZIP; moved out of creator.py for this)
-  - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `receiveDrop()` (drag-and-drop in the window)
+  - [app/web/js/drop.js](../../app/web/js/drop.js) — `receiveDrop()` (drag-and-drop in the window)
   - [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()` (a Canva export → `Cover.png` + `1…N.png`)
   - [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_folder()`, `open_app_window()` (the folder dialog, the window)
   - spreads as pairs — [book structure](../rules/book-structure.md): `[endpaper | 1]`, `[2 | 3]`, `[4 | 5]`, …

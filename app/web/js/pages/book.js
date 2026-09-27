@@ -6,7 +6,7 @@ import {
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { refreshInfo } from '../info.js';
-import { dropContents, receiveDrop } from '../order-bits.js';
+import { dropContents, receiveDrop } from '../drop.js';
 
 const SPREADS = Array.from({ length: 14 }, (_, i) => i + 2);
 const SLOT_KEYS = ['page1', ...SPREADS.map((n) => `spread${n}`), 'page30'];

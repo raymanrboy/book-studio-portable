@@ -195,7 +195,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 
 - [app/studio/etsy.py](../app/studio/etsy.py) — `SCOPES`, `get()`, `start_oauth()`, `_oauth_callback()`
 - [app/studio/settings_api.py](../app/studio/settings_api.py) — `_open_url()`
-- [app/web/js/pages/settings.js](../app/web/js/pages/settings.js) — `oauthFlow()`
+- [app/web/js/pages/settings-dialogs.js](../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`
 - [app/studio/printify.py](../app/studio/printify.py) — `_check()`, `call()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `create_product()`
 - [app/studio/creator/printify_send.py](../app/studio/creator/printify_send.py) — `create_printify_draft()`, `_master_fingerprint()`
 - [app/studio/gelato.py](../app/studio/gelato.py) — `_allowed()`, `create_draft_order()`

@@ -53,7 +53,7 @@ Code paths below are relative to the repository root.
 | Ручне затвердження (Manual) | A Printify shop setting; the program asks about it once | [printify.py](../app/studio/printify.py) `manual_approval_confirmed()`; [creator.js](../app/web/js/pages/creator.js) `confirmManualApproval()` |
 | Матовий фініш | The Master variant with "Matte" in its name | [creator/printify_send.py](../app/studio/creator/printify_send.py) `matte_variant()` |
 | Тимчасове посилання (для Gelato) | A Cloudflare tunnel to a single PDF | [tunnel.py](../app/studio/tunnel.py) `FileTunnel` |
-| Перетягнути папку або ZIP | Copying it into the program and unpacking it | [order-bits.js](../app/web/js/order-bits.js) `receiveDrop()`; [drops.py](../app/studio/drops.py) `extract_zip()` |
+| Перетягнути папку або ZIP | Copying it into the program and unpacking it | [drop.js](../app/web/js/drop.js) `receiveDrop()`; [drops.py](../app/studio/drops.py) `extract_zip()` |
 | Очистити адресу (гумка) | The icon in the address block | [creator.js](../app/web/js/pages/creator.js) `addressCard()` |
 | Заповнити із замовлення Etsy | Picking an order in the Order Creator | [creator.js](../app/web/js/pages/creator.js) `fromEtsy()` |
 

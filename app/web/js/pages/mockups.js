@@ -6,11 +6,11 @@
 // away (keep()): the book, the picks and a run going on in Photoshop wait for him; a small dot on the rail says a
 // run is on, and a notice says when it ends.
 import {
-  api, post, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered, remember,
-  setProgress, patch, tellBusy,
+  api, post, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered,
+  remember, setProgress, patch, tellBusy,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
-import { receiveDrop, dropLabel, wireFolderDrop } from '../order-bits.js';
+import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 
 const THUMB_H = 360;          // a spread tile (two 180-px pages side by side)
 const SLOT_H = 120;           // a spread in a template slot

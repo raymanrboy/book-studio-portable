@@ -2,10 +2,11 @@
 // Antigravity write each book (the book console moved in, 26.09.2026). A card shows how far the book is on its path;
 // the gallery follows the files by itself (an agent's new book appears, a caught picture shows) without a reload.
 import {
-  api, post, html, ic, ib, setHtml, on, media, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg, highlightTokens,
-  remembered, remember,
+  api, post, html, ic, ib, setHtml, on, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg,
+  highlightTokens, remembered, remember,
 } from '../lib.js';
 import { watch, genBar, genAction, genState, act } from '../workshop-live.js';
+import { STATE_WORDS, checkWord, picture } from '../workshop-bits.js';
 
 const PREF = 'bs-workshop-view';
 const SORTS = [
@@ -14,20 +15,7 @@ const SORTS = [
   { value: 'least', label: 'Спочатку найменш готові', icon: 'alertCircle' },
 ];
 const BOOKS = ['книга', 'книги', 'книг'];
-const ERRORS = ['помилка', 'помилки', 'помилок'];
-const STATE_WORDS = { done: 'готово', part: 'почато', todo: 'ще ні', skip: 'не потрібно' };
 
-/** A book's picture address; with its version the browser keeps it for good — nothing blinks on a redraw. */
-export function picture(b, area, name, w, variant = '') {
-  const v = b.v?.[`${area}/${variant ? `variants/${variant}/` : ''}${name}`];
-  const path = `/media/workshop/${encodeURIComponent(b.id)}/${area}${variant ? `/v/${encodeURIComponent(variant)}` : ''}/${encodeURIComponent(name)}`;
-  return media(path, { w, ...(v ? { v } : {}) });
-}
-
-/** «Промпти · GO» — the book check's word for a card or a step. */
-export function checkWord(c) {
-  return c.go ? 'GO' : `${c.fails} ${plural(c.fails, ERRORS)}`;
-}
 
 export async function mount(view) {
   const saved = remembered(PREF, {});

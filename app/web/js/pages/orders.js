@@ -9,11 +9,11 @@ import {
 } from '../lib.js';
 import { openFolderViewer, pageNo } from '../folder-viewer.js';
 import {
-  STAGES, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, addressFromEtsy,
-  receiveDrop, dropLabel, wireFolderDrop, smoothWheel, trackChips, statusChip, receiptCopy, copyChip,
-  restorable, alsoSentChip, holdClicks, orderSync, pageVersion, proofHtml, filesBadge, checkNotices, fieldsHtml,
-  addressHtml, etsyAddressLines, svcChip, countStages, emptyOrders,
+  STAGES, STAGE_LABEL, matchesOrder, providerName, planText, pagesText, addressFromEtsy, smoothWheel, trackChips,
+  statusChip, receiptCopy, copyChip, restorable, alsoSentChip, holdClicks, orderSync, pageVersion, proofHtml,
+  filesBadge, checkNotices, fieldsHtml, addressHtml, etsyAddressLines, svcChip, countStages, emptyOrders,
 } from '../order-bits.js';
+import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { give } from '../handoff.js';
 import { settle, sentOf, keptOrder, finish } from '../keep.js';
 

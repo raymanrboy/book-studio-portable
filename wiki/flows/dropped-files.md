@@ -1,11 +1,12 @@
 ---
 title: Dragging folders and ZIP archives
 type: flow
-updated: 2026-09-26
+updated: 2026-09-27
 code:
   - app/web/js/order-bits.js
   - app/web/js/app.js
   - app/studio/drops.py
+  - app/web/js/drop.js
 ---
 # Dragging folders and ZIPs
 
@@ -16,7 +17,7 @@ code:
 ## How it happens
 
 1. During the `drop` event, the contents have to be read right away — the browser "forgets" them right
-   after ([order-bits.js](../../app/web/js/order-bits.js) `dropContents()`).
+   after ([drop.js](../../app/web/js/drop.js) `dropContents()`).
 2. `receiveDrop()` creates a session (32 hex) and:
    - **ZIP** → one request `POST /api/drop/zip?session=&name=[&text=1]`; the server saves the
      archive alongside and unpacks only pictures (and `.json`, if `text=1`) into
@@ -49,7 +50,7 @@ lies, without going through the window (`drops.archive_folder()` names the folde
   deep.
 - All of `data/tmp/dropped` is wiped on every launch (`clear_drops()`).
 - The field files are dragged over lights up (`drop-hot`); the zone is an element with `data-folder-drop`
-  ([order-bits.js](../../app/web/js/order-bits.js) `wireFolderDrop()`).
+  ([drop.js](../../app/web/js/drop.js) `wireFolderDrop()`).
 - **Only files from outside the window** (since 2026-09-26): the browser hands a picture dragged from the page
   itself over as a file — its preview — so a Workshop spread dragged a little and let go replaced itself with a
   square of its own (the owner). `app.js` notes a drag that starts in the window (`dragstart`) and, before any page
@@ -60,7 +61,7 @@ lies, without going through the window (`drops.archive_folder()` names the folde
 ## Where in the code
 
 - [app/web/js/app.js](../../app/web/js/app.js) — `dragFromPage`, `ownPicture()`: a picture dragged from the window never drops back in
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()`, `collect()`
+- [app/web/js/drop.js](../../app/web/js/drop.js) — `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()`, `collect()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`, `_drop_root()`, `_drop_rel()`, `extract_zip()`, `archive_folder()`, `dropped_folder()`, `dropped_top()`, `_drop_file()`, `_drop_zip()`, `_drop_done()`, `MAX_DROP_FILE`, `MAX_DROP_ZIP`
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `takeDrop()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `dropFolder()`

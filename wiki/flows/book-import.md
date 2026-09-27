@@ -17,7 +17,7 @@ code:
 ## Steps
 
 1. **Library → "+"** → a listing link → a check → "Create book"
-   ([library.js](../../app/web/js/pages/library.js) `openAddBook()` → `POST /api/library/books`).
+   ([add-book.js](../../app/web/js/add-book.js) `openAddBook()` → `POST /api/library/books`).
 2. **Prepare the files**: "Guide" (the icon next to sorting) → "Save to file" (the file is highlighted
    in Explorer and can be dragged into an agent's chat), or "Copy"
    ([library.js](../../app/web/js/pages/library.js) `saveGuide()`, `copyGuide()`).
@@ -47,7 +47,7 @@ code:
 
 - [app/studio/library.py](../../app/studio/library.py) — `_create()`, `_upload_asset()`, `_store_asset()`, `_add_lqip()`, `_backfill_lqip()`
 - [app/studio/library_files.py](../../app/studio/library_files.py) — `scan_folder()`, `_folder_scan()`, `_folder_import()`, `_import_text()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `receiveDrop()` (a folder, ZIP, or files, with `withText`)
+- [app/web/js/drop.js](../../app/web/js/drop.js) — `receiveDrop()` (a folder, ZIP, or files, with `withText`)
 - [app/studio/drops.py](../../app/studio/drops.py) — `extract_zip()` (with `with_text`)
 - Tests: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PartialBookImport`, `PreparationGuide`)
 

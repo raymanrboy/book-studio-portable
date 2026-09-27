@@ -70,7 +70,7 @@ code:
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
 | GET | `/api/library/books` | token | `_list` | library.js, workshop-book.js (the passing-on dialog's duplicate check) |
-| POST | `/api/library/books` | token | `_create` | library.js `openAddBook` |
+| POST | `/api/library/books` | token | `_create` | add-book.js `openAddBook` |
 | GET | `/api/library/guide` | token | `_guide` | library.js `copyGuide` |
 | POST | `/api/library/guide/save` | token | `_guide_save` | library.js `saveGuide` |
 | GET | `/api/library/books/([0-9a-f]{32})` | token | `_get` | book.js |
@@ -106,7 +106,7 @@ The Listings mode's books in development — the book pipeline's folders ([featu
 | POST | `/api/workshop/books/([^/]+)/mark` | token | `_mark` | workshop-book.js (`{step, on}` — Canva, the mockups) |
 | POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|agent, name}` — Explorer, or one file in its program) |
 | POST | `/api/workshop/agent` | token | `_agent` | workshop.js «+», workshop-book.js «Відкрити агента» (Antigravity on `pipeline/`; «нова книга» / «Продовжуємо книгу …» into the clipboard) |
-| POST | `/api/workshop/books/([^/]+)/to-library` | token | `_to_library` | library.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage` → `{jobId}`; a listing another library book has → 409 with its `bookId`) |
+| POST | `/api/workshop/books/([^/]+)/to-library` | token | `_to_library` | add-book.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage` → `{jobId}`; a listing another library book has → 409 with its `bookId`) |
 | POST | `/api/workshop/books/([^/]+)/place` | token | `_place` | workshop-book.js (`?key=&name=&variant=`, body — the picture: cut, flipped, two pages; the cover goes on to wait for its margins) |
 | POST | `/api/workshop/books/([^/]+)/flip` | token | `_flip` | workshop-book.js ⇄ (`{key, variant}`) |
 | POST | `/api/workshop/books/([^/]+)/remove` | token | `_remove` | workshop-book.js (`{key, variant}` — into `.replaced/`) |
