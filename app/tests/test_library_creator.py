@@ -8,7 +8,7 @@ from unittest import mock
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import core, creator, gelato, library, printify
+from studio import core, creator, gelato, library, library_files, printify
 from studio.server import ApiError, Request
 
 
@@ -20,22 +20,22 @@ class TextJson(unittest.TestCase):
     def test_full(self):
         raw = json.dumps({"cover": "{Name}'s Book", "page1": "Dear {Name}", "page30": "The end",
                           "spreads": {str(n): f"Spread {n}" for n in range(2, 16)}})
-        text, problems, notes = library.parse_text_json(raw)
+        text, problems, notes = library_files.parse_text_json(raw)
         self.assertEqual(len(text), 17)
         self.assertEqual(problems, [])
         self.assertEqual(text["spread15"], "Spread 15")
 
     def test_partial_and_extra(self):
-        text, problems, notes = library.parse_text_json('{"cover": "C", "spreads": {"2": "two", "99": "x"}}')
+        text, problems, notes = library_files.parse_text_json('{"cover": "C", "spreads": {"2": "two", "99": "x"}}')
         self.assertEqual(set(text), {"cover", "spread2"})
         self.assertIn("Немає тексту «page1»", problems)
         self.assertTrue(notes)
 
     def test_invalid(self):
         with self.assertRaises(ApiError):
-            library.parse_text_json("{not json")
+            library_files.parse_text_json("{not json")
         with self.assertRaises(ApiError):
-            library.parse_text_json("[1, 2]")
+            library_files.parse_text_json("[1, 2]")
 
 
 class FolderScan(unittest.TestCase):
@@ -52,7 +52,7 @@ class FolderScan(unittest.TestCase):
                 png(gen / f"{a}-{b}.png", (80, 40))
             png(gen / "notes.png")
             (root / "book-text.json").write_text("{}", encoding="utf-8")
-            scan = library.scan_folder(root)
+            scan = library_files.scan_folder(root)
             self.assertEqual(scan["slotsFound"], 16)
             self.assertIn("cover", scan["mapping"])
             self.assertEqual(scan["mapping"]["spread15"]["name"], "28-29.png")
@@ -64,7 +64,7 @@ class FolderScan(unittest.TestCase):
             root = Path(d)
             for i in range(1, 31):
                 png(root / f"{i}.png")
-            scan = library.scan_folder(root)
+            scan = library_files.scan_folder(root)
             self.assertEqual(scan["slotsFound"], 16)
             self.assertEqual(scan["mapping"]["spread2:left"]["name"], "2.png")
             self.assertEqual(scan["mapping"]["spread2:right"]["name"], "3.png")

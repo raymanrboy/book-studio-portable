@@ -4,6 +4,8 @@ type: feature
 updated: 2026-09-27
 code:
   - app/studio/library.py
+  - app/studio/library_files.py
+  - app/studio/library_guide.md
   - app/web/js/pages/library.js
   - app/web/js/pages/book.js
   - app/studio/images.py
@@ -106,11 +108,14 @@ single file.
 `agent_guide()` builds Markdown from the same rules as import: a table of file names (`Cover.png`,
 `Thumbnail.png`, `1.png`, `2-3.png` or `2.png`+`3.png` … `30.png`), the `book-text.json` format
 (`cover`, `page1`, `spreads` with keys "2"–"15", `page30`; `{Name}`, `{Gifter}`; `\n` for line breaks).
-A test guarantees the guide and the importer never drift apart.
+A test guarantees the guide and the importer never drift apart. The guide's words live in their own Markdown file,
+`app/studio/library_guide.md` (since 2026-09-27) — they can be edited without touching the code; the table of
+names (`$table`) and the JSON template (`$json`) are filled in by `agent_guide()`.
 
 ## Where in the code
 
-- [app/studio/library.py](../../app/studio/library.py) — `load()`, `save()`, `summary()`, `completeness()`, `all_books()`, `create_book()`, `listing_of()`, `take_listing_image()`, `_store_asset()`, `_set_asset()`, `_parse_slot()`, `import_pictures()`, `scan_folder()`, `parse_text_json()`, `export_text_json()`, `export_book()`, `agent_guide()`, `_backfill_lqip()`, `SLOT_KEYS`, `TEXT_KEYS`, `LISTING_FIELDS`, `GUIDE_NAME`
+- [app/studio/library.py](../../app/studio/library.py) — `load()`, `save()`, `summary()`, `completeness()`, `all_books()`, `create_book()`, `listing_of()`, `take_listing_image()`, `_store_asset()`, `_set_asset()`, `_parse_slot()`, `import_pictures()`, `_backfill_lqip()`, `SLOT_KEYS`, `TEXT_KEYS`, `LISTING_FIELDS`
+- [app/studio/library_files.py](../../app/studio/library_files.py) — `scan_folder()`, `parse_text_json()`, `export_text_json()`, `export_book()`, `agent_guide()`, `GUIDE_NAME`, `GUIDE` — the guide's words are [library_guide.md](../../app/studio/library_guide.md) (since 2026-09-27; `$table` and `$json` are filled in from the importer's rules)
 - [app/web/js/pages/library.js](../../app/web/js/pages/library.js) — `mount()`, `card()`, `apply()`, `openAddBook()`, `saveGuide()`, `copyGuide()`, `SORTS`
 - [app/web/js/pages/book.js](../../app/web/js/pages/book.js) — `mount()`, `renderHero()`, `renderCover()`, `rowHtml()`, `editText()`, `uploadTo()`, `importDropped()`, `importFolder()`, `importTextJson()`, `canvaDialog()`, `lightboxItems()`, `onDrop()`
 - [app/studio/images.py](../../app/studio/images.py) — `preview()`, `lqip()`, `display_size()`, `compose_spread()`

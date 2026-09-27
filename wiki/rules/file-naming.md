@@ -80,7 +80,7 @@ Only pictures (and `.json` for the library) are accepted, up to 6 levels deep; `
 
 - [app/studio/drops.py](../../app/studio/drops.py) — `export_files()`, `page_number()`, `_LAST_NUMBER`, `UPSCAYL_TAIL`, `COVER_NAME` (one set for the print folder, the library and the mockups), `_drop_rel()`, `DROPS`
 - [app/studio/orders.py](../../app/studio/orders.py) — `arrange_pages()`, `page_options()`, `pages_word()`, `ranges()`
-- [app/studio/library.py](../../app/studio/library.py) — `scan_folder()`, `_NUM_RE`, `agent_guide()`
+- [app/studio/library_files.py](../../app/studio/library_files.py) — `scan_folder()`, `_NUM_RE`, `agent_guide()`
 - [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `validate()`, `expected_files()`, `_gelato_page_count()`, `replace_page()`, `restore_page()`, `REPLACED`
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `read_book()` (a demo book: any page count)
 - Tests: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`FolderScan`, `GelatoValidation`)

@@ -9,7 +9,7 @@ from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
 from tests.fixtures import png
-from studio import drops, orders
+from studio import drops, library_files, orders
 from studio.server import ApiError
 
 
@@ -208,9 +208,9 @@ class PreparationGuide(unittest.TestCase):
         import json
         import re
         from studio import library
-        guide = library.agent_guide()
+        guide = library_files.agent_guide()
         block = re.search(r"```json\n(\{.*?\n\})\n```", guide, re.S).group(1)
-        text, problems, _ = library.parse_text_json(block)     # the template itself imports without a problem
+        text, problems, _ = library_files.parse_text_json(block)     # the template itself imports without a problem
         self.assertEqual(problems, [])
         self.assertEqual(len(text), len(library.TEXT_KEYS))
         self.assertEqual(sorted(json.loads(block)["spreads"]), sorted(str(n) for n in library.SPREAD_NUMBERS))
@@ -218,7 +218,7 @@ class PreparationGuide(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             for name in set(names):
                 png(Path(d) / name)
-            scan = library.scan_folder(Path(d))
+            scan = library_files.scan_folder(Path(d))
         self.assertEqual(scan["slotsFound"], scan["slotsTotal"])  # every slot of the book is filled
         self.assertIn("cover", scan["mapping"])
         self.assertIn("thumbnail", scan["mapping"])
@@ -229,10 +229,10 @@ class PreparationGuide(unittest.TestCase):
         from types import SimpleNamespace
         from studio import desktop, library
         with tempfile.TemporaryDirectory() as d, mock.patch.object(desktop, "open_in_explorer") as shown:
-            res = library._guide_save(SimpleNamespace(json={"folder": d}))
+            res = library_files._guide_save(SimpleNamespace(json={"folder": d}))
             saved = Path(res["path"])
             self.assertEqual(saved.parent, Path(d))
-            self.assertEqual(saved.read_text(encoding="utf-8"), library.agent_guide())
+            self.assertEqual(saved.read_text(encoding="utf-8"), library_files.agent_guide())
             shown.assert_called_once_with(saved)
 
 
@@ -245,7 +245,7 @@ class PartialBookImport(unittest.TestCase):
             root = Path(d)
             for name in ("3_upscayl_4x_ultrasharp-4x.png", "4.png", "9.png", "30.png"):   # single illustration pages
                 png(root / name)
-            scan = library.scan_folder(root)
+            scan = library_files.scan_folder(root)
         # spread N holds pages 2N−2 and 2N−1: page 3 → spread 2 right, 4 → spread 3 left, 9 → spread 5 right
         self.assertEqual(sorted(scan["mapping"]), ["page30", "spread2:right", "spread3:left", "spread5:right"])
         self.assertEqual(scan["issues"], [])           # a single page of a spread is not a problem

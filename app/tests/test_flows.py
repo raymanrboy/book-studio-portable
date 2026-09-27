@@ -15,7 +15,7 @@ from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
 from tests.fixtures import FakePrintify, png
-from studio import archive, core, creator, drops, etsy, gelato, httpc, orders, printify, profit, records, stages, sync, tunnel
+from studio import archive, core, creator, drops, etsy, gelato, httpc, library_files, orders, printify, profit, records, stages, sync, tunnel
 from studio.jobs import Job, JobError
 from studio.server import ApiError
 from studio.vault import vault
@@ -706,7 +706,6 @@ class DroppedFolders(unittest.TestCase):
     def test_a_folder_dropped_on_a_book_is_read_like_the_folder_dialog(self):
         """The library's drop gets the dropped folder itself back — with its generated/ and book-text.json — and
         the importer reads it by the same rules as «Імпорт з папки» (22.09.2026 audit: the drop had its own)."""
-        from studio import library
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             book = root / "session" / "Planes"
@@ -718,7 +717,7 @@ class DroppedFolders(unittest.TestCase):
             (book / "notes.json").write_text("{}", encoding="utf-8")
             self.assertEqual(drops.dropped_top(root / "session"), book)
             self.assertEqual(drops.dropped_folder(root / "session"), book / "generated")
-            scan = library.scan_folder(drops.dropped_top(root / "session"))
+            scan = library_files.scan_folder(drops.dropped_top(root / "session"))
             self.assertEqual(sorted(scan["mapping"]), ["cover", "page1", "spread2"])
             self.assertEqual(scan["text"]["name"], "book-text.json")          # not whichever JSON came last
         self.assertEqual(drops._drop_rel("Planes/book-text.json", with_text=True), Path("Planes", "book-text.json"))

@@ -29,7 +29,7 @@ code:
      — one set of naming rules for every method;
    - the "Import from folder" button → pick a folder → the server lays it out and copies it in the
      background ([book.js](../../app/web/js/pages/book.js) `importFolder()`; the server —
-     [library.py](../../app/studio/library.py) `scan_folder()`, `_folder_import()`);
+     [library_files.py](../../app/studio/library_files.py) `scan_folder()`, `_folder_import()`;
    - one file onto a specific slot; `.json` — text only.
 4. The dialog shows what goes where, what will **replace** what's already there, and what's skipped;
    individual slots can be unchecked.
@@ -45,7 +45,8 @@ code:
 
 ## Where in the code
 
-- [app/studio/library.py](../../app/studio/library.py) — `_create()`, `scan_folder()`, `_folder_scan()`, `_folder_import()`, `_upload_asset()`, `_import_text()`, `_store_asset()`, `_add_lqip()`, `_backfill_lqip()`
+- [app/studio/library.py](../../app/studio/library.py) — `_create()`, `_upload_asset()`, `_store_asset()`, `_add_lqip()`, `_backfill_lqip()`
+- [app/studio/library_files.py](../../app/studio/library_files.py) — `scan_folder()`, `_folder_scan()`, `_folder_import()`, `_import_text()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `receiveDrop()` (a folder, ZIP, or files, with `withText`)
 - [app/studio/drops.py](../../app/studio/drops.py) — `extract_zip()` (with `with_text`)
 - Tests: [app/tests/test_orders.py](../../app/tests/test_orders.py) (`PartialBookImport`, `PreparationGuide`)

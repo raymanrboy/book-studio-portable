@@ -128,7 +128,9 @@ The rest:
   gave the same output before and after — byte for byte).
 - [x] `creator.py` → a package: `printfolder`, `sending` (one frame for Printify and Gelato: `journaled_send()`,
   `mark_books()`, `checked_files()`, `record_order()`), `printify_send`, `gelato_send`, `photobook`, `routes`.
-- [ ] `library.py` → the model and its files; the agent guide as its own Markdown file.
+- [x] `library.py` → `library.py` (the model, its pictures, the book routes) + `library_files.py` (the text JSON, the
+  folder import, the export, the guide); the guide's words in `library_guide.md` (the rendered guide is the same,
+  byte for byte).
 - [ ] Interface pages (order card, Order Creator, passport, settings, mockups, Workshop book, Profit) →
   state + templates + actions; CSS by section; `dev_server.py` by job.
 

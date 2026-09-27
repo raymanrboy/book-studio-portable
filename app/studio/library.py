@@ -8,13 +8,14 @@ Book structure (30 physical pages, same as the production pipeline):
 A spread image is either one combined picture or separate left/right pages.
 Everything except the listing is optional and can be added any time.
 
+A book's files in and out — the text JSON, the folder import, the export, the guide for whoever prepares a book —
+are in library_files.py.
+
 A book made in the Listings mode's Workshop comes here when it is passed on (workshop/books.py, to_library()): a
 library book made from its pages and texts, noting the Workshop book it came from ("workshop").
 """
 from __future__ import annotations
 
-import json
-import os
 import re
 import shutil
 import threading
@@ -23,7 +24,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from . import core, desktop, drops, etsy, images
+from . import core, desktop, etsy, images
 from .jobs import jobs
 from .server import ApiError, Request, file_response, route
 
@@ -139,7 +140,6 @@ def summary(book: dict) -> dict:
         "imageH": card.get("height") if card else None,
         "completeness": completeness(book),
     }
-
 
 
 def update_texts(book_id: str, texts: dict[str, str]) -> dict:
@@ -292,286 +292,6 @@ def _set_asset(book: dict, slot: str, asset: dict | None) -> list[dict]:
     return old
 
 
-# ---------------------------------------------------------------- text import
-
-def parse_text_json(raw: str) -> tuple[dict, list[str], list[str]]:
-    """Parses the book-text JSON: {cover, page1, spreads: {"2".."15"}, page30}.
-
-    Lenient: imports every valid field, reports the rest.
-    """
-    try:
-        data = json.loads(raw.lstrip("﻿"))
-    except json.JSONDecodeError as err:
-        raise ApiError(f"Файл не є коректним JSON (рядок {err.lineno}, позиція {err.colno}).")
-    if not isinstance(data, dict):
-        raise ApiError("JSON має бути об'єктом із полями cover, page1, spreads, page30.")
-    text: dict[str, str] = {}
-    problems: list[str] = []
-    for key in ("cover", "page1", "page30"):
-        value = data.get(key)
-        if isinstance(value, str) and value.strip():
-            text[key] = value.strip()
-        else:
-            problems.append(f"Немає тексту «{key}»")
-    spreads = data.get("spreads")
-    if not isinstance(spreads, dict):
-        problems.append("Немає об'єкта «spreads» з текстами розворотів 2–15")
-        spreads = {}
-    for n in SPREAD_NUMBERS:
-        value = spreads.get(str(n))
-        if isinstance(value, str) and value.strip():
-            text[f"spread{n}"] = value.strip()
-        else:
-            problems.append(f"Немає тексту розвороту {n}")
-    extra = [k for k in spreads.keys() if not (k.isdigit() and FIRST_SPREAD <= int(k) <= LAST_SPREAD)]
-    notes = [f"Пропущено невідомі ключі spreads: {', '.join(extra)}"] if extra else []
-    if not text:
-        raise ApiError("У JSON не знайдено жодного тексту книги.")
-    return text, problems, notes
-
-
-def export_text_json(book: dict) -> dict:
-    t = book["text"]
-    return {
-        "cover": t.get("cover", ""),
-        "page1": t.get("page1", ""),
-        "spreads": {str(n): t.get(f"spread{n}", "") for n in SPREAD_NUMBERS},
-        "page30": t.get("page30", ""),
-    }
-
-
-# ---------------------------------------------------------------- folder import
-
-_NUM_RE = re.compile(r"^(\d+)(?:\s*[-–_]\s*(\d+))?$")
-# File-name rules shared with the order's print folder and the listing mockups: one reading everywhere.
-UPSCAYL_TAIL, COVER_NAME = drops.UPSCAYL_TAIL, drops.COVER_NAME
-
-
-def scan_folder(folder: Path) -> dict:
-    """Proposes a mapping of files in a folder onto book slots.
-
-    Understands the pipeline layout (generated/1.png, 2-3.png … 28-29.png, 30.png,
-    Cover.*, book-text.json) and separate pages 1.png … 30.png.
-    """
-    folder = Path(folder)
-    if not folder.is_dir():
-        raise ApiError("Папку не знайдено.")
-    roots = [folder]
-    for sub in ("generated", "pages"):  # Windows paths are case-insensitive: one spelling is enough
-        if (folder / sub).is_dir():
-            roots.append(folder / sub)
-    files: list[Path] = []
-    seen: set[str] = set()
-    for root in roots:
-        for p in root.iterdir():
-            key = os.path.normcase(str(p.resolve()))
-            if p.is_file() and key not in seen:
-                seen.add(key)
-                files.append(p)
-
-    text_file = next((p for p in files if p.name.lower() in ("book-text.json", "text.json", "book.json")), None)
-    if not text_file:
-        text_file = next((p for p in files if p.suffix.lower() == ".json"), None)
-
-    imgs = [p for p in files if p.suffix.lower() in core.IMAGE_EXTS]
-    cover = thumb = None
-    singles: dict[int, Path] = {}
-    pairs: dict[tuple[int, int], Path] = {}
-    unknown: list[str] = []
-    # Later roots (generated/) win over the top folder. Upscayl's "_upscayl_4x_…" name tail is ignored.
-    for p in imgs:
-        stem = UPSCAYL_TAIL.sub("", p.stem).strip().lower()
-        if COVER_NAME.search(stem):
-            if cover is None or p.suffix.lower() == ".png":
-                cover = p
-            continue
-        if re.search(r"thumb|заставк|preview|gallery", stem):
-            thumb = p
-            continue
-        m = _NUM_RE.match(stem)
-        if not m:
-            unknown.append(p.name)
-            continue
-        a = int(m.group(1))
-        if m.group(2):
-            pairs[(a, int(m.group(2)))] = p
-        else:
-            singles[a] = p
-
-    mapping: dict[str, dict] = {}
-    issues: list[str] = []
-
-    def put(slot: str, path: Path) -> None:
-        mapping[slot] = {"path": str(path), "name": path.name}
-
-    if cover:
-        put("cover", cover)
-    if thumb:
-        put("thumbnail", thumb)
-    if 1 in singles:
-        put("page1", singles[1])
-    if 30 in singles:
-        put("page30", singles[30])
-    for n in SPREAD_NUMBERS:
-        left, right = spread_pages(n)
-        if (left, right) in pairs:
-            put(f"spread{n}", pairs[(left, right)])
-        else:
-            # Whatever is there goes to its place (often just the illustration page of a spread);
-            # what is missing simply stays empty.
-            if left in singles:
-                put(f"spread{n}:left", singles[left])
-            if right in singles:
-                put(f"spread{n}:right", singles[right])
-    used = {v["path"] for v in mapping.values()}
-    leftovers = [p.name for p in imgs if str(p) not in used and p.name not in unknown]
-    filled = sum(1 for k in SLOT_KEYS if k in mapping or (f"{k}:left" in mapping and f"{k}:right" in mapping))
-    if not mapping and not text_file:
-        issues.append("У папці не знайдено файлів книги (Cover, 1, 2-3 … 30 або book-text.json).")
-    return {
-        "folder": str(folder),
-        "mapping": mapping,
-        "text": {"path": str(text_file), "name": text_file.name} if text_file else None,
-        "slotsFound": filled,
-        "slotsTotal": len(SLOT_KEYS),
-        "issues": issues,
-        "ignored": sorted(set(unknown + leftovers)),
-    }
-
-
-# ---------------------------------------------------------------- export
-
-def export_book(book: dict, target: Path, job) -> dict:
-    target.mkdir(parents=True, exist_ok=True)
-    src_dir = _book_dir(book["id"]) / "assets"
-    plan: list[tuple[dict, str]] = []
-    if book.get("cover"):
-        plan.append((book["cover"], "Cover"))
-    if book.get("thumbnail"):
-        plan.append((book["thumbnail"], "Thumbnail"))
-    for key in SLOT_KEYS:
-        s = book["slots"][key]
-        if key in ("page1", "page30"):
-            if s.get("image"):
-                plan.append((s["image"], key[4:]))
-            continue
-        n = int(key[6:])
-        left, right = spread_pages(n)
-        if s.get("image"):
-            plan.append((s["image"], f"{left}-{right}"))
-        if s.get("left"):
-            plan.append((s["left"], str(left)))
-        if s.get("right"):
-            plan.append((s["right"], str(right)))
-    for i, (asset, name) in enumerate(plan, 1):
-        job.progress("Експорт файлів…", 100 * i / max(len(plan), 1), f"{name}")
-        ext = Path(asset["file"]).suffix
-        shutil.copy2(src_dir / asset["file"], target / f"{name}{ext}")
-    text = export_text_json(book)
-    if any(v for k, v in text.items() if k != "spreads") or any(text["spreads"].values()):
-        (target / "book-text.json").write_text(json.dumps(text, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"folder": str(target), "files": len(plan)}
-
-
-# ---------------------------------------------------------------- guide for whoever prepares a book
-
-GUIDE_NAME = "Book Studio — як підготувати книгу.md"
-
-
-def agent_guide() -> str:
-    """Instruction (Markdown) for a person or an AI agent preparing one book's files: the exact file names
-    the batch import understands and the book-text JSON. Built from the same rules the importer uses
-    (scan_folder / parse_text_json), so it cannot drift from them."""
-    rows = ["| Обкладинка (весь розворот обкладинки) | — | `Cover.png` |",
-            "| Заставка для галереї (необов'язково) | — | `Thumbnail.png` |",
-            "| Присвята | 1 | `1.png` |"]
-    for n in SPREAD_NUMBERS:
-        a, b = spread_pages(n)
-        rows.append(f"| Розворот {n} | {a}–{b} | `{a}-{b}.png` або `{a}.png` + `{b}.png` |")
-    rows.append("| Післяслово | 30 | `30.png` |")
-    template = json.dumps({
-        "cover": "Текст обкладинки",
-        "page1": "Текст присвяти (сторінка 1)",
-        "spreads": {str(n): "Текст розвороту {} (сторінки {}–{})".format(n, *spread_pages(n)) for n in SPREAD_NUMBERS},
-        "page30": "Текст післяслова (сторінка 30)",
-    }, ensure_ascii=False, indent=2)
-    table = "\n".join(rows)
-    return f"""# Як підготувати книгу для бібліотеки Book Studio
-
-Інструкція для помічника — людини або AI-агента, — який готує файли однієї книги: перейменовує
-ілюстрації й оформлює текст. Результат — папка, яку Book Studio завантажує одним рухом і сам розкладає
-все по місцях.
-
-## Що має бути в папці
-
-- ілюстрації з назвами за таблицею нижче (PNG — найкраще; також JPG або WEBP);
-- один файл тексту `book-text.json` (формат нижче).
-
-Можна дати лише частину файлів — решту додають пізніше.
-
-## Будова книги
-
-30 сторінок: обкладинка, сторінка 1 — присвята, розвороти 2–15 (це сторінки 2–29), сторінка 30 —
-післяслово. Розворот N — це сторінки 2N−2 і 2N−1.
-
-| Що | Сторінки | Назва файлу |
-|---|---|---|
-{table}
-
-## Правила назв файлів
-
-1. Назва — лише номер сторінки (`12.png`) або пара сторінок розвороту через дефіс (`12-13.png`).
-   Жодних інших слів, пробілів чи префіксів: `page 12.png` або `Book_12.png` буде пропущено.
-2. Розворот дають або однією широкою картинкою (`12-13.png`), або двома сторінками (`12.png` і `13.png`).
-3. У парі спершу менший номер — ліва сторінка: `12-13.png`, а не `13-12.png`.
-4. Обкладинка — назва зі словом `cover`; найкраще просто `Cover.png`.
-5. Заставка для галереї — назва зі словом `thumbnail`; найкраще `Thumbnail.png`.
-6. Хвіст назви, який додає Upscayl (`12_upscayl_4x_ultrasharp-4x.png`), можна не прибирати.
-7. Не обов'язково давати всі файли: наприклад, лише сторінки-ілюстрації без тексту. Що є — стане на
-   своє місце, чого немає — лишиться порожнім.
-8. Інших файлів у папку не клади — вони не потрібні й будуть пропущені.
-
-## Текст книги: `book-text.json`
-
-Точна структура — рівно ці ключі, латиницею:
-
-```json
-{template}
-```
-
-Правила:
-
-1. Верхній рівень — об'єкт із чотирма ключами: `cover`, `page1`, `spreads`, `page30`.
-2. `spreads` — об'єкт із ключами-рядками від `"2"` до `"15"`, по одному тексту на розворот.
-3. Кожне значення — один рядок JSON. Перенос рядка всередині тексту пиши як `\\n`,
-   порожній рядок між абзацами — як `\\n\\n`.
-4. Ім'я дитини всюди пиши як `{{Name}}`, а від кого книга — як `{{Gifter}}`: з фігурними дужками і
-   саме таким написанням. Book Studio підсвічує їх, а в Canva їх потім замінюють пошуком.
-5. Лапки всередині тексту — `\\"`. Без коментарів і без коми після останнього елемента.
-6. Кодування файлу — UTF-8.
-
-Приклад того, як виглядає значення з переносами (фрагмент, не весь файл):
-
-```json
-"page1": "Dear {{Name}},\\n\\nWishing you a lifetime filled with God's love.\\n\\nWith love,\\n{{Gifter}}"
-```
-
-## Як завантажити в Book Studio
-
-Відкрий паспорт книги в бібліотеці й перетягни у вікно всю папку, ZIP-архів або виділені файли —
-чи натисни «Імпорт з папки» (перша іконка вгорі праворуч). Програма покаже, що куди ляже, і
-попросить підтвердити.
-
-## Перевір себе перед здачею
-
-- [ ] обкладинка — `Cover.png`;
-- [ ] сторінки — `1.png`, розвороти `2-3.png` … `28-29.png` (або окремі сторінки), `30.png`;
-- [ ] у `book-text.json` є `cover`, `page1`, `spreads` з ключами "2"–"15" і `page30`;
-- [ ] ім'я дитини — `{{Name}}`, від кого — `{{Gifter}}`;
-- [ ] JSON без помилок (перевір будь-яким валідатором JSON).
-"""
-
-
 # ---------------------------------------------------------------- routes
 
 def _book_response(book: dict) -> dict:
@@ -586,25 +306,6 @@ def _list(req: Request):
     books = [summary(b) for b in all_books()]
     books.sort(key=lambda b: b.get("updatedAt") or "", reverse=True)
     return {"books": books}
-
-
-@route("GET", "/api/library/guide")
-def _guide(req: Request):
-    return {"name": GUIDE_NAME, "text": agent_guide()}
-
-
-@route("POST", "/api/library/guide/save")
-def _guide_save(req: Request):
-    folder = Path(str((req.json or {}).get("folder") or ""))
-    if not folder.is_dir():
-        raise ApiError("Папку не знайдено.")
-    target = folder / GUIDE_NAME
-    target.write_text(agent_guide(), encoding="utf-8")
-    try:
-        desktop.open_in_explorer(target)  # shows the file selected, ready to drag into a chat with an agent
-    except OSError:
-        pass
-    return {"path": str(target)}
 
 
 def listing_of(body: dict) -> dict:
@@ -839,31 +540,6 @@ def _swap_halves(req: Request):
     return _book_response(book)
 
 
-@route("POST", r"/api/library/books/([0-9a-f]{32})/text")
-def _import_text(req: Request):
-    body = req.json or {}
-    raw = body.get("json")
-    if not isinstance(raw, str) or not raw.strip():
-        raise ApiError("Порожній текст.")
-    text, problems, notes = parse_text_json(raw)
-    with _lock:
-        book = load(req.groups[0])
-        book["text"].update(text)
-        save(book)
-    return {"book": _book_response(book), "imported": len(text), "problems": problems, "notes": notes}
-
-
-@route("GET", r"/api/library/books/([0-9a-f]{32})/text.json")
-def _text_json(req: Request):
-    return export_text_json(load(req.groups[0]))
-
-
-@route("POST", r"/api/library/books/([0-9a-f]{32})/folder-scan")
-def _folder_scan(req: Request):
-    load(req.groups[0])
-    return scan_folder(Path((req.json or {}).get("path") or ""))
-
-
 def import_pictures(book_id: str, files: list[tuple[str, Path, str]], job, step: str = "Імпорт ілюстрацій…") -> list[str]:
     """Pictures into a book's slots — (slot, file, its name) — copied and their previews prepared three at a time;
     each lands in the book as soon as it is ready (the progress runs from 5 to 95 %). Returns what wasn't taken."""
@@ -882,51 +558,6 @@ def import_pictures(book_id: str, files: list[tuple[str, Path, str]], job, step:
             except (ApiError, OSError) as err:
                 errors.append(f"{name}: {err}")
     return errors
-
-
-@route("POST", r"/api/library/books/([0-9a-f]{32})/folder-import")
-def _folder_import(req: Request):
-    book_id = req.groups[0]
-    body = req.json or {}
-    scan = scan_folder(Path(body.get("path") or ""))
-    include_text = bool(body.get("includeText", True))
-    selected = set(body.get("slots") or scan["mapping"].keys())
-    load(book_id)
-
-    def run(job) -> dict:
-        items = [(slot, Path(info["path"]), info["name"]) for slot, info in scan["mapping"].items() if slot in selected]
-        image_errors = import_pictures(book_id, items, job)
-        text_result, text_error = None, None
-        if include_text and scan.get("text"):
-            job.progress("Імпорт тексту…", 97, scan["text"]["name"])
-            try:
-                raw = Path(scan["text"]["path"]).read_text(encoding="utf-8-sig")
-                text, problems, _ = parse_text_json(raw)
-                with _lock:
-                    book = load(book_id)
-                    book["text"].update(text)
-                    save(book)
-                text_result = {"imported": len(text), "problems": problems}
-            except (ApiError, OSError, UnicodeDecodeError) as err:
-                text_error = f"{scan['text']['name']}: {err}"
-        # Display previews and blurred stand-ins were prepared while storing each file.
-        return {"images": len(items) - len(image_errors),
-                "errors": image_errors + ([text_error] if text_error else []), "text": text_result}
-
-    job = jobs.start("library-import", run, exclusive=f"library-{book_id}")
-    return {"jobId": job.id}
-
-
-@route("POST", r"/api/library/books/([0-9a-f]{32})/export")
-def _export(req: Request):
-    book = load(req.groups[0])
-    target_raw = (req.json or {}).get("path") or ""
-    if not target_raw:
-        raise ApiError("Оберіть папку для експорту.")
-    safe_title = re.sub(r'[<>:"/\\|?*]+', "", book.get("title") or "book")[:60].strip() or "book"
-    target = Path(target_raw) / safe_title
-    job = jobs.start("library-export", lambda j: export_book(book, target, j))
-    return {"jobId": job.id}
 
 
 @route("POST", r"/api/library/books/([0-9a-f]{32})/open-folder")

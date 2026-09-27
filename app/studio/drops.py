@@ -3,7 +3,7 @@
 The window (a browser) never learns where a dragged folder lives on disk, so its pictures (or a ZIP) are
 copied into a scratch folder first and the program works with that copy; everything there is wiped when
 the program starts. The naming rules — which file is the cover, which number a page has — are one reading
-for the order's print folder (orders.arrange_pages), the library import (library.scan_folder) and the
+for the order's print folder (orders.arrange_pages), the library import (library_files.scan_folder) and the
 listing mockups (mockups.read_book).
 """
 from __future__ import annotations
