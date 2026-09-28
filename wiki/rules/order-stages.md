@@ -1,7 +1,7 @@
 ---
 title: Order stages — new, in progress, shipped by the printer, sent
 type: rule
-updated: 2026-09-27
+updated: 2026-09-28
 code:
   - app/studio/stages.py
   - app/studio/printorders.py
@@ -32,6 +32,11 @@ hour before the receipt). Then:
 
 `SENT_STATUSES`: Printify — `fulfilled`, `partially-fulfilled`; Gelato — `shipped`, `in_transit`,
 `delivered`, `returned` (`printorders.GELATO_SHIPPED`).
+
+**The status chip** (the queue, the order card, the archive) shows the printer's word — except Printify's
+`fulfilled`, which only means "shipped": it reads **In transit**, and **Delivered** once every parcel has
+`delivered_at` from the carrier (`printorders.shown_status()`, the `shown` fact; since 2026-09-28, the owner:
+"Fulfilled" beside Gelato's "Delivered" looked inconsistent). Stages still go by the real `status`.
 
 ## The truck (`sent`) — since 2026-09-17
 

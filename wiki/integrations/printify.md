@@ -1,7 +1,7 @@
 ---
 title: Printify
 type: integration
-updated: 2026-09-27
+updated: 2026-09-28
 code:
   - app/studio/printify.py
 ---
@@ -59,7 +59,9 @@ bytes (`upload_image()`): a 30 MB page was held about five times over, three upl
 `all_orders()` reads every order in the shop (50 at a time, up to 4 pages in parallel, no more than
 `MAX_ORDER_PAGES` = 400 pages — a larger shop is marked incomplete, `httpc.Listing`); `slim_order()`
 keeps only the fields needed for matching, the status, and (since 2026-09-17) `shipments` — tracking
-numbers once shipped (`carrier` as a code, e.g. `usps`, `number`, `url`; not stored without a number).
+numbers once shipped (`carrier` as a code, e.g. `usps`, `number`, `url`, and since 2026-09-28 `delivered_at` —
+when the carrier delivered it; not stored without a number). The chip shows `fulfilled` as In transit /
+Delivered by it ([rules/order-stages.md](../rules/order-stages.md)).
 They're already in the order list, so no separate requests are needed. A `fulfilled`/`partially-fulfilled`
 status or a tracking number moves the receipt to the truck tab
 ([rules/order-stages.md](../rules/order-stages.md)). An order with the receipt number in a product's

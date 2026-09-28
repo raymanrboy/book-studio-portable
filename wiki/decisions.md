@@ -1,13 +1,21 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-09-27
+updated: 2026-09-28
 code: []
 ---
 # Decisions
 
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
+
+## 2026-09-28 — Printify "Fulfilled" reads as In transit / Delivered
+
+- **Decision (the owner):** the status chip no longer shows Printify's "Fulfilled" beside Gelato's "Delivered". **Why:**
+  it looked inconsistent. "Fulfilled" only means the printer handed it to the carrier, so a plain rename to
+  "Delivered" would lie about fresh parcels: it shows **In transit**, and **Delivered** once the carrier's
+  `delivered_at` is on every parcel. The stages (the truck, the box) still go by Printify's real status.
+  [Stages](rules/order-stages.md).
 
 ## 2026-09-27 — A picture 2400 px a side is big enough: not offered for upscaling
 

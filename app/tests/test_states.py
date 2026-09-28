@@ -342,7 +342,23 @@ class SentStage(OnTheSnapshot):
         slim = printify.slim_order({"id": "p1", "status": "fulfilled", "shipments": [
             {"carrier": "usps", "number": "9400", "url": "u", "delivered_at": None},
             {"carrier": "usps", "number": "", "url": ""}]})
-        self.assertEqual(slim["shipments"], [{"carrier": "usps", "number": "9400", "url": "u"}])
+        self.assertEqual(slim["shipments"], [{"carrier": "usps", "number": "9400", "url": "u", "delivered_at": None}])
+
+    def test_printify_fulfilled_shows_as_in_transit_then_delivered(self):
+        def shown(status, *delivered):
+            order = {"status": status, "shipments": [{"number": str(i), "delivered_at": d} for i, d in enumerate(delivered)]}
+            return printorders.shown_status("printify", order)
+        self.assertEqual(shown("fulfilled", None), "in_transit")
+        self.assertEqual(shown("fulfilled", "2025-09-20 10:00:00+00:00", None), "in_transit")  # one parcel still on its way
+        self.assertEqual(shown("fulfilled", "2025-09-20 10:00:00+00:00"), "delivered")
+        self.assertEqual(shown("fulfilled"), "in_transit")
+        self.assertEqual(shown("in-production"), "in-production")
+        self.assertEqual(printorders.shown_status("gelato", {"fulfillmentStatus": "delivered"}), "delivered")
+
+    def test_the_queue_shows_printify_fulfilled_as_in_transit_and_keeps_the_stage(self):
+        picked = self.picked()
+        self.assertEqual(picked["1001"]["printStatus"], "in_transit")
+        self.assertEqual(picked["1001"]["stage"], "sent")
 
 
 class GelatoTracking(unittest.TestCase):

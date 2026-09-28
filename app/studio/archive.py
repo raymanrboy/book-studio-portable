@@ -360,7 +360,7 @@ def summary(entry: dict, facts: dict | None, now: float | None = None) -> dict:
     return {**entry, "folder": str(folder(entry["id"])),
             "buyer": facts["names"].get(entry.get("receiptId") or "") or "",
             "stage": facts["stages"].get(entry.get("receiptId") or ""),
-            "printStatus": own.get("status") or "", "tracking": own.get("tracking") or [],
+            "printStatus": own.get("shown") or own.get("status") or "", "tracking": own.get("tracking") or [],
             "clock": why, "deleteAt": _iso(due) if due else None,
             "daysLeft": max(0, math.ceil((due - now) / DAY)) if due else None, "keepDays": KEEP_DAYS}
 

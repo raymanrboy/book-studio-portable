@@ -106,7 +106,8 @@ def _picker(one: dict) -> dict:
         "address": dict(r.get("shipping_address") or {}),
         "stage": one["stage"],
         "provider": one["provider"],
-        "printStatus": shown.get("status") or "",  # as Printify / Gelato word it, untranslated (owner's wish)
+        # as Printify / Gelato word it, untranslated (owner's wish); Printify's "fulfilled" as in transit / delivered
+        "printStatus": shown.get("shown") or shown.get("status") or "",
         "tracking": shown.get("tracking") or [],
         # books of this receipt sent in another go, or to the other printer: the row describes only the first
         # order, so the card says there is more than one

@@ -3,6 +3,13 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-28] decision | Printify "Fulfilled" shows as In transit / Delivered
+
+- The owner: Printify's "Fulfilled" beside Gelato's "Delivered" looked inconsistent. "Fulfilled" only means shipped, so
+  the chip now says **In transit**, and **Delivered** once the carrier's `delivered_at` is on every parcel
+  (`printify.slim_order()` keeps it now, `printorders.shown_status()`). Stages are unchanged. Unverified: whether
+  Printify fills `delivered_at` for the owner's parcels — seen after the next sync.
+
 ## [2026-09-28] update | Book 41 opens at once; a held picture names who holds it; Upscayl works on a copy
 
 - **Slow book 41**: `upscale._size()` asked every PNG for its EXIF — Pillow unpacked all 370 pictures, 31 s on the first

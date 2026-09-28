@@ -96,18 +96,31 @@ def facts(provider: str, order: dict, rates: dict) -> dict:
         cost = js_round(prod + ship + tax) / 100
         return {"key": f"printify:{order.get('id')}", "provider": provider, "id": str(order.get("id")),
                 "name": full_name(addr.get("first_name"), addr.get("last_name")), "created": order.get("created_at"),
-                "status": order.get("status"), "dead": dead(provider, order), "placed": is_placed(provider, order),
-                "cost": cost, "prod": prod / 100, "ship": ship / 100, "raw_cost": cost, "currency": "USD",
+                "status": order.get("status"), "shown": shown_status(provider, order),
+                "dead": dead(provider, order), "placed": is_placed(provider, order), "cost": cost, "prod": prod / 100, "ship": ship / 100, "raw_cost": cost, "currency": "USD",
                 "label": order.get("app_order_id") or str(order.get("id"))[-6:].upper(),
                 "tracking": _tracking(order.get("shipments")), "order": order}
     raw = num(order.get("totalInclVat"))
     return {"key": f"gelato:{order.get('id')}", "provider": provider, "id": str(order.get("id")),
             "name": full_name(order.get("firstName"), order.get("lastName")), "created": order.get("createdAt"),
-            "status": order.get("fulfillmentStatus"), "dead": dead(provider, order), "placed": is_placed(provider, order),
+            "status": order.get("fulfillmentStatus"), "shown": shown_status(provider, order), "dead": dead(provider, order), "placed": is_placed(provider, order),
             "cost": to_usd(raw, order.get("currency"), rates), "prod": 0.0, "ship": 0.0, "raw_cost": raw,
             "currency": order.get("currency") or "USD",
             "label": order.get("orderReferenceId") or str(order.get("id"))[-8:].upper(),
             "tracking": _tracking(order.get("shipments")), "order": order}
+
+
+def shown_status(provider: str, order: dict) -> str:
+    """The printer's status as the queue and the archive show it. Printify's "fulfilled" only means shipped, so
+    it reads as Gelato's words: "in_transit", and "delivered" once the carrier has delivered every parcel
+    (owner, 28.09.2026: "Fulfilled" beside Gelato's "Delivered" looked inconsistent). Stages keep `status`."""
+    if provider != "printify":
+        return order.get("fulfillmentStatus") or ""
+    status = order.get("status") or ""
+    if status.lower() != "fulfilled":
+        return status
+    shipments = [s for s in order.get("shipments") or [] if s.get("number")]
+    return "delivered" if shipments and all(s.get("delivered_at") for s in shipments) else "in_transit"
 
 
 def _tracking(shipments) -> list[dict]:
