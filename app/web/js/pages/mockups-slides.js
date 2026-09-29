@@ -24,13 +24,15 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   const box = () => $('#mk-s5');
   const ready = () => !!st.result && !st.result.cancelled && st.result.saved.length > 0;
   const folder = () => st.result?.folder || '';
+  const book = () => st.result?.workshop || '';   // the Workshop book the run was for
+  const target = () => (book() ? `workshop=${encodeURIComponent(book())}` : `folder=${encodeURIComponent(folder())}`);
 
   // ---------------------------------------------------------------- the cut-outs (polled while any is on its way)
   async function pollCuts() {
     clearTimeout(timer);
     if (gone || !folder()) return;
     try {
-      sl.cuts = await api(`/api/slides/cutouts?folder=${encodeURIComponent(folder())}`);
+      sl.cuts = await api(`/api/slides/cutouts?${target()}`);
       sl.folder = folder();
     } catch { /* the folder went: nothing to say */ }
     if (gone) return;
@@ -67,7 +69,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     if (!show) return;
     if (folder() && folder() !== sl.folder) pollCuts();
     const head = html`<div class="row">${stepNo(4, !!sl.result)}<h3 class="card-title grow">Слайди для лістингу</h3>
-      ${sl.result && !sl.run ? ib('regenerate', 'Зробити слайди заново — з шаблону (ваші правки цієї книги пропадуть)', 'data-act="sl-again"', { cls: 'sm' }) : ''}</div>`;
+      ${sl.result && !sl.run ? ib('regenerate', 'Зробити слайди заново — зі схеми (ваші правки цієї книги пропадуть)', 'data-act="sl-again"', { cls: 'sm' }) : ''}</div>`;
     let body;
     if (sl.run) body = runHtml();
     else if (sl.result) body = resultHtml();
@@ -78,7 +80,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   }
 
   function offerHtml() {
-    return html`<p class="mk-plan">Шість квадратних картинок для Etsy — з вашого шаблону й мокапів цієї книги.</p>
+    return html`<p class="mk-plan">Шість квадратних картинок для Etsy — зі схеми для нових книг і мокапів цієї книги (схему можна змінити в редакторі).</p>
       <div class="sl-nums">
         <label class="field"><span class="field-label">Сторінок</span><input class="input num" type="number" min="1" max="999" data-num="pages" value="${sl.numbers.pages}"></label>
         <label class="field"><span class="field-label">Віршів</span><input class="input num" type="number" min="1" max="999" data-num="poems" value="${sl.numbers.poems}"></label>
@@ -117,7 +119,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   }
 
   // ---------------------------------------------------------------- making them
-  async function make() {
+  async function make(fresh = false) {
     if (sl.run || st.run) return;
     if (st.pending) {  // Cover 1 and Dedication are still open in Photoshop: slides 2 and 3 need them
       toast('Спершу «Зберегти відкриті»: Cover 1 і Dedication потрібні для слайдів 2 і 3', 'info');
@@ -130,7 +132,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     busy(true);
     const order = [...(st.result?.saved || []), ...(st.finished?.saved || [])];
     try {
-      const res = await runJob(post('/api/slides/make', { folder: folder(), order, book: st.book?.id || '', numbers: sl.numbers }), (job) => {
+      const res = await runJob(post('/api/slides/make', { folder: folder(), workshop: book(), order, book: st.book?.id || '', numbers: sl.numbers, fresh }), (job) => {
         if (gone || !sl.run) return;
         Object.assign(sl.run, { step: job.step, percent: job.percent, rows: job.partial?.rows || sl.run.rows });
         patchRun();
@@ -191,13 +193,14 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   // The header's «Слайди»: the template and the books whose slides are kept — after a restart the card is gone, the
   // editor is still one click away.
   async function openSets(anchor) {
-    let sets = [];
-    try { ({ sets } = await api('/api/slides/sets')); } catch (err) { toast(err.message, 'error'); return; }
+    let r;
+    try { r = await api('/api/slides/sets'); } catch (err) { toast(err.message, 'error'); return; }
     if (gone) return;
+    const books = r.sets.filter((x) => x.book), older = r.sets.filter((x) => !x.book);
     menu(anchor, [
-      { label: 'Шаблон слайдів — для всіх нових книг', icon: 'template', onClick: () => { location.hash = '#/slides/template/1'; } },
-      ...(sets.length ? ['-'] : []),
-      ...sets.map((s) => ({ label: `${s.name || 'Книга'} · ${dateTime(s.created)}`, icon: 'images', onClick: () => { location.hash = `#/slides/${s.id}/1`; } })),
+      { label: `Схема для нових книг — ${r.scheme?.name || 'Nature'}`, icon: 'template', onClick: () => { location.hash = '#/slides/template/1'; } },
+      ...(books.length ? ['-', ...books.map((x) => ({ label: x.name, icon: 'book', onClick: () => { location.hash = `#/slides/${x.id}/1`; } }))] : []),
+      ...(older.length ? ['-', ...older.map((x) => ({ label: `${x.name || 'Книга'} · ${dateTime(x.created)}`, icon: 'images', onClick: () => { location.hash = `#/slides/${x.id}/1`; } }))] : []),
     ]);
   }
 
@@ -209,8 +212,8 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     if (a === 'sl-view') { view_(+t.dataset.i); return true; }
     if (a === 'open-nobg') { post('/api/mockups/open-folder', { path: t.dataset.path }).catch((err) => toast(err.message, 'error')); return true; }
     if (a === 'sl-again') {
-      const ok = await confirmBox({ title: 'Зробити слайди заново?', text: 'Шість слайдів знову зробляться з шаблону — правки, внесені для цієї книги в редакторі, пропадуть.', confirm: 'Зробити заново' });
-      if (ok && !gone) { sl.result = null; make(); }
+      const ok = await confirmBox({ title: 'Зробити слайди заново?', text: 'Шість слайдів знову зробляться зі схеми — правки, внесені для цієї книги в редакторі, пропадуть. (Щоб оновити лише мокапи, а правки лишити, досить ще раз «Зробити мокапи».)', confirm: 'Зробити заново' });
+      if (ok && !gone) { sl.result = null; make(true); }
       return true;
     }
     return false;

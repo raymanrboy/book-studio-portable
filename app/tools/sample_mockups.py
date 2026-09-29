@@ -40,6 +40,7 @@ def seed_mockups(data: Path) -> None:
     mockups.desktop = fake
     from studio.slides import cutout
     cutout.READER = pretend_template  # the made-up templates are plain pictures: the book's outline is known
+    cutout.DESK_READER = pretend_desk  # Dedication: the pretend floor (the lower left) goes, the rest stays
     templates = data / "templates"
     templates.mkdir(parents=True, exist_ok=True)
     shades = [(196, 202, 214), (214, 206, 196), (200, 212, 204), (220, 214, 222), (206, 206, 206), (224, 210, 200)]
@@ -79,6 +80,16 @@ def pretend_template(path: Path, size: tuple[int, int]):
     shade = shade.filter(ImageFilter.GaussianBlur(22 * k))
     alpha = np.asarray(mask, np.float32) / 255
     return alpha, cutout._near_book(alpha, [(0.0, np.asarray(shade, np.float32) / 255)])
+
+
+def pretend_desk(path: Path, size: tuple[int, int]):
+    """Dedication's pretend cut: everything stays but a floor in the lower left, where a soft shadow falls."""
+    import numpy as np
+    alpha, effects = pretend_template(path, size)
+    W, H = size
+    keep = np.ones((H, W), np.float32)
+    keep[H // 2:, : W // 2] = 0
+    return np.maximum(keep, alpha), effects
 
 
 def _png(im) -> bytes:

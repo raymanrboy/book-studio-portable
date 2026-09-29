@@ -83,3 +83,16 @@
 .se-pick::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--c); border: 1.5px solid var(--surface); }
 .se-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .se-f .select { background-position: calc(100% - 16px) 13px, calc(100% - 11px) 13px; }
+
+/* 29.09.2026: the scheme button, the background as a layer, colours from the other slides, locked by default */
+.se-scheme { max-width: 240px; }
+.se-scheme .truncate { min-width: 0; }
+.se-scheme-names { display: flex; flex-wrap: wrap; gap: 6px; }
+.se-scheme-names .chip { cursor: pointer; }
+.se-bg-row { border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 0; border-radius: 0 0 var(--r-ctl) var(--r-ctl); }
+.se-bg-chip { background: var(--c) !important; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.se-layer .ib.xs.free { opacity: 1; color: var(--accent-ink); }
+.se-stage .el[data-fixed] { cursor: pointer; }
+.se-selbox.fixed { outline-style: dashed; }
+.se-others { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); align-items: center; }
+.se-others-label { flex-basis: 100%; font-size: 11px; color: var(--text-4); margin-bottom: 2px; }

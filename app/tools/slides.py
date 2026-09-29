@@ -1,13 +1,14 @@
 """The listing slides from the command line — for the agent (the skill `listing-slides`) and the tests; works with
 Book Studio's window closed (it starts its own small server for the drawing).
 
-    python app/tools/slides.py list                               the books' slide sets (newest first) and the template
+    python app/tools/slides.py list                               the schemes, the books' slides (Workshop books first)
     python app/tools/slides.py path  <slide> [--set ID]           the scene's file (to read and edit)
     python app/tools/slides.py render <slide> [--set ID] --to X.png   one slide drawn at 2000×2000 into X.png (a look)
     python app/tools/slides.py bake [slide …] --set ID            baked into the book's folder (Listing N.png)
     python app/tools/slides.py cutout <mockup.png …>              cut out without background (into «Без фону»)
 
---set: a set's id, or "template" (the default) — the template is drawn with the newest book's pictures.
+--set: a Workshop book's folder name (25.sleepy-trucks-bedtime), an older set's id, or "template" (the default) —
+the default scheme, drawn with the newest book's pictures.
 """
 from __future__ import annotations
 
@@ -38,7 +39,9 @@ def main(argv: list[str]) -> int:
     from studio.jobs import UserError
     try:
         if a.command == "list":
-            print(f"template\tШаблон\t{store.DESIGN}")
+            for x in store.list_schemes():
+                print(f"scheme:{x['key']}\t{x['name']}{' — for new books (--set template edits it)' if x['default'] else ''}"
+                      f"\t{store.SCHEMES / x['key']}")
             for rec in store.list_sets():
                 print(f"{rec['id']}\t{rec.get('name')}\t{rec.get('folder')}\tbooks: {', '.join(rec.get('books', {}))}"
                       f"\tpictures: {', '.join(rec.get('pictures', {}))}\tnumbers: {rec.get('numbers')}")

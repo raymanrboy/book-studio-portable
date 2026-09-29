@@ -1,6 +1,7 @@
-"""Listing slides: the book cut out of a mockup with its shadow, «Без фону» while Photoshop works, the template and a
-book's slides (a stale save refused — the agent's change is never overwritten), «Зробити слайди» with a pretend
-browser, the names in the owner's folder, the command line. Made-up pictures only."""
+"""Listing slides: the book cut out of a mockup with its shadow (Dedication: the desk stays, the floor goes), «Без фону»
+while Photoshop works, the schemes (Nature, Night, the owner's own, other books' slides as presets), a Workshop book's
+slides in its own folder, a stale save refused (the agent's change is never overwritten), «Зробити слайди» with a
+pretend browser, the names in the owner's folder, the cleaning, the command line. Made-up pictures only."""
 import json
 import shutil
 import tempfile
@@ -14,7 +15,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import mockups
+from studio import core, mockups
+from studio.workshop import books as workshop
 from studio.jobs import UserError
 from studio.server import ApiError
 from studio.slides import bake, cutout, store, work
@@ -31,6 +33,14 @@ def pretend_template(path: Path, size):
     shade = np.zeros_like(alpha)
     shade[y0 + 10:y1 + 10, x0 + 10:x1 + 10] = 0.5
     return alpha, [(0.0, shade)]
+
+
+def pretend_desk(path: Path, size):
+    """Dedication's template: the book, and a desk over the right half; the left half is the floor that goes."""
+    alpha, effects = pretend_template(path, size)
+    keep = np.zeros_like(alpha)
+    keep[:, size[0] // 2:] = 1
+    return np.maximum(keep, alpha), effects
 
 
 def mockup(path: Path, colour=(200, 60, 60)) -> Path:
@@ -61,17 +71,24 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
-        self._reader = cutout.READER
-        cutout.READER = pretend_template
+        self._readers = cutout.READER, cutout.DESK_READER
+        cutout.READER, cutout.DESK_READER = pretend_template, pretend_desk
         cutout.forget_templates()
-        for folder in (store.ROOT,):
+        for folder in (store.ROOT, core.WORKSHOP_BOOKS):
             shutil.rmtree(folder, ignore_errors=True)
 
     def tearDown(self):
-        cutout.READER = self._reader
+        cutout.READER, cutout.DESK_READER = self._readers
         cutout.forget_templates()
-        shutil.rmtree(store.ROOT, ignore_errors=True)
+        for folder in (store.ROOT, core.WORKSHOP_BOOKS):
+            shutil.rmtree(folder, ignore_errors=True)
         self.tmp.cleanup()
+
+    def workshop_book(self, name="25.sleepy-trucks-bedtime") -> str:
+        folder = core.WORKSHOP_BOOKS / name
+        (folder / "pictures").mkdir(parents=True, exist_ok=True)
+        (folder / "agent").mkdir(exist_ok=True)
+        return name
 
 
 class TheCut(Base):
@@ -83,6 +100,7 @@ class TheCut(Base):
         self.assertIsNone(cutout.kind_of("Cover & Open 1 (20-21).png"))   # a whole scene: no book mask
         self.assertIsNone(cutout.kind_of("All & Open 1 (22-23).png"))
         self.assertIsNone(cutout.kind_of("Listing 1.png"))
+        self.assertIn("dedication", cutout.KINDS)                            # the desk stays, the floor goes
         self.assertEqual(cutout.spread_of("2. Open 1 (6-7).png"), 6)
 
     def test_the_book_is_kept_and_the_grey_shadow_turns_into_a_transparent_one(self):
@@ -133,6 +151,18 @@ class TheCut(Base):
         self.assertTrue((out / cutout.NO_BG / a.name).is_file())
         self.assertFalse((out / cutout.NO_BG / skipped.name).exists())
 
+    def test_dedication_keeps_the_desk_and_the_book_and_loses_the_floor_but_not_its_shadow(self):
+        png = self.root / "out" / "4. Dedication.png"
+        png.parent.mkdir(parents=True)
+        Image.new("RGB", SIZE, (120, 90, 60)).save(png)
+        cutout.ensure(png, self.root)
+        with Image.open(png.parent / cutout.NO_BG / png.name) as im:
+            self.assertEqual(im.size, SIZE)                                   # its own frame: where the mockup lay
+            self.assertEqual(im.getpixel((250, 20))[3], 255)                  # the desk
+            self.assertEqual(im.getpixel((120, 60))[3], 255)                  # the book
+            self.assertEqual(im.getpixel((10, 190))[3], 0)                    # the floor: gone
+            self.assertGreater(im.getpixel((115, 155))[3], 50)                # the book's shadow on it: kept
+
     def test_the_mockups_hand_every_saved_picture_to_the_cutter(self):
         saved = str(self.root / "2. Open 1 (2-3).png")
         work_ = {"templates": [{"source": str(self.root / "2. Open 1.psd"), "shots": [{"save": saved}]}]}
@@ -147,17 +177,26 @@ class Scenes(Base):
     def scene(self, **extra):
         return {"id": "slide1", "bg": "#eedec7", "items": [{"type": "text", "x": 10, "y": 20, "text": "Hi", **extra}]}
 
-    def test_the_template_starts_as_first_drawn_and_every_book_starts_as_the_template(self):
-        first, version = store.load(store.TEMPLATE, "slide1")
-        self.assertEqual(version, "")                                         # not touched yet
-        self.assertEqual(first, store.factory("slide1"))
-        store.save(store.TEMPLATE, "slide1", self.scene(), "")
+    def test_the_first_scheme_is_nature_and_every_book_starts_as_the_default_scheme(self):
+        self.assertEqual([(x["key"], x["name"], x["default"]) for x in store.list_schemes()], [("nature", "Nature", True)])
+        first, _ = store.load(store.TEMPLATE, "slide1")
+        self.assertEqual(first, store.factory("slide1"))                     # no template before: the first design
+        _, v = store.load(store.TEMPLATE, "slide1")
+        store.save(store.TEMPLATE, "slide1", self.scene(), v)                # «template» — the default scheme itself
         rec = store.new_set("Goose", str(self.root))
         mine, _ = store.load(rec["id"], "slide1")
         self.assertEqual(mine["items"][0]["text"], "Hi")
+        self.assertEqual(rec["scheme"], "nature")
+
+    def test_an_old_template_becomes_nature(self):
+        store.DESIGN.mkdir(parents=True)
+        for slide in store.SLIDES:
+            (store.DESIGN / f"{slide}.json").write_text(json.dumps(self.scene(text=f"old {slide}")), encoding="utf-8")
+        self.assertEqual(store.template("slide3")["items"][0]["text"], "old slide3")
 
     def test_a_stale_save_is_refused_with_the_scene_as_it_is_now(self):
-        v1 = store.save(store.TEMPLATE, "slide2", self.scene(), "")
+        _, v0 = store.load(store.TEMPLATE, "slide2")
+        v1 = store.save(store.TEMPLATE, "slide2", self.scene(), v0)
         v2 = store.save(store.TEMPLATE, "slide2", self.scene(text="the agent's"), v1)
         with self.assertRaises(ApiError) as caught:
             store.save(store.TEMPLATE, "slide2", self.scene(text="the editor's"), v1)   # made on v1: stale
@@ -170,13 +209,29 @@ class Scenes(Base):
             with self.assertRaises(ApiError):
                 store.save(store.TEMPLATE, "slide3", bad, None)
 
-    def test_reset_and_to_template(self):
+    def test_a_scheme_is_the_whole_six_saved_put_on_and_made_the_default(self):
         rec = store.new_set("Goose", str(self.root))
-        store.save(rec["id"], "slide4", self.scene(text="for this book"), None)
-        store.to_template(rec["id"], "slide4")
-        self.assertEqual(store.template("slide4")["items"][0]["text"], "for this book")
-        scene, _ = store.reset(store.TEMPLATE, "slide4")                     # the template back to the first design
-        self.assertEqual(scene, store.factory("slide4"))
+        for slide in store.SLIDES:
+            store.save(rec["id"], slide, self.scene(text=f"night {slide}", color="#555876"), None)
+        key = store.save_scheme(rec["id"], "Night")
+        self.assertEqual(key, "night")
+        self.assertEqual(json.loads((store.SCHEMES / "night" / "slide4.json").read_text(encoding="utf-8"))["items"][0]["text"],
+                         "night slide4")
+        self.assertEqual(store.save_scheme(rec["id"], "night"), "night")     # the same name: that scheme replaced
+        other = store.new_set("Fox", str(self.root))
+        self.assertNotEqual(store.load(other["id"], "slide4")[0]["items"][0].get("text"), "night slide4")
+        store.apply_preset(other["id"], "night")                             # all six at once
+        self.assertEqual(store.load(other["id"], "slide4")[0]["items"][0]["text"], "night slide4")
+        self.assertEqual(store.read_set(other["id"])["scheme"], "night")
+        store.save(other["id"], "slide4", self.scene(text="touched"), None)
+        scene, _ = store.reset(other["id"], "slide4")                        # «Скинути» — back to its scheme
+        self.assertEqual(scene["items"][0]["text"], "night slide4")
+        store.set_default("night")
+        self.assertEqual(store.default_scheme(), "night")
+        self.assertEqual(store.new_set("Owl", str(self.root))["scheme"], "night")
+        self.assertEqual(sum(x["default"] for x in store.list_schemes()), 1)
+        with self.assertRaises(ApiError):
+            store.save_scheme(rec["id"], "   ")
 
     def test_the_signature_changes_with_any_scene(self):
         rec = store.new_set("Goose", str(self.root))
@@ -186,9 +241,9 @@ class Scenes(Base):
         self.assertNotEqual(store.sig(rec["id"]), before)
 
     def test_where_is_checked(self):
-        for bad in ("../x", "20260101-000000-zzzzzz", ""):
+        for bad in ("../x", "20260101-000000-zzzzzz", "nope", "99.no-such-book"):
             with self.assertRaises(ApiError):
-                store.valid_where(bad if bad else "nope")
+                store.valid_where(bad)
         self.assertEqual(store.valid_where("template"), "template")
 
     def test_the_first_design_uses_slots_and_the_books_numbers(self):
@@ -205,6 +260,62 @@ class Scenes(Base):
         self.assertIn("{poems}", texts)
 
 
+class WorkshopBooks(Base):
+    """A book's slides belong to its Workshop book (the owner, 29.09.2026) — in its folder, named by it."""
+
+    def test_the_slides_live_in_the_books_folder_and_keep_the_owners_touches(self):
+        book = self.workshop_book()
+        rec = store.new_set("x", str(self.root), book=book)
+        self.assertTrue((core.WORKSHOP_BOOKS / book / "mockups" / "slides" / "scenes" / "slide1.json").is_file())
+        self.assertEqual(store.read_set(book)["name"], "№25 Sleepy trucks bedtime")
+        self.assertEqual(store.valid_where(book), book)
+        store.save(book, "slide1", {"items": [{"type": "text", "x": 1, "y": 1, "text": "mine"}]}, None)
+        store.new_set("x", str(self.root), book=book)                        # the mockups made again: the touches stay
+        self.assertEqual(store.load(book, "slide1")[0]["items"][0]["text"], "mine")
+        store.new_set("x", str(self.root), book=book, fresh=True)            # «Зробити заново»: from the scheme
+        self.assertNotEqual(store.load(book, "slide1")[0]["items"][0].get("text"), "mine")
+        self.assertEqual(rec["id"], book)
+        self.assertIn(book, [r["id"] for r in store.list_sets()])
+
+    def test_a_done_books_slides_are_a_preset_for_another_book_and_its_cache_goes(self):
+        a, b = self.workshop_book("24.spooky-stories"), self.workshop_book("25.sleepy-trucks-bedtime")
+        rec = store.new_set("x", str(self.root), book=a)
+        (store.set_dir(a) / "books").mkdir()
+        (store.set_dir(a) / "books" / "open1-1.png").write_bytes(b"png")
+        store.save(a, "slide2", {"items": [{"type": "text", "x": 1, "y": 1, "text": "spooky"}]}, None)
+        store.book_done(a)
+        self.assertFalse((store.set_dir(a) / "books").exists())               # the cache went
+        self.assertTrue((store.set_dir(a) / "scenes" / "slide2.json").is_file())   # the settings stay
+        store.new_set("x", str(self.root), book=b)
+        keys = [x["key"] for x in store.presets(exclude=b)]
+        self.assertIn(f"book:{a}", keys)
+        self.assertNotIn(f"book:{b}", keys)
+        store.apply_preset(b, f"book:{a}")
+        self.assertEqual(store.load(b, "slide2")[0]["items"][0]["text"], "spooky")
+        self.assertEqual(rec["id"], a)
+
+    def test_the_mockups_step_ticks_itself_and_counts_whats_there(self):
+        book = self.workshop_book()
+        mockups._ticked({"saved": ["2. Open 1 (2-3).png"]}, book)
+        self.assertTrue(workshop.state(core.WORKSHOP_BOOKS / book)["marks"]["mockups"])
+        folder = store.mockups_dir(book)
+        for name in ("2. Open 1 (2-3).png", "Listing 1.png", "Listing 2.png"):
+            (folder / name).write_bytes(b"png")
+        (folder / cutout.NO_BG).mkdir()
+        (folder / cutout.NO_BG / "2. Open 1 (2-3).png").write_bytes(b"png")
+        self.assertEqual(workshop.mockups_state(core.WORKSHOP_BOOKS / book),
+                         {"mockups": 1, "noBg": 1, "slides": 2, "editable": False})
+        with self.assertRaises(ApiError):
+            store.mockups_dir("99.no-such-book")
+
+    def test_the_quite_temporary_goes(self):
+        (cutout.CUTS / "abc").mkdir(parents=True)
+        core.data_path("tmp", "slides-browser", "0").mkdir(parents=True)
+        store.clean_temporary()
+        self.assertFalse(cutout.CUTS.exists())
+        self.assertFalse(core.data_path("tmp", "slides-browser").exists())
+
+
 class MakingThem(Base):
     def folder(self) -> Path:
         out = self.root / "Goose mockups"
@@ -212,7 +323,7 @@ class MakingThem(Base):
             mockup(out / f"2. Open 1 ({n}-{n + 1}).png", (40 * i, 90, 90))
         mockup(out / "3. Open 2 (8-9).png")
         mockup(out / "1. Cover 1.png")
-        Image.new("RGB", (400, 300), (90, 70, 50)).save(out / "4. Dedication.png")
+        Image.new("RGB", SIZE, (90, 70, 50)).save(out / "4. Dedication.png")
         mockup(out / "Cover & Open 1 (4-5).png")
         return out
 
@@ -241,6 +352,8 @@ class MakingThem(Base):
         rec = store.read_set(res["set"])
         self.assertEqual(set(rec["books"]), {"open1:1", "open1:2", "open1:3", "open1:4", "open2:1", "cover"})
         self.assertEqual(set(rec["pictures"]), {"dedication", "page30"})
+        self.assertTrue(rec["pictures"]["dedication"].get("cut"))            # the floor see-through
+        self.assertTrue((out / cutout.NO_BG / "4. Dedication.png").is_file())
         self.assertEqual(rec["numbers"], {"pages": 30, "poems": 11})
         self.assertTrue((out / cutout.NO_BG / "1. Cover 1.png").is_file())
         self.assertEqual(len(calls), 6)
@@ -255,6 +368,18 @@ class MakingThem(Base):
             again = work.bake_set(quiet_job(), rec, ["slide2"], "http://127.0.0.1:1", "tok")
         self.assertEqual(len(list(out.glob("Listing*.png"))), 6)
         self.assertEqual(len(again), 6)
+
+    def test_for_a_workshop_book_the_slides_go_into_its_folder_with_its_own_page_30(self):
+        book = self.workshop_book()
+        Image.new("RGB", (400, 400), "white").save(core.WORKSHOP_BOOKS / book / "pictures" / "30.png")
+        out = store.mockups_dir(book)
+        mockup(out / "2. Open 1 (2-3).png")
+        with mock.patch.object(bake, "run_browser", pretend_browser([])), mock.patch.object(bake, "browser", lambda: "x"):
+            res = work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book)
+        self.assertEqual(res["set"], book)
+        self.assertTrue((out / "Listing 1.png").is_file())
+        self.assertIn("page30", store.read_set(book)["pictures"])
+        self.assertTrue(workshop.state(core.WORKSHOP_BOOKS / book)["marks"]["mockups"])   # the step ticked itself
 
     def test_names_never_go_over_the_owners_files(self):
         out = self.root / "out"
@@ -280,13 +405,13 @@ class MakingThem(Base):
 
 
 class CommandLine(Base):
-    def test_path_writes_out_the_first_design_to_edit(self):
+    def test_path_gives_the_default_schemes_file_to_edit(self):
         from tools import slides as cli
         with mock.patch("sys.stdout") as out:
             self.assertEqual(cli.main(["path", "slide6"]), 0)
         printed = "".join(c.args[0] for c in out.write.call_args_list)
         self.assertIn("slide6.json", printed)
-        self.assertTrue((store.DESIGN / "slide6.json").is_file())
+        self.assertTrue((store.SCHEMES / "nature" / "slide6.json").is_file())
 
 
 if __name__ == "__main__":

@@ -382,6 +382,13 @@ export const DRAW = {
   image(el, e, id) {
     const pic = ASSETS.pictures[e.slot];
     if (!pic) { placeholder(el, e.w, e.h, `${slotName(e.slot)} — немає картинки`); return; }
+    if (pic.cut && e.shape !== 'scallop') {
+      // cut out (Dedication: the book and the desk, the floor see-through, the shadows in the picture itself):
+      // no white card under it and no frame — the slide shows through (29.09.2026)
+      const svg = padSvg(el, e.w, e.h, 0);
+      mk('image', { href: pic.src, x: 0, y: 0, width: e.w, height: e.h, preserveAspectRatio: 'xMidYMid slice' }, svg);
+      return;
+    }
     const svg = padSvg(el, e.w, e.h, 60), defs = mk('defs', {}, svg);
     defs.innerHTML = SHADOW_DEFS(id);
     const shape = e.shape === 'scallop'

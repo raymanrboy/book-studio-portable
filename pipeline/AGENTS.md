@@ -36,7 +36,8 @@ books/[number].[slug]/
   The Workshop reads these files by their names — keep the names exactly.
 - **New book naming rule:** a new book is a new folder `books/[number].[slug]/agent/`, with an
   auto-incrementing number prefix. Look into `books/` (`list_dir`) for the highest number and add 1;
-  **the first book here is 40** (the old pipeline ended at 39). Never make a folder with just the name.
+  **a book's number is its Etsy listing's number** (the owner, 29.09.2026): 24 is Spooky stories, 25 Sleepy trucks
+  bedtime — the next new book is the highest number + 1 (26, …). Never make a folder with just the name.
 - **Dynamic lookup rule:** never rely on your memory of book paths. Before reading or writing a book,
   scan `books/` to find its current folder name — the user may rename folders.
 - **Can't see `books/`, or can't write there?** The books are kept out of git, and Antigravity hides

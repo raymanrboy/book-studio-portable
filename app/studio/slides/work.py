@@ -7,6 +7,8 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+from PIL import Image
+
 from .. import core
 from ..jobs import Job, UserError
 from . import bake, cutout, store
@@ -54,7 +56,10 @@ def rows(states: dict[str, str]) -> list[dict]:
 
 
 def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Path | None, numbers: dict,
-         templates_dir: Path, base: str, token: str) -> dict:
+         templates_dir: Path, base: str, token: str, book: str | None = None, fresh: bool = False,
+         scheme: str | None = None) -> dict:
+    """`book` — the Workshop book the mockups are for: its slides live in its folder, a second time keeps the owner's
+    six scenes (only the pictures are new) unless `fresh`; page 30 is the book's own; its «Мокапи» step ticks."""
     started = time.time()
     if not folder.is_dir():
         raise UserError("Папку з мокапами не знайдено.")
@@ -65,26 +70,60 @@ def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Pat
     states: dict[str, str] = {}
     job.share({"phase": "cut", "rows": rows(states)})
     cuts: dict[str, Path] = {}
-    for i, (slot, png) in enumerate(slots.items()):
-        job.progress(f"Вирізаю книги без фону · {i + 1} з {len(slots)}", 40 * i / len(slots))
+    todo = list(slots.items()) + ([("dedication", found["dedication"][0])] if found["dedication"] else [])
+    for i, (slot, png) in enumerate(todo):
+        job.progress(f"Вирізаю без фону · {i + 1} з {len(todo)}", 40 * i / len(todo))
         while cutout.cutter.status(folder).get(png.name) in ("wait", "work"):   # the background cutter has it
             time.sleep(0.3)
-        cuts[slot] = cutout.ensure(png, templates_dir)
+        try:
+            cuts[slot] = cutout.ensure(png, templates_dir)
+        except Exception as err:
+            if slot != "dedication":
+                raise
+            core.log.warning("Slides: Dedication not cut (%s) — used whole", err)
     job.progress("Складаю слайди", 42)
-    rec = store.new_set(name, str(folder), numbers)
+    rec = store.new_set(name, str(folder), numbers, book=book, fresh=fresh, scheme=scheme)
     for slot, cut_folder in cuts.items():
-        store.put_book(rec, slot, cut_folder, slots[slot].name)
-    if found["dedication"]:
+        if slot != "dedication":
+            store.put_book(rec, slot, cut_folder, slots[slot].name)
+    if "dedication" in cuts:       # the book and the desk, the floor see-through
+        with Image.open(cuts["dedication"] / "book.png") as b_, Image.open(cuts["dedication"] / "shadow.png") as s_:
+            store.put_picture(rec, "dedication", cutout.combined(b_.convert("RGBA"), s_.convert("RGBA")),
+                              name=found["dedication"][0].name, cut=True)
+    elif found["dedication"]:
         store.put_picture(rec, "dedication", found["dedication"][0])
-    if page30 and page30.is_file():
+    page30 = page30 if page30 and page30.is_file() else _book_page30(book)
+    if page30:
         store.put_picture(rec, "page30", page30)
     store.write_set(rec)
     store.forget_old_sets()
     baked = bake_set(job, rec, store.SLIDES, base, token, states)
+    if book:
+        _tick(book)
     missing = [store.SLOT_LABEL[s] for s in store.BOOK_SLOTS + store.PICTURE_SLOTS
                if s not in rec["books"] and s not in rec["pictures"]]
     return {"set": rec["id"], "folder": str(folder), "pictures": baked, "missing": missing,
             "seconds": round(time.time() - started)}
+
+
+def _book_page30(book: str | None) -> Path | None:
+    """The Workshop book's own page 30 (its pictures/ folder), when the demo book isn't at hand."""
+    if not book:
+        return None
+    try:
+        pictures = store.book_folder(book) / "pictures"
+    except Exception:
+        return None
+    return next((p for p in sorted(pictures.glob("30.*")) if p.suffix.lower() in core.IMAGE_EXTS), None)
+
+
+def _tick(book: str) -> None:
+    """The Workshop's «Мокапи» step ticks itself when the mockups were made for its book (the owner, 29.09.2026)."""
+    try:
+        from ..workshop.books import set_mark
+        set_mark(book, "mockups", True)
+    except Exception:
+        core.log.warning("Slides: the Workshop's «Мокапи» step of %s not ticked", book, exc_info=True)
 
 
 def bake_set(job: Job, rec: dict, slides: list[str], base: str, token: str, states: dict | None = None) -> list[dict]:

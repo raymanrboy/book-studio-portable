@@ -49,8 +49,12 @@ def assets(where: str) -> dict:
 def _view(where: str) -> dict:
     rec = store.read_set(where) if where != store.TEMPLATE else None
     busy = jobs.running(EXCLUSIVE)
+    key = (rec or {}).get("scheme") or ("" if rec else store.default_scheme())
     return {
-        "where": where, "name": rec.get("name") if rec else "Шаблон", "folder": rec.get("folder") if rec else "",
+        "where": where, "name": rec.get("name") if rec else f"Схема {store.scheme_name(key)}",
+        "folder": rec.get("folder") if rec else "", "book": where if store.is_book(where) else None,
+        "scheme": {"key": key, "name": store.scheme_name(key) if key and not key.startswith(store.BOOK_PRESET) else
+                   (key[len(store.BOOK_PRESET):] if key else "")},
         "numbers": {**store.NUMBERS, **((rec or {}).get("numbers") or {})},
         "slides": [{"id": s, "title": work.title(s)} for s in store.SLIDES],
         "pictures": work.pictures(rec) if rec else [],
@@ -64,7 +68,9 @@ def _view(where: str) -> dict:
 def _sets(req: Request):
     """The books whose slides are kept (the last dozen), newest first — the Mockups' header opens their editor."""
     return {"sets": [{"id": r["id"], "name": r.get("name") or "", "created": r.get("created") or "",
-                      "folder": r.get("folder") or "", "baked": len(work.pictures(r))} for r in store.list_sets()]}
+                      "folder": r.get("folder") or "", "baked": len(work.pictures(r)), "book": store.is_book(r["id"])}
+                     for r in store.list_sets()],
+            "scheme": {"key": store.default_scheme(), "name": store.scheme_name(store.default_scheme() or "")}}
 
 
 @route("GET", "/api/slides/state")
@@ -86,10 +92,10 @@ def _assets(req: Request):
     return assets(_where(req))
 
 
-@route("GET", r"/media/slides/file/(\d{8}-\d{6}-[0-9a-f]{6})/(books|pictures)/([\w.-]+\.png)", auth="media")
+@route("GET", r"/media/slides/file/([^/]+)/(books|pictures)/([\w.-]+\.png)", auth="media")
 def _file(req: Request):
     set_id, part, name = req.groups
-    path = store.set_dir(set_id) / part / name
+    path = store.set_dir(store.valid_where(set_id)) / part / name
     if not path.is_file():
         raise ApiError("Не знайдено.", 404)
     return file_response(path, "image/png", cache="private, max-age=3600")
@@ -115,15 +121,39 @@ def _reset(req: Request):
     return {"scene": scene, "version": version}
 
 
-@route("POST", "/api/slides/to-template")
-def _to_template(req: Request):
+@route("GET", "/api/slides/presets")
+def _presets(req: Request):
+    """The schemes (Nature, Night, the owner's own) and the other Workshop books' slides — what the editor's «Схема»
+    offers to put on these six slides."""
+    where = _where(req)
+    return {"presets": store.presets(exclude=where), "current": (store.read_set(where).get("scheme") if where != store.TEMPLATE
+            else store.default_scheme()), "default": store.default_scheme()}
+
+
+@route("POST", "/api/slides/apply")
+def _apply(req: Request):
     body = req.json or {}
-    where = _where(req, body)
+    where, key = _where(req, body), str(body.get("key") or "")
     if where == store.TEMPLATE:
-        raise ApiError("Це вже шаблон.")
-    store.to_template(where, _slide(body.get("s")))
-    core.log.info("Slides: %s of set %s became the template", body.get("s"), where)
+        raise ApiError("Схему кладуть на слайди книги.")
+    store.apply_preset(where, key)
+    core.log.info("Slides: %s put on the slides of %s", key, where)
     return {"ok": True}
+
+
+@route("POST", "/api/slides/save-scheme")
+def _save_scheme(req: Request):
+    body = req.json or {}
+    key = store.save_scheme(_where(req, body), str(body.get("name") or ""), bool(body.get("default")))
+    core.log.info("Slides: scheme %s saved from %s", key, body.get("w"))
+    return {"key": key, "name": store.scheme_name(key)}
+
+
+@route("POST", "/api/slides/default-scheme")
+def _default_scheme(req: Request):
+    key = str((req.json or {}).get("key") or "")
+    store.set_default(key)
+    return {"default": key}
 
 
 @route("POST", "/api/slides/numbers")
@@ -174,7 +204,8 @@ def _folder(value) -> Path:
 @route("GET", "/api/slides/cutouts")
 def _cutouts(req: Request):
     """The mockups of a folder cut without background: which are ready (the Mockups' result card says it)."""
-    folder = _folder(req.param("folder"))
+    workshop = req.param("workshop")
+    folder = store.mockups_dir(workshop) if workshop else _folder(req.param("folder"))
     states = cutout.cutter.status(folder)
     for p in folder.glob("*.png"):
         if cutout.kind_of(p.name) in cutout.KINDS and p.name not in states and (folder / cutout.NO_BG / p.name).is_file():
@@ -194,7 +225,12 @@ def cut_later(png: Path, templates_dir: Path) -> None:
 def _make(req: Request):
     from .. import mockups
     body = req.json or {}
-    folder = _folder(body.get("folder"))
+    workshop = str(body.get("workshop") or "")
+    if workshop:
+        store.book_folder(workshop)
+        folder = store.mockups_dir(workshop)
+    else:
+        folder = _folder(body.get("folder"))
     order = [str(n) for n in body.get("order") or [] if isinstance(n, str)]
     numbers = {k: v for k, v in (body.get("numbers") or {}).items() if k in store.NUMBERS and isinstance(v, int) and 0 < v < 1000}
     page30, name = None, folder.name
@@ -208,10 +244,16 @@ def _make(req: Request):
                 page30 = Path(pages[max(pages)])   # the afterword — the book's last page
         except ApiError:
             pass
+    if workshop:
+        from ..workshop.books import display_name
+        name = display_name(workshop)
     templates_dir = mockups.places()["templates"]
     base, token = base_url(), SESSION_TOKEN
+    fresh = bool(body.get("fresh"))
+    scheme = str(body.get("scheme") or "") or None
     core.log.info("Slides: making the six for «%s» from %s", name, folder)
-    job = jobs.start("slides", lambda j: work.make(j, folder, name, order, page30, numbers, templates_dir, base, token),
+    job = jobs.start("slides", lambda j: work.make(j, folder, name, order, page30, numbers, templates_dir, base, token,
+                                                   book=workshop or None, fresh=fresh, scheme=scheme),
                      exclusive=EXCLUSIVE)
     return {"jobId": job.id}
 
@@ -240,7 +282,7 @@ def _baked(where: str, slide: str) -> Path:
     return path
 
 
-@route("GET", r"/media/slides/out/(\d{8}-\d{6}-[0-9a-f]{6})/(slide[1-6])", auth="media")
+@route("GET", r"/media/slides/out/([^/]+)/(slide[1-6])", auth="media")
 def _out(req: Request):
     path = _baked(store.valid_where(req.groups[0]), req.groups[1])
     return file_response(images.preview(path, req.int_param("w", 480, 64, 4096)), "image/jpeg", cache="private, max-age=600")

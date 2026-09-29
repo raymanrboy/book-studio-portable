@@ -255,12 +255,83 @@ them). Beyond the plan: the Mockups' header got ▣ «Слайди для ліс
 gone — the editor and the template stay one click away); «Без фону» keeps the full size (≈3700 px), the slides'
 copy 2600 px; the external tool's `slide-editor` entry left `.claude/launch.json`. The skill: `/listing-slides`.
 
+### The eleven wishes — built (2026-09-29, late evening)
+
+All of them ([features/slides.md](../features/slides.md)), the owner's word «поїхали»: the schemes in the editor, the
+background as a layer, the colours of the other slides, «Який мокап» without the file name, locked by default,
+Dedication without its floor (in the template the *desk* is «BACKGROUND_desk color» and the *floor* under the book
+«BACKGROUND» — the desk and the book stay), the numbering as his Etsy listings, the mockups into the Workshop book's
+folder, the Workshop's «Мокапи» step back to the mockups and ticking itself, a book's slides in its folder, the
+cleaning; a done book's six are presets.
+
 ### Questions for the owner (the defaults the plan takes if he says nothing)
 
 1. **One template for every book?** Default: yes — a book gets a copy of the template; an edit in a book stays in
    that book; «Зробити шаблоном» carries it to every future book.
 2. **Names and folder**: `Listing 1.png … Listing 6.png` in the mockups' folder; the cut-outs in its `Без фону\`.
 3. ~~The rail's name~~ — no rail item: the slides are the Mockups' next steps (the owner, 2026-09-29).
+
+## Schemes and the editor's next touches (agreed 2026-09-29, not built)
+
+The owner, after setting up his own colours by hand on a book's six slides: "the editor should have a choice of
+template — a colour scheme you can save while working in the editor"; then **"a scheme includes not only the colours
+but the settings of the whole mockup"** — so a **scheme is a whole design: the six scenes** (colours, positions,
+shadows, texts), named. Two are recorded, in `app/data/slides/schemes/<key>/` (`scheme.json` — name, default, where
+it came from, its colours by role; `slide1…6.json` — the scenes, with slots and `{pages}` / `{poems}`, so they fit any
+book):
+
+| Scheme | What | Colours by role |
+|---|---|---|
+| **Nature** (the default) | the template as it was on 29.09.2026 (`app/data/slides/design/`) | cream #eedec7, light stains #f5e9d8, olive #a2a066, peach #d5ae81, text white, arrows #6b3a3a; slide 3 — #7a6650 |
+| **Night** | the owner's slides of «4k Трафарет, копія» (set `20260929-211854-2d9515`, 21:42) | blue-grey #555876, stains #706880, teal-grey #5c7d88, warm grey #706b68, stickers yellow #e8d48a, text white; slide 3 — peach #d5ae81 |
+
+Night's shades were picked by eye slide by slide, so a colour has near variants (the teal: #5c7d88, #5e7e86, #5d7d88,
+#658081; slide 4's background #4e5373) — the scheme feature is where they become one.
+
+Asked for the editor at the same time (waiting for the owner's word — he is mid-work in the open program; the
+frontend ones can go in without restarting Book Studio, the rest need a restart):
+1. the choice of a scheme in the editor, and «save as a scheme» while working (files — after a restart);
+2. the background as a layer of its own (a «Тло» row at the bottom of the layers);
+3. the suggested colours taken from the other slides too, not only the ones on this slide;
+4. «Який мокап» without the file name («Open 1 · 4»);
+5. every element **locked against moving by default** (a click selects it, the mouse doesn't move it; the lock in the
+   layers frees it; new elements from «+» free);
+6. **Dedication without its background** — the table stays, the wall goes, the shadows kept: its template has the same
+   family structure (`BACKGROUND_desk color` — the table, `BACKGROUND` with its own mask — the wall, `SHADOW_global`
+   Multiply, `BOOK/OBJECT` with its mask), so the cut can keep the desk layer and drop the wall (Python — a restart).
+
+### The Workshop and the Mockups together (the owner, 2026-09-29 — waiting for his word)
+
+7. **Books are numbered as his Etsy listings**: "numbering starts not from 41 but from 24" — the book now №41 (Sleepy
+   trucks bedtime) becomes **№25**, the one before it (Spooky stories, №40) №24; the next new book №26. A book's number
+   is its folder's prefix (the owner confirmed: Spooky stories was his 24th listing) (`pipeline/books/41.sleepy-trucks-bedtime`), and the pipeline's rule says "the first book here
+   is 40" (`pipeline/GEMINI.md`) — so the two folders get renamed and the rule changed; everything that names a book by
+   its folder (the Workshop's address, marks, the generation mode, the library book it was passed as) checked first.
+8. **The mockups go into the Workshop book's own folder** (e.g. `pipeline/books/25.…/mockups/`), with «Без фону» and the
+   slides — **no "where to save" question** when the Mockups were opened from the book.
+9. **From the Workshop back to the mockups at any time**, even when all is saved: the step «Мокапи»'s panel now says
+   "made outside Book Studio? tick it when done" with «Відкрити Мокапи» / «Зняти позначку» — it should offer **«Відкрити
+   папку мокапів»** (and the way back into the Mockups / the slides' editor for this book) and «Зняти позначку»; **the
+   step ticks itself** when the mockups were made from there.
+
+### A book's slides belong to its Workshop book; temporary files go (the owner, 2026-09-29 — waiting for his word)
+
+The owner, on the Mockups header's ▣ menu (the template, «4k Трафарет, копія · 21:18», «Приклад · 18:16» — a set per
+«Зробити слайди», named by the demo ZIP and the time): "some saving of states is already there, but I want it tied to
+the book in the Workshop, not to a session; all the cache and everything temporary must be erased once the book is
+done, the quite temporary things must vanish when I close the program, and all the cache kept in the program's folder
+— it must be as portable as possible". Today everything is in `app/data` already (nothing on drive C), but the cuts
+(`slides/cuts/`) and the sets are never erased (the sets — only the last 12 kept).
+
+10. **The slides live with the Workshop book**: its folder (`pipeline/books/<n>.<slug>/mockups/`) holds the mockups,
+    «Без фону», `Listing 1–6` and the slides' scenes; the editor opens from the book's «Мокапи» step (the ▣ menu, if
+    kept, names books as «№25 Sleepy trucks bedtime»).
+11. **Cleaning**: the quite temporary (the cuts' cache, the unpacked demo book, the bake's browser files) — when the
+    program closes; the book's cache (the editor's smaller copies of the books) — when the book is done (passed to the
+    library); the finished pictures stay in the book's folder. **The slides' settings are never erased** (the owner:
+    "no — these are presets that will be used in other books too, e.g. in another bedtime book"): a book's six scenes
+    stay as a preset to pick for a new book, beside Nature and Night (the agent's suggestion: named by the book,
+    «№25 Sleepy trucks bedtime», in the same scheme choice).
 
 ## Related
 - [Mockups](../features/mockups.md) · [Listing mockups plan and templates](listing-mockups.md) ·

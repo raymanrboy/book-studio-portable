@@ -212,7 +212,7 @@ const ROUTES = [
   [/^#\/workshop\/([^/]+)$/, () => import('./pages/workshop-book.js'), 'listings'],
   [/^#\/mockups\/?$/, () => import('./pages/mockups.js'), 'listings'],
   // the slides' editor: its own module, loaded only when opened (the owner, 29.09.2026) — not warmed up below
-  [/^#\/slides\/(template|\d{8}-\d{6}-[0-9a-f]{6})\/([1-6])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
+  [/^#\/slides\/(template|\d{8}-\d{6}-[0-9a-f]{6}|\d{1,5}\.[^/]+)\/([1-6])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
 ];
 
 let current = null;

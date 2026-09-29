@@ -24,6 +24,8 @@ const TYPE_SPREAD = 'application/x-mk-spread';
 const TYPE_SLOT = 'application/x-mk-slot';
 const SPREADS = ['розворот', 'розвороти', 'розворотів'];
 const busy = (on) => tellBusy({ mockups: on }); // the rail's dot
+const FOR_BOOK = 'mk-for-book';   // the Workshop's «Мокапи» step: {id} — the book the next mockups are for
+const LAST_BOOK = 'mk-last-book';
 
 export async function mount(view) {
   const st = {
@@ -34,7 +36,8 @@ export async function mount(view) {
     active: null,       // {key, i} — the slot the next clicked spread goes into
     receiving: null,    // 'ask' — the Windows dialog is open, 'unzip', or the percent of a dropped ZIP
     bookError: '',
-    out: '',            // the folder the pictures go to — picked for every book
+    out: '',            // another folder the pictures go to (picked by hand: «Інша папка…»)
+    workshop: null,     // the Workshop book the mockups go into — its own folder, no question (29.09.2026)
     asking: false,      // the Windows "where to save" dialog is open
     run: null,          // {mode: make|finish, phase: prepare|ask|work, step, percent, rows}
     result: null,       // the last run: {saved, open, run, folder, seconds, problems, job}
@@ -43,6 +46,20 @@ export async function mount(view) {
     runError: '',
   };
   st.pending = st.meta.pending || null;
+  const bookById = (id) => (st.meta.books || []).find((b) => b.id === id) || null;
+  // The Workshop's «Мокапи» step sends its book here (remember(FOR_BOOK) — a kept page takes it on revive()).
+  function takeWorkshopBook() {
+    const asked = remembered(FOR_BOOK, null);
+    if (asked) remember(FOR_BOOK, null);
+    const pick = (asked && bookById(asked.id)) || (!st.workshop && !st.out
+      && (bookById(remembered(LAST_BOOK, '')) || (st.meta.books || [])[0])) || null;
+    if (!pick || (asked && st.run)) return false;
+    const changed = st.workshop?.id !== pick.id;
+    st.workshop = pick; st.out = '';
+    remember(LAST_BOOK, pick.id);
+    return changed && !!asked;
+  }
+  takeWorkshopBook();
   let gone = false;
   const offs = [];
   const $ = (sel) => view.querySelector(sel);
@@ -144,7 +161,7 @@ export async function mount(view) {
       await post('/api/mockups/close', { run: st.pending?.run || '' });
     } catch (err) { toast(err.message, 'error'); return; }
     if (gone) return;
-    Object.assign(st, { book: null, label: '', receiving: null, bookError: '', out: '', asking: false, run: null,
+    Object.assign(st, { book: null, label: '', receiving: null, bookError: '', asking: false, run: null,
       result: null, finished: null, pending: null, runError: '' });
     slides.reset();
     resetPicks();
@@ -271,8 +288,20 @@ export async function mount(view) {
   // ---------------------------------------------------------------- 2 · where the pictures go
   function paintOut() {
     const last = st.meta.lastOut;
+    const books = st.meta.books || [];
+    if (!st.out && books.length) {   // the Workshop book — its own folder «mockups», nothing asked
+      setHtml($('#mk-s3'), html`
+        <div class="row">${stepNo(2, !!st.workshop)}<h3 class="card-title grow">Книга</h3>
+          ${st.workshop ? ib('folderOpen', 'Відкрити папку мокапів цієї книги', 'data-act="open-book-mockups"', { cls: 'sm' }) : ''}</div>
+        <select class="select" id="mk-workshop" aria-label="Книга з Майстерні" ${st.run ? 'disabled' : ''}>
+          ${books.map((b) => html`<option value="${b.id}" ${b.id === st.workshop?.id ? 'selected' : ''}>${b.name}</option>`)}</select>
+        <div class="mk-foot">Мокапи, «Без фону» і слайди ляжуть у папку книги — <b>mockups</b>. Нічого не перезаписується.
+          <button type="button" class="btn btn-xs btn-ghost mk-other" data-act="pick-out">Інша папка…</button></div>`);
+      return;
+    }
     setHtml($('#mk-s3'), html`
       <div class="row">${stepNo(2, !!st.out)}<h3 class="card-title grow">Куди зберегти</h3>
+        ${books.length && !st.run ? ib('book', 'Назад до книги з Майстерні', 'data-act="to-book"', { cls: 'sm' }) : ''}
         ${st.asking ? html`<span class="v-badge run"><span class="spinner"></span>Вікно Windows</span>` : ''}</div>
       <div class="input-group">
         <input class="input path-input mk-path" id="mk-out" readonly value="${st.out}" title="${st.out}" data-act="pick-out"
@@ -318,7 +347,7 @@ export async function mount(view) {
     const need = !st.book ? 'Ще: демо-книга' : left ? `Ще ${left} ${plural(left, SPREADS)}` : '';
     setHtml(box, html`
       <p class="mk-plan">Photoshop сам збереже <b class="num">${saves}</b> ${plural(saves, PICTURES)}, а <b class="num">${hands}</b> шаблони залишить
-        відкритими — лицьову обкладинку й кольори Dedication підганяєте ви.${st.book && !st.out ? ' Папку спитаю, коли натиснете.' : ''}</p>
+        відкритими — лицьову обкладинку й кольори Dedication підганяєте ви.${st.book && !st.out && !st.workshop ? ' Папку спитаю, коли натиснете.' : ''}</p>
       <button type="button" class="btn btn-primary btn-block mk-make ${need ? 'waiting' : ''}" data-act="make" ${ready ? '' : 'disabled'}>${ic('mockup')}Зробити мокапи</button>
       ${need ? html`<div class="mk-left">${need}</div>` : ''}`);
   }
@@ -557,6 +586,10 @@ export async function mount(view) {
       blink([...view.querySelectorAll('.mk-slot[data-slot]:not(.filled)')]);
       return;
     }
+    if (!st.out && st.workshop) {
+      start('make', post('/api/mockups/make', { book: st.book.id, picks: st.picks, workshop: st.workshop.id }));
+      return;
+    }
     const folder = st.out || await askFolder(true);
     if (!folder || gone) return;
     start('make', post('/api/mockups/make', { book: st.book.id, picks: st.picks, folder }));
@@ -668,6 +701,11 @@ export async function mount(view) {
     blinkFinish: () => { const b = $('[data-act="finish"]'); if (b) { b.scrollIntoView({ block: 'center', behavior: 'smooth' }); blink([b]); } },
   });
   offs.push(on(view, 'change', '#mk-s5 input[data-num]', (e, t) => slides.input(t)));
+  offs.push(on(view, 'change', '#mk-workshop', (e, t) => {
+    st.workshop = bookById(t.value);
+    remember(LAST_BOOK, t.value);
+    paintOut(); paintMake();
+  }));
 
   // ---------------------------------------------------------------- events
   const slotOf = (v) => { const [key, i] = String(v).split(':'); return { key, i: +i }; };
@@ -690,6 +728,11 @@ export async function mount(view) {
     if (act === 'pick-zip') { pickZip(); return; }
     if (act === 'pick-out') { if (!st.asking && !st.run) askFolder(false); return; }
     if (act === 'same-out') { st.out = st.meta.lastOut; paintOut(); paintMake(); return; }
+    if (act === 'to-book') { st.out = ''; takeWorkshopBook(); paintOut(); paintMake(); return; }
+    if (act === 'open-book-mockups') {
+      post('/api/workshop/open', { book: st.workshop.id, what: 'mockups' }).catch((err) => toast(err.message, 'error'));
+      return;
+    }
     if (act === 'places') { openPlaces(); return; }
     if (act === 'close') { finishPage(); return; }
     if (act === 'place') { place(t.dataset.what); return; }
@@ -767,7 +810,11 @@ export async function mount(view) {
   return {
     // Kept when the owner steps away while there is something to come back to: a book, a run, its result.
     keep: () => !!(st.book || st.run || st.result || st.finished || st.receiving !== null || slides.keep()),
-    revive: () => { slides.wake(); return true; },
+    revive: () => {
+      if (takeWorkshopBook()) { paintOut(); paintMake(); toast(`Мокапи — для ${st.workshop.name}`, 'info'); }
+      slides.wake();
+      return true;
+    },
     unmount() { gone = true; slides.stop(); offs.forEach((off) => off()); if (st.run) busy(false); },
   };
 }

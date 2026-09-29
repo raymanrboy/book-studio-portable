@@ -190,7 +190,7 @@ them) — see [features/mockups.md](../features/mockups.md).
 
 ## Listing slides — [slides/routes.py](../../app/studio/slides/routes.py)
 
-Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a set's id or `template`, `s` — `slide1…6`.
+Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a Workshop book's folder name, an older set's id or `template` (the default scheme), `s` — `slide1…6`. `/api/slides/make` and `/api/slides/cutouts` take `workshop` (a book) instead of `folder`; `/api/mockups/make` takes `workshop` too.
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
@@ -200,17 +200,20 @@ Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a 
 | GET | `/media/slides/scene` | media | `_scene` | slides/render.html — the page headless Edge bakes |
 | GET | `/api/slides/assets` | token | `_assets` | slides-editor.js (the slots' pictures, where the books sit, the numbers) |
 | GET | `/media/slides/assets` | media | `_assets` | slides/render.html |
-| GET | `/media/slides/file/(\d{8}-\d{6}-[0-9a-f]{6})/(books\|pictures)/([\w.-]+\.png)` | media | `_file` | engine.js (a set's cut-out book, its shadow, a flat picture) |
+| GET | `/media/slides/file/([^/]+)/(books\|pictures)/([\w.-]+\.png)` | media | `_file` | engine.js (a set's — a Workshop book's or an older one's — cut-out book, its shadow, a flat picture) |
 | GET | `/api/slides/sig` | token | `_sig` | slides-editor.js `watch` every 1.5 s (a scene changed by an agent shows up) |
 | POST | `/api/slides/scene` | token | `_save` | slides-editor.js `flush` (`{w, s, scene, base}` — a stale `base` → 409 with the scene as it is now) |
 | POST | `/api/slides/reset` | token | `_reset` | slides-editor.js «Скинути слайд» |
-| POST | `/api/slides/to-template` | token | `_to_template` | slides-editor.js «Зробити шаблоном» |
+| GET | `/api/slides/presets` | token | `_presets` | slides-editor.js «Схема ▾» (the schemes and the other Workshop books' slides, the one put on, the default) |
+| POST | `/api/slides/apply` | token | `_apply` | slides-editor.js — a scheme (or `book:<id>`) put on all six (`{w, key}`) |
+| POST | `/api/slides/save-scheme` | token | `_save_scheme` | slides-editor.js «Зберегти ці слайди як схему…» (`{w, name, default}`) |
+| POST | `/api/slides/default-scheme` | token | `_default_scheme` | slides-editor.js «Нові книги — зі схеми …» |
 | POST | `/api/slides/numbers` | token | `_numbers` | slides-editor.js (the book's «Сторінок» / «Віршів») |
 | POST | `/api/slides/picture` | token | `_picture` | slides-editor.js «Інша картинка…» (the Windows dialog → a set's `dedication` / `page30`) |
 | GET | `/api/slides/cutouts` | token | `_cutouts` | mockups-slides.js (`?folder=` — which mockups are cut «Без фону») |
 | POST | `/api/slides/make` | token | `_make` | mockups-slides.js «Зробити слайди» (job `slides`: `{folder, order, book, numbers}` → a set, the six baked) |
 | POST | `/api/slides/bake` | token | `_bake` | slides-editor.js «Зберегти картинки» (job `slides`: the set's slides into the same files) |
-| GET | `/media/slides/out/(\d{8}-\d{6}-[0-9a-f]{6})/(slide[1-6])` | media | `_out` | mockups-slides.js (`?w=&v=` — a baked slide's preview) |
+| GET | `/media/slides/out/([^/]+)/(slide[1-6])` | media | `_out` | mockups-slides.js (`?w=&v=` — a baked slide's preview) |
 | POST | `/api/slides/open-picture` | token | `_open_picture` | mockups-slides.js, the viewer's "original" button |
 | POST | `/api/slides/open-folder` | token | `_open_folder` | (a set's folder, `noBg` — its «Без фону») |
 

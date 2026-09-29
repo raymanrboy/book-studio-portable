@@ -27,6 +27,7 @@ from ..jobs import jobs
 from ..server import ApiError
 
 AGENT, PICTURES, ORIGINALS, STATE = "agent", "pictures", "originals", "book.json"
+MOCKUPS = "mockups"   # the book's mockups, «Без фону», the listing slides (since 29.09.2026)
 AREAS = (AGENT, PICTURES, ORIGINALS)
 TEXT_SUFFIXES = (".md", ".txt", ".json")
 TEXT_LIMIT = 2_000_000
@@ -222,12 +223,24 @@ def steps(path: Path) -> list[dict]:
             st = "done" if library_book(path) else "todo"
         else:
             st = "done" if marks.get(key) else "todo"
+            if key == "mockups":
+                extra.update(mockups_state(path))
         out.append({"key": key, "label": s["label"], "state": st, "manual": key in MANUAL, "files": files, **extra})
     for s in out:  # the next step to do: the first that isn't done (a skipped one doesn't count)
         if s["state"] in ("todo", "part"):
             s["next"] = True
             break
     return out
+
+
+def mockups_state(path: Path) -> dict:
+    """What the book's mockups folder holds: the mockups, their cut-outs «Без фону», the listing slides."""
+    folder = path / MOCKUPS
+    names = _names(folder)
+    pictures = [n for n in names if n.lower().endswith(".png")]
+    slides = [n for n in pictures if n.lower().startswith("listing ")]
+    return {"mockups": len(pictures) - len(slides), "noBg": len(_names(folder / "Без фону")),
+            "slides": len(slides), "editable": (folder / "slides" / "set.json").is_file()}
 
 
 def _title(book_id: str) -> tuple[int | None, str]:
@@ -417,7 +430,7 @@ def open_in_windows(book_id: str | None, what: str, name: str = "", variant: str
     if what == "books":
         target = books_dir()
         target.mkdir(parents=True, exist_ok=True)
-    elif what in ("folder", AGENT, PICTURES, ORIGINALS):
+    elif what in ("folder", AGENT, PICTURES, ORIGINALS, MOCKUPS):
         path = book_path(book_id or "")
         target = path if what == "folder" else path / what
         if variant:
@@ -488,6 +501,15 @@ def delete_book(book_id: str) -> dict:
 
 # ---------------------------------------------------------------- into the library
 
+def _slides_done(book_id: str) -> None:
+    """The book is done: its listing slides' cache goes, the scenes stay a preset (the owner, 29.09.2026)."""
+    try:
+        from ..slides import store as slide_store
+        slide_store.book_done(book_id)
+    except Exception:
+        core.log.warning("Workshop: the slides' cache of %s not cleaned", book_id, exc_info=True)
+
+
 def to_library(book_id: str, body: dict) -> dict:
     """«Передати в бібліотеку»: a library book made from this one — its texts (book-text.md) and its Etsy listing
     (checked by the page, read only, or typed in); its cover and pages (pictures/: Cover.png, 1…30.png) it takes from
@@ -511,6 +533,7 @@ def to_library(book_id: str, body: dict) -> dict:
         texts = book_texts(path)
         if texts:
             library.update_texts(book["id"], texts)
+        _slides_done(book_id)
         if body.get("useListingImage"):
             job.progress("Фото лістингу…", 97)
             library.take_listing_image(library.load(book["id"]))

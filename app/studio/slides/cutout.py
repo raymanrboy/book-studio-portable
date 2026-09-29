@@ -6,9 +6,11 @@ grey v is exactly black with alpha 1 − v; a Screen layer is white with alpha v
 shadow. The book's outline is the mask of the template's BOOK/OBJECT group. The templates are only read (psd_tools,
 imported only when a cut is made — nothing of it loads at launch).
 
-Only the templates that are one book on the studio background can be cut: 2. Open 1, 3. Open 2 and 1. Cover 1 —
-exactly the ones the listing slides use. Cover & Open 1 and All & Open 1 are whole scenes (no book mask), Dedication a
-table scene: they are kept whole.
+The templates that are one book on the studio background are cut to the book: 2. Open 1, 3. Open 2 and 1. Cover 1.
+4. Dedication is a book on a floor by a desk: its floor (the smart object BACKGROUND, with its own mask) goes and the
+desk («BACKGROUND_desk color» — the colour the owner picks for the table) stays with the book, the shadows kept (the
+owner, 29.09.2026: "the table stays, the background goes, without losing the shadows"). Cover & Open 1 and All & Open 1
+are whole scenes (no book mask): they are kept whole.
 
     kind_of(name)       which template a mockup picture comes from (by its file name)
     cut(png, template)  the book and its shadow as two pictures, and where the book sits in them
@@ -35,7 +37,7 @@ NO_BG = "Без фону"  # the folder beside the mockups where the cut-outs go
 CUTS = core.data_path("slides", "cuts")   # every cut once: <key>/book.png, shadow.png, info.json
 
 # (kind, the template's file) — by the mockup's file name, the way the Mockups name them ("2. Open 1 (6-7).png")
-KINDS = {"open1": "2. Open 1.psd", "open2": "3. Open 2.psd", "cover1": "1. Cover 1.psd"}
+KINDS = {"open1": "2. Open 1.psd", "open2": "3. Open 2.psd", "cover1": "1. Cover 1.psd", "dedication": "4. Dedication.psd"}
 
 
 def kind_of(name: str) -> str | None:
@@ -66,8 +68,10 @@ def _walk(group):
             yield from _walk(layer)
 
 
-def read_psd(path: Path, size: tuple[int, int]):
-    """The book's outline (alpha, 0…1) and the shadow/light layers as (colour 0|1, alpha) — from the PSD, read only."""
+def read_psd(path: Path, size: tuple[int, int], desk: bool = False):
+    """The book's outline (alpha, 0…1) and the shadow/light layers as (colour 0|1, alpha) — from the PSD, read only.
+    `desk` (Dedication): what stays is the book and the desk — everything but the floor, the BACKGROUND smart object
+    where its mask shows it."""
     import numpy as np
     from psd_tools import PSDImage
     warnings.filterwarnings("ignore")
@@ -100,7 +104,19 @@ def read_psd(path: Path, size: tuple[int, int]):
                 effects.append((0.0, (1 - lum) * a[..., 3] * opacity))
             elif "SCREEN" in mode:
                 effects.append((1.0, lum * a[..., 3] * opacity))
-    return alpha, _near_book(alpha, effects)
+    near = _near_book(alpha, effects)
+    if desk:
+        floor = next(l for l in background if l.name == "BACKGROUND" and not l.is_group())
+        shown = full(floor)[..., 3]
+        mask = np.zeros((H, W), np.float32)
+        x0, y0, x1, y1 = floor.mask.bbox
+        mask[max(0, y0):min(H, y1), max(0, x0):min(W, x1)] =             (np.asarray(floor.mask.topil(), np.float32) / 255)[max(0, -y0):max(0, -y0) + min(H, y1) - max(0, y0), max(0, -x0):max(0, -x0) + min(W, x1) - max(0, x0)]
+        alpha = np.maximum(1 - shown * mask, alpha)
+    return alpha, near
+
+
+def read_psd_desk(path: Path, size: tuple[int, int]):
+    return read_psd(path, size, desk=True)
 
 
 def _near_book(alpha, effects):
@@ -117,21 +133,22 @@ def _near_book(alpha, effects):
 # The template reader: the PSD in the owner's templates folder. The preview server and the tests put a pretend one
 # here (made-up templates are plain pictures).
 READER = read_psd
+DESK_READER = read_psd_desk     # Dedication: the book and the desk
 
 _templates: dict[str, tuple] = {}   # the last template read (a few hundred MB of arrays — one kept at a time)
 _templates_lock = threading.Lock()
 
 
-def template(path: Path, size: tuple[int, int]):
+def template(path: Path, size: tuple[int, int], kind: str = ""):
     try:
         stamp = path.stat().st_mtime_ns
     except OSError:
         stamp = 0
-    key = f"{path}|{stamp}|{size}"
+    key = f"{path}|{stamp}|{size}|{kind}"
     with _templates_lock:
         if key not in _templates:
             _templates.clear()
-            _templates[key] = READER(path, size)
+            _templates[key] = (DESK_READER if kind == "dedication" else READER)(path, size)
         return _templates[key]
 
 
@@ -142,7 +159,7 @@ def forget_templates() -> None:
 
 # ---------------------------------------------------------------- the cut
 
-def cut(png: Path, tmpl) -> tuple[Image.Image, Image.Image, dict]:
+def cut(png: Path, tmpl, crop: bool = True) -> tuple[Image.Image, Image.Image, dict]:
     """The book alone and its shadow alone (so a slide can make the shadow lighter), both cropped to the pair, and
     where the book sits in them: cx, cy, w — shares of the picture; aspect — the book's height / width. Full size."""
     import numpy as np
@@ -175,6 +192,8 @@ def cut(png: Path, tmpl) -> tuple[Image.Image, Image.Image, dict]:
     bw, bh = max(1, int(bx.max()) - int(bx.min())), int(by.max()) - int(by.min())
     info = {"cx": ((bx.min() + bx.max()) / 2 - box[0]) / pw, "cy": ((by.min() + by.max()) / 2 - box[1]) / ph,
             "w": bw / pw, "aspect": bh / bw}
+    if not crop:   # Dedication keeps the mockup's own frame: it lies on the slide where the whole mockup lay
+        return book_im, shadow_im, {k: round(float(v), 5) for k, v in info.items()}
     return book_im.crop(box), shadow_im.crop(box), {k: round(float(v), 5) for k, v in info.items()}
 
 
@@ -214,13 +233,13 @@ def ensure(png: Path, templates_dir: Path, no_bg: bool = True) -> Path:
     picture lands in «Без фону» beside it too (never over a file that is there)."""
     kind = kind_of(png.name)
     if kind not in KINDS:
-        raise _fail(f"«{png.name}» — не Open 1, Open 2 чи Cover 1: без фону не вирізається.")
+        raise _fail(f"«{png.name}» — не Open 1, Open 2, Cover 1 чи Dedication: без фону не вирізається.")
     folder = cached(png)
     target = png.parent / NO_BG / png.name
     if folder is None:
         with Image.open(png) as im:
             size = im.size
-        book, shadow, info = cut(png, template(Path(templates_dir) / KINDS[kind], size))
+        book, shadow, info = cut(png, template(Path(templates_dir) / KINDS[kind], size, kind), crop=kind != "dedication")
         if no_bg and not target.exists():
             _write_no_bg(target, book, shadow)       # the full size, for the owner
         folder = CUTS / cut_key(png)

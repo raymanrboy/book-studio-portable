@@ -71,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
     tunnel.cleanup_stale()
     drops.clear_drops()
     mockups.clear_books()
+    slides.store.clean_temporary()  # the slides' cut-out cache and the bake's browser files (29.09.2026)
     httpd = server.start(args.port)
     sync.startup_sync()  # the one automatic refresh of orders; afterwards only the refresh button
     # The order archive tidies up on its own (again after every sync): books whose 14 days are over go.
@@ -105,6 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     # The unpacked demo book goes, and so do the mockup runs Photoshop can no longer have open (the copies of
     # templates still open in it wait for the next launch or a day).
     mockups.clear_books()
+    slides.store.clean_temporary()  # the slides' cut-out cache and the bake's browser files (29.09.2026)
     mockups.clean_runs()
     core.clear_own_temp()
     return 0

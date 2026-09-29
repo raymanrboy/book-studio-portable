@@ -1,12 +1,14 @@
 ---
 name: listing-slides
-description: Change, look at and bake Book Studio's six Etsy listing slides (the «Слайди для лістингу» made after the Mockups) through their files — move/turn/resize an element, change a text, colour, shadow, arrow, sticker, the book's numbers, a slide's mockup; make a slide the template; bake the pictures. Use when the owner asks to edit a listing slide or the slide template in words («підвинь», «зміни текст на слайді», «зроби тінь сильнішою», «запікай») instead of in the editor.
+description: Change, look at and bake Book Studio's six Etsy listing slides (the «Слайди для лістингу» made after the Mockups) through their files — move/turn/resize an element, change a text, colour, shadow, arrow, sticker, the book's numbers, a slide's mockup; save or put on a scheme (Nature, Night…); bake the pictures. Use when the owner asks to edit a listing slide, a book's slides or a scheme in words («підвинь», «зміни текст на слайді», «зроби тінь сильнішою», «запікай») instead of in the editor.
 ---
 
 # Listing slides — working through the files
 
-The owner makes the six square 2000×2000 Etsy pictures of a book in Book Studio: the Mockups page → «Зробити
-слайди» → the editor (`#/slides/<set>/<1–6>`). Sometimes he'd rather tell an agent what to change (29.09.2026:
+The owner makes the six square 2000×2000 Etsy pictures of a book in Book Studio: the Workshop book's «Мокапи» → the
+Mockups page → «Зробити слайди» → the editor (`#/slides/<book>/<1–6>`). A book's slides live in its Workshop folder
+(`pipeline/books/<n>.<slug>/mockups/slides/`); their look is a **scheme** — the six scenes as a whole, named (Nature —
+the default for new books, Night, his own). Sometimes he'd rather tell an agent what to change (29.09.2026:
 "sometimes it will be easier for me to work through an LLM"). You change the **same files** the editor saves; an open
 editor picks your change up by itself within 1.5 s («Слайд змінено ззовні — показано новий»), so he never has to
 reload. How it all works: `wiki/features/slides.md`.
@@ -20,9 +22,10 @@ Reply to the owner in Ukrainian, in plain words. Run everything from the reposit
 python app/tools/slides.py list
 ```
 
-prints `template` (the owner's template — every new book starts from it) and the books' sets, newest first:
-`<id>  <book name>  <folder>  books: … pictures: … numbers: …`. "The slides" of the book he is working on = the
-newest set, unless he names another book. "The template" / «шаблон» / "for all books" = `template`.
+prints the schemes (`scheme:nature  Nature — for new books`, `scheme:night  Night`, …) and the books' slides — the
+Workshop books first (`25.sleepy-trucks-bedtime  №25 Sleepy trucks bedtime  <its mockups folder>  books: … pictures: …
+numbers: …`), then older sets by time. "The slides" = the book he names («№25», «сонні вантажівки»), else the newest.
+"For all new books" / «шаблон» / the default scheme = `template` (it edits the default scheme in place).
 
 Slides are `slide1 … slide6`:
 
@@ -30,7 +33,7 @@ Slides are `slide1 … slide6`:
 |---|---|
 | 1 | Made just for them — two Open 1 spreads, «{pages} unique pages» sticker, arrows |
 | 2 | Choose your format — Cover 1 twice (5×5, 8×8), a ribbon «2 sizes & covers», arrows |
-| 3 | Dedication & afterword — the Dedication mockup, page 30 in a scalloped frame, «Last page» on an arc |
+| 3 | Dedication & afterword — the Dedication mockup (the desk and the book; its floor see-through, so the slide's background shows), page 30 in a scalloped frame, «Last page» on an arc |
 | 4 | Unique little poems — two Open 1 spreads, «{poems} unique little poems» sticker |
 | 5 | Personalization made simple — one Open 2, two step cards |
 | 6 | Thank you for shopping small — one Open 2, a heart with a thumbs-up |
@@ -39,7 +42,8 @@ Slides are `slide1 … slide6`:
 python app/tools/slides.py path slide3 --set <id|template>
 ```
 
-prints the scene's JSON file (for the template's untouched slide it writes out its first design first).
+prints the scene's JSON file. A scheme's own files: `app/data/slides/schemes/<key>/slide1…6.json` (+ `scheme.json`:
+name, default, colours by role).
 
 ## 2. Look before and after — always
 
@@ -87,23 +91,31 @@ Recipes:
 - **Text**: `text` (or a sticker's/ribbon's `lines[i].t`); letters bigger — `size`; the shadow stronger — `tshadow`.
 - **A book's shadow lighter**: `bake` down (e.g. 0.4) and/or `shadow` down.
 - **Another mockup on a slide**: the book's `slot` (the set's `books` in `slides.py list` say which exist).
-- **The book's numbers** (24 pages, 11 poems) live in the set, not the scene: `app/data/slides/sets/<id>/set.json`
+- **The book's numbers** (24 pages, 11 poems) live in the set, not the scene: the book's `mockups/slides/set.json` (an older set: `app/data/slides/sets/<id>/set.json`)
   → `numbers: {"pages": …, "poems": …}`; the texts say `{pages}` / `{poems}`.
 - **Add** an element: copy a similar one, give it a new `name` and `uid`, insert it where it should sit in depth.
 - **Remove**: take it out of `items` (or `"hidden": true` if he may want it back).
 
-## 4. The template, and baking
+## 4. Schemes, and baking
 
-- "Make it like this for every book" → copy the book's scene over the template's: the editor's «Зробити шаблоном»
-  does exactly that; by files — write the set's scene into `app/data/slides/design/slideN.json`. Slides of books
-  already made don't change. "Back to how it was" → the editor's «Скинути слайд» (a book → the template; the
-  template → the first design in `app/studio/slides/design/`).
+- **A scheme** = the whole look of the six (colours, positions, shadows, texts). "Make this book look like Night" →
+  write each of the scheme's six scenes over the book's (`schemes/night/slideN.json` → the book's
+  `scenes/slideN.json`) and set `"scheme": "night"` in the book's `set.json` — the editor's «Схема ▾» does exactly
+  that; the book's mockups (slots) and numbers stay. Another book's slides work the same way (a preset: "like the
+  other bedtime book").
+- "Save this as a scheme" → copy the book's six scenes into `app/data/slides/schemes/<key>/` with a `scheme.json`
+  (`{"name": "…", "default": false}`) — the editor's «Зберегти ці слайди як схему…». "New books should start from it"
+  → `"default": true` there and false in every other `scheme.json` (only one default).
+- "Back to how it was" → the editor's «Скинути слайд» (a book's slide → its scheme; the default scheme → the first
+  design in `app/studio/slides/design/`).
+- **Elements are locked by default** (no `locked` = locked; `"locked": false` = the mouse may move it) — that only
+  concerns the mouse in the editor; you change `x`, `y` in the file either way.
 - **«Запікай» / bake** — the book's six (or some) pictures into its folder, over the ones made before:
   ```
-  python app/tools/slides.py bake --set <id>            # all six
-  python app/tools/slides.py bake slide2 slide3 --set <id>
+  python app/tools/slides.py bake --set <book>            # all six
+  python app/tools/slides.py bake slide2 slide3 --set <book>
   ```
-  They land as `Listing 1.png … Listing 6.png` in the book's mockups folder (the Mockups' card and the editor's
+  They land as `Listing 1.png … Listing 6.png` in the book's `mockups\` (the Mockups' card and the editor's
   «Зберегти картинки» do the same). Tell him where they are.
 
 ## 5. Rules

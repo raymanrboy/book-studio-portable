@@ -9,6 +9,21 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-29 — Listing slides: schemes, the Workshop book's folder, locked by default
+
+- **The owner (the evening):** a **scheme** is "not only the colours but the settings of the whole mockup" — the six
+  scenes, named: his blue slides saved as **Night**, the template as **Nature** (the default); picked and saved in the
+  editor; a done book's slides are **presets** for other books ("e.g. another bedtime book") — never erased.
+- **A book's slides belong to its Workshop book** ("not to a session"): the Mockups save into its folder `mockups\`
+  without asking; its «Мокапи» step ticks itself and leads back to the mockups and the slides at any time.
+- **Cleaning:** the quite temporary goes when the program starts and closes; a book's cache when it is passed to the
+  library; everything in the program's folder.
+- **Every element locked against moving by default** (a click selects it); the background a layer of its own; the
+  colours of the other slides offered; «Який мокап» without the file name; Dedication without its floor (the desk
+  and the shadows kept). **Books numbered as his Etsy listings** (24, 25, …).
+- The template's «Зробити шаблоном» went — «Зберегти як схему» and the default scheme replace it
+  ([slides](features/slides.md)).
+
 ## 2026-09-29 — Listing slides move into Book Studio
 
 - **Decision (the owner, the same evening):** "integrate it into our program at once" — the slide tool becomes a

@@ -641,9 +641,16 @@ def state() -> dict:
                       for t in TEMPLATES],
         "templatesDir": str(where["templates"]), "templatesFound": where["templates"].is_dir(),
         "photoshopDir": str(where["photoshop"]), "photoshopFound": bool(ps),
-        "jobId": busy.id if busy else None, "lastOut": where["lastOut"],
+        "jobId": busy.id if busy else None, "lastOut": where["lastOut"], "books": _workshop_books(),
         "pending": None if busy else pending(),
     }
+
+
+def _workshop_books() -> list[dict]:
+    """The Workshop's books, newest first: the mockups go into the chosen one's folder, no question asked (the owner,
+    29.09.2026: "save the mockups into the book's folder where the Workshop works, and don't ask where")."""
+    from .workshop.books import book_ids, display_name
+    return [{"id": b, "name": display_name(b)} for b in reversed(book_ids())]
 
 
 @route("GET", "/api/mockups/state")
@@ -728,14 +735,21 @@ def _make(req: Request):
     body = req.json or {}
     book = _book(body.get("book"))
     picks = body.get("picks") if isinstance(body.get("picks"), dict) else {}
-    out = Path(str(body.get("folder") or ""))
-    if not str(body.get("folder") or "") or not out.is_dir():
-        raise ApiError("Оберіть папку для мокапів.")
+    workshop = str(body.get("workshop") or "")
+    if workshop:
+        from .slides import store as slide_store
+        out = slide_store.mockups_dir(workshop)       # the Workshop book's own folder (refused unless it is one)
+    else:
+        out = Path(str(body.get("folder") or ""))
+        if not str(body.get("folder") or "") or not out.is_dir():
+            raise ApiError("Оберіть папку для мокапів.")
     plan(book, picks, out, WORK / "check", places()["templates"])  # a wrong pick is said at once, not in the job
-    _remember(lastOut=str(out))
+    if not workshop:
+        _remember(lastOut=str(out))
     cancel = threading.Event()
     core.log.info("Mockups: a run for «%s» into %s, spreads %s", book["name"], out, picks)
-    job = jobs.start("mockups", lambda j: _logged(make, j, book, picks, out, cancel), exclusive="mockups")
+    job = jobs.start("mockups", lambda j: _ticked(_logged(make, j, book, picks, out, cancel), workshop),
+                     exclusive="mockups")
     _run_stop = cancel
     return {"jobId": job.id}
 
@@ -751,6 +765,17 @@ def _finish(req: Request):
     job = jobs.start("mockups", lambda j: _logged(finish, j, run, cancel), exclusive="mockups")
     _run_stop = cancel
     return {"jobId": job.id}
+
+
+def _ticked(result: dict, workshop: str) -> dict:
+    """The Workshop book's «Мокапи» step ticks itself once its mockups are saved (the owner, 29.09.2026)."""
+    if workshop and result.get("saved"):
+        try:
+            from .workshop.books import set_mark
+            set_mark(workshop, "mockups", True)
+        except Exception:
+            core.log.warning("Mockups: the Workshop's «Мокапи» step of %s not ticked", workshop, exc_info=True)
+    return {**result, "workshop": workshop or None}
 
 
 def _logged(fn, job: Job, *args):

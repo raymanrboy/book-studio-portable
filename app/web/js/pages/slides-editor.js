@@ -5,7 +5,7 @@
 // Every change is saved at once with the version it was made on; what an agent changes in the files meanwhile shows
 // up by itself (the signature is asked every 1.5 s) — the owner may work on the slides through an LLM too.
 import {
-  api, post, html, ic, ib, setHtml, on, toast, runJob, menu, confirmBox, segHtml, notFound, tellBusy,
+  api, post, html, ic, ib, setHtml, on, toast, runJob, menu, modal, confirmBox, segHtml, notFound, tellBusy,
 } from '../lib.js';
 import {
   ready, setAssets, drawScene, drawElement, boxOf, elTransform, TSHADOW,
@@ -101,30 +101,37 @@ export async function mount(view, [whereParam, nParam]) {
   setAssets(assets);
   view.classList.add('se-view');
   const isSet = where !== 'template';
-  const st = { sel: -1, past: [], future: [], saving: null, dirty: false, sig: info.sig, drag: null, live: null, S: 1, baking: null };
+  const st = { sel: -1, bg: false, past: [], future: [], saving: null, dirty: false, sig: info.sig, drag: null, live: null, S: 1,
+    baking: null, others: [], pressed: null };
   let gone = false, sigTimer = 0, saveTimer = 0;
   const offs = [];
   const $ = (s) => view.querySelector(s);
   const snapshot = () => JSON.stringify(scene);
   const items = () => scene.items;
   const cur = () => items()[st.sel];
+  // Every element stays put unless it is freed (the owner, 29.09.2026: "all elements locked against moving by default"):
+  // a click selects it and its properties open; the lock in the layers lets the mouse move it. New ones come free.
+  const isLocked = (e) => e.locked !== false;
+  const THROUGH = ['leaves', 'grain'];   // over everything, never in the way of a click
+
+  function schemeLabel() { return `Схема: ${info.scheme?.name || '—'}`; }
 
   // ---------------------------------------------------------------- the page
   setHtml(view, html`<div class="se">
     <header class="se-bar">
-      <a class="back-link" href="#/mockups" aria-label="До мокапів" data-tip="До мокапів">${ic('arrowLeft', 'icon-s')}</a>
+      <button type="button" class="back-link" data-act="back" aria-label="Назад" data-tip="Назад">${ic('arrowLeft', 'icon-s')}</button>
       <div class="se-title">
         <h1 class="page-title">Слайди</h1>
-        <div class="page-sub truncate">${info.name}${isSet ? '' : ' · кожна нова книга починається з нього'}</div>
+        <div class="page-sub truncate">${info.name}${isSet ? '' : ' · з неї починається кожна нова книга'}</div>
       </div>
       ${segHtml(info.slides.map((s, i) => ({ value: s.id, label: String(i + 1), tip: `${i + 1} · ${s.title}` })), slide, { accent: true, name: 'slide' })}
       <span class="grow"></span>
       <div class="tools">
         ${ib('undo', 'Назад', 'data-act="undo"', { kbd: 'Ctrl+Z' })}${ib('redo', 'Вперед', 'data-act="redo"', { kbd: 'Ctrl+Y' })}
         <span class="sep"></span>
-        ${ib('restore', isSet ? 'Скинути слайд — як у шаблоні' : 'Скинути слайд — як був намальований спершу', 'data-act="reset"')}
-        ${isSet ? ib('template', 'Зробити шаблоном — так цей слайд виглядатиме в кожній новій книзі', 'data-act="to-template"') : ''}
+        ${ib('restore', isSet ? 'Скинути слайд — як у схемі' : 'Скинути слайд — як був намальований спершу', 'data-act="reset"')}
       </div>
+      ${isSet ? html`<button type="button" class="btn se-scheme" data-act="scheme" id="se-scheme">${ic('template', 'icon-s')}<span class="truncate">${schemeLabel()}</span>${ic('chevDown', 'icon-s')}</button>` : ''}
       <span class="se-saved" id="se-saved"></span>
       ${isSet ? html`<button type="button" class="btn btn-primary" data-act="bake">${ic('download', 'icon-s')}Зберегти картинки</button>` : ''}
     </header>
@@ -170,7 +177,9 @@ export async function mount(view, [whereParam, nParam]) {
   function markLocks() {
     items().forEach((e, i) => {
       const el = stage.querySelector(`.el[data-idx="${i}"]`);
-      if (el && (e.locked || e.type === 'leaves' || e.type === 'grain')) el.dataset.lock = '1';
+      if (!el) return;
+      if (THROUGH.includes(e.type)) el.dataset.lock = '1';
+      else if (isLocked(e)) el.dataset.fixed = '1';
     });
   }
 
@@ -180,13 +189,15 @@ export async function mount(view, [whereParam, nParam]) {
     setHtml(list, [...items().keys()].reverse().map((i) => {
       const e = items()[i];
       const [kind, glyph] = KIND[e.type] || [e.type, 'image'];
+      const locked = isLocked(e) && !THROUGH.includes(e.type);
       return html`<div class="se-layer ${i === st.sel ? 'sel' : ''} ${e.hidden ? 'off' : ''}" data-i="${i}" draggable="true" role="button" tabindex="0">
         <span class="se-kind" data-tip="${kind}">${ic(glyph, 'icon-s')}</span>
         <span class="grow truncate">${e.name || kind}</span>
-        ${ib(e.locked ? 'lock' : 'unlock', e.locked ? 'Закріплено — не рухається мишкою' : 'Закріпити', `data-act="lock" data-i="${i}"`, { cls: `xs se-lock ${e.locked ? 'on' : ''}` })}
+        ${THROUGH.includes(e.type) ? '' : ib(locked ? 'lock' : 'unlock', locked ? 'Закріплено — зняти замок, щоб рухати мишкою' : 'Вільно рухається — закріпити', `data-act="lock" data-i="${i}"`, { cls: `xs se-lock ${locked ? '' : 'free'}` })}
         ${ib(e.hidden ? 'eyeOff' : 'eye', e.hidden ? 'Показати' : 'Сховати', `data-act="eye" data-i="${i}"`, { cls: `xs se-eye ${e.hidden ? 'on' : ''}` })}
       </div>`;
-    }));
+    }).concat([html`<div class="se-layer se-bg-row ${st.bg ? 'sel' : ''}" data-i="bg" role="button" tabindex="0">
+        <span class="se-kind se-bg-chip" style="--c:${scene.bg}" data-tip="Тло"></span><span class="grow truncate">Тло</span></div>`]));
     list.querySelector('.se-layer.sel')?.scrollIntoView({ block: 'nearest' });
   }
 
@@ -197,7 +208,7 @@ export async function mount(view, [whereParam, nParam]) {
     if (!e || e.hidden) return;
     const [w, h] = boxOf(e), S = st.S, hs = 12 / S;
     const b = document.createElement('div');
-    b.className = 'se-selbox';
+    b.className = `se-selbox ${isLocked(e) ? 'fixed' : ''}`;
     Object.assign(b.style, { left: `${e.x - w / 2}px`, top: `${e.y - h / 2}px`, width: `${w}px`, height: `${h}px`,
       transform: `rotate(${e.rot || 0}deg)`, outlineWidth: `${1.5 / S}px` });
     const handle = (cls, x, y, cursor) => {
@@ -207,7 +218,7 @@ export async function mount(view, [whereParam, nParam]) {
       Object.assign(d.style, { width: `${hs}px`, height: `${hs}px`, left: `${x - hs / 2}px`, top: `${y - hs / 2}px`, cursor, borderWidth: `${1.5 / S}px` });
       b.appendChild(d);
     };
-    if (e.type !== 'grain') {
+    if (!isLocked(e) && e.type !== 'grain') {
       ['nw', 'ne', 'sw', 'se'].forEach((c) => handle(c, c[1] === 'w' ? 0 : w, c[0] === 'n' ? 0 : h, c === 'nw' || c === 'se' ? 'nwse-resize' : 'nesw-resize'));
       if (STRETCHES.includes(e.type)) {
         handle('e', w, h / 2, 'ew-resize'); handle('w', 0, h / 2, 'ew-resize');
@@ -221,15 +232,42 @@ export async function mount(view, [whereParam, nParam]) {
     }
     over.appendChild(b);
   }
-  function select(i) { st.sel = i; drawLayers(); drawSel(); drawProps(); }
+  function select(i) {
+    st.bg = i === 'bg';
+    st.sel = st.bg ? -1 : i;
+    drawLayers(); drawSel(); drawProps();
+  }
 
   // ---------------------------------------------------------------- the properties
   const val = (e, f) => e[f.k] ?? f.def ?? '';
   const fmt = (v) => (typeof v === 'number' ? +v.toFixed(2) : v);
-  function palette() {
-    const seen = new Set(['#ffffff']);
-    items().forEach((e) => { for (const k of ['color', 'textColor']) if (/^#[0-9a-f]{6}$/i.test(e[k] || '')) seen.add(e[k].toLowerCase()); });
-    return [...seen].slice(0, 12);
+  const HEX = /^#[0-9a-f]{6}$/i;
+  function coloursOf(sc) {
+    const out = [];
+    if (HEX.test(sc?.bg || '')) out.push(sc.bg.toLowerCase());
+    (sc?.items || []).forEach((e) => { for (const k of ['color', 'textColor']) if (HEX.test(e[k] || '')) out.push(e[k].toLowerCase()); });
+    return out;
+  }
+  // [this slide's colours, the other five slides' ones not on this one]
+  function palettes() {
+    const mine = [...new Set(['#ffffff', ...coloursOf(scene)])];
+    const others = [...new Set(st.others.flatMap(coloursOf))].filter((c) => !mine.includes(c));
+    return [mine.slice(0, 14), others.slice(0, 14)];
+  }
+  function swatches(current, act, pick) {
+    const [mine, others] = palettes();
+    const sw = (c) => html`<button type="button" class="se-sw ${String(current).toLowerCase() === c ? 'on' : ''}" style="--c:${c}" data-act="${act}" data-c="${c}" aria-label="${c}" data-tip="${c}"></button>`;
+    return html`<div class="se-swatches">${mine.map(sw)}${pick}</div>
+      ${others.length ? html`<div class="se-swatches se-others"><span class="se-others-label">З інших слайдів</span>${others.map(sw)}</div>` : ''}`;
+  }
+  async function loadOthers() {
+    const rest = info.slides.map((x) => x.id).filter((id) => id !== slide);
+    try {
+      const got = await Promise.all(rest.map((id) => api(`/api/slides/scene?w=${encodeURIComponent(where)}&s=${id}`)));
+      if (gone) return;
+      st.others = got.map((r) => r.scene);
+      drawProps();
+    } catch { /* only the suggestions: this slide's colours are there anyway */ }
   }
   function fieldHtml(e, f) {
     const v = val(e, f);
@@ -242,10 +280,8 @@ export async function mount(view, [whereParam, nParam]) {
         <input class="input num" type="number" min="${f.min}" max="${f.max}" step="${f.step}" data-k="${f.k}" data-kind="num" value="${fmt(+v)}"></label>`;
     }
     if (f.kind === 'color') {
-      return html`<div class="se-f se-wide"><span>${f.label}</span><div class="se-swatches">
-        ${palette().map((c) => html`<button type="button" class="se-sw ${String(v).toLowerCase() === c ? 'on' : ''}" style="--c:${c}" data-act="swatch" data-c="${c}" aria-label="${c}" data-tip="${c}"></button>`)}
-        <label class="se-sw se-pick" data-tip="Інший колір" style="--c:${v}"><input type="color" data-k="${f.k}" data-kind="color" value="${v}"></label>
-      </div></div>`;
+      return html`<div class="se-f se-wide"><span>${f.label}</span>${swatches(v, 'swatch',
+        html`<label class="se-sw se-pick" data-tip="Інший колір" style="--c:${v}"><input type="color" data-k="${f.k}" data-kind="color" value="${v}"></label>`)}</div>`;
     }
     if (f.kind === 'seg') {
       return html`<div class="se-f se-wide"><span>${f.label}</span>${segHtml(f.options.map(([value, label]) => ({ value: String(value), label })), String(v), { name: `f-${f.k}` })}</div>`;
@@ -262,7 +298,7 @@ export async function mount(view, [whereParam, nParam]) {
       const want = f.kind === 'bookSlot' ? 'book' : 'picture';
       const has = (s) => (want === 'book' ? assets.books[s] : assets.pictures[s]);
       return html`<div class="se-f se-wide"><span>${want === 'book' ? 'Який мокап' : 'Яка картинка'}</span>
-        <select class="select" data-k="slot" data-kind="slot">${info.slots.filter((s) => s.kind === want).map((s) => html`<option value="${s.slot}" ${s.slot === e.slot ? 'selected' : ''}>${s.label}${has(s.slot) ? `  ·  ${has(s.slot).source || ''}` : '  ·  немає'}</option>`)}</select>
+        <select class="select" data-k="slot" data-kind="slot">${info.slots.filter((s) => s.kind === want).map((s) => html`<option value="${s.slot}" ${s.slot === e.slot ? 'selected' : ''}>${s.label}${has(s.slot) ? '' : '  ·  немає'}</option>`)}</select>
         ${want === 'picture' && isSet ? html`<button type="button" class="btn btn-sm btn-ghost se-repick" data-act="pick-picture" data-slot="${e.slot}">${ic('folderPick', 'icon-s')}Інша картинка…</button>` : ''}
       </div>`;
     }
@@ -276,6 +312,7 @@ export async function mount(view, [whereParam, nParam]) {
     const [kind] = KIND[e.type] || [e.type];
     setHtml(box, html`
       <div class="se-panel-head"><span class="eyebrow grow">${kind}</span>
+        ${THROUGH.includes(e.type) ? '' : ib(isLocked(e) ? 'lock' : 'unlock', isLocked(e) ? 'Закріплено — зняти замок, щоб рухати мишкою' : 'Вільно рухається — закріпити', `data-act="lock" data-i="${st.sel}"`, { cls: `sm ${isLocked(e) ? 'on' : ''}` })}
         ${ib('mirror', 'Віддзеркалити зліва направо', 'data-act="flipX"', { cls: `sm ${e.flipX ? 'on' : ''}` })}
         ${ib('mirrorV', 'Віддзеркалити догори дригом', 'data-act="flipY"', { cls: `sm ${e.flipY ? 'on' : ''}` })}
         ${ib('copy', 'Копія', 'data-act="dup"', { cls: 'sm', kbd: 'Ctrl+D' })}
@@ -288,19 +325,17 @@ export async function mount(view, [whereParam, nParam]) {
 
   // Nothing selected: the slide itself — its background and (a book's slides) the book's numbers.
   function slideProps() {
-    return html`<div class="se-panel-head"><span class="eyebrow grow">Слайд ${n}</span></div>
+    return html`<div class="se-panel-head"><span class="eyebrow grow">${st.bg ? 'Тло' : `Слайд ${n}`}</span></div>
       <div class="se-scroll">
         <section class="se-group"><h4>Тло</h4><div class="se-grid">
-          <div class="se-f se-wide"><span>Колір тла</span><div class="se-swatches">
-            ${palette().map((c) => html`<button type="button" class="se-sw ${String(scene.bg).toLowerCase() === c ? 'on' : ''}" style="--c:${c}" data-act="bg" data-c="${c}" aria-label="${c}" data-tip="${c}"></button>`)}
-            <label class="se-sw se-pick" data-tip="Інший колір" style="--c:${scene.bg}"><input type="color" data-kind="bg" value="${/^#[0-9a-f]{6}$/i.test(scene.bg) ? scene.bg : '#eedec7'}"></label>
-          </div></div>
+          <div class="se-f se-wide"><span>Колір тла</span>${swatches(scene.bg, 'bg',
+            html`<label class="se-sw se-pick" data-tip="Інший колір" style="--c:${scene.bg}"><input type="color" data-kind="bg" value="${HEX.test(scene.bg) ? scene.bg : '#eedec7'}"></label>`)}</div>
         </div></section>
         ${isSet ? html`<section class="se-group"><h4>Числа книги</h4><div class="se-grid">
           <label class="se-f"><span>Сторінок · {pages}</span><input class="input num" type="number" min="1" max="999" data-kind="number" data-k="pages" value="${info.numbers.pages}"></label>
           <label class="se-f"><span>Віршів · {poems}</span><input class="input num" type="number" min="1" max="999" data-kind="number" data-k="poems" value="${info.numbers.poems}"></label>
         </div></section>` : ''}
-        <p class="se-empty">Клацніть елемент на слайді або в шарах.</p>
+        ${st.bg ? '' : html`<p class="se-empty">Клацніть елемент на слайді або в шарах.</p>`}
       </div>`;
   }
 
@@ -385,6 +420,7 @@ export async function mount(view, [whereParam, nParam]) {
           assets = a; info = i; setAssets(a);
           if (v !== version && !st.dirty && !st.saving) takeTheirs(theirs, v, 'Слайд змінено ззовні — показано новий');
           else if (assetsChanged) { redrawAll(); }
+          loadOthers();
         }
       } catch { /* the program is restarting: asked again next time */ }
     }
@@ -401,15 +437,19 @@ export async function mount(view, [whereParam, nParam]) {
       st.drag = { mode: hEl.dataset.h, px, py, e0: JSON.parse(JSON.stringify(cur())), before: snapshot() };
     } else {
       const el = ev.target.closest('#se-stage .el');
-      if (!el) { if (st.sel >= 0) select(-1); return; }
+      if (!el) { if (st.sel >= 0 || st.bg) select(-1); return; }
       const i = +el.dataset.idx;
       if (i !== st.sel) select(i);
+      if (isLocked(items()[i])) { st.pressed = { x: ev.clientX, y: ev.clientY, told: false }; return; }
       st.drag = { mode: 'move', px, py, e0: JSON.parse(JSON.stringify(items()[i])), before: snapshot() };
     }
     wrap.setPointerCapture(ev.pointerId);
     ev.preventDefault();
   }));
+  const lockedToast = () => toast('Закріплено — зніміть замок у шарах (або вгорі праворуч), щоб рухати мишкою', 'info', 2600);
   const onMove = (ev) => {
+    const p0 = st.pressed;
+    if (p0 && !p0.told && ev.buttons && Math.hypot(ev.clientX - p0.x, ev.clientY - p0.y) > 6) { p0.told = true; lockedToast(); }
     const d = st.drag;
     if (!d) return;
     const e = cur(), e0 = d.e0;
@@ -439,6 +479,7 @@ export async function mount(view, [whereParam, nParam]) {
     redrawOne(st.sel);
   };
   const onUp = () => {
+    st.pressed = null;
     if (!st.drag) return;
     const before = st.drag.before;
     st.drag = null;
@@ -462,7 +503,7 @@ export async function mount(view, [whereParam, nParam]) {
     if (!e) return;
     const before = snapshot();
     const c = JSON.parse(JSON.stringify(e));
-    c.x += 20; c.y += 20; c.name = `${e.name || KIND[e.type][0]} (копія)`; c.uid = Date.now() % 100000;
+    c.x += 20; c.y += 20; c.name = `${e.name || KIND[e.type][0]} (копія)`; c.uid = Date.now() % 100000; c.locked = false;
     items().splice(st.sel + 1, 0, c);
     st.sel += 1;
     redrawAll(); commit(before);
@@ -479,7 +520,7 @@ export async function mount(view, [whereParam, nParam]) {
     const before = snapshot();
     const [kind] = KIND[type];
     const count = items().filter((e) => e.type === type).length + 1;
-    const e = { type, name: `${kind} ${count}`, x: 500, y: 500, rot: 0, uid: Date.now() % 100000, ...NEW[type]() };
+    const e = { type, name: `${kind} ${count}`, x: 500, y: 500, rot: 0, uid: Date.now() % 100000, locked: false, ...NEW[type]() };
     const at = st.sel >= 0 ? st.sel + 1 : items().length;
     items().splice(at, 0, e);
     st.sel = at;
@@ -488,13 +529,15 @@ export async function mount(view, [whereParam, nParam]) {
 
   offs.push(on(view, 'click', '[data-act], .se-layer', async (ev, t) => {
     const a = t.dataset.act;
-    if (!a && t.classList.contains('se-layer')) { select(+t.dataset.i); return; }
+    if (!a && t.classList.contains('se-layer')) { select(t.dataset.i === 'bg' ? 'bg' : +t.dataset.i); return; }
     ev.stopPropagation();
     if (a === 'undo') undo();
     else if (a === 'redo') redo();
+    else if (a === 'back') { flush(); if (history.length > 1) history.back(); else location.hash = '#/mockups'; }
+    else if (a === 'scheme') openSchemes(t);
     else if (a === 'lock' || a === 'eye') {
       const i = +t.dataset.i, e = items()[i], before = snapshot();
-      if (a === 'lock') e.locked = !e.locked; else e.hidden = !e.hidden;
+      if (a === 'lock') e.locked = !isLocked(e); else e.hidden = !e.hidden;
       redrawAll(); commit(before);
     } else if (a === 'add') {
       menu(t, ADD_ORDER.map((type) => ({ label: KIND[type][0], icon: KIND[type][1], onClick: () => add(type) })));
@@ -508,10 +551,10 @@ export async function mount(view, [whereParam, nParam]) {
       const before = snapshot();
       scene.bg = t.dataset.c;
       stage.style.background = scene.bg;
-      drawProps(); commit(before);
+      drawProps(); drawLayers(); commit(before);
     } else if (a === 'pick-picture') pickPicture(t.dataset.slot);
     else if (a === 'reset') {
-      const ok = await confirmBox({ title: 'Скинути слайд?', text: isSet ? 'Слайд стане таким, як у шаблоні. Ctrl+Z поверне.' : 'Шаблон цього слайда стане таким, як був намальований спершу. Ctrl+Z поверне.', confirm: 'Скинути' });
+      const ok = await confirmBox({ title: 'Скинути слайд?', text: isSet ? `Слайд стане таким, як у схемі «${info.scheme?.name || ''}». Ctrl+Z поверне.` : 'Цей слайд схеми стане таким, як був намальований спершу. Ctrl+Z поверне.', confirm: 'Скинути' });
       if (!ok || gone) return;
       await flush();
       try {
@@ -520,12 +563,6 @@ export async function mount(view, [whereParam, nParam]) {
         scene = r.scene; version = r.version; st.sel = -1;
         redrawAll(); paintSaved('ok', 'Скинуто');
       } catch (err) { toast(err.message, 'error'); }
-    } else if (a === 'to-template') {
-      const ok = await confirmBox({ title: 'Зробити шаблоном?', text: `Слайд ${n} у кожній наступній книзі буде саме таким. Слайди вже зроблених книг не зміняться.`, confirm: 'Зробити шаблоном' });
-      if (!ok || gone) return;
-      await flush();
-      try { await post('/api/slides/to-template', { w: where, s: slide }); toast(`Слайд ${n} тепер — шаблон для нових книг`, 'success'); }
-      catch (err) { toast(err.message, 'error'); }
     } else if (a === 'bake') bake();
   }));
 
@@ -548,7 +585,7 @@ export async function mount(view, [whereParam, nParam]) {
       if (e) {
         e[t.dataset.k] = v;
         redrawOne(st.sel);
-      } else if (kind === 'color') { scene.bg = v; stage.style.background = v; }
+      } else if (kind === 'color') { scene.bg = v; stage.style.background = v; view.querySelector('.se-bg-chip')?.style.setProperty('--c', v); }
       const twin = t.parentElement.querySelector(`input[data-kind="num"][data-k="${t.dataset.k}"]`);
       if (twin) twin.value = +(+v).toFixed(2);
       if (kind === 'color') t.closest('.se-pick')?.style.setProperty('--c', v);
@@ -563,7 +600,7 @@ export async function mount(view, [whereParam, nParam]) {
       drawProps();
       return;
     }
-    if (kind === 'bg') { const before = snapshot(); scene.bg = t.value; stage.style.background = t.value; commit(before); drawProps(); return; }
+    if (kind === 'bg') { const before = snapshot(); scene.bg = t.value; stage.style.background = t.value; commit(before); drawProps(); drawLayers(); return; }
     if (kind === 'number') { setNumber(t.dataset.k, +t.value); return; }
     if (!e) return;
     if (kind === 'name') { change(() => { e.name = t.value.trim(); }, { redraw: false }); drawLayers(); return; }
@@ -583,6 +620,69 @@ export async function mount(view, [whereParam, nParam]) {
     }
     if (kind === 'slot') { change(() => { e.slot = t.value; }); drawSel(); }
   }));
+
+  // The schemes (the owner, 29.09.2026: "a colour scheme you can save while working in the editor… not only the
+  // colours but the settings of the whole mockup"): Nature, Night, his own, and the other Workshop books' slides.
+  async function openSchemes(anchor) {
+    let r;
+    try { r = await api(`/api/slides/presets?w=${encodeURIComponent(where)}`); } catch (err) { toast(err.message, 'error'); return; }
+    if (gone) return;
+    const schemes = r.presets.filter((x) => x.kind === 'scheme'), books = r.presets.filter((x) => x.kind === 'book');
+    const current = schemes.find((x) => x.key === r.current);
+    menu(anchor, [
+      ...schemes.map((x) => ({ label: `${x.name}${x.default ? ' · для нових книг' : ''}`, icon: 'template', on: x.key === r.current, onClick: () => applyScheme(x) })),
+      ...(books.length ? ['-', ...books.map((x) => ({ label: x.name, icon: 'book', on: x.key === r.current, onClick: () => applyScheme(x) }))] : []),
+      '-',
+      { label: 'Зберегти ці слайди як схему…', icon: 'download', onClick: () => saveScheme(current, schemes) },
+      ...(current && !current.default ? [{ label: `Нові книги — зі схеми «${current.name}»`, icon: 'check', onClick: () => makeDefault(current) }] : []),
+    ]);
+  }
+  async function applyScheme(x) {
+    const ok = await confirmBox({ title: `Накласти «${x.name}»?`, text: 'Усі шість слайдів цієї книги стануть як у ній — кольори, розташування, тексти. Мокапи й числа книги лишаться свої. Скасувати можна лише так: накласти іншу схему.', confirm: 'Накласти' });
+    if (!ok || gone) return;
+    await flush();
+    try {
+      await post('/api/slides/apply', { w: where, key: x.key });
+      const [{ scene: fresh, version: v }, i] = await Promise.all([api(q('/api/slides/scene')), api(`/api/slides/state?w=${encodeURIComponent(where)}`)]);
+      if (gone) return;
+      info = i; scene = fresh; version = v; st.sel = -1; st.bg = false; st.past = []; st.future = [];
+      const btn = $('#se-scheme .truncate');
+      if (btn) btn.textContent = schemeLabel();
+      redrawAll(); loadOthers();
+      paintSaved('ok', `Схема «${x.name}»`);
+    } catch (err) { toast(err.message, 'error'); }
+  }
+  function saveScheme(current, schemes) {
+    const m = modal({
+      title: 'Зберегти як схему',
+      sub: 'Усі шість слайдів — кольори, розташування, тіні, тексти. Та сама назва — та схема оновиться.',
+      body: html`<div class="stack">
+        <label class="field"><span class="field-label">Назва</span><input class="input" data-name value="${current?.name || ''}" placeholder="напр. Night" autofocus spellcheck="false"></label>
+        ${schemes.length ? html`<div class="se-scheme-names">${schemes.map((x) => html`<button type="button" class="chip" data-use="${x.name}">${x.name}</button>`)}</div>` : ''}
+        <label class="check"><input type="checkbox" data-default><span>Нові книги починаються з цієї схеми</span></label>
+      </div>`,
+      foot: html`<button class="btn btn-ghost" data-no>Скасувати</button><button class="btn btn-primary" data-yes>${ic('download', 'icon-s')}Зберегти</button>`,
+    });
+    const input = m.el.querySelector('[data-name]');
+    m.el.querySelectorAll('[data-use]').forEach((b) => { b.onclick = () => { input.value = b.dataset.use; input.focus(); }; });
+    m.foot.querySelector('[data-no]').onclick = () => m.close();
+    const go = async () => {
+      const name = input.value.trim();
+      if (!name) { input.focus(); toast('Назвіть схему', 'info'); return; }
+      await flush();
+      try {
+        const r = await post('/api/slides/save-scheme', { w: where, name, default: m.el.querySelector('[data-default]').checked });
+        m.close();
+        toast(`Схему «${r.name}» збережено`, 'success');
+      } catch (err) { toast(err.message, 'error'); }
+    };
+    m.foot.querySelector('[data-yes]').onclick = go;
+    input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') go(); });
+  }
+  async function makeDefault(x) {
+    try { await post('/api/slides/default-scheme', { key: x.key }); toast(`Нові книги почнуться зі схеми «${x.name}»`, 'success'); }
+    catch (err) { toast(err.message, 'error'); }
+  }
 
   async function setNumber(k, value) {
     if (!(value > 0 && value < 1000)) { toast('Число має бути від 1 до 999', 'error'); drawProps(); return; }
@@ -634,14 +734,14 @@ export async function mount(view, [whereParam, nParam]) {
   offs.push(on(view, 'dragstart', '.se-layer', (ev, t) => { dragFrom = +t.dataset.i; ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('application/x-se-layer', t.dataset.i); t.classList.add('dragging'); }));
   offs.push(on(view, 'dragend', '.se-layer', (ev, t) => { t.classList.remove('dragging'); view.querySelectorAll('.drop-above,.drop-below').forEach((x) => x.classList.remove('drop-above', 'drop-below')); dragFrom = null; }));
   offs.push(on(view, 'dragover', '.se-layer', (ev, t) => {
-    if (dragFrom === null) return;
+    if (dragFrom === null || t.dataset.i === 'bg') return;
     ev.preventDefault();
     const r = t.getBoundingClientRect(), above = ev.clientY < r.top + r.height / 2;
     view.querySelectorAll('.drop-above,.drop-below').forEach((x) => x.classList.remove('drop-above', 'drop-below'));
     t.classList.add(above ? 'drop-above' : 'drop-below');
   }));
   offs.push(on(view, 'drop', '.se-layer', (ev, t) => {
-    if (dragFrom === null) return;
+    if (dragFrom === null || t.dataset.i === 'bg') return;
     ev.preventDefault();
     const r = t.getBoundingClientRect(), above = ev.clientY < r.top + r.height / 2;
     const target = +t.dataset.i;
@@ -668,11 +768,13 @@ export async function mount(view, [whereParam, nParam]) {
     if (ev.ctrlKey && k === 'd') { ev.preventDefault(); duplicate(); return; }
     if (ev.altKey || ev.ctrlKey) return;
     const e = cur();
+    if (ev.key === 'Escape' && st.bg) { ev.preventDefault(); select(-1); return; }
     if (!e) return;
     if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); remove(); return; }
     if (ev.key === 'Escape') { ev.preventDefault(); select(-1); return; }
     const step = ev.shiftKey ? 10 : 1;
     const mv = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[ev.key];
+    if ((mv || ev.key === '[' || ev.key === ']') && isLocked(e)) { ev.preventDefault(); lockedToast(); return; }
     if (mv) { ev.preventDefault(); change(() => { e.x += mv[0]; e.y += mv[1]; }, { redraw: 'place', props: true }); return; }
     if (ev.key === '[' || ev.key === ']') {
       change(() => { e.rot = Math.round(((e.rot || 0) + (ev.key === ']' ? 1 : -1) * (ev.shiftKey ? 5 : 0.5)) * 10) / 10; }, { redraw: 'place', props: true });
@@ -685,7 +787,8 @@ export async function mount(view, [whereParam, nParam]) {
 
   redrawAll();
   fit();
-  paintSaved('ok', version ? 'Збережено' : isSet ? 'Як у шаблоні' : 'Як намальовано спершу');
+  loadOthers();
+  paintSaved('ok', version ? 'Збережено' : isSet ? 'Як у схемі' : 'Як намальовано спершу');
   sigTimer = setTimeout(watch, SIG_EVERY);
 
   return {

@@ -3,6 +3,41 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-29] update | Listing slides: schemes, the Workshop book's folder, locked by default, Dedication without its floor
+
+- The owner's eleven wishes built ([slides](features/slides.md), [plan](plans/listing-pictures.md)): **schemes** in the
+  editor («Схема ▾»: Nature — the default, Night, his own, the other Workshop books' slides as presets; «Зберегти ці слайди
+  як схему…»; «Зробити шаблоном» went); **«Тло»** as the bottom layer; **«З інших слайдів»** colours; «Який мокап» without
+  the file name; **every element locked by default** (a click selects it, the mouse and arrows don't move it, the lock
+  frees it; new ones free); **Dedication** cut without its floor — the desk and the book stay, the shadows kept, its
+  frame kept for slide 3.
+- **The Mockups go into the Workshop book's folder** (`mockups\`, step 2 «Книга», no dialog; «Інша папка…» still
+  there); a book's slides live there (`mockups\slides\`), made again they keep the owner's touches; its page 30 its own;
+  the Workshop's «Мокапи» step ticks itself and offers «Редагувати мокапи», «Редагувати слайди», «Відкрити папку мокапів».
+- **Cleaning**: the cut-outs' cache and the bake's browser files at launch and close; a book's slides' cache when it is
+  passed to the library, its six scenes kept as a preset.
+- **Numbering** as his Etsy listings: the rule in `pipeline/GEMINI.md` (= `AGENTS.md`); with Book Studio closed the two
+  book folders were renamed 40.spooky-stories → 24.spooky-stories, 41.sleepy-trucks-bedtime → 25.sleepy-trucks-bedtime
+  (the agents' file headers too), and the library book passed from Spooky stories points at the new folder (its 31
+  pages found).
+- Checked: tests (450; `test_slides.py` 26), the preview (the Workshop → the Mockups for the book → «Без фону · 8/8» →
+  six slides in the book's folder, the step ticked → the editor: the background row, other slides' colours, a locked
+  sticker not dragged, freed and dragged, a scheme saved and put on), a real Dedication cut with the real template.
+
+## [2026-09-29] decision | Listing slides: schemes — Nature and Night recorded
+
+- The owner: a scheme is "not only the colours but the settings of the whole mockup" — the six scenes, named. His
+  hand-set colours on «4k Трафарет, копія» saved as **Night**, the template as **Nature** (the default), in
+  `app/data/slides/schemes/` (a copy of the six also in `app/data/slides/saved-colours/`). The editor's scheme choice
+  and five more touches (the background as a layer, colours from the other slides, no file name in «Який мокап», locked
+  by default, Dedication without its wall) agreed, waiting for his word ([plan](plans/listing-pictures.md)).
+- Added the same evening: books numbered as his Etsy listings (№41 → №25), the mockups saved into the Workshop book's
+  folder without asking, and the Workshop's «Мокапи» step leading back to the mockups (its folder, the editor),
+  ticking itself.
+- And: a book's slides tied to its Workshop book instead of a «Зробити слайди» session; temporary files erased when
+  the program closes, the book's cache when the book is done; everything in the program's folder (portable).
+  A book's slide settings stay for good — presets for other books (e.g. another bedtime book).
+
 ## [2026-09-29] update | The examples and a spare copy of the templates in the Book Studio folder
 
 - The owner: "put everything into the Book Studio project folder… and the Photoshop mockups too, to be kept there as

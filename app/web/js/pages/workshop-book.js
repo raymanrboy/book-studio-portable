@@ -7,7 +7,7 @@
 // file changes (workshop-live.js, patch()): what stayed, stays — pictures, scroll, an opened prompt.
 import {
   api, post, html, ic, ib, raw, setHtml, on, toast, menu, confirmBox, upload, copyText, fadeImages, highlightTokens,
-  plural, patch, syncSeg, runJob, topLayer, notFound,
+  plural, patch, syncSeg, runJob, topLayer, notFound, remember,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { openAddBook } from '../add-book.js';
@@ -160,7 +160,25 @@ export async function mount(view, [rawId]) {
       <div class="ws-mini-label num">${shortLabel(r)}</div></button>`)}</div>`;
   }
 
+  // «Мокапи» (the owner, 29.09.2026): made from here they go into the book's folder «mockups», the step ticks itself; back
+  // to them at any time — the folder, the Mockups for this book, its slides in the editor.
+  function mockupsBody(s) {
+    const made = s.mockups || s.slides;
+    const what = [s.mockups ? `${s.mockups} ${plural(s.mockups, ['мокап', 'мокапи', 'мокапів'])}` : '',
+      s.noBg ? `без фону — ${s.noBg}` : '', s.slides ? `${s.slides} ${plural(s.slides, ['слайд', 'слайди', 'слайдів'])} для лістингу` : '']
+      .filter(Boolean).join(' · ');
+    return html`<div class="ws-manual"><div>${made ? html`У папці книги: ${what}.` : s.state === 'done'
+      ? 'Позначено: мокапи зроблено поза Book Studio.' : 'Мокапи ще не робились. Зроблені звідси, вони ляжуть у папку книги, а крок позначиться сам.'}</div>
+      <div class="row-wrap">
+        <button class="btn ${made || s.state === 'done' ? '' : 'btn-primary'}" data-act="to-mockups">${ic('mockup')}${made ? 'Редагувати мокапи' : 'Зробити мокапи'}</button>
+        ${s.editable ? html`<button class="btn" data-act="to-slides">${ic('images')}Редагувати слайди</button>` : ''}
+        ${made ? html`<button class="btn" data-act="open" data-what="mockups">${ic('folderOpen')}Відкрити папку мокапів</button>` : ''}
+        <button class="btn btn-ghost" data-act="mark" data-step="mockups">${s.state === 'done' ? 'Зняти позначку' : html`${ic('check')}Позначити зробленим`}</button>
+      </div></div>`;
+  }
+
   async function panelBody(s, file) {
+    if (s.key === 'mockups') return mockupsBody(s);
     if (s.manual) {
       return html`<div class="ws-manual"><div>${MANUAL[s.key]} поза Book Studio? Позначте крок, коли зроблено.</div>
         <div class="row-wrap">${s.key === 'mockups' ? html`<a class="btn" href="#/mockups">${ic('mockup')}Відкрити Мокапи</a>` : ''}
@@ -624,6 +642,8 @@ export async function mount(view, [rawId]) {
     if (a === 'fold') { mem.step = null; draw(); return; }
     if (a === 'tab') { mem.tabs.set(mem.step, t.dataset.file); paintPanel(); return; }
     if (a === 'mark') { act(t, () => post(url('/mark'), { step: t.dataset.step, on: step(t.dataset.step).state !== 'done' })); return; }
+    if (a === 'to-mockups') { remember('mk-for-book', { id }); location.hash = '#/mockups'; return; }
+    if (a === 'to-slides') { location.hash = `#/slides/${encodeURIComponent(id)}/1`; return; }
     if (a === 'goto') {
       const el = view.querySelector(`#row-${t.dataset.row}`);
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
