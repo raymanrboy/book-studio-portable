@@ -316,6 +316,14 @@ def set_dir(set_id: str) -> Path:
     return SETS / set_id
 
 
+def out_dir(rec: dict) -> Path:
+    """Where a set's slides are baked: a Workshop book's etsy/ folder (beside its photo mockups — the owner,
+    30.09.2026), else the set's own folder, beside its mockups."""
+    if is_book(rec.get("id") or ""):
+        return book_folder(rec["id"]) / "etsy"
+    return Path(rec["folder"])
+
+
 def mockups_dir(book_id: str) -> Path:
     """Where a Workshop book's mockups go — no question asked (the owner, 29.09.2026)."""
     folder = book_folder(book_id) / "mockups"
@@ -331,7 +339,10 @@ def read_set(set_id: str) -> dict:
     if is_book(set_id):
         rec["folder"] = str(set_dir(set_id).parent)
         rec["name"] = _book_name(set_id)
-        rec["baked"] = {k: str(set_dir(set_id).parent / Path(v).name) for k, v in (rec.get("baked") or {}).items()}
+        book = set_dir(set_id).parent.parent   # its folder may have been renamed: the names are kept, not the paths
+        # baked into etsy/ since 30.09.2026 (beside the mockups before — the owner moved them there himself)
+        rec["baked"] = {k: str(book / ("etsy" if (book / "etsy" / Path(v).name).is_file() else "mockups") / Path(v).name)
+                        for k, v in (rec.get("baked") or {}).items()}
     return rec
 
 

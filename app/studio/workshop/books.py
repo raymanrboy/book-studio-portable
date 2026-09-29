@@ -6,8 +6,11 @@
       pictures/   the pages, cut and named: Cover.png, 1.png … 30.png — the set for Canva («Сторінки»)
       originals/  the pictures as they came (moved out of Downloads), named by their row: spread-04-05.jpg …
       .replaced/  whatever a new picture replaced or a removal took — never deleted
+      mockups/    the Mockups' pictures, the Canva cover (canva-cover.png), the cut-outs, the slides' scenes
+      etsy/       what goes into the Etsy listing: the slides (Listing 1.png …), the photo mockups (photo-main.png …),
+                  copies of the whole-scene mockups (Cover & Open 1, All & Open 1)
       book.json   the Workshop's own state: the steps ticked by hand, each row's marks, the cover's layout on the
-                  printer's template, the library book it was passed on as
+                  printer's template, the library book it was passed on as, the photo mockups' templates
 
 A book's id is its folder's name. Nothing is cached: every call looks at the files, so a file an agent has just
 written counts at once.
@@ -27,8 +30,9 @@ from ..jobs import jobs
 from ..server import ApiError
 
 AGENT, PICTURES, ORIGINALS, STATE = "agent", "pictures", "originals", "book.json"
-MOCKUPS = "mockups"   # the book's mockups, «Без фону», the listing slides (since 29.09.2026)
-AREAS = (AGENT, PICTURES, ORIGINALS)
+MOCKUPS = "mockups"   # the book's mockups, their cut-outs, the slides' scenes (since 29.09.2026)
+ETSY = "etsy"         # what goes into the Etsy listing: the slides and the photo mockups (since 30.09.2026)
+AREAS = (AGENT, PICTURES, ORIGINALS, MOCKUPS, ETSY)
 TEXT_SUFFIXES = (".md", ".txt", ".json")
 TEXT_LIMIT = 2_000_000
 
@@ -36,7 +40,7 @@ TEXT_LIMIT = 2_000_000
 ROWS = [("page1", (1,))] + [(f"spread{n}", library.spread_pages(n)) for n in library.SPREAD_NUMBERS] + [("page30", (30,))]
 
 # The path strip. `files` are the agent's files a step shows; Canva and the mockups are ticked by the owner, the
-# library by passing the book on.
+# photo mockups by all seven photos (or by hand — a category may be skipped), the library by passing the book on.
 STEPS = [
     {"key": "formula", "label": "Формула", "files": ["formula.md"]},
     {"key": "hero", "label": "Герой", "files": ["canonical.png", "canonical-prompt.md", "character-card.md"]},
@@ -47,6 +51,7 @@ STEPS = [
     {"key": "cover", "label": "Обкладинка", "files": ["cover-prompts-json.md"]},
     {"key": "canva", "label": "Canva", "files": [], "manual": True},
     {"key": "mockups", "label": "Мокапи", "files": [], "manual": True},
+    {"key": "photos", "label": "Фото", "files": [], "manual": True},
     {"key": "library", "label": "Бібліотека", "files": []},
 ]
 MANUAL = {s["key"] for s in STEPS if s.get("manual")}
@@ -221,6 +226,11 @@ def steps(path: Path) -> list[dict]:
                 st = "part" if c["art"] or "cover-prompts-json.md" in a else "todo"
         elif key == "library":
             st = "done" if library_book(path) else "todo"
+        elif key == "photos":
+            from .. import photos
+            n = photos.count(path)
+            extra.update(count=n, total=len(photos.CATEGORIES))
+            st = "done" if n == len(photos.CATEGORIES) or marks.get(key) else "part" if n else "todo"
         else:
             st = "done" if marks.get(key) else "todo"
             if key == "mockups":
@@ -234,13 +244,15 @@ def steps(path: Path) -> list[dict]:
 
 
 def mockups_state(path: Path) -> dict:
-    """What the book's mockups folder holds: the mockups, their cut-outs «Без фону», the listing slides."""
+    """What the book holds of its mockups: the mockups, their cut-outs, the listing slides (in etsy/ since 30.09.2026;
+    «Listing N.png» beside the mockups before)."""
+    from ..slides.cutout import NO_BG
     folder = path / MOCKUPS
-    names = _names(folder)
-    pictures = [n for n in names if n.lower().endswith(".png")]
-    slides = [n for n in pictures if n.lower().startswith("listing ")]
-    return {"mockups": len(pictures) - len(slides), "noBg": len(_names(folder / "Без фону")),
-            "slides": len(slides), "editable": (folder / "slides" / "set.json").is_file()}
+    pictures = [n for n in _names(folder) if n.lower().endswith(".png") and not n.lower().startswith("canva-cover")]
+    slides = [n for n in _names(path / ETSY) if n.lower().startswith("listing") and n.lower().endswith(".png")]
+    old = [n for n in pictures if n.lower().startswith("listing ")]
+    return {"mockups": len(pictures) - len(old), "noBg": len(_names(folder / NO_BG)),
+            "slides": len(slides) + len(old), "editable": (folder / "slides" / "set.json").is_file()}
 
 
 def _title(book_id: str) -> tuple[int | None, str]:
@@ -360,12 +372,14 @@ def summary(book_id: str, path: Path | None = None, st: list[dict] | None = None
 def detail(book_id: str) -> dict:
     """A book's page: its card, the whole strip, the rows, the book check, every picture's version — each worked
     out once (the strip and the versions were twice, 26.09.2026)."""
+    from .. import photos
     from .rows import book_check, book_rows
     path = book_path(book_id)
     st = steps(path)
     out = summary(book_id, path, st)
     out["steps"] = st
     out.update(book_rows(path))
+    out["photos"] = photos.state(path)
     out["check"] = book_check(path)  # remembered by steps() a moment ago
     out["v"] = versions(path)
     return out
@@ -405,7 +419,8 @@ def agent_text(book_id: str, name: str) -> str:
 
 
 def set_mark(book_id: str, step: str, on: bool) -> dict:
-    """Ticks (or unticks) a step done outside Book Studio — Canva, the mockups."""
+    """Ticks (or unticks) a step done outside Book Studio — Canva, the mockups; the photo mockups with a category
+    skipped."""
     if step not in MANUAL:
         raise ApiError("Цей крок позначається сам.")
     path = book_path(book_id)
@@ -430,7 +445,7 @@ def open_in_windows(book_id: str | None, what: str, name: str = "", variant: str
     if what == "books":
         target = books_dir()
         target.mkdir(parents=True, exist_ok=True)
-    elif what in ("folder", AGENT, PICTURES, ORIGINALS, MOCKUPS):
+    elif what in ("folder", AGENT, PICTURES, ORIGINALS, MOCKUPS, ETSY):
         path = book_path(book_id or "")
         target = path if what == "folder" else path / what
         if variant:

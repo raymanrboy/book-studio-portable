@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -114,11 +114,11 @@ The Listings mode's books in development — the book pipeline's folders ([featu
 | GET | `/api/workshop/books/([^/]+)` | token | `_get` | workshop-book.js (`{book, sig, gen}` — the strip, the rows, the cover, the variants, the check, every picture's version, `book.upscale` — the switch, the queue, the picture in work, what failed, what's left; `book.leftBehind` — the pictures put into `originals/` by hand, not cut yet, by variant) |
 | DELETE | `/api/workshop/books/([^/]+)` | token | `_delete` | workshop-book.js «Видалити книгу» (the folder into the Recycle Bin; a wait for its picture stops) |
 | GET | `/api/workshop/books/([^/]+)/file` | token | `_file` | workshop-book.js (`?name=` — one of the agent's text files, for the step's panel) |
-| POST | `/api/workshop/books/([^/]+)/mark` | token | `_mark` | workshop-book.js (`{step, on}` — Canva, the mockups) |
-| POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|agent, name, variant}` — Explorer, or one file in its program; `variant` — a hero variant's picture) |
+| POST | `/api/workshop/books/([^/]+)/mark` | token | `_mark` | workshop-book.js (`{step, on}` — Canva, the mockups, the photo mockups with a category skipped) |
+| POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|mockups\|etsy\|agent, name, variant}` — Explorer, or one file in its program; `variant` — a hero variant's picture) |
 | POST | `/api/workshop/agent` | token | `_agent` | workshop.js «+», workshop-book.js «Відкрити агента» (Antigravity on `pipeline/`; «нова книга» / «Продовжуємо книгу …» into the clipboard) |
 | POST | `/api/workshop/books/([^/]+)/to-library` | token | `_to_library` | add-book.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage` → `{jobId}`; a listing another library book has → 409 with its `bookId`) |
-| POST | `/api/workshop/books/([^/]+)/place` | token | `_place` | workshop-book.js (`?key=&name=&variant=`, body — the picture: cut, flipped, two pages; the cover goes on to wait for its margins) |
+| POST | `/api/workshop/books/([^/]+)/place` | token | `_place` | workshop-book.js (`?key=&name=&variant=`, body — the picture: cut, flipped, two pages; the cover goes on to wait for its margins; `key=photo:<category>` — a finished photo mockup into `etsy/`, `key=canva-cover` — the photo mockups' Canva cover) |
 | POST | `/api/workshop/books/([^/]+)/adopt` | token | `_adopt` | workshop-book.js «Підхопити з папки» (`{variant}` — the pictures put into `originals/` by hand, the usual way → `{jobId}`; nothing new → an error) |
 | POST | `/api/workshop/books/([^/]+)/flip` | token | `_flip` | workshop-book.js ⇄ (`{key, variant}`) |
 | POST | `/api/workshop/books/([^/]+)/remove` | token | `_remove` | workshop-book.js (`{key, variant}` — into `.replaced/`) |
@@ -128,12 +128,21 @@ The Listings mode's books in development — the book pipeline's folders ([featu
 | POST | `/api/workshop/books/([^/]+)/upscale` | token | `_upscale_on` | workshop-book.js the switch «Апскейл ×2» (`{on}` — the whole book; on by default, off drops its queue) |
 | POST | `/api/workshop/books/([^/]+)/upscale/start` | token | `_upscale_start` | workshop-book.js «Апскейлити решту» / «Перерізати з великих оригіналів» (`{keys}` — the tab's rows; `{}` — all), a picture's ✦ «Апскейлити ще раз» (`{key}`) |
 | POST | `/api/workshop/books/([^/]+)/save-as` | token | `_save_as` | workshop-book.js «Зберегти як…» (`{area, name, variant}`; the Windows dialog) |
-| GET | `/media/workshop/([^/]+)/(agent\|pictures\|originals)(?:/v/([^/]+))?/([^/]+)` | media | `_media` | workshop.js, workshop-book.js (`?w=` — a preview; `?v=` — the version: kept for good) |
+| GET | `/media/workshop/([^/]+)/(agent\|pictures\|originals\|mockups\|etsy)(?:/v/([^/]+))?/([^/]+)` | media | `_media` | workshop.js, workshop-book.js (`?w=` — a preview; `?v=` — the version: kept for good; `mockups`, `etsy` — the photo mockups' references and photos) |
 | GET | `/api/workshop/gen` | token | `_gen` | workshop-live.js — the generation mode alone, while no Workshop page is on screen (no book is walked; an idle mode starts nothing) |
 | POST | `/api/workshop/gen/start` | token | `_gen_start` | workshop-live.js `startGen` (`{book, key, variant, series}`) |
 | POST | `/api/workshop/gen/stop` | token | `_gen_stop` | the generation bar «Стоп» |
 | POST | `/api/workshop/gen/next` | token | `_gen_next` | the generation bar «Далі» (F8 does the same on the server) |
 | POST | `/api/workshop/gen/again` | token | `_gen_again` | the generation bar «покласти ще раз» |
+| POST | `/api/workshop/gen/photo` | token | `_gen_photo` | workshop-live.js `startPhoto` (`{book, category, template}` — the template, the book's reference, the prompt into the clipboard; without `book` — the template and the prompt, nothing caught) |
+| POST | `/api/workshop/books/([^/]+)/photos/remove` | token | `_book_photo_remove` | workshop-book.js, a photo card's 🗑 (`{category}` — into `.replaced/`) |
+| GET | `/api/photos` | token | `_photos` | photos.js, workshop-book.js `templatesOf` (`{categories, folder, sig, gen}` — the photo mockups' templates with their sizes) |
+| GET | `/api/photos/sig` | token | `_photos_sig` | workshop-live.js for photos.js (`{sig, gen}` — the templates' folders and the generation mode) |
+| GET | `/media/photos/([^/]+)/([^/]+)` | media | `_photo_media` | photos.js, workshop-book.js (`?w=&v=` — a template's preview) |
+| POST | `/api/photos/add` | token | `_photo_add` | photos.js (`?category=&name=`, body — a photo → a new template `<category>-NN`) |
+| POST | `/api/photos/remove` | token | `_photo_remove` | photos.js × (`{category, name}` — into the Recycle Bin) |
+| POST | `/api/photos/open` | token | `_photo_open` | photos.js (`{category}` — its folder; none — all templates) |
+| POST | `/api/photos/prompt` | token | `_photo_prompt` | photos.js, workshop-book.js (`{category}` — its JSON prompt into the clipboard) |
 
 ## Order Creator and files — [creator/routes.py](../../app/studio/creator/routes.py)
 
@@ -177,7 +186,7 @@ them) — see [features/mockups.md](../features/mockups.md).
 | POST | `/api/mockups/open-zip` | token | `_open_zip` | mockups.js `pickZip` (`{path}` of a `.zip` → unpacked into `mockups/book/`, the ZIP itself only read → the book) |
 | POST | `/api/mockups/place` | token | `_place` | mockups.js (the sliders window or the yellow line: where the templates / Photoshop are) |
 | POST | `/api/mockups/pick-folder` | token | `_pick_out` | mockups.js `askFolder` (where to save; never the templates folder) |
-| POST | `/api/mockups/make` | token | `_make` | mockups.js `make` (background job `mockups`; `{book, picks, folder}`; the job shares every template's progress) |
+| POST | `/api/mockups/make` | token | `_make` | mockups.js `make` (background job `mockups`; `{book, picks, folder}`; the job shares every template's progress; with `workshop` — the demo book's cover kept as the book's `mockups/canva-cover.*`) |
 | POST | `/api/mockups/finish` | token | `_finish` | mockups.js «Зберегти відкриті й закрити» (`{run}` → background job `mockups`: the second script saves and closes the templates left open) |
 | POST | `/api/mockups/cancel` | token | `_stop` | mockups.js (the × while it runs) |
 | POST | `/api/mockups/close` | token | `_close` | mockups.js «×» in the header — «Завершити» (`{run}`: the demo book goes, a run waiting for «Зберегти відкриті» is no longer offered; refused while a run goes on) |
@@ -210,12 +219,12 @@ Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a 
 | POST | `/api/slides/default-scheme` | token | `_default_scheme` | slides-editor.js «Нові книги — зі схеми …» |
 | POST | `/api/slides/numbers` | token | `_numbers` | slides-editor.js (the book's «Сторінок» / «Віршів») |
 | POST | `/api/slides/picture` | token | `_picture` | slides-editor.js «Інша картинка…» (the Windows dialog → a set's `dedication` / `page30`) |
-| GET | `/api/slides/cutouts` | token | `_cutouts` | mockups-slides.js (`?folder=` — which mockups are cut «Без фону») |
+| GET | `/api/slides/cutouts` | token | `_cutouts` | mockups-slides.js (`?folder=` — which mockups are cut out without background) |
 | POST | `/api/slides/make` | token | `_make` | mockups-slides.js «Зробити слайди» (job `slides`: `{folder, order, book, numbers}` → a set, the six baked) |
 | POST | `/api/slides/bake` | token | `_bake` | slides-editor.js «Зберегти картинки» (job `slides`: the set's slides into the same files) |
 | GET | `/media/slides/out/([^/]+)/(slide[1-6])` | media | `_out` | mockups-slides.js (`?w=&v=` — a baked slide's preview) |
 | POST | `/api/slides/open-picture` | token | `_open_picture` | mockups-slides.js, the viewer's "original" button |
-| POST | `/api/slides/open-folder` | token | `_open_folder` | (a set's folder, `noBg` — its «Без фону») |
+| POST | `/api/slides/open-folder` | token | `_open_folder` | (a set's folder — a Workshop book's `etsy/`, where its slides are; `noBg` — its cut-outs, `no-background/`) |
 
 ## Sync — [sync.py](../../app/studio/sync.py)
 

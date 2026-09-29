@@ -1,7 +1,7 @@
 ---
 title: Mockups — listing pictures from a demo book (the Listings mode)
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/mockups.py
   - app/studio/mockups.jsx
@@ -21,7 +21,7 @@ code:
 > books).
 >
 > **Since 2026-09-29 it goes on to the listing slides** ([slides](slides.md)): every picture Photoshop saves is cut
-> out **without its background** into `Без фону\` beside it (Open 1, Open 2, Cover 1), and step 4 «Слайди для
+> out **without its background** into `no-background\` beside it («Без фону» until 30.09.2026; Open 1, Open 2, Cover 1), and step 4 «Слайди для
 > лістингу» makes the six Etsy pictures and opens their editor.
 
 ## How the owner uses it
@@ -63,7 +63,9 @@ go by the number in the name and become pages 1…N. Page 1 is the dedication; t
 2. **Книга** (since 2026-09-29 evening; the owner: "save the mockups into the book's folder where the Workshop works,
    and don't ask where"): the Workshop's books in a list, newest first — the one the Workshop's «Мокапи» step sent
    (`mk-for-book`, taken by a kept page on `revive()`), else the last one chosen, else the newest; its folder
-   `pipeline\books\<n>.<slug>\mockups\` takes the pictures, «Без фону» and the slides — **no dialog**; the folder button
+   `pipeline\books\<n>.<slug>\mockups\` takes the pictures and their cut-outs, `etsy\` the slides and copies of Cover & Open 1 and All & Open 1 once saved (`_to_etsy()`) — **no dialog**;
+   the demo book's cover, as Canva exported it, is kept there as **`canva-cover.png`** — the [photo
+   mockups](photo-mockups.md)' reference for the grandmother (since 30.09.2026, `_keep_canva_cover()`); the folder button
    opens it. «Інша папка…» brings back the old step **«Куди зберегти»** (the folder field and its button, «Та сама, що
    минулого разу», the dialog on «Зробити мокапи»), and its book button goes back to the book. A run for a book
    **ticks its «Мокапи» step** (`_ticked()`).
@@ -280,7 +282,7 @@ icon, «Мокапи: готово · 7 картинок», back in the listings
 
 ## Where in the code
 
-- [app/studio/mockups.py](../../app/studio/mockups.py) — `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `_cut_without_background()`, `_workshop_books()`, `_ticked()`, `make()`, `finish()`, `_run_script()` (both start their script the same way), `_shown` (the one demo book), `_run_stop` (the one run's «Зупинити»), `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `_keep_canva_cover()`, `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `_cut_without_background()`, `_workshop_books()`, `_ticked()`, `make()`, `finish()`, `_run_script()` (both start their script the same way), `_shown` (the one demo book), `_run_stop` (the one run's «Зупинити»), `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
 - [app/studio/mockups.jsx](../../app/studio/mockups.jsx) — `openCover()`, `closeCover()`, `findLayer()`, `replaceContents()`, `fill()`, `savePng()`, `runTemplate()`, `findOpen()`, `finishOpen()`, `report()`, `cancelled()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
 - [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `takeWorkshopBook()`, `FOR_BOOK`, `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`

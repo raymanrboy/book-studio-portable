@@ -744,11 +744,13 @@ def _make(req: Request):
         if not str(body.get("folder") or "") or not out.is_dir():
             raise ApiError("Оберіть папку для мокапів.")
     plan(book, picks, out, WORK / "check", places()["templates"])  # a wrong pick is said at once, not in the job
-    if not workshop:
+    if workshop:
+        _keep_canva_cover(workshop, book)
+    else:
         _remember(lastOut=str(out))
     cancel = threading.Event()
     core.log.info("Mockups: a run for «%s» into %s, spreads %s", book["name"], out, picks)
-    job = jobs.start("mockups", lambda j: _ticked(_logged(make, j, book, picks, out, cancel), workshop),
+    job = jobs.start("mockups", lambda j: _to_etsy(_ticked(_logged(make, j, book, picks, out, cancel), workshop)),
                      exclusive="mockups")
     _run_stop = cancel
     return {"jobId": job.id}
@@ -762,9 +764,38 @@ def _finish(req: Request):
         raise ApiError("Некоректний запит.")
     cancel = threading.Event()
     core.log.info("Mockups: saving the templates run %s left open", run)
-    job = jobs.start("mockups", lambda j: _logged(finish, j, run, cancel), exclusive="mockups")
+    job = jobs.start("mockups", lambda j: _to_etsy(_logged(finish, j, run, cancel)), exclusive="mockups")
     _run_stop = cancel
     return {"jobId": job.id}
+
+
+def _to_etsy(result: dict) -> dict:
+    """Mockups saved into a Workshop book's mockups/: its whole-scene ones (Cover & Open 1, All & Open 1) are copied
+    into the book's etsy/ too — they go into the listing as they are (the owner, 30.09.2026)."""
+    folder = Path(str(result.get("folder") or ""))
+    try:
+        if folder.name == "mockups" and folder.parent.parent.resolve() == core.WORKSHOP_BOOKS.resolve():
+            from . import photos
+            copied = photos.scenes_to_etsy(folder.parent)
+            if copied:
+                core.log.info("Mockups: into %s/etsy: %s", folder.parent.name, ", ".join(copied))
+    except Exception:
+        core.log.warning("Mockups: the whole-scene mockups not copied into etsy/", exc_info=True)
+    return result
+
+
+def _keep_canva_cover(workshop: str, book: dict) -> None:
+    """The demo book's flat cover, as Canva exported it, into the Workshop book's mockups/ as canva-cover.* — the
+    photo mockups' reference for the grandmother (the owner, 30.09.2026: "the Cover picture from the Canva ZIP")."""
+    cover = book.get("cover")
+    if not cover:
+        return
+    try:
+        from . import photos
+        from .workshop.books import book_path
+        photos.set_canva_cover(book_path(workshop), Path(cover), Path(cover).name)
+    except Exception:
+        core.log.warning("Mockups: the Canva cover of %s not kept", workshop, exc_info=True)
 
 
 def _ticked(result: dict, workshop: str) -> dict:

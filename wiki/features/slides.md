@@ -1,7 +1,7 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
@@ -22,9 +22,9 @@ code:
 > The six square **2000×2000** Etsy pictures of a book (his Canva layout, with torn paper, a die-cut sticker,
 > sparkles and faint leaf shadows), made by Book Studio from the book's mockups — **no Canva**. They are **the
 > Mockups' next steps**, not a page of their own: while Photoshop works, every mockup is cut out **without its
-> background** («Без фону»); after the run, «Зробити слайди» makes the six by themselves; «Відкрити в редакторі» opens a
-> Canva-like editor for the owner's touches. **A book's slides belong to its Workshop book** (its folder
-> `mockups\`), their look is a **scheme** (Nature, Night, the owner's own — "not only the colours but the settings of
+> background** (`no-background\`, «Без фону» until 30.09.2026); after the run, «Зробити слайди» makes the six by themselves; «Відкрити в редакторі» opens a
+> Canva-like editor for the owner's touches. **A book's slides belong to its Workshop book** (its scenes in
+> `mockups\slides\`, the six pictures in **`etsy\`** beside its [photo mockups](photo-mockups.md) since 30.09.2026), their look is a **scheme** (Nature, Night, the owner's own — "not only the colours but the settings of
 > the whole mockup"). Built on 2026-09-29 from [the plan](../plans/listing-pictures.md) (its
 > history: the design, the cut-out, the external prototype); the owner may also have them changed **through an agent**
 > — the skill `/listing-slides` (`.claude/skills/listing-slides/SKILL.md`).
@@ -36,7 +36,7 @@ code:
    everything, **nothing asked** (the owner, 29.09.2026); «Інша папка…» is still there for a folder of his own.
 1. **Мокапи** as always ([mockups](mockups.md)). Each picture Photoshop saves is handed to the slides' cutter at once
    (`mockups.watch()` → `_cut_without_background()`); the book with its real shadow, on a transparent background,
-   lands in the same folder's **`Без фону\`** under the mockup's own name — **full size** (≈3700 px), ready for any use.
+   lands in the same folder's **`no-background\`** (English inside the book, the owner 30.09.2026; «Без фону» before) under the mockup's own name — **full size** (≈3700 px), ready for any use.
    **Open 1, Open 2 and Cover 1** are cut to the book (one book on the studio background, a book mask in the template);
    **Dedication** keeps **the desk and the book** and loses **the floor** under the book, its shadows kept (the owner:
    "the table stays, the background goes, without losing the shadows" — in the template the desk is
@@ -54,8 +54,10 @@ code:
    first: the book's edits go). A book whose slides exist gets **new pictures and keeps its six scenes** when the
    mockups are made again; its page 30 is the Workshop book's own `pictures\30.png` when the demo book isn't loaded;
    the Workshop's «Мокапи» step **ticks itself**. A slot without a mockup (e.g. one Open 2 only) is named in a yellow line; the slide shows
-   a dashed placeholder there. Files: **`Listing 1.png … Listing 6.png`** in the mockups' folder, never over another
-   file (` (2)`); the window's title, the taskbar flash and Windows' sound when the window is behind.
+   a dashed placeholder there. Files: a Workshop book's **`etsy\Listing 1.png … Listing 6.png`** (since 30.09.2026 —
+   the owner: "an etsy folder in every book for the slides and the photo mockups"; `Listing N.png` beside the mockups
+   before), for a folder of his own **`Listing 1.png … Listing 6.png`** beside the mockups; never over another file
+   (` (2)`); the result's folder button opens that folder; the window's title, the taskbar flash and Windows' sound when the window is behind.
 4. **The header's ▣ «Слайди для лістингу — книг і шаблон»** (beside the sliders): «Схема для нових книг — Nature» (the
    default scheme, edited in place), the Workshop books with slides («№25 Sleepy trucks bedtime»), then the slides made
    before 29.09.2026 by time — the editor is one click away even after a restart.
@@ -74,7 +76,7 @@ cyan, `ib()` icons with tooltips.
   «для нових книг») and the other Workshop books' slides as presets ("e.g. another bedtime book"): a click puts one on
   all six (asks first; the book's mockups and numbers stay); «Зберегти ці слайди як схему…» (a name — the same name
   replaces that scheme; «Нові книги починаються з цієї схеми»); «Нові книги — зі схеми «…»» · the saved state («Збережено», «Не збереглось», «Малюю 3 з 6») ·
-  **«Зберегти картинки»** (a book only: the six baked again into the same `Listing N.png`, the Mockups' card shows them).
+  **«Зберегти картинки»** (a book only: the six baked again into the same `Listing N.png` in `etsy\`, the Mockups' card shows them).
 - **Layers** (left, the top one in front): the kind's glyph, the name, the lock and 👁 on hover (a freed element's open
   lock stays shown); **dragged** to another depth; **«Тло» — the background as the bottom row** (its colour chip; a
   click opens its colours); **«+»** adds text, a sticker, a ribbon, an arrow, a sparkle, a heart, a torn strip, a
@@ -103,7 +105,7 @@ cyan, `ib()` icons with tooltips.
 |---|---|
 | The first design (the agent's drawing of his Canva slides) | `app/studio/slides/design/slide1…6.json` (in git) |
 | **The schemes** — `scheme.json` (name, default, colours by role) + the six scenes: **Nature** (the default — the template as it was), **Night** (his blue slides), his own | `app/data/slides/schemes/<key>/` |
-| **A Workshop book's slides** — `set.json` (numbers, slots, the scheme put on, baked files), `scenes/`, `books/<slot>.png` + `_shadow.png`, `pictures/` | `pipeline/books/<n>.<slug>/mockups/slides/` (beside its mockups, «Без фону», `Listing 1–6.png`) |
+| **A Workshop book's slides** — `set.json` (numbers, slots, the scheme put on, baked files), `scenes/`, `books/<slot>.png` + `_shadow.png`, `pictures/` | `pipeline/books/<n>.<slug>/mockups/slides/` (beside its mockups and `no-background/`; the six baked — `etsy/Listing 1…6.png`) |
 | Slides made before 29.09.2026 evening, or for a folder that is no Workshop book | `app/data/slides/sets/<time>-<id>/` (the last 12 kept) |
 | Every cut-out once (the book and its shadow, 2600 px, where the book sits) | `app/data/slides/cuts/<key>/` — **gone when the program starts and closes** |
 

@@ -3,6 +3,27 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-30] update | The generation bar no longer comes in again at every part
+
+- The owner: when the next part (a picture, the prompt) went into the clipboard "the whole program blinks". The bar was
+  drawn anew with its entrance animation each time; now `paintGenBar()` (workshop-live.js) slides it in once, when a
+  wait begins, and the next part only glides its line «У буфері: …» in ([workshop](features/workshop.md)).
+
+## [2026-09-30] update | Photo mockups: the Workshop's step «Фото» and the «Фотомокапи» page; etsy/ in every book
+
+- New [photo mockups](features/photo-mockups.md): seven categories of the owner's templates («Для відео» — three 9:16
+  phone photos; «Розмір» — the two formats side by side; a book's «Папка книги» now a blue button beside «Передати в
+  бібліотеку») (copied into
+  `app/data/photo-mockups` with English names); in a book — template → its reference (Cover 1 / Cover & Open 1 / the
+  Canva cover) → a JSON prompt per category, the photo caught into `etsy/photo-<category>`; the page «Фотомокапи»
+  (a camera on the rail) — the template and the prompt only.
+- **`etsy/`** in every Workshop book, as the owner's book 25: the slides bake there as `Listing N.png`, the Mockups copy
+  Cover & Open 1 and All & Open 1 there; the cut-outs' folder is
+  `no-background/`; the Mockups keep the Canva cover as `mockups/canva-cover.png`; book 24's hand-made `mokaps/` renamed
+  `mockups/`.
+- Pages: workshop, slides, mockups, modes, frontend, api-routes, preview, security, testing, code-map, glossary,
+  decisions, index.
+
 ## [2026-09-29] update | Listing slides: schemes, the Workshop book's folder, locked by default, Dedication without its floor
 
 - The owner's eleven wishes built ([slides](features/slides.md), [plan](plans/listing-pictures.md)): **schemes** in the

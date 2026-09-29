@@ -1,7 +1,7 @@
 ---
 title: Two modes — Orders and Listings
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/web/js/app.js
 ---
@@ -20,9 +20,10 @@ code:
 - **Orders** — **orange**, "like Etsy and Claude" (the owner, 2026-09-24): a deeper shade than Etsy's own, so
   white text on a button stays readable; the spread icon on the dark square, six rail items (Alt+1…6; «Прибуток» joined on 2026-09-29).
 - **Listings** — **cyan**, the colour the whole program had before (the owner swapped them the same day; for a
-  few hours it was magenta): the icon becomes an Etsy listing's tag on a cyan square, two rail items —
-  **Майстерня** (Alt+1) and **Мокапи** (Alt+2 — it stays lit in the listing slides' editor, `#/slides/…`, reached from
-  the Mockups since 2026-09-29: [slides](slides.md)); the theme button stays at the bottom. Every button, focus ring, switch and chip in the accent colour follows the mode; the window's title
+  few hours it was magenta): the icon becomes an Etsy listing's tag on a cyan square, three rail items —
+  **Майстерня** (Alt+1), **Мокапи** (Alt+2 — it stays lit in the listing slides' editor, `#/slides/…`, reached from
+  the Mockups since 2026-09-29: [slides](slides.md)) and **Фотомокапи** (Alt+3, a camera — since 2026-09-30:
+  [photo mockups](photo-mockups.md)); the theme button stays at the bottom. Every button, focus ring, switch and chip in the accent colour follows the mode; the window's title
   says «Book Studio · Лістинги».
 - **The switch is animated** (transform/opacity only): one mode's rail slides up and fades, the other's slides
   in, the brand icon turns over into its new ink, the page cross-fades like any page change. "Minimum

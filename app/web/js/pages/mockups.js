@@ -295,7 +295,7 @@ export async function mount(view) {
           ${st.workshop ? ib('folderOpen', 'Відкрити папку мокапів цієї книги', 'data-act="open-book-mockups"', { cls: 'sm' }) : ''}</div>
         <select class="select" id="mk-workshop" aria-label="Книга з Майстерні" ${st.run ? 'disabled' : ''}>
           ${books.map((b) => html`<option value="${b.id}" ${b.id === st.workshop?.id ? 'selected' : ''}>${b.name}</option>`)}</select>
-        <div class="mk-foot">Мокапи, «Без фону» і слайди ляжуть у папку книги — <b>mockups</b>. Нічого не перезаписується.
+        <div class="mk-foot">Мокапи й вирізані без фону ляжуть у папку книги <b>mockups</b>, слайди — у <b>etsy</b>. Нічого не перезаписується.
           <button type="button" class="btn btn-xs btn-ghost mk-other" data-act="pick-out">Інша папка…</button></div>`);
       return;
     }

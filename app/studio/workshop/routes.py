@@ -1,10 +1,11 @@
-"""The Workshop's routes: the books and their pictures, the generation mode, upscaling, Antigravity, «Зберегти як»."""
+"""The Workshop's routes: the books and their pictures, the generation mode, upscaling, Antigravity, «Зберегти як»,
+the photo mockups (their templates, a book's photos)."""
 from __future__ import annotations
 
 import shutil
 from pathlib import Path
 
-from .. import clipboard, core, desktop, images, library
+from .. import clipboard, core, desktop, images, library, photos
 from ..jobs import jobs
 from ..server import ApiError, Request, file_response, route
 from . import books, generate, pictures, upscale
@@ -87,13 +88,18 @@ def _to_library(req: Request):
 
 @route("POST", r"/api/workshop/books/([^/]+)/place")
 def _place(req: Request):
-    """A picture dropped onto a row (or picked in the Windows dialog): copied in, cut and flipped by the row's rules."""
+    """A picture dropped onto a row (or picked in the Windows dialog): copied in, cut and flipped by the row's rules.
+    `photo:<category>` — a finished photo mockup into etsy/; `canva-cover` — the photo mockups' Canva cover."""
     book_id, key = req.groups[0], req.param("key") or ""
     name = Path(req.param("name") or "picture.png").name[:200]
-    books.book_path(book_id)  # refused before the file is even taken
+    book = books.book_path(book_id)  # refused before the file is even taken
     tmp = core.data_path("tmp", f"upload-{core.new_id()}{Path(name).suffix.lower()}")
     try:
         req.body_to_file(tmp, library.MAX_IMAGE_BYTES)
+        if key.startswith("photo:"):
+            return photos.place(book_id, key[6:], tmp, name)
+        if key == photos.CANVA_COVER:
+            return photos.set_canva_cover(book, tmp, name)
         result = pictures.place(book_id, key, tmp, name, _variant(req.param("variant")))
     finally:
         tmp.unlink(missing_ok=True)
@@ -177,7 +183,7 @@ def _save_as(req: Request):
     return {"saved": True, "path": str(target), "name": target.name}
 
 
-@route("GET", r"/media/workshop/([^/]+)/(agent|pictures|originals)(?:/v/([^/]+))?/([^/]+)", auth="media")
+@route("GET", r"/media/workshop/([^/]+)/(agent|pictures|originals|mockups|etsy)(?:/v/([^/]+))?/([^/]+)", auth="media")
 def _media(req: Request):
     """A book's picture — a preview (?w=) or the file. With its version (?v=) the browser keeps it for good: a
     replaced picture comes with a new version."""
@@ -235,3 +241,75 @@ def _gen_next(req: Request):
 @route("POST", "/api/workshop/gen/again")
 def _gen_again(req: Request):
     return generate.session().again()
+
+
+@route("POST", "/api/workshop/gen/photo")
+def _gen_photo(req: Request):
+    """A photo mockup: the template, the book's reference (with a book), the prompt — into the clipboard one by one."""
+    body = req.json or {}
+    return generate.session().start_photo(str(body.get("book") or "") or None, str(body.get("category") or ""),
+                                          str(body.get("template") or ""))
+
+
+# ---------------------------------------------------------------- the photo mockups (photos.py)
+
+@route("GET", "/api/photos")
+def _photos(req: Request):
+    """The categories and their templates — the «Фотомокапи» page."""
+    gen = generate.status()
+    return {"categories": photos.templates(), "folder": str(photos.templates_dir()),
+            "sig": f"{photos.signature()}-{gen['version']}", "gen": gen}
+
+
+@route("GET", "/api/photos/sig")
+def _photos_sig(req: Request):
+    gen = generate.status()  # the templates and the generation mode: the page redraws when either changes
+    return {"sig": f"{photos.signature()}-{gen['version']}", "gen": gen}
+
+
+@route("GET", r"/media/photos/([^/]+)/([^/]+)", auth="media")
+def _photo_media(req: Request):
+    """A template — a preview (?w=) or the file; with its version (?v=) the browser keeps it for good."""
+    path = photos.template_file(req.groups[0], req.groups[1])
+    cache = "private, max-age=31536000, immutable" if req.param("v") else "no-cache"
+    if req.param("w"):
+        return file_response(images.preview(path, req.int_param("w", 480, 64, 4096)), "image/jpeg", cache=cache)
+    return file_response(path, cache=cache)
+
+
+@route("POST", "/api/photos/add")
+def _photo_add(req: Request):
+    """A photo dropped onto a category: a new template, named by the category's next number."""
+    name = Path(req.param("name") or "picture.png").name[:200]
+    photos.category(req.param("category") or "")
+    tmp = core.data_path("tmp", f"upload-{core.new_id()}{Path(name).suffix.lower()}")
+    try:
+        req.body_to_file(tmp, library.MAX_IMAGE_BYTES)
+        return photos.add_template(req.param("category") or "", tmp, name)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+@route("POST", "/api/photos/remove")
+def _photo_remove(req: Request):
+    body = req.json or {}
+    return photos.remove_template(str(body.get("category") or ""), str(body.get("name") or ""))
+
+
+@route("POST", "/api/photos/open")
+def _photo_open(req: Request):
+    photos.open_folder(str((req.json or {}).get("category") or ""))
+    return {"ok": True}
+
+
+@route("POST", "/api/photos/prompt")
+def _photo_prompt(req: Request):
+    """A category's prompt alone into the clipboard."""
+    clipboard.set_text(photos.prompt(str((req.json or {}).get("category") or "")))
+    return {"ok": True}
+
+
+@route("POST", r"/api/workshop/books/([^/]+)/photos/remove")
+def _book_photo_remove(req: Request):
+    """A book's finished photo out of etsy/ — into its .replaced/."""
+    return photos.remove(req.groups[0], str((req.json or {}).get("category") or ""))

@@ -1,7 +1,7 @@
 ---
 title: Book Studio wiki — index
 type: index
-updated: 2026-09-29
+updated: 2026-09-30
 code: []
 ---
 # Book Studio wiki
@@ -39,6 +39,8 @@ code: []
 - [Workshop](features/workshop.md) — the Listings mode: books in development, written by the book pipeline's
   agents (`pipeline/`); the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches
   the pictures from Downloads, the cover on the printer's template; passed to the library with their Etsy listing.
+- [Photo mockups](features/photo-mockups.md) — the Listings mode: lifestyle photos with a blank book → our book in
+  them (a Workshop book's step «Фото» and the «Фотомокапи» page): template, cover, JSON prompt into the clipboard.
 - [Mockups](features/mockups.md) — the Listings mode: a Canva demo book → Etsy listing pictures from the
   Photoshop templates (the owner fits the front cover by hand).
 - [Listing slides](features/slides.md) — the Mockups' next steps: the pictures without background, the six Etsy
@@ -64,7 +66,7 @@ code: []
 
 - [Launch and shutdown](architecture/runtime.md)
 - [Server](architecture/server.md) — routes, background jobs, errors, settings.
-- [Server routes](architecture/api-routes.md) — all 159, with who calls them.
+- [Server routes](architecture/api-routes.md) — all 168, with who calls them.
 - [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
 - [Data](architecture/data.md) — what's in `app/data`.
 

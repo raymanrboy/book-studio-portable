@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-09-29
+updated: 2026-09-30
 code: []
 ---
 # Glossary
@@ -123,6 +123,10 @@ Code paths below are relative to the repository root.
 
 | Owner's word (Ukrainian) | What it is | Where |
 |---|---|---|
+| Фотомокапи, фото-мокап, фото з книгою | Lifestyle photos with a blank white book (grandmother, child, shelf, open book, the main flat lay) in which the generator puts our book; a Workshop book's step «Фото» and the «Фотомокапи» page | [features/photo-mockups.md](features/photo-mockups.md); [photos.py](../app/studio/photos.py) |
+| Заготовки (обкладинок), пустишка | A photo mockup's template — the photo with the blank white book; «пустишка» — the template without a book's cover (the page «Фотомокапи») | [features/photo-mockups.md](features/photo-mockups.md) `photos.templates()` |
+| Ковер (з Canva), обкладинка з архіву Canva | The book's flat cover as Canva exports it (back · spine · front) — the photo mockups' reference for the grandmother, kept as `mockups/canva-cover.png` | [features/photo-mockups.md](features/photo-mockups.md); `mockups._keep_canva_cover()` |
+| Папка etsy | A Workshop book's folder of what goes into its Etsy listing: the slides and the photo mockups | [features/workshop.md](features/workshop.md) |
 | Мокапи, мокапи для лістингу | Etsy listing pictures: the demo book dropped into Photoshop templates; also the utility's shortcut name | [features/mockups.md](features/mockups.md) `mockups.py`; [plans/listing-mockups.md](plans/listing-mockups.md) |
 | Трафарети (мастхев), шаблони мокапів | The PSD templates in `D:\Roman\Desktop\Трафарети мастхев` — **read-only** | [plans/listing-mockups.md](plans/listing-mockups.md); [security.md](security.md) |
 | Смарт-об'єкт | A layer that's a "container": the picture inside is bent by the template | [plans/listing-mockups.md](plans/listing-mockups.md) |
@@ -140,7 +144,7 @@ Code paths below are relative to the repository root.
 | Шаблон слайдів, схема (кольорова схема), Nature, Night | A **scheme** — the whole look of the six slides ("not only the colours but the settings of the whole mockup"), named; Nature — the default for new books, Night — his blue one; «Схема ▾» in the editor puts one on a book, «Зберегти як схему» makes one | [slides/store.py](../app/studio/slides/store.py) `list_schemes()`, `apply_preset()`, `save_scheme()`, `template()` |
 | Пресет (слайдів іншої книги) | Another Workshop book's six slides offered as a scheme for a new one («e.g. another bedtime book») | [slides/store.py](../app/studio/slides/store.py) `presets()` |
 | Тло (шаром) | The slide's background colour as the bottom row of the editor's layers | [pages/slides-editor.js](../app/web/js/pages/slides-editor.js) |
-| Без фону (картинки без фону) | A mockup's book with its real shadow on a transparent background, saved beside the mockups in `Без фону\` while Photoshop works | [slides/cutout.py](../app/studio/slides/cutout.py) `ensure()`, `Cutter` |
+| Без фону (картинки без фону) | A mockup's book with its real shadow on a transparent background, saved beside the mockups in `no-background\` («Без фону» until 30.09.2026) while Photoshop works | [slides/cutout.py](../app/studio/slides/cutout.py) `ensure()`, `Cutter` |
 | Редактор (слайдів) | The Canva-like editor of the listing slides: layers, move, turn, resize, mirror, arc text | [pages/slides-editor.js](../app/web/js/pages/slides-editor.js) |
 | Зберегти відкриті (й закрити) | The button after a run: the templates left open, with the front cover fitted, saved as PNG next to the rest and closed | [mockups.py](../app/studio/mockups.py) `finish()`; [mockups.jsx](../app/studio/mockups.jsx) `finishOpen()` |
 | Тимчасові файли, «чистити за собою» | What a run leaves (template copies, prepared pictures, the unpacked book) and when it goes | [features/mockups.md](features/mockups.md#temporary-files--what-is-left-and-when-it-goes) |

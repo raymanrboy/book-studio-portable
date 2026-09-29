@@ -123,6 +123,7 @@ const P = {
   // The Workshop's generation (26.09.2026, the owner: "the magic wand has to go"): a prompt is a command for the
   // picture generator (a prompt sign in a window — not `text`, which is the book's own words); `generate` starts
   // one (the prompt into the clipboard, a download awaited); `regenerate` — once more, the new picture replaces it
+  camera: '<path d="M4.5 7.5h3l1.5-2.5h6l1.5 2.5h3A1.5 1.5 0 0 1 21 9v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18V9a1.5 1.5 0 0 1 1.5-1.5z"/><circle cx="12" cy="13.2" r="3.6"/>', // the photo mockups
   prompt: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 10l2.5 2.2-2.5 2.2M12.5 14.5h4"/>',
   generate: '<path d="M8 5.8v12.4a1 1 0 0 0 1.5.9l10-6.2a1 1 0 0 0 0-1.8l-10-6.2A1 1 0 0 0 8 5.8z"/>',
   // one line from the arc into the arrowhead's corner (26.09.2026: the arc and a loose arrowhead looked broken)

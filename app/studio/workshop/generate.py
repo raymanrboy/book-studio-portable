@@ -13,6 +13,10 @@ prompt; a hero variant's spread) gives them one by one: the first goes into the 
 Chrome** puts in the next by itself — «Далі» in the window or F8 anywhere do the same. The cover's picture, once in,
 goes on to its margins by itself. A hero variant's cover (one frame, the finished wide cover at once) has no prompt:
 the base cover and the variant's hero go into the clipboard, if they are there.
+
+A photo mockup (photos.py, 30.09.2026) goes the same way: the template, the book's reference, the prompt — and the photo
+lands in the book's etsy/ folder. Without a book (the «Фотомокапи» page) only the template and the prompt go in, and
+nothing is caught: the wait ends once the prompt is in the clipboard.
 """
 from __future__ import annotations
 
@@ -21,7 +25,7 @@ import threading
 import time
 from pathlib import Path
 
-from .. import clipboard, core, desktop
+from .. import clipboard, core, desktop, photos
 from ..server import ApiError
 from . import books, pictures, rows
 
@@ -130,8 +134,9 @@ class Session:
             return {
                 "version": self.version,
                 "active": None if not a else {
-                    "book": a["book"], "title": books.display_name(a["book"]), "variant": a["variant"],
-                    "key": a["key"], "label": a["label"], "item": a["item"], "items": [i["label"] for i in a["items"]], "queue": len(a["queue"]),
+                    "book": a["book"], "title": books.display_name(a["book"]) if a["book"] else "", "variant": a["variant"],
+                    "key": a["key"], "kind": a.get("kind", "row"), "catch": a.get("catch", True), "label": a["label"],
+                    "category": a.get("category"), "template": a.get("template"), "item": a["item"], "items": [i["label"] for i in a["items"]], "queue": len(a["queue"]),
                     "series": a["series"], "since": a["since"], "step": a["step"], "of": a["of"]},
                 "last": self.last, "error": self.error, "f8": self.hotkey.active, "f8Failed": self.hotkey.failed,
                 "paste": self.hotkey.paste,
@@ -169,19 +174,38 @@ class Session:
     def _begin(self, book_id, variant, queue, series, step=1, of=1):
         key, rest = queue[0], queue[1:]
         label, items = _items(book_id, key, variant)
-        folder = downloads_folder()
-        if not folder.is_dir():
-            raise ApiError(f"Папку завантажень не знайдено: {folder}")
-        try:
-            known = {e.name for e in os.scandir(folder)}
-        except OSError:
-            known = set()
-        self.active = {"book": book_id, "variant": variant, "key": key, "label": label, "items": items, "item": 0,
-                       "queue": rest, "series": series, "since": time.time(), "known": known, "step": step, "of": of}
+        self._open({"book": book_id, "variant": variant, "key": key, "label": label, "items": items, "queue": rest,
+                    "series": series, "step": step, "of": of})
+
+    def _open(self, active: dict, catch: bool = True):
+        """The wait begins: what Downloads already holds is noted (only a new file counts), the first thing goes into
+        the clipboard. `catch=False` — nothing is waited for in Downloads (a photo mockup without a book)."""
+        known: set[str] = set()
+        if catch:
+            folder = downloads_folder()
+            if not folder.is_dir():
+                raise ApiError(f"Папку завантажень не знайдено: {folder}")
+            try:
+                known = {e.name for e in os.scandir(folder)}
+            except OSError:
+                pass
+        self.active = {"item": 0, "since": time.time(), "known": known, "catch": catch, **active}
         self._sizes = {}
         self._put_item()
-        self.hotkey.want(len(items) > 1)
+        self.hotkey.want(len(active["items"]) > 1)
         self._bump()
+
+    def start_photo(self, book_id: str | None, category: str, template: str) -> dict:
+        """A photo mockup: the template, the book's reference and the prompt one after another; with a book its photo
+        is caught into the book's etsy/ folder, without one only the template and the prompt go in."""
+        book_id = book_id or None
+        label, items = photos.items(book_id, category, template)
+        with self.lock:
+            self.error = ""
+            self._open({"book": book_id, "variant": None, "key": f"photo:{category}", "kind": "photo",
+                        "category": category, "template": template, "label": label, "items": items, "queue": [],
+                        "series": False, "step": 1, "of": 1}, catch=bool(book_id))
+            return self.status()
 
     def stop(self, book_id: str | None = None) -> dict:
         """Stops waiting — for any book, or only when it's this book's picture that is awaited (a deleted book)."""
@@ -218,6 +242,11 @@ class Session:
                 self._put_item()
                 if a["item"] == len(a["items"]) - 1:
                     self.hotkey.want(False)
+                    if not a["catch"]:  # the last thing is in the clipboard, and no picture is awaited: done
+                        self.active = None
+                        self.last = {"book": None, "variant": None, "key": a["key"], "label": a["label"],
+                                     "note": f"{a['label']}: промпт у буфері — додайте в чат обкладинку книги",
+                                     "file": "", "at": time.time()}
                 self._bump()
             return self.status()
 
@@ -242,7 +271,7 @@ class Session:
         """One look into Downloads: the first new picture that has finished downloading is caught."""
         with self.lock:
             a = self.active
-            if not a:
+            if not a or not a["catch"]:
                 return
             known, since = a["known"], a["since"]
         try:
@@ -271,8 +300,10 @@ class Session:
                 return
             a["known"].add(file.name)
         try:
-            # moved out of Downloads into the book's originals/ (named by its row), then cut into its pages
-            result = pictures.place(a["book"], a["key"], file, file.name, a["variant"], take=True)
+            if a.get("kind") == "photo":  # a photo mockup: into the book's etsy/ folder
+                result = photos.place(a["book"], a["category"], file, file.name, a["template"], take=True)
+            else:  # moved out of Downloads into the book's originals/ (named by its row), then cut into its pages
+                result = pictures.place(a["book"], a["key"], file, file.name, a["variant"], take=True)
         except (ApiError, OSError) as exc:
             with self.lock:
                 self.error = f"{file.name}: {exc}"

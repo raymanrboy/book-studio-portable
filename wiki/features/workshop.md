@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents (the Listings mode)
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -47,8 +47,12 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
       .replaced/  whatever a new picture replaced or a removal took — never deleted
       book.json   the Workshop's state: the steps ticked by hand, each row's marks (mirrored, cut, from, size),
                   the cover's layout on the template, the library book it was passed on as
-      mockups/    the Mockups' pictures for this book, «Без фону», Listing 1–6.png, slides/ (its listing slides:
-                  the scenes, the cut-out books) — since 29.09.2026, written by Book Studio
+      mockups/    the Mockups' pictures for this book, no-background/ (their cut-outs), canva-cover.png (the demo
+                  book's cover — the photo mockups' reference), slides/ (its listing slides: the scenes, the
+                  cut-out books) — since 29.09.2026, written by Book Studio
+      etsy/       what goes into the Etsy listing (since 30.09.2026): the slides Listing 1…6.png, copies of Cover & Open 1 and All & Open 1
+                  (made by the Mockups) and the photo
+                  mockups photo-<category>.png
 ```
 
 - **A book's id is its folder's name** (`25.some-book`; the page's address `#/workshop/25.some-book`). The agents
@@ -73,7 +77,7 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
 
 - A card per book (`card()`): the cover (its front half), else the cover's picture, else the first finished
   spread, else the hero, else the title's letter; `№41 Title` (from the folder's name), the cover's title from
-  `book-text.md` (serif, `{Name}` marked), **the path as ten strips**, «Далі: <step>», «Картинки n/16», the book
+  `book-text.md` (serif, `{Name}` marked), **the path as eleven strips**, «Далі: <step>», «Картинки n/16», the book
   check's GO (green) or «N помилок» (red); a book the Workshop is waiting a picture for says «чекаю картинку».
 - Search by title or number (Ctrl+F or `/`), sort (`SORTS`: by number, newest first — the default; recently
   changed; least ready first — remembered in `bs-workshop-view`), **«У роботі · У бібліотеці»** (shown once a book
@@ -86,25 +90,29 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
 ## A book (`#/workshop/<folder>`)
 
 - **Header**: back (Esc), `№41 Title`, the cover's title, the Tier chip (H — a child hero on every spread; S — no
-  recurring hero); on the right **one group of icons, the passport's way** (since 2026-09-26): **the agent**
-  (Antigravity, «Продовжуємо книгу …\pipeline\books\41.… (правила — …\GEMINI.md)» in the clipboard), **the book's
-  folder** (a folder — the owner: "the folder is the book's folder, not hidden behind the three dots"), **the pages**
+  recurring hero); on the right **«Папка книги»** — a button in the accent colour beside «Передати в бібліотеку»
+  (2026-09-30, the owner: "an important button too"; an icon in the group before), and **one group of icons, the
+  passport's way** (since 2026-09-26): **the agent**
+  (Antigravity, «Продовжуємо книгу …\pipeline\books\41.… (правила — …\GEMINI.md)» in the clipboard), **the pages**
   (square pictures — `pictures/`, the set for Canva), **the originals** (a wide picture — `originals/`, the 2:1
   spreads as the generator made them), «Ще» — **delete** (the whole folder into the Windows Recycle Bin, confirmed); beside it the one text button **«Передати в бібліотеку»** (in the
   accent colour once every picture and the cover are there), then «У бібліотеці» (opens the library book).
-- **The generation bar** (sticky on top, `genBar()`): what is awaited, what's in the clipboard, the parts of a
+- **The generation bar** (sticky on top, `genBar()`, drawn by `paintGenBar()`: it slides in once, when a wait begins; the
+  next part going into the clipboard only glides its line in — the owner, 30.09.2026: the whole bar coming in again at
+  every part "blinks the whole program"): what is awaited, what's in the clipboard, the parts of a
   several-part paste, «Далі» (F8), «покласти ще раз», «Стоп», the queue's progress («6 з 10», a thin line).
   «Стоп» (or deleting the book, or another row started) while a caught picture is still being cut stays a stop:
   the picture is kept in its row, the old queue never comes back (the 2026-09-26 audit). On
   another book's page or the gallery it names the book that waits, with «Перейти».
 - **The path strip** (`STEPS`): Формула → Герой → Історія → Текст → Промпти · GO → Картинки `n/16` → Обкладинка →
-  Canva → Мокапи → Бібліотека. Each a rounded square, the Order Creator's step number (since 2026-09-26; circles
+  Canva → Мокапи → Фото `n/7` → Бібліотека. Each a rounded square, the Order Creator's step number (since 2026-09-26; circles
   before) — ✓ done, half-filled started, dashed skipped (a Tier S book's hero), a number not yet; the next one is
   outlined in the ink with a breathing ring, the line after a done step lights up, a step that has just become done
   pops; the hero's square is its photo. **Ticked by the files that exist** (`steps()`): `formula.md`,
   `canonical.png` (the prompt or the card alone — started), `story-blueprint.md`, `book-text.md`, both prompt files
   (one — started), the rows whose every page is in `pictures/`, `Cover.png`; **Canva is ticked by hand**; **Мокапи
-  ticks itself** when the mockups are made for this book (since 2026-09-29; by hand too, for ones made elsewhere); **Бібліотека ticks itself** when the book has
+  ticks itself** when the mockups are made for this book (since 2026-09-29; by hand too, for ones made elsewhere); **Фото**
+  — when all seven photo mockups are in `etsy/`, or by hand (a category may be skipped); **Бібліотека ticks itself** when the book has
   been passed on (and unticks if that library book went to the trash).
 - **The step's panel** (a click on a step or ← →; a second click or × folds it): the step's file — text with its
   headings and code blocks, a picture (a click — large), tabs when a step has several files, a missing file named
@@ -114,7 +122,9 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
   frames (a click scrolls to the row); Canva — «Зроблено» / «Зняти позначку»; **Мокапи** — what the book's `mockups\`
   holds (mockups, «Без фону», slides) and **«Зробити / Редагувати мокапи»** (the Mockups for this book — the owner: "back to
   editing the mockups even when everything is saved"), **«Редагувати слайди»** (the slides' editor), **«Відкрити папку
-  мокапів»**, «Позначити зробленим» / «Зняти позначку» (`mockupsBody()`, `books.mockups_state()`); Бібліотека — what's missing and
+  мокапів»**, «Відкрити папку Etsy» (the slides), «Позначити зробленим» / «Зняти позначку» (`mockupsBody()`, `books.mockups_state()`);
+  **Фото** — the [photo mockups](photo-mockups.md): the book's references, a card per category, the chosen category's
+  templates (`photosBody()`); Бібліотека — what's missing and
   «Передати в бібліотеку».
 - **The rows** (one column of 820 px, the owner: "not the full width") under the passport's section heading
   «СТОРІНКИ КНИГИ n/16»: page 1, spreads 2–3 … 28–29, page 30 — and **the cover last** (it's generated last, by
@@ -298,10 +308,10 @@ book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and scre
 
 ## Where in the code
 
-- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `mockups_state()`, `MOCKUPS`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
+- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `AREAS`, `ETSY`, `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `mockups_state()`, `MOCKUPS`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
 - [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
 - [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`
-- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session`, `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`
+- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session` (`start_photo()`, `_open()`), `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`
 - [app/studio/workshop/upscale.py](../../app/studio/workshop/upscale.py) — `MODEL`, `SCALE`, `KEYS`, `BIG`, `sides()`, `side()`, `slots()`, `split()`, `engine()`, `upscale_row()`, `todo()`, `Upscaler`, `status()`, `after_place()`, `set_on()`, `start()`, `forget()`
 - [app/studio/workshop/check.py](../../app/studio/workshop/check.py) — `run()`, `RULES`, `main()`
 - [app/studio/workshop/routes.py](../../app/studio/workshop/routes.py) — the routes ([api-routes](../architecture/api-routes.md))
@@ -310,9 +320,9 @@ book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and scre
 - [app/studio/library.py](../../app/studio/library.py) — `create_book()`, `listing_of()`, `follow()`, `keep_pages()`, `take_listing_image()`, `PAGES_FROM_WORKSHOP`
 - [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()`, `SORTS`
 - [app/web/js/workshop-bits.js](../../app/web/js/workshop-bits.js) — `picture()`, `checkWord()`, `STATE_WORDS`, `STATE_TEXT`, `ERRORS`
-- [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`
+- [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`, `photosBody()`
 - [app/web/js/pages/workshop-rows.js](../../app/web/js/pages/workshop-rows.js) — `rowTemplates()` (a row: its prompt, its frame, its text), `waitChip()`
-- [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genAction()`, `genBar()`, `waitingFor()`
+- [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `startPhoto()`, `genAction()`, `genBar()`, `paintGenBar()`, `waitingFor()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `patch()`
 - [app/web/css/listings.css](../../app/web/css/listings.css) — `.ws-card`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-cover`, `.ws-tpl`
 - [pipeline/GEMINI.md](../../pipeline/GEMINI.md) — the book agents' rules; [pipeline/check_book.py](../../pipeline/check_book.py) — their start of the check
@@ -321,5 +331,5 @@ book goes to `recycle-bin\`. The owner's clipboard, keyboard, Downloads and scre
 
 ## Related
 
-- [The plan and its history](../plans/book-console.md) · [Two modes](modes.md) · [Library](library.md) ·
+- [The plan and its history](../plans/book-console.md) · [Two modes](modes.md) · [Library](library.md) · [Photo mockups](photo-mockups.md) ·
   [Mockups](mockups.md) · [Book structure](../rules/book-structure.md) · [Decisions](../decisions.md)

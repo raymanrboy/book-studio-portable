@@ -302,6 +302,9 @@ def _open_folder(req: Request):
     folder = Path(rec.get("folder") or "")
     if body.get("noBg"):
         folder = folder / cutout.NO_BG
+    elif store.is_book(rec["id"]):
+        folder = store.out_dir(rec)   # a Workshop book's slides are in its etsy/ folder
+        folder.mkdir(exist_ok=True)
     if not folder.is_dir():
         raise ApiError("Папку не знайдено.")
     desktop.open_in_explorer(folder)

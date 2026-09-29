@@ -33,7 +33,8 @@ from .. import core
 
 HAZE = 0.035        # the template's shadow darkens the whole canvas by a few %: that floor is cut
 MAX_WIDTH = 2600    # plenty for a 2000² slide
-NO_BG = "Без фону"  # the folder beside the mockups where the cut-outs go (the owner, 29.09.2026)
+NO_BG = "no-background"  # the folder beside the mockups where the cut-outs go — «Без фону» until 30.09.2026 (the
+                         # owner: every name inside Book Studio in English)
 CUTS = core.data_path("slides", "cuts")   # every cut once: <key>/book.png, shadow.png, info.json
 
 # (kind, the template's file) — by the mockup's file name, the way the Mockups name them ("2. Open 1 (6-7).png")

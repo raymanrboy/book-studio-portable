@@ -5,7 +5,7 @@ import {
   api, post, html, ic, ib, setHtml, on, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg,
   highlightTokens, remembered, remember,
 } from '../lib.js';
-import { watch, genBar, genAction, genState, act } from '../workshop-live.js';
+import { watch, paintGenBar, genAction, genState, act } from '../workshop-live.js';
 import { STATE_WORDS, checkWord, picture } from '../workshop-bits.js';
 
 const PREF = 'bs-workshop-view';
@@ -131,8 +131,7 @@ export async function mount(view) {
   }
 
   function paintGen() {
-    const bar = genBar(null);
-    patch(view.querySelector('#ws-gen'), bar ? [['bar', bar]] : []);
+    paintGenBar(view.querySelector('#ws-gen'), null);
     const waiting = genState()?.active?.book;
     grid.querySelectorAll('[data-wait]').forEach((w) => w.classList.toggle('on', w.dataset.wait === waiting));
   }

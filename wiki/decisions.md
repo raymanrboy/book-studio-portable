@@ -1,13 +1,34 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-09-29
+updated: 2026-09-30
 code: []
 ---
 # Decisions
 
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
+
+## 2026-09-30 — Photo mockups: a step of the Workshop and a page of their own; `etsy/`; English inside
+
+- **The owner:** lifestyle photos with a blank white book (a grandmother reading, a child holding it, a shelf, an open
+  book, the main flat lay) — one per category, **categories may be skipped**; the generator swaps the book for ours.
+  In a book: **template → the book's cover → the prompt**, Ctrl+V after Ctrl+V; the photo caught into the book. **A
+  page of its own** as well: only the template and the prompt ("I'll add the pictures myself") — nothing caught.
+- **Which cover goes second:** Cover 1 (main, child, shelf); **Cover & Open 1** for the open book; for the grandmother
+  **the flat cover from the Canva ZIP** — the owner: simpler than explaining which part of «All & Open 1» to take ("I did
+  it that way already"). The Mockups keep it in the book (`mockups/canva-cover.*`).
+- **The prompts are JSON** (the Workshop's own format), one per category; **no white of the blank book may stay** — the
+  spine and edges are our book too (the owner: "no white parts — our book").
+- **`etsy/` in every book** for what goes into the listing, as the owner laid out book 25's by hand: the six slides
+  (`Listing 1.png … Listing 6.png`), the photos (`photo-<category>.png`) and copies of the two whole-scene mockups
+  (`Cover & Open 1 (…)`, `All & Open 1 (…)` — copied when the Mockups save them, the originals stay in `mockups/`). **Every name inside Book Studio in English** (folders, files, categories; «Без фону» →
+  `no-background`), the interface in Ukrainian.
+- **The templates live inside Book Studio** (`app/data/photo-mockups`, copied from his desktop, English names), not on
+  the desktop. The sixth category «Для відео» (three 9:16 phone photos of the book lying, no people) — the same
+  evening, and «Розмір» (the softcover and the hardcover side by side — one template, from `Size.jpg`).
+  «Папка книги» — a blue button beside «Передати в бібліотеку». The rail's icon — a camera
+  ([photo mockups](features/photo-mockups.md)).
 
 ## 2026-09-29 — Listing slides: schemes, the Workshop book's folder, locked by default
 

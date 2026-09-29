@@ -102,7 +102,7 @@ def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Pat
         _tick(book)
     missing = [store.SLOT_LABEL[s] for s in store.BOOK_SLOTS + store.PICTURE_SLOTS
                if s not in rec["books"] and s not in rec["pictures"]]
-    return {"set": rec["id"], "folder": str(folder), "pictures": baked, "missing": missing,
+    return {"set": rec["id"], "folder": str(store.out_dir(rec)), "pictures": baked, "missing": missing,
             "seconds": round(time.time() - started)}
 
 

@@ -4,8 +4,8 @@ Book Studio's window closed (it starts its own small server for the drawing).
     python app/tools/slides.py list                               the schemes, the books' slides (Workshop books first)
     python app/tools/slides.py path  <slide> [--set ID]           the scene's file (to read and edit)
     python app/tools/slides.py render <slide> [--set ID] --to X.png   one slide drawn at 2000×2000 into X.png (a look)
-    python app/tools/slides.py bake [slide …] --set ID            baked into the book's folder (Listing N.png)
-    python app/tools/slides.py cutout <mockup.png …>              cut out without background (into «Без фону»)
+    python app/tools/slides.py bake [slide …] --set ID            baked (Listing N.png): a Workshop book's etsy/, else beside its mockups
+    python app/tools/slides.py cutout <mockup.png …>              cut out without background (into no-background/)
 
 --set: a Workshop book's folder name (25.sleepy-trucks-bedtime), an older set's id, or "template" (the default) —
 the default scheme, drawn with the newest book's pictures.

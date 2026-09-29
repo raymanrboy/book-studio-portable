@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -166,8 +166,9 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - The spare copy `Трафарети мастхев (копія)` in the Book Studio folder (2026-09-29) is **read-only too** (its files marked
   so) and never used by the program; it is not in git and not in the backup (the templates themselves are).
 - The listing slides' cut-out **only reads** the templates (their book mask and shadow layers, psd_tools); what it
-  writes goes beside the mockups (`Без фону\`, never over a file that is there) and into `app/data/slides`; the
-  slides are `Listing N.png`, never over another file — only the program's own are baked again
+  writes goes beside the mockups (`no-background\`, never over a file that is there) and into `app/data/slides`; the
+  slides are `Listing N.png` in a Workshop book's `etsy\` (or beside the mockups in a folder of the owner's), never over
+  another file — only the program's own are baked again
   ([slides](features/slides.md)).
 - Its files live in `app/data/mockups`. The unpacked demo book has a folder of its own there
   (`mockups/book/`, `BOOKS`), so the mockups never delete the files dropped into an order's card and Book
@@ -189,6 +190,9 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   book's `.replaced/`; a deleted book's whole folder goes to the **Windows Recycle Bin** (`to_recycle_bin()`).
 - **Downloads**: only the first new PNG/JPEG/WEBP that appears *after* «Генерувати» and has finished downloading is
   taken (moved into the book — the owner's wish); files that were there before, and anything else, are never touched.
+  A photo mockup without a book (the «Фотомокапи» page) takes nothing from Downloads at all.
+- **The photo mockups' templates** (`app/data/photo-mockups`) are copies; the owner's own folder on the desktop was
+  only read, once. A template taken out goes to the Recycle Bin; a book's photo replaced or removed — to `.replaced/`.
 - **Only inside the book**: a variant a request names is an existing folder in `agent/variants/`, checked before
   anything is written (`_variant()`, the 2026-09-26 audit: «../..» wrote outside the book).
 - **A book's `agent/` is the agents'**: the Workshop only reads it, except the hero it catches (`canonical.png`, a
@@ -204,7 +208,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   Studio's code and data (outside the folder Antigravity opens).
 - **The sandbox** (`core.SANDBOX` — the preview server and the tests): the clipboard goes into files, F8 and the keys aren't touched,
   no window opens, Downloads, the books and the Recycle Bin are made-up folders in the data folder.
-- Tests: `TheSandbox`, `OnlyInsideTheBook`, `CatchingDownloads` ([test_workshop.py](../app/tests/test_workshop.py)).
+- Tests: `TheSandbox`, `OnlyInsideTheBook`, `CatchingDownloads` ([test_workshop.py](../app/tests/test_workshop.py)); `TheTemplates`, `WithoutABook` ([test_photos.py](../app/tests/test_photos.py)).
 
 ### Local server
 - Listens only on `127.0.0.1`; every `/api` request carries the session token `SESSION_TOKEN` (header

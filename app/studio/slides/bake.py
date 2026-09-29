@@ -18,7 +18,8 @@ from . import store
 
 SIZE = 1000        # the stage in CSS pixels; × 2 → 2000×2000
 AT_ONCE = 3
-NAME = "Listing {n}.png"   # the owner's folder: «Listing 1.png … Listing 6.png» (the plan's default, 29.09.2026)
+NAME = "Listing {n}.png"   # «Listing 1.png … Listing 6.png» (the plan's default, 29.09.2026; a Workshop book's etsy/ too —
+                           # the owner's own etsy/ of book 25, 30.09.2026)
 CREATE_NO_WINDOW = 0x08000000
 
 
@@ -58,9 +59,10 @@ def render(where: str, slide: str, out: Path, base: str, token: str, profile: Pa
 
 
 def outputs(rec: dict, slides: list[str]) -> dict[str, Path]:
-    """Where each slide goes in the owner's folder: the file it was baked into before (the program's own — it is
-    replaced), else «Listing N.png», never over a file that is there."""
-    folder = Path(rec["folder"])
+    """Where each slide goes — a Workshop book's etsy/ folder, else the owner's folder: the file it was baked into
+    before (the program's own — it is replaced), else «Listing N.png», never over a file that is there."""
+    folder = store.out_dir(rec)
+    pattern = NAME
     taken, out = set(), {}
     for slide in store.SLIDES:
         before = rec.get("baked", {}).get(slide)
@@ -72,10 +74,10 @@ def outputs(rec: dict, slides: list[str]) -> dict[str, Path]:
             out[slide] = Path(before)
             continue
         n = store.SLIDES.index(slide) + 1
-        name, k = NAME.format(n=n), 1
+        name, k = pattern.format(n=n), 1
         while name.lower() in taken or (folder / name).exists():
             k += 1
-            name = NAME.format(n=n).replace(".png", f" ({k}).png")
+            name = pattern.format(n=n).replace(".png", f" ({k}).png")
         taken.add(name.lower())
         out[slide] = folder / name
     return out

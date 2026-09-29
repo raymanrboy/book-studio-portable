@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -77,10 +77,11 @@ code:
 | [creator/routes.py](../app/studio/creator/routes.py) | The routes; a print folder's pictures for the page and the viewer | `_status()`, `_create_printify()`, `_create_gelato()`, `_folder_media()`, `_folder_spread()` |
 | [orders.py](../app/studio/orders.py) | Order pipeline: printer, book, laying out pages | `plan_for()`, `page_options()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()` |
 | [drops.py](../app/studio/drops.py) | Dragged-in files (saving, unpacking a ZIP, the book folder) and how a Canva export names its files — shared by the orders, the library and the mockups | `export_files()`, `page_number()`, `COVER_NAME`, `UPSCAYL_TAIL`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `clear_drops()`, `DROPS` |
+| [photos.py](../app/studio/photos.py) | [Photo mockups](features/photo-mockups.md): the templates by category (`app/data/photo-mockups`), the five JSON prompts, a book's references (`mockups/`) and photos (`etsy/`) | `CATEGORIES`, `REFS`, `PROMPTS`, `templates()`, `add_template()`, `references()`, `items()`, `place()`, `state()`, `set_canva_cover()` |
 | [mockups.py](../app/studio/mockups.py) | [Listing mockups](features/mockups.md): the demo book (in its own folder), pictures for the smart objects, the run plan, Photoshop | `TEMPLATES`, `BOOKS`, `read_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `script()`, `launch()`, `watch()`, `make()` |
 | [mockups.jsx](../app/studio/mockups.jsx) | The Photoshop script (ExtendScript, CC 2019) the mockups run: fills copies of the templates, saves PNGs | `findLayer()`, `replaceContents()`, `runTemplate()` |
 | [slides/\_\_init\_\_.py](../app/studio/slides/__init__.py) | [Listing slides](features/slides.md): the package, what's where | — |
-| [slides/cutout.py](../app/studio/slides/cutout.py) | A mockup → the book and its real shadow, transparent (the template's mask and Multiply layers, only read; Dedication — the desk and the book, the floor gone); «Без фону»; the background cutter | `kind_of()`, `read_psd()`, `cut()`, `combined()`, `ensure()`, `Cutter`, `cutter`, `READER` |
+| [slides/cutout.py](../app/studio/slides/cutout.py) | A mockup → the book and its real shadow, transparent (the template's mask and Multiply layers, only read; Dedication — the desk and the book, the floor gone); `no-background/` («Без фону»); the background cutter | `kind_of()`, `read_psd()`, `cut()`, `combined()`, `ensure()`, `Cutter`, `cutter`, `READER` |
 | [slides/store.py](../app/studio/slides/store.py) | The schemes (Nature, Night, the owner's own) and a book's slides (a Workshop book's in its folder): scenes with their versions (a stale save refused), slots, pictures, the cleaning | `list_schemes()`, `save_scheme()`, `apply_preset()`, `presets()`, `load()`, `save()`, `reset()`, `sig()`, `new_set()`, `mockups_dir()`, `clean_temporary()`, `book_done()` |
 | [slides/work.py](../app/studio/slides/work.py) | «Зробити слайди»: the mockups into slots, the set, the six baked; a re-bake | `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()` |
 | [slides/bake.py](../app/studio/slides/bake.py) | Headless Edge draws `slides/render.html` at 2000², three at once; the names in the owner's folder | `bake()`, `render()`, `outputs()`, `run_browser()` |
@@ -127,6 +128,7 @@ code:
 | [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: the path strip and its panel, the rows, the cover's two stages, hero variants, «Передати в бібліотеку» | `mount()` |
 | [js/pages/workshop-rows.js](../app/web/js/pages/workshop-rows.js) | A Workshop book's rows drawn: a spread or a page with its prompt, its frame, its text; the parts the cover's card shares | `rowTemplates()`, `waitChip()` |
 | [js/workshop-live.js](../app/web/js/workshop-live.js) | The Workshop's live link: what changed, the generation mode's state and bar, the rail's dot and title | `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genBar()` |
+| [js/pages/photos.js](../app/web/js/pages/photos.js) | «Фотомокапи» (the Listings mode, `#/photos`): the templates by category — a click puts the template, then the prompt into the clipboard; add, remove | `mount()` |
 | [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups (the Listings mode): the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
 | [js/pages/mockups-run.js](../app/web/js/pages/mockups-run.js) | Mockups, step 3 drawn: the run and Photoshop's question, the result, «Ваша черга», the pictures saved after it | `runView()`, `resultCard()`, `turnCard()`, `finishedCard()` |
 | [js/pages/mockups-slides.js](../app/web/js/pages/mockups-slides.js) | Mockups, step 4 — the listing slides: «Без фону», «Зробити слайди», the six, the editor's door | `slidesStep()` |
@@ -158,7 +160,8 @@ code:
 | [test_textcheck.py](../app/tests/test_textcheck.py) | Text check: comparison, name rules, matching pages (24 and 30), a full check with a fake model, updating the passport, 127.0.0.1 only |
 | [test_orders.py](../app/tests/test_orders.py) | The printer rule, laying out pages, Gelato book length, the guide, partial import, the sync rule |
 | [test_mockups.py](../app/tests/test_mockups.py) | Mockups: the demo book (its own folder, apart from an order's dropped files), the cuts, the run plan, following Photoshop, the Photoshop script run by Node.js against a pretend Photoshop |
-| [test_slides.py](../app/tests/test_slides.py) | Listing slides: the cut-out and «Без фону», the background cutter, the template and a set (a stale save refused), «Зробити слайди» with a pretend browser, names, the command line |
+| [test_photos.py](../app/tests/test_photos.py) | Photo mockups: the templates, the five prompts, a book's clipboard order and the photo caught into `etsy/`, the step, without a book, the Canva cover kept |
+| [test_slides.py](../app/tests/test_slides.py) | Listing slides: the cut-out and `no-background/`, the background cutter, the template and a set (a stale save refused), «Зробити слайди» with a pretend browser, names, the command line |
 | [test_workshop.py](../app/tests/test_workshop.py) | The Workshop: a book by its title, never in the orders, prompts, one JSON (dry run, what's missing), the agent's instruction, passing a book to the library |
 | [test_upscale.py](../app/tests/test_upscale.py) | The Workshop's upscaling: ×2 and cut as before, the cover and pages 1/30, the variants (not the hero pictures), the switch, a picture replaced meanwhile, a failure, finding Upscayl by its log |
 | [test_wiki.py](../app/tests/test_wiki.py) | The wiki matches the code |

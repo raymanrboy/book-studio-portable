@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -105,6 +105,9 @@ code:
   elsewhere) and the page redraws only what changed with `patch()`; it also keeps the generation mode's state, draws
   its bar (`genBar()`) and tells the shell through `bs:busy` (the rail's dot, the window's title). «Передати в
   бібліотеку» is `openAddBook()` (add-book.js — the Library page itself isn't loaded) in its passing-on form (`transfer.send` runs the job).
+- [The photo mockups](../features/photo-mockups.md) (2026-09-30) — `pages/photos.js` (the templates by category;
+  live through `workshop-live.js` `watch({sigUrl})`, the generation bar without a book) and a Workshop book's step
+  «Фото» (`photosBody()` in `workshop-book.js`); `startPhoto()` starts both.
 - [The listing slides](../features/slides.md) (2026-09-29) — the Mockups' step 4 (`pages/mockups-slides.js`) and the
   editor `pages/slides-editor.js`, which links its own `css/slides.css` when it mounts (`ensureCss()`), widens its view
   (`.se-view`) and draws with `js/slides/engine.js` — the same engine the headless bake uses (`web/slides/render.html`,
@@ -213,7 +216,7 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 - [app/web/js/app.js](../../app/web/js/app.js) — `MODES`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `entryOf()`, `switchMode()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `buildNav()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
-- [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`
+- [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`, `paintGenBar()`, `startPhoto()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`, `finish()`

@@ -115,7 +115,8 @@ Recipes:
   python app/tools/slides.py bake --set <book>            # all six
   python app/tools/slides.py bake slide2 slide3 --set <book>
   ```
-  They land as `Listing 1.png … Listing 6.png` in the book's `mockups\` (the Mockups' card and the editor's
+  They land as `Listing 1.png … Listing 6.png` in the book's `etsy\` (beside its photo mockups; in `mockups\`
+  before 30.09.2026) (the Mockups' card and the editor's
   «Зберегти картинки» do the same). Tell him where they are.
 
 ## 5. Rules

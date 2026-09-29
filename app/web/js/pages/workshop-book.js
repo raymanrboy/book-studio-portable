@@ -1,5 +1,5 @@
 // A book in the Workshop — the book console moved in (26.09.2026). On top, the book's path: Формула → Герой → Історія →
-// Текст → Промпти · GO → Картинки n/16 → Обкладинка → Canva → Мокапи → Бібліотека, each step ticked by the files that
+// Текст → Промпти · GO → Картинки n/16 → Обкладинка → Canva → Мокапи → Фото n/7 → Бібліотека, each step ticked by the files that
 // exist (the agents write them in Antigravity), a click shows the step's file or work in the panel under it. Below, the
 // book's rows — page 1, spreads 2–3 … 28–29, page 30 — each its prompt, its 2:1 frame and its text, and the cover last,
 // in two stages. «Генерувати» puts a row's prompt into the clipboard; the picture the owner downloads from Gemini lands
@@ -7,12 +7,12 @@
 // file changes (workshop-live.js, patch()): what stayed, stays — pictures, scroll, an opened prompt.
 import {
   api, post, html, ic, ib, raw, setHtml, on, toast, menu, confirmBox, upload, copyText, fadeImages, highlightTokens,
-  plural, patch, syncSeg, runJob, topLayer, notFound, remember,
+  plural, patch, syncSeg, runJob, topLayer, notFound, remember, media,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { openAddBook } from '../add-book.js';
 import { picture, checkWord, ERRORS, STATE_TEXT } from '../workshop-bits.js';
-import { watch, refresh, act, startGen, genAction, genBar, genState, waitingFor } from '../workshop-live.js';
+import { watch, refresh, act, startGen, startPhoto, genAction, paintGenBar, genState, waitingFor } from '../workshop-live.js';
 import { rowTemplates, waitChip, slot } from './workshop-rows.js';
 
 const IMG_RE = /\.(png|jpe?g|webp)$/i;
@@ -86,10 +86,10 @@ export async function mount(view, [rawId]) {
         <div class="tools">
           ${ib('agent', 'Відкрити агента — Antigravity; у буфері «Продовжуємо книгу …» з повною адресою книги', 'data-act="agent"')}
           <span class="sep"></span>
-          ${ib('folderOpen', 'Папка книги', 'data-act="open" data-what="folder"')}
           ${ib('images', 'Сторінки — нарізані 1–30 і Cover.png, набір для Canva', 'data-act="open" data-what="pictures"')}
           ${ib('original', 'Оригінали — картинки, як їх віддав генератор', 'data-act="open" data-what="originals"')}
           ${ib('more', 'Ще', 'data-act="more"')}</div>
+        <button class="btn btn-primary" data-act="open" data-what="folder" data-tip="Папка книги в Провіднику: сторінки, оригінали, мокапи, etsy">${ic('folderOpen')}Папка книги</button>
         ${passed ? html`<button class="btn" data-act="to-library" data-tip="Книга вже в бібліотеці замовлень — відкрити її там">${ic('checkCircle')}У бібліотеці</button>`
           : html`<button class="btn ${ready() ? 'btn-primary' : ''}" data-act="to-library">${ic('shelf')}Передати в бібліотеку</button>`}
       </div>`],
@@ -101,13 +101,14 @@ export async function mount(view, [rawId]) {
     const prev = b.steps[i - 1];
     const dot = s.key === 'hero' && s.thumb ? html`<span class="ws-dot photo"><img alt="" src="${pic('agent', s.thumb, 96)}"></span>`
       : html`<span class="ws-dot">${s.state === 'done' ? ic('check') : s.state === 'skip' ? ic('minus') : i + 1}</span>`;
-    let count = s.key === 'pictures' ? html`<span class="ws-step-count num">${s.count}/${s.total}</span>` : '';
+    let count = ['pictures', 'photos'].includes(s.key) ? html`<span class="ws-step-count num">${s.count}/${s.total}</span>` : '';
     let tip = `${s.label}: ${STATE_TEXT[s.state]}`;
     if (s.check) {
       count = html`<span class="ws-step-count ${s.check.go ? 'go' : 'nogo'}">${checkWord(s.check)}</span>`;
       tip += ` · перевірка: ${checkWord(s.check)}`;
     }
-    if (s.manual) tip += ' · позначається вручну';
+    if (s.key === 'photos') tip += ` · ${s.count} з ${s.total} фото; категорії можна пропускати — тоді позначте вручну`;
+    else if (s.manual) tip += ' · позначається вручну';
     const cls = [s.state, s.next && 'next', prev && ['done', 'skip'].includes(prev.state) && 'after-done',
       mem.step === s.key && 'sel', s.check && !s.check.go && 'nogo'].filter(Boolean).join(' ');
     return html`<button class="ws-step ${cls}" data-act="step" data-step="${s.key}" role="tab" aria-selected="${mem.step === s.key}" data-tip="${tip}">
@@ -173,12 +174,74 @@ export async function mount(view, [rawId]) {
         <button class="btn ${made || s.state === 'done' ? '' : 'btn-primary'}" data-act="to-mockups">${ic('mockup')}${made ? 'Редагувати мокапи' : 'Зробити мокапи'}</button>
         ${s.editable ? html`<button class="btn" data-act="to-slides">${ic('images')}Редагувати слайди</button>` : ''}
         ${made ? html`<button class="btn" data-act="open" data-what="mockups">${ic('folderOpen')}Відкрити папку мокапів</button>` : ''}
+        ${s.slides ? html`<button class="btn" data-act="open" data-what="etsy">${ic('folderOpen')}Відкрити папку Etsy</button>` : ''}
         <button class="btn btn-ghost" data-act="mark" data-step="mockups">${s.state === 'done' ? 'Зняти позначку' : html`${ic('check')}Позначити зробленим`}</button>
       </div></div>`;
   }
 
+  // «Фото» (the owner, 30.09.2026): a lifestyle photo per category with our book in it. A card per category (its photo,
+  // or an empty frame); a click shows the category's templates, and a click on one puts it into the clipboard, then the
+  // book's reference (Cover 1, Cover & Open 1 or the Canva cover — shown on top), then the prompt; the photo the owner
+  // downloads lands in the book's etsy/ folder. A category may be skipped: the step is ticked by all seven, or by hand.
+  let photoTemplates = null, photoTemplatesAt = 0;
+  async function templatesOf(key) {
+    if (!photoTemplates || Date.now() - photoTemplatesAt > 8000) {
+      photoTemplates = (await api('/api/photos')).categories;
+      photoTemplatesAt = Date.now();
+    }
+    return photoTemplates.find((c) => c.key === key)?.templates || [];
+  }
+
+  async function photosBody(s) {
+    const p = b.photos;
+    if (!p.cards.some((c) => c.key === mem.photoCat)) mem.photoCat = (p.cards.find((c) => !c.photo) || p.cards[0]).key;
+    const sel = p.cards.find((c) => c.key === mem.photoCat);
+    const tpl = await templatesOf(sel.key);
+    const a = genState()?.active;
+    const busy = (key) => (uploading.has(key) ? html`<div class="busy-overlay"><div class="ws-up"><i data-up="${key}"></i></div></div>` : '');
+    const refs = html`<div class="ph-refs">${p.refs.map((r) => {
+      const art = r.name ? html`<img data-fade alt="${r.label}" src="${pic('mockups', r.name, 240)}">` : ic(r.key === 'canva-cover' ? 'upload' : 'mockup');
+      const inner = html`<span class="ph-ref-art">${art}</span><span class="ph-ref-text"><b>${r.label}</b><span>${r.name ? 'є в папці мокапів' : r.key === 'canva-cover' ? 'перетягніть сюди' : 'ще немає'}</span></span>`;
+      const cls = `ph-ref ${r.name ? 'ok' : 'missing'} ${r.key === sel.ref ? 'used' : ''}`;
+      return r.key === 'canva-cover'
+        ? html`<div class="ws-drop ph-ref-drop" data-drop="canva-cover"><button type="button" class="${cls}" data-act="pick" data-key="canva-cover" data-variant="" data-tip="${r.name ? `${r.name} — перетягніть або оберіть інший файл, щоб замінити` : r.missing}">${inner}</button>${busy('canva-cover')}</div>`
+        : html`<div class="${cls}" data-tip="${r.name || r.missing}">${inner}</div>`;
+    })}</div>`;
+    const cards = html`<div class="ph-cards">${p.cards.map((c) => {
+      const waiting = waitingFor(id, `photo:${c.key}`, null);
+      return html`<div class="ph-card ${c.key === sel.key ? 'sel' : ''} ${c.photo ? 'full' : ''} ${waiting ? 'waiting' : ''}">
+        <div class="ws-drop ph-card-drop" data-drop="photo:${c.key}">
+          ${c.photo ? html`<div class="ph-card-art" data-act="photo-cat" data-cat="${c.key}"><img data-fade alt="${c.label}" src="${pic('etsy', c.photo, 480)}">
+              <div class="img-actions">${ib('expand', 'Переглянути', `data-act="photo-zoom" data-cat="${c.key}"`, { cls: 'sm' })}${ib('download', 'Зберегти як…', `data-act="save" data-area="etsy" data-name="${c.photo}"`, { cls: 'sm' })}${ib('trash', 'Прибрати фото — у папку .replaced книги', `data-act="photo-remove" data-cat="${c.key}"`, { cls: 'sm danger' })}</div></div>`
+            : html`<button type="button" class="ph-card-ph" data-act="photo-cat" data-cat="${c.key}" aria-label="${c.label}">${ic('camera')}</button>`}
+          ${waiting ? html`<div class="ws-wait"><span class="ws-pulse"></span>Чекаю фото…</div>` : ''}${busy(`photo:${c.key}`)}
+        </div>
+        <button type="button" class="ph-card-label" data-act="photo-cat" data-cat="${c.key}">${c.photo ? ic('checkCircle', 'icon-s') : ''}${c.label}</button>
+      </div>`;
+    })}</div>`;
+    const ref = p.refs.find((r) => r.key === sel.ref);
+    const nowTpl = (name) => a?.kind === 'photo' && a.book === id && a.category === sel.key && a.template === name;
+    const pick = html`<div class="ph-pick">
+      <div class="ph-pick-head"><b>${sel.label}</b><span class="ph-flow">фото ${ic('chevRight', 'icon-s')} ${ref.label} ${ic('chevRight', 'icon-s')} промпт</span>
+        <span class="spacer"></span>${ib('prompt', 'Промпт цієї категорії — у буфер', `data-act="photo-prompt" data-cat="${sel.key}"`)}</div>
+      ${ref.name ? '' : html`<div class="notice notice-warn">${ic('alert')}<div>${ref.missing}</div></div>`}
+      ${tpl.length ? html`<div class="ph-tiles sm">${tpl.map((t) => html`<div class="ph-tile ${t.name === sel.template ? 'used' : ''} ${nowTpl(t.name) ? 'now' : ''}" style="aspect-ratio:${t.size ? `${t.size[0]} / ${t.size[1]}` : '1 / 1'}">
+          <button type="button" class="ph-shot" data-act="photo-start" data-cat="${sel.key}" data-name="${t.name}" data-tip="${`У буфер: це фото, далі Ctrl+V у Chrome — ${ref.label}, ще раз — промпт${t.name === sel.template ? ' · цю заготовку брали востаннє' : ''}`}">
+            <img data-fade alt="${t.name}" src="${media(`/media/photos/${encodeURIComponent(sel.key)}/${encodeURIComponent(t.name)}`, { w: 360, v: t.v })}" loading="lazy"></button>
+          ${t.name === sel.template ? html`<span class="ph-used">${ic('check')}</span>` : ''}</div>`)}</div>`
+        : html`<div class="ws-missing">У цій категорії ще немає заготовок — додайте їх у «Фотомокапи».</div>`}
+    </div>`;
+    return html`${refs}${cards}${pick}
+      <div class="row-wrap ph-foot">
+        <button class="btn" data-act="open" data-what="etsy">${ic('folderOpen')}Відкрити папку Etsy</button>
+        <a class="btn btn-ghost" href="#/photos">${ic('camera')}Усі заготовки</a>
+        ${p.count === p.total ? '' : html`<button class="btn btn-ghost" data-act="mark" data-step="photos" data-tip="Категорії можна пропускати — позначте крок, коли фото досить">${s.state === 'done' ? 'Зняти позначку' : html`${ic('check')}Позначити зробленим`}</button>`}
+      </div>`;
+  }
+
   async function panelBody(s, file) {
     if (s.key === 'mockups') return mockupsBody(s);
+    if (s.key === 'photos') return photosBody(s);
     if (s.manual) {
       return html`<div class="ws-manual"><div>${MANUAL[s.key]} поза Book Studio? Позначте крок, коли зроблено.</div>
         <div class="row-wrap">${s.key === 'mockups' ? html`<a class="btn" href="#/mockups">${ic('mockup')}Відкрити Мокапи</a>` : ''}
@@ -234,13 +297,13 @@ export async function mount(view, [rawId]) {
     const tabs = files.length > 1 && s.state !== 'skip' ? html`<div class="seg ws-tabs"><span class="seg-pill"></span>${files.map((f) => html`<button type="button"
       class="${f === file ? 'active' : ''} ${f.exists ? '' : 'missing'} ${f.kind === 'check' ? (b.check.go ? 'go' : 'nogo') : ''}" data-act="tab" data-file="${f.name}"
       data-tip="${f.kind === 'check' ? 'Перевірка промптів (GO)' : f.exists ? f.name : `${f.name} — ще немає`}">${ic(tabIcon(f), 'icon-s')}${f.label || f.name}</button>`)}</div>` : '';
-    let state = s.key === 'pictures' ? `${s.count} з ${s.total}` : STATE_TEXT[s.state];
+    let state = s.key === 'pictures' || (s.key === 'photos' && s.state !== 'done') ? `${s.count} з ${s.total}` : STATE_TEXT[s.state];
     if (s.check) state += s.check.go ? ' · GO' : ' · перевірка не пройдена';
     const canOpen = file?.exists && file.area === 'agent';
     panel.hidden = false;
     const drawn = patch(panel, [
       ['head', html`<div class="ws-panel-head">
-        <div class="ws-panel-title">${s.label}</div><div class="ws-panel-state ${s.state}">${state}</div>
+        <div class="ws-panel-title">${s.key === 'photos' ? html`${ic('camera', 'icon-s')}Фотомокапи` : s.label}</div><div class="ws-panel-state ${s.state}">${state}</div>
         <div class="ws-panel-tools">${tabs}${canOpen ? ib('fileOpen', 'Відкрити файл у Windows', `data-act="open" data-what="agent" data-name="${file.name}"`) : ''}${ib('x', 'Згорнути', 'data-act="fold"')}</div></div>`],
       ['body', html`<div class="ws-panel-body">${body}</div>`],
     ]);
@@ -478,8 +541,7 @@ export async function mount(view, [rawId]) {
       }
     }
     stepsSeen = Object.fromEntries(b.steps.map((s) => [s.key, s.state]));
-    const bar = genBar(id);
-    patch($('#ws-gen'), bar ? [['bar', bar]] : []);
+    paintGenBar($('#ws-gen'), id);
     paintRows();
     paintPanel();
     followWaiting();
@@ -490,7 +552,7 @@ export async function mount(view, [rawId]) {
    *  the next picture will land. */
   function followWaiting() {
     const a = genState()?.active;
-    const key = a && a.book === id ? `${a.variant || ''}/${a.key.startsWith('cover') ? 'cover' : a.key}` : '';
+    const key = a && a.book === id && a.kind !== 'photo' ? `${a.variant || ''}/${a.key.startsWith('cover') ? 'cover' : a.key}` : '';
     const before = waitSeen;
     waitSeen = key;
     if (!key || !before || key === before) return;
@@ -561,6 +623,7 @@ export async function mount(view, [rawId]) {
     if (uploading.has(key)) { toast('Попередня картинка ще вантажиться', 'info'); return; }
     uploading.set(key, 0);
     paintRows();
+    paintPanel();
     try {
       const q = new URLSearchParams({ key, name: file.name, ...(variant ? { variant } : {}) });
       const res = await upload(url(`/place?${q}`), file, (p) => { uploading.set(key, p); paintProgress(key); });
@@ -568,6 +631,7 @@ export async function mount(view, [rawId]) {
     } catch (err) { toast(err.message, 'error'); }
     uploading.delete(key);
     paintRows();
+    paintPanel();  // a photo mockup's frame or the Canva cover is in the step's panel
     refresh();
   }
 
@@ -644,6 +708,21 @@ export async function mount(view, [rawId]) {
     if (a === 'mark') { act(t, () => post(url('/mark'), { step: t.dataset.step, on: step(t.dataset.step).state !== 'done' })); return; }
     if (a === 'to-mockups') { remember('mk-for-book', { id }); location.hash = '#/mockups'; return; }
     if (a === 'to-slides') { location.hash = `#/slides/${encodeURIComponent(id)}/1`; return; }
+    if (a === 'photo-cat') { mem.photoCat = t.dataset.cat; paintPanel(); return; }
+    if (a === 'photo-start') { startPhoto(t, { book: id, category: t.dataset.cat, template: t.dataset.name }); return; }
+    if (a === 'photo-prompt') { act(t, () => post('/api/photos/prompt', { category: t.dataset.cat }), 'Промпт у буфері'); return; }
+    if (a === 'photo-remove') {
+      confirmBox({ title: 'Прибрати фото?', text: 'Воно піде в папку .replaced книги — нічого не зникає назавжди.', confirm: 'Прибрати', danger: true })
+        .then((ok) => ok && act(t, () => post(url('/photos/remove'), { category: t.dataset.cat })));
+      return;
+    }
+    if (a === 'photo-zoom') {
+      const shots = b.photos.cards.filter((c) => c.photo);
+      openLightbox(shots.map((c) => ({ key: c.key, src: pic('etsy', c.photo, 1400), full: pic('etsy', c.photo, 2600), title: `Фото · ${c.label}`, sub: c.photo,
+        onOriginal: () => post('/api/workshop/open', { book: id, what: 'etsy', name: c.photo }).catch((err) => toast(err.message, 'error')) })),
+      Math.max(0, shots.findIndex((c) => c.key === t.dataset.cat)));
+      return;
+    }
     if (a === 'goto') {
       const el = view.querySelector(`#row-${t.dataset.row}`);
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }

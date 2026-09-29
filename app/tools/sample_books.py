@@ -2,10 +2,13 @@
 
     make_books(folder) → three books in different states:
       40.moonlit-garden-lullaby  Tier H: formula, hero (canonical.png), story, text — prompts not yet;
-                                 a hero variant G2_brunette (its hero prompt, swap prompts for spreads 3 and 4)
+                                 a hero variant G2_brunette (its hero prompt, swap prompts for spreads 3 and 4);
+                                 the photo mockups' references in mockups/ (Cover 1, Cover & Open 1, the Canva cover)
       41.little-lamb-prayers     Tier S: everything to the prompts (the cover's too), 5 of 16 rows in pictures/,
                                  Canva ticked
       42.new-book                just started: an empty agent/ folder
+
+    make_photo_templates(folder) → the photo mockups' made-up templates: a scene with a blank white book, per category.
 """
 from __future__ import annotations
 
@@ -61,6 +64,46 @@ def png(path: Path, size: tuple[int, int], color: tuple[int, int, int], label: s
     return path
 
 
+def book_shot(path: Path, size: tuple[int, int], scene: tuple[int, int, int], books: list[tuple], book=(250, 250, 250),
+              label: str = "") -> Path:
+    """A made-up photo: a coloured scene with a book (white — a template's blank book; coloured — a mockup's)."""
+    from PIL import Image, ImageDraw
+    im = Image.new("RGB", size, scene)
+    d = ImageDraw.Draw(im)
+    for box in books:
+        d.rectangle(tuple(v + 8 for v in box), fill=tuple(max(0, c - 40) for c in scene))  # its shadow
+        d.rectangle(box, fill=book)
+    if label:
+        d.text((16, 14), label, fill=(40, 40, 40))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im.save(path)
+    return path
+
+
+# category → its made-up templates: (name, size, the scene's colour, the blank books)
+PHOTO_TEMPLATES = {
+    "main": [("main-01-pink-roses.png", (900, 900), (236, 214, 212), [(250, 250, 650, 650)]),
+             ("main-02-leaf-shadows.png", (900, 900), (214, 226, 208), [(240, 230, 660, 640)]),
+             ("main-03-fairy-lights.png", (900, 900), (90, 104, 140), [(260, 240, 640, 660)])],
+    "open-book": [("open-book-01-bedspread.png", (900, 800), (230, 222, 206), [(80, 330, 360, 640), (400, 120, 840, 420)])],
+    "grandma": [("grandma-01-baby-daylight.png", (900, 820), (214, 200, 184), [(280, 360, 640, 560)]),
+                ("grandma-02-baby-evening.png", (900, 820), (150, 128, 110), [(300, 380, 660, 580)])],
+    "child": [("child-01-cream-outfit.png", (900, 900), (226, 214, 196), [(260, 330, 640, 700)])],
+    "shelf": [("shelf-01-side-table-bunny-duck.png", (900, 900), (222, 214, 200), [(330, 300, 580, 560)]),
+              ("shelf-02-middle-shelf.png", (900, 900), (208, 200, 186), [(340, 320, 590, 580)])],
+    "video": [("video-01-sofa.png", (540, 960), (196, 188, 176), [(90, 360, 380, 640)])],
+    "size": [("size-01-softcover-hardcover.png", (900, 900), (226, 220, 212), [(120, 330, 400, 640), (460, 250, 820, 640)])],
+}
+
+
+def make_photo_templates(folder: Path) -> Path:
+    folder = Path(folder)
+    for key, shots in PHOTO_TEMPLATES.items():
+        for name, size, scene, blank in shots:
+            book_shot(folder / key / name, size, scene, blank, label=name.rsplit(".", 1)[0])
+    return folder
+
+
 def make_books(folder: Path) -> Path:
     folder = Path(folder)
     shutil.rmtree(folder, ignore_errors=True)
@@ -83,6 +126,12 @@ def make_books(folder: Path) -> Path:
         (v / f"{n}.json").write_text(json.dumps({"edit_target": f"{n}.png", "character_reference": "hero.png",
                                                  "prompt": "Replace only the main toddler with the one from Image 2."}, indent=2),
                                      encoding="utf-8")
+
+    m = folder / "40.moonlit-garden-lullaby" / "mockups"   # what the Mockups leave: the photo mockups' references
+    book_shot(m / "1. Cover 1.png", (800, 600), (225, 225, 230), [(250, 110, 550, 490)], (70, 90, 150))
+    book_shot(m / "Cover & Open 1 (6-7).png", (800, 600), (150, 105, 70), [(90, 250, 330, 490), (360, 110, 740, 340)],
+              (70, 90, 150))
+    png(m / "canva-cover.png", (1074, 570), (70, 90, 150), "back | spine | front")
 
     s = folder / "41.little-lamb-prayers"
     a = s / "agent"
@@ -110,4 +159,7 @@ def seed_workshop() -> None:
     from studio import core
     if not core.WORKSHOP_BOOKS.is_dir() or not any(core.WORKSHOP_BOOKS.iterdir()):
         make_books(core.WORKSHOP_BOOKS)
+    templates = core.data_path("photo-mockups")
+    if not templates.is_dir() or not any(templates.iterdir()):
+        make_photo_templates(templates)
     core.data_path("downloads").mkdir(parents=True, exist_ok=True)
