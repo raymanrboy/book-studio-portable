@@ -1,0 +1,343 @@
+{
+ "title": "Слайд №2 · Choose your format",
+ "bg": "#eedec7",
+ "items": [
+  {
+   "name": "Світла пляма 1",
+   "type": "blob",
+   "x": 380,
+   "y": 430,
+   "w": 520,
+   "h": 520,
+   "rot": 0,
+   "seed": 3,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 2",
+   "type": "blob",
+   "x": 880,
+   "y": 520,
+   "w": 300,
+   "h": 520,
+   "rot": 0,
+   "seed": 5,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 3",
+   "type": "blob",
+   "x": 150,
+   "y": 220,
+   "w": 260,
+   "h": 200,
+   "rot": 0,
+   "seed": 8,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Зерно паперу",
+   "type": "grain",
+   "x": 500,
+   "y": 500,
+   "locked": true
+  },
+  {
+   "name": "Оливкова смуга",
+   "type": "band",
+   "x": 465.2,
+   "y": -160.2,
+   "w": 1300,
+   "h": 520,
+   "rot": -7.69,
+   "color": "#a2a066",
+   "seed": 4
+  },
+  {
+   "name": "Персикова смуга",
+   "type": "band",
+   "x": 465.2,
+   "y": 975.2,
+   "w": 1300,
+   "h": 520,
+   "rot": 7.69,
+   "color": "#e8c59d",
+   "seed": 21
+  },
+  {
+   "name": "Пунктир",
+   "type": "dashes",
+   "x": 510.0,
+   "y": 745.0,
+   "w": 938.9,
+   "h": 20,
+   "rot": 7.21,
+   "count": 10,
+   "dash": 62,
+   "color": "#ffffff"
+  },
+  {
+   "name": "Мала обкладинка 5×5",
+   "type": "book",
+   "x": 256,
+   "y": 436,
+   "w": 292,
+   "rot": 0,
+   "slot": "cover"
+  },
+  {
+   "name": "Велика обкладинка 8×8",
+   "type": "book",
+   "x": 698,
+   "y": 400,
+   "w": 360,
+   "rot": 0,
+   "slot": "cover"
+  },
+  {
+   "name": "Заголовок",
+   "type": "text",
+   "text": "Choose your\nperfect format",
+   "x": 262,
+   "y": 84,
+   "size": 44,
+   "w": 440,
+   "rot": -9,
+   "align": "left",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Soft / hard cover",
+   "type": "text",
+   "text": "Soft / hard cover",
+   "x": 702,
+   "y": 188,
+   "size": 28,
+   "w": 420,
+   "rot": 0,
+   "align": "center",
+   "color": "#96945c"
+  },
+  {
+   "name": "5x5",
+   "type": "text",
+   "text": "5x5*",
+   "x": 118,
+   "y": 255,
+   "size": 36,
+   "w": 110,
+   "rot": 0,
+   "align": "center",
+   "color": "#96945c"
+  },
+  {
+   "name": "Soft cover",
+   "type": "text",
+   "text": "Soft cover",
+   "x": 258,
+   "y": 612,
+   "size": 28,
+   "w": 260,
+   "rot": 0,
+   "align": "center",
+   "color": "#96945c"
+  },
+  {
+   "name": "8x8",
+   "type": "text",
+   "text": "8x8*",
+   "x": 882,
+   "y": 612,
+   "size": 36,
+   "w": 110,
+   "rot": 0,
+   "align": "center",
+   "color": "#96945c"
+  },
+  {
+   "name": "Стрілка →",
+   "type": "arrow",
+   "x": 251.5,
+   "y": 258.0,
+   "w": 177,
+   "h": 24,
+   "w0": 177,
+   "h0": 24,
+   "rot": 0,
+   "pts": [
+    [
+     12,
+     12
+    ],
+    [
+     165,
+     12
+    ]
+   ],
+   "color": "#96945c",
+   "sw": 9,
+   "solid": true
+  },
+  {
+   "name": "Стрілка ↓",
+   "type": "arrow",
+   "x": 80.0,
+   "y": 374.0,
+   "w": 24,
+   "h": 172,
+   "w0": 24,
+   "h0": 172,
+   "rot": 0,
+   "pts": [
+    [
+     12,
+     12
+    ],
+    [
+     12,
+     160
+    ]
+   ],
+   "color": "#96945c",
+   "sw": 9,
+   "solid": true
+  },
+  {
+   "name": "Стрілка ↑",
+   "type": "arrow",
+   "x": 910.0,
+   "y": 455.0,
+   "w": 24,
+   "h": 244,
+   "w0": 24,
+   "h0": 244,
+   "rot": 0,
+   "pts": [
+    [
+     12,
+     232
+    ],
+    [
+     12,
+     12
+    ]
+   ],
+   "color": "#96945c",
+   "sw": 9,
+   "solid": true
+  },
+  {
+   "name": "Стрілка ←",
+   "type": "arrow",
+   "x": 717.5,
+   "y": 612.0,
+   "w": 209,
+   "h": 24,
+   "w0": 209,
+   "h0": 24,
+   "rot": 0,
+   "pts": [
+    [
+     197,
+     12
+    ],
+    [
+     12,
+     12
+    ]
+   ],
+   "color": "#96945c",
+   "sw": 9,
+   "solid": true
+  },
+  {
+   "name": "Текст унизу",
+   "type": "text",
+   "text": "Choose a sturdy hardcover book\nor a lightweight softcover for\neveryday storytime",
+   "x": 330,
+   "y": 812,
+   "size": 29,
+   "w": 640,
+   "rot": 7.2,
+   "align": "left",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Тінь листя",
+   "type": "leaves",
+   "x": 860,
+   "y": 300,
+   "w": 600,
+   "h": 600,
+   "rot": 0,
+   "opacity": 0.085
+  },
+  {
+   "name": "Стрічка «2 sizes»",
+   "type": "ribbon",
+   "x": 850,
+   "y": 812,
+   "w": 170,
+   "h": 200,
+   "rot": 0,
+   "color": "#a2a066",
+   "lines": [
+    {
+     "t": "2",
+     "k": 2.4
+    },
+    {
+     "t": "sizes"
+    },
+    {
+     "t": "&"
+    },
+    {
+     "t": "covers"
+    }
+   ]
+  },
+  {
+   "name": "Примітка",
+   "type": "text",
+   "text": "All dimensions are\nshown in inches*",
+   "x": 850,
+   "y": 957,
+   "size": 17,
+   "w": 220,
+   "rot": 0,
+   "align": "center",
+   "color": "#ffffff",
+   "font": "sans"
+  },
+  {
+   "name": "Зірочка 1",
+   "type": "sparkle",
+   "x": 462,
+   "y": 300,
+   "size": 16
+  },
+  {
+   "name": "Зірочка 2",
+   "type": "sparkle",
+   "x": 492,
+   "y": 268,
+   "size": 8
+  },
+  {
+   "name": "Зірочка 3",
+   "type": "sparkle",
+   "x": 960,
+   "y": 190,
+   "size": 14
+  },
+  {
+   "name": "Зірочка 4",
+   "type": "sparkle",
+   "x": 40,
+   "y": 560,
+   "size": 12
+  }
+ ],
+ "id": "slide2"
+}

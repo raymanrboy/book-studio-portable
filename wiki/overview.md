@@ -1,7 +1,7 @@
 ---
 title: Book Studio overview
 type: overview
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/main.py
   - app/studio/core.py
@@ -17,8 +17,8 @@ code:
 The owner sells personalized books on Etsy: the text carries the child's name, the first page has a
 dedication, and the end has a "from whom". The buyer fills in the personalization fields on Etsy. The
 owner makes a copy of the book template in Canva, drops in the name with find-and-replace on `{Name}`,
-downloads the PNG pages, and sends the book to print: **Printify** (hardcovers in the US, 24 pages) or
-**Gelato** (everything else, 30 pages or 28 without one spread) — see the
+downloads the PNG pages, and sends the book to print: from 1 October 2026 only **Gelato**, on his own account (30
+pages or 28 without one spread); until then **Printify** printed US hardcovers (24 pages) — see the
 [printer rule](rules/printer-rule.md).
 
 The owner is not a programmer, writes in Ukrainian, and works from two computers: the **Wrocław** one
@@ -37,7 +37,7 @@ on the Kyiv PC.
 | Order archive | Files of books that went to print: proofing and reprints; live 14 days after "Sent" | [features/archive.md](features/archive.md) |
 | Settings | Service keys, the Etsy connection, the Printify template, the text check, the data folder | [features/settings.md](features/settings.md) |
 | Backup (since 2026-09-27) | Every 3 days the whole program folder and the mockup templates, with the keys, go to Google Drive as one password-protected archive | [features/backup.md](features/backup.md) |
-| Profit (hidden until 1 October) | An equivalent of the Etsy Profit Calculator: Etsy Net minus print cost | [features/profit.md](features/profit.md) |
+| Profit (counts sales from 1 October 2026) | An equivalent of the Etsy Profit Calculator: Etsy Net minus print cost | [features/profit.md](features/profit.md) |
 | **Two modes** (since 2026-09-24) | The brand icon switches between **Orders** (everything above, orange) and **Listings** (cyan: the Workshop and the Mockups below) | [features/modes.md](features/modes.md) |
 | Workshop (Listings) | Books in development, written by the book pipeline's agents in Antigravity (`pipeline/`): the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches the downloaded pictures; passed to the library with their Etsy listing | [features/workshop.md](features/workshop.md) |
 | Mockups (Listings; a separate utility 2026-09-23…24) | Etsy listing pictures: a Canva demo book → the owner's Photoshop templates; he fits the front cover by hand | [features/mockups.md](features/mockups.md) |

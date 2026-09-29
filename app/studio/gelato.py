@@ -3,6 +3,9 @@
 Reads: product catalog, cover dimensions, single orders, order search (POST used
 as a query). The only write is creating an order whose orderType is forced to
 "draft" — a draft never goes to production until confirmed in Gelato by hand.
+
+Two accounts during the move to the owner's own one (27.09.2026, gelato_accounts.py): "main" — the key everything
+is done with; "old" — the account before the switch, only read (its orders, their tracking) until they are done.
 """
 from __future__ import annotations
 
@@ -27,15 +30,39 @@ class GelatoError(ApiError):
     pass
 
 
-def api_key() -> str:
-    value = vault.get("gelato_api_key")
+KEYS = {"main": "gelato_api_key", "old": "gelato_old_api_key"}  # the vault's names; the old one only reads
+OLD_NAME = "Gelato (старий акаунт)"
+
+
+def api_key(account: str = "main") -> str:
+    value = vault.get(KEYS[account])
     if not value:
+        if account == "old":
+            raise GelatoError("Ключа старого акаунта Gelato немає.", 400, {"code": "gelato_key"})
         raise GelatoError("API-ключ Gelato не налаштовано. Відкрийте Налаштування → Gelato.", 400,
                           {"code": "gelato_key"})
     return value
 
 
-def _allowed(method: str, url: str, body: Any) -> bool:
+def account_id(key: str) -> str:
+    """Which account an order came from, told by its key without keeping the key (a hash, never reversible)."""
+    return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+def accounts() -> list[tuple[str, str]]:
+    """(slot, account id) of every Gelato account the program has a key for, the main one first."""
+    return [(slot, account_id(key)) for slot, name in KEYS.items() if (key := vault.get(name))]
+
+
+def untagged_account() -> str | None:
+    """The account of an order kept from before orders carried theirs: the one read before the first switch, else
+    the main one."""
+    first = core.settings.section("gelato").get("firstAccount")
+    key = vault.get(KEYS["main"])
+    return first or (account_id(key) if key else None)
+
+
+def _allowed(method: str, url: str, body: Any, account: str = "main") -> bool:
     lowered = url.lower()
     if any(word in lowered for word in _FORBIDDEN):
         return False
@@ -44,8 +71,8 @@ def _allowed(method: str, url: str, body: Any) -> bool:
     if method == "POST":
         if url == f"{ORDER_API}/orders:search":
             return True
-        if url == f"{ORDER_API}/orders":
-            return isinstance(body, dict) and body.get("orderType") == "draft"
+        if url == f"{ORDER_API}/orders":  # the old account never gets anything new
+            return account == "main" and isinstance(body, dict) and body.get("orderType") == "draft"
     return False
 
 
@@ -54,28 +81,35 @@ def _human(err: httpc.HttpError, action: str) -> GelatoError:
 
 
 def call(method: str, url: str, body: Any = None, action: str = "Запит до Gelato", timeout: float = 60,
-         retries: int = 3, idempotent: bool | None = None) -> Any:
+         retries: int = 3, idempotent: bool | None = None, account: str = "main", key: str | None = None) -> Any:
+    """`account` picks the key ("old" only reads); `key` — a new key checked before it is stored (reads only)."""
     method = method.upper()
-    if not _allowed(method, url, body):
-        _audit_log().error("BLOCKED %s %s", method, url)
+    if not _allowed(method, url, body, "old" if key else account):
+        _audit_log().error("BLOCKED %s %s (%s)", method, url, account)
         raise GelatoError(f"Заблоковано з міркувань безпеки: {method} {url}", 403)
-    _audit_log().info("%s %s", method, url)
+    _audit_log().info("%s %s%s", method, url, " (new key)" if key else "" if account == "main" else " (old)")
     try:
-        return httpc.request_json(method, url, headers={"X-API-KEY": api_key()}, json_body=body,
+        return httpc.request_json(method, url, headers={"X-API-KEY": key or api_key(account)}, json_body=body,
                                   timeout=timeout, retries=retries, idempotent=idempotent)
     except httpc.HttpError as err:
         _audit_log().warning("%s %s -> %s %s", method, url, err.status, httpc.short_body(err.body, 300))
         raise _human(err, action) from None
 
 
-def search_orders(offset: int = 0, limit: int = 100) -> list:
+def search_orders(offset: int = 0, limit: int = 100, account: str = "main", key: str | None = None) -> list:
     # Drafts are asked for by name: a draft made from Book Studio moves its receipt to "in work".
     body = {"limit": limit, "offset": offset, "orderTypes": ["order", "draft"]}
-    data = call("POST", f"{ORDER_API}/orders:search", body, action="Замовлення Gelato", idempotent=True)  # a query
+    data = call("POST", f"{ORDER_API}/orders:search", body, action="Замовлення Gelato", idempotent=True,  # a query
+                account=account, key=key)
     return list((data or {}).get("orders") or [])
 
 
-def all_orders(progress=None, cap: int = 5000) -> httpc.Listing:
+def check_key(key: str) -> None:
+    """Reads one order with a key not stored yet: a mistyped or foreign key is told before anything changes."""
+    search_orders(0, 1, key=key)
+
+
+def all_orders(progress=None, cap: int = 5000, account: str = "main") -> httpc.Listing:
     """Every order and draft, newest first; a list that stopped at `cap` says so (Listing.complete)."""
     orders = httpc.Listing()
     offset = 0
@@ -84,7 +118,7 @@ def all_orders(progress=None, cap: int = 5000) -> httpc.Listing:
             orders.complete = False
             core.log.warning("Gelato orders: stopped at %s — older orders are not loaded", cap)
             break
-        batch = search_orders(offset)
+        batch = search_orders(offset, account=account)
         orders.extend(batch)
         offset += len(batch)
         if progress:
@@ -95,9 +129,13 @@ def all_orders(progress=None, cap: int = 5000) -> httpc.Listing:
     return orders
 
 
-def slim_order(g: dict) -> dict:
-    return {k: g.get(k) for k in ("id", "orderReferenceId", "firstName", "lastName", "totalInclVat", "currency",
-                                  "fulfillmentStatus", "financialStatus", "createdAt", "orderType")}
+def slim_order(g: dict, account: str | None = None) -> dict:
+    """An order as the snapshot keeps it; `account` — the id of the account it was read from (account_id())."""
+    out = {k: g.get(k) for k in ("id", "orderReferenceId", "firstName", "lastName", "totalInclVat", "currency",
+                                 "fulfillmentStatus", "financialStatus", "createdAt", "orderType")}
+    if account:
+        out["account"] = account
+    return out
 
 
 _products: dict = {}
@@ -180,8 +218,8 @@ def create_draft_order(payload: dict) -> dict:
     return call("POST", f"{ORDER_API}/orders", safe, action="Створення чернетки Gelato", timeout=120, retries=1)
 
 
-def get_order(order_id: str) -> dict:
-    return call("GET", f"{ORDER_API}/orders/{order_id}", action="Статус замовлення Gelato")
+def get_order(order_id: str, account: str = "main") -> dict:
+    return call("GET", f"{ORDER_API}/orders/{order_id}", action="Статус замовлення Gelato", account=account)
 
 
 TRACKING_READS = 60  # full orders read per sync at most; the rest wait for the next one
@@ -203,8 +241,8 @@ def shipments_of(order: dict) -> list:
     return out
 
 
-def attach_shipments(orders: list, previous: list) -> int:
-    """Gives shipped orders (slim, from the search) their tracking, which the search leaves out.
+def attach_shipments(orders: list, previous: list, account: str = "main") -> int:
+    """Gives shipped orders (slim, from the search of one account) their tracking, which the search leaves out.
 
     Each shipped order is read in full once; again only while no tracking was found and its status
     changes. Tracking already found is carried over from the previous snapshot. Returns how many
@@ -228,7 +266,7 @@ def attach_shipments(orders: list, previous: list) -> int:
 
     def read(g: dict) -> None:
         try:
-            g["shipments"] = shipments_of(get_order(g["id"]))
+            g["shipments"] = shipments_of(get_order(g["id"], account))
             g["shipmentsFor"] = g.get("fulfillmentStatus")
         except ApiError:
             failed.append(g["id"])
@@ -240,6 +278,8 @@ def attach_shipments(orders: list, previous: list) -> int:
 
 @route("POST", "/api/gelato/test")
 def _test(req: Request):
-    orders = all_orders(cap=3000)
+    account = "old" if (req.json or {}).get("account") == "old" else "main"
+    orders = all_orders(cap=3000, account=account)
     return {"ok": True, "ordersCount": len(orders),
-            "message": f"З'єднання успішне! Знайдено {len(orders)} замовлень у кабінеті Gelato."}
+            "message": f"З'єднання успішне! Знайдено {len(orders)} замовлень у "
+                       + ("старому акаунті Gelato." if account == "old" else "кабінеті Gelato.")}

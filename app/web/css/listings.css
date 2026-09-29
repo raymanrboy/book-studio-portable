@@ -307,8 +307,8 @@
 .mk-hint { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; color: var(--text-3); text-wrap: pretty; }
 .mk-hint .icon { flex: none; margin-top: 1px; }
 .mk-hint[hidden] { display: none; }
-/* Something asked for (an empty slot, the book field): an amber ring blinks twice (opacity only). */
-.mk-slot.mk-need::after, .input-group:has(> .mk-need)::after {
+/* Something asked for (an empty slot, the demo book's drop zone): an amber ring blinks twice (opacity only). */
+.mk-slot.mk-need::after, .input-group:has(> .mk-need)::after, .mk-ghost.mk-need::after {
   content: ""; position: absolute; inset: -3px; border: 2px solid var(--amber); border-radius: 9px; opacity: 0; pointer-events: none;
   animation: mk-need 1.1s ease 2;
 }
@@ -457,6 +457,9 @@
 .mk-ghost:hover .mk-veil, .mk-ghost:focus-visible .mk-veil, .mk:has(.drop-hot) .mk-veil { border-color: var(--accent); color: var(--accent-ink); background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface)); }
 .mk-ghost:hover .mk-veil b, .mk:has(.drop-hot) .mk-veil b { color: var(--accent-ink); }
 .mk-ghost.busy { cursor: progress; }
+.mk-ghost.mk-need::after { inset: -11px; border-radius: calc(var(--r-card) + 3px); }
+/* A file dragged over the structure: the veil (no book yet) or the card's own ring (a book shown) says so. */
+.mk-structure.drop-hot:has(.mk-ghost) { outline: 0 !important; background-color: var(--surface) !important; }
 /* Where the templates and Photoshop are (the sliders button). */
 .mk-place { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
 .mk-place.ok { color: var(--green); }
@@ -464,3 +467,26 @@
 @media (max-width: 700px) {
   .mk-top { grid-template-columns: 1fr; }
 }
+
+/* ------------------------------------------------------------------ Mockups, step 4: the listing slides (mockups-slides.js) */
+.sl-cuts { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 4px 0 10px; border-radius: var(--r-ctl);
+  background: var(--surface-2); font-size: 12.5px; color: var(--text-2); }
+.sl-cuts.ok > .icon { color: var(--green); }
+.sl-cuts .spinner { width: 13px; height: 13px; border-width: 2px; }
+.sl-cuts:empty, #sl-cuts:empty { display: none; }
+.sl-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sl-nums .input { text-align: left; }
+.sl-ghosts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sl-ghost { aspect-ratio: 1; border-radius: 6px; border: 1.5px dashed var(--border-strong); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px; padding: 8px; text-align: center; color: var(--text-4); }
+.sl-ghost .num { font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--text-3); }
+.sl-ghost small { font-size: 11.5px; line-height: 1.3; }
+.sl-shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.sl-shot { position: relative; }
+.sl-shot .mk-shot { aspect-ratio: 1; width: 100%; display: block; }
+.sl-pen { position: absolute; right: 5px; bottom: 5px; background: var(--surface); box-shadow: var(--shadow-s); opacity: 0;
+  transition: opacity var(--t-fast) ease; }
+.sl-shot:hover .sl-pen, .sl-pen:focus-visible { opacity: 1; }
+/* A button asked for (the «Зберегти відкриті» slides 2 and 3 wait for): an amber ring blinks twice. */
+.btn.mk-need { outline: 2px solid transparent; outline-offset: 3px; animation: mk-need-ring 1.1s ease 2; }
+@keyframes mk-need-ring { 0%, 100% { outline-color: transparent; } 30%, 70% { outline-color: var(--amber); } }

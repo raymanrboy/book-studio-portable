@@ -110,5 +110,39 @@ class NameMatching(unittest.TestCase):
         self.assertEqual(reconcile.cover_label(items), "2x Hardcover + Softcover книга")
 
 
+class BookkeepingStart(unittest.TestCase):
+    """Owner, 27.09.2026: bookkeeping starts on 1 October 2026 and must not include earlier orders at all — the queue
+    still shows them."""
+
+    def setUp(self):
+        from studio import records
+        self.records = records
+        for path in (records.SNAPSHOT, records.STATES, records.LINKS, records.SENDS):
+            path.unlink(missing_ok=True)
+            self.addCleanup(path.unlink, missing_ok=True)
+
+    def test_only_sales_from_the_first_day(self):
+        from datetime import datetime
+        from types import SimpleNamespace
+        from studio import core, profit, stages
+        from studio.server import ApiError
+        from tests.test_states import receipt
+        before = receipt(4100000001, "Ann Lee", status="Paid", ts=int(datetime(2026, 9, 30, 23, 59).timestamp()))
+        after = receipt(4100000002, "Bo Ray", status="Paid", ts=int(datetime(2026, 10, 1, 0, 1).timestamp()))
+        early = {"id": "g-sep", "orderReferenceId": "x", "totalInclVat": 20, "currency": "USD", "orderType": "order",
+                 "financialStatus": "paid", "fulfillmentStatus": "printed", "createdAt": "2026-09-20T10:00:00Z"}
+        late = {**early, "id": "g-oct", "createdAt": "2026-10-02T10:00:00Z"}
+        core.write_json(self.records.SNAPSHOT, {"receipts": [sync.normalize_receipt(r) for r in (after, before)],
+                                                "printify": [], "gelato": [late, early]})
+        summary = profit._data(SimpleNamespace())
+        self.assertEqual([r["id"] for r in summary["rows"]], ["4100000002"])
+        self.assertEqual(summary["accountingFrom"], "2026-10-01")
+        self.assertEqual([c["id"] for c in profit._candidates(SimpleNamespace())["candidates"]], ["g-oct"])
+        with self.assertRaises(ApiError):
+            profit._row(SimpleNamespace(param=lambda name: "4100000001"))
+        self.assertEqual(profit._row(SimpleNamespace(param=lambda name: "4100000002"))["id"], "4100000002")
+        self.assertEqual(sorted(o["receiptId"] for o in stages.picker_orders()), ["4100000001", "4100000002"])
+
+
 if __name__ == "__main__":
     unittest.main()

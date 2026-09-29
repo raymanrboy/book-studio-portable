@@ -3,6 +3,94 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-29] update | The examples and a spare copy of the templates in the Book Studio folder
+
+- The owner: "put everything into the Book Studio project folder… and the Photoshop mockups too, to be kept there as
+  well", then "only the examples are needed". His desktop folder `moсkup studio` → `examples\` (`Canva resoult`,
+  `Photoshop prep`, `Слайди — приклад`; the old external editor to the Recycle Bin); `Трафарети мастхев (копія)\` —
+  the templates copied (9 files, sizes equal, marked read-only). Both git-ignored; the copy left out of the backup
+  (`backup.SKIP`). The sample set, the skill and the wiki point at the new place ([slides](features/slides.md)).
+
+## [2026-09-29] update | Listing slides moved into Book Studio: «Без фону», «Зробити слайди», the editor, the skill
+
+- The plan's five phases built ([slides](features/slides.md), [plan](plans/listing-pictures.md)). The package
+  `app/studio/slides/` (the cut-out and its background cutter, the template and a book's sets with versions, «Зробити
+  слайди», the headless bake) — nothing of it runs at launch; the drawing engine `web/js/slides/engine.js` and the page
+  `web/slides/render.html`; Comica in `web/fonts/`; the command line `app/tools/slides.py`.
+- The Mockups: every picture Photoshop saves is cut out without background into `Без фону\` (Open 1, Open 2, Cover 1 —
+  the others are whole scenes), step 4 «Слайди для лістингу» makes the six (`Listing 1…6.png`) and opens the editor; the
+  header's ▣ opens the template's and the last books' slides.
+- The editor `#/slides/<set | template>/<1–6>` — loaded only when opened (left out of the warm-up), its own
+  `css/slides.css`, Book Studio's look: layers dragged into order, «+», grouped properties with sliders and the slide's
+  swatches, «Скинути слайд», «Зробити шаблоном», «Зберегти картинки»; an agent's change in the files shows up by itself.
+- The owner's work moved in: the external editor's first design → `app/studio/slides/design/` (slots instead of file
+  names, `{pages}` / `{poems}`), his touches → the template, his sample book → the set «Приклад». The external folder was
+  only read; the `slide-editor` entry left `.claude/launch.json`. The skill `/listing-slides`; `psd-tools`, `numpy` in
+  `requirements.txt`.
+- Checked: tests (443, `test_slides.py` 19); «Приклад» baked through Book Studio equals the external tool's six (slide 2 —
+  a few pixels); a copy of his real `2. Open 1.png` cut with the real template in ~6 s; the preview — a whole run →
+  «Без фону» → «Зробити слайди» → the editor (both themes), a scene file changed on disk shown in the open editor.
+  Not checked live: a real Photoshop run handing pictures to the cutter.
+
+## [2026-09-29] update | Mockups: the demo book's own step went — it comes into «Структура»
+
+- The owner: the step «Демо-книга з Canva» and the structure both took the ZIP — a double. The step is gone (the
+  steps are 1 Розвороти · 2 Куди зберегти · 3 Photoshop); the structure's veil takes a drop or a click (the Windows
+  dialog), its header shows the book, a badge while another comes in and a folder button for another book; a
+  book that can't be read is a red line there; «Зробити мокапи» with no book blinks the veil
+  ([mockups](features/mockups.md)). Checked: tests; the preview — the three steps, a click on the veil → the
+  pretend dialog → the book, the header's button, the blink, «Завершити» back to the veil.
+
+## [2026-09-29] decision | Listing slides: the plan to move them into Book Studio
+
+- The owner asked to bring the slide tool into Book Studio as a separate module called only when needed, in Book
+  Studio's style, and a skill for working on slides through an agent. Five phases written down (the engine and
+  data, the «Слайди» page, the editor, the skill with live redraw, checks) with three questions and their
+  defaults ([plan](plans/listing-pictures.md), [decisions](decisions.md)). All six re-baked with his touches first.
+- His addition: the Mockups also save every picture **without background** (cut out by the program while Photoshop
+  works, into `Без фону\`), then offer «Зробити слайди» — made by themselves — and «Відкрити в редакторі»; no
+  separate page in the rail.
+
+## [2026-09-29] update | Listing slides: all six drawn
+
+- Slides 1, 2, 3, 5, 6 measured off the owner's Canva pictures and drawn in slide №4's style; the editor learned
+  texts, arrows, flat pictures (a scalloped page), ribbons and a heart, and got a slide switcher
+  ([plan](plans/listing-pictures.md)). Checked: all six baked at 2000², slide 2 opened and edited in the editor.
+
+## [2026-09-29] decision | Listing slides: a hand editor, kept outside Book Studio
+
+- Slide №4 made in the owner's own layout + torn edges, a die-cut sticker (its text fitted by the letters' real
+  ink), sparkles, faint leaf shadows. For the "super small" touches — a Canva-like editor (layers, move, rotate,
+  resize, Ctrl+Z; every change saved to disk), then "bake" at 2000².
+- The owner: not in Book Studio yet — an external tool in `D:\Roman\Desktop\moсkup studio\Slide Editor\`
+  (launcher `Відкрити редактор.bat`); the repo gets only the `slide-editor` preview entry in `.claude/launch.json`
+  ([plan](plans/listing-pictures.md), [decisions](decisions.md)).
+- Checked: cut-outs regenerated by `cutout.py` match the prototype's; saving from the editor lands on disk;
+  `bake.py slide4` → 2000×2000.
+
+## [2026-09-29] decision | The six listing pictures without Canva — plan and a first slide
+
+- The owner makes 6 square Etsy pictures from the mockups in Canva by hand; agreed: Book Studio's own tool does
+  it (no Canva), he picks the mockup per slide, 24 pages / 11 poems, font Comica, full creative freedom
+  ([plan](plans/listing-pictures.md)).
+- Solved: cutting the book out of the grey background with its real shadow (the templates' Multiply/Screen
+  layers turned into transparent black/white; the outline from `BOOK/OBJECT`'s mask) — checked on Open 1,
+  Open 2, Cover 1. Prototype of slide №4 in the scratchpad; no code in `app/` yet.
+
+## [2026-09-29] update | Ready for 1 October: his own Gelato account, Printify read-only, Profit turned on
+
+- **His own Gelato account** — the smooth switch agreed on 2026-09-27: Settings → «Перейти на новий акаунт Gelato»;
+  the old key is only read; every sync reads both; an order is dropped only by its own account's whole list
+  (`gelato_accounts.py`, `sync._gelato_part()`, [gelato](integrations/gelato.md)).
+- **Printify read-only from 1 October 2026** (`printify.retired()`): every book to Gelato, no Printify in the card,
+  the Order Creator or the archive's reprint; nothing written there ([printer-rule](rules/printer-rule.md)).
+- **Profit** in the rail (Alt+5), only sales and print orders from 1 October; the queue keeps every order
+  ([profit](features/profit.md)).
+- Checked: 424 tests (`test_gelato_accounts.py`, `GelatoOnly`, `BookkeepingStart`); in the preview — Profit empty
+  «Продажів від 1 жовтня ще немає», the Gelato block before and after the switch (the answers stood in by the
+  browser, the preview server has no keys), the Order Creator without the switch and the archive's Printify book
+  without «Передрук» (1 October stood in the same way). Not checked: a real Gelato key — the switch is the owner's.
+
 ## [2026-09-28] decision | Printify "Fulfilled" shows as In transit / Delivered
 
 - The owner: Printify's "Fulfilled" beside Gelato's "Delivered" looked inconsistent. "Fulfilled" only means shipped, so

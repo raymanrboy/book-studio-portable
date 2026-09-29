@@ -1,16 +1,28 @@
 ---
 title: Printify
 type: integration
-updated: 2026-09-28
+updated: 2026-09-29
 code:
   - app/studio/printify.py
 ---
 # Printify
 
-> Prints **hardcovers for the US** (24 pages). Shop CozyCovenant, template "Hardcover 8x8 Template"
-> (the Master). API `https://api.printify.com/v1`, token — a Personal Access Token.
+> **From 1 October 2026 only read** (the owner, 29.09.2026: "from 1 October I move only to Gelato"): every new
+> book goes to Gelato. Until then it printed **hardcovers for the US** (24 pages). Shop CozyCovenant, template
+> "Hardcover 8x8 Template" (the Master). API `https://api.printify.com/v1`, token — a Personal Access Token.
 
-## What's allowed
+## Read only from 1 October 2026
+
+- `retired()` — from `READ_ONLY_FROM` (1 October 2026, this computer's calendar). Then `_check()` blocks **every**
+  request that isn't a `GET` — image uploads, products, orders on hold — with "З 1 жовтня Printify лише для читання —
+  нові книги друкує Gelato." (`RETIRED_TEXT`); the Order Creator's Printify routes refuse before a job starts.
+- **Reading stays**: the sync still reads its orders, so the earlier ones keep their stage, tracking, archive days
+  and cost. The token stays in Settings (the card says «лише читання старих замовлень», no Master picker).
+- **Where it shows**: the printer rule gives every book to Gelato ([printer-rule](../rules/printer-rule.md)); the
+  Order Creator has no Printify/Gelato switch; an archived Printify book has no «Передрук» — its 24 pages don't fit
+  Gelato, so a reprint starts from the order's card with the book downloaded anew (28 or 30 pages).
+
+## What's allowed (until 1 October 2026)
 
 | Action | API path | When |
 |---|---|---|
@@ -82,7 +94,7 @@ for sends.
 
 ## Where in the code
 
-- [app/studio/printify.py](../../app/studio/printify.py) — `_READ`, `_WRITE`, `_check()`, `_human()`, `call()`, `token()`, `MAX_ORDER_PAGES`, `MANUAL_APPROVAL_NEEDED`, `shops()`, `product()`, `upload_exists()`, `all_orders()`, `slim_order()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `analyze_master()`, `_manual_approval()`
+- [app/studio/printify.py](../../app/studio/printify.py) — `READ_ONLY_FROM`, `RETIRED_TEXT`, `retired()`, `_READ`, `_WRITE`, `_check()`, `_human()`, `call()`, `token()`, `MAX_ORDER_PAGES`, `MANUAL_APPROVAL_NEEDED`, `shops()`, `product()`, `upload_exists()`, `all_orders()`, `slim_order()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `analyze_master()`, `_manual_approval()`
 - [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `create_printify_draft()`, `build_printify_payload()`, `printify_order_payload()`, `matte_variant()`, `_master_fingerprint()`, `_remember_upload()`, `UPLOADS_KEPT`, `_printify_setup()`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `carrier_label()`, `CARRIERS`

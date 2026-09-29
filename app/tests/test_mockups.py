@@ -20,6 +20,19 @@ from studio.jobs import Job, UserError
 from studio.server import ApiError
 
 GREEN, DARK, YELLOW = (60, 170, 80), (20, 30, 60), (240, 210, 80)
+
+
+# The slides' background cutter would cut these made-up pictures while a test still uses (and removes) them: here the
+# Mockups only hand them over (test_slides.py checks the handing and the cutting).
+_no_cutting = mock.patch.object(mockups.slide_cutout.cutter, "add", lambda *a, **k: False)
+
+
+def setUpModule():
+    _no_cutting.start()
+
+
+def tearDownModule():
+    _no_cutting.stop()
 # Every template with one spread each where there are slots — the shape of what the page sends.
 PICKS = {"open1": [2, 6, 10, 14], "open2": [8, 12], "coverOpen": [4], "allOpen": [16]}
 

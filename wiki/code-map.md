@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-09-28
+updated: 2026-09-29
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -24,7 +24,8 @@ code:
 | [app/tools/wiki_check.py](../app/tools/wiki_check.py) | Checks the wiki against the code (including stale numbers in the text) | `check()`, `stale_numbers()`, `coverage()`, `changed_files()` |
 | [app/tools/dev_server.py](../app/tools/dev_server.py) | A server for previewing the interface on temporary data (including a two-book order, a receipt with two print orders, a Workshop book, the mockups' made-up templates and a pretend Photoshop); writes only to its own folder, never takes keys (`BOOK_STUDIO_SAMPLE`) | `main()`, `claim()`, `MARK` |
 | [app/tools/sample_data.py](../app/tools/sample_data.py) | The preview's made-up orders, print orders, library book and archived books | `seed()`, `_receipt()`, `_seed_archive()`, `_sample_book()`, `SAMPLE_TEXTS` |
-| [app/tools/sample_mockups.py](../app/tools/sample_mockups.py) | The preview's made-up mockup templates, demo book and a pretend Photoshop | `seed_mockups()`, `pretend_photoshop()` |
+| [app/tools/sample_mockups.py](../app/tools/sample_mockups.py) | The preview's made-up mockup templates, demo book, a pretend Photoshop and a pretend template for the slides' cut-out | `seed_mockups()`, `pretend_photoshop()`, `pretend_template()` |
+| [app/tools/slides.py](../app/tools/slides.py) | The listing slides from the command line — the agent's skill and the tests: list, a scene's file, render one, bake, cut out | `main()` |
 | [app/requirements.txt](../app/requirements.txt) | Pillow, img2pdf, pikepdf (the Gelato PDF's engine), cryptography (the tested versions are in a comment) | — |
 
 ## Server: `app/studio/`
@@ -41,8 +42,9 @@ code:
 | [desktop.py](../app/studio/desktop.py) | The program window, folder/file picker, Explorer | `open_app_window()`, `pick_folder()`, `pick_file()`, `open_in_explorer()`, `find_browser()`, `file_holders()` (which programs hold a file — Restart Manager) |
 | [settings_api.py](../app/studio/settings_api.py) | Settings, keys, opening links, import from old programs | `integrations()`, `_open_url()`, `_legacy_values()`, `legacy_sources()` |
 | [etsy.py](../app/studio/etsy.py) | Etsy API v3: OAuth, session, listings, receipts | `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `fetch_listing()`, `fetch_all_receipts()`, `decode_session_key()` |
-| [printify.py](../app/studio/printify.py) | The safe Printify client | `_check()`, `call()`, `all_orders()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `analyze_master()` |
-| [gelato.py](../app/studio/gelato.py) | The safe Gelato client | `_allowed()`, `call()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
+| [printify.py](../app/studio/printify.py) | The safe Printify client; read-only from 1 October 2026 | `retired()`, `_check()`, `call()`, `all_orders()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `analyze_master()` |
+| [gelato.py](../app/studio/gelato.py) | The safe Gelato client; two keys during the move (the old one only reads) | `_allowed()`, `call()`, `accounts()`, `account_id()`, `check_key()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
+| [gelato_accounts.py](../app/studio/gelato_accounts.py) | The move to the owner's own Gelato account: the switch, the old account's status, removing its key | `_switch()`, `_forget()`, `status()`, `open_orders()` |
 | [tunnel.py](../app/studio/tunnel.py) | A temporary public link to a PDF for Gelato | `FileTunnel`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()` |
 | [sendlog.py](../app/studio/sendlog.py) | The journal of sends to Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
 | [wording.py](../app/studio/wording.py) | What the buyer wrote, read the same way by the card, the Order Creator and the text check: words, "custom text vs DEFAULT", the child's name | `words()`, `is_default()`, `custom_text()`, `clean_name()`, `guess_child_name()`, `alike()` |
@@ -77,13 +79,20 @@ code:
 | [drops.py](../app/studio/drops.py) | Dragged-in files (saving, unpacking a ZIP, the book folder) and how a Canva export names its files — shared by the orders, the library and the mockups | `export_files()`, `page_number()`, `COVER_NAME`, `UPSCAYL_TAIL`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `clear_drops()`, `DROPS` |
 | [mockups.py](../app/studio/mockups.py) | [Listing mockups](features/mockups.md): the demo book (in its own folder), pictures for the smart objects, the run plan, Photoshop | `TEMPLATES`, `BOOKS`, `read_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `script()`, `launch()`, `watch()`, `make()` |
 | [mockups.jsx](../app/studio/mockups.jsx) | The Photoshop script (ExtendScript, CC 2019) the mockups run: fills copies of the templates, saves PNGs | `findLayer()`, `replaceContents()`, `runTemplate()` |
+| [slides/\_\_init\_\_.py](../app/studio/slides/__init__.py) | [Listing slides](features/slides.md): the package, what's where | — |
+| [slides/cutout.py](../app/studio/slides/cutout.py) | A mockup → the book and its real shadow, transparent (the template's mask and Multiply layers, only read); «Без фону»; the background cutter | `kind_of()`, `read_psd()`, `cut()`, `combined()`, `ensure()`, `Cutter`, `cutter`, `READER` |
+| [slides/store.py](../app/studio/slides/store.py) | The template and a book's set: scenes with their versions (a stale save refused), slots, the set's pictures | `load()`, `save()`, `check()`, `reset()`, `to_template()`, `sig()`, `new_set()`, `put_book()`, `put_picture()` |
+| [slides/work.py](../app/studio/slides/work.py) | «Зробити слайди»: the mockups into slots, the set, the six baked; a re-bake | `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()` |
+| [slides/bake.py](../app/studio/slides/bake.py) | Headless Edge draws `slides/render.html` at 2000², three at once; the names in the owner's folder | `bake()`, `render()`, `outputs()`, `run_browser()` |
+| [slides/routes.py](../app/studio/slides/routes.py) | The slides' routes | `assets()`, `_make()`, `_bake()`, `_save()` |
+| `slides/design/slide1…6.json` | The six slides' first design (the template's «Скинути» goes back to it) | — |
 | [sync.py](../app/studio/sync.py) | Pulling the orders: Etsy receipts (changed ones, a full read weekly), Printify and Gelato orders, into the snapshot | `_sync()`, `startup_sync()`, `normalize_receipt()`, `merge_receipts()` |
 | [records.py](../app/studio/records.py) | What is kept about orders on disk: the snapshot, manual links and states, the print orders this program sent | `load_snapshot()`, `stamp()`, `remember_print_order()`, `add_replacement()`, `unmark_reprint()`, `SNAPSHOT`, `SENDS` |
 | [printorders.py](../app/studio/printorders.py) | One reading of a Printify / Gelato order: its cost in dollars, dead or placed, name, label, tracking | `facts()`, `all_facts()`, `is_placed()`, `dead()`, `to_usd()`, `rates()`, `carrier_label()` |
 | [reconcile.py](../app/studio/reconcile.py) | Matching Etsy receipts to print orders (numbers before names), the cover a buyer chose | `match()`, `_find()`, `item_format()`, `cover_label()`, `is_name_match()`, `printify_only_rows()` |
 | [outcomes.py](../app/studio/outcomes.py) | The money of a row, once: cancellations, refunds, replacements, a sale's other print orders, unpaid orders | `rows()`, `apply()`, `auto_state()`, `order_info()`, `reserved_orders()` |
 | [stages.py](../app/studio/stages.py) | Where each Etsy order stands (new / in work / sent / shipped / closed), once per view; a reprint's mark | `facts()`, `order_stage()`, `picker_orders()`, `picker_order()`, `mark_reprint()` |
-| [profit.py](../app/studio/profit.py) | The Profit view and its routes (rows, one row, candidates, links, states) | `build_view()`, `cached_view()`, `_set_link()`, `_set_state()` |
+| [profit.py](../app/studio/profit.py) | The Profit view and its routes (rows, one row, candidates, links, states); only sales from 1 October 2026 | `ACCOUNTING_FROM`, `counted()`, `build_view()`, `cached_view()`, `_set_link()`, `_set_state()` |
 | [fees.py](../app/studio/fees.py) | Etsy fees for a Ukrainian seller | `calculate_ukrainian_etsy_fees()`, `r2()`, `money()` |
 | [\_\_init\_\_.py](../app/studio/__init__.py) | The package | — |
 
@@ -119,14 +128,20 @@ code:
 | [js/pages/workshop-rows.js](../app/web/js/pages/workshop-rows.js) | A Workshop book's rows drawn: a spread or a page with its prompt, its frame, its text; the parts the cover's card shares | `rowTemplates()`, `waitChip()` |
 | [js/workshop-live.js](../app/web/js/workshop-live.js) | The Workshop's live link: what changed, the generation mode's state and bar, the rail's dot and title | `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genBar()` |
 | [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups (the Listings mode): the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
-| [js/pages/mockups-run.js](../app/web/js/pages/mockups-run.js) | Mockups, step 4 drawn: the run and Photoshop's question, the result, «Ваша черга», the pictures saved after it | `runView()`, `resultCard()`, `turnCard()`, `finishedCard()` |
+| [js/pages/mockups-run.js](../app/web/js/pages/mockups-run.js) | Mockups, step 3 drawn: the run and Photoshop's question, the result, «Ваша черга», the pictures saved after it | `runView()`, `resultCard()`, `turnCard()`, `finishedCard()` |
+| [js/pages/mockups-slides.js](../app/web/js/pages/mockups-slides.js) | Mockups, step 4 — the listing slides: «Без фону», «Зробити слайди», the six, the editor's door | `slidesStep()` |
+| [js/pages/slides-editor.js](../app/web/js/pages/slides-editor.js) | The listing slides' editor (loaded only when opened): layers, the slide with its handles, the grouped properties, live saving, an agent's change shown | `mount()`, `SPEC`, `NEW` |
+| [js/slides/engine.js](../app/web/js/slides/engine.js) | Draws a slide's scene (torn paper, stickers, fitted Comica, arrows, the cut-out books) — the editor, the bake | `drawScene()`, `drawElement()`, `boxOf()`, `setAssets()`, `ready()` |
+| [slides/render.html](../app/web/slides/render.html) | The page headless Edge bakes a slide from | — |
 | [js/pages/profit.js](../app/web/js/pages/profit.js) | Profit (hidden): the period, the figures, the table, linking an order by hand | `mount()` |
 | [js/pages/profit-rows.js](../app/web/js/pages/profit-rows.js) | Profit: one order's row and its open panel (templates of the order) | `rowInner()`, `detailHtml()`, `stateBox()`, `costOf()` |
 | [css/app.css](../app/web/css/app.css) | The "Prepress" visual system: tokens, the shell, the controls, what the pages share | — |
 | [css/library.css](../app/web/css/library.css) | The Library and a book's passport | — |
 | [css/orders.css](../app/web/css/orders.css) | The Order Creator, the queue and the order card, the archive | — |
 | [css/profit.css](../app/web/css/profit.css) | The Profit page | — |
-| [css/listings.css](../app/web/css/listings.css) | The Workshop and the listing mockups | — |
+| [css/listings.css](../app/web/css/listings.css) | The Workshop and the listing mockups (their step 4, the slides) | — |
+| [css/slides.css](../app/web/css/slides.css) | The listing slides' editor — linked by the editor itself | — |
+| `fonts/` | Comica (`ComicaRegular.otf`) with its SIL OFL licence — the slides' letters | — |
 | `img/` | Program icons (`icon.ico`, `icon.png`, `icon-512.png`) | — |
 
 ## Tests: `app/tests/`
@@ -134,7 +149,8 @@ code:
 | File | What it checks |
 |---|---|
 | [\_\_init\_\_.py](../app/tests/__init__.py) | A temporary data folder instead of the real one |
-| [test_profit.py](../app/tests/test_profit.py) | Parity with the Profit Calculator (`golden_profit.json`), fees, name matching |
+| [test_profit.py](../app/tests/test_profit.py) | Parity with the Profit Calculator (`golden_profit.json`), fees, name matching, the bookkeeping's first day |
+| [test_gelato_accounts.py](../app/tests/test_gelato_accounts.py) | Two made-up Gelato accounts: the switch, the old one only read, no order lost |
 | [test_states.py](../app/tests/test_states.py) | Order states, stages, incremental sync, the states API |
 | [test_library_creator.py](../app/tests/test_library_creator.py) | Text JSON, folder import, file checking, Printify/Gelato safeguards |
 | [test_flows.py](../app/tests/test_flows.py) | Creating in Printify/Gelato with fakes, drag-and-drop, Etsy protection, OAuth |
@@ -142,6 +158,7 @@ code:
 | [test_textcheck.py](../app/tests/test_textcheck.py) | Text check: comparison, name rules, matching pages (24 and 30), a full check with a fake model, updating the passport, 127.0.0.1 only |
 | [test_orders.py](../app/tests/test_orders.py) | The printer rule, laying out pages, Gelato book length, the guide, partial import, the sync rule |
 | [test_mockups.py](../app/tests/test_mockups.py) | Mockups: the demo book (its own folder, apart from an order's dropped files), the cuts, the run plan, following Photoshop, the Photoshop script run by Node.js against a pretend Photoshop |
+| [test_slides.py](../app/tests/test_slides.py) | Listing slides: the cut-out and «Без фону», the background cutter, the template and a set (a stale save refused), «Зробити слайди» with a pretend browser, names, the command line |
 | [test_workshop.py](../app/tests/test_workshop.py) | The Workshop: a book by its title, never in the orders, prompts, one JSON (dry run, what's missing), the agent's instruction, passing a book to the library |
 | [test_upscale.py](../app/tests/test_upscale.py) | The Workshop's upscaling: ×2 and cut as before, the cover and pages 1/30, the variants (not the hero pictures), the switch, a picture replaced meanwhile, a failure, finding Upscayl by its log |
 | [test_wiki.py](../app/tests/test_wiki.py) | The wiki matches the code |

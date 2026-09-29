@@ -5,6 +5,8 @@ create_order_on_hold() — an order that Printify keeps "On hold": it is produce
 "Submit order" is pressed in Printify (the store's order approval must be Manual, which the user
 confirms once in the app). Sending to production, cancelling, Express orders, publishing, product
 updates and deletes are blocked by an allowlist.
+
+From 1 October 2026 nothing is written at all: every new book goes to Gelato (retired()).
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ import base64
 import json
 import re
 import threading
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -56,10 +59,22 @@ def token() -> str:
 
 
 _ORDER = re.compile(r"^shops/\d+/orders\.json$")
+# From 1 October 2026 every new book is printed by Gelato, on the owner's own account (owner, 29.09.2026). Printify is
+# only read: its earlier orders keep their stage, tracking, archive days and cost; nothing new is made there.
+READ_ONLY_FROM = date(2026, 10, 1)
+RETIRED_TEXT = "З 1 жовтня Printify лише для читання — нові книги друкує Gelato."
+
+
+def retired(today: date | None = None) -> bool:
+    """Whether Printify only reads now (from READ_ONLY_FROM on this computer's calendar)."""
+    return (today or date.today()) >= READ_ONLY_FROM
 
 
 def _check(method: str, path: str, order: bool = False) -> None:
     """order=True is passed only by create_order_on_hold(): the one way an order can be created."""
+    if method != "GET" and retired():
+        _audit_log().error("BLOCKED %s /%s (read only)", method, path)
+        raise PrintifySecurityError(RETIRED_TEXT, 403)
     rules = _READ if method == "GET" else _WRITE if method == "POST" else []
     lowered = path.lower()
     forbidden = any(word in lowered for word in ("publish", "send_to_production", "unpublish", "cancel", "express"))

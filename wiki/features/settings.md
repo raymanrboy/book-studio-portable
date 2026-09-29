@@ -1,9 +1,10 @@
 ---
 title: Settings
 type: feature
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/settings_api.py
+  - app/studio/gelato_accounts.py
   - app/web/js/pages/settings.js
   - app/web/js/pages/settings-dialogs.js
 ---
@@ -24,8 +25,13 @@ code:
   [integrations/etsy.md](../integrations/etsy.md). Connected → the shop name and "Disconnect".
   "Details": the saved keys, the return address (Callback URL), copying the session key for another PC.
 - **Printify**: the token; the template (Master) and "24 pages"; the template-picker button — only when
-  there isn't one yet; a connection check.
-- **Gelato**: the key; three formats and "28 or 30 pages"; a connection check.
+  there isn't one yet; a connection check. From 1 October 2026 (`readOnly`): «лише читання старих замовлень»,
+  «Нові книги друкує Gelato», no template picker ([printify](../integrations/printify.md)).
+- **Gelato**: the key; three formats and "28 or 30 pages"; a connection check. A saved key has **«Перейти на новий
+  акаунт Gelato»** (the swap icon) in place of «Замінити ключ» — a dialog for the new account's key; the current one
+  becomes «Старий акаунт · лише читання» with its hint, «Ще N замовлень в роботі» / «Його замовлення завершено», its
+  own connection check and a bin to remove it (since 2026-09-29, [gelato](../integrations/gelato.md#his-own-account--two-keys-during-the-move-built-2026-09-29)).
+  While the old one is kept, the new key has the usual «Замінити ключ» (to fix a mistyped one).
 - **Text check** (since 2026-09-19): a "Check page text in the order card" switch, a "First take a quick
   look at which pages even have text" switch (since 2026-09-20 — the program decides on its own which
   pages to show the model; can be turned off if something seems to be getting skipped), the model (a
@@ -59,7 +65,8 @@ removed on 2026-09-23.
 ## Keys
 
 A password field → `POST /api/secrets` → `Vault` (DPAPI). Only "saved" and the last 4 characters come
-back. Names: `etsy_keystring`, `etsy_shared_secret`, `printify_token`, `gelato_api_key`.
+back. Names: `etsy_keystring`, `etsy_shared_secret`, `printify_token`, `gelato_api_key`; `gelato_old_api_key` is
+written only by the switch (`POST /api/gelato/switch`), never typed in.
 
 ## Picking the Master (Printify)
 
@@ -69,10 +76,11 @@ ever read.
 
 ## Where in the code
 
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `backupCard()`, `watchBackup()`, `redrawBackup()`
 - [app/web/js/pages/settings-dialogs.js](../../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`, `pickMaster()`
 - [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
+- [app/studio/gelato_accounts.py](../../app/studio/gelato_accounts.py) — `status()`, `_switch()`, `_forget()`
 - [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `status()`, `import_session()`
 - [app/studio/textcheck/ollama.py](../../app/studio/textcheck/ollama.py) — `status()`, `start_ollama()`

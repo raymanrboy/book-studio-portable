@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from . import core, desktop, etsy, library, tunnel
+from . import core, desktop, etsy, gelato_accounts, library, printify, tunnel
 from .server import ApiError, Request, route, state
 from .vault import SECRET_NAMES, unprotect_powershell_securestring, vault
 
@@ -21,7 +21,7 @@ def integrations() -> dict:
     return {
         "etsy": etsy.status(),
         "printify": {**vault.status("printify_token"), "shopTitle": p.get("shopTitle"), "shopId": p.get("shopId"),
-                     "masterTitle": (p.get("master") or {}).get("title")},
+                     "masterTitle": (p.get("master") or {}).get("title"), "readOnly": printify.retired()},
         "gelato": vault.status("gelato_api_key"),
     }
 
@@ -48,8 +48,8 @@ def _settings(req: Request):
     return {
         "ui": data["ui"],
         "etsy": {**data["etsy"], **etsy.status()},
-        "printify": data["printify"],
-        "gelato": data["gelato"],
+        "printify": {**data["printify"], "readOnly": printify.retired()},
+        "gelato": {**data["gelato"], **gelato_accounts.status()},
         "textcheck": {k: data["textcheck"].get(k) for k in ("enabled", "prescan", "model")},  # Ollama: /api/textcheck/status
         "secrets": {name: vault.status(name) for name in EDITABLE_SECRETS},
         "dataDir": str(core.DATA_DIR),

@@ -1,7 +1,7 @@
 ---
 title: Plans — what's next
 type: plan
-updated: 2026-09-27
+updated: 2026-09-29
 code: []
 ---
 # Plans
@@ -273,6 +273,13 @@ The owner wants a real program feature — a "check button", a strong one — no
     a diffusion model).
   - Later, together with "Pages without Canva": the program draws the demo book itself, the utility makes
     the mockups.
+- **The six listing pictures without Canva — BUILT on 2026-09-29** ([features/slides.md](../features/slides.md)): the
+  Mockups save every picture without background and go on to «Зробити слайди»; the editor loaded only when opened; the
+  skill `/listing-slides` for working through an agent. Next is the owner's word (e.g. the two open questions of the
+  plan: one template for every book, the file names).
+  ([listing-pictures.md](listing-pictures.md)): Book Studio's own tool turns the Mockups' PNGs into the owner's
+  six 2000² Etsy slides (Comica, shadows, his palette, creative freedom); the book is cut out of the templates'
+  grey background with its real shadow.
 - **Two modes and the Workshop — BUILT on 2026-09-24** ([plan and agreements](listings-mode.md),
   [modes](../features/modes.md), [workshop](../features/workshop.md)): the brand icon switches between Orders
   and Listings (cyan; Orders turned orange the same day); the Workshop holds books in development — a prompt, a 2:1 spread and a text per row,
@@ -308,10 +315,15 @@ The owner wants a real program feature — a "check button", a strong one — no
 
 ## Printers
 
-### The owner's own Gelato account — a smooth switch (agreed 2026-09-27, not built)
+### The owner's own Gelato account — a smooth switch (agreed 2026-09-27, **built 2026-09-29**)
 
-> **Until this is built, the Gelato key in Settings is not replaced.** The owner opens his own Gelato account
-> about 1 October 2026 (the current one holds other people's orders too); this has to be ready before he switches.
+> **Built** — [integrations/gelato.md](../integrations/gelato.md#his-own-account--two-keys-during-the-move-built-2026-09-29).
+> Left: the owner's own step — on 1 October, Settings → Gelato → «Перейти на новий акаунт Gelato», paste the new key
+> (never «Видалити» the old one before «Його замовлення завершено»). One change from the plan below: the old key is
+> not needed until the archive days are over — only until none of his orders there waits, prints or travels
+> (about 1–2 weeks); with the safety net, removing it loses nothing.
+> The owner (2026-09-29): his "alternative printer" is this own Gelato account — nothing third; and from 1 October
+> Printify gets no new books ([printify](../integrations/printify.md)).
 
 - **Why.** The program knows one Gelato key, and every sync replaces the Gelato list with what that account returns
   (`sync._gelato_part()`). After the key is swapped, the old account's orders are gone from it:
@@ -343,8 +355,10 @@ The owner wants a real program feature — a "check button", a strong one — no
 
 ## Accounting
 
-- **Turn on "Profit" on 1 October 2026** ([recipe](../recipes.md)).
-- **A clean slate on 1 October** (the owner, 2026-09-25: "so that accounting pulls nothing before
+- ~~**Turn on "Profit" on 1 October 2026**~~ — **built 2026-09-29** (the owner: "it's time to turn on the
+  accounting"): in the rail now, empty until the first October sale ([features/profit.md](../features/profit.md)).
+- ~~**A clean slate on 1 October**~~ — **built 2026-09-29** (`profit.ACCOUNTING_FROM`; the queue keeps every order).
+  The agreement: (the owner, 2026-09-25: "so that accounting pulls nothing before
   1 October — not even a request for that data; serious work starts then"). *What was found:* accounting
   makes **no requests of its own** — the one sync (Etsy receipts, Printify and Gelato orders) feeds the
   order queue, the tracking and the archive, and has to stay. Accounting's own part is local: the fees,
@@ -352,7 +366,7 @@ The owner wants a real program feature — a "check button", a strong one — no
   counts only receipts from 1 October on, and nothing before is matched, shown or stored for it (the
   debts in [open questions](open-questions.md#technical-debt) about older receipts then stop mattering).
   To agree with him before building: whether the queue keeps showing older orders as now (it should).
-  Confirmed by the owner on 2026-09-27: "it must not include earlier orders at all". Not built yet.
+  Confirmed by the owner on 2026-09-27: "it must not include earlier orders at all".
 
 ## Infrastructure
 

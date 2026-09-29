@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-09-27
+updated: 2026-09-29
 code: []
 ---
 # Glossary
@@ -30,7 +30,10 @@ Code paths below are relative to the repository root.
 | Номер замовлення Etsy, номер чека | The `#…` in the queue and the card's header; a click copies the digits without "#" | [order-bits.js](../app/web/js/order-bits.js) `receiptCopy()`, `copyChip()` |
 | Оновити замовлення, синхронізація | Loading orders from Etsy + Printify + Gelato | [sync.py](../app/studio/sync.py) `_sync()`, `startup_sync()`; [order-bits.js](../app/web/js/order-bits.js) `syncOrders()` |
 | Друкарня, постачальник | Printify or Gelato | [orders.py](../app/studio/orders.py) `plan_for()` |
-| Правило друкарні | Hardcover in the US → Printify, everything else → Gelato | [rules/printer-rule.md](rules/printer-rule.md) |
+| Правило друкарні | From 1 October 2026 every book → Gelato; before: hardcover in the US → Printify, everything else → Gelato | [rules/printer-rule.md](rules/printer-rule.md) |
+| Альтернативна друкарня, власний акаунт Gelato | The owner's own Gelato account from 1 October 2026 (not a third printer — the owner, 2026-09-29) | [gelato_accounts.py](../app/studio/gelato_accounts.py); [integrations/gelato.md](integrations/gelato.md) |
+| Перейти на новий акаунт Gelato, старий акаунт (лише читання) | Settings → Gelato: the new key does everything, the old one is only read until his orders there are done | [gelato_accounts.py](../app/studio/gelato_accounts.py) `_switch()`, `status()`; [settings.js](../app/web/js/pages/settings.js) `switchGelato()` |
+| Бугалтерія, облік, «Прибуток» | The Profit page, counting only sales from 1 October 2026 | [profit.py](../app/studio/profit.py) `ACCOUNTING_FROM`; [features/profit.md](features/profit.md) |
 | Персоналізація, поля Etsy | The buyer's variations (name: value) | [sync.py](../app/studio/sync.py) `normalize_receipt()`; [order-card.js](../app/web/js/pages/order-card.js) `renderLeft()` |
 | Ім'я дитини | The value of the field with "name/child…" in its name | [wording.py](../app/studio/wording.py) `guess_child_name()` |
 | «Від кого» | The field name in the Etsy listing; shown as-is | [order-card.js](../app/web/js/pages/order-card.js) `renderLeft()` |
@@ -131,7 +134,12 @@ Code paths below are relative to the repository root.
 | Опен 1, Опен 2 (копії) | Templates `2. Open 1` (used 4 times) and `3. Open 2` (twice), each time with another spread | [plans/listing-mockups.md](plans/listing-mockups.md) |
 | Демо-книга, архів з Канви (для мокапів) | The Canva ZIP of a book with a sample name on the cover and `{Name}` in the pages | [mockups.py](../app/studio/mockups.py) `read_book()` |
 | Кант (у мокапі) | The thin rim of the cover around the pages of an open book — filled from the cover by the script | [mockups.py](../app/studio/mockups.py) `plan()` |
-| Драг енд дроп зона з пошуком (як у Бук Студіо) | The path field with the folder-and-magnifier button (`folderPick`) that lights up when files are dragged over the window — the look «Мокапи» took from the Order Creator | [pages/mockups.js](../app/web/js/pages/mockups.js) `paintBook()`; [features/mockups.md](features/mockups.md) |
+| Драг енд дроп зона з пошуком (як у Бук Студіо) | The path field with the folder-and-magnifier button (`folderPick`) that lights up when files are dragged over the window — the look «Мокапи» took from the Order Creator (their «Куди зберегти»; the demo book comes into «Структура» since 2026-09-29) | [pages/mockups.js](../app/web/js/pages/mockups.js) `paintOut()`, `paintStructure()`; [features/mockups.md](features/mockups.md) |
+| Слайди для лістингу, слайди, шаблони для лістингів | The six square 2000² Etsy pictures made after the Mockups (his Canva layout, torn paper, stickers) — step 4 of the Mockups and their editor | [features/slides.md](features/slides.md); [slides/work.py](../app/studio/slides/work.py) `make()` |
+| Запекти, запікай | Draw the slides into the final PNGs (headless Edge) — «Зберегти картинки» in the editor, `slides.py bake` | [slides/bake.py](../app/studio/slides/bake.py) `bake()` |
+| Шаблон слайдів | The six drawings every new book starts from (the owner's touches); «Зробити шаблоном» carries a book's slide there | [slides/store.py](../app/studio/slides/store.py) `template()`, `to_template()` |
+| Без фону (картинки без фону) | A mockup's book with its real shadow on a transparent background, saved beside the mockups in `Без фону\` while Photoshop works | [slides/cutout.py](../app/studio/slides/cutout.py) `ensure()`, `Cutter` |
+| Редактор (слайдів) | The Canva-like editor of the listing slides: layers, move, turn, resize, mirror, arc text | [pages/slides-editor.js](../app/web/js/pages/slides-editor.js) |
 | Зберегти відкриті (й закрити) | The button after a run: the templates left open, with the front cover fitted, saved as PNG next to the rest and closed | [mockups.py](../app/studio/mockups.py) `finish()`; [mockups.jsx](../app/studio/mockups.jsx) `finishOpen()` |
 | Тимчасові файли, «чистити за собою» | What a run leaves (template copies, prepared pictures, the unpacked book) and when it goes | [features/mockups.md](features/mockups.md#temporary-files--what-is-left-and-when-it-goes) |
 

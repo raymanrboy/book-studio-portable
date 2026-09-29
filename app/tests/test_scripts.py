@@ -53,7 +53,7 @@ def declared(src):
 KEYWORDS = set("""break case catch class const continue debugger default delete do else export extends false finally
 for function if import in instanceof let new null of return super switch this throw true try typeof undefined var void
 while with yield async await static get set from as""".split())
-GLOBALS = set("""Array ArrayBuffer Blob Boolean CSS CustomEvent Date Error Image JSON Map Math Node Number Object Promise
+GLOBALS = set("""Array ArrayBuffer Blob Boolean CSS CustomEvent Date Error FontFace Image JSON Map Math Node Number Object Promise
 ResizeObserver Set String URLSearchParams WeakMap XMLHttpRequest cancelAnimationFrame clearInterval clearTimeout console
 crypto decodeURIComponent document encodeURIComponent fetch innerHeight innerWidth localStorage location matchMedia
 navigator parseInt performance requestAnimationFrame requestIdleCallback setInterval setTimeout window""".split())

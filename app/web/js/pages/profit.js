@@ -205,7 +205,11 @@ export async function mount(view) {
     st.page = Math.min(Math.max(1, st.page), pages);
     const slice = rows.slice((st.page - 1) * PAGE_SIZE, st.page * PAGE_SIZE);
     if (!slice.length) {
-      setHtml(box, html`<div class="empty"><div class="empty-icon">${ic('package')}</div><h3>${st.filter === 'issues' ? 'Проблемних замовлень немає' : 'Замовлень не знайдено'}</h3></div>`);
+      // Bookkeeping counts only sales from its first day (profit.ACCOUNTING_FROM): until then the page is empty.
+      const none = !(d.rows || []).length && d.accountingFrom;
+      setHtml(box, html`<div class="empty"><div class="empty-icon">${ic(none ? 'calendar' : 'package')}</div><h3>${none
+        ? `Продажів від ${new Date(`${d.accountingFrom}T00:00:00`).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' })} ще немає`
+        : st.filter === 'issues' ? 'Проблемних замовлень немає' : 'Замовлень не знайдено'}</h3></div>`);
       return;
     }
     setHtml(box, html`<div class="olist" role="table">

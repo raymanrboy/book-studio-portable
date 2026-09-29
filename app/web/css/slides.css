@@ -1,0 +1,85 @@
+/* The listing slides' editor (pages/slides-editor.js) — loaded with the editor itself, only when it is opened.
+   Book Studio's tokens and parts: cards, icon buttons, the segmented switch, the program's font scale. */
+
+.view.se-view { max-width: none; padding: 14px 20px 14px; height: 100%; min-height: 0; }
+.se { display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 28px); min-height: 560px; }
+
+/* the bar: back · the title · 1–6 · undo/redo, reset, template · saved · «Зберегти картинки» */
+.se-bar { display: flex; align-items: center; gap: 14px; min-height: 44px; flex: none; }
+.se-title { min-width: 0; max-width: 300px; }
+.se-title .page-sub { margin-top: 1px; }
+.se-bar .seg button { min-width: 34px; justify-content: center; font-variant-numeric: tabular-nums; }
+.se-saved { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); white-space: nowrap; min-width: 110px; justify-content: flex-end; }
+.se-saved.ok .icon { color: var(--green); }
+.se-saved.bad { color: var(--red); }
+.se-saved .spinner { width: 12px; height: 12px; border-width: 2px; }
+
+/* three columns: the layers · the slide · its properties */
+.se-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 236px minmax(0, 1fr) 292px; gap: 14px; }
+.se-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.se-panel-head { display: flex; align-items: center; gap: 2px; min-height: 44px; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--border); flex: none; }
+.se-panel-head .eyebrow { margin-right: auto; }
+.se-list, .se-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.se-list { padding: 6px; }
+.se-scroll { padding: 4px 14px 16px; }
+
+/* a layer: its kind's glyph, the name, lock and eye (shown on hover or when set) */
+.se-layer { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 2px 0 8px; border-radius: var(--r-ctl);
+  font-size: 12.5px; color: var(--text-2); cursor: pointer; position: relative; user-select: none; }
+.se-layer:hover { background: var(--surface-hover); }
+.se-layer.sel { background: var(--accent-soft); color: var(--text); }
+.se-layer.off > .grow { opacity: .45; text-decoration: line-through; }
+.se-layer.dragging { opacity: .4; }
+.se-layer.drop-above::before, .se-layer.drop-below::after { content: ""; position: absolute; left: 6px; right: 6px; height: 2px; border-radius: 2px; background: var(--accent); }
+.se-layer.drop-above::before { top: -1px; }
+.se-layer.drop-below::after { bottom: -1px; }
+.se-kind { width: 22px; height: 22px; flex: none; display: grid; place-items: center; border-radius: 6px; color: var(--text-3); background: var(--surface-2); }
+.se-layer.sel .se-kind { color: var(--accent-ink); background: transparent; }
+.se-layer .ib.xs { width: 24px; height: 24px; opacity: 0; transition: opacity var(--t-fast) ease; }
+.se-layer:hover .ib.xs, .se-layer .ib.xs.on, .se-layer .ib.xs:focus-visible { opacity: 1; }
+.se-layer .ib.xs.on { color: var(--accent-ink); }
+
+/* the slide on a quiet board */
+.se-canvas { position: relative; min-width: 0; min-height: 0; display: grid; place-items: center; border-radius: var(--r-card);
+  background: var(--surface-2) radial-gradient(circle at 1px 1px, var(--paper-dot) 1px, transparent 1.2px) 0 0 / 18px 18px; overflow: hidden; }
+.se-wrap { position: relative; box-shadow: var(--shadow-l); border-radius: 2px; }
+.se-stage { position: absolute; left: 0; top: 0; width: 1000px; height: 1000px; overflow: hidden; transform-origin: 0 0; isolation: isolate; }
+.se-stage .el { cursor: move; }
+.se-stage .el[data-lock] { pointer-events: none; }
+.se-over { position: absolute; left: 0; top: 0; width: 1000px; height: 1000px; transform-origin: 0 0; pointer-events: none; }
+.se-selbox { position: absolute; outline: 1.5px solid var(--accent); pointer-events: none; }
+.se-h { position: absolute; background: #fff; border: 1.5px solid var(--accent); border-radius: 3px; pointer-events: auto; }
+.se-h.h-rot { border-radius: 50%; }
+.se-stem { position: absolute; left: 50%; background: var(--accent); pointer-events: none; }
+.se-hint { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 11.5px; pointer-events: none; }
+
+/* the properties: groups of fields, two per row */
+.se-group { padding-top: 14px; }
+.se-group + .se-group { border-top: 1px solid var(--border); margin-top: 14px; }
+.se-group h4 { font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+.se-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.se-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.se-f > span { font-size: 11.5px; color: var(--text-3); }
+.se-f.se-wide { grid-column: 1 / -1; }
+.se-f .input { height: 32px; font-size: 12.5px; }
+.se-f .input.num { font-variant-numeric: tabular-nums; }
+.se-f .textarea { font-size: 12.5px; line-height: 1.45; resize: vertical; min-height: 72px; }
+.se-f .select { height: 32px; font-size: 12.5px; }
+.se-f .seg { align-self: flex-start; }
+.se-scroll > .se-f { padding-top: 12px; }
+.se-range { display: grid; grid-template-columns: 1fr 64px; column-gap: 10px; row-gap: 5px; align-items: center; }
+.se-range > span { grid-column: 1 / -1; }
+.se-range input[type="range"] { width: 100%; accent-color: var(--accent); }
+.se-repick { align-self: flex-start; margin-top: 2px; }
+.se-empty { margin-top: 18px; font-size: 12.5px; color: var(--text-4); text-align: center; }
+
+/* colours: the slide's own palette as swatches, then the picker */
+.se-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.se-sw { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--c);
+  cursor: pointer; position: relative; box-shadow: inset 0 0 0 2px var(--surface); transition: transform var(--t-fast) var(--ease); }
+.se-sw:hover { transform: scale(1.08); }
+.se-sw.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.se-pick { background: conic-gradient(from 90deg, #e8c59d, #a2a066, #6b3a3a, #eedec7, #7a6650, #e8c59d); overflow: hidden; }
+.se-pick::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--c); border: 1.5px solid var(--surface); }
+.se-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.se-f .select { background-position: calc(100% - 16px) 13px, calc(100% - 11px) 13px; }

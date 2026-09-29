@@ -1,0 +1,276 @@
+{
+ "title": "Слайд №1 · Made just for them",
+ "bg": "#eedec7",
+ "items": [
+  {
+   "name": "Світла пляма 1",
+   "type": "blob",
+   "x": 620,
+   "y": 470,
+   "w": 560,
+   "h": 420,
+   "rot": 0,
+   "seed": 7,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 2",
+   "type": "blob",
+   "x": 960,
+   "y": 560,
+   "w": 260,
+   "h": 700,
+   "rot": 0,
+   "seed": 9,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 3",
+   "type": "blob",
+   "x": 170,
+   "y": 560,
+   "w": 260,
+   "h": 320,
+   "rot": 0,
+   "seed": 11,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Зерно паперу",
+   "type": "grain",
+   "x": 500,
+   "y": 500,
+   "locked": true
+  },
+  {
+   "name": "Оливкова смуга",
+   "type": "band",
+   "x": 462.7,
+   "y": -184.8,
+   "w": 1300,
+   "h": 520,
+   "rot": -8.25,
+   "color": "#a2a066",
+   "seed": 4
+  },
+  {
+   "name": "Персикова смуга",
+   "type": "band",
+   "x": 468.5,
+   "y": 1007.1,
+   "w": 1300,
+   "h": 520,
+   "rot": 6.96,
+   "color": "#e8c59d",
+   "seed": 21
+  },
+  {
+   "name": "Розворот нижній",
+   "type": "book",
+   "x": 430,
+   "y": 555,
+   "w": 655,
+   "rot": 6,
+   "slot": "open1:1"
+  },
+  {
+   "name": "Розворот верхній",
+   "type": "book",
+   "x": 655,
+   "y": 262,
+   "w": 655,
+   "rot": -6,
+   "slot": "open1:2"
+  },
+  {
+   "name": "Пунктир",
+   "type": "dashes",
+   "x": 492.5,
+   "y": 799.5,
+   "w": 944.5,
+   "h": 20,
+   "rot": 7.49,
+   "count": 10,
+   "dash": 62,
+   "color": "#ffffff"
+  },
+  {
+   "name": "Заголовок",
+   "type": "text",
+   "text": "Made just for them",
+   "x": 322,
+   "y": 60,
+   "size": 44,
+   "w": 580,
+   "rot": -8.25,
+   "align": "left",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Текст унизу",
+   "type": "text",
+   "text": "Across {pages} lovingly handmade pages,\nyour little one's name is the heart\nof every magical poem — a keepsake\nstory created with care, just for them.",
+   "x": 470,
+   "y": 875,
+   "size": 29,
+   "w": 900,
+   "rot": 7.2,
+   "align": "left",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Тінь листя",
+   "type": "leaves",
+   "x": 860,
+   "y": 330,
+   "w": 600,
+   "h": 600,
+   "rot": 0,
+   "opacity": 0.085
+  },
+  {
+   "name": "Стрілка до верхнього",
+   "type": "arrow",
+   "x": 321.0,
+   "y": 215.0,
+   "w": 162,
+   "h": 110,
+   "w0": 162,
+   "h0": 110,
+   "rot": 0,
+   "pts": [
+    [
+     12,
+     72
+    ],
+    [
+     50,
+     30
+    ],
+    [
+     72,
+     12
+    ],
+    [
+     82,
+     30
+    ],
+    [
+     66,
+     54
+    ],
+    [
+     78,
+     84
+    ],
+    [
+     112,
+     98
+    ],
+    [
+     150,
+     90
+    ]
+   ],
+   "color": "#6b3a3a",
+   "sw": 7
+  },
+  {
+   "name": "Стрілка до нижнього",
+   "type": "arrow",
+   "x": 181.5,
+   "y": 381.0,
+   "w": 77,
+   "h": 186,
+   "w0": 77,
+   "h0": 186,
+   "rot": 0,
+   "pts": [
+    [
+     12,
+     12
+    ],
+    [
+     35,
+     52
+    ],
+    [
+     57,
+     84
+    ],
+    [
+     65,
+     64
+    ],
+    [
+     47,
+     62
+    ],
+    [
+     39,
+     97
+    ],
+    [
+     45,
+     137
+    ],
+    [
+     53,
+     174
+    ]
+   ],
+   "color": "#6b3a3a",
+   "sw": 7
+  },
+  {
+   "name": "Наліпка «24»",
+   "type": "sticker",
+   "x": 140,
+   "y": 222,
+   "r": 118,
+   "rot": -8,
+   "color": "#e8c59d",
+   "lines": [
+    {
+     "t": "{pages}",
+     "k": 2.5
+    },
+    {
+     "t": "unique"
+    },
+    {
+     "t": "pages"
+    }
+   ]
+  },
+  {
+   "name": "Зірочка 1",
+   "type": "sparkle",
+   "x": 55,
+   "y": 560,
+   "size": 16
+  },
+  {
+   "name": "Зірочка 2",
+   "type": "sparkle",
+   "x": 84,
+   "y": 596,
+   "size": 8
+  },
+  {
+   "name": "Зірочка 3",
+   "type": "sparkle",
+   "x": 880,
+   "y": 560,
+   "size": 18
+  },
+  {
+   "name": "Зірочка 4",
+   "type": "sparkle",
+   "x": 914,
+   "y": 598,
+   "size": 9
+  }
+ ],
+ "id": "slide1"
+}

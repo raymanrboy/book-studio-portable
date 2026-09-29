@@ -1,0 +1,191 @@
+{
+ "title": "Слайд №3 · Dedication & afterword",
+ "bg": "#7a6650",
+ "items": [
+  {
+   "name": "Мокап присвяти",
+   "type": "image",
+   "x": 540,
+   "y": 450,
+   "w": 1150,
+   "h": 768,
+   "rot": 0,
+   "shadow": false,
+   "slot": "dedication"
+  },
+  {
+   "name": "Персикова смуга",
+   "type": "band",
+   "x": 496.1,
+   "y": -102.5,
+   "w": 1300,
+   "h": 520,
+   "rot": -0.86,
+   "color": "#e8c59d",
+   "seed": 4
+  },
+  {
+   "name": "Оливкова смуга",
+   "type": "band",
+   "x": 471.1,
+   "y": 1014.4,
+   "w": 1300,
+   "h": 520,
+   "rot": 6.39,
+   "color": "#a2a066",
+   "seed": 21
+  },
+  {
+   "name": "Пунктир",
+   "type": "dashes",
+   "x": 497.5,
+   "y": 797.5,
+   "w": 992.5,
+   "h": 20,
+   "rot": 6.23,
+   "count": 10,
+   "dash": 62,
+   "color": "#ffffff"
+  },
+  {
+   "name": "Заголовок",
+   "type": "text",
+   "text": "Dedication & afterword",
+   "x": 500,
+   "y": 76,
+   "size": 46,
+   "w": 900,
+   "rot": -0.9,
+   "align": "center",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Текст унизу",
+   "type": "text",
+   "text": "Every book can include a personal\ndedication from you — or choose our\nwarm, ready-to-use message",
+   "x": 370,
+   "y": 872,
+   "size": 29,
+   "w": 740,
+   "rot": 6.3,
+   "align": "left",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Тінь листя",
+   "type": "leaves",
+   "x": 860,
+   "y": 330,
+   "w": 600,
+   "h": 600,
+   "rot": 0,
+   "opacity": 0.085
+  },
+  {
+   "name": "Остання сторінка",
+   "type": "image",
+   "x": 215,
+   "y": 440,
+   "w": 290,
+   "h": 290,
+   "rot": -4,
+   "shape": "scallop",
+   "bumps": 10,
+   "depth": 0.07,
+   "rim": 6,
+   "slot": "page30"
+  },
+  {
+   "name": "Last page",
+   "type": "text",
+   "text": "Last page",
+   "x": 128,
+   "y": 268,
+   "size": 30,
+   "w": 220,
+   "rot": -22,
+   "align": "center",
+   "color": "#6b3a3a",
+   "shadow": false,
+   "arc": 50
+  },
+  {
+   "name": "Стрілка «last page»",
+   "type": "arrow",
+   "x": 75.0,
+   "y": 373.0,
+   "w": 82,
+   "h": 134,
+   "w0": 82,
+   "h0": 134,
+   "rot": 0,
+   "pts": [
+    [
+     28,
+     12
+    ],
+    [
+     12,
+     58
+    ],
+    [
+     26,
+     102
+    ],
+    [
+     70,
+     122
+    ]
+   ],
+   "color": "#6b3a3a",
+   "sw": 7
+  },
+  {
+   "name": "Стрічка «custom message»",
+   "type": "ribbon",
+   "x": 855,
+   "y": 865,
+   "w": 190,
+   "h": 215,
+   "rot": 0,
+   "color": "#e8c59d",
+   "lines": [
+    {
+     "t": "custom"
+    },
+    {
+     "t": "message"
+    }
+   ]
+  },
+  {
+   "name": "Зірочка 1",
+   "type": "sparkle",
+   "x": 958,
+   "y": 300,
+   "size": 16
+  },
+  {
+   "name": "Зірочка 2",
+   "type": "sparkle",
+   "x": 930,
+   "y": 262,
+   "size": 8
+  },
+  {
+   "name": "Зірочка 3",
+   "type": "sparkle",
+   "x": 95,
+   "y": 660,
+   "size": 14
+  },
+  {
+   "name": "Зірочка 4",
+   "type": "sparkle",
+   "x": 126,
+   "y": 630,
+   "size": 7
+  }
+ ],
+ "id": "slide3"
+}

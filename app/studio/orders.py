@@ -12,7 +12,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from . import archive, core, creator, drops, library, reconcile, records, stages, wording
+from . import archive, core, creator, drops, library, printify, reconcile, records, stages, wording
 from .server import ApiError, Request, route
 
 PRINTIFY_PAGES = 24
@@ -30,9 +30,10 @@ def binding_of(item: dict) -> str | None:
 
 def printing() -> dict:
     """What the printer rule reads from the settings — each printer's page counts, the Gelato formats — read once for
-    a whole queue, not three times for every book in it."""
-    return {"pages": {p: page_options(p) for p in ("printify", "gelato")},
-            "formats": core.settings.section("gelato").get("formats") or {}}
+    a whole queue, not three times for every book in it. From 1 October 2026 only Gelato prints (printify.retired())."""
+    gelato_only = printify.retired()
+    return {"pages": {p: page_options(p) for p in (("gelato",) if gelato_only else ("printify", "gelato"))},
+            "formats": core.settings.section("gelato").get("formats") or {}, "gelatoOnly": gelato_only}
 
 
 def plan_for(item: dict, country_iso: str | None, rules: dict | None = None) -> dict:
@@ -42,17 +43,23 @@ def plan_for(item: dict, country_iso: str | None, rules: dict | None = None) -> 
     For now (owner, 25.09.2026 — Printify prints faulty books) the owner decides every hardcover himself,
     by the files he downloads: 24 pages → Printify, 28 or 30 → Gelato (`choice`, `provider_by_pages()`).
     The rule's printer stays as the suggestion the queue shows. Softcovers, the small one included, are Gelato's.
+
+    From 1 October 2026 (owner, 29.09.2026) every book is Gelato's, a US hardcover too; a book whose cover type
+    could not be read goes to Gelato as well, its format picked in the Order Creator.
     """
     rules = rules or printing()
     binding = binding_of(item)
     country = (country_iso or "").upper()
     if binding is None:
+        if rules.get("gelatoOnly"):
+            return {"provider": "gelato", "binding": None, "country": country, "pages": rules["pages"]["gelato"],
+                    "format": None}
         return {"provider": None, "binding": None, "country": country, "pages": None, "format": None}
     text = " ".join(f"{v.get('name')} {v.get('value')}" for v in item.get("variations") or []) + " " + (item.get("title") or "")
     fmt = "hardcover_8x8" if binding == "hardcover" else ("softcover_5x5" if _SMALL.search(text) else "softcover_8x8")
     plan = {"provider": "gelato", "binding": binding, "country": country, "format": fmt,
             "formatLabel": (rules["formats"].get(fmt) or {}).get("label"), "pages": rules["pages"]["gelato"]}
-    if binding == "hardcover":
+    if binding == "hardcover" and not rules.get("gelatoOnly"):
         choice = dict(rules["pages"])
         plan.update(choice=choice, pages=sorted({n for pages in choice.values() for n in pages}),
                     provider="printify" if country == "US" else "gelato")
@@ -198,6 +205,11 @@ def _files(req: Request):
     provider = body.get("provider")
     if provider not in ("printify", "gelato", "files"):
         raise ApiError("Невідомий постачальник.")
+    if printify.retired():
+        if provider == "printify":
+            raise ApiError(printify.RETIRED_TEXT)
+        if provider == "files":
+            provider = "gelato"  # a card opened before 1 October: only Gelato's lengths now
     # "files": a hardcover whose printer the downloaded files decide (plan_for's `choice`).
     counts = sorted({*page_options("printify"), *page_options("gelato")}) if provider == "files" else page_options(provider)
     res = arrange_pages(Path(str(body.get("folder") or "").strip().strip('"')), counts)

@@ -23,6 +23,7 @@ def _status(req: Request):
             "tokenConfigured": bool(vault.get("printify_token")),
             "manualApproval": printify.manual_approval_confirmed(),
             "matteVariant": bool(matte_variant(p.get("master") or {})),
+            "retired": printify.retired(),
         },
         "gelato": {
             "pageCounts": gelato_page_options(), "keyConfigured": bool(vault.get("gelato_api_key")),
@@ -55,6 +56,8 @@ def _pick(req: Request):
 
 @route("POST", "/api/creator/printify/create")
 def _create_printify(req: Request):
+    if printify.retired():
+        raise ApiError(printify.RETIRED_TEXT, 403)
     body = req.json or {}
     # Every book of an Etsy order at once — they then share one order to one address.
     books = body.get("books") if isinstance(body.get("books"), list) else []
@@ -66,6 +69,8 @@ def _create_printify(req: Request):
 @route("POST", "/api/creator/printify/reprint")
 def _reprint_printify(req: Request):
     """Reprint from the order archive: a new order on hold for the archived Printify book."""
+    if printify.retired():
+        raise ApiError(printify.RETIRED_TEXT, 403)
     body = req.json or {}
     archive_id = str(body.get("archiveId") or "")
     archive.reprintable(archive_id)  # refuses an unknown id, or a send that never went to print, before anything starts

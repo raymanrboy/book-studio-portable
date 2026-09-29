@@ -66,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     core.own_temp()  # the window, the dialogs and cloudflared keep their temp files on drive D, not C
 
     # Register all API routes.
-    from . import archive, backup, creator, drops, etsy, gelato, images, library, library_files, mockups, orders, printify, profit, sendlog, settings_api, sync, textcheck, tunnel, workshop  # noqa: F401
+    from . import archive, backup, creator, drops, etsy, gelato, gelato_accounts, images, library, library_files, mockups, orders, printify, profit, sendlog, settings_api, slides, sync, textcheck, tunnel, workshop  # noqa: F401
 
     tunnel.cleanup_stale()
     drops.clear_drops()

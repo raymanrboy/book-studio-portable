@@ -6,6 +6,8 @@
   - `/wiki-update` — bring the wiki up to date after code changes (run at the end of every task);
   - `/wiki-ingest` — add material from the owner into the wiki (text, screenshot, document);
   - `/wiki-lint` — wiki health check.
+  - `/listing-slides` — change, look at and bake the six Etsy listing slides through their files (when the owner
+    asks in words instead of the editor).
 - **Interface preview**: `preview_start("book-studio-dev")` (`.claude/launch.json`, port 47890,
   made-up data; both modes — the Workshop and the Mockups with a pretend Photoshop too). The hidden browser pane doesn't run `requestAnimationFrame` — check the DOM and swap
   rAF for `setTimeout`; after `resize_window`, set it back to `preset: "desktop"`; finish with

@@ -1,12 +1,13 @@
 ---
 title: Mockups — listing pictures from a demo book (the Listings mode)
 type: feature
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/mockups.py
   - app/studio/mockups.jsx
   - app/web/js/pages/mockups.js
   - app/web/js/pages/mockups-run.js
+  - app/web/js/pages/mockups-slides.js
 ---
 # Mockups (Мокапи)
 
@@ -18,26 +19,34 @@ code:
 > [plan](../plans/listing-mockups.md) (the templates' structure and the agreements live there); **moved into
 > Book Studio on 2026-09-24**, working exactly as before (the owner: "Ні, як зараз" — not tied to library
 > books).
+>
+> **Since 2026-09-29 it goes on to the listing slides** ([slides](slides.md)): every picture Photoshop saves is cut
+> out **without its background** into `Без фону\` beside it (Open 1, Open 2, Cover 1), and step 4 «Слайди для
+> лістингу» makes the six Etsy pictures and opens their editor.
 
 ## How the owner uses it
 
 The page looks like Book Studio's Order Creator (the owner's request, 2026-09-23 evening: "exactly like
-Book Studio, with the search", i.e. the path field with the folder-and-magnifier button): **four numbered
-steps on the left**, the **demo book's structure on the right**. A step's number turns into a green ✓ when
+Book Studio, with the search", i.e. the path field with the folder-and-magnifier button): **three numbered
+steps on the left**, the **demo book's structure on the right** — the book comes in there. A step's number turns into a green ✓ when
 it is done. **The page is kept when the owner steps away** (another page, the orders): the book, the picks, a
 run in Photoshop and its result wait for him; while a run goes on elsewhere, a cyan dot sits on the rail,
 and a notice says when it ends («Мокапи: готово · 6 картинок»).
 
-1. **Демо-книга з Canva.** Drag the ZIP anywhere onto the window (the book field lights up), or press the
-   field / its folder button — the Windows dialog opens in the Downloads folder the first time, then where
-   the last ZIP was (`lastZip`). The unpacked folder or the pictures themselves can be dragged too. The
-   badge says what is going on: «Вікно Windows», «Розпаковую», the upload percent, then «✓ 24 стор.».
-   The pages are read by the same rules as the print folder ([file naming](../rules/file-naming.md)):
-   the cover is the file named `cover`… or the one wide picture, the rest go by the number in the name
-   and become pages 1…N. Page 1 is the dedication; the spreads are `2–3`, `4–5`, … (page 30, the
-   afterword, is alone and not offered). Before a book is in, the right side shows the structure's outline
-   under a dashed veil «Перетягніть сюди ZIP із Canva» (a click there opens the dialog too).
-2. **Розвороти в шаблонах.** Each template is a row with **its own preview** (the picture Photoshop keeps
+**The demo book — in «Структура» on the right** (no step of its own since 2026-09-29; the owner: the step «Демо-книга
+з Canva» and the structure "both let you drag the folder in — they double each other"). Before a book is in, the
+right side shows the structure's outline under a dashed veil «Перетягніть сюди ZIP із Canva»: drop the ZIP there
+(anywhere on the window works too — the veil lights up), or click it — the Windows dialog opens in the Downloads
+folder the first time, then where the last ZIP was (`lastZip`). The unpacked folder or the pictures themselves can
+be dragged too. The veil says what is going on: «Оберіть архів у вікні Windows», «Розпаковую архів…», the upload
+percent; a book that can't be read — a red line under the header. With a book in, the header reads «Структура ·
+<name> · 24 стор.», and its folder button (or a drop) takes another book — a badge there shows the dialog / unpacking.
+«Зробити мокапи» with no book → the veil blinks amber. The pages are read by the same rules as the print folder
+([file naming](../rules/file-naming.md)): the cover is the file named `cover`… or the one wide picture, the rest
+go by the number in the name and become pages 1…N. Page 1 is the dedication; the spreads are `2–3`, `4–5`, …
+(page 30, the afterword, is alone and not offered).
+
+1. **Розвороти в шаблонах.** Each template is a row with **its own preview** (the picture Photoshop keeps
    inside the PSD, read by Pillow — the file is only read) and its slots: **Open 1 ×4, Open 2 ×2,
    Cover & Open 1 ×1, All & Open 1 ×1**; **Dedication** (page 1) and **Cover 1** (the cover) go in by
    themselves. The ✋ mark — the front cover is the owner's. A click on a template's preview opens all six
@@ -51,11 +60,11 @@ and a notice says when it ends («Мокапи: готово · 6 картино
    - The magnifier opens a spread large, with «Обрати» there.
    - **A book dropped in again gets its picks back** (the last 12 books, by name and page count — the
      window's own memory, `localStorage`), with a toast saying so.
-3. **Куди зберегти.** The folder field with its folder button (the Windows dialog, starting in the last
+2. **Куди зберегти.** The folder field with its folder button (the Windows dialog, starting in the last
    folder). «Та сама, що минулого разу · <name>» takes the last folder in one click. A new book starts
    with the field empty — the folder is picked for every book (the owner's rule). No folder yet when
    «Зробити мокапи» is pressed → the dialog opens then.
-4. **Photoshop.** One line says what will happen («Photoshop сам збереже 6 картинок, а 4 шаблони залишить
+3. **Photoshop.** One line says what will happen («Photoshop сам збереже 6 картинок, а 4 шаблони залишить
    відкритими — лицьову обкладинку й кольори Dedication підганяєте ви»), then **«Зробити мокапи»**. The button **always answers** (since 2026-09-23): no book →
    the book field blinks and a toast asks for the ZIP; empty slots → they blink amber, the first one is
    highlighted and a toast names the templates; while the folder dialog is open the card says so; closed
@@ -86,6 +95,10 @@ and a notice says when it ends («Мокапи: готово · 6 картино
      template stays in front. The card says «… і обкладинка книги Cover». «Зберегти відкриті» closes it too —
      only when the owner hasn't changed it (`doc.saved`); a changed one stays open. A cover that can't be opened
      is a line among the problems («Cover» не відкрився); the pictures stand.
+4. **Слайди для лістингу** (step 4, since 2026-09-29) — once a run has saved pictures: «Без фону · 5/6» (the cut-outs,
+   made while Photoshop works), the book's numbers, **«Зробити слайди»** (asks for «Зберегти відкриті» first while
+   Cover 1 and Dedication wait), the six pictures with ✎ and **«Відкрити в редакторі»** — all of it on the
+   [slides page](slides.md). The header's ▣ opens the template's and the last books' slides.
 5. **«×» in the header — «Завершити»** (since 2026-09-26, the owner: "a cross on the Mockups page, to finish the
    creation"): the page starts clean for the next book — the book, the picks, the folder, the result and «Ваша
    черга» go; the unpacked demo book is deleted at once (`close()`, `/api/mockups/close`). With templates still
@@ -154,7 +167,8 @@ marks both with ✋ and says which touch is the owner's.
    Replacing and saving always act on the **active** document (seen live: a copy "saved" from another
    document held the active one's picture), so the script activates its document first.
 6. `watch()` follows `status.json` the script writes (step, saved, left open, problems) and hands the page
-   `progress_view()` — every template's state and the pictures saved so far (`job.share()`). No status for
+   `progress_view()` — every template's state and the pictures saved so far (`job.share()`); each newly saved picture
+   goes to the slides' cutter (`_cut_without_background()`, since 2026-09-29). No status for
    10 min (`START_WAIT`) → "Photoshop never ran the script" (and the stop mark is left, so a late "Yes"
    does nothing); Photoshop gone for 3 checks → "Photoshop closed". Stop → the file `cancel`, checked by
    the script before every template and picture.
@@ -263,11 +277,12 @@ icon, «Мокапи: готово · 7 картинок», back in the listings
 
 ## Where in the code
 
-- [app/studio/mockups.py](../../app/studio/mockups.py) — `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `make()`, `finish()`, `_run_script()` (both start their script the same way), `_shown` (the one demo book), `_run_stop` (the one run's «Зупинити»), `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `_cut_without_background()`, `make()`, `finish()`, `_run_script()` (both start their script the same way), `_shown` (the one demo book), `_run_stop` (the one run's «Зупинити»), `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
 - [app/studio/mockups.jsx](../../app/studio/mockups.jsx) — `openCover()`, `closeCover()`, `findLayer()`, `replaceContents()`, `fill()`, `savePng()`, `runTemplate()`, `findOpen()`, `finishOpen()`, `report()`, `cancelled()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
-- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `paintHead()`, `finishPage()`, `mount()`, `paintBook()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
-- [app/web/js/pages/mockups-run.js](../../app/web/js/pages/mockups-run.js) — step 4 drawn: `runView()`, `rowsHtml()`, `resultCard()`, `turnCard()`, `finishedCard()`
+- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
+- [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — step 4, the listing slides: `slidesStep()` ([slides](slides.md))
+- [app/web/js/pages/mockups-run.js](../../app/web/js/pages/mockups-run.js) — step 3 drawn: `runView()`, `rowsHtml()`, `resultCard()`, `turnCard()`, `finishedCard()`
 - [app/web/js/app.js](../../app/web/js/app.js) — the route `#/mockups`, `paintBusy()` (the rail's dot)
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_zip()`, `downloads_folder()`, `attention()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `export_files()` (the same naming rules as the print folder), `archive_folder()`
@@ -275,6 +290,6 @@ icon, «Мокапи: готово · 7 картинок», back in the listings
 
 ## Related
 
-- [Two modes](modes.md) · [The plan and the templates](../plans/listing-mockups.md) · [Security](../security.md) ·
+- [Listing slides](slides.md) · [Two modes](modes.md) · [The plan and the templates](../plans/listing-mockups.md) · [Security](../security.md) ·
   [Dragging files](../flows/dropped-files.md) · [Decisions](../decisions.md) · [Preview](../dev/preview.md) ·
   [Launch and shutdown](../architecture/runtime.md)

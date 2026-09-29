@@ -1,7 +1,8 @@
 // Listing mockups: the demo book's Canva ZIP comes in, the presentable spreads are picked, and one Photoshop
 // script fills the owner's templates — pages, back cover and spine everywhere; the front cover he fits himself in
 // the three templates left open, and «Зберегти відкриті» saves those too (wiki/features/mockups.md).
-// Laid out like Book Studio's Order Creator: numbered steps on the left, the book's structure on the right.
+// Laid out like Book Studio's Order Creator: numbered steps on the left, the book's structure on the right — the
+// demo book comes in there (a drop or a click; its own step «Демо-книга з Canva» doubled it and went, 29.09.2026).
 // A page of the Listings mode (#/mockups; until 24.09.2026 a window of its own). It is kept when the owner steps
 // away (keep()): the book, the picks and a run going on in Photoshop wait for him; a small dot on the rail says a
 // run is on, and a notice says when it ends.
@@ -12,6 +13,7 @@ import {
 import { openLightbox } from '../lightbox.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { PICTURES, runView, rowsHtml, resultCard, turnCard, finishedCard } from './mockups-run.js';
+import { slidesStep } from './mockups-slides.js';
 
 const THUMB_H = 360;          // a spread tile (two 180-px pages side by side)
 const SLOT_H = 120;           // a spread in a template slot
@@ -99,10 +101,10 @@ export async function mount(view) {
       <div id="mk-lost"></div>
       <div class="creator-grid mk-layout">
         <div class="stack mk-steps">
-          <section class="card card-pad stack" id="mk-s1"></section>
           <section class="card card-pad stack" id="mk-s2"></section>
           <section class="card card-pad stack" id="mk-s3"></section>
           <section class="card card-pad stack" id="mk-s4"></section>
+          <section class="card card-pad stack" id="mk-s5" hidden></section>
         </div>
         <section class="card card-pad stack-l mk-structure" id="mk-right"></section>
       </div>
@@ -112,7 +114,7 @@ export async function mount(view) {
   // Every part painted again in its place — the page itself stays (a book taken used to rebuild it, and all six
   // templates' pictures faded in again, 26.09.2026).
   function paintAll() {
-    paintHead(); paintLost(); paintBook(); paintTemplates(); paintOut(); paintAction(); paintStructure();
+    paintHead(); paintLost(); paintTemplates(); paintOut(); paintAction(); paintStructure(); slides.paint();
   }
 
   // The header: where the templates and Photoshop are; «×» — this book is done, the page starts clean (the owner,
@@ -121,13 +123,13 @@ export async function mount(view) {
   function paintHead() {
     const box = $('#mk-actions');
     if (!box) return;
-    setHtml(box, html`<div class="tools">${ib('sliders', 'Де шаблони і Photoshop', 'data-act="places"')}
+    setHtml(box, html`<div class="tools">${ib('images', 'Слайди для лістингу — книг і шаблон', 'data-act="sl-sets"')}${ib('sliders', 'Де шаблони і Photoshop', 'data-act="places"')}
       ${something() ? html`<span class="sep"></span>${ib('x', 'Завершити — наступна книга з чистого аркуша', 'data-act="close"')}` : ''}</div>`);
   }
 
   async function finishPage() {
     if (st.run || st.asking || st.receiving !== null) {
-      toast(st.run ? 'Photoshop ще працює — дочекайтесь або зупиніть його (× у кроці 4)' : 'Зачекайте хвилинку — вікно Windows ще відкрите', 'info');
+      toast(st.run ? 'Photoshop ще працює — дочекайтесь або зупиніть його (× у кроці 3)' : 'Зачекайте хвилинку — вікно Windows ще відкрите', 'info');
       return;
     }
     if (st.pending) {
@@ -144,6 +146,7 @@ export async function mount(view) {
     if (gone) return;
     Object.assign(st, { book: null, label: '', receiving: null, bookError: '', out: '', asking: false, run: null,
       result: null, finished: null, pending: null, runError: '' });
+    slides.reset();
     resetPicks();
     paintAll();
     toast('Мокапи завершено — можна брати наступну книгу', 'success');
@@ -161,26 +164,23 @@ export async function mount(view) {
       ${ib('folderPick', x.what === 'templates' ? 'Вказати папку з трафаретами' : 'Вказати папку з Photoshop', `data-act="place" data-what="${x.what}"`, { cls: 'sm' })}</div>`));
   }
 
-  // ---------------------------------------------------------------- 1 · the demo book
-  function paintBook() {
-    let badge = '';
+  // ---------------------------------------------------------------- the demo book's state, in the structure's header
+  // Another book coming in while one is shown (a drop, or the folder button there): a badge; a book that couldn't be
+  // read: a line under the header.
+  function paintBookState() {
+    const box = $('#mk-book-state');
+    if (!box) return;
     const spin = html`<span class="spinner"></span>`;
+    let badge = '';
     if (st.receiving === 'ask') badge = html`<span class="v-badge run">${spin}Вікно Windows</span>`;
     else if (st.receiving === 'unzip') badge = html`<span class="v-badge run">${spin}Розпаковую</span>`;
     else if (st.receiving !== null) badge = html`<span class="v-badge run">${spin}<span class="num">${Math.round(st.receiving)}%</span></span>`;
-    else if (st.bookError) badge = html`<span class="v-badge bad">${ic('x')}Не прочитано</span>`;
-    else if (st.book) badge = html`<span class="v-badge ok" data-tip="Обкладинку і всі сторінки прочитано">${ic('check')}<span class="num">${st.book.pageCount}</span> стор.</span>`;
-    setHtml($('#mk-s1'), html`
-      <div class="row">${stepNo(1, !!st.book)}<h3 class="card-title grow">Демо-книга з Canva</h3>${badge}</div>
-      <div class="input-group">
-        <input class="input path-input mk-path" id="mk-book" readonly value="${st.label}" title="${st.label}" data-act="pick-zip"
-          placeholder="Перетягніть ZIP сюди або оберіть файл" aria-label="Демо-книга з Canva" spellcheck="false">
-        ${ib('folderPick', 'Обрати ZIP-архів', 'data-act="pick-zip"')}
-      </div>
-      ${st.bookError ? html`<div class="notice notice-error">${ic('alertCircle')}<div>${st.bookError}</div></div>` : ''}`);
+    setHtml(box, badge);
+    const err = $('#mk-book-error');
+    if (err) setHtml(err, st.bookError ? html`<div class="notice notice-error">${ic('alertCircle')}<div>${st.bookError}</div></div>` : '');
   }
 
-  // ---------------------------------------------------------------- 2 · spreads in the templates
+  // ---------------------------------------------------------------- 1 · spreads in the templates
   function paintTemplates() {
     const box = $('#mk-s2');
     if (!box.querySelector('.mk-tpls')) {
@@ -243,7 +243,7 @@ export async function mount(view) {
   function paintPicks() {
     const total = slotsInOrder().length, left = missing(), filled = total - left;
     const full = !!st.book && !left;
-    setHtml($('#mk-s2-head'), html`${stepNo(2, full)}<h3 class="card-title grow">Розвороти в шаблонах</h3>
+    setHtml($('#mk-s2-head'), html`${stepNo(1, full)}<h3 class="card-title grow">Розвороти в шаблонах</h3>
       ${filled && !st.run ? ib('eraser', 'Прибрати всі розвороти', 'data-act="clear-all"', { cls: 'sm' }) : ''}
       <span class="v-badge ${full ? 'ok' : ''}" data-tip="Заповнено місць у шаблонах">${full ? ic('check') : ''}<span class="num">${filled}/${total}</span></span>`);
     const hint = $('#mk-hint');
@@ -268,11 +268,11 @@ export async function mount(view) {
     }
   }
 
-  // ---------------------------------------------------------------- 3 · where the pictures go
+  // ---------------------------------------------------------------- 2 · where the pictures go
   function paintOut() {
     const last = st.meta.lastOut;
     setHtml($('#mk-s3'), html`
-      <div class="row">${stepNo(3, !!st.out)}<h3 class="card-title grow">Куди зберегти</h3>
+      <div class="row">${stepNo(2, !!st.out)}<h3 class="card-title grow">Куди зберегти</h3>
         ${st.asking ? html`<span class="v-badge run"><span class="spinner"></span>Вікно Windows</span>` : ''}</div>
       <div class="input-group">
         <input class="input path-input mk-path" id="mk-out" readonly value="${st.out}" title="${st.out}" data-act="pick-out"
@@ -284,11 +284,11 @@ export async function mount(view) {
       ${st.out ? html`<div class="mk-foot">Наявні картинки з такою самою назвою не перезаписуються — нові отримають « (2)».</div>` : ''}`);
   }
 
-  // ---------------------------------------------------------------- 4 · Photoshop: the button, the run, the results
+  // ---------------------------------------------------------------- 3 · Photoshop: the button, the run, the results
   function paintAction() {
     const box = $('#mk-s4');
     if (!box) return;
-    const head = html`<div class="row">${stepNo(4, !!st.result && !st.run && !st.result.cancelled)}<h3 class="card-title grow">Photoshop</h3>
+    const head = html`<div class="row">${stepNo(3, !!st.result && !st.run && !st.result.cancelled)}<h3 class="card-title grow">Photoshop</h3>
       ${st.run ? ib('x', 'Зупинити', 'data-act="stop"', { cls: 'sm' }) : ''}</div>`;
     if (st.asking) {
       setHtml(box, html`${head}<div class="mk-waiting"><span class="spinner"></span><span>Оберіть папку у вікні Windows «Куди зберегти мокапи»</span></div>`);
@@ -340,7 +340,8 @@ export async function mount(view) {
       const doing = st.receiving === 'ask' ? 'Оберіть архів у вікні Windows'
         : st.receiving === 'unzip' ? 'Розпаковую архів…' : html`Отримую архів… <span class="num">${Math.round(st.receiving || 0)}%</span>`;
       setHtml(box, html`
-        <div class="row"><h2 class="card-title grow" style="font-size:17px">Структура</h2></div>
+        <div class="row"><h2 class="card-title grow" style="font-size:17px">Структура</h2><span id="mk-book-state"></span></div>
+        <div id="mk-book-error"></div>
         <div class="mk-ghost ${busy ? 'busy' : ''}" data-act="pick-zip" role="button" tabindex="0" aria-label="Обрати ZIP-архів із Canva">
           <div class="mk-ghost-art">
             <div class="mk-top">
@@ -353,6 +354,7 @@ export async function mount(view) {
           <div class="mk-veil">${busy ? html`<div class="spinner spinner-l"></div><b>${doing}</b>`
             : html`<div class="drop-ico">${ic('upload')}</div><b>Перетягніть сюди ZIP із Canva</b><span>або клацніть, щоб вибрати файл</span>`}</div>
         </div>`);
+      paintBookState();
       return;
     }
     const b = st.book;
@@ -360,7 +362,10 @@ export async function mount(view) {
       <div class="row" style="align-items:baseline">
         <h2 class="card-title grow" style="font-size:17px">Структура <span class="faint" style="font-weight:500">· ${bookName() ? html`${bookName()} · ` : ''}<span class="num">${b.pageCount}</span> стор.</span></h2>
         <span class="mk-next" id="mk-next"></span>
+        <span id="mk-book-state"></span>
+        ${ib('folderPick', 'Інша демо-книга — ZIP із Canva (або перетягніть його сюди)', 'data-act="pick-zip"', { cls: 'sm' })}
       </div>
+      <div id="mk-book-error"></div>
       <div class="mk-top">
         <div class="stack-s">
           <div class="row"><span class="eyebrow grow">Обкладинка</span><span class="mk-to">задня й корінець → у шаблони</span></div>
@@ -384,6 +389,7 @@ export async function mount(view) {
         <div class="spread-grid mk-grid" id="mk-grid">${b.spreads.map(([n]) => spreadTile(n))}</div>
       </div>`);
     fadeImages(box);
+    paintBookState();
     paintTiles();
   }
 
@@ -479,8 +485,8 @@ export async function mount(view) {
   const bookBusy = () => st.receiving !== null || !!st.run;
 
   function paintReceiving() {
-    paintBook();
     if (!st.book) paintStructure();
+    else paintBookState();
   }
 
   async function loadBook(label, fetchBook) {
@@ -517,7 +523,7 @@ export async function mount(view) {
       return post('/api/mockups/book', { path });
     });
   }
-  wireFolderDrop(view, () => $('#mk-book'), takeDrop);
+  wireFolderDrop(view, () => $('#mk-right'), takeDrop);
 
   async function pickZip() {
     if (bookBusy()) return;
@@ -538,8 +544,8 @@ export async function mount(view) {
   async function make() {
     if (st.run || st.asking) return;
     if (!st.book) {
-      toast('Спершу додайте демо-книгу: перетягніть ZIP із Canva', 'info');
-      blink([$('#mk-book')]);
+      toast('Спершу додайте демо-книгу: перетягніть ZIP із Canva у «Структуру» або клацніть там', 'info');
+      blink([$('.mk-ghost')].filter(Boolean));
       return;
     }
     const empty = slotsInOrder().filter((s) => st.picks[s.key][s.i] === null);
@@ -571,7 +577,8 @@ export async function mount(view) {
 
   function start(mode, request) {
     st.runError = '';
-    if (mode === 'make') { st.result = null; st.finished = null; }
+    if (mode === 'make') { st.result = null; st.finished = null; slides.reset(); }
+    slides.runStarted(); // its pictures' cut-outs are followed again (a «Зберегти відкриті» adds Cover 1)
     st.run = { mode, phase: 'prepare', step: 'Починаю…', percent: 0, rows: [] };
     paintAction(); paintPicks(); paintTiles();
     follow(request);
@@ -608,7 +615,7 @@ export async function mount(view) {
       if (!gone) busy(false);
     }
     st.run = null;
-    if (!gone) { paintAction(); paintPicks(); paintTiles(); paintHead(); }
+    if (!gone) { paintAction(); paintPicks(); paintTiles(); paintHead(); slides.paint(); }
   }
 
   // The owner watches Photoshop while it works: the window's title says how it ended (app.js keeps it there until
@@ -655,10 +662,18 @@ export async function mount(view) {
     paintLost(); paintTemplates(); paintAction();
   }
 
+  // ---------------------------------------------------------------- step 4: the listing slides (mockups-slides.js)
+  const slides = slidesStep({
+    view, st, stepNo, tellDone, busy,
+    blinkFinish: () => { const b = $('[data-act="finish"]'); if (b) { b.scrollIntoView({ block: 'center', behavior: 'smooth' }); blink([b]); } },
+  });
+  offs.push(on(view, 'change', '#mk-s5 input[data-num]', (e, t) => slides.input(t)));
+
   // ---------------------------------------------------------------- events
   const slotOf = (v) => { const [key, i] = String(v).split(':'); return { key, i: +i }; };
   offs.push(on(view, 'click', '[data-act], .mk-spread, .mk-slot[data-slot]', async (e, t) => {
     const act = t.dataset.act;
+    if (act?.startsWith('sl-') || act === 'open-nobg') { await slides.act(act, t); return; }
     if (act === 'zoom') { e.stopPropagation(); openSpread(+t.dataset.n); return; }
     if (act === 'clear' || act === 'unpick') {
       e.stopPropagation();
@@ -751,8 +766,8 @@ export async function mount(view) {
 
   return {
     // Kept when the owner steps away while there is something to come back to: a book, a run, its result.
-    keep: () => !!(st.book || st.run || st.result || st.finished || st.receiving !== null),
-    revive: () => true,
-    unmount() { gone = true; offs.forEach((off) => off()); if (st.run) busy(false); },
+    keep: () => !!(st.book || st.run || st.result || st.finished || st.receiving !== null || slides.keep()),
+    revive: () => { slides.wake(); return true; },
+    unmount() { gone = true; slides.stop(); offs.forEach((off) => off()); if (st.run) busy(false); },
   };
 }

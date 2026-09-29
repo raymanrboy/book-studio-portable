@@ -1,7 +1,7 @@
 ---
 title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/creator/
   - app/web/js/pages/creator.js
@@ -20,7 +20,10 @@ code:
 
 - Header: the service name, the **"Send journal"** icon ([send-journal.md](send-journal.md)), and the
   **Printify / Gelato** switch (Printify mode uses a lime-green accent, Gelato — blue, `.creator.mode-gelato`; since 2026-09-25 set
-  explicitly, because the Orders mode's own accent is orange). Below it, a line
+  explicitly, because the Orders mode's own accent is orange). **From 1 October 2026 there is no switch**: only
+  Gelato (`gelatoOnly` from `status.printify.retired`; a hand-over in Printify mode opens Gelato; the Printify routes
+  refuse — [printify](../integrations/printify.md)). Drafts go to the main Gelato account only — after the move to
+  his own account, the new one ([gelato](../integrations/gelato.md)). Below it, a line
   appears only when something is missing (a key, the template, `cloudflared.exe`), with a link to
   Settings. For Gelato — active temporary links, if any.
 - Left column — the steps:

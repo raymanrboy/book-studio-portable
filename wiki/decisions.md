@@ -1,13 +1,56 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-09-28
+updated: 2026-09-29
 code: []
 ---
 # Decisions
 
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
+
+## 2026-09-29 — Listing slides move into Book Studio
+
+- **Decision (the owner, the same evening):** "integrate it into our program at once" — the slide tool becomes a
+  **separate module of Book Studio's Listings mode, called only when needed**, with the editor in Book Studio's
+  style, plus a **skill** for working on the slides through an agent ("sometimes it will be easier for me to work
+  through an LLM"). Plan first, then built phase by phase ([plan](plans/listing-pictures.md)). Replaces
+  "outside Book Studio for now" below.
+- **How (the owner, then the defaults of the plan):** no page in the rail — the slides are the Mockups' next steps
+  ("after the Photoshop script the Mockups page offers the next step; I press it and they are made by themselves;
+  then a button offers the editor"); the Mockups save every picture **without background** too (`Без фону\`, only
+  Open 1, Open 2, Cover 1 can be cut); **one template** for every book — a book gets its own copy, «Зробити
+  шаблоном» carries a slide back; the files `Listing 1…6.png` in the mockups' folder; an agent's change in the
+  files shows up in the open editor, a save made on an old version is refused, never overwriting it
+  ([features/slides.md](features/slides.md)).
+
+## 2026-09-29 — Listing slides: our own tool, outside Book Studio for now
+
+- **Decision (the owner):** the six Etsy listing pictures he makes in Canva are made by a tool of our own —
+  no Canva, no Canva connector ("create an entirely new tool of your own"). His layout, reproduced closely,
+  with torn-paper edges, a die-cut sticker, sparkles and faint leaf shadows; the final touches he makes by hand
+  in a small Canva-like editor, then the agent bakes them. **It stays an external tool for now** — "don't
+  integrate it into Book Studio yet" — in `D:\Roman\Desktop\moсkup studio\Slide Editor\`
+  ([plan](plans/listing-pictures.md)).
+- **How the book is cut out** (the agent): the templates' Multiply/Screen shadow layers turned into
+  transparent black/white, the outline from `BOOK/OBJECT`'s mask — nothing to change in Photoshop or the
+  templates (only read).
+
+## 2026-09-29 — From 1 October only Gelato, on his own account; Profit turned on
+
+- **Decision (the owner):** "from 1 October I move only to Gelato, on my own account"; his "alternative printer" is
+  that own Gelato account, nothing third. Printify gets **no new books** from 1 October 2026, US hardcovers included;
+  it is only read while its earlier orders finish (the owner picked this over "keep as now" and "turn it off
+  entirely"). **How (the agent):** a date in the code (`printify.READ_ONLY_FROM`), not a switch in Settings — the
+  owner doesn't want switches for this (2026-09-25), and on that day the program changes by itself; Printify's code
+  stays whole, so going back is one date ([recipe](recipes.md)). An archived Printify book gets no reprint button:
+  24 pages don't fit Gelato.
+- **The smooth switch as agreed on 2026-09-27**, with two engineering choices: an order's account is a hash of its
+  key (never the key); the old key is needed only until none of his orders there waits, prints or travels — not
+  until the archive days are over — because the safety net keeps every known order anyway.
+- **Profit in the rail now, counting from 1 October** (the owner picked "at once, counts from 1 October" over
+  "appears by itself on 1 October"): empty until the first October sale. The day is midnight on this computer's
+  clock.
 
 ## 2026-09-28 — Printify "Fulfilled" reads as In transit / Delivered
 

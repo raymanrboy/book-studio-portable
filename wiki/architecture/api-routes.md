@@ -1,8 +1,9 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-09-27
+updated: 2026-09-29
 code:
+  - app/studio/gelato_accounts.py
   - app/studio/archive.py
   - app/studio/server.py
   - app/studio/settings_api.py
@@ -17,6 +18,7 @@ code:
   - app/studio/textcheck/
   - app/studio/drops.py
   - app/studio/mockups.py
+  - app/studio/slides/routes.py
   - app/studio/workshop/routes.py
 ---
 # Server routes
@@ -143,8 +145,8 @@ The Listings mode's books in development — the book pipeline's folders ([featu
 | POST | `/api/creator/replace-page` | token | `_replace_page` | orders.js / creator.js `replacePage` (a new page in place of one in the print folder) |
 | POST | `/api/creator/restore-page` | token | `_restore_page` | orders.js / creator.js `restorePage` (undo the previous page) |
 | POST | `/api/creator/pick-folder` | token | `_pick` | creator.js, orders.js |
-| POST | `/api/creator/printify/create` | token | `_create_printify` | creator.js (background job) |
-| POST | `/api/creator/printify/reprint` | token | `_reprint_printify` | creator.js `create` in reprint-from-archive mode (background job; a new order for the same book; from a send that never became an order — 409) |
+| POST | `/api/creator/printify/create` | token | `_create_printify` | creator.js (background job; from 1 October 2026 — refused, 403) |
+| POST | `/api/creator/printify/reprint` | token | `_reprint_printify` | creator.js `create` in reprint-from-archive mode (background job; a new order for the same book; from a send that never became an order — 409; from 1 October 2026 — refused, 403) |
 | POST | `/api/creator/gelato/create` | token | `_create_gelato` | creator.js (background job; with `reprintOf` — a reprint draft from the archive's files, only from a book that really went to print) |
 | GET | `/api/creator/gelato/page-counts` | token | `_gelato_page_counts` | creator.js `loadPageCounts` (how many pages Gelato prints in each format — from its catalog; `problems` — ready-made text for each length it doesn't print) |
 | POST | `/api/creator/gelato/close-tunnel` | token | `_close_tunnel` | creator.js |
@@ -186,6 +188,32 @@ them) — see [features/mockups.md](../features/mockups.md).
 | GET | `/media/mockups/out/([0-9a-f]{12})/([0-9]+)` | media | `_out_media` | mockups.js (`?w=` — a picture a job saved, by its number) |
 | GET | `/media/mockups/([0-9a-f]{16})/(cover\|page\|spread)` | media | `_media` | mockups.js (`?n=&w=` / `?n=&h=` — a page, the cover, a spread glued together) |
 
+## Listing slides — [slides/routes.py](../../app/studio/slides/routes.py)
+
+Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a set's id or `template`, `s` — `slide1…6`.
+
+| Method | Pattern | Access | Function | Who calls it |
+|---|---|---|---|---|
+| GET | `/api/slides/sets` | token | `_sets` | mockups-slides.js `openSets` (the header's ▣: the books whose slides are kept) |
+| GET | `/api/slides/state` | token | `_state` | slides-editor.js, mockups-slides.js `refresh` (`?w=`: name, folder, numbers, slides, the baked pictures, slots, signature) |
+| GET | `/api/slides/scene` | token | `_scene` | slides-editor.js (`?w=&s=` → `{scene, version}`) |
+| GET | `/media/slides/scene` | media | `_scene` | slides/render.html — the page headless Edge bakes |
+| GET | `/api/slides/assets` | token | `_assets` | slides-editor.js (the slots' pictures, where the books sit, the numbers) |
+| GET | `/media/slides/assets` | media | `_assets` | slides/render.html |
+| GET | `/media/slides/file/(\d{8}-\d{6}-[0-9a-f]{6})/(books\|pictures)/([\w.-]+\.png)` | media | `_file` | engine.js (a set's cut-out book, its shadow, a flat picture) |
+| GET | `/api/slides/sig` | token | `_sig` | slides-editor.js `watch` every 1.5 s (a scene changed by an agent shows up) |
+| POST | `/api/slides/scene` | token | `_save` | slides-editor.js `flush` (`{w, s, scene, base}` — a stale `base` → 409 with the scene as it is now) |
+| POST | `/api/slides/reset` | token | `_reset` | slides-editor.js «Скинути слайд» |
+| POST | `/api/slides/to-template` | token | `_to_template` | slides-editor.js «Зробити шаблоном» |
+| POST | `/api/slides/numbers` | token | `_numbers` | slides-editor.js (the book's «Сторінок» / «Віршів») |
+| POST | `/api/slides/picture` | token | `_picture` | slides-editor.js «Інша картинка…» (the Windows dialog → a set's `dedication` / `page30`) |
+| GET | `/api/slides/cutouts` | token | `_cutouts` | mockups-slides.js (`?folder=` — which mockups are cut «Без фону») |
+| POST | `/api/slides/make` | token | `_make` | mockups-slides.js «Зробити слайди» (job `slides`: `{folder, order, book, numbers}` → a set, the six baked) |
+| POST | `/api/slides/bake` | token | `_bake` | slides-editor.js «Зберегти картинки» (job `slides`: the set's slides into the same files) |
+| GET | `/media/slides/out/(\d{8}-\d{6}-[0-9a-f]{6})/(slide[1-6])` | media | `_out` | mockups-slides.js (`?w=&v=` — a baked slide's preview) |
+| POST | `/api/slides/open-picture` | token | `_open_picture` | mockups-slides.js, the viewer's "original" button |
+| POST | `/api/slides/open-folder` | token | `_open_folder` | (a set's folder, `noBg` — its «Без фону») |
+
 ## Sync — [sync.py](../../app/studio/sync.py)
 
 | Method | Pattern | Access | Function | Who calls it |
@@ -197,9 +225,9 @@ them) — see [features/mockups.md](../features/mockups.md).
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/profit/data` | token | `_data` | profit.js |
-| GET | `/api/profit/row` | token | `_row` | profit.js |
-| GET | `/api/profit/candidates` | token | `_candidates` | profit.js |
+| GET | `/api/profit/data` | token | `_data` | profit.js (only sales from `ACCOUNTING_FROM`, 1 October 2026; `accountingFrom`) |
+| GET | `/api/profit/row` | token | `_row` | profit.js (an older sale — 404) |
+| GET | `/api/profit/candidates` | token | `_candidates` | profit.js (print orders from 1 October only) |
 | POST | `/api/profit/links` | token | `_set_link` | profit.js |
 | DELETE | `/api/profit/links` | token | `_delete_link` | profit.js |
 | POST | `/api/profit/state` | token | `_set_state` | profit.js |
@@ -227,7 +255,14 @@ them) — see [features/mockups.md](../features/mockups.md).
 | GET | `/api/printify/products` | token | `_products` | settings.js `pickMaster` |
 | POST | `/api/printify/master/analyze` | token | `_analyze` | settings.js `pickMaster` |
 | POST | `/api/printify/master/save` | token | `_save_master` | settings.js `pickMaster` |
-| POST | `/api/gelato/test` | token | `_test` | settings.js |
+| POST | `/api/gelato/test` | token | `_test` | settings.js (`{account: "old"}` — the old account's key) |
+
+## His own Gelato account — [gelato_accounts.py](../../app/studio/gelato_accounts.py)
+
+| Method | Pattern | Access | Function | Who calls it |
+|---|---|---|---|---|
+| POST | `/api/gelato/switch` | token | `_switch` | settings.js `switchGelato` (`{key}`: checked by reading one order; the current key becomes the old, read-only one; refused on the preview server, during a sync, with the same key, or while an old key is kept) |
+| POST | `/api/gelato/old/forget` | token | `_forget` | settings.js `forgetOldGelato` (the old key goes; its orders stay as last seen) |
 
 ## Order archive — [archive.py](../../app/studio/archive.py)
 

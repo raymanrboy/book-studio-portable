@@ -24,7 +24,8 @@ If the wiki contradicts the code — the code is the truth; fix the wiki within 
 
 In full — [`wiki/security.md`](wiki/security.md). Briefly:
 - **Never open Etsy from this (Wrocław) PC**, in any browser; sign in to Etsy only on the Kyiv PC.
-- Etsy — **read-only**. Gelato — **drafts only**. Printify — only image uploads, an unpublished
+- Etsy — **read-only**. Gelato — **drafts only** (the old account after the move to the owner's own one — read
+  only). Printify — **read-only from 1 October 2026**; before: only image uploads, an unpublished
   product, and "On hold" orders after manual-approval confirmation; never send to production, cancel,
   use Express, publish, or change/delete products; the Master is never changed.
 - **No live writes** to the owner's accounts without his direct permission in chat. Checks are done with
@@ -60,6 +61,8 @@ app/                    the program: studio/ (Python server), web/ (interface), 
 pipeline/               the book pipeline — the book agents' rules and playbook (Antigravity opens this folder);
                         its books/ (the Workshop's books, every picture) — local only, not in git
 wiki/                   knowledge base (index.md — entry point, log.md — change log, raw/ — owner's sources)
+examples/               the owner's examples for the listing slides (his Canva slides, sample mockups) — local only
+Трафарети мастхев (копія)/  a spare copy of the mockup templates — local only, read-only, never used by the program
 .claude/                interface preview and Claude Code skills
 ```
 

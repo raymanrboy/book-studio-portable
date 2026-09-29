@@ -1,0 +1,163 @@
+{
+ "title": "Слайд №6 · Thank you",
+ "bg": "#eedec7",
+ "items": [
+  {
+   "name": "Світла пляма 1",
+   "type": "blob",
+   "x": 620,
+   "y": 470,
+   "w": 520,
+   "h": 360,
+   "rot": 0,
+   "seed": 3,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 2",
+   "type": "blob",
+   "x": 80,
+   "y": 700,
+   "w": 220,
+   "h": 420,
+   "rot": 0,
+   "seed": 6,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 3",
+   "type": "blob",
+   "x": 930,
+   "y": 560,
+   "w": 220,
+   "h": 420,
+   "rot": 0,
+   "seed": 12,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Зерно паперу",
+   "type": "grain",
+   "x": 500,
+   "y": 500,
+   "locked": true
+  },
+  {
+   "name": "Персикова смуга",
+   "type": "band",
+   "x": 255,
+   "y": 700,
+   "w": 170,
+   "h": 900,
+   "rot": -19.3,
+   "color": "#e8c59d",
+   "seed": 21
+  },
+  {
+   "name": "Пунктир",
+   "type": "dashes",
+   "x": 242.5,
+   "y": 675.0,
+   "w": 715.0,
+   "h": 20,
+   "rot": 71.7,
+   "count": 9,
+   "dash": 62,
+   "color": "#ffffff"
+  },
+  {
+   "name": "Оливкова смуга",
+   "type": "band",
+   "x": 464.3,
+   "y": -7.9,
+   "w": 1300,
+   "h": 600,
+   "rot": -6.84,
+   "color": "#a2a066",
+   "seed": 4
+  },
+  {
+   "name": "Розворот",
+   "type": "book",
+   "x": 728,
+   "y": 697,
+   "w": 1075,
+   "rot": 0,
+   "slot": "open2:2"
+  },
+  {
+   "name": "Заголовок",
+   "type": "text",
+   "text": "Thank you for shopping\nsmall",
+   "x": 358,
+   "y": 80,
+   "size": 40,
+   "w": 640,
+   "rot": -5,
+   "align": "center",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Текст",
+   "type": "text",
+   "text": "If you have a question or need support, simply\nsend us a message. We'll gladly do everything we\ncan to make your experience as special as the\nstory we create for your little one.",
+   "x": 500,
+   "y": 218,
+   "size": 26,
+   "w": 930,
+   "rot": -7,
+   "align": "left",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Тінь листя",
+   "type": "leaves",
+   "x": 880,
+   "y": 560,
+   "w": 600,
+   "h": 600,
+   "rot": 0,
+   "opacity": 0.085
+  },
+  {
+   "name": "Сердечко",
+   "type": "heart",
+   "x": 845,
+   "y": 352,
+   "w": 240,
+   "h": 225,
+   "rot": -8,
+   "color": "#e8c59d",
+   "icon": "thumb"
+  },
+  {
+   "name": "Зірочка 1",
+   "type": "sparkle",
+   "x": 55,
+   "y": 520,
+   "size": 16
+  },
+  {
+   "name": "Зірочка 2",
+   "type": "sparkle",
+   "x": 86,
+   "y": 486,
+   "size": 8
+  },
+  {
+   "name": "Зірочка 3",
+   "type": "sparkle",
+   "x": 600,
+   "y": 384,
+   "size": 13
+  },
+  {
+   "name": "Зірочка 4",
+   "type": "sparkle",
+   "x": 632,
+   "y": 410,
+   "size": 7
+  }
+ ],
+ "id": "slide6"
+}

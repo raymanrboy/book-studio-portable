@@ -1,13 +1,13 @@
 ---
 title: Tests
 type: dev
-updated: 2026-09-28
+updated: 2026-09-29
 code:
   - app/tests/
 ---
 # Tests
 
-> 407 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
+> 443 tests on the standard `unittest`. No real requests or accounts: services are faked, data is
 > **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
 > whatever it was before) in `.tmp\` of the repository on drive D, wiped at the end; buyers are made up. The
 > Workshop's tests run in its sandbox (`BOOK_STUDIO_SANDBOX`): made-up books, Downloads, clipboard and Recycle Bin
@@ -43,6 +43,9 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
   — and they clear whole folders (`shutil.rmtree(archive.ROOT)`), so running from a configured shell
   could wipe the real archive. Found by the audit; checked by `TestsNeverRunOnRealData` in
   `test_orders.py`.
+- **The day** (since 2026-09-29): `tests/__init__.py` moves `printify.READ_ONLY_FROM` to `date.max`, so the suite
+  checks Printify's work and the printer rule as before 1 October 2026 on whatever day it runs; `GelatoOnly` in
+  `test_orders.py` stands in `printify.retired()` for the Gelato-only days and checks the real date on its own.
 - **Printify** is swapped for `FakePrintify` (in memory: uploads, products, Master, orders on hold; one copy in
   `tests/fixtures.py` since 2026-09-27, with `png()` and `book()` — the made-up print folders) via
   `mock.patch.object(printify, "call", …)`; the real `_check()` still runs underneath — the test catches
@@ -99,14 +102,16 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 
 | File | Classes |
 |---|---|
-| [test_profit.py](../../app/tests/test_profit.py) | `ProfitParity`, `FeeRules`, `NameMatching` |
+| [test_profit.py](../../app/tests/test_profit.py) | `ProfitParity`, `FeeRules`, `NameMatching`, `BookkeepingStart` (only sales and print orders from 1 October 2026; the queue keeps every order) |
+| [test_gelato_accounts.py](../../app/tests/test_gelato_accounts.py) | `Accounts` — two made-up Gelato accounts: a switch in the middle of work, an old order shipped after it (tracking read with the old key), the old key removed (its orders and the archive's book stay), a deleted draft still goes, an account that fails or is cut keeps its orders, nothing created with the old key, the new key checked by one read, the switch's refusals (the preview server too); `OpenOrders` (when the old key is no longer needed) |
 | [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `SeveralPrintOrdersForOneReceipt` (a receipt with two print orders), `SentStage`, `GelatoTracking`, `IncrementalSync`, `StateApi` |
 | [test_library_creator.py](../../app/tests/test_library_creator.py) | `TextJson`, `FolderScan`, `PrintifyValidation` (including: a newer folder check stops an older one; only the page's check warms the previews), `GelatoValidation`, `ReplacePage` (replacing a single page, "Undo" after a restart, two replacements within a second, replacement blocked during a send — and when a folder is sent to two printers at once, exactly what's allowed to be written), `NothingIsLostWhenAWriteFails`, `JsonFiles` (`.bak` and a deleted file), `SafetyRails` (including: a POST that may have gone through is not retried; both printers read errors the same way) |
 | [test_flows.py](../../app/tests/test_flows.py) | `PrintifyDraftFlow` (including: two books — one order with two line items; the receipt number as its own field; an unrecorded cost — a warning), `GelatoDraftFlow` (including: two books — one draft with two items; an unclear result keeps the link; one shared length-problem text), `CreatorStartsEmpty`, `DroppedFolders` (including: a folder for the library, each book its own child), `OpenUrlGuard`, `ProfitSyncFlow`, `EtsyOAuth` |
-| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand`, `DevToolsKeepOffRealData` (the preview server doesn't write to the real folder and doesn't take keys), `TestsNeverRunOnRealData` (and nothing on drive C), `SharedNumbers` (interface layers, preview sizes) |
+| [test_orders.py](../../app/tests/test_orders.py) | `PrinterRule`, `GelatoOnly` (from 1 October: every book to Gelato, 24 pages refused, nothing written to Printify), `ArrangePages`, `GelatoLength`, `PreparationGuide`, `PartialBookImport`, `SyncOnlyAtStartOrByHand`, `DevToolsKeepOffRealData` (the preview server doesn't write to the real folder and doesn't take keys), `TestsNeverRunOnRealData` (and nothing on drive C), `SharedNumbers` (interface layers, preview sizes) |
 | [test_archive.py](../../app/tests/test_archive.py) | `Storing`, `Removing` (including: a stale printer list proves nothing), `OnlyWhatWentToPrint` (including: "already at the printer" after a restart), `ReprintMark`, `PrintifyReprint`, `GelatoReprint` (including: a warning when the printer accepted it but the accounting wasn't recorded), `PreviewCache` (cache cleanup, locks, zoom) |
 | [test_textcheck.py](../../app/tests/test_textcheck.py) | `Words`, `BuyerFields`, `NameRules`, `Assign`, `PageIssues`, `WholeCheck` (the model is faked: it "reads" what the test "printed"), `WhileItRuns` (a spread goes to checking without waiting for the last read; findings are handed over while the check runs), `Prescan` (a quick page scan: drawn text vs. a drawn illustration, picture-only pages never reach the model, a false positive — the second half of the spread is checked), `Passport` (a name only as a whole word, and only where the passport had `{Name}`; a preview before saving), `BooksOfOneOrder` (two books of one receipt don't block each other's checks), `AnotherBookByPosition` and `WholeCheck.test_another_books_pages_raise_one_alarm` (another book's pages — one alarm), `OwnerMarks` ("Not an error" into the journal), `Replay` (`app/tools/textcheck_replay.py`), `OllamaAndRoutes` |
 | [test_mockups.py](../../app/tests/test_mockups.py) | `ReadingTheDemoBook`, `Pictures` (the back/front/spine cuts by colour, sizes, 300 dpi), `RunPlan` (every layer, the front cover never touched, names never overwrite, wrong picks, nothing points into the templates folder), `Run` (a pretend Photoshop: the templates untouched, the prepared pictures gone after it, stop, Photoshop closing, a script error), `SaidInTheLog` (the folder dialog and a failed run in the log), `Cleaning` (earlier runs with Photoshop closed / open, a copy the owner saved, Photoshop's temp folder, one demo book at a time in its own folder — an order's dropped files untouched both ways, a picked ZIP only read, the old utility's leftovers, the program's own temp folder on D), `SaveTheOpenOnes` («Зберегти відкриті»: names, offered after a reload, the run gone, a template the owner closed, Photoshop closed), `Progress` (every template's row), `PhotoshopScript` — **the real `mockups.jsx` run by Node.js against a pretend Photoshop**, the second script («Зберегти відкриті») too (skipped without `node`) |
+| [test_slides.py](../../app/tests/test_slides.py) | `TheCut` (the book opaque, the grey Multiply shadow → a transparent black one, no haze, a wrong size refused, «Без фону» never over a file, the background cutter and what it can't cut, the Mockups hand each saved picture once), `Scenes` (the template and a book's set, a stale save refused with the scene as it is now, a wrong scene refused, reset, «Зробити шаблоном», the signature, the first design's slots and numbers), `MakingThem` (the slots follow the picks, «Зробити слайди» end to end with a pretend browser — six files, its profile gone, a re-bake into the same files — names never over the owner's files, nothing to show said), `CommandLine` |
 | [test_workshop.py](../../app/tests/test_workshop.py) | In the sandbox, on made-up books: `TheSandbox` (the owner's books, clipboard and Downloads never reached; «Відкрити агента» puts the words with the pipeline's full paths — the rules and the books' folder — into the fake clipboard, since Antigravity 2 ignores the folder it is started with), `TheBookList`, `ThePathStrip`, `OnlyInsideTheBook`, `TheSignature`, `TheRows`, `TheBookCheck`, `APictureIntoItsRow`, `CatchingDownloads` (a spread of a book with a hero — the hero, then the prompt; a variant's one cover, brought to the template), `CtrlVInTheBrowser` (Ctrl+V in Chrome counts once, after V is let go; V alone or another program — never), `PassingToTheLibrary`, `OnePlaceForThePages` (a passed book's pages stay the Workshop's: nothing copied, a page changed there, the passport changes only the thumbnail, export, the Workshop book deleted, a book copied before moved over) |
 | [test_backup.py](../../app/tests/test_backup.py) | `Rules` (which copies stay, every 3 days, never by itself in the sandbox), `RealArchive` — **a real 7-Zip run** on a made-up folder: the password, the keys and the instruction inside, Edge's profile and `.tmp` left out (skipped without `app/bin/7za.exe`) |
 | [test_scripts.py](../../app/tests/test_scripts.py) | `ScriptsParse` (each script a valid ES module, by Node.js), `ScriptsImport` (a missing or unused import, a name left undeclared) |
@@ -114,7 +119,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 
 ## Where in the code
 
-- [app/tests/__init__.py](../../app/tests/__init__.py) — the temporary data folder
+- [app/tests/__init__.py](../../app/tests/__init__.py) — the temporary data folder, Printify's read-only date moved away
 - [app/tests/fixtures.py](../../app/tests/fixtures.py) — `FakePrintify`, `png()`, `book()`
 - [app/tests/test_flows.py](../../app/tests/test_flows.py) — `assert_steps()`, `journal()`
 - [app/tests/test_textcheck.py](../../app/tests/test_textcheck.py) — `gemma_answer()`

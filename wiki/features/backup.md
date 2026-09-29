@@ -1,7 +1,7 @@
 ---
 title: Backup to Google Drive
 type: feature
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/backup.py
   - app/tools/restore_keys.py
@@ -17,7 +17,9 @@ code:
 
 - The whole `Book Studio` folder: the code, `app/data` (orders archive, library, profit, logs, settings, the vault),
   the Workshop's books `pipeline/books`, `.secrets.txt` too — the owner: "just the whole folder, everything".
-  Left out only: `app/data/window-profile` (Edge holds it open), `app/data/tmp`, `.tmp`, `__pycache__` (`SKIP`).
+  Left out only: `app/data/window-profile` (Edge holds it open), `app/data/tmp`, `.tmp`, `__pycache__`, and the spare
+  copy `Трафарети мастхев (копія)` in the Book Studio folder (the templates themselves go in every copy; since
+  2026-09-29) (`SKIP`).
 - The mockup templates folder, from where it is (`mockups.places()["templates"]`, usually
   `D:\Roman\Desktop\Трафарети мастхев`) — backed up in place, not copied into the program (two copies would drift).
 - `Ключі (відкрито).json` — every key from the vault, decrypted (`Vault.readable()`), except the backup password

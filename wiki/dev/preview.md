@@ -1,7 +1,7 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-09-26
+updated: 2026-09-29
 code:
   - app/tools/dev_server.py
   - app/tools/sample_data.py
@@ -73,6 +73,11 @@ code:
   flash or sound for the mockups** — the book field's button answers with `Goose demo.zip`, "where to save" with
   `sample-mockups\out`, `attention()` does nothing (only the mockups' own `desktop` is swapped: the rest of the
   program keeps its dialogs).
+- **The listing slides** (since 2026-09-29): the slides' cut-out gets a pretend template (`pretend_template()` — the
+  book is where the pretend Photoshop lays the pages, a soft shadow down-right), so a run fills «Без фону», and
+  «Зробити слайди» bakes the six with the real headless Edge into `sample-mockups\out`. The editor's live pick-up of an
+  agent's change waits while the page is hidden — the hidden pane says `document.visibilityState === 'hidden'`: set it
+  to `visible` with `Object.defineProperty` to see it.
 - Files for a Workshop frame or the demo book: draw PNGs with `canvas` in `javascript_tool` and dispatch
   `DragEvent('dragover')` + `DragEvent('drop')` with one `DataTransfer` on `.ws-ph` (a frame) or `.mk` (the
   demo book). Then click `.mk-spread` tiles and `[data-act="make"]`, then `[data-act="finish"]`.

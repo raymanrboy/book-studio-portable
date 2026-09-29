@@ -27,6 +27,7 @@ from PIL import Image, ImageOps
 from . import core, desktop, drops, images
 from .jobs import Job, UserError, jobs
 from .server import ApiError, Request, file_response, route
+from .slides import cutout as slide_cutout
 
 # Where things are on the owner's PC; places.json overrides them when he points somewhere else.
 TEMPLATES_DIR = Path(r"D:\Roman\Desktop\Трафарети мастхев")      # read-only: only ever read and copied
@@ -429,6 +430,7 @@ def watch(job: Job, work: dict, cancel: threading.Event, clock=time.monotonic, p
     """Follows the script through its status file until it has finished (or was stopped)."""
     status_file, cancel_file = Path(work["status"]), Path(work["cancel"])
     started, seen, gone, checked, stopped = clock(), None, 0, clock(), None
+    handed: set[str] = set()   # the pictures already given to the slides' cutter
     while True:
         if cancel.is_set() and not cancel_file.exists():
             cancel_file.write_text("stop", encoding="utf-8")  # a script that starts late stops at once too
@@ -440,6 +442,7 @@ def watch(job: Job, work: dict, cancel: threading.Event, clock=time.monotonic, p
         st = _status(status_file)
         if st:
             seen = st
+            _cut_without_background(work, st, handed)
             state = st.get("state")
             job.share(progress_view(work, st, "work"))
             if state in ("done", "cancelled"):
@@ -460,6 +463,23 @@ def watch(job: Job, work: dict, cancel: threading.Event, clock=time.monotonic, p
             if gone >= GONE_CHECKS and (seen is not None or clock() - started > 60):
                 raise UserError("Photoshop закрився, не закінчивши мокапи.")
         pause(0.5)
+
+
+def _cut_without_background(work: dict, st: dict, handed: set[str]) -> None:
+    """Every picture Photoshop has saved goes to the slides' cutter at once: the book without its background lands in
+    «Без фону» beside it while Photoshop works on the next ones (the owner, 29.09.2026: "the Mockups must also save
+    the pictures without background, fit for the listing templates"). Only Open 1, Open 2 and Cover 1 can be cut."""
+    for saved in st.get("saved") or []:
+        if saved in handed:
+            continue
+        handed.add(saved)
+        t = next((t for t in work["templates"] if any(s.get("save") == saved for s in t.get("shots") or [])
+                  or t.get("save") == saved), None) or (work["templates"][0] if work["templates"] else None)
+        source = Path(str((t or {}).get("source") or ""))
+        try:
+            slide_cutout.cutter.add(Path(saved), source.parent if source.name else places()["templates"])
+        except Exception:
+            core.log.warning("Mockups: %s not handed to the cutter", saved, exc_info=True)
 
 
 def _problem_text(p: dict) -> str:

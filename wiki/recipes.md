@@ -1,7 +1,7 @@
 ---
 title: Recipes — how to change common things
 type: recipe
-updated: 2026-09-27
+updated: 2026-09-29
 code: []
 ---
 # Recipes
@@ -34,10 +34,16 @@ code: []
 - Wiki: [integrations/gelato.md](integrations/gelato.md), [rules/printer-rule.md](rules/printer-rule.md),
   [rules/book-structure.md](rules/book-structure.md).
 
-## Show the "Profit" page
-- [app/web/js/app.js](../app/web/js/app.js) — add an entry to `MODES.orders.nav` (icon `chart`) and the route
-  `#/profit` in `ROUTES`; shift the hotkeys.
-- Wiki: [features/profit.md](features/profit.md), [architecture/frontend.md](architecture/frontend.md).
+## The "Profit" page's first day
+- Shown since 2026-09-29 (`MODES.orders.nav`, `#/profit` in [app/web/js/app.js](../app/web/js/app.js)).
+- The day bookkeeping starts — `ACCOUNTING_FROM` in [app/studio/profit.py](../app/studio/profit.py); the test
+  `BookkeepingStart` in `test_profit.py`.
+- Wiki: [features/profit.md](features/profit.md).
+
+## Printify back for new books
+- `READ_ONLY_FROM` / `retired()` in [app/studio/printify.py](../app/studio/printify.py) (a later date, or `date.max`);
+  everything else — the printer rule, the Order Creator's switch, the archive's reprint — follows `retired()`.
+- Wiki: [integrations/printify.md](integrations/printify.md), [rules/printer-rule.md](rules/printer-rule.md).
 
 ## A new interface page
 - File `app/web/js/pages/<name>.js` with `export async function mount(view, params)` → `{ shown?, unmount }`.

@@ -1,7 +1,7 @@
 ---
-title: Profit (hidden until 1 October)
+title: Profit (counts from 1 October 2026)
 type: feature
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/web/js/pages/profit.js
   - app/web/js/pages/profit-rows.js
@@ -14,8 +14,9 @@ code:
 # Profit
 
 > A full equivalent of the Etsy Profit Calculator: for every Etsy receipt — net Etsy revenue minus the
-> print cost. **The page is hidden**: accounting starts on 1 October 2026. The sync behind it (`sync.py`) runs
-> every day, though — it feeds the queue.
+> print cost. **In the rail since 2026-09-29** (the chart icon, between the archive and Settings; the owner: "it's time
+> to turn on the accounting"); it counts **only sales from 1 October 2026** — until then it's empty («Продажів від
+> 1 жовтня ще немає»). The sync behind it (`sync.py`) feeds the queue too.
 
 **How the server side is built (since 2026-09-26, the big cleanup).** Before, one `profit.py` held the sync, the
 files, the stages, the Profit view and its routes, and the archive and it loaded each other. Now:
@@ -26,8 +27,14 @@ changes — `records.stamp()`) and its routes.
 
 ## Status
 
-- `pages/profit.js` exists, but it's in neither `MODES.orders.nav` nor `ROUTES` ([app.js](../../app/web/js/app.js)).
-  To show it: an entry in `MODES.orders.nav` and the route `#/profit` in `ROUTES` ([recipe](../recipes.md)).
+- In `MODES.orders.nav` and `ROUTES` as `#/profit` ([app.js](../../app/web/js/app.js)), Alt+5 (Settings moved to Alt+6).
+- **A clean slate on 1 October 2026** (the owner, 25 and 27.09.2026: "it must not include earlier orders at all"):
+  `profit.ACCOUNTING_FROM` — midnight of 1 October on this computer's clock; `counted()` decides. The page's rows
+  (`/api/profit/data`), one row (`/api/profit/row` — an older one is 404) and the print orders offered for a manual
+  link (`/api/profit/candidates`) are only from that day; `accountingFrom` tells the page. **The queue, the stages
+  and the archive still read every order** — they take `cached_view()["full"]`, which is not cut; the sync asks
+  Etsy and the printers exactly as before (accounting makes no requests of its own). So «Увесь час» means from
+  1 October.
 - The formulas and matching rules are checked by a test against the original's code
   (`golden_profit.json`, results to the cent) — [rules/reconciliation.md](../rules/reconciliation.md). Where the
   program now differs on purpose (orders in pounds converted, not counted as dollars), the test says so.
@@ -62,7 +69,7 @@ changes — `records.stamp()`) and its routes.
 
 - [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
 - [app/web/js/pages/profit-rows.js](../../app/web/js/pages/profit-rows.js) — `rowInner()`, `detailHtml()`, `stateBox()`, `econLines()`, `costOf()`, `DEAD_SHORT`, `STATE_OPTS`
-- [app/studio/profit.py](../../app/studio/profit.py) — `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
+- [app/studio/profit.py](../../app/studio/profit.py) — `ACCOUNTING_FROM`, `counted()`, `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `mark_reprint()`
 - [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`
@@ -72,7 +79,7 @@ changes — `records.stamp()`) and its routes.
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `rows()`, `apply()`, `order_info()`
 - [app/studio/records.py](../../app/studio/records.py) — `stamp()`, `load_snapshot()`, `load_links()`, `load_states()`, `load_sends()`, `save()`, `lock`
 - [app/studio/fees.py](../../app/studio/fees.py) — `calculate_ukrainian_etsy_fees()`
-- Tests: [app/tests/test_profit.py](../../app/tests/test_profit.py), [app/tests/test_states.py](../../app/tests/test_states.py), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`ReprintMark`)
+- Tests: [app/tests/test_profit.py](../../app/tests/test_profit.py) (`BookkeepingStart`), [app/tests/test_states.py](../../app/tests/test_states.py), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`ReprintMark`)
 
 ## Related
 

@@ -136,6 +136,26 @@ const P = {
   hero: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20.5c.8-3.8 3.8-6 7.5-6s6.7 2.2 7.5 6"/>',
   minus: '<path d="M6 12h12"/>',
   guides: '<rect x="7" y="8" width="10" height="8" rx=".5"/><path d="M12 8v8"/><path d="M7 2v3M17 2v3M7 19v3M17 19v3M1.5 8h3M19.5 8h3M1.5 16h3M19.5 16h3"/>',
+
+  // ---- the listing slides' editor (29.09.2026): undo / redo, a layer shown or hidden, locked or free, mirrored upside
+  // down (`mirror` — left to right, as in the Workshop), and one glyph per kind of element on a slide
+  undo: '<path d="M9 14.5L4 9.5l5-5"/><path d="M4 9.5h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  redo: '<path d="M15 14.5l5-5-5-5"/><path d="M20 9.5H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="M3.5 3.5l17 17"/><path d="M10.4 5.6A9 9 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.9 3.6M6.4 6.9A16 16 0 0 0 2.5 12S6 18.5 12 18.5a9 9 0 0 0 4.1-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  unlock: '<rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/>',
+  mirrorV: '<path d="M3.5 12h2M8.5 12h2M13.5 12h2M18.5 12h2"/><path d="M7 8.5L17 3.5v5z"/><path d="M7 15.5l10 5v-5z"/>',
+  elText: '<path d="M5 6.5V4.5h14v2M12 4.5v15M9 19.5h6"/>',
+  elStar: '<path d="M12 3c.6 5 3.9 8.3 9 9-5.1.7-8.4 4-9 9-.6-5-3.9-8.3-9-9 5.1-.7 8.4-4 9-9z"/>',
+  elArrow: '<path d="M4 18.5c2.5-8 8.5-12 15.5-11.5"/><path d="M15.5 3.5l4 3.5-3.5 4"/>',
+  elSticker: '<path d="M12 3l1.8 1.6 2.4-.4.9 2.3 2.2 1-.4 2.4L20.5 12l-1.6 2.1.4 2.4-2.2 1-.9 2.3-2.4-.4L12 21l-1.8-1.6-2.4.4-.9-2.3-2.2-1 .4-2.4L3.5 12l1.6-2.1-.4-2.4 2.2-1 .9-2.3 2.4.4z"/>',
+  elRibbon: '<path d="M7 3.5h10v17l-5-4-5 4z"/>',
+  elHeart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+  elBand: '<path d="M3 8l2-1.3L7 8l2-1.3L11 8l2-1.3L15 8l2-1.3L19 8l2-1.3v10.6L19 16l-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3L7 16l-2 1.3L3 16z"/>',
+  elBlob: '<path d="M6.5 6.5c3-3.5 9.5-3 12 .5s2.5 9-1.5 11-10.5 2.5-12-2.5c-.8-2.8.2-6.5 1.5-9z"/>',
+  elDashes: '<path d="M3 12h3.5M10.25 12h3.5M17.5 12H21"/>',
+  elLeaves: '<path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14z"/><path d="M5 19l8.5-8.5"/>',
+  elGrain: '<path d="M6 6.5h.01M11 5h.01M17 7h.01M8 11h.01M14 10.5h.01M19 12.5h.01M5.5 15.5h.01M11 15h.01M16 17h.01M9 19.5h.01" stroke-width="2.4"/>',
 };
 
 export function icon(name, cls = '') {

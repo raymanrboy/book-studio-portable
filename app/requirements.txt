@@ -3,3 +3,5 @@ Pillow>=10
 img2pdf>=0.5
 pikepdf>=8     # the engine the Gelato PDFs are written with (creator.build_photobook_pdf names it)
 cryptography>=41
+psd-tools>=1.9  # the listing slides' cut-out reads the templates' book mask and shadows (only read; numpy comes with it)
+numpy>=1.24

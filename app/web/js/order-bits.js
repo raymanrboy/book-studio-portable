@@ -186,6 +186,8 @@ export const pagesText = (options) => {
  *  by its files for now (owner, 25.09.2026): the rule's one is only the suggestion. */
 export function planText(plan) {
   if (!plan?.provider) return 'Тип обкладинки не вдалося визначити — оберіть друкарню';
+  // From 1 October only Gelato prints: a book of an unknown cover type goes there too, its format picked in the Order Creator.
+  if (!plan.binding) return `Тип обкладинки не визначено → ${providerName(plan.provider)} · ${pagesText(plan.pages)} стор. Формат — в Order Creator`;
   const binding = plan.binding === 'hardcover' ? 'Hardcover' : 'Softcover';
   if (plan.choice) {
     return `${binding} · ${countryName(plan.country)} → зазвичай ${providerName(plan.provider)}. Друкарню визначать файли: `

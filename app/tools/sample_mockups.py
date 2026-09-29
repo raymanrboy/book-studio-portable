@@ -38,6 +38,8 @@ def seed_mockups(data: Path) -> None:
     fake.pick_zip = lambda title, initial="": str(data / "Goose demo.zip")
     fake.attention = lambda title_part: False
     mockups.desktop = fake
+    from studio.slides import cutout
+    cutout.READER = pretend_template  # the made-up templates are plain pictures: the book's outline is known
     templates = data / "templates"
     templates.mkdir(parents=True, exist_ok=True)
     shades = [(196, 202, 214), (214, 206, 196), (200, 212, 204), (220, 214, 222), (206, 206, 206), (224, 210, 200)]
@@ -59,6 +61,24 @@ def seed_mockups(data: Path) -> None:
                 page = Image.new("RGB", (700, 700), ((n * 53) % 200 + 40, (n * 97) % 160 + 60, (n * 31) % 180 + 60))
                 ImageDraw.Draw(page).text((350, 350), str(n), font=font, fill=(250, 250, 245), anchor="mm")
                 zf.writestr(f"{n + 1}.png", _png(page))
+
+
+def pretend_template(path: Path, size: tuple[int, int]):
+    """The slides' cut-out of a pretend mockup: the book is where the pretend Photoshop lays the two pages (below),
+    with a soft shadow down and right — what the real template's mask and Multiply layers give."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFilter
+    from studio.slides import cutout
+    W, H = size
+    k = W / 1500
+    box = [290 * k, 270 * k, 1210 * k, 730 * k]
+    mask = Image.new("L", size, 0)
+    ImageDraw.Draw(mask).rectangle(box, fill=255)
+    shade = Image.new("L", size, 0)
+    ImageDraw.Draw(shade).rectangle([box[0] + 18 * k, box[1] + 26 * k, box[2] + 18 * k, box[3] + 26 * k], fill=150)
+    shade = shade.filter(ImageFilter.GaussianBlur(22 * k))
+    alpha = np.asarray(mask, np.float32) / 255
+    return alpha, cutout._near_book(alpha, [(0.0, np.asarray(shade, np.float32) / 255)])
 
 
 def _png(im) -> bytes:

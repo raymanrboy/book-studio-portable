@@ -221,7 +221,7 @@ class _Handler(BaseHTTPRequestHandler):
     def _route(self, method: str, path: str, query: dict) -> Response:
         if method == "GET" and path in ("/", "/index.html"):
             return Response(200, _index_html(), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
-        if method == "GET" and re.match(r"^/(css|js|img)/", path):
+        if method == "GET" and re.match(r"^/(css|js|img|fonts|slides)/", path):
             return self._static(path)
         if method == "GET" and path == "/favicon.ico":
             return self._static("/img/icon.ico")

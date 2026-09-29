@@ -34,3 +34,11 @@ def _wipe() -> None:
 
 
 atexit.register(_wipe)
+
+# The suite checks Printify's work and the printer rule as they were before 1 October 2026, when Printify stopped
+# getting new books (printify.retired()) — whatever day it runs on; the tests of that change say so themselves.
+from datetime import date  # noqa: E402
+
+from studio import printify as _printify  # noqa: E402
+
+_printify.READ_ONLY_FROM = date.max

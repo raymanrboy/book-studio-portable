@@ -38,7 +38,7 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
 // Book Studio has two modes (owner, 24.09.2026): «Замовлення» — the orders, and «Лістинги» — making new books
 // and their listing pictures, "like another program, separated from everything". A click on the brand icon
 // (Alt+0) switches; each mode has its own rail items and its own ink (orange / cyan, html[data-mode]).
-// «Прибуток» is hidden until bookkeeping starts (the page itself is kept in pages/profit.js).
+// «Прибуток» counts only sales from 1 October 2026, when bookkeeping starts (profit.ACCOUNTING_FROM).
 const MODES = {
   orders: {
     title: 'Book Studio', icon: 'spread', other: 'listings', tip: 'Перейти до лістингів',
@@ -47,6 +47,7 @@ const MODES = {
       { hash: '#/library', label: 'Бібліотека книг', icon: 'shelf', match: /^#\/(library|book)/ },
       { hash: '#/creator', label: 'Order Creator', icon: 'printer', match: /^#\/creator/ },
       { hash: '#/archive', label: 'Архів замовлень', icon: 'orderArchive', match: /^#\/archive/ },
+      { hash: '#/profit', label: 'Прибуток', icon: 'chart', match: /^#\/profit/ },
       { hash: '#/settings', label: 'Налаштування', icon: 'sliders', match: /^#\/settings/ },
     ],
   },
@@ -54,7 +55,7 @@ const MODES = {
     title: 'Book Studio · Лістинги', icon: 'listing', other: 'orders', tip: 'Перейти до замовлень',
     nav: [
       { hash: '#/workshop', label: 'Майстерня', icon: 'workshop', match: /^#\/workshop/ },
-      { hash: '#/mockups', label: 'Мокапи', icon: 'mockup', match: /^#\/mockups/ },
+      { hash: '#/mockups', label: 'Мокапи', icon: 'mockup', match: /^#\/(mockups|slides)/ },
     ],
   },
 };
@@ -205,10 +206,13 @@ const ROUTES = [
   [/^#\/book\/([0-9a-f]{32})$/, () => import('./pages/book.js'), 'orders'],
   [/^#\/creator\/?$/, () => import('./pages/creator.js'), 'orders'],
   [/^#\/archive(?:\/(\d{8}-\d{6}-[0-9a-f]{6}))?\/?$/, () => import('./pages/archive.js'), 'orders'],
+  [/^#\/profit\/?$/, () => import('./pages/profit.js'), 'orders'],
   [/^#\/settings(?:\/(\w+))?$/, () => import('./pages/settings.js'), 'orders'],
   [/^#\/workshop\/?$/, () => import('./pages/workshop.js'), 'listings'],
   [/^#\/workshop\/([^/]+)$/, () => import('./pages/workshop-book.js'), 'listings'],
   [/^#\/mockups\/?$/, () => import('./pages/mockups.js'), 'listings'],
+  // the slides' editor: its own module, loaded only when opened (the owner, 29.09.2026) — not warmed up below
+  [/^#\/slides\/(template|\d{8}-\d{6}-[0-9a-f]{6})\/([1-6])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
 ];
 
 let current = null;
@@ -362,7 +366,7 @@ async function boot() {
   // Warm up the other pages' code while the user looks at the first one; a picture the Workshop may be waiting for
   // since before a reload is noticed (the rail's dot, the title).
   idle(() => {
-    ROUTES.forEach(([, load]) => load().catch(() => {}));
+    ROUTES.forEach(([, load, , lazy]) => { if (!lazy) load().catch(() => {}); });
     import('./workshop-live.js').then((live) => live.wake()).catch(() => {});
   });
 }

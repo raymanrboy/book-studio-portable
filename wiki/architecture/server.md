@@ -1,7 +1,7 @@
 ---
 title: Server — routes, jobs, errors
 type: architecture
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/server.py
   - app/studio/jobs.py
@@ -28,7 +28,7 @@ code:
 - `Request`: `req.json` (up to 25 MB), `req.param(name)`, `req.int_param(name, default, lo, hi)` (a number
   from the query — a preview's width, a page; missing or not a number, it is the default, never an error page;
   since 2026-09-26), `req.body_to_file(path, max)` for uploads.
-- Static files: `/css`, `/js`, `/img`, `/fonts` from `app/web`, `/` — `index.html`.
+- Static files: `/css`, `/js`, `/img`, `/fonts`, `/slides` (the page the listing slides are baked from) from `app/web`, `/` — `index.html`.
 - `state.app` — what `/api/ping` answers ("Book Studio"), so a second launch recognises the running copy
   and only opens another window. (From 2026-09-23 to 24 the [mockups](../features/mockups.md) were a second
   program on the same server code, with its own `state.page` and answer; now their routes are Book

@@ -1,15 +1,17 @@
 ---
 title: Gelato and the temporary link
 type: integration
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/gelato.py
+  - app/studio/gelato_accounts.py
   - app/studio/tunnel.py
 ---
 # Gelato
 
-> Prints **everything except US hardcovers**: hardcovers to other countries, and softcovers anywhere
-> (28 or 30 pages). The program only creates **drafts** of orders. API: `order.gelatoapis.com/v4`,
+> From 1 October 2026 prints **every book** (28 or 30 pages), US hardcovers too — Printify only reads
+> ([printer rule](../rules/printer-rule.md)); before that, everything except US hardcovers. The program only
+> creates **drafts** of orders. API: `order.gelatoapis.com/v4`,
 > `product.gelatoapis.com/v3`, the key in the `X-API-KEY` header. The rules below were checked on
 > 2026-09-17 against two of the owner's real orders (a manual 28-page one, and a 30-page one created
 > through the API and already printed) and two test drafts with numbered pages.
@@ -136,6 +138,36 @@ once; read again only while it has no tracking number and its status has changed
 Documentation: [Get order](https://dashboard.gelato.com/docs/orders/v4/get/),
 [statuses](https://dashboard.gelato.com/docs/orders/order_details/).
 
+## His own account — two keys during the move (built 2026-09-29)
+
+The owner moves to his own Gelato account on 1 October 2026 (the old one holds other people's orders too; agreed
+2026-09-27, "the smooth switch" — [roadmap](../plans/roadmap.md#printers)).
+
+- **Settings → Gelato → «Перейти на новий акаунт Gelato»** (the swap icon in place of «Замінити ключ»): the owner
+  pastes the new key; the program reads **one** order with it (`check_key()` — a mistyped key is told before anything
+  changes), then keeps the current key as `gelato_old_api_key` («Старий акаунт · лише читання») and the new one as
+  `gelato_api_key`, inside the vault — no key goes through the chat or the screen. A sync starts at once. Refused on
+  the preview server, during a sync, with the same key, and while an old key is still kept (one move at a time).
+- **Each order knows its account**: `slim_order(g, account)` puts `account` — `account_id()`, the first 12 hex of the
+  key's SHA-256 (which account, never the key) — on every order. Orders kept from before carry none: they are the
+  account read before the first switch (`settings.gelato.firstAccount`, `untagged_account()`).
+- **Every sync reads each account the program has a key for** (`accounts()`, `sync._gelato_part()`); a shipped
+  order's tracking is read with its own account's key (`attach_shipments(…, account)`).
+- **The safety net, always on**: an order is dropped only when its **own** account's list, loaded whole, lacks it (a
+  deleted draft). An account not read whole — it failed, its list was cut at 5000, its key was removed — keeps its
+  orders as last seen (status, tracking, cost). So the queue, the [archive](../features/archive.md) and Profit never
+  lose an order to the switch. `loaded.gelato` (what the archive trusts) is written only when every account was
+  loaded whole.
+- **The old key only reads**: `_allowed(…, account="old")` lets through the order search and `GET` only —
+  `POST /v4/orders` needs the main key. Drafts and reprints go to the new account only (reprints of an old-account
+  book too).
+- **When the old key can go**: Settings shows «Ще N замовлень в роботі» while any of the owner's Etsy orders follows
+  an old-account order that is a draft, in print, or shipped by Gelato but not marked on Etsy
+  (`gelato_accounts.open_orders()`, stages `new`/`work`/`sent`); then «Його замовлення завершено». The owner removes
+  it with the bin (a warning if some are still open); its orders stay as they were.
+- The legacy import (keys from the old Order Creator) doesn't offer the Gelato key while one is saved — it is the
+  old account's key.
+
 ## Errors
 
 Gelato's responses are read by a function shared with Printify, `httpc.human()` (`_human()`): 401/403 —
@@ -145,7 +177,10 @@ draft, this tells apart a refusal from an **unknown result**
 
 ## Where in the code
 
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `_human()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `_fresh_catalog()`, `CATALOG_HOURS`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
+- [app/studio/gelato.py](../../app/studio/gelato.py) — `KEYS`, `OLD_NAME`, `api_key()`, `account_id()`, `accounts()`, `untagged_account()`, `check_key()`, `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `_human()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `_fresh_catalog()`, `CATALOG_HOURS`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
+- [app/studio/gelato_accounts.py](../../app/studio/gelato_accounts.py) — `_switch()`, `_forget()`, `status()`, `open_orders()`, `old_id()`, `OPEN_STAGES`, `_resync()`
+- [app/studio/sync.py](../../app/studio/sync.py) — `_gelato_part()`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `GELATO_SHIPPED`
 - [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`, `_URL_RE`, `FileTunnel`, `_head_ok()`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()`, `_ends_with_us()`
 - [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `gelato_page_options()`, `_gelato_page_count()`
@@ -155,7 +190,7 @@ draft, this tells apart a refusal from an **unknown result**
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
 - [app/studio/orders.py](../../app/studio/orders.py) — `page_options()`, `_files()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderTunnels()`, `startCountdown()`, `loadPageCounts()`, `formatProblem()`, `formatCard()`
-- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`GelatoDraftFlow`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`SafetyRails`, `GelatoValidation`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`GelatoTracking`)
+- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`GelatoDraftFlow`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`SafetyRails`, `GelatoValidation`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`GelatoTracking`), [app/tests/test_gelato_accounts.py](../../app/tests/test_gelato_accounts.py)
 
 ## Related
 

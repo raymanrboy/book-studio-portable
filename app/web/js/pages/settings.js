@@ -4,7 +4,7 @@
 // click away, behind the details toggle, so the page stays quiet. Theme lives only in the rail.
 import {
   api, post, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, dateTime, slide, menu, remembered,
-  remember, runJob, setProgress, bytes, relTime,
+  remember, runJob, setProgress, bytes, relTime, plural,
 } from '../lib.js';
 import { refreshInfo } from '../info.js';
 import { oauthFlow, pickMaster } from './settings-dialogs.js';
@@ -69,7 +69,9 @@ export async function mount(view, [section]) {
     </div>`;
   }
 
-  function secretField(name) {
+  /** A saved key with «Замінити» and «Видалити»; `switchAccount` — the Gelato key, whose replacement is a move to a
+   *  new account (the current one stays readable, gelato_accounts.py), not an overwrite. */
+  function secretField(name, { switchAccount = false } = {}) {
     const st = s.secrets[name];
     const [label, hint] = SECRET_LABELS[name];
     const edit = editing.has(name) || !st.configured;
@@ -79,7 +81,7 @@ export async function mount(view, [section]) {
           ${ib('check', 'Зберегти', `data-secret-save="${name}"`, { cls: 'primary', kbd: 'Enter' })}
           ${st.configured ? ib('x', 'Скасувати', `data-secret-cancel="${name}"`) : ''}</div>`
         : html`<div class="secret-row"><div class="secret-state">${ic('lock', 'icon-s')}<span>Збережено</span><span class="mono">${st.hint}</span></div>
-          ${ib('edit', 'Замінити ключ', `data-secret-edit="${name}"`)}
+          ${switchAccount ? ib('swap', 'Перейти на новий акаунт Gelato', 'data-act="gelato-switch"') : ib('edit', 'Замінити ключ', `data-secret-edit="${name}"`)}
           ${ib('trash', 'Видалити ключ', `data-secret-clear="${name}"`, { cls: 'danger' })}</div>`}
       <div class="field-hint">${hint}</div>
     </div>`;
@@ -143,18 +145,34 @@ export async function mount(view, [section]) {
     const p = s.printify;
     const m = p.master || {};
     const has = s.secrets.printify_token.configured;
+    // From 1 October only Gelato prints: Printify is read for its earlier orders (stage, tracking, cost) and nothing more.
+    const ro = !!p.readOnly;
     return card('printify', {
       logo: ic('printify'), logoClass: 'int-printify', title: 'Printify',
-      summary: has ? `${p.shopTitle || 'Магазин не обрано'} · ${m.title || 'шаблон не обрано'}` : 'Потрібен токен',
+      summary: !has ? 'Потрібен токен' : ro ? `${p.shopTitle || 'Магазин'} · лише читання старих замовлень` : `${p.shopTitle || 'Магазин не обрано'} · ${m.title || 'шаблон не обрано'}`,
       mark: stateMark(has, has ? 'Підключено' : 'Немає токена'),
       body: html`<div class="stack">
         ${secretField('printify_token')}
-        <div class="set-row">${ic('book')}<span class="grow">${m.title || 'Шаблон не обрано'} <span class="faint">· <span class="num">${p.pageCount}</span> стор.</span></span>
-          ${m.productId ? '' : ib('template', 'Обрати шаблон (Master)', `data-act="master-pick" ${has ? '' : 'disabled'}`)}
+        <div class="set-row">${ic('book')}<span class="grow">${ro ? html`Нові книги друкує Gelato <span class="faint">· з Printify програма лише читає старі замовлення</span>` : html`${m.title || 'Шаблон не обрано'} <span class="faint">· <span class="num">${p.pageCount}</span> стор.</span>`}</span>
+          ${m.productId || ro ? '' : ib('template', 'Обрати шаблон (Master)', `data-act="master-pick" ${has ? '' : 'disabled'}`)}
           ${ib('pulse', 'Перевірити зв\'язок', `data-act="printify-test" ${has ? '' : 'disabled'}`)}</div>
         <div id="printify-test" class="faint" style="font-size:12.5px" hidden></div>
       </div>`,
     });
+  }
+
+  // After the move to a new account the old one is only read, until the owner's orders there are done.
+  const openWord = (n) => `${n} ${plural(n, ['замовлення', 'замовлення', 'замовлень'])}`;
+  function oldAccountField(old) {
+    return html`<div class="field">
+      <label class="field-label">Старий акаунт · лише читання</label>
+      <div class="secret-row"><div class="secret-state">${ic('lock', 'icon-s')}<span>${old.open ? `Ще ${openWord(old.open)} в роботі` : 'Його замовлення завершено'}</span><span class="mono">${old.hint}</span></div>
+        ${ib('pulse', 'Перевірити старий акаунт', 'data-act="gelato-old-test"')}
+        ${ib('trash', 'Прибрати старий акаунт', 'data-act="gelato-old-forget"', { cls: 'danger' })}</div>
+      <div class="field-hint">${old.open
+        ? 'Програма стежить за цими замовленнями, доки вони не доїдуть. Нове створюється лише в новому акаунті.'
+        : 'Ключ більше не потрібен — його можна прибрати. Замовлення залишаться в програмі як є.'}</div>
+    </div>`;
   }
 
   function gelatoCard() {
@@ -163,15 +181,55 @@ export async function mount(view, [section]) {
     const formats = Object.values(g.formats).map((f) => f.label);
     return card('gelato', {
       logo: ic('gelato'), logoClass: 'int-gelato', title: 'Gelato',
-      summary: has ? formats.join(' · ') : 'Потрібен ключ',
+      summary: !has ? 'Потрібен ключ' : g.old ? `Новий акаунт · старий лише читається${g.old.open ? ` · ${openWord(g.old.open)} в роботі` : ''}` : formats.join(' · '),
       mark: stateMark(has, has ? 'Підключено' : 'Немає ключа'),
       body: html`<div class="stack">
-        ${secretField('gelato_api_key')}
+        ${secretField('gelato_api_key', { switchAccount: has && !g.old })}
+        ${g.old ? oldAccountField(g.old) : ''}
         <div class="set-row">${ic('book')}<span class="grow">${formats.join(' · ')} <span class="faint">· <span class="num">${(g.pageCounts || []).join(' або ')}</span> стор.</span></span>
           ${ib('pulse', 'Перевірити зв\'язок', `data-act="gelato-test" ${has ? '' : 'disabled'}`)}</div>
         <div id="gelato-test" class="faint" style="font-size:12.5px" hidden></div>
       </div>`,
     });
+  }
+
+  function switchGelato() {
+    const m = modal({
+      title: 'Перехід на новий акаунт Gelato',
+      body: html`<div class="stack">
+        <div>Вставте API-ключ нового акаунта. Теперішній ключ програма залишить як старий акаунт — лише для читання: стежитиме за його замовленнями, доки вони не доїдуть. Нові чернетки й передруки — тільки в новому акаунті.</div>
+        <input class="input mono" type="password" id="gl-new" placeholder="API-ключ нового акаунта" autocomplete="off" spellcheck="false" aria-label="API-ключ нового акаунта Gelato">
+        <div class="field-hint">Gelato Dashboard нового акаунта → Developer → API keys</div></div>`,
+      foot: html`<button class="btn btn-ghost" data-c>Скасувати</button><button class="btn btn-primary" data-ok>Перейти</button>`,
+    });
+    const input = m.el.querySelector('#gl-new');
+    const ok = m.foot.querySelector('[data-ok]');
+    input.focus();
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') ok.click(); });
+    m.foot.querySelector('[data-c]').onclick = () => m.close();
+    ok.onclick = async () => {
+      const key = input.value.trim();
+      if (!key) { toast('Вставте ключ', 'error'); return; }
+      ok.disabled = true;
+      try {
+        await post('/api/gelato/switch', { key });
+        m.close();
+        toast('Готово: новий акаунт Gelato працює, старий лише читається', 'success', 6000);
+        reload();
+      } catch (err) { toast(err.message, 'error', 8000); ok.disabled = false; }
+    };
+  }
+
+  async function forgetOldGelato() {
+    const n = s.gelato.old?.open || 0;
+    const sure = await confirmBox({
+      title: 'Прибрати старий акаунт Gelato?', danger: !!n, confirm: 'Прибрати',
+      text: n ? `Ще ${openWord(n)} в роботі в старому акаунті — програма більше не побачить, коли їх надрукують і відправлять. Уже відомі замовлення залишаться.`
+        : 'Його замовлення залишаться в програмі такими, як вони є зараз.',
+    });
+    if (!sure) return;
+    try { await post('/api/gelato/old/forget', {}); toast('Старий акаунт прибрано', 'success'); reload(); }
+    catch (err) { toast(err.message, 'error'); }
   }
 
   // The text check reads the order's pages with a model in Ollama on this computer (textcheck/).
@@ -400,7 +458,19 @@ export async function mount(view, [section]) {
           setHtml(out, html`<span class="row" style="color:var(--green)">${ic('checkCircle', 'icon-s')}${a === 'printify-test' ? html`Працює · <b>${r.shopTitle}</b> · замовлень: <span class="num">${r.ordersCount ?? '—'}</span>` : r.message}</span>`);
         } catch (err) { setHtml(out, html`<span class="row" style="color:var(--red)">${ic('alertCircle', 'icon-s')}${err.message}</span>`); }
         finally { b.disabled = false; }
-      } else if (a === 'master-pick') pickMaster(s.printify, reload);
+      } else if (a === 'gelato-old-test') {
+        const out = view.querySelector('#gelato-test');
+        out.hidden = false;
+        setHtml(out, html`<span class="row"><span class="spinner" style="width:14px;height:14px"></span>Перевірка старого акаунта…</span>`);
+        b.disabled = true;
+        try {
+          const r = await post('/api/gelato/test', { account: 'old' });
+          setHtml(out, html`<span class="row" style="color:var(--green)">${ic('checkCircle', 'icon-s')}${r.message}</span>`);
+        } catch (err) { setHtml(out, html`<span class="row" style="color:var(--red)">${ic('alertCircle', 'icon-s')}${err.message}</span>`); }
+        finally { b.disabled = false; }
+      } else if (a === 'gelato-switch') switchGelato();
+      else if (a === 'gelato-old-forget') forgetOldGelato();
+      else if (a === 'master-pick') pickMaster(s.printify, reload);
       else if (a === 'open-data') post('/api/app/open-data', {}).catch((er) => toast(er.message, 'error'));
       else if (a === 'bk-pw-edit') { bkPassword = true; redrawBackup(); view.querySelector('#bk-pw')?.focus(); }
       else if (a === 'bk-pw-cancel') { bkPassword = false; redrawBackup(); }

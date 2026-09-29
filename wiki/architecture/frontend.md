@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -18,6 +18,8 @@ code:
   - app/web/css/orders.css
   - app/web/css/profit.css
   - app/web/css/listings.css
+  - app/web/css/slides.css
+  - app/web/js/slides/engine.js
 ---
 # Interface
 
@@ -30,11 +32,11 @@ code:
 
 - **Two modes** (`MODES`, since 2026-09-24 — [features/modes.md](../features/modes.md)): the brand icon at the
   top of the rail is the switch (a click, Alt+0). **Orders**: Orders `#/orders` (Alt+1), Library `#/library`
-  (Alt+2), Order Creator `#/creator` (Alt+3), Order archive `#/archive` (Alt+4, since 2026-09-18), Settings
-  `#/settings` (Alt+5). **Listings**: the Workshop `#/workshop` (Alt+1), the Mockups `#/mockups` (Alt+2). The
+  (Alt+2), Order Creator `#/creator` (Alt+3), Order archive `#/archive` (Alt+4, since 2026-09-18), Profit
+  `#/profit` (Alt+5, since 2026-09-29), Settings `#/settings` (Alt+6). **Listings**: the Workshop `#/workshop` (Alt+1), the Mockups `#/mockups` (Alt+2). The
   mode on screen is the mode of the page's route (`html[data-mode]`, the accent tokens, the title); each mode
   remembers its last page (`last`, `entryOf()`). The start page is `HOME = '#/orders'`: Book Studio always
-  starts in Orders. While a dialog or the viewer is open, Alt+1…5 doesn't switch pages; every
+  starts in Orders. While a dialog or the viewer is open, Alt+1…6 doesn't switch pages; every
   navigation closes any open menu and tooltip (`closeMenu()`, `hideTip()` in `navigate()`) —
   2026-09-19: the book passport's "More" menu used to stay open over another page. At the bottom — the
   theme menu (dark / light / follow Windows, "reduce motion"). The dot on Settings — when some service
@@ -45,9 +47,11 @@ code:
   would be drawn over the icon — it would vanish while the pill traveled (the owner's note, 2026-09-18).
 - **Routes** (`ROUTES`, each with its mode): `#/orders[/<receipt number>]` → `pages/orders.js`, `#/library` →
   `library.js`, `#/book/<id>` → `book.js`, `#/creator` → `creator.js`, `#/archive[/<id>]` → `archive.js`,
+  `#/profit` → `profit.js` (since 2026-09-29; counts from 1 October — [features/profit.md](../features/profit.md)),
   `#/settings[/<section>]` → `settings.js` — the orders; `#/workshop` → `workshop.js`, `#/workshop/<book folder>` →
-  `workshop-book.js`, `#/mockups` → `mockups.js` — the listings. **The Profit page isn't in the routes** — it's hidden until
-  1 October ([features/profit.md](../features/profit.md)).
+  `workshop-book.js`, `#/mockups` → `mockups.js`, `#/slides/<set | template>/<1–6>` → `slides-editor.js` (the listing
+  slides' editor, since 2026-09-29) — the listings. A route marked `'lazy'` is left out of the pages' warm-up in `boot()`:
+  the editor's code loads the first time it is opened (the owner: "a separate module called only when needed").
 - **A page's contract**: `export async function mount(view, params)` builds content in the given
   element and returns `{ shown(), unmount() }` (both optional). `navigate()` builds the new page off
   screen and swaps them with one View Transition — no empty frames.
@@ -101,6 +105,10 @@ code:
   elsewhere) and the page redraws only what changed with `patch()`; it also keeps the generation mode's state, draws
   its bar (`genBar()`) and tells the shell through `bs:busy` (the rail's dot, the window's title). «Передати в
   бібліотеку» is `openAddBook()` (add-book.js — the Library page itself isn't loaded) in its passing-on form (`transfer.send` runs the job).
+- [The listing slides](../features/slides.md) (2026-09-29) — the Mockups' step 4 (`pages/mockups-slides.js`) and the
+  editor `pages/slides-editor.js`, which links its own `css/slides.css` when it mounts (`ensureCss()`), widens its view
+  (`.se-view`) and draws with `js/slides/engine.js` — the same engine the headless bake uses (`web/slides/render.html`,
+  served as a static file with `fonts/` since the static routes took `fonts` and `slides`).
 - [The Mockups](../features/mockups.md) — `pages/mockups.js`, the separate utility's page moved in (its own
   window `mockups.html` + `mockups-shell.js` went). It keeps the usual page contract and adds `keep()`/`revive()`
   so the book, the picks and a run survive stepping away; it tells the rail about a run through the `bs:busy`

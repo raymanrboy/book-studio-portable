@@ -146,18 +146,38 @@ def _printify_part(job, snap: dict, warnings: list) -> None:
 
 
 def _gelato_part(job, snap: dict, warnings: list) -> None:
-    """Every Gelato order, with the tracking of the shipped ones; a failure keeps the previous orders."""
+    """Every Gelato order of each account the program has a key for — the main one and, after the switch to the
+    owner's own account, the old one (only read, gelato_accounts.py) — with the tracking of the shipped ones; each
+    order carries its account. An order is dropped only when its own account's list, loaded whole, lacks it (a
+    deleted draft). An account not read whole this time — it failed, its list was cut, its key was removed — keeps its
+    orders as last seen: an order the program knew never vanishes with an account (owner, 27.09.2026)."""
     job.progress("Завантаження замовлень Gelato…", 78, "Собівартість Gelato")
-    try:
-        raw = gelato.all_orders(lambda n: job.progress(None, 78 + min(12, n / 100), f"Gelato: {n} замовлень"))
-        slim = [gelato.slim_order(g) for g in raw]
-        job.progress(None, 91, "Gelato: трек-номери відправлених")
-        if gelato.attach_shipments(slim, snap["gelato"]):
-            warnings.append("Gelato: не всі трек-номери вдалося прочитати — спробую при наступному оновленні.")
-        snap["gelato"] = slim
-        _loaded(snap, warnings, "gelato", raw, "Gelato")
-    except ApiError as err:
-        warnings.append(f"Gelato: {err}. Використано попередні дані.")
+    accounts = gelato.accounts()
+    fresh: dict[str, dict] = {}  # by order id; the main account's copy wins
+    whole: set[str] = set()
+    for slot, acct in accounts:
+        name = "Gelato" if slot == "main" else gelato.OLD_NAME
+        try:
+            raw = gelato.all_orders(lambda n: job.progress(None, 78 + min(12, n / 100), f"{name}: {n} замовлень"),
+                                    account=slot)
+            slim = [gelato.slim_order(g, acct) for g in raw]
+            job.progress(None, 91, f"{name}: трек-номери відправлених")
+            if gelato.attach_shipments(slim, snap["gelato"], account=slot):
+                warnings.append(f"{name}: не всі трек-номери вдалося прочитати — спробую при наступному оновленні.")
+            for g in slim:
+                fresh.setdefault(str(g.get("id")), g)
+            if getattr(raw, "complete", True):
+                whole.add(acct)
+            else:
+                warnings.append(f"{name}: завантажено лише останні {len(raw)} — старіші не видно.")
+        except ApiError as err:
+            warnings.append(f"{name}: {err}. Використано попередні дані.")
+    untagged = gelato.untagged_account()
+    kept = [{**g, "account": g.get("account") or untagged} for g in snap["gelato"]
+            if str(g.get("id")) not in fresh and (g.get("account") or untagged) not in whole]
+    snap["gelato"] = sorted([*fresh.values(), *kept], key=lambda g: g.get("createdAt") or "", reverse=True)
+    if accounts and len(whole) == len(accounts):  # the archive trusts a missing order only then
+        snap["loaded"]["gelato"] = core.now_iso()
 
 
 def _sync(job, full: bool = False) -> dict:
@@ -177,7 +197,7 @@ def _sync(job, full: bool = False) -> dict:
         _printify_part(job, snap, warnings)
     else:
         warnings.append("Printify токен не налаштовано — собівартість Printify недоступна.")
-    if vault.get("gelato_api_key"):
+    if gelato.accounts():
         _gelato_part(job, snap, warnings)
 
     job.progress("Зіставлення замовлень…", 94, "")

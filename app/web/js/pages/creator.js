@@ -35,15 +35,17 @@ export async function mount(view) {
     replaced: new Set(), // pages a new file was put over — they can be put back
     format: status.gelato.defaultFormat || status.gelato.formats[0]?.key, ...extra,
   });
+  // From 1 October 2026 only Gelato prints (printify.retired()): Printify is not offered here any more.
+  const gelatoOnly = !!status.printify.retired;
   const st = {
-    mode: 'printify',
+    mode: gelatoOnly ? 'gelato' : 'printify',
     printify: { books: [newBook()], pick: 0, running: false, result: null, error: null, address: { country: 'US' }, reprint: null },
     gelato: { books: [newBook()], pick: 0, running: false, result: null, error: null, address: { country: 'US' }, reprint: null },
   };
   const handed = take('creator');
   // The new order this page works on (from its card, or picked below); a reprint from the archive is not one.
   st.receiptId = handed?.receiptId && !handed.reprint ? String(handed.receiptId) : '';
-  if (handed) {
+  if (handed && !(gelatoOnly && handed.mode === 'printify')) {
     st.mode = handed.mode;
     Object.assign(st[handed.mode], {
       books: handed.books.map((h) => newBook({ folder: h.folder, label: h.label, title: h.title, receiptId: st.receiptId, ...(h.format ? { format: h.format } : {}) })),
@@ -103,10 +105,10 @@ export async function mount(view) {
   function renderSwitch() {
     // The cross closes the work on this order: the page and its card forget it and the queue opens.
     setHtml($('#cr-switch'), html`<div class="tools cr-tools">${st.receiptId && cur().result
-      ? ib('x', 'Завершити роботу над замовленням', 'data-act="finish"') : ''}${ib('sendLog', 'Журнал відправок', 'data-act="open-sendlog"')}</div><div class="mode-switch">${segHtml([
+      ? ib('x', 'Завершити роботу над замовленням', 'data-act="finish"') : ''}${ib('sendLog', 'Журнал відправок', 'data-act="open-sendlog"')}</div>${gelatoOnly ? '' : html`<div class="mode-switch">${segHtml([
       { value: 'printify', icon: 'printify', tip: 'Printify — неопублікована книга' },
-      { value: 'gelato', icon: 'gelato', tip: 'Gelato — чернетка замовлення' }], st.mode, { name: 'mode' })}</div>`);
-    requestAnimationFrame(() => syncSeg($('#cr-switch .seg')));
+      { value: 'gelato', icon: 'gelato', tip: 'Gelato — чернетка замовлення' }], st.mode, { name: 'mode' })}</div>`}`);
+    if (!gelatoOnly) requestAnimationFrame(() => syncSeg($('#cr-switch .seg')));
   }
 
   // Only the service name in the header; a line appears under it only when something is missing.

@@ -1,7 +1,7 @@
 ---
 title: Program data — the app/data folder
 type: architecture
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -18,12 +18,12 @@ code:
 
 | Path in `app/data/` | What it is | Who writes it |
 |---|---|---|
-| `settings.json` (+`.bak`) | Non-secret settings: theme, Etsy (shop, return address), Printify (shop, Master, sizes, `manualApprovalConfirmedAt`), Gelato (formats, the EUR→USD rate, `pageCounts` 28 and 30; on launch `_upgrade()` removes the old `pageCount` and switches Gelato's "inch" products to metric), `textcheck` (enabled, model, Ollama address — 127.0.0.1 only), `backup` (the last copy or error) | `core.settings` |
-| `vault.json` (+`.bak`) | Etsy/Printify/Gelato keys, Etsy tokens, the backup's password (`backup_password`), and a Gemini key (`gemini_api_key`, for a planned text check — not used yet), DPAPI-encrypted. **Never read or print** | `Vault` |
+| `settings.json` (+`.bak`) | Non-secret settings: theme, Etsy (shop, return address), Printify (shop, Master, sizes, `manualApprovalConfirmedAt`), Gelato (formats, the EUR→USD rate, `pageCounts` 28 and 30; on launch `_upgrade()` removes the old `pageCount` and switches Gelato's "inch" products to metric; after the move to his own account — `switchedAt` and `firstAccount`, the account id of orders kept from before they carried theirs), `textcheck` (enabled, model, Ollama address — 127.0.0.1 only), `backup` (the last copy or error) | `core.settings` |
+| `vault.json` (+`.bak`) | Etsy/Printify/Gelato keys (after the move to his own Gelato account also the old account's, `gelato_old_api_key`, until he removes it), Etsy tokens, the backup's password (`backup_password`), and a Gemini key (`gemini_api_key`, for a planned text check — not used yet), DPAPI-encrypted. **Never read or print** | `Vault` |
 | `library/books/<id>/book.json` | The book model ([features/library.md](../features/library.md)); a book passed on from the [Workshop](../features/workshop.md) notes it (`"workshop": "<folder>"`) | `library.save()` |
 | `library/books/<id>/assets/<uuid>.png` | The book's illustrations (originals); a book passed on from the Workshop keeps its cover and pages in the Workshop's `pipeline/books/<folder>/pictures/` instead (`"pagesFrom": "workshop"`, since 2026-09-27) — only its thumbnail is here | `library._store_asset()` |
 | `library/trash/` | Deleted books (can be restored by hand) | `library._delete()` |
-| `profit/snapshot.json` | A snapshot of the last sync: Etsy receipts, Printify and Gelato orders (slim), the sync cursor, `loaded` — when each of the three lists last loaded in full (the archive only trusts a fresh one). Read from disk once per file change (`load_snapshot()`) | `profit._sync()` |
+| `profit/snapshot.json` | A snapshot of the last sync: Etsy receipts, Printify and Gelato orders (slim; each Gelato order with `account` — the hash of the key it was read with), the sync cursor, `loaded` — when each of the three lists last loaded in full (the archive only trusts a fresh one). Read from disk once per file change (`load_snapshot()`) | `profit._sync()` |
 | `profit/links.json` | Manual links: "receipt → print order" or "no cost" | `profit._set_link()` |
 | `profit/states.json` | Manual states: cancellation, refund, replacement (reprints from the order archive go here too) | `profit._set_state()`, `profit.mark_reprint()` |
 | `profit/print-orders.json` | Which print orders this program itself created for which receipt (a receipt's books can go in two batches, or to two printers) | `profit.remember_print_order()` |
@@ -39,6 +39,7 @@ code:
 | `archive/<id>/` | Order archive: `Cover.png` + the pages that went to print, and `entry.json` (what, where, when, address). **Deletes itself** 14 days after "Sent" (30 if the order can't be tracked), except "Keep" | [order archive](../features/archive.md) |
 | `window-profile/` | The Edge window profile (≈0.5 GB) | Edge |
 | `mockups/` | **The [Mockups](../features/mockups.md)' files** (the separate utility's data folder 2026-09-23…24, now Book Studio's `data_path("mockups", …)`): `book/<id>/` (the unpacked demo book, `BOOKS` — one at a time, apart from the orders' `tmp/dropped/`, gone on launch and close), `places.json` (where the templates / Photoshop are when not in the usual place, the last output folder `lastOut`, the last ZIP's folder `lastZip`), `work/<time>-<id>/` — one run: `templates/` (copies of the six templates; the three left open in Photoshop stay, the rest go right after the run), `pictures/` (gone right after the script), `mockups.jsx`, `job.json`, `status.json`, `finish.jsx`, `finish.json`, `finish-status.json`. A run folder goes after «Зберегти відкриті», at once when Photoshop is closed, else after a day (a copy the owner saved himself — a week). Left from the separate utility: `logs/` (its log; Book Studio's own is `logs/app.log` above); its `tmp/`, `cache/`, `window-profile/` went on the first launch after the move (that cleaning was removed on 2026-09-27, when nothing of them was left). A Photoshop started from here keeps its temp files in `tmp/photoshop/` (emptied once Photoshop is closed) | [mockups](../features/mockups.md) |
+| `slides/` | **The [listing slides](../features/slides.md)** (since 2026-09-29): `design/slideN.json` — the owner's template; `sets/<time>-<id>/` — a book's slides (`set.json`, `scenes/`, `books/` the cut-out books and their shadows, `pictures/`), the last 12 kept; `cuts/<key>/` — every mockup cut once (the book, its shadow, `info.json`). The browser that bakes keeps its profile in `tmp/slides-browser/` and a picture in `tmp/slides/` only while it draws | [slides](../features/slides.md) |
 
 ## Outside `app/data`: the Workshop's books
 

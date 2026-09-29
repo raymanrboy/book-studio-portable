@@ -15,3 +15,7 @@ __pycache__/
 desktop.ini
 # The Workshop's books: the pipeline's folders with every picture (gigabytes) — local only, like app/data
 pipeline/books/
+# The owner's examples for the listing slides (his Canva slides, sample mockups, a baked sample) — local only
+/examples/
+# A spare copy of the mockup templates (1.6 GB, purchased) — local only, never read by the program
+/Трафарети мастхев (копія)/

@@ -29,7 +29,8 @@ START_DELAY = 120                              # seconds after launch: the order
 FOLDER_NAME = "Book Studio — резервні копії"
 NAME = re.compile(r"^Book Studio (\d{4}-\d{2}-\d{2} \d{2}-\d{2})\.7z$")
 # Left out: what Edge holds open while the window is up, and the temp folders (they are emptied anyway).
-SKIP = (r"app\data\window-profile", r"app\data\tmp", ".tmp")
+# The spare copy of the templates (the owner, 29.09.2026) is left out too: the templates themselves are in every copy.
+SKIP = (r"app\data\window-profile", r"app\data\tmp", ".tmp", "Трафарети мастхев (копія)")
 KEYS_FILE = "Ключі (відкрито).json"
 README_FILE = "Як відновити.txt"
 README = """Резервна копія Book Studio.

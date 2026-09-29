@@ -11,6 +11,7 @@ import {
   receiptCopy, copyChip, childOf as childOfTitle, proofHtml, fieldsHtml, addressHtml, etsyAddressLines, svcChip,
 } from '../order-bits.js';
 import { give } from '../handoff.js';
+import { store } from '../info.js';
 
 // Page previews the server prepares when a book is archived (archive._warm_previews): 360 and 1400.
 const THUMB = 360;
@@ -148,6 +149,11 @@ async function mountBook(view, id) {
 
   function reprintCard() {
     const pr = e.provider === 'printify';
+    // From 1 October Printify only reads: its 24 pages do not fit Gelato (28 or 30), so a reprint starts from the
+    // order's card with a book downloaded anew.
+    if (pr && store.info?.integrations?.printify?.readOnly) {
+      return html`<section class="card card-pad"><div class="row faint">${ic('info', 'icon-s')}<span>Printify більше не друкує. Для передруку завантажте книгу з Canva на 28 або 30 сторінок і відправте в Gelato з картки замовлення.</span></div></section>`;
+    }
     return html`<section class="card card-pad stack ${pr ? 'tint-printify' : ''}">
       <button class="btn btn-xl btn-primary btn-block" data-act="reprint">${ic('send', 'icon-l')}Передрук у ${providerName(e.provider)}</button>
     </section>`;

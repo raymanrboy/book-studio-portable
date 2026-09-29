@@ -4,10 +4,22 @@ manual state. Pulling the orders is sync.py's; the files are records.py's."""
 from __future__ import annotations
 
 import threading
+from datetime import datetime
 
 from . import core, etsy, outcomes, printorders, reconcile, records
 from .fees import r2
 from .server import ApiError, Request, route
+
+# Bookkeeping starts on 1 October 2026 (owner, 25 and 27.09.2026: "it must not include earlier orders at all"): the
+# Profit page counts, shows and offers nothing older. The queue, the stages and the archive still read every order —
+# they take cached_view()["full"], which is not cut.
+ACCOUNTING_FROM = datetime(2026, 10, 1)  # midnight on this computer's clock
+
+
+def counted(created) -> bool:
+    """Whether a sale or a print order made at `created` belongs to the bookkeeping."""
+    at = reconcile.parse_time(created)
+    return at is not None and at >= ACCOUNTING_FROM.timestamp() * 1000
 
 
 def build_view() -> dict:
@@ -74,6 +86,8 @@ def cached_view() -> dict:
             view = build_view()
             slim = []
             for r in view["rows"]:
+                if not counted(r.get("created_at")):
+                    continue
                 s = {k: r.get(k) for k in SLIM_FIELDS}
                 s["search"] = " ".join([r.get("customer_name") or "", r.get("etsy_receipt_id") or "",
                                         r.get("app_order_id") or ""] + [i.get("title") or "" for i in r.get("items") or []]).lower()
@@ -82,7 +96,8 @@ def cached_view() -> dict:
                 "key": key,
                 "full": {r["id"]: r for r in view["rows"]},
                 "candidates": view["candidates"],
-                "summary": {**{k: v for k, v in view.items() if k not in ("rows", "candidates")}, "rows": slim},
+                "summary": {**{k: v for k, v in view.items() if k not in ("rows", "candidates")}, "rows": slim,
+                            "accountingFrom": ACCOUNTING_FROM.date().isoformat()},
             })
         return _view_cache
 
@@ -97,14 +112,14 @@ def _data(req: Request):
 @route("GET", "/api/profit/row")
 def _row(req: Request):
     row = cached_view()["full"].get(req.param("id") or "")
-    if not row:
+    if not row or not counted(row.get("created_at")):
         raise ApiError("Замовлення не знайдено. Оновіть сторінку.", 404)
     return row
 
 
 @route("GET", "/api/profit/candidates")
 def _candidates(req: Request):
-    return {"candidates": cached_view()["candidates"]}
+    return {"candidates": [c for c in cached_view()["candidates"] if counted(c.get("createdAt"))]}
 
 
 @route("POST", "/api/profit/links")

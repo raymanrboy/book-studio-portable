@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/orders.py
   - app/web/js/pages/orders.js
@@ -77,7 +77,9 @@ out — the exact number, e.g. "Gelato · 28 pages"; the whole chip's text is on
 pages" / "Gelato · 28 or 30 pages" — the rule's suggestion (no question mark, the owner's wish) — until the files are
 in; then the printer the files decided (24 pages → Printify, 28/30 → Gelato;
 [rules/printer-rule.md](../rules/printer-rule.md)). If the cover type is unknown — a printer switch (page options
-from the order's `pageOptions`). For "In progress" / the truck / "Sent" — a warning "only print again for
+from the order's `pageOptions`). **From 1 October 2026** every card says "Gelato · 28 or 30 pages" — a US hardcover
+too; an unknown cover type has no switch, it goes to Gelato and its format is picked in the Order Creator
+(`planText()`). For "In progress" / the truck / "Sent" — a warning "only print again for
 a reprint" (for the truck — also "mark it shipped on Etsy"). Esc — back to the queue.
 
 **The card remembers where the owner left off** (since 2026-09-18, his request): while the order is in

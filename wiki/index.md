@@ -1,7 +1,7 @@
 ---
 title: Book Studio wiki — index
 type: index
-updated: 2026-09-27
+updated: 2026-09-29
 code: []
 ---
 # Book Studio wiki
@@ -31,7 +31,7 @@ code: []
 - [Send journal](features/send-journal.md) — exactly what went to Printify and Gelato on every attempt.
 - [Order archive](features/archive.md) — files of books that went to print (14 days after "Sent"), and
   reprints.
-- [Profit](features/profit.md) — hidden until 1 October.
+- [Profit](features/profit.md) — in the rail since 2026-09-29; counts only sales from 1 October 2026.
 - [Backup](features/backup.md) — every 3 days the whole program and the mockup templates go to Google Drive as
   one 7-Zip archive under the owner's password.
 - [Two modes](features/modes.md) — Orders and Listings: the brand icon switches, each mode its rail and ink
@@ -41,11 +41,13 @@ code: []
   the pictures from Downloads, the cover on the printer's template; passed to the library with their Etsy listing.
 - [Mockups](features/mockups.md) — the Listings mode: a Canva demo book → Etsy listing pictures from the
   Photoshop templates (the owner fits the front cover by hand).
+- [Listing slides](features/slides.md) — the Mockups' next steps: the pictures without background, the six Etsy
+  slides made by themselves, a Canva-like editor loaded only when opened; the skill `/listing-slides`.
 
 ## Domain rules
 
-- [Printer rule](rules/printer-rule.md) — Hardcover in the US → Printify (24), everything else → Gelato
-  (28 or 30).
+- [Printer rule](rules/printer-rule.md) — from 1 October 2026 every book → Gelato (28 or 30); Printify only
+  read for its earlier orders.
 - [Book structure](rules/book-structure.md) — 30 pages, spreads, library slots, the print folder.
 - [File naming](rules/file-naming.md) — laying out a Canva export, importing into the library.
 - [Order stages](rules/order-stages.md) — new / in progress / sent.
@@ -62,15 +64,17 @@ code: []
 
 - [Launch and shutdown](architecture/runtime.md)
 - [Server](architecture/server.md) — routes, background jobs, errors, settings.
-- [Server routes](architecture/api-routes.md) — all 135, with who calls them.
+- [Server routes](architecture/api-routes.md) — all 156, with who calls them.
 - [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
 - [Data](architecture/data.md) — what's in `app/data`.
 
 ## Services
 
 - [Etsy](integrations/etsy.md) — read-only; sign-in only from the Kyiv PC.
-- [Printify](integrations/printify.md) — allowed actions, On-hold orders, the Master.
-- [Gelato](integrations/gelato.md) — drafts, PDF, the Cloudflare temporary link.
+- [Printify](integrations/printify.md) — read-only from 1 October 2026; before: allowed actions, On-hold orders,
+  the Master.
+- [Gelato](integrations/gelato.md) — drafts, PDF, the Cloudflare temporary link; the move to the owner's own
+  account (two keys, the old one read-only).
 - [Canva](integrations/canva.md) — book templates and the owner's manual work.
 
 ## Owner
@@ -92,6 +96,8 @@ code: []
 - [Plans](plans/roadmap.md) — agreed ideas for later.
 - [Listing mockups](plans/listing-mockups.md) — the agreements and the templates' structure behind the
   [Mockups](features/mockups.md).
+- [Listing pictures](plans/listing-pictures.md) — the plan of 2026-09-29 and its history: the six Etsy slides made by
+  Book Studio instead of Canva; cutting the book out with its shadow; the design; the external prototype; the move in.
 - [Two modes: Orders and Listings](plans/listings-mode.md) — the agreements of 2026-09-24: the mode switch
   on the brand icon, the Workshop, the mockups inside Book Studio.
 - [The book console](plans/book-console.md) — the plan of 2026-09-25 and its history: the book pipeline and the

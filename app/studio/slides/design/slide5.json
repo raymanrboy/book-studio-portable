@@ -1,0 +1,208 @@
+{
+ "title": "Слайд №5 · Personalization made simple",
+ "bg": "#eedec7",
+ "items": [
+  {
+   "name": "Світла пляма 1",
+   "type": "blob",
+   "x": 250,
+   "y": 420,
+   "w": 420,
+   "h": 380,
+   "rot": 0,
+   "seed": 3,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 2",
+   "type": "blob",
+   "x": 180,
+   "y": 770,
+   "w": 320,
+   "h": 240,
+   "rot": 0,
+   "seed": 6,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 3",
+   "type": "blob",
+   "x": 900,
+   "y": 250,
+   "w": 260,
+   "h": 300,
+   "rot": 0,
+   "seed": 10,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Зерно паперу",
+   "type": "grain",
+   "x": 500,
+   "y": 500,
+   "locked": true
+  },
+  {
+   "name": "Оливкова смуга",
+   "type": "band",
+   "x": 527.2,
+   "y": -116.1,
+   "w": 1300,
+   "h": 520,
+   "rot": 5.99,
+   "color": "#a2a066",
+   "seed": 4
+  },
+  {
+   "name": "Персикова смуга",
+   "type": "band",
+   "x": 539.8,
+   "y": 1094.4,
+   "w": 1300,
+   "h": 520,
+   "rot": -8.81,
+   "color": "#e8c59d",
+   "seed": 21
+  },
+  {
+   "name": "Пунктир",
+   "type": "dashes",
+   "x": 500.0,
+   "y": 875.0,
+   "w": 987.7,
+   "h": 20,
+   "rot": -10.58,
+   "count": 11,
+   "dash": 62,
+   "color": "#ffffff"
+  },
+  {
+   "name": "Розворот",
+   "type": "book",
+   "x": 880,
+   "y": 505,
+   "w": 940,
+   "rot": -9,
+   "slot": "open2:1"
+  },
+  {
+   "name": "Заголовок",
+   "type": "text",
+   "text": "Personalization\nmade simple",
+   "x": 738,
+   "y": 92,
+   "size": 44,
+   "w": 540,
+   "rot": 6,
+   "align": "center",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Картка 1",
+   "type": "band",
+   "x": 322,
+   "y": 268,
+   "w": 600,
+   "h": 142,
+   "rot": 0,
+   "color": "#a2a066",
+   "seed": 31,
+   "rim": 5
+  },
+  {
+   "name": "Крок 1",
+   "type": "text",
+   "text": "1. Choose your format\n\nSelect your preferred cover type\nand book size.",
+   "x": 330,
+   "y": 268,
+   "size": 24,
+   "w": 560,
+   "rot": 0,
+   "align": "left",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Картка 2",
+   "type": "band",
+   "x": 332,
+   "y": 500,
+   "w": 620,
+   "h": 250,
+   "rot": 0,
+   "color": "#a2a066",
+   "seed": 41,
+   "rim": 5
+  },
+  {
+   "name": "Крок 2",
+   "type": "text",
+   "text": "2. Make it personal\n\nAdd the child's name, send your\ndedication and afterword text\nvia Etsy messages — or skip this\nstep and use our ready-to-use\nwording.",
+   "x": 340,
+   "y": 500,
+   "size": 24,
+   "w": 580,
+   "rot": 0,
+   "align": "left",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Тінь листя",
+   "type": "leaves",
+   "x": 880,
+   "y": 360,
+   "w": 600,
+   "h": 600,
+   "rot": 0,
+   "opacity": 0.085
+  },
+  {
+   "name": "Наліпка «How to order?»",
+   "type": "sticker",
+   "x": 840,
+   "y": 858,
+   "r": 128,
+   "rot": 8,
+   "color": "#a2a066",
+   "lines": [
+    {
+     "t": "how"
+    },
+    {
+     "t": "to"
+    },
+    {
+     "t": "order?"
+    }
+   ]
+  },
+  {
+   "name": "Зірочка 1",
+   "type": "sparkle",
+   "x": 90,
+   "y": 700,
+   "size": 18
+  },
+  {
+   "name": "Зірочка 2",
+   "type": "sparkle",
+   "x": 124,
+   "y": 664,
+   "size": 9
+  },
+  {
+   "name": "Зірочка 3",
+   "type": "sparkle",
+   "x": 600,
+   "y": 646,
+   "size": 14
+  },
+  {
+   "name": "Зірочка 4",
+   "type": "sparkle",
+   "x": 636,
+   "y": 676,
+   "size": 7
+  }
+ ],
+ "id": "slide5"
+}

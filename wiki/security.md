@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -28,8 +28,10 @@ code:
 2. **Etsy — read-only.** No changes in the shop at all.
 3. **Printify** — only image uploads, an unpublished product, and "On hold" orders (only after
    confirming manual approval). **Never**: sending to production, cancelling, Express, publishing, or
-   changing/deleting products. **The Master product is never changed.**
-4. **Gelato** — drafts only (`orderType: draft`).
+   changing/deleting products. **The Master product is never changed.** **From 1 October 2026 Printify is
+   read-only** — nothing is written there at all (the owner moved every new book to Gelato).
+4. **Gelato** — drafts only (`orderType: draft`), and only in the main account; the old account (kept after the
+   move to the owner's own one) is only read.
 5. **No live writes** to the owner's accounts (Etsy, Printify, Gelato) without his direct permission in
    chat. For checks — tests with fake services ([dev/testing.md](dev/testing.md)).
 6. **Keys and tokens** — never read, print, or copy into code, documents, URLs, or logs.
@@ -82,6 +84,8 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   [test_flows.py](../app/tests/test_flows.py).
 
 ### Printify
+- From 1 October 2026 (`retired()`, `READ_ONLY_FROM`) `_check()` blocks every request that isn't a `GET`, before
+  anything else; the Order Creator's Printify routes refuse up front (`GelatoOnly` in `test_orders.py`).
 - Every request goes through `_check()`: a fixed list of allowed reads and only two writes
   (`uploads/images.json`, `shops/{id}/products.json`); the words `publish`, `send_to_production`,
   `unpublish`, `cancel`, `express` in the path are blocked.
@@ -102,6 +106,10 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   `orderType == "draft"`; the words `cancel`, `publish`, `production`, `confirm`, `:convert`, `patch` are
   blocked.
 - `create_draft_order()` forces `orderType: draft`.
+- **Two accounts during the move** (since 2026-09-29): `call(…, account="old")` — the old account's key — passes
+  `_allowed()` only for the order search and `GET`; a new key being checked (`check_key()`, `key=`) only reads too.
+  The switch moves the keys inside the vault (`gelato_old_api_key`); an order carries `account_id()` — a hash, never
+  the key. The preview server refuses the switch before any request (`core.SAMPLE`).
 - An unclear result from creating a draft (timeout, dropped connection, 500/502/504) is not "rejected":
   the owner sees "don't resend, check Drafts", and the PDF link stays up for 15 min (since 2026-09-23;
   previously, resending after such an error could create two drafts for one receipt).
@@ -155,6 +163,12 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   without saving.
 - The output folder may **not** be the templates folder — refused in the dialog (`_pick_out()`) and in the
   run (`make()`). An existing picture is never overwritten (`_free_name()`).
+- The spare copy `Трафарети мастхев (копія)` in the Book Studio folder (2026-09-29) is **read-only too** (its files marked
+  so) and never used by the program; it is not in git and not in the backup (the templates themselves are).
+- The listing slides' cut-out **only reads** the templates (their book mask and shadow layers, psd_tools); what it
+  writes goes beside the mockups (`Без фону\`, never over a file that is there) and into `app/data/slides`; the
+  slides are `Listing N.png`, never over another file — only the program's own are baked again
+  ([slides](features/slides.md)).
 - Its files live in `app/data/mockups`. The unpacked demo book has a folder of its own there
   (`mockups/book/`, `BOOKS`), so the mockups never delete the files dropped into an order's card and Book
   Studio's cleaning of dropped files never deletes the demo book. The demo book, old runs and Photoshop's temp
@@ -205,9 +219,10 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - [app/studio/etsy.py](../app/studio/etsy.py) — `SCOPES`, `get()`, `start_oauth()`, `_oauth_callback()`
 - [app/studio/settings_api.py](../app/studio/settings_api.py) — `_open_url()`
 - [app/web/js/pages/settings-dialogs.js](../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`
-- [app/studio/printify.py](../app/studio/printify.py) — `_check()`, `call()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `create_product()`
+- [app/studio/printify.py](../app/studio/printify.py) — `retired()`, `_check()`, `call()`, `create_order_on_hold()`, `manual_approval_confirmed()`, `create_product()`
 - [app/studio/creator/printify_send.py](../app/studio/creator/printify_send.py) — `create_printify_draft()`, `_master_fingerprint()`
-- [app/studio/gelato.py](../app/studio/gelato.py) — `_allowed()`, `create_draft_order()`
+- [app/studio/gelato.py](../app/studio/gelato.py) — `_allowed()`, `create_draft_order()`, `check_key()`, `account_id()`
+- [app/studio/gelato_accounts.py](../app/studio/gelato_accounts.py) — `_switch()`
 - [app/studio/vault.py](../app/studio/vault.py) — `protect()`, `unprotect()`, `SECRET_NAMES`, `readable()`
 - [app/studio/server.py](../app/studio/server.py) — `SESSION_TOKEN`, `_host_ok()`, `route()`, `Request.int_param()`
 - [app/studio/workshop/pictures.py](../app/studio/workshop/pictures.py) — `_variant()`, `variant_dir()`

@@ -1,7 +1,7 @@
 ---
 title: When orders are refreshed
 type: rule
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/sync.py
   - app/studio/profit.py
@@ -38,6 +38,10 @@ code:
    read again only while it has no tracking number and its status has changed; tracking numbers already
    found carry over from the previous snapshot; no more than 60 reads per refresh. A read that fails →
    a warning, tried again on the next refresh. A search failure → a warning, the previous data stays.
+   **Each account the program has a key for** (since 2026-09-29: after the move to his own account, the new one and
+   the old, read-only one) is read in turn; an order is dropped only when its own account's list, loaded whole,
+   lacks it — every other known order stays as last seen ([gelato](../integrations/gelato.md)). Gelato's `loaded`
+   time is written only when every account loaded whole.
 4. Saving the snapshot and recomputing the view cache (`cached_view()`). In the snapshot, `loaded` — for
    Etsy, Printify, and Gelato separately — records when their list last **loaded in full**: a list that
    failed to load keeps its old time; a list that stopped at its cap (Etsy 20,000 receipts, Printify 400
@@ -55,7 +59,8 @@ within one Windows clock "tick" get the same modified time — a bug fixed on 20
 - [app/studio/profit.py](../../app/studio/profit.py) — `cached_view()`
 - [app/studio/sync.py](../../app/studio/sync.py) — `startup_sync()`, `_start_sync()`, `_sync_state()`, `_sync()`, `merge_receipts()`, `FULL_SYNC_EVERY`, `SYNC_OVERLAP`
 - [app/studio/records.py](../../app/studio/records.py) — `save()`
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `attach_shipments()`, `TRACKING_READS`
+- [app/studio/gelato.py](../../app/studio/gelato.py) — `attach_shipments()`, `TRACKING_READS`, `accounts()`
+- [app/studio/sync.py](../../app/studio/sync.py) — `_gelato_part()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `syncOrders()`, `runningSync()`, `watchSync()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `orderSync()`: the sync button of the queue
   ([orders.js](../../app/web/js/pages/orders.js) `mount()`) and of the Order Creator's picker

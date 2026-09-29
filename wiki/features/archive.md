@@ -1,7 +1,7 @@
 ---
 title: Order archive — what went to print, and reprints
 type: feature
-updated: 2026-09-27
+updated: 2026-09-29
 code:
   - app/studio/archive.py
   - app/web/js/pages/archive.js
@@ -102,8 +102,12 @@ reprint mode is dropped.
   required, manual approval, matte variant, no Express. The book no longer exists in Printify → it's
   created again from the archived files (pictures already in Printify aren't duplicated), and a warning
   is shown.
+  **From 1 October 2026 Printify only reads** ([printify](../integrations/printify.md)): an archived Printify book
+  shows no button, only «Printify більше не друкує…» — its 24 pages don't fit Gelato (28 or 30), so a reprint is
+  downloaded anew from Canva and sent to Gelato from the order's card (`reprintCard()`, by
+  `integrations.printify.readOnly` of `/api/app`).
 - **Gelato**: a new draft from the archived files (the server takes exactly those, `reprintOf`); the
-  archived book has to be from Gelato.
+  archived book has to be from Gelato. A book printed through the old Gelato account is reprinted in the new one.
 - A reprint is recorded in the accounting as a **replacement** for this receipt
   (`profit.mark_reprint()`): matching keeps the first print order attached to the receipt, so its stage
   in the queue doesn't jump. A receipt with another manual mark (cancelled, refunded) isn't touched.

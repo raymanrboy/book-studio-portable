@@ -3,14 +3,17 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
 from tests.fixtures import png
-from studio import drops, library_files, orders
+from studio import drops, library_files, orders, printify
 from studio.server import ApiError
+
+REAL_RETIRED = printify.retired  # GelatoOnly stands in for it; its own test checks the real one
 
 
 def item(cover="8\" × 8\" Hardcover", title="Personalized book"):
@@ -45,6 +48,58 @@ class PrinterRule(unittest.TestCase):
 
     def test_unknown_cover_leaves_the_choice_to_the_owner(self):
         self.assertIsNone(orders.plan_for(item(cover="Blue", title="Book"), "US")["provider"])
+
+
+class GelatoOnly(unittest.TestCase):
+    """From 1 October 2026 every new book is Gelato's (owner, 29.09.2026); Printify only reads."""
+
+    def setUp(self):
+        self.printify = printify
+        patcher = mock.patch.object(printify, "retired", lambda today=None: True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_the_day_itself(self):
+        from datetime import date
+        with mock.patch.object(printify, "READ_ONLY_FROM", date(2026, 10, 1)):  # the suite runs as before that day
+            self.assertFalse(REAL_RETIRED(date(2026, 9, 30)))
+            self.assertTrue(REAL_RETIRED(date(2026, 10, 1)))
+
+    def test_every_book_goes_to_gelato(self):
+        us = orders.plan_for(item(), "US")
+        self.assertEqual((us["provider"], us["format"], us["pages"]), ("gelato", "hardcover_8x8", [28, 30]))
+        self.assertNotIn("choice", us)
+        unknown = orders.plan_for(item(cover="Blue", title="Book"), "US")
+        self.assertEqual((unknown["provider"], unknown["format"], unknown["pages"]), ("gelato", None, [28, 30]))
+        self.assertNotIn("printify", orders.printing()["pages"])
+
+    def test_24_pages_are_refused_and_a_card_opened_before_is_led_to_gelato(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp) / "Emma"
+            d.mkdir()
+            for n in list(range(1, 29)):
+                png(d / f"{n}.png")
+            png(d / "Cover.png", (96, 50))
+            from studio import gelato
+            with mock.patch.object(drops, "DROPS", Path(tmp) / "drops"), \
+                    mock.patch.object(gelato, "page_counts", lambda uid: [28, 30]):
+                got = orders._files(SimpleNamespace(json={"folder": str(d), "provider": "files", "format": "hardcover_8x8"}))
+                self.assertEqual((got["pageCount"], got["provider"]), (28, "gelato"))
+                with self.assertRaises(ApiError):
+                    orders._files(SimpleNamespace(json={"folder": str(d), "provider": "printify"}))
+
+    def test_nothing_is_written_to_printify(self):
+        from studio import httpc
+        with mock.patch.object(httpc, "request_json", side_effect=AssertionError("must not be sent")):
+            for path in ("uploads/images.json", "shops/1/products.json"):
+                with self.assertRaises(self.printify.PrintifySecurityError):
+                    self.printify.call("POST", path, {})
+            with self.assertRaises(self.printify.PrintifySecurityError):
+                self.printify.call("POST", "shops/1/orders.json", {}, order=True)
+        from studio.creator import routes
+        for route in (routes._create_printify, routes._reprint_printify):
+            with self.assertRaises(ApiError):
+                route(SimpleNamespace(json={}))
 
 
 class ArrangePages(unittest.TestCase):

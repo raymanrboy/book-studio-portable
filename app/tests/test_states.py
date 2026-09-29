@@ -379,7 +379,7 @@ class GelatoTracking(unittest.TestCase):
     def test_each_shipped_order_is_read_once(self):
         read = []
 
-        def get_order(order_id):
+        def get_order(order_id, account="main"):
             read.append(order_id)
             if order_id == "bad":
                 raise gelato.GelatoError("no", 502)
@@ -470,11 +470,11 @@ class IncrementalSync(unittest.TestCase):
             self.assertEqual(sorted(records.load_snapshot()["loaded"]), ["etsy"])
             cut = httpc.Listing([{"id": "g1", "fulfillmentStatus": "draft"}])
             cut.complete = False
-            with mock.patch.object(gelato, "all_orders", lambda progress=None: cut):
+            with mock.patch.object(gelato, "all_orders", lambda progress=None, account="main": cut):
                 result = sync._sync(Job("b"))
             self.assertEqual(sorted(records.load_snapshot()["loaded"]), ["etsy"])
             self.assertTrue(any("лише останні" in w for w in result["warnings"]))
-            with mock.patch.object(gelato, "all_orders", lambda progress=None: httpc.Listing(cut)):
+            with mock.patch.object(gelato, "all_orders", lambda progress=None, account="main": httpc.Listing(cut)):
                 sync._sync(Job("c"))
             self.assertEqual(sorted(records.load_snapshot()["loaded"]), ["etsy", "gelato"])
 

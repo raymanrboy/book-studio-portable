@@ -1,7 +1,7 @@
 ---
 title: Open questions and technical debt
 type: plan
-updated: 2026-09-27
+updated: 2026-09-29
 code: []
 ---
 # Open questions
@@ -109,14 +109,13 @@ different server).
 
 ## Technical debt
 
-- `pages/profit.js` isn't wired into the routes until October 1.
-- **Profit counts only sales from 1 October 2026** (the owner, 2026-09-27: "accounting starts in October and must
-  not include earlier orders at all"). Not in the code yet: the view counts every receipt the sync has (77 since
-  January) — a start date to be added before the page is turned on.
-- **The owner's own Gelato account** (about 1 October 2026): swapping the key today would drop the old account's
-  orders from the queue and **delete their books from the archive** a few days later. The smooth switch is agreed
-  and planned — [roadmap](roadmap.md#the-owners-own-gelato-account--a-smooth-switch-agreed-2026-09-27-not-built);
-  until it is built, the key isn't replaced.
+- ~~`pages/profit.js` isn't wired into the routes~~ — in the rail since 2026-09-29.
+- ~~**Profit counts only sales from 1 October 2026**~~ — built 2026-09-29 (`profit.ACCOUNTING_FROM`).
+- ~~**The owner's own Gelato account**~~ — the smooth switch built 2026-09-29
+  ([gelato](../integrations/gelato.md)); the key is now replaced only through «Перейти на новий акаунт Gelato».
+- **Printify's code stays** after 1 October (read-only): the sending, the Master, the reprint. When every Printify
+  order is delivered and its archive days are over, it could be cut down to the reading — only with the owner's
+  word (he may want Printify back).
 - ~~**Accounting — before October 1**~~ (deferred by the owner on 2026-09-23) — **fixed on 2026-09-26** in the
   [big cleanup](cleanup.md): one money step, a cancelled first order keeps the second one's cost, every currency
   converted, the cover from the buyer's choice, only placed and paid orders counted

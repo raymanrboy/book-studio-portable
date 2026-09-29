@@ -72,8 +72,8 @@ def unprotect_powershell_securestring(text: str) -> str:
     return unprotect(raw).decode("utf-16-le")
 
 
-SECRET_NAMES = ("etsy_keystring", "etsy_shared_secret", "printify_token", "gelato_api_key", "etsy_tokens",
-                "backup_password")
+SECRET_NAMES = ("etsy_keystring", "etsy_shared_secret", "printify_token", "gelato_api_key", "gelato_old_api_key",
+                "etsy_tokens", "backup_password")
 
 
 class Vault:

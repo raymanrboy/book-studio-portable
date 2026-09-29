@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8">
+<title>Слайд</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1000px;height:1000px;overflow:hidden;background:#fff}
+#stage{position:relative;width:1000px;height:1000px;overflow:hidden;isolation:isolate}
+</style></head>
+<body><div id="stage"></div>
+<script type="module">
+// render.html?w=<set>&s=slide3&t=<token> — the final picture of a slide: headless Edge draws it at 1000² × 2 and saves
+// the screenshot (studio/slides/bake.py). The same engine as the editor.
+import { ready, setAssets, drawScene } from '/js/slides/engine.js';
+const q = new URLSearchParams(location.search);
+const get = (path) => fetch(`${path}?${new URLSearchParams({ w: q.get('w') || 'template', s: q.get('s') || '', t: q.get('t') || '' })}`, { cache: 'no-store' })
+  .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const [{ scene }, assets] = await Promise.all([get('/media/slides/scene'), get('/media/slides/assets'), ready()]);
+setAssets(assets);
+drawScene(scene, document.getElementById('stage'));
+</script>
+</body></html>
