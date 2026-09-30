@@ -45,6 +45,8 @@ Code paths below are relative to the repository root.
 | Записка (на форзаці) | The left half of the proof's first spread: the name and the buyer's fields | [order-card.js](../app/web/js/pages/order-card.js) `proofCard()`; CSS `.proof-note` in [orders.css](../app/web/css/orders.css) |
 | Стрічка, слайдер сторінок | The horizontal row of every spread in the proof | [order-card.js](../app/web/js/pages/order-card.js) `proofCard()`; [order-bits.js](../app/web/js/order-bits.js) `smoothWheel()` |
 | До друку | Handing the order off to the Order Creator | [order-card.js](../app/web/js/pages/order-card.js) `print()`; [handoff.js](../app/web/js/handoff.js) `give()` |
+| Сьогодні | The page the brand mark opens: what needs the owner now across every place (new orders, tracking to mark in Etsy, a Workshop book with mistakes or ready, services missing a key) | [today.js](../app/web/js/pages/today.js); [features/modes.md](features/modes.md) |
+| Скасувати (toast) | The button on a notice that takes the action back — offered only when it really restores (a library book from the trash) | [lib.js](../app/web/js/lib.js) `toast()`; [book.js](../app/web/js/pages/book.js) `deleteBook()` |
 | Order Creator | The book/draft creation page | [creator.js](../app/web/js/pages/creator.js) `mount()`; [creator/](../app/studio/creator/__init__.py) |
 | Чернетка Gelato | A Gelato order with `orderType: draft` | [creator/gelato_send.py](../app/studio/creator/gelato_send.py) `create_gelato_draft()` |
 | Логи відправки, журнал відправок | JSON for every send to Printify/Gelato (`data/logs/sends/`) | [sendlog.py](../app/studio/sendlog.py); [features/send-journal.md](features/send-journal.md) |
@@ -82,7 +84,7 @@ Code paths below are relative to the repository root.
 | Передрук, редрук | Reprinting the same book from the order archive: Printify — a new order for the same book, Gelato — a new draft | [creator/printify_send.py](../app/studio/creator/printify_send.py) `create_printify_reprint()`; [features/archive.md](features/archive.md) |
 | Не видаляти (у архіві) | The pin on a book in the archive: the files stay until the mark is removed | [archive.py](../app/studio/archive.py) `_keep()` |
 | Оформлене замовлення (в друкарні) | Confirmed and paid, not a draft, not "on hold", not cancelled; only this moves the order into "in progress" and puts the book in the archive | [printorders.py](../app/studio/printorders.py) `is_placed()`; [rules/order-stages.md](rules/order-stages.md) |
-| Завершити роботу над замовленням | The × in the order card and in the Order Creator after a successful send: the program forgets the saved work on this order and opens the queue | [keep.js](../app/web/js/keep.js) `finish()`; [features/orders.md](features/orders.md) |
+| Завершити роботу над замовленням | The ✓ (was an × until 2026-09-30 — the same glyph meant «remove») in the order card and in the Order Creator after a successful send: the program forgets the saved work on this order and opens the queue | [keep.js](../app/web/js/keep.js) `finish()`; [features/orders.md](features/orders.md) |
 | Вигаданий номер (телефон) | The phone number filled into Gelato when the Etsy order doesn't have one: `+1 555 555 0100` | [creator/gelato_send.py](../app/studio/creator/gelato_send.py) `GELATO_PLACEHOLDER_PHONE` |
 | ШІ-валідатор, перевірка тексту, «кнопка перевірити» | A local model reads the pages in the order card, the program checks them against the book passport | [textcheck/run.py](../app/studio/textcheck/run.py) `check_order()`; [order-card.js](../app/web/js/pages/order-card.js) `startCheck()`; [features/text-check.md](features/text-check.md) |
 | Калібрування (валідатора), «що показувати в помилках» | Tuning the program's rules that decide which findings of the text check the owner sees (not Gemma); done on the check journal | [textcheck/rules.py](../app/studio/textcheck/rules.py) `page_issues()`; [app/tools/textcheck_replay.py](../app/tools/textcheck_replay.py) `replay()`; [features/text-check.md](features/text-check.md) |
@@ -100,8 +102,13 @@ Code paths below are relative to the repository root.
 
 | Owner's word (Ukrainian) | What it is | Where |
 |---|---|---|
-| Два режими; режим роботи з замовленнями / режим створення лістингів | Orders (orange) and Listings (cyan) — each with its own rail; the address says which | [features/modes.md](features/modes.md); [app.js](../app/web/js/app.js) `MODES` |
-| Перемикач по кліку на головну іконку Бук Студіо | The brand icon at the top of the rail (Alt+0) goes to the other mode | [app.js](../app/web/js/app.js) `switchMode()`, `entryOf()` |
+| Два режими; режим роботи з замовленнями / режим створення лістингів | Until 2026-09-30 Orders and Listings, each its rail; now one labelled rail — the inks stay, following the area (orders orange, books cyan) | [features/modes.md](features/modes.md); [app.js](../app/web/js/app.js) `PLACES` |
+| Перемикач по кліку на головну іконку Бук Студіо | Gone on 2026-09-30: the brand icon is a mark in the area's ink; the places are labelled in the rail | [app.js](../app/web/js/app.js) `buildSidebar()`, `entryOf()` |
+| Книги (розділ) | «Книги»: the Workshop's books and the library's as the tabs «Майстерня · Бібліотека · Архів» | [pages/books.js](../app/web/js/pages/books.js) `mount()` |
+| Інструменти; «кожен інструмент юзати окремо» | «Інструменти»: the tools that also work on their own (the Order Creator, the print archive, the Mockups, the photo mockups, the listing slides); inside an order or a book they open from its step | [pages/tools.js](../app/web/js/pages/tools.js) `mount()`; [places.js](../app/web/js/places.js) `TOOLS` |
+| Пошук (по всій програмі) | Ctrl+K: an order, a book, a place, a tool | [palette.js](../app/web/js/palette.js) `openPalette()` |
+| Шлях (замовлення, книги); що далі | The path strip: an order's Canva · Файли · Вичитка · Друк · Відправка, a Workshop book's 11 steps | [path.js](../app/web/js/path.js) `pathHtml()` |
+| Архів друку (архів замовлень) | The print archive — among «Інструменти»; a printed order's card links to its entry | [features/archive.md](features/archive.md) |
 | Кольори режимів: студія — оранжева, «як у Etsy і Claude»; майстерня — як була студія (блакитна) | The `--accent*` tokens: orange by default (Orders), cyan under `[data-mode="listings"]`; magenta for a few hours before the owner swapped them | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |
 | Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library — since 2026-09-26 the book console moved in: the agents write a book, the Workshop shows its path and catches its pictures | [features/workshop.md](features/workshop.md); [workshop/books.py](../app/studio/workshop/books.py) |
 | Пульт, пульт книги | The book console — a prototype window apart from Book Studio (2026-09-26), moved into the Workshop the same day; now the Workshop's book page | [plans/book-console.md](plans/book-console.md); [features/workshop.md](features/workshop.md) |
@@ -155,7 +162,7 @@ Code paths below are relative to the repository root.
 
 | Owner's word (Ukrainian) | What it is | Where in the code |
 |---|---|---|
-| Бокова панель, піктограми зліва | Navigation — each mode its own items | [app.js](../app/web/js/app.js) `MODES`, `buildSidebar()`, `buildNav()` |
+| Бокова панель, піктограми зліва | The rail: labelled places (Замовлення, Книги, Прибуток, Інструменти), search, Settings | [app.js](../app/web/js/app.js) `PLACES`, `buildSidebar()` |
 | Тримати диск C в чистоті | No temp files of the programs on drive C: their own temp folder on D, emptied on launch and close | [core.py](../app/studio/core.py) `own_temp()`; [runtime](architecture/runtime.md#temporary-files-and-drive-c) |
 | Панель інструментів (пошук, сортування, «+») | `.lib-toolbar` | [library.js](../app/web/js/pages/library.js) `mount()`; [library.css](../app/web/css/library.css) |
 | Підказка при наведенні | The shared tooltip | [lib.js](../app/web/js/lib.js) `showTip()`, `ib()` |

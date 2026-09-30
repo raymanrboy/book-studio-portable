@@ -1,5 +1,5 @@
 // «Нова книга» and the Workshop's «Передати в бібліотеку»: one dialog. A Listings page opens it without loading the Library page (27.09.2026).
-import { api, post, html, ic, ib, setHtml, modal, toast, raw } from './lib.js';
+import { api, post, html, ic, ib, setHtml, modal, toast, raw, markMissing } from './lib.js';
 import { store, refreshInfo } from './info.js';
 
 // ------------------------------------------------------------------ add book dialog
@@ -36,7 +36,7 @@ export function openAddBook(existing = [], transfer = null) {
         <input class="input" id="nb-canva" placeholder="https://www.canva.com/design/…" autocomplete="off"></div>`}
       <label class="check" id="nb-photo-wrap" hidden><input type="checkbox" id="nb-photo" checked><span>Взяти головне фото лістингу як заставку книги</span></label>
     </div>`,
-    foot: html`<button class="btn btn-ghost" data-close2>Скасувати</button><button class="btn btn-primary" id="nb-create" disabled>${transfer
+    foot: html`<button class="btn btn-ghost" data-close2>Скасувати</button><button class="btn btn-primary" id="nb-create">${transfer
       ? html`${ic('shelf')}Передати в бібліотеку` : html`${ic('plus')}Створити книгу`}</button>`,
   });
   const $ = (s) => m.el.querySelector(s);
@@ -51,11 +51,20 @@ export function openAddBook(existing = [], transfer = null) {
     if (dup) {
       setHtml(result, html`<div class="notice notice-info">${ic('info')}<div>${transfer ? 'Цей лістинг уже має книга в бібліотеці' : 'Ця книга вже є в бібліотеці'}${dup.archived ? ' (в архіві)' : ''}: <b>${dup.title}</b>.
         <div style="margin-top:8px"><button class="btn btn-sm" data-open-dup="${dup.id}">${transfer ? 'Відкрити ту книгу' : 'Відкрити книгу'}</button></div></div></div>`);
-      create.disabled = true;
       return;
     }
-    if (listing) create.disabled = false;
-    else create.disabled = !(unverified && id && (transfer || $('#nb-title').value.trim()));
+  }
+  // The button always answers (2026-09-30; it was grey and silent until a listing was checked): it says what is
+  // missing and lights the field up.
+  function missing() {
+    const id = listingIdOf(ref.value);
+    const dup = id && existing.find((b) => String(b.listingId) === id);
+    if (dup) return ['Ця книга вже є — відкрийте її вище', null];
+    if (listing) return null;
+    if (!id) return ['Вставте посилання на лістинг Etsy або його номер', ref];
+    if (!unverified) return keysReady ? ['Спершу перевірте лістинг — Enter або лупа', ref] : null;
+    if (!transfer && !$('#nb-title').value.trim()) return ['Вкажіть назву книги', $('#nb-title')];
+    return null;
   }
 
   async function verify() {
@@ -72,7 +81,7 @@ export function openAddBook(existing = [], transfer = null) {
       const shopId = store.info?.integrations?.etsy?.shopId;
       const otherShop = shopId && listing.shopId && String(shopId) !== String(listing.shopId);
       setHtml(result, html`<div class="card-soft" style="padding:12px;display:flex;gap:12px;align-items:center">
-        ${listing.imageUrl ? html`<img src="${listing.imageUrl}" alt="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex:none">` : ''}
+        ${listing.imageUrl ? html`<img src="${listing.imageUrl}" alt="" style="width:64px;height:64px;border-radius: var(--r-grp);object-fit:cover;flex:none">` : ''}
         <div class="grow"><div style="font-weight:650;line-height:1.35">${listing.title}</div>
           <div class="row-wrap" style="margin-top:6px">
             <span class="chip ${listing.state === 'active' ? 'chip-green' : 'chip-amber'}">${listing.state || 'невідомо'}</span>
@@ -103,6 +112,8 @@ export function openAddBook(existing = [], transfer = null) {
 
   const label = create.innerHTML;
   create.onclick = async () => {
+    const why = missing();
+    if (why) { toast(why[0], 'info'); markMissing([why[1]]); return; }
     create.disabled = true;
     create.innerHTML = `<span class="spinner"></span>${transfer ? 'Передаю…' : 'Створення…'}`;
     try {

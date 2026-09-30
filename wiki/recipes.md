@@ -1,7 +1,7 @@
 ---
 title: Recipes — how to change common things
 type: recipe
-updated: 2026-09-29
+updated: 2026-09-30
 code: []
 ---
 # Recipes
@@ -47,7 +47,8 @@ code: []
 
 ## A new interface page
 - File `app/web/js/pages/<name>.js` with `export async function mount(view, params)` → `{ shown?, unmount }`.
-- [app/web/js/app.js](../app/web/js/app.js) — `ROUTES` with the page's mode (and its mode's `nav` in `MODES`, if it needs an icon in the panel).
+- [app/web/js/app.js](../app/web/js/app.js) — `ROUTES` with the page's area (its ink); a place of its own in the rail — `PLACES`. A page that serves an object (an order, a book) gives its controller a navFor() naming that place.
+- A tool that also works on its own — a line in [places.js](../app/web/js/places.js) `TOOLS` (it shows in «Інструменти» and the search).
 - Styles — in [app/web/css/](../app/web/css/app.css): `app.css` (the tokens and the shared parts) or the section's
   own file (`library.css`, `orders.css`, `profit.css`, `listings.css`); colors from tokens only.
 - Wiki: a new page under `features/`, a row in [code-map.md](code-map.md) and `index.md`.

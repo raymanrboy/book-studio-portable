@@ -1,14 +1,15 @@
 ---
 title: Order archive — what went to print, and reprints
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/archive.py
   - app/web/js/pages/archive.js
 ---
 # Order archive
 
-> A separate menu on the left. Every book sent to print **from Book Studio**, whose print-shop order is
+> **«Архів друку»** among [«Інструменти»](modes.md) (a separate item of the rail until 2026-09-30); a printed order's card
+> shows what went to print and leads to its entry, which goes back to the card. Every book sent to print **from Book Studio**, whose print-shop order is
 > **confirmed and paid**, sits here with exactly the files that went to print — so you can see what was
 > really printed, and **reprint it in two clicks**.
 > Files delete themselves **14 days after the order became "Sent"**.
@@ -73,13 +74,15 @@ Checked on program launch and after every order refresh. Rules (`clock()`):
 
 ## Screen
 
-**The list** (`#/archive`): search (name, receipt number, title; Enter opens the first one), rows like
+**The list** (`#/archive`, «Архів друку»): search (name, receipt number, title; Enter opens the first one), rows like
 in the order queue: a thumbnail (the front half of the cover), the buyer's name, `#receipt number` (a
 click copies it), the printer chip, "reprint", a tracking number; in gray — "printed … ago" · the
 child's name · pages · format; on the right — "N days left" (yellow when ≤ 3) or "keep". Before the
 countdown starts — nothing.
 
 **A book** (`#/archive/<id>`):
+- opened from its order's card (`store.from`) — «back» and Esc go back to the card and the rail stays on «Замовлення»
+  (`navFor()`, since 2026-09-30); from the list — back to the list;
 - header — name, the status of **this** print order, receipt number, "printed …", stage, tracking
   number; on the right, icons for **"Keep"** (a pin), **the files folder**, **the send journal**, and a
   chip "Printify · 24 pages";
@@ -153,11 +156,11 @@ page itself remembered this).
 - [app/studio/stages.py](../../app/studio/stages.py) — `facts()`, `mark_reprint()`
 - [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`
 - [app/studio/sync.py](../../app/studio/sync.py) — `_sync()` (`loaded` for each list; after a sync — `archive.refresh_quietly()`)
-- [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`, `atPrinter`); [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `earlier()`, `takeEarlier()`
+- [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`, `atPrinter`, `printed`); [app/studio/archive.py](../../app/studio/archive.py) — `card_facts()`; [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `earlier()`, `takeEarlier()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (checking the archive on launch)
 - [app/web/js/pages/archive.js](../../app/web/js/pages/archive.js) — `mountList()`, `mountBook()`, `clockChip()`, `clockText()`, `proofCard()`, `reprintCard()`, `sendCard()`, `fieldsCard()`, `addressCard()`, `toggleKeep()`, `reprint()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — reprint mode: `withOrder()`, `createLabel()`, `folderCard()`, `create()`
-- [app/web/js/app.js](../../app/web/js/app.js) — `MODES`, `ROUTES`; [app/web/js/icons.js](../../app/web/js/icons.js) — `orderArchive`, `pin`
+- [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `ROUTES`; [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`; [app/web/js/icons.js](../../app/web/js/icons.js) — `orderArchive`, `pin`
 - [app/web/css/orders.css](../../app/web/css/orders.css) — `.arc-thumb`, `.arc-id`, `.arc-clock`, `.cr-reprint`
 - [app/tools/sample_data.py](../../app/tools/sample_data.py) — `_seed_archive()`, `_sample_book()` (4 made-up books for the preview, and Olivia's draft that never became an order)
 - Tests: [app/tests/test_archive.py](../../app/tests/test_archive.py) (`Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint`), [app/tests/test_flows.py](../../app/tests/test_flows.py) (the archive after a send)

@@ -1,7 +1,7 @@
 ---
 title: Settings
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/settings_api.py
   - app/studio/gelato_accounts.py
@@ -13,7 +13,9 @@ code:
 > A minimal page: service keys, the Etsy connection, the Printify template, the text check, the backup,
 > the data folder. Every block is collapsed to one line with its status; a block that needs something opens on
 > its own.
-> The theme isn't here — it's in the menu at the bottom of the sidebar.
+> The theme isn't here — it's in the menu at the bottom of the rail, under Settings' own icon (since 2026-09-30 Settings
+> sit at the bottom of the rail, apart from the places). A key's ✓ lights up in the ink only once something is pasted;
+> an empty save says so and lights the field up.
 
 ## Blocks (`#/settings[/<block>]`)
 

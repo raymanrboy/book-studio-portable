@@ -26,7 +26,7 @@ code:
   view, «Зберегти як…», remove (to `.replaced/`); a photo dropped onto a card is taken as it is; the template used last is
   marked ✓ (`book.json` → `photos`). **Categories may be skipped** (the owner): the step is done with every category's photo
   (and the video), or ticked by hand («Позначити зробленим»).
-- **The «Фотомокапи» page** (`#/photos`, the Listings mode's third rail item, a camera): no book — a click on a
+- **The «Фотомокапи» page** (`#/photos`, among [«Інструменти»](modes.md) since 2026-09-30, a camera): no book — a click on a
   template puts **the template, then (Ctrl+V) the prompt** into the clipboard and the wait ends; the owner adds the cover
   himself (the owner: "just the blank and the prompt, I'll add the pictures myself"). Nothing is caught. A section per
   category: the prompt alone into the clipboard, the category's folder, **a photo dragged onto a section becomes a new

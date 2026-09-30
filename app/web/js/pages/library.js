@@ -3,9 +3,10 @@
 // so images are never reloaded and every change glides with intermediate frames.
 import {
   api, post, html, ic, ib, setHtml, on, media, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
-  raw, flip, debounce, menu, copyText, remembered, remember,
+  flip, debounce, menu, copyText, remembered, remember,
 } from '../lib.js';
 import { openAddBook } from '../add-book.js';
+import { bookTile, segBar, tickBadge } from '../book-tile.js';
 
 const PREF = 'bs-lib-view';
 const SORTS = [
@@ -15,9 +16,11 @@ const SORTS = [
   { value: 'incomplete', label: 'Спочатку незавершені', icon: 'alertCircle' },
 ];
 
-export async function mount(view) {
+// `embedded` — drawn inside «Книги» (pages/books.js, 2026-09-30): the page's head and the active / archive switch are
+// the hub's, which says which of the two to show.
+export async function mount(view, params, { embedded = false, filter } = {}) {
   const saved = remembered(PREF, {});
-  const state = { books: [], filter: saved.filter || 'active', sort: saved.sort || 'recent', query: '' };
+  const state = { books: [], filter: filter || saved.filter || 'active', sort: saved.sort || 'recent', query: '' };
   try {
     state.books = (await api('/api/library/books')).books;
   } catch (err) {
@@ -26,15 +29,15 @@ export async function mount(view) {
   }
 
   setHtml(view, html`
-    <div class="page-head">
+    ${embedded ? '' : html`<div class="page-head">
       <div>
         <h1 class="page-title">Бібліотека</h1>
         <div class="page-sub" id="lib-sub"></div>
       </div>
-    </div>
+    </div>`}
     <div class="lib-toolbar">
       <div class="input-group">${ic('search')}<input class="input" id="lib-q" placeholder="Назва або ID лістингу" aria-label="Пошук книг" autocomplete="off"></div>
-      <div id="lib-seg"></div>
+      ${embedded ? '' : html`<div id="lib-seg"></div>`}
       <div class="tools">${ib('sort', 'Сортування', 'data-act="sort" id="lib-sort"')}${ib('guide', 'Інструкція: як назвати файли й оформити текст', 'data-act="guide"')}</div>
       ${ib('plus', 'Нова книга', 'data-act="add"', { cls: 'primary', kbd: 'N' })}
     </div>
@@ -43,7 +46,7 @@ export async function mount(view) {
 
   const grid = view.querySelector('#lib-grid');
   const q = view.querySelector('#lib-q');
-  const persist = () => remember(PREF, { filter: state.filter, sort: state.sort });
+  const persist = () => remember(PREF, embedded ? { ...remembered(PREF, {}), sort: state.sort } : { filter: state.filter, sort: state.sort });
   const sortTip = () => {
     const b = view.querySelector('#lib-sort');
     const label = `Сортування: ${SORTS.find((s) => s.value === state.sort)?.label.toLowerCase()}`;
@@ -73,25 +76,18 @@ export async function mount(view) {
       ['Тексти', c.texts / c.textsTotal], ['Canva', c.canva ? 1 : 0]];
     const state_ = parts.map(([l, v]) => `${l} ${v === 1 ? '✓' : `${Math.round(v * 100)}%`}`).join(' · ');
     const front = b.imageIsCover && b.imageW > b.imageH * 1.3;
-    const bg = b.lqip ? raw(`style="background-image:url(${b.lqip});background-position:${front ? '100% 50%' : 'center'}"`) : '';
-    return html`<button class="book-card enter" data-key="${b.id}" data-open="${b.id}" aria-label="${b.title}" style="animation-delay:${Math.min(i * 22, 400)}ms">
-      <div class="book-frame">
-        <div class="book-cover ${b.lqip ? 'lqip' : ''}" ${bg}>
-          ${b.image ? html`<img data-fade loading="lazy" decoding="async" alt="" class="${front ? 'front' : ''}" src="${media(`/media/book/${b.id}/${b.image}`, { w: 720 })}">`
-            : html`<div class="book-cover-ph"><span class="serif">${(b.title || '?').trim().charAt(0).toUpperCase()}</span></div>`}
-          ${c.complete ? html`<span class="book-badge" data-tip="Книга готова">${ic('check')}</span>` : ''}
-        </div>
-        <i class="crops"></i>
-      </div>
-      <div class="book-meta">
-        <div class="book-title">${b.title}</div>
-        <div class="book-id"><span class="mono">${b.listingId ? `#${b.listingId}` : '—'}</span>${b.verified ? ic('shield') : ''}
-          <span class="pips" data-tip="${state_}">${parts.map(([, v]) => html`<i><b style="transform:scaleX(${v})"></b></i>`)}</span></div>
-      </div>
-    </button>`;
+    return bookTile({
+      key: b.id, title: b.title, i, enter: true,
+      cover: { src: b.image ? media(`/media/book/${b.id}/${b.image}`, { w: 720 }) : '', lqip: b.lqip, front, cls: front ? 'front' : '',
+        letter: (b.title || '?').trim().charAt(0).toUpperCase() },
+      over: c.complete ? tickBadge('Книга готова') : '',
+      sub: html`<span class="mono">${b.listingId ? `#${b.listingId}` : '—'}</span>${b.verified ? ic('shield') : ''}`,
+      bar: segBar(parts.map(([, v]) => ({ v })), state_),
+    });
   }
 
   function renderSeg() {
+    if (embedded) return;
     const active = state.books.filter((b) => !b.archived).length;
     setHtml(view.querySelector('#lib-seg'), segHtml([
       { value: 'active', icon: 'stack', tip: 'У роботі', count: active },
@@ -100,6 +96,7 @@ export async function mount(view) {
   }
 
   function renderSub() {
+    if (embedded) return;
     const activeBooks = state.books.filter((b) => !b.archived);
     const incomplete = activeBooks.filter((b) => !b.completeness.complete).length;
     setHtml(view.querySelector('#lib-sub'), activeBooks.length
@@ -171,7 +168,7 @@ export async function mount(view) {
   document.addEventListener('keydown', onKey);
 
   return {
-    shown() { syncSeg(view.querySelector('#lib-seg .seg')); },
+    shown() { if (!embedded) syncSeg(view.querySelector('#lib-seg .seg')); },
     unmount() { offs.forEach((f) => f()); runSearch.cancel(); document.removeEventListener('keydown', onKey); },
   };
 }

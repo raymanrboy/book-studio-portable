@@ -1,12 +1,14 @@
 ---
 title: Book library and a book's passport
 type: feature
-updated: 2026-09-27
+updated: 2026-09-30
 code:
+  - app/web/js/pages/books.js
   - app/studio/library.py
   - app/studio/library_files.py
   - app/studio/library_guide.md
   - app/web/js/pages/library.js
+  - app/web/js/book-tile.js
   - app/web/js/pages/book.js
   - app/web/js/pages/book-dialogs.js
   - app/studio/images.py
@@ -17,23 +19,30 @@ code:
 > The reference version of every book in the shop: one book = one Etsy listing. A cover, 16 illustration
 > slots, texts, a link to the Canva template. The order card finds a book by its listing number.
 > A book's structure — [rules/book-structure.md](../rules/book-structure.md). A new book can also be made
-> in the Listings mode's [Workshop](workshop.md) and passed here with its listing (since 2026-09-24); such a
+> in the [Workshop](workshop.md) and passed here with its listing (since 2026-09-24); such a
 > book takes its cover and pages from the Workshop's folder — **one copy of every page** (since 2026-09-27, below).
-> The library is the Orders mode's; it never lists a Workshop book.
+> Since 2026-09-30 the library is the tab **«Бібліотека»** of [«Книги»](modes.md) (`#/books/shop`, its archive —
+> `#/books/archive`), beside «Майстерня»; `#/library` leads there. It never lists a Workshop book.
 
-## Gallery (`#/library`)
+## Gallery («Книги» → «Бібліотека»)
+
+- **«Книги»** (`pages/books.js`): the title, «N у Майстерні · N книг у бібліотеці», the tabs **Майстерня · Бібліотека ·
+  Архів** with counts (remembered; the address follows), and the chosen tab's gallery drawn without its own head
+  (`mount(view, params, {embedded, filter})` in `library.js` and `workshop.js`).
 
 - Toolbar (`.lib-toolbar`): search (title or listing ID; Ctrl+F or `/`), a switch "In progress /
   Archive", sorting (recently changed, added, by title, incomplete first), an **agent guide** (save to a
   file or copy), a "+" button (a new book, key N) — the same height as the rest.
-- A card: the thumbnail (or the cover), the title, `#listing`, a shield (the listing has been checked),
-  readiness strips (cover, illustrations, texts, Canva), a check mark (the book is complete).
+- A card — **the same tile as the Workshop's** since the late evening of 2026-09-30 (`book-tile.js`): the cover as a square
+  (or a letter on paper), the title, `#listing` with a shield (the listing has been checked), **one bar of four segments**
+  (cover, illustrations, texts, Canva — `segBar()`), a check mark on the cover (the book is complete).
 - Cards are built once; searching/filtering/sorting only hides and rearranges them with an animation
   (`flip()`), so pictures never reload. The chosen filter and sort are remembered (`bs-lib-view`).
 
 ## A new book
 
-The `openAddBook()` dialog: a listing link or ID → checked via the Etsy API (keys are needed, sign-in
+The `openAddBook()` dialog (its «Створити» always answers since 2026-09-30 — `missing()`: it says what's missing and
+lights the field up instead of being grey): a listing link or ID → checked via the Etsy API (keys are needed, sign-in
 isn't) → title, photo, status, shop; a warning if the listing belongs to another shop. Without keys, or
 on an error — a book can still be added without checking, by giving a title. Optional: a Canva link, the
 listing's photo as a thumbnail. A duplicate by listing isn't created (the existing book opens instead).
@@ -60,7 +69,11 @@ and its check as here, «Передати в бібліотеку» → `POST /a
 - **Actions** (top right): import from a folder, add files, the book's text (upload/paste JSON, copy the
   whole text or as JSON), "More": refresh from Etsy, the listing's photo as a thumbnail, a Canva link,
   export files to a folder, open the book's folder, archive, delete (to trash; refused while the book's folder
-  import still runs — it would make the folder again without its `book.json`, the 2026-09-26 audit).
+  import still runs — it would make the folder again without its `book.json`, the 2026-09-26 audit). **No question on
+  delete** (since 2026-09-30, night): the book goes to the trash at once and a «Скасувати» toast (9 s) brings the folder back
+  (`POST /api/library/trash/restore`); a **picture's** delete is the same (since the last wave of 2026-09-30): the file is
+  not deleted but set aside in `data/library/trash-assets/<book>/` with a note of its slot, and «Скасувати» puts it back
+  (`POST …/assets/restore`) — only into a slot that is empty now. Nothing in `trash-assets/` is ever deleted by the program.
 - **Drag and drop**: a picture onto a slot → goes there (a ZIP or a folder dropped on a slot is an import, like
   anywhere else on the page — it was refused as «не зображення» until the 2026-09-26 audit); a wide picture onto half a spread → becomes the
   whole spread; two files onto a spread → left and right; a single `.json` → text. **A folder, ZIP, or
@@ -72,7 +85,8 @@ and its check as here, «Передати в бібліотеку» → `POST /a
 - **A partial set** is normal: whatever's there goes into place; whatever's missing stays empty
   (pictures with no text, only some of the pages, Upscayl tails in file names).
 - **Viewer**: click a picture; T — the page's text; a button — open the original in Windows.
-- Esc — back to the library (if nothing is being edited).
+- Esc and «back» — to the book's tab in «Книги» (`shelf()`; «Бібліотека» or «Архів»), if nothing is being edited; a
+  crumb «Книги · Бібліотека» beside the back arrow says where the passport stands (since 2026-09-30).
 - **A book from the Workshop** (since 2026-09-27): its cover and pages are the files in the Workshop book's
   `pictures/`, not a copy (the owner: "one place, no doubles"). A page replaced or added in the Workshop is the
   passport's at once. Here they are only shown: no «Імпорт з папки», «Додати файли», replace, delete or swap on

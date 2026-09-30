@@ -1,7 +1,7 @@
 ---
 title: The order-to-print path, from Etsy
 type: flow
-updated: 2026-09-27
+updated: 2026-09-30
 code:
   - app/web/js/pages/orders.js
   - app/studio/orders.py
@@ -28,13 +28,13 @@ code:
 | 5 | Drags the ZIP/folder into "Files from Canva" | Copies it into the program, lays out `Cover.png` + `1…N.png`, a full check | [order-card.js](../../app/web/js/pages/order-card.js) `takeDrop()`; [orders.py](../../app/studio/orders.py) `arrange_pages()` |
 | 6 | Proofs it; watches the text-check badge | The cover, the first spread with its note (name, fields), a filmstrip of every spread, the viewer; meanwhile the local model reads the pages and checks them against the book passport (~20–50 s), problems as a list and outlines on the pages ([text check](../features/text-check.md)) | [order-card.js](../../app/web/js/pages/order-card.js) `proofCard()` |
 | 6a | Found a mistake — fixes the page in Canva, downloads **just that page** | A "Replace N" button in the viewer: the page takes the old one's place, files and text are checked again, "Undo" sits next to it | [folder-viewer.js](../../app/web/js/folder-viewer.js) `openFolderViewer()`; [creator/printfolder.py](../../app/studio/creator/printfolder.py) `replace_page()` |
-| 7 | "Send to print in …" | The Order Creator is filled in: mode, folder, title `receipt - name`, address, format | [order-card.js](../../app/web/js/pages/order-card.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
+| 7 | "Send to print in …" | The Order Creator opens as the order's print step (its path, back to the card) and is filled in: mode, folder, title `receipt - name`, address, format | [order-card.js](../../app/web/js/pages/order-card.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
 | 8 | "Create draft (order)" | Printify: a book + an On-hold order; Gelato: a PDF + a draft. A copy of the files that went to print goes into the [order archive](../features/archive.md) | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator/printify_send.py](../../app/studio/creator/printify_send.py) `create_printify_draft()`; [creator/gelato_send.py](../../app/studio/creator/gelato_send.py) `create_gelato_draft()` |
 | 9 | In Printify — "Submit order"; in Gelato — open the draft in the Dashboard (while the link is alive), confirm and pay | Until then the order stays in "New" with a "Draft" / "On hold" chip: a draft doesn't count | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
 | 10 | Clicks "Refresh" | A confirmed and paid order moves to "In progress" (the receipt number is in the reference / title); the printer status shows on the right; the book appears in the order archive | [stages.py](../../app/studio/stages.py) `order_stage()`; [printorders.py](../../app/studio/printorders.py) `is_placed()` |
-| 11 | Once the printer ships it — opens the truck tab, clicks to copy the tracking number | An order with a tracking number or "shipped" status is on the truck tab, with a carrier and a number | [stages.py](../../app/studio/stages.py) `order_stage()`; [order-bits.js](../../app/web/js/order-bits.js) `trackChips()` |
+| 11 | Once the printer ships it — opens the «Позначити в Etsy» tab, clicks to copy the tracking number | An order with a tracking number or "shipped" status is on the truck tab, with a carrier and a number | [stages.py](../../app/studio/stages.py) `order_stage()`; [order-bits.js](../../app/web/js/order-bits.js) `trackChips()` |
 | 12 | Marks the order shipped on Etsy (on the Kyiv PC), then clicks "Refresh" | The order moves to "Sent" (a box); its 14-day countdown starts in the order archive | [rules/order-stages.md](../rules/order-stages.md); [archive.py](../../app/studio/archive.py) `refresh()` |
-| 13 | If something happened to the book — "Order archive" → the book → "Reprint" | Printify: a new On-hold order for the same book; Gelato: a new draft from the same files; the receipt is marked as a replacement | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator/printify_send.py](../../app/studio/creator/printify_send.py) `create_printify_reprint()` |
+| 13 | If something happened to the book — the order's card → «Що пішло в друк · передрук» (or «Інструменти» → «Архів друку») → "Reprint" | Printify: a new On-hold order for the same book; Gelato: a new draft from the same files; the receipt is marked as a replacement | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator/printify_send.py](../../app/studio/creator/printify_send.py) `create_printify_reprint()` |
 
 While the order is in "New", the card and the Order Creator remember with it where the owner left off:
 he can switch to another tab and come back to the same step, even a page showing a successful creation

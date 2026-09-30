@@ -1,12 +1,13 @@
 ---
 title: Dragging folders and ZIP archives
 type: flow
-updated: 2026-09-27
+updated: 2026-09-30
 code:
   - app/web/js/order-bits.js
   - app/web/js/app.js
   - app/studio/drops.py
   - app/web/js/drop.js
+  - app/web/js/drop-anywhere.js
 ---
 # Dragging folders and ZIPs
 
@@ -51,6 +52,14 @@ lies, without going through the window (`drops.archive_folder()` names the folde
 - All of `data/tmp/dropped` is wiped on every launch (`clear_drops()`).
 - The field files are dragged over lights up (`drop-hot`); the zone is an element with `data-folder-drop`
   ([drop.js](../../app/web/js/drop.js) `wireFolderDrop()`).
+- **A drop anywhere else** (since 2026-09-30, the last wave — [drop-anywhere.js](../../app/web/js/drop-anywhere.js)): outside a
+  page's own field the window used to do nothing — or let the browser open the file in place of the program. Now the file is
+  accepted over the whole window (a veil shows it), and on the drop: the page in view may take it as its own (`bs:dropped` —
+  the Order Creator takes it as the current book's folder, the Mockups as the demo book); otherwise **one question, «Куди?»**
+  with the two places a ZIP or a book folder goes (the Mockups, the Order Creator) — the program never chooses, and nothing is
+  copied until a place is chosen; the choice hands the files over (`give('creator'|'mockups', {drop})`) and opens that page, which
+  does its own intake (`dropFolder()` / `takeDrop()`). Tested with synthetic drops on the preview server; a real Explorer drag
+  hands the same `DataTransfer` — the owner tries it once.
 - **Only files from outside the window** (since 2026-09-26): the browser hands a picture dragged from the page
   itself over as a file — its preview — so a Workshop spread dragged a little and let go replaced itself with a
   square of its own (the owner). `app.js` notes a drag that starts in the window (`dragstart`) and, before any page
@@ -61,6 +70,7 @@ lies, without going through the window (`drops.archive_folder()` names the folde
 ## Where in the code
 
 - [app/web/js/app.js](../../app/web/js/app.js) — `dragFromPage`, `ownPicture()`: a picture dragged from the window never drops back in
+- [app/web/js/drop-anywhere.js](../../app/web/js/drop-anywhere.js) — `installDropAnywhere()`, `choose()`
 - [app/web/js/drop.js](../../app/web/js/drop.js) — `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()`, `collect()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `DROPS`, `clear_drops()`, `_drop_root()`, `_drop_rel()`, `extract_zip()`, `archive_folder()`, `dropped_folder()`, `dropped_top()`, `_drop_file()`, `_drop_zip()`, `_drop_done()`, `MAX_DROP_FILE`, `MAX_DROP_ZIP`
 - [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `takeDrop()`

@@ -14,6 +14,7 @@ import {
 } from '../order-bits.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { give } from '../handoff.js';
+import { pathHtml } from '../path.js';
 import { sentOf, keptOrder, finish } from '../keep.js';
 
 // Text check (textcheck/): how its findings are counted and why a check was only the light one.
@@ -37,6 +38,8 @@ export async function mountCard(view, rid) {
     return null;
   }
   let pick = 0;        // which book of the order this pass is for (most orders hold one)
+  // A printed order whose files are in the archive: the flow for a send by hand stays folded (2026-09-30).
+  let manual = o.stage === 'new' || !(o.printed || []).length;
   let finished = false; // «Завершити»: this card is not kept when the owner leaves it
   // Every book of the order goes its own way — its own files, proof and text check — and they all leave
   // for the printer together, in one draft to one address (owner, 20.09.2026).
@@ -69,6 +72,21 @@ export async function mountCard(view, rid) {
   };
   const pagesLabel = () => (f.pages ? String(f.pages) : pagesText(byFiles() ? plan().choice[provider()] : pageOptions()));
 
+  // A printed order (2026-09-30): what went to print and the reprint, here — the order in one place. The files
+  // below stay for a send made again by hand (files no longer in the archive).
+  function printedHtml() {
+    const last = (o.printed || [])[0];
+    // Data and two quiet icon buttons — no sentence telling what to do: the path above and the status chip say where
+    // the order is (2026-09-30).
+    return html`<section class="card card-pad oc-printed">
+      <span class="oc-printed-icon">${ic(o.stage === 'sent' ? 'truck' : o.stage === 'work' ? 'hourglass' : 'package')}</span>
+      <div class="grow">${last ? html`<span class="faint">${dateTime(last.sentAt)} · ${last.pageCount || ''} стор.${last.formatLabel ? ` · ${last.formatLabel}` : ''}${(o.printed || []).length > 1 ? ` · відправок: ${o.printed.length}` : ''}</span>`
+          : html`<span class="faint">Файлів цієї відправки в архіві друку немає</span>`}</div>
+      ${last ? ib('orderArchive', 'Що пішло в друк · передрук', `data-href="#/archive/${last.id}"`) : ''}
+      ${last ? ib('upload', 'Покласти інші файли й надіслати ще раз', 'data-act="manual" id="oc-manual"') : ''}
+    </section>`;
+  }
+
   setHtml(view, html`
     <div class="page-head">
       <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
@@ -79,10 +97,8 @@ export async function mountCard(view, rid) {
       </div>
       <div id="oc-plan"></div>
     </div>
-    ${o.stage !== 'new' ? html`<div class="notice notice-warn" style="margin-bottom:18px">${ic('alert')}<div>${{
-      work: `Цю книгу вже замовлено в ${providerName(o.provider)}. Друкуйте ще раз лише для передруку.`,
-      sent: `${providerName(o.provider)} уже відправив цю книгу — позначте замовлення відправленим в Etsy. Друкуйте ще раз лише для передруку.`,
-    }[o.stage] || 'Замовлення вже відправлено. Друкуйте ще раз лише для передруку.'}</div></div>` : ''}
+    <div class="ord-path-slot" id="oc-path"></div>
+    ${o.stage !== 'new' ? printedHtml() : ''}
     <div class="ord-grid">
       <div class="stack-l" id="oc-flow"></div>
       <div class="stack-l ord-side" id="oc-data"></div>
@@ -91,14 +107,56 @@ export async function mountCard(view, rid) {
 
   // ---------------------------------------------------------------- header: where it is printed
   function renderPlan() {
+    // A placed order shows where it really went — not where the printer rule would send it (a Gelato order said
+    // «Printify · 24 стор.», 2026-09-30).
+    if (o.stage !== 'new' && o.provider) {
+      const sent = (o.printed || []).find((e) => e.provider === o.provider);
+      setHtml($('#oc-plan'), svcChip(o.provider, { tip: `Замовлено в ${providerName(o.provider)}`, lg: true,
+        text: `${providerName(o.provider)}${sent?.pageCount ? ` · ${sent.pageCount} стор.` : ''}` }));
+      return;
+    }
     const p = provider();
     const tip = f.decided ? `Файли вирішили: ${f.pages} стор. — ${providerName(p)}` : planText(plan());
     setHtml($('#oc-plan'), plan().provider
-      ? svcChip(p, { tip, lg: true, text: `${providerName(p)} ·${pagesLabel()} стор.` })
-      : html`<div class="row" style="gap:10px"><span class="faint" style="font-size:12.5px">Друкарня</span>${segHtml([
+      ? svcChip(p, { tip, lg: true, text: `${providerName(p)} · ${pagesLabel()} стор.` })
+      : html`<div class="row" style="gap:10px"><span class="faint" style="font-size: var(--fs)">Друкарня</span>${segHtml([
         { value: 'printify', icon: 'printify', tip: `Printify · ${pagesText(o.pageOptions?.printify)} стор.` },
         { value: 'gelato', icon: 'gelato', tip: `Gelato · ${pagesText(o.pageOptions?.gelato)} стор.` }], f.chosen, { name: 'provider' })}</div>`);
     requestAnimationFrame(() => syncSeg($('#oc-plan .seg')));
+  }
+
+  // ---------------------------------------------------------------- the order's path (2026-09-30)
+  // Canva → Файли → Вичитка → Друк → Відправка for the book shown; a printed order has its first four behind it.
+  function pathSteps() {
+    const printed = o.stage !== 'new';
+    const drafted = printed || !!sentOf(o.receiptId);
+    const v = f.validation;
+    const filesOk = !!(f.folder && v?.ok && !f.busy);
+    const bad = !!(f.error || (v && !v.ok && !f.busy));
+    const c = f.check;
+    const errors = c?.state === 'done' ? countOf('error') + (alarmOf() ? 1 : 0) : 0;
+    const proof = printed || drafted ? 'done' : !filesOk ? 'todo' : c?.state === 'run' ? 'part' : 'done';
+    return [
+      { key: 'canva', label: 'Canva', icon: 'canva', state: printed || f.folder || f.busy ? 'done' : 'todo',
+        tip: item().book?.canvaUrl ? 'Canva: відкрити шаблон книги' : 'Canva: у паспорті книги немає посилання' },
+      { key: 'files', label: 'Файли', icon: 'folderIn', state: printed || filesOk ? 'done' : f.busy ? 'part' : 'todo', nogo: bad,
+        count: bad ? 'помилка' : f.busy ? `${Math.round(f.busy)}%` : filesOk ? `${f.pages} стор.` : '' },
+      { key: 'proof', label: 'Вичитка', icon: 'textScan', state: proof, nogo: !printed && errors > 0,
+        count: printed ? '' : c?.state === 'run' ? 'перевірка' : errors ? `${errors} ${plural(errors, LEVEL_WORDS.error)}` : c?.state === 'done' ? 'текст збігся' : '' },
+      { key: 'print', label: 'Друк', icon: 'printer', state: printed ? 'done' : drafted ? 'part' : 'todo',
+        count: printed ? providerName(o.provider) : drafted ? 'підтвердіть' : '',
+        tip: drafted && !printed ? 'Чернетку створено — підтвердіть і оплатіть її в друкарні, потім «Оновити» в черзі' : 'Друк: чернетка в друкарні' },
+      { key: 'ship', label: 'Відправка', icon: 'truck', state: o.stage === 'shipped' ? 'done' : printed ? 'part' : 'todo',
+        count: o.stage === 'sent' ? 'позначте в Etsy' : o.stage === 'work' ? 'друкується' : '' },
+    ];
+  }
+  const renderPath = () => setHtml($('#oc-path'), pathHtml(pathSteps(), { label: 'Шлях замовлення' }));
+  function goStep(key) {
+    const to = { files: '#oc-flow', proof: '#oc-proof', print: '#oc-print' }[key];
+    if (key === 'canva') {
+      if (item().book?.canvaUrl) openExternal(item().book.canvaUrl);
+      else toast('У паспорті книги немає посилання на Canva', 'info');
+    } else if (to && $(to)) $(to).scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ---------------------------------------------------------------- right (stays in view): book, personalization, delivery
@@ -111,10 +169,10 @@ export async function mountCard(view, rid) {
           ${b?.image ? html`<img data-fade decoding="async" src="${bookImage(b, 360)}" alt="">` : ic('book')}</div>
         <div class="stack-s grow">
           ${b ? html`<a class="ord-book-title" href="#/book/${b.id}" data-tip="Паспорт книги">${b.title}</a>`
-            : html`<b>Книги немає в бібліотеці</b><span class="faint mono" style="font-size:12px">лістинг #${it.listingId || '—'}</span>`}
+            : html`<b>Книги немає в бібліотеці</b><span class="faint mono" style="font-size: var(--fs-s)">лістинг #${it.listingId || '—'}</span>`}
           ${b?.canvaUrl ? html`<button class="btn btn-primary" data-act="canva">${ic('canva')}Відкрити шаблон у Canva</button>`
             : b ? html`<a class="btn" href="#/book/${b.id}">${ic('link')}Додати посилання на Canva</a>`
-              : html`<a class="btn" href="#/library">${ic('shelf')}До бібліотеки</a>`}
+              : html`<a class="btn" href="#/books/shop">${ic('shelf')}До книг</a>`}
         </div>
       </section>
       <section class="card card-pad stack">
@@ -142,7 +200,7 @@ export async function mountCard(view, rid) {
     const badge = filesBadge(v, { busy: f.busy, failed: !!f.error });
     const errors = f.error ? [f.error] : (v?.errors || []);
     return html`<section class="card card-pad stack" data-folder-drop>
-      <div class="row"><span class="step-no">1</span><h3 class="card-title grow">Файли з Canva</h3>
+      <div class="row"><span class="step-no">2</span><h3 class="card-title grow">Файли з Canva</h3>
         ${o.items.length > 1 ? segHtml(o.items.map((x, i) => ({ value: String(i), label: `Книга ${i + 1}`, tip: x.childName || x.title })), String(pick), { name: 'book' }) : ''}${badge}</div>
       <div class="input-group">
         <input class="input path-input" id="oc-folder" readonly value="${f.label}" title="${f.folder}" aria-label="Файли з Canva"
@@ -151,7 +209,7 @@ export async function mountCard(view, rid) {
       </div>
       ${!f.folder && !f.busy && earlier() ? html`<button class="btn btn-sm btn-ghost" style="align-self:flex-start" data-act="earlier"
         data-tip="Ці файли вже відправлялись ${dateTime(earlier().sentAt)}, але замовлення в друкарні не оформлене чи скасоване">${ic('orderArchive', 'icon-s')}Взяти файли минулої відправки · ${relTime(earlier().sentAt)}</button>` : ''}
-      ${f.note && !f.busy ? html`<div class="row faint" style="font-size:12.5px">${ic('swap', 'icon-s')}<span>${f.note}</span></div>` : ''}
+      ${f.note && !f.busy ? html`<div class="row faint" style="font-size: var(--fs)">${ic('swap', 'icon-s')}<span>${f.note}</span></div>` : ''}
       ${f.busy ? '' : checkNotices(errors, v?.warnings)}
     </section>`;
   }
@@ -160,7 +218,7 @@ export async function mountCard(view, rid) {
     const it = item();
     const cover = f.validation.files.find((r) => r.position === 'cover') || {};
     return html`<section class="card card-pad stack-l" id="oc-proof">
-      <div class="row"><span class="step-no">2</span><h3 class="card-title grow">Звірка</h3><span class="row tc-head" id="oc-check-badge">${checkBadge()}</span></div>
+      <div class="row"><span class="step-no">3</span><h3 class="card-title grow">Вичитка</h3><span class="row tc-head" id="oc-check-badge">${checkBadge()}</span></div>
       <div id="oc-check">${checkBody()}</div>
       ${proofHtml({ src: thumb, pages: f.pages, ratio: cover.width ? cover.width / cover.height : 1.9, name: it.childName,
         variations: it.variations, stripId: 'oc-strip', marks: true })}
@@ -295,6 +353,7 @@ export async function mountCard(view, rid) {
     setHtml(body, checkBody());
     markSeen();
     markPages();
+    renderPath();
   }
 
   // The check is no longer wanted (the card closes, other files, another book): the model stops on it.
@@ -372,7 +431,7 @@ export async function mountCard(view, rid) {
       return html`<li class="${its ? 'is-ready' : 'faint'}">${ic(its ? 'check' : 'clock', 'icon-s')}<span class="grow truncate">Книга ${i + 1}${o.items[i]?.childName ? ` · ${o.items[i].childName}` : ''}</span><span>${why}</span></li>`;
     })}</ul>` : '';
     return html`<section class="card card-pad stack ${p === 'printify' ? 'tint-printify' : ''}" id="oc-print">
-      <div class="row"><span class="step-no">3</span><h3 class="card-title grow">Друк</h3></div>
+      <div class="row"><span class="step-no">4</span><h3 class="card-title grow">Друк</h3></div>
       ${list}
       ${done ? html`<div class="notice notice-success">${ic('checkCircle')}<div class="grow">${done.what}</div></div>
         <div class="row">${result ? html`<button class="btn btn-primary grow" data-act="to-creator">${ic('printer', 'icon-s')}Результат в Order Creator</button>` : ''}
@@ -385,7 +444,7 @@ export async function mountCard(view, rid) {
   // завершена» — the card and the Order Creator let go of it and the queue opens (owner, 20.09.2026).
   function renderFinish() {
     setHtml($('#oc-finish'), sentOf(o.receiptId)
-      ? ib('x', 'Завершити роботу над замовленням', 'data-act="finish"', { cls: 'sm' }) : '');
+      ? ib('checkCircle', 'Завершити роботу над замовленням', 'data-act="finish"', { cls: 'sm' }) : '');
   }
 
   // The flow is redrawn in place (patch()): a card whose markup didn't change stays, and a changed one keeps every
@@ -394,8 +453,10 @@ export async function mountCard(view, rid) {
   function renderRight() {
     const ready = !!(f.folder && f.validation?.ok && !f.busy);
     renderFinish();
+    renderPath();
     const scrolled = $('#oc-strip')?.scrollLeft || 0;
-    patch($('#oc-flow'), [['files', filesCard()], ...(ready ? [['proof', proofCard()], ['print', printCard()]] : [])]);
+    view.querySelector('.ord-grid').classList.toggle('ord-solo', !manual); // a printed order: its data alone
+    patch($('#oc-flow'), manual ? [['files', filesCard()], ...(ready ? [['proof', proofCard()], ['print', printCard()]] : [])] : []);
     fadeImages($('#oc-flow'));
     requestAnimationFrame(() => syncSeg($('#oc-flow .seg')));
     if ($('#oc-check')) markSeen();
@@ -545,20 +606,26 @@ export async function mountCard(view, rid) {
     const ready = readyBooks(p);
     if (!ready.length) { toast('Спершу розставте файли книги', 'info'); return; }
     const left = work.length - ready.length;
-    if (left && !(await confirmBox({ title: 'Готові не всі книги замовлення',
-      text: `Готов${ready.length > 1 ? 'і' : 'а'} ${ready.length} з ${work.length} книг замовлення. Відправити лише ${ready.length > 1 ? 'їх' : 'її'}? Решту можна надіслати пізніше — це буде окреме замовлення в друкарні.`,
-      confirm: 'Відправити готові', cancel: 'Повернутись' }))) return;
-    if (ready.some(({ w }) => w.check?.state === 'run') && !(await confirmBox({ title: 'Текст ще перевіряється',
-      text: 'Відправити до друку, не дочекавшись перевірки тексту?', confirm: 'До друку', cancel: 'Зачекати' }))) return;
     const wrong = ready.filter(({ w }) => w.check && alarmOf(w));
-    if (wrong.length && !(await confirmBox({ title: 'Це не та книга!', danger: true, confirm: 'Все одно до друку', cancel: 'Повернутись',
-      text: `${work.length > 1 ? `Книга ${wrong.map(({ i }) => i + 1).join(', ')}: с` : 'С'}торінки не схожі на тексти книги, яку замовили — мабуть, у Canva відкрито шаблон іншої книги.\n\nПеревірте, що саме замовив покупець.` }))) return;
     const errors = wrong.length ? 0 : ready.reduce((n, { w }) => n + (w.check?.state === 'done' ? countOf('error', w) : 0), 0);
-    if (errors && !(await confirmBox({ title: 'У тексті є помилки', danger: true, confirm: 'Все одно до друку', cancel: 'Повернутись',
-      text: `Перевірка знайшла ${errors} ${plural(errors, LEVEL_WORDS.error)} у тексті сторінок.` }))) return;
+    const checking = ready.some(({ w }) => w.check?.state === 'run');
+    // One review before the send instead of up to four questions in a row (2026-09-30): everything the program noticed, in
+    // one place, most serious first; nothing is asked when nothing was noticed.
+    const notes = [
+      wrong.length && `${work.length > 1 ? `Книга ${wrong.map(({ i }) => i + 1).join(', ')}: с` : 'С'}торінки не схожі на тексти книги, яку замовили — мабуть, у Canva відкрито шаблон іншої книги. Перевірте, що саме замовив покупець.`,
+      errors && `Перевірка знайшла ${errors} ${plural(errors, LEVEL_WORDS.error)} у тексті сторінок.`,
+      checking && 'Текст ще перевіряється — відправлю, не дочекавшись.',
+      left && `Готов${ready.length > 1 ? 'і' : 'а'} ${ready.length} з ${work.length} книг: піде лише ${ready.length > 1 ? 'вони' : 'вона'}, решту можна надіслати пізніше окремим замовленням.`,
+    ].filter(Boolean);
+    const serious = !!(wrong.length || errors);
+    if (notes.length && !(await confirmBox({
+      title: wrong.length ? 'Це не та книга!' : serious ? 'У тексті є помилки' : 'Перед друком',
+      text: notes.join('\n\n'), danger: serious, cancel: checking && !serious && !left ? 'Зачекати' : 'Повернутись',
+      confirm: serious ? 'Все одно до друку' : left ? 'Відправити готові' : 'До друку' }))) return;
     const books = ready.map(({ w, i }) => ({ folder: w.folder, label: w.label, title: titleOf(i), format: (p === 'gelato' && plan(i).format) || null }));
     give('creator', {
       receiptId: String(o.receiptId), // the Order Creator keeps its work (and result) for this order
+      buyer: o.name,                  // its head: the order it prints (2026-09-30)
       mode: p, books, address: addressFromEtsy(o),
     });
     location.hash = '#/creator';
@@ -569,7 +636,7 @@ export async function mountCard(view, rid) {
     on(view, 'click', '[data-act]', (e, t) => {
       const a = t.dataset.act;
       if (a === 'back') location.hash = '#/orders';
-      else if (a === 'finish') { finished = true; finish(o.receiptId); location.hash = '#/orders'; }
+      else if (a === 'finish') { finished = true; finish(o.receiptId); toast('Роботу над замовленням завершено', 'success'); location.hash = '#/orders'; }
       else if (a === 'canva') openExternal(item().book?.canvaUrl);
       else if (a === 'browse') takeFolder();
       else if (a === 'earlier') takeEarlier();
@@ -577,8 +644,11 @@ export async function mountCard(view, rid) {
       else if (a === 'to-creator') location.hash = '#/creator';
       else if (a === 'copy-text') copyChip(e, t);
       else if (a === 'recheck') startCheck();
+      else if (a === 'path') goStep(t.dataset.step);
+      else if (a === 'manual') { manual = true; t.remove(); renderRight(); $('#oc-flow')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       else if (a === 'learn') learnPassport();
     }),
+    on(view, 'click', '[data-href]', (e, b) => { location.hash = b.dataset.href; }),
     on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
     on(view, 'click', '[data-dismiss]', (e, b) => { f.dismissed.add(b.dataset.dismiss); keepMark(f, b.dataset.dismiss); paintCheck(); }),
     on(view, 'click', '[data-lb]', (e, c) => {
@@ -617,6 +687,7 @@ export async function mountCard(view, rid) {
       const step = $('#oc-print');
       if (step) step.outerHTML = String(printCard());
       renderFinish();
+      renderPath();
       return true;
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).

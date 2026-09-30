@@ -1,8 +1,9 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
+  - app/web/js/path.js
   - app/studio/orders.py
   - app/web/js/pages/orders.js
   - app/web/js/pages/order-card.js
@@ -20,12 +21,14 @@ code:
 
 ## Queue (`#/orders`)
 
+- **The tabs** on their own row under the title: icons with counters — **new (a spark) · printing (an hourglass) · the
+  truck · sent (a box)** — and the chosen one shows its word (`compact`); a tooltip names the others. The truck is the
+  owner's to-do: the printer has already shipped it, but Etsy hasn't marked it yet — **its count takes the ink while it
+  holds something** ([rules/order-stages.md](../rules/order-stages.md)). (Words on every tab and a next-step sentence on
+  every row were tried on 2026-09-30 and dropped the same evening: the owner wants it shown, not told; a row's «Позначте в
+  Etsy» only opened the order — everything for it is in the row's copyable chips.)
 - Toolbar: search (buyer name or receipt number; Enter opens the first one; it only hides rows of the tab, drawn once —
-  no thumbnail reloads as you type, since 2026-09-26), a stage switch with
-  counters **New (a spark) / In progress (a clock) / the truck / Sent (a box)**, an "Update orders"
-  button. The truck — the printer has already shipped it, but Etsy hasn't marked it yet: this is how the
-  owner knows it can be marked shipped on Etsy
-  ([rules/order-stages.md](../rules/order-stages.md)).
+  no thumbnail reloads as you type, since 2026-09-26) and the refresh **icon**.
 - **"In progress" only means a confirmed and paid** order at the printer (since 2026-09-18): a Gelato
   draft or Printify "On hold" leaves the order in "New" with a printer-status chip (`Draft`, `On hold`),
   until the owner confirms and pays for it and clicks "Refresh". A cancelled one goes back to "New" with
@@ -44,7 +47,7 @@ code:
     (2026-09-17);
   - the gray row: the time · **the child's name, bold** · the book's title or "book not in the library" ·
     city, country;
-  - on the right — the **printer status** (`statusChip()`): the Printify/Gelato word in English, but in
+  - on the right — the **printer status** (`statusChip()`), then the next step: the Printify/Gelato word in English, but in
     plain language (`statusText()`: `in_transit` → "In transit", `has-issues` → "Has issues") with a
     dot colored by meaning (`statusTone()`: a problem — yellow, shipped/delivered — green, draft/on
     hold/pending — gray, everything else — light blue). "New" orders don't have a status yet.
@@ -64,9 +67,21 @@ code:
 
 ## Card (`#/orders/<receipt number>`)
 
-**An "× Finish work on this order"** next to the "back" arrow appears once a draft has been created for
-the order (`sentOf()`, `renderFinish()`). Clicking it — the card and the Order Creator forget this order
-(`keep.finish()`), and the queue opens. The owner's wish, 2026-09-20: "sent it — and closed it."
+**A "✓ Finish work on this order"** (an × until 2026-09-30 — the same glyph meant «remove» elsewhere) next to the "back"
+arrow appears once a draft has been created for the order (`sentOf()`, `renderFinish()`). Clicking it — the card and the
+Order Creator forget this order (`keep.finish()`), a toast says it is done, and the queue opens. The owner's wish, 2026-09-20: "sent it — and closed it."
+
+**The order's path** (since 2026-09-30, `pathSteps()`, `renderPath()` — the Workshop's strip, [path.js](../architecture/frontend.md)):
+five **icons** under the header — Canva · files · text check · printer · truck, for the book shown: filled = done, ringed
+and breathing = next, red = a problem; the word and the count («28 стор.», «2 помилки», «підтвердіть») are in the tooltip.
+A click does the step: Canva opens the template, the others scroll to their card. The work cards carry the same numbers
+(2 Файли з Canva · 3 Вичитка · 4 Друк; the proofing card was «Звірка» until 2026-09-30).
+
+**A printed order** (in «Друкуються» and later; since 2026-09-30 — `printedHtml()`): a slim strip with what went to
+print (date, pages, format) and two icons — the [archive](archive.md) entry (files, reprint; it goes back to this card) and
+«other files» (the files flow, folded until asked, for a send by hand). **The header chip names the printer it really went
+to** (`o.provider`); the printer rule's chip appears only while the order is new. The server gives the card `printed` (`archive.card_facts()`). This replaced the warning "print again only for
+a reprint".
 
 Header: the buyer's name and, centered next to it, a printer-status chip (`.ord-title`, the owner's
 request, 2026-09-17); below them, in gray, the receipt number (a click copies it), the time, the stage
@@ -163,7 +178,7 @@ one column.
      the printer, replacing and undoing are refused** ("wait for the send to finish"): otherwise the
      printer would get files the check never saw;
    - **the text check** (since 2026-09-19): starts on its own as soon as the files are checked
-     (`startCheck()`); a badge to the right of the "Proofing" heading (a percentage → "Text matches" /
+     (`startCheck()`); a badge to the right of the «Вичитка» heading (a percentage → "Text matches" /
      "N errors" / "N questions", ↻), a list of problems under the heading (a click opens the viewer on
      that page, ✓ "Not an error"), red and yellow outlines on pages (`markPages()`), "Update passport"
      for differences from the book's passport. Closing the card, dropping other files, or picking
@@ -172,12 +187,14 @@ one column.
      "Це не та книга!" above the list, with the ordered book's and the look-alike book's covers
      (`wrongBook()`); "Not an error" is also written into the check's journal (`keepMark()`).
      In detail — [text-check.md](text-check.md).
-3. **Print** (`printCard()`, `#oc-print`): "Send to print in Printify/Gelato" → the Order Creator,
-   filled in with the receipt number, the title `receipt number - name`, the address, the format, and
-   the files (`print()` → `give('creator', …)`). The Printify card uses the lime-green accent. If the
-   text check is still running, or found something red — a question first ("Send without waiting?" /
-   "Print anyway?"; for another book's pages — "Це не та книга!", since 2026-09-25), printing is never
-   blocked.
+3. **Print** (`printCard()`, `#oc-print`): "Send to print in Printify/Gelato" → the Order Creator **as this order's
+   print step** (its buyer and path on top, «back» to the card, the rail on «Замовлення» — since 2026-09-30),
+   filled in with the receipt number, the buyer, the title `receipt number - name`, the address, the format, and
+   the files (`print()` → `give('creator', …)`). The Printify card uses the lime-green accent. **One review before
+   the send** (since 2026-09-30, night; before, up to four questions in a row): if something was noticed — not every
+   book ready, the text still checking, mistakes found, or another book's pages («Це не та книга!», since 2026-09-25) —
+   one dialog lists it all, most serious first, with «Все одно до друку» (red when it is the wrong book or mistakes) or
+   «Відправити готові» / «До друку». Nothing noticed — no question. Printing is never blocked.
 
 ## Orders with several books (since 2026-09-20)
 
@@ -213,8 +230,9 @@ one column.
   `plan.pages` — the list of allowed lengths: `[24]` or `[28, 30]`; a hardcover for now — `[24, 28, 30]`
   and `plan.choice`), `childName`; for the order —
   `pageOptions` (the lengths for each printer, when it's picked by hand).
-- `GET /api/orders/<receipt>` → the same, for one order, plus `buyerMessage` and `earlierSends` (sends
-  that never became a print-shop order, whose files are still in the archive — `archive.earlier_sends()`).
+- `GET /api/orders/<receipt>` → the same, for one order, plus `buyerMessage`, `earlierSends` (sends
+  that never became a print-shop order, whose files are still in the archive), `atPrinter` and `printed` (the sends
+  that went to print, newest first — since 2026-09-30) — all from `archive.card_facts()`.
 - `POST /api/orders/<receipt>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount, provider}`;
   `provider: "files"` — a hardcover whose printer the length decides (the answer's `provider`).
 - `POST /api/orders/<receipt>/textcheck` `{folder, pages, pick}` → `{jobId}` (or `{off: true}`, when the
@@ -224,7 +242,7 @@ one column.
 
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `queueState`
 - [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `mountCard()`, `readyBooks()`
-- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
+- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `pathSteps()`, `renderPath()`, `goStep()`, `printedHtml()`, `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — shared with the [order archive](archive.md): `proofHtml()`, `STRIP_THUMB`, `fieldsHtml()`, `addressHtml()`, `etsyAddressLines()`, `svcChip()`, `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`

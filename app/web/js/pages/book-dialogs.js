@@ -55,14 +55,19 @@ export async function importFolder(path, { id, current, onBook }) {
         <label class="check grow"><input type="checkbox" data-slot-cb="${s}" checked><span>${slotName(s)}</span></label><span class="mono faint">${scan.mapping[s].name}</span>${hasAsset(current(), s) ? html`<span class="chip chip-amber">замінить</span>` : ''}</div>`)}</div>` : ''}
       ${scan.issues.map((t) => html`<div class="notice notice-warn">${ic('alert')}<div>${t}</div></div>`)}
       ${scan.text ? html`<label class="check"><input type="checkbox" id="fi-text" checked><span>Імпортувати текст із <b>${scan.text.name}</b> (замінить наявні тексти)</span></label>` : ''}
-      ${scan.ignored.length ? html`<div class="faint" style="font-size:12.5px">Не розпізнано: ${scan.ignored.join(', ')}</div>` : ''}
-      <div id="fi-progress" hidden><div class="row" style="margin-bottom:6px"><span id="fi-step" class="grow" style="font-weight:600;font-size:13px"></span><span id="fi-pct" class="mono faint"></span></div><div class="progress"><i id="fi-bar"></i></div></div>
+      ${scan.ignored.length ? html`<div class="faint" style="font-size: var(--fs)">Не розпізнано: ${scan.ignored.join(', ')}</div>` : ''}
+      <div id="fi-progress" hidden><div class="row" style="margin-bottom:6px"><span id="fi-step" class="grow" style="font-weight:600;font-size: var(--fs)"></span><span id="fi-pct" class="mono faint"></span></div><div class="progress"><i id="fi-bar"></i></div></div>
     </div>`,
-    foot: html`<button class="btn btn-ghost" data-c>Скасувати</button><button class="btn btn-primary" data-go ${slots.length || scan.text ? '' : 'disabled'}>${ic('download', 'icon-s')}Імпортувати</button>`,
+    foot: html`<button class="btn btn-ghost" data-c>Скасувати</button><button class="btn btn-primary" data-go>${ic('download', 'icon-s')}Імпортувати</button>`,
   });
   m.foot.querySelector('[data-c]').onclick = () => m.close();
   m.foot.querySelector('[data-go]').onclick = async () => {
     const selected = [...m.el.querySelectorAll('[data-slot-cb]')].filter((c) => c.checked).map((c) => c.dataset.slotCb);
+    // The button always answers (2026-09-30): nothing to take in is said, not a grey button.
+    if (!selected.length && !m.el.querySelector('#fi-text')?.checked) {
+      toast(slots.length || scan.text ? 'Позначте, що імпортувати' : 'У папці немає картинок чи тексту для цієї книги', 'info');
+      return;
+    }
     m.foot.querySelectorAll('button').forEach((b) => { b.disabled = true; });
     m.el.querySelector('#fi-progress').hidden = false;
     try {

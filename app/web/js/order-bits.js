@@ -17,11 +17,12 @@ export const countryName = (code) => COUNTRIES.find(([c]) => c === String(code |
 // Etsy keeps the seller's own "In Production" tab out of its API, so an order counts as in work
 // once Printify or Gelato has a print order carrying its receipt number, and as sent once the printer
 // has shipped it but Etsy is not told yet (all decided on the server).
+// The queue's tabs in words (2026-09-30): the truck tab is the owner's to-do — "mark it shipped on Etsy" — and says so.
 export const STAGES = [
-  { value: 'new', icon: 'sparkle', tip: 'Нові — книгу ще не замовлено ні в Printify, ні в Gelato' },
-  { value: 'work', icon: 'hourglass', tip: 'В роботі — книгу вже замовлено в Printify або Gelato' },
-  { value: 'sent', icon: 'truck', tip: 'Друкарня відправила — можна позначати відправленими в Etsy' },
-  { value: 'shipped', icon: 'package', tip: 'Відправлені — позначені відправленими в Etsy' },
+  { value: 'new', icon: 'sparkle', label: 'Нові', tip: 'Нові — книгу ще не замовлено в друкарні' },
+  { value: 'work', icon: 'hourglass', label: 'Друкуються', tip: 'Друкуються — книгу замовлено в друкарні' },
+  { value: 'sent', icon: 'truck', label: 'Позначити в Etsy', tip: 'Позначити в Etsy — друкарня відправила, позначте замовлення відправленим в Etsy' },
+  { value: 'shipped', icon: 'package', label: 'Відправлені', tip: 'Відправлені — позначені відправленими в Etsy' },
 ];
 export const STAGE_EMPTY = {
   new: ['sparkle', 'Нових замовлень немає', 'Для всіх оплачених замовлень книгу вже замовлено в Printify або Gelato.'],
@@ -29,7 +30,7 @@ export const STAGE_EMPTY = {
   sent: ['truck', 'Нічого не чекає позначки в Etsy', 'Тут з\'являться замовлення, які Printify або Gelato вже відправили, — поки ви не позначите їх відправленими в Etsy.'],
   shipped: ['package', 'Відправлених ще немає', ''],
 };
-export const STAGE_LABEL = { new: 'нове', work: 'в роботі', sent: 'відправлено друкарнею', shipped: 'відправлено' };
+export const STAGE_LABEL = { new: 'нове', work: 'друкується', sent: 'друкарня відправила', shipped: 'відправлено' };
 
 export const providerName = (p) => (p === 'gelato' ? 'Gelato' : 'Printify');
 export const variationsOf = (o) => (o.items || []).flatMap((i) => i.variations || []);
@@ -62,7 +63,9 @@ export const statusChip = (o) => (o.printStatus
 /** The stage tabs' counts for a search — the queue and the Order Creator's «Замовлення Etsy» list the same orders. */
 export function countStages(seg, orders, term) {
   seg.querySelectorAll('button[data-value]').forEach((b) => {
-    b.querySelector('.seg-count').textContent = orders.filter((o) => o.stage === b.dataset.value && matchesOrder(o, term)).length;
+    const n = orders.filter((o) => o.stage === b.dataset.value && matchesOrder(o, term)).length;
+    b.querySelector('.seg-count').textContent = n;
+    b.classList.toggle('has', n > 0 && b.dataset.value === 'sent'); // the owner's to-do: its count takes the ink
   });
   syncSeg(seg);
 }
@@ -111,7 +114,7 @@ export const etsyAddressLines = (a = {}) => [a.name, a.first_line, a.second_line
 export const addressHtml = (lines) => html`<div class="ord-address">${lines.filter(Boolean).map((line) => html`<div>${line}</div>`)}</div>`;
 
 /** The proof of a book's print files — the cover, the first spread with what the buyer wrote beside page 1, a strip
- *  of every spread: the order card's «Звірка» and the archive's «Що пішло в друк» (written in both until 27.09.2026).
+ *  of every spread: the order card's «Вичитка» (named «Звірка» until 30.09.2026) and the archive's «Що пішло в друк» (written in both until 27.09.2026).
  *  `src(file, side)` — a picture's address; `marks` tags each page (`data-page`) for the text check's findings. */
 export const STRIP_THUMB = 360; // the strip's previews: the side the file check makes them at (images.VIEW_SIDES)
 export function proofHtml({ src, pages, ratio, name, variations, stripId, marks = false }) {

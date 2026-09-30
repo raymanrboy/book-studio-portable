@@ -3,6 +3,85 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-30] update | The top-level docs follow the rail
+
+- README, app/README, AGENTS and CLAUDE no longer say «two modes»: the rail, «Сьогодні», the light theme as the main one, and the skill
+  `book-studio-ui-logic` are named where an agent or the owner starts reading.
+
+## [2026-09-30] update | Wave 8: a drop anywhere, a picture that comes back, a working keyboard
+
+- A file dropped outside a page's own field asks «Куди?» (the Mockups / the Order Creator) and is handed over (`drop-anywhere.js`); a removed
+  library picture is set aside and «Скасувати» restores it (`POST …/assets/restore`, tested); a real Tab walk fixed three faults (a tab group is one
+  stop with arrows, the focus lands on the new page's title, a dialog keeps Tab inside and returns the focus). Plan: [ui-waves](plans/ui-waves.md).
+- **Restart Book Studio** (a server route was added).
+
+## [2026-09-30] update | One plan for all the interface waves
+
+- [plans/ui-waves.md](plans/ui-waves.md): waves 0–7 and the icons with step-by-step instructions (files, functions, checks), what was left out
+  on purpose, and wave 8 — what is still open, in the order to take it.
+
+## [2026-09-30] update | The final waves: undo, one review before print, «Сьогодні», Ctrl+K verbs
+
+- A library book is removed at once and «Скасувати» brings it back (`POST /api/library/trash/restore`, tested); the print
+  send's up-to-four questions are one review; the brand mark opens «Сьогодні» (`pages/today.js`); Ctrl+K gets «Мокапи · №41» /
+  «Слайди · №41»; the Settings' caption went. Not done (and why) — [decisions](decisions.md).
+- **Restart Book Studio** (a server route was added).
+
+## [2026-09-30] update | Waves 3–4: one book tile, one bar, the Workshop's steps as pictures
+
+- The library's and the Workshop's book tiles are one component (`book-tile.js`); a book's progress is one bar (4 segments in
+  the library, 11 in the Workshop); the Workshop's eleven steps are drawn by the order path's `pathStep()` — a picture per
+  step, the word and the numbers in the tooltip. The state alphabet is written into [ui-principles](owner/ui-principles.md).
+- The Tools' tiles, the Mockups' paragraph and the Workshop's header/prompt were quieted earlier in the same pass.
+
+## [2026-09-30] update | Wave 1–2 of the third pass: the hammer and ruler, a tick for «done», quieter Workshop
+
+- The Workshop's glyph is a hammer and a ruler crossed (the owner's wish); `×` no longer means «finish» — a ✓ and a toast.
+- Type and press tokens (`--lh-tight/--lh/--lh-read`, `--press`, `--press-soft`), weights 500/700 cleaned, `--text-3`
+  in light to AA, the proof note's labels out of tracked capitals, a chip 24 px, `aria-disabled` on the waiting make button.
+- The Workshop header: folder and shelf as icons, one labelled button when the book is ready; a prompt shows three lines.
+  Pages and decisions: [frontend](architecture/frontend.md), [workshop](features/workshop.md), [decisions](decisions.md).
+
+## [2026-09-30] update | Three weakest icons redrawn, the book card's keyboard ring
+
+- `pin` (was read as a flask) is a push-pin now, `original` a picture in frame corners, and a new `video` icon takes the
+  Omni video from `motion` (which stays the reduce-motion switch — one icon, one meaning); the full icon sheet was looked
+  over at 96 px and at 16–20 px, the rest of the set stays ([frontend](architecture/frontend.md)).
+- A library/Workshop book card had no visible keyboard focus (`outline: none` with no replacement) — the frame takes the ring.
+- An analysis pass of every page in light found more to do; the plan comes next ([ui-redesign](plans/ui-redesign.md)).
+
+## [2026-09-30] update | Show, don't tell: the rail and the tabs as icons, a printer bug, design skills
+
+- The owner's corrections: the rail icons only with search last, the queue's and the books' tabs as icons with counts,
+  an order's path as pictures, the next-step sentences gone (a «Позначте в Etsy» that only opened the order); the order
+  card's chip names the printer the order really went to ([ui-principles](owner/ui-principles.md), [decisions](decisions.md)).
+- Agent skills for interface logic, icons, visual craft and code installed (text only, local) plus the project's own
+  `book-studio-ui-logic` — [design-skills](dev/design-skills.md).
+
+## [2026-09-30] ingest | The light theme is the owner's main one
+
+- From now on design decisions are taken and checked in the light theme first ([ui-principles](owner/ui-principles.md));
+  the redesign was screenshot in dark, so a light pass is owed.
+
+## [2026-09-30] update | The interface redesign built: objects with their path, tools on their own, one labelled rail
+
+- The rail: Пошук (Ctrl+K) · Замовлення · Книги · Прибуток | Інструменти, Settings at the bottom; the two modes went,
+  the inks follow the area ([the rail](features/modes.md), [decisions](decisions.md)).
+- «Книги» — Майстерня · Бібліотека · Архів; «Інструменти» — the Order Creator, the print archive, the Mockups, the
+  photo mockups, the slides, each on its own or inside its object.
+- The order: the queue's tabs in words, each row's next step, the path in the card and in its print step, a printed
+  order's card with what went to print (`archive.card_facts()` → `printed`).
+- Five type sizes, radii on tokens, readable faint text, labelled fields, no silent grey buttons, three widths.
+- Pages updated: modes, frontend, code-map, glossary, recipes, ui-principles, orders, order-creator, archive, library,
+  workshop, mockups, photo-mockups, profit, settings, slides, text-check, the flows, [the plan](plans/ui-redesign.md).
+
+## [2026-09-30] decision | The interface redesign planned
+
+- A UI/UX audit of every page (made-up data, four widths) and the flows; eight design skills installed into
+  `.claude/skills/` (texts only, not in git). The owner agreed to one strict visual system and asked for the most
+  effort on intuitiveness — [plans/ui-redesign.md](plans/ui-redesign.md): the findings, the proposed structure (an
+  order and a book each in one place with its path), the open decisions asked one at a time. Nothing built yet.
+
 ## [2026-09-30] update | The Mockups' header loses its «Слайди для лістингу» button
 
 - The ▣ menu (the default scheme, the books with slides, older sets) removed at the owner's request, with its route

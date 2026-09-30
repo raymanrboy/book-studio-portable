@@ -18,6 +18,8 @@ export function mount(view, [rid]) {
 // Where the owner was in the queue — the tab, the search, how far down: the card's back arrow (and Esc, the
 // Orders icon) bring him back there, not to «Нові» (owner, 19.09.2026). Memory only: the program starts at «Нові».
 const queueState = { stage: 'new', term: '', scroll: 0, visited: false };
+/** «Сьогодні» opens the queue on the tab it is about (2026-09-30). */
+export function openStage(stage) { queueState.stage = stage; queueState.term = ''; queueState.scroll = 0; }
 
 async function mountQueue(view) {
   let data;
@@ -31,10 +33,10 @@ async function mountQueue(view) {
 
   setHtml(view, html`
     <div class="page-head"><div><h1 class="page-title">Замовлення</h1><div class="page-sub" id="or-sub"></div></div></div>
+    <div class="bk-tabs">${segHtml(STAGES.map((s) => ({ ...s, count: 0 })), stage, { name: 'stage', compact: true })}</div>
     <div class="lib-toolbar">
       <div class="input-group">${ic('search')}<input class="input" id="or-q" placeholder="Ім'я покупця або номер чека" aria-label="Пошук замовлення" autocomplete="off"></div>
-      ${segHtml(STAGES.map((s) => ({ ...s, count: 0 })), stage, { name: 'stage' })}
-      <div class="tools">${ib('sync', 'Оновити замовлення', 'data-act="sync"')}</div>
+      ${ib('sync', 'Оновити замовлення з Etsy і друкарень', 'data-act="sync"')}
     </div>
     <div class="ord-list" id="or-list"></div>
     <div id="or-empty"></div>`);

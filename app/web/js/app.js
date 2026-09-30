@@ -4,6 +4,7 @@ import {
 } from './lib.js';
 import { isKept, stash, unstash, release } from './keep.js';
 import { waiting } from './handoff.js';
+import { installDropAnywhere } from './drop-anywhere.js';
 import { store, refreshInfo, whenInfoChanges } from './info.js';
 
 whenInfoChanges(() => updateSidebar());
@@ -34,112 +35,101 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
   if ((localStorage.getItem('bs-theme') || 'dark') === 'system') applyTheme('system');
 });
 
-// ------------------------------------------------------------------ the two modes and their rails
-// Book Studio has two modes (owner, 24.09.2026): «Замовлення» — the orders, and «Лістинги» — making new books
-// and their listing pictures, "like another program, separated from everything". A click on the brand icon
-// (Alt+0) switches; each mode has its own rail items and its own ink (orange / cyan, html[data-mode]).
-// «Прибуток» counts only sales from 1 October 2026, when bookkeeping starts (profit.ACCOUNTING_FROM).
-const MODES = {
-  orders: {
-    title: 'Book Studio', icon: 'spread', other: 'listings', tip: 'Перейти до лістингів',
-    nav: [
-      { hash: '#/orders', label: 'Замовлення', icon: 'inbox', match: /^#\/orders/ },
-      { hash: '#/library', label: 'Бібліотека книг', icon: 'shelf', match: /^#\/(library|book)/ },
-      { hash: '#/creator', label: 'Order Creator', icon: 'printer', match: /^#\/creator/ },
-      { hash: '#/archive', label: 'Архів замовлень', icon: 'orderArchive', match: /^#\/archive/ },
-      { hash: '#/profit', label: 'Прибуток', icon: 'chart', match: /^#\/profit/ },
-      { hash: '#/settings', label: 'Налаштування', icon: 'sliders', match: /^#\/settings/ },
-    ],
-  },
-  listings: {
-    title: 'Book Studio · Лістинги', icon: 'listing', other: 'orders', tip: 'Перейти до замовлень',
-    nav: [
-      { hash: '#/workshop', label: 'Майстерня', icon: 'workshop', match: /^#\/workshop/ },
-      { hash: '#/mockups', label: 'Мокапи', icon: 'mockup', match: /^#\/(mockups|slides)/ },
-      { hash: '#/photos', label: 'Фотомокапи', icon: 'camera', match: /^#\/photos/ },
-    ],
-  },
-};
+// ------------------------------------------------------------------ the rail: places and tools
+// One labelled rail (2026-09-30, wiki/plans/ui-redesign.md) instead of two modes switched by the brand icon: the
+// owner got lost among unlabelled icons in two hidden sets. **Places** hold the objects — an order, a book — each
+// with its path; **tools** also work on their own (the Order Creator, the Mockups, the photo mockups, the slides,
+// the print archive) and open inside their object from its step. The two inks stay and follow the area: the orders,
+// the profit and the order tools orange; the books and the book tools cyan (html[data-mode], still named «listings»
+// for the cyan so the styles keep their names). «Прибуток» counts only sales from 1 October 2026.
+const PLACES = [
+  { hash: '#/orders', label: 'Замовлення', icon: 'inbox', match: /^#\/orders/, key: '1' },
+  { hash: '#/books', label: 'Книги', icon: 'shelf', match: /^#\/(books|library|book|workshop)/, key: '2', busy: 'workshop' },
+  { hash: '#/profit', label: 'Прибуток', icon: 'chart', match: /^#\/profit/, key: '3' },
+  { gap: true },
+  { hash: '#/tools', label: 'Інструменти', icon: 'tools', match: /^#\/(tools|creator|archive|mockups|photos|slides)/, key: '4', busy: 'mockups' },
+];
 const HOME = '#/orders'; // Book Studio always starts in the orders (owner, 24.09.2026)
+const TITLE = 'Book Studio';
 const THEMES = [
   { value: 'dark', label: 'Темна', icon: 'moon' },
   { value: 'light', label: 'Світла', icon: 'sun' },
   { value: 'system', label: 'Як у Windows', icon: 'monitor' },
 ];
 const currentTheme = () => localStorage.getItem('bs-theme') || 'dark';
-let mode = 'orders';                                   // the mode on screen
-const last = { orders: HOME, listings: '#/workshop' };  // where the owner was in each mode (until a restart)
-const nav = () => MODES[mode].nav;
+let mode = 'orders';     // the ink on screen: 'orders' (orange) or 'listings' (cyan) — the page's area
+let navOwner = null;      // a page that serves an object may claim its place (the Order Creator of an order → «Замовлення»)
+const lastIn = {};        // where the owner was under each place (until a restart)
+const places = () => PLACES.filter((p) => !p.gap);
+const placeOf = (hash) => (navOwner && places().find((p) => p.hash === navOwner)) || places().find((p) => p.match.test(hash)) || null;
 
 function buildSidebar() {
+  // Icons only (2026-09-30, the owner: "show, don't tell"): the page's own title says where he is, a tooltip names the
+  // place and its key. Search is the last of the list, not the first.
   setHtml(document.getElementById('sidebar'), html`
-    <button class="brand-mark" id="brand" type="button"></button>
-    <nav class="nav" id="nav"></nav>
+    <button class="skip-link" id="skip" type="button">Перейти до вмісту</button>
+    <a class="brand-mark" id="brand" href="#/today" aria-label="Сьогодні — що чекає на вас" data-tip="Сьогодні" data-tip-side="right">${ic('spread')}<span class="brand-busy" id="brand-busy" hidden></span></a>
+    <nav class="nav" id="nav" aria-label="Розділи">
+      <span class="nav-pill" id="nav-pill" style="opacity:0"></span>
+      ${PLACES.map((n) => n.gap ? html`<span class="nav-gap" aria-hidden="true"></span>`
+        : html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}" aria-label="${n.label}" data-tip="${n.label}" data-kbd="Alt+${n.key}" data-tip-side="right">
+        ${ic(n.icon)}${n.busy ? html`<span class="badge busy" data-busy="${n.busy}" hidden></span>` : ''}</a>`)}
+      <span class="nav-gap" aria-hidden="true"></span>
+      <button class="nav-item nav-search" id="search-btn" type="button" aria-label="Пошук" data-tip="Пошук по всій програмі" data-kbd="Ctrl+K" data-tip-side="right">${ic('search')}</button>
+    </nav>
     <div class="sidebar-foot">
-      <button class="ib lg" id="theme-btn" aria-label="Вигляд" data-tip="Вигляд" data-tip-side="right"></button>
+      <a class="nav-item nav-small" href="#/settings" data-nav="#/settings" aria-label="Налаштування" data-tip="Налаштування" data-tip-side="right">${ic('sliders')}<span class="badge" id="nav-badge" hidden></span></a>
+      <button class="nav-item nav-small" id="theme-btn" type="button" aria-label="Вигляд" data-tip="Вигляд" data-tip-side="right"></button>
     </div>`);
-  buildNav();
-}
-
-/** The rail of the mode on screen: its items (Alt+1…) and the brand icon that leads to the other mode. */
-function buildNav() {
-  const m = MODES[mode];
-  const brand = document.getElementById('brand');
-  setHtml(brand, html`${ic(m.icon)}<span class="brand-busy" id="brand-busy" hidden></span>`);
-  brand.setAttribute('aria-label', m.tip);
-  Object.assign(brand.dataset, { tip: m.tip, kbd: 'Alt+0', tipSide: 'right' });
-  setHtml(document.getElementById('nav'), html`
-    <span class="nav-pill" id="nav-pill" style="opacity:0"></span>
-    ${m.nav.map((n, i) => html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}" aria-label="${n.label}" data-tip="${n.label}" data-kbd="Alt+${i + 1}" data-tip-side="right">
-      ${ic(n.icon)}${n.hash === '#/settings' ? html`<span class="badge" id="nav-badge" hidden></span>` : ''}${BUSY_NAV[n.hash] ? html`<span class="badge busy" data-busy="${BUSY_NAV[n.hash]}" hidden></span>` : ''}</a>`)}`);
   document.documentElement.dataset.mode = mode;
   paintBusy();
 }
 
-/** Where a mode is entered: the page the owner left there — an order's card only while it is kept. */
-function entryOf(m) {
-  if (m === 'orders' && /^#\/orders\/\d/.test(last.orders) && !isKept(last.orders)) return HOME;
-  return last[m];
-}
-function switchMode() {
-  hideTip();
-  location.hash = entryOf(MODES[mode].other);
+/** Where a place is entered: the page the owner left under it — an order's card only while it is kept; a second
+ *  click on the place he is in goes to its start (the queue, the gallery, the tools). */
+function entryOf(p, here) {
+  if (here) return p.hash;
+  if (p.hash === '#/orders') return ordersTarget();
+  return lastIn[p.hash] || p.hash;
 }
 
-// Work going on in the Listings mode while the owner is elsewhere: a mockups run in Photoshop (pages/mockups.js), a
-// picture the Workshop waits for (workshop-live.js — its value says which row: the window's title carries it, so the
-// taskbar shows it while the owner is in Gemini). A small cyan dot on the brand icon (in the orders) or on the page's
-// rail item (in the listings, when he is on another page). The pages tell it through the 'bs:busy' event; `done` —
-// how a run ended while the window was not in front («Готово · 7 картинок»), in the title until he comes back to it.
-// The window's title is written here only.
+// Work going on while the owner is elsewhere: a mockups run in Photoshop (pages/mockups.js), a picture the Workshop
+// waits for (workshop-live.js — its value says which row: the window's title carries it, so the taskbar shows it while
+// the owner is in Gemini). A small cyan dot on «Книги» (a picture awaited) or «Інструменти» (the Mockups), shown when
+// he is elsewhere. The pages tell it through the 'bs:busy' event; `done` — how a run ended while the window was not
+// in front («Готово · 7 картинок»), in the title until he comes back to it. The window's title is written here only.
 const busy = { mockups: false, workshop: null, done: null };
-const BUSY_NAV = { '#/mockups': 'mockups', '#/workshop': 'workshop' };
+const BUSY_PAGE = { mockups: /^#\/mockups/, workshop: /^#\/workshop/ };
 window.addEventListener('bs:busy', (e) => { Object.assign(busy, e.detail || {}); paintBusy(); });
 window.addEventListener('focus', () => { if (busy.done) { busy.done = null; paintBusy(); } });
 function paintBusy() {
-  const brandDot = document.getElementById('brand-busy');
-  if (brandDot) brandDot.hidden = !((busy.mockups || busy.workshop) && mode === 'orders');
+  const hash = location.hash || HOME;
   document.querySelectorAll('[data-busy]').forEach((dot) => {
-    const page = Object.keys(BUSY_NAV).find((hash) => BUSY_NAV[hash] === dot.dataset.busy);
-    dot.hidden = !(busy[dot.dataset.busy] && !(location.hash || '').startsWith(page));
+    dot.hidden = !(busy[dot.dataset.busy] && !BUSY_PAGE[dot.dataset.busy].test(hash));
   });
-  const title = busy.workshop ? `● ${busy.workshop} — ${MODES[mode].title}` : MODES[mode].title;
+  const title = busy.workshop ? `● ${busy.workshop} — ${TITLE}` : TITLE;
   document.title = busy.done ? `${busy.done} · ${title}` : title;
 }
 
 function placeNavPill() {
   const hash = location.hash || HOME;
   const pill = document.getElementById('nav-pill');
+  const owner = placeOf(hash);
   let active = null;
   document.querySelectorAll('[data-nav]').forEach((a) => {
-    const on = !!nav().find((n) => n.hash === a.dataset.nav)?.match.test(hash);
+    const on = a.dataset.nav === '#/settings' ? /^#\/settings/.test(hash) : owner?.hash === a.dataset.nav;
     a.classList.toggle('active', on);
-    if (on) active = a;
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    if (on && a.closest('#nav')) active = a;
   });
-  document.querySelector('[data-nav="#/orders"]')?.setAttribute('href', ordersTarget());
+  places().forEach((p) => {
+    const a = document.querySelector(`#nav [data-nav="${p.hash}"]`);
+    if (a) a.setAttribute('href', entryOf(p, owner === p));
+  });
   if (!pill) return;
   if (!active) { pill.style.opacity = '0'; return; }
   pill.style.transform = `translateY(${active.offsetTop}px)`;
+  pill.style.height = `${active.offsetHeight}px`;
   pill.style.opacity = '1';
 }
 
@@ -175,15 +165,26 @@ function openThemeMenu(anchor) {
 function wireSidebar() {
   const side = document.getElementById('sidebar');
   on(side, 'click', '#theme-btn', (e, b) => { hideTip(); openThemeMenu(b); });
-  on(side, 'click', '#brand', switchMode);
+  on(side, 'click', '#search-btn', () => { hideTip(); openSearch(); });
+  // The first Tab stop: past the rail, straight to the page (15 presses to the first order before, 2026-09-30).
+  on(side, 'click', '#skip', () => {
+    const view = document.getElementById('view');
+    const first = view?.querySelector('input:not([type=hidden]), button, a[href], [tabindex]:not([tabindex="-1"])');
+    (first || view)?.focus();
+  });
   document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      if (!document.querySelector('.modal-root, .lightbox')) openSearch();
+      return;
+    }
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
     if (document.querySelector('.modal-root, .lightbox')) return; // a dialog or the viewer first; the page stays under it
-    if (e.key === '0') { e.preventDefault(); switchMode(); return; }
-    const n = nav()[Number(e.key) - 1];
-    if (n) { e.preventDefault(); location.hash = n.hash === '#/orders' ? ordersTarget() : n.hash; }
+    const p = places().find((x) => x.key === e.key);
+    if (p) { e.preventDefault(); location.hash = entryOf(p, placeOf(location.hash || HOME) === p); }
   });
 }
+const openSearch = () => import('./palette.js').then((m) => m.openPalette()).catch((err) => { console.error(err); toast('Пошук не відкрився', 'error'); });
 
 // ------------------------------------------------------------------ top progress bar (only for slow page loads)
 const topbar = { el: null, timer: null };
@@ -200,22 +201,25 @@ function topbarDone() {
 }
 
 // ------------------------------------------------------------------ router
-// Every page belongs to one mode: the address alone says which mode is on screen (back/forward just work).
+// Every page belongs to one area (its ink): the address alone says which (back/forward just work).
 const ROUTES = [
   [/^#\/orders(?:\/(\d{5,20}))?\/?$/, () => import('./pages/orders.js'), 'orders'],
-  [/^#\/library\/?$/, () => import('./pages/library.js'), 'orders'],
-  [/^#\/book\/([0-9a-f]{32})$/, () => import('./pages/book.js'), 'orders'],
+  [/^#\/books(?:\/(work|shop|archive))?\/?$/, () => import('./pages/books.js'), 'listings'],
+  [/^#\/book\/([0-9a-f]{32})$/, () => import('./pages/book.js'), 'listings'],
+  [/^#\/tools\/?$/, () => import('./pages/tools.js'), 'orders'],
+  [/^#\/today\/?$/, () => import('./pages/today.js'), 'orders'],
   [/^#\/creator\/?$/, () => import('./pages/creator.js'), 'orders'],
   [/^#\/archive(?:\/(\d{8}-\d{6}-[0-9a-f]{6}))?\/?$/, () => import('./pages/archive.js'), 'orders'],
   [/^#\/profit\/?$/, () => import('./pages/profit.js'), 'orders'],
   [/^#\/settings(?:\/(\w+))?$/, () => import('./pages/settings.js'), 'orders'],
-  [/^#\/workshop\/?$/, () => import('./pages/workshop.js'), 'listings'],
   [/^#\/workshop\/([^/]+)$/, () => import('./pages/workshop-book.js'), 'listings'],
   [/^#\/mockups\/?$/, () => import('./pages/mockups.js'), 'listings'],
   [/^#\/photos\/?$/, () => import('./pages/photos.js'), 'listings'],
   // the slides' editor: its own module, loaded only when opened (the owner, 29.09.2026) — not warmed up below
   [/^#\/slides\/(template|\d{8}-\d{6}-[0-9a-f]{6}|\d{1,5}\.[^/]+)\/([1-6])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
 ];
+// The two galleries became one «Книги» (2026-09-30): their old addresses still lead there.
+const ALIASES = [[/^#\/library\/?$/, '#/books/shop'], [/^#\/workshop\/?$/, '#/books/work']];
 
 let current = null;
 let currentHash = '';
@@ -236,6 +240,8 @@ function ordersTarget() {
 // A page with work on a new order is not taken down when left: it is kept hidden (keep.js) and comes
 // back as it was — unless its order has moved on (revive() says no) or new data waits for the page.
 async function navigate() {
+  const alias = ALIASES.find(([re]) => re.test(location.hash));
+  if (alias) { history.replaceState(null, '', alias[1]); }
   const hash = location.hash || HOME;
   const found = ROUTES.find(([re]) => re.test(hash));
   if (!found) { location.hash = HOME; return; }
@@ -292,25 +298,36 @@ async function navigate() {
     main.scrollTo({ top: scroll, behavior: 'instant' });
     for (const [el, left, top] of inner) { el.scrollLeft = left; el.scrollTop = top; }
     current = ctrl;
+    if (currentHash !== hash) store.from = currentHash;
     currentHash = hash;
+    store.here = hash;
     if (/^#\/orders/.test(hash)) lastOrders = hash;
-    last[pageMode] = hash;
-    if (pageMode !== mode) { mode = pageMode; buildNav(); updateSidebar(); } else placeNavPill();
+    try { navOwner = ctrl?.navFor?.() || null; } catch { navOwner = null; }
+    const owner = placeOf(hash);
+    if (owner) lastIn[owner.hash] = hash;
+    if (pageMode !== mode) { mode = pageMode; document.documentElement.dataset.mode = mode; }
+    placeNavPill();
     paintBusy();
   };
   const shown = () => {
     document.querySelectorAll('.seg').forEach(syncSeg);
+    // The page that was pressed on is gone and the focus with it (a keyboard user opened a row): it lands on the new page's
+    // title, so the next Tab starts inside the page, not back at the rail (2026-09-30, the Tab walk). Focus that is somewhere
+    // real — a rail link, a field — is left alone.
+    if (!document.activeElement || document.activeElement === document.body || !document.contains(document.activeElement)) {
+      const h = view.querySelector('h1');
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    }
     try { ctrl?.shown?.(); } catch (err) { console.error(err); }
     topbarDone();
   };
   if (!firstPage && canTransition()) {
     const root = document.documentElement;
     root.classList.add('vt-running');
-    root.classList.toggle('vt-mode', pageMode !== mode); // the rails swap: their own animation (app.css)
     const vt = transition(swap);
     pageTransition = vt;
-    // A quicker second click skips this transition; only the latest one clears the classes.
-    const done = () => { if (pageTransition === vt) { pageTransition = null; root.classList.remove('vt-running', 'vt-mode'); } };
+    // A quicker second click skips this transition; only the latest one clears the class.
+    const done = () => { if (pageTransition === vt) { pageTransition = null; root.classList.remove('vt-running'); } };
     vt.updateCallbackDone.then(shown, shown);
     vt.finished.then(done, done);
   } else {
@@ -354,6 +371,7 @@ async function boot() {
   buildSidebar();
   wireSidebar();
   updateSidebar();
+  installDropAnywhere();
   window.addEventListener('hashchange', navigate);
   const info = refreshInfo();
   await navigate();

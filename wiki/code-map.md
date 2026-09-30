@@ -102,14 +102,22 @@ code:
 | File | Purpose | Main |
 |---|---|---|
 | [index.html](../app/web/index.html) | The shell: the session token, the theme before the first frame, the "connection lost" placeholder | — |
-| [js/app.js](../app/web/js/app.js) | The rail and the [two modes](features/modes.md), page routing, theme, heartbeat | `MODES`, `ROUTES`, `navigate()`, `buildNav()`, `switchMode()`, `applyTheme()` |
+| [js/app.js](../app/web/js/app.js) | The labelled [rail of places and tools](features/modes.md), page routing, the ink of the area, theme, heartbeat | `PLACES`, `ROUTES`, `ALIASES`, `navigate()`, `placeNavPill()`, `applyTheme()` |
+| [js/places.js](../app/web/js/places.js) | Where things are: the places, the tools, Settings' blocks — for «Інструменти» and the search | `PLACES`, `TOOLS`, `SETTINGS` |
+| [js/palette.js](../app/web/js/palette.js) | Search everywhere (Ctrl+K): orders, books, places, tools | `openPalette()` |
+| [js/path.js](../app/web/js/path.js) | An object's path strip (an order's Canva → … → Відправка; a Workshop book's eleven steps) | `pathHtml()`, `pathStep()` |
+| [js/book-tile.js](../app/web/js/book-tile.js) | One book on a shelf — the library's and the Workshop's tile, one progress bar | `bookTile()`, `segBar()`, `tickBadge()` |
+| [js/pages/tools.js](../app/web/js/pages/tools.js) | «Інструменти» — every tool that works on its own | `mount()` |
+| [js/pages/today.js](../app/web/js/pages/today.js) | «Сьогодні» — what needs the owner now, across every place (the brand mark) | `mount()` |
+| [js/pages/books.js](../app/web/js/pages/books.js) | «Книги» — the Workshop's and the library's galleries as tabs | `mount()` |
 | [js/info.js](../app/web/js/info.js) | Info about the program (`/api/app`) for the shell and the pages | `store`, `refreshInfo()`, `whenInfoChanges()` |
-| [js/lib.js](../app/web/js/lib.js) | Shared helpers: templates, API, tooltips, dialogs, menus, animations, a detail page's Esc and "could not open" | `html()`, `api()`, `ib()`, `modal()`, `confirmChecked()`, `menu()`, `runJob()`, `upload()`, `toast()`, `segHtml()`, `escBack()`, `notFound()` |
+| [js/lib.js](../app/web/js/lib.js) | Shared helpers: templates, API, tooltips, dialogs, menus, animations, a detail page's Esc and "could not open", what's missing | `markMissing()`, `html()`, `api()`, `ib()`, `modal()`, `confirmChecked()`, `menu()`, `runJob()`, `upload()`, `toast()`, `segHtml()`, `escBack()`, `notFound()` |
 | [js/icons.js](../app/web/js/icons.js) | Icons | `icon()` |
 | [js/lightbox.js](../app/web/js/lightbox.js) | The image viewer | `openLightbox()` |
 | [js/handoff.js](../app/web/js/handoff.js) | Passing data between pages in memory | `give()`, `take()`, `waiting()` |
 | [js/keep.js](../app/web/js/keep.js) | Saved work on a new order: a hidden card and Order Creator, "draft created" | `stash()`, `unstash()`, `settle()`, `markSent()`, `sentOf()`, `finish()` |
 | [js/order-bits.js](../app/web/js/order-bits.js) | Shared by Orders, the order archive and the Order Creator | `STAGES`, `proofHtml()`, `filesBadge()`, `checkNotices()`, `fieldsHtml()`, `addressHtml()`, `svcChip()`, `countStages()`, `emptyOrders()`, `statusChip()`, `alsoSentChip()`, `restorable()`, `trackChips()`, `receiptCopy()`, `isNameField()`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `childOf()`, `spreadsOf()`, `smoothWheel()` |
+| [js/drop-anywhere.js](../app/web/js/drop-anywhere.js) | Files dropped anywhere outside a page's own drop field: the page may take them (`bs:dropped`), otherwise one question «Куди?» (the Mockups or the Order Creator) and a hand-over | `installDropAnywhere()` |
 | [js/drop.js](../app/web/js/drop.js) | Files and folders dragged into the window: read in full (a folder's tree, a ZIP) and copied into the program — the order card, the Order Creator, the passport, the mockups | `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()` |
 | [js/add-book.js](../app/web/js/add-book.js) | «Нова книга» and the Workshop's «Передати в бібліотеку» — one dialog | `openAddBook()` |
 | [js/workshop-bits.js](../app/web/js/workshop-bits.js) | What the Workshop's two pages share: a picture's address, the check's word, a step's state in words | `picture()`, `checkWord()`, `STATE_WORDS`, `STATE_TEXT` |

@@ -11,7 +11,9 @@ import {
   remember, setProgress, patch, tellBusy,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
+import { store } from '../info.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
+import { take } from '../handoff.js';
 import { PICTURES, runView, rowsHtml, resultCard, turnCard, finishedCard } from './mockups-run.js';
 import { slidesStep } from './mockups-slides.js';
 
@@ -23,6 +25,7 @@ const PICKS_KEY = 'mk-picks'; // the last picks per book: dropped in again, a bo
 const TYPE_SPREAD = 'application/x-mk-spread';
 const TYPE_SLOT = 'application/x-mk-slot';
 const SPREADS = ['розворот', 'розвороти', 'розворотів'];
+const TEMPLATES = ['шаблон', 'шаблони', 'шаблонів'];
 const busy = (on) => tellBusy({ mockups: on }); // the rail's dot
 const FOR_BOOK = 'mk-for-book';   // the Workshop's «Мокапи» step: {id} — the book the next mockups are for
 const LAST_BOOK = 'mk-last-book';
@@ -60,6 +63,20 @@ export async function mount(view) {
     return changed && !!asked;
   }
   takeWorkshopBook();
+  // Opened from a Workshop book (its «Мокапи» step): the page is that book's step — the book in its head, the way
+  // back to it, the rail on «Книги». From «Інструменти» it is the tool on its own (2026-09-30).
+  let fromBook = null;
+  const arrived = () => {
+    const m = /^#\/workshop\/([^/]+)$/.exec(store.here || '');
+    fromBook = m && st.workshop && decodeURIComponent(m[1]) === st.workshop.id ? st.workshop : null;
+    paintBack();
+  };
+  function paintBack() {
+    const back = $('#mk-back'), sub = $('#mk-sub');
+    if (!back || !sub) return;
+    setHtml(back, fromBook ? html`<a class="back-link" href="#/workshop/${encodeURIComponent(fromBook.id)}" aria-label="До книги" data-tip="До книги">${ic('arrowLeft')}</a>` : '');
+    setHtml(sub, fromBook ? html`Для книги <b>${fromBook.name}</b> · демо-книга з Canva → картинки для лістингу` : 'Демо-книга з Canva → картинки для лістингу Etsy');
+  }
   let gone = false;
   const offs = [];
   const $ = (sel) => view.querySelector(sel);
@@ -109,9 +126,10 @@ export async function mount(view) {
   function render() {
     setHtml(view, html`<div class="mk" data-folder-drop>
       <header class="page-head">
+        <span id="mk-back"></span>
         <div class="grow">
           <h1 class="page-title">Мокапи</h1>
-          <div class="page-sub">Демо-книга з Canva → картинки для лістингу Etsy</div>
+          <div class="page-sub" id="mk-sub">Демо-книга з Canva → картинки для лістингу Etsy</div>
         </div>
         <div class="page-actions" id="mk-actions"></div>
       </header>
@@ -141,7 +159,7 @@ export async function mount(view) {
     const box = $('#mk-actions');
     if (!box) return;
     setHtml(box, html`<div class="tools">${ib('sliders', 'Де шаблони і Photoshop', 'data-act="places"')}
-      ${something() ? html`<span class="sep"></span>${ib('x', 'Завершити — наступна книга з чистого аркуша', 'data-act="close"')}` : ''}</div>`);
+      ${something() ? html`<span class="sep"></span>${ib('checkCircle', 'Завершити — наступна книга з чистого аркуша', 'data-act="close"')}` : ''}</div>`);
   }
 
   async function finishPage() {
@@ -346,10 +364,11 @@ export async function mount(view) {
     const left = st.book ? missing() : 0;
     const need = !st.book ? 'Ще: демо-книга' : left ? `Ще ${left} ${plural(left, SPREADS)}` : '';
     setHtml(box, html`
-      <p class="mk-plan">Photoshop сам збереже <b class="num">${saves}</b> ${plural(saves, PICTURES)}, а <b class="num">${hands}</b> шаблони залишить
-        відкритими — лицьову обкладинку й кольори Dedication підганяєте ви.${st.book && !st.out && !st.workshop ? ' Папку спитаю, коли натиснете.' : ''}</p>
-      <button type="button" class="btn btn-primary btn-block mk-make ${need ? 'waiting' : ''}" data-act="make" ${ready ? '' : 'disabled'}>${ic('mockup')}Зробити мокапи</button>
-      ${need ? html`<div class="mk-left">${need}</div>` : ''}`);
+      <div class="mk-plan">
+        <span class="chip" data-tip="Photoshop сам збереже ${saves} ${plural(saves, PICTURES)}">${ic('image', 'icon-s')}<b class="num">${saves}</b></span>
+        <span class="chip" data-tip="${hands} ${plural(hands, TEMPLATES)} Photoshop залишить відкритими — лицьову обкладинку й кольори Dedication підганяєте ви">${ic('hand', 'icon-s')}<b class="num">${hands}</b></span></div>
+      <button type="button" class="btn btn-primary btn-block mk-make ${need ? 'waiting' : ''}" data-act="make" ${st.book && !st.out && !st.workshop ? 'data-tip="Папку для результату спитаю, коли натиснете"' : ''} ${ready ? '' : 'disabled'} ${need ? 'aria-disabled="true" aria-describedby="mk-left"' : ''}>${ic('mockup')}Зробити мокапи</button>
+      ${need ? html`<div class="mk-left" id="mk-left">${need}</div>` : ''}`);
   }
 
   function patchRun() {
@@ -369,7 +388,7 @@ export async function mount(view) {
       const doing = st.receiving === 'ask' ? 'Оберіть архів у вікні Windows'
         : st.receiving === 'unzip' ? 'Розпаковую архів…' : html`Отримую архів… <span class="num">${Math.round(st.receiving || 0)}%</span>`;
       setHtml(box, html`
-        <div class="row"><h2 class="card-title grow" style="font-size:17px">Структура</h2><span id="mk-book-state"></span></div>
+        <div class="row"><h2 class="card-title grow" style="font-size: var(--fs-l)">Структура</h2><span id="mk-book-state"></span></div>
         <div id="mk-book-error"></div>
         <div class="mk-ghost ${busy ? 'busy' : ''}" data-act="pick-zip" role="button" tabindex="0" aria-label="Обрати ZIP-архів із Canva">
           <div class="mk-ghost-art">
@@ -389,7 +408,7 @@ export async function mount(view) {
     const b = st.book;
     setHtml(box, html`
       <div class="row" style="align-items:baseline">
-        <h2 class="card-title grow" style="font-size:17px">Структура <span class="faint" style="font-weight:500">· ${bookName() ? html`${bookName()} · ` : ''}<span class="num">${b.pageCount}</span> стор.</span></h2>
+        <h2 class="card-title grow" style="font-size: var(--fs-l)">Структура <span class="faint" style="font-weight:500">· ${bookName() ? html`${bookName()} · ` : ''}<span class="num">${b.pageCount}</span> стор.</span></h2>
         <span class="mk-next" id="mk-next"></span>
         <span id="mk-book-state"></span>
         ${ib('folderPick', 'Інша демо-книга — ZIP із Canva (або перетягніть його сюди)', 'data-act="pick-zip"', { cls: 'sm' })}
@@ -414,7 +433,7 @@ export async function mount(view) {
         </div>
       </div>
       <div class="stack-s">
-        <div class="row"><span class="eyebrow grow">Розвороти</span><span class="faint" style="font-size:12px"><span class="num">${b.spreads.length}</span> ${plural(b.spreads.length, SPREADS)}</span></div>
+        <div class="row"><span class="eyebrow grow">Розвороти</span><span class="faint" style="font-size: var(--fs-s)"><span class="num">${b.spreads.length}</span> ${plural(b.spreads.length, SPREADS)}</span></div>
         <div class="spread-grid mk-grid" id="mk-grid">${b.spreads.map(([n]) => spreadTile(n))}</div>
       </div>`);
     fadeImages(box);
@@ -553,6 +572,8 @@ export async function mount(view) {
     });
   }
   wireFolderDrop(view, () => $('#mk-right'), takeDrop);
+  view.addEventListener('bs:dropped', (e) => { e.detail.handled = true; takeDrop(e.detail.dropped); });
+  const handedDrop = take('mockups')?.drop; // files dropped anywhere in the window and sent here (drop-anywhere.js)
 
   async function pickZip() {
     if (bookBusy()) return;
@@ -800,6 +821,8 @@ export async function mount(view) {
 
   resetPicks();
   render();
+  arrived();
+  if (handedDrop) takeDrop(handedDrop); // after the first paint, which would wipe the «receiving» state
   // A run still going (the window was reloaded): follow it again.
   if (st.meta.jobId) {
     st.run = { mode: 'make', phase: 'prepare', step: 'Photoshop працює…', percent: 0, rows: [] };
@@ -810,8 +833,10 @@ export async function mount(view) {
   return {
     // Kept when the owner steps away while there is something to come back to: a book, a run, its result.
     keep: () => !!(st.book || st.run || st.result || st.finished || st.receiving !== null || slides.keep()),
+    navFor: () => (fromBook ? '#/books' : null),
     revive: () => {
       if (takeWorkshopBook()) { paintOut(); paintMake(); toast(`Мокапи — для ${st.workshop.name}`, 'info'); }
+      arrived();
       slides.wake();
       return true;
     },

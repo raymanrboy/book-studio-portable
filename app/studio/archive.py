@@ -423,12 +423,17 @@ def card_facts(receipt_id: str) -> dict:
     "earlierSends" — sends of this Etsy order that never went to print (a draft left unconfirmed, a cancelled
     order, a deleted draft) whose files are still here, newest first: the card offers them to send it again;
     "atPrinter" — a send its printer still has (a book, a draft or an order not cancelled or deleted there): read
-    from the archive, so it outlives a restart, unlike the page's own memory of a send."""
+    from the archive, so it outlives a restart, unlike the page's own memory of a send;
+    "printed" — the sends that went to print, newest first: a printed order's card shows what went and offers the
+    reprint from here (2026-09-30 — the order in one place, not also in the archive's own list)."""
     facts = _facts_or_none()
     own = [e for e in entries() if e.get("receiptId") == str(receipt_id)]
-    return {"earlierSends": [{k: e.get(k) for k in ("id", "provider", "sentAt", "pageCount", "format", "formatLabel")}
+    brief = ("id", "provider", "sentAt", "pageCount", "format", "formatLabel")
+    return {"earlierSends": [{k: e.get(k) for k in brief}
                              for e in own if facts is not None and standing(e, facts) != "counted"],
-            "atPrinter": any(standing(e, facts) != "dropped" for e in own)}
+            "atPrinter": any(standing(e, facts) != "dropped" for e in own),
+            "printed": [{**{k: e.get(k) for k in brief}, "reprint": bool(e.get("reprintOf"))}
+                        for e in own if standing(e, facts) == "counted"]}
 
 
 _BOOK_FILE = re.compile(r"Cover\.png|\d{1,3}\.png")

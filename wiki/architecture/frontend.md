@@ -5,6 +5,10 @@ updated: 2026-09-30
 code:
   - app/web/index.html
   - app/web/js/app.js
+  - app/web/js/places.js
+  - app/web/js/palette.js
+  - app/web/js/path.js
+  - app/web/js/book-tile.js
   - app/web/js/info.js
   - app/web/js/lib.js
   - app/web/js/icons.js
@@ -25,32 +29,35 @@ code:
 
 > One HTML page with no build step: ES modules from `app/web/js`, styles in `app/web/css/` (`app.css` and a file
 > per section, loaded in that order).
-> Pages switch by `#hash`, each one its own module with `mount()`. Since 2026-09-24 the window has
-> [two modes](../features/modes.md) — Orders and Listings — each with its own rail and ink.
+> Pages switch by `#hash`, each one its own module with `mount()`. Since 2026-09-30 one labelled
+> [rail of places and tools](../features/modes.md) (the two modes of 2026-09-24 went); the ink follows the area.
 
 ## Shell and routing — `app.js`
 
-- **Two modes** (`MODES`, since 2026-09-24 — [features/modes.md](../features/modes.md)): the brand icon at the
-  top of the rail is the switch (a click, Alt+0). **Orders**: Orders `#/orders` (Alt+1), Library `#/library`
-  (Alt+2), Order Creator `#/creator` (Alt+3), Order archive `#/archive` (Alt+4, since 2026-09-18), Profit
-  `#/profit` (Alt+5, since 2026-09-29), Settings `#/settings` (Alt+6). **Listings**: the Workshop `#/workshop` (Alt+1), the Mockups `#/mockups` (Alt+2). The
-  mode on screen is the mode of the page's route (`html[data-mode]`, the accent tokens, the title); each mode
-  remembers its last page (`last`, `entryOf()`). The start page is `HOME = '#/orders'`: Book Studio always
-  starts in Orders. While a dialog or the viewer is open, Alt+1…6 doesn't switch pages; every
-  navigation closes any open menu and tooltip (`closeMenu()`, `hideTip()` in `navigate()`) —
-  2026-09-19: the book passport's "More" menu used to stay open over another page. At the bottom — the
-  theme menu (dark / light / follow Windows, "reduce motion"). The dot on Settings — when some service
-  is missing a key or a sign-in. The active item is marked by a "pill" (`.nav-pill`, `placeNavPill()`)
-  that glides with a spring animation. While the page changes, the panel stays "alive" over the
-  transition (`.vt-running .nav` has its own `view-transition-name`, the old snapshot is hidden): the
-  pill travels **under** the icons, and an icon smoothly changes color. As a separate snapshot, the pill
-  would be drawn over the icon — it would vanish while the pill traveled (the owner's note, 2026-09-18).
-- **Routes** (`ROUTES`, each with its mode): `#/orders[/<receipt number>]` → `pages/orders.js`, `#/library` →
-  `library.js`, `#/book/<id>` → `book.js`, `#/creator` → `creator.js`, `#/archive[/<id>]` → `archive.js`,
+- **The rail** (`PLACES`, since 2026-09-30 — [features/modes.md](../features/modes.md); two modes switched by the brand
+  icon before): **Замовлення** `#/orders` (Alt+1), **Книги** `#/books` (Alt+2), **Прибуток**
+  `#/profit` (Alt+3), **Інструменти** `#/tools` (Alt+4), «Пошук» (Ctrl+K, last of the list), at the bottom Settings
+  `#/settings` and the theme menu (dark / light / follow Windows, "reduce motion"). Icons only (tooltips); a click goes back to where the owner
+  was under it (`lastIn`, `entryOf()`), a second click to its start. The ink is the area of the page's route
+  (`html[data-mode]`: `orders` orange, `listings` cyan). The start page is `HOME = '#/orders'`. A page serving an
+  object claims its place with its controller's `navFor()` (the Order Creator of an order → «Замовлення»). While a
+  dialog or the viewer is open, Alt+1…4 doesn't switch pages; every navigation closes any open menu and tooltip
+  (`closeMenu()`, `hideTip()` in `navigate()`) — 2026-09-19: the book passport's "More" menu used to stay open over
+  another page. The dot on Settings — when some service is missing a key or a sign-in. The active item is marked by a
+  "pill" (`.nav-pill`, `placeNavPill()`) that glides with a spring animation. While the page changes, the panel stays
+  "alive" over the transition (`.vt-running .nav` has its own `view-transition-name`, the old snapshot is hidden): the
+  pill travels **under** the icons, and an icon smoothly changes color (the owner's note, 2026-09-18). The first Tab
+  stop is «Перейти до вмісту» (`#skip`). **The keyboard** (a real Tab walk, 2026-09-30, last): every stop has the 2 px ring; a
+  segmented control (`.seg`) is **one** stop with ←/→/Home/End inside it (roving `tabindex` in `syncSeg()`, the keys in `lib.js`);
+  when the page pressed on is gone (Enter on a queue row) the focus lands on the new page's title (`shown()` in `app.js`);
+  a dialog keeps Tab inside and gives the focus back to the control that opened it (`modal()`).
+- **Routes** (`ROUTES`, each with its area): `#/orders[/<receipt number>]` → `pages/orders.js`, `#/books[/work|shop|archive]`
+  → `books.js` («Книги»: the Workshop's gallery and the library's in one, since 2026-09-30; `ALIASES` lead `#/library` and
+  `#/workshop` there), `#/book/<id>` → `book.js`, `#/tools` → `tools.js`, `#/creator` → `creator.js`, `#/archive[/<id>]` → `archive.js`,
   `#/profit` → `profit.js` (since 2026-09-29; counts from 1 October — [features/profit.md](../features/profit.md)),
-  `#/settings[/<section>]` → `settings.js` — the orders; `#/workshop` → `workshop.js`, `#/workshop/<book folder>` →
-  `workshop-book.js`, `#/mockups` → `mockups.js`, `#/slides/<set | template>/<1–6>` → `slides-editor.js` (the listing
-  slides' editor, since 2026-09-29) — the listings. A route marked `'lazy'` is left out of the pages' warm-up in `boot()`:
+  `#/settings[/<section>]` → `settings.js` — orange; `#/book/<id>`, `#/workshop/<book folder>` →
+  `workshop-book.js`, `#/mockups` → `mockups.js`, `#/photos` → `photos.js`, `#/slides/<set | template>/<1–6>` →
+  `slides-editor.js` (the listing slides' editor, since 2026-09-29) — cyan. A route marked `'lazy'` is left out of the pages' warm-up in `boot()`:
   the editor's code loads the first time it is opened (the owner: "a separate module called only when needed").
 - **A page's contract**: `export async function mount(view, params)` builds content in the given
   element and returns `{ shown(), unmount() }` (both optional). `navigate()` builds the new page off
@@ -71,6 +78,9 @@ code:
   returns false) — and the owner ends up in the queue.
 - The "Orders" icon (and Alt+1) from another tab goes back to where the owner was in "Orders": an open
   card if it's kept, otherwise the queue (`ordersTarget()`, `lastOrders`).
+- **Where the owner came from** (since 2026-09-30): `store.here` — the page on screen (while the next one is built,
+  still the one being left), `store.from` — the one before it (`info.js`). An archive entry opened from its order's card
+  goes back to the card; the Mockups opened from a Workshop book show that book and go back to it.
 - `refreshInfo()` → `/api/app` (service status, book count) for the panel and the pages — in its own
   `info.js` together with `store`, so pages don't have to import the shell that loads them; the panel
   redraws via `whenInfoChanges()`.
@@ -85,7 +95,9 @@ code:
 | Icon buttons with a tooltip | `ib(icon, tip, attrs, {cls, kbd})`; the shared tooltip `showTip()` / `hideTip()` (`.tip`: up to 320 px, longer wraps to two lines, never past the panel's edge; 2026-09-19) |
 | Server | `api()` (token, JSON, `ApiError`), `post(path, body)` — a POST (85 calls read `api(…, { method: 'POST', body })` until 2026-09-27), `media()` (a link with a token), `upload()` (XHR with progress), `runJob()` (4th argument `keepGoing()` — stop polling once the result is no longer needed; `job.partial` in `onProgress` — what the job has already found) |
 | External links | `openExternal()` — through the server, in the regular browser (Etsy is blocked) |
-| Notices | `toast()`, `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `confirmChecked()` (a warning and a box to tick before «Продовжити»; `act()` runs before it closes — the Etsy sign-in, the Printify manual approval), `menu()`, `closeMenu()`, `topLayer()` |
+| A compact switch | `segHtml(options, active, {compact: true})` — icons with counts; only the chosen one shows its word (`.seg-compact`, `.seg-label`); `countStages()` marks the to-do tab `.has` (its count takes the ink) |
+| What's missing | `markMissing(fields)` — a press that can't go on yet lights up the empty fields (an amber edge until typed in) and focuses the first; the button stays pressable and a notice says what's missing (since 2026-09-30) |
+| Notices | `toast()` (with `{undo: {label, run}}` — a «Скасувати» button, only for an action the program can really take back; 9 s), `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `confirmChecked()` (a warning and a box to tick before «Продовжити»; `act()` runs before it closes — the Etsy sign-in, the Printify manual approval), `menu()`, `closeMenu()`, `topLayer()` |
 | The shell's dot | `tellBusy(detail)` — the `bs:busy` event: what runs (the mockups, the Workshop's generation) and how a run ended while the window was behind |
 | Detail pages | `escBack(hash, {fields})` — Esc back to the list when no dialog, viewer or menu (or, with `fields`, a text field) owns the key; returns `listen(yes)` for a kept page; `notFound(view, {back, backLabel, icon, title, text})` — the page that could not open (the order card, the archived book, the passport, the Workshop's book; since 2026-09-27) |
 | Segmented switch | `segHtml()`, `syncSeg()`, `setSeg()` |
@@ -96,7 +108,21 @@ code:
 | Progress | `setProgress(bar, percent)` — a `.progress > i` bar drawn by a transform (`scaleX`), not its width: no layout on every step (since 2026-09-26) |
 | Live pages | `patch()` — a keyed redraw in place (the gone parts removed first and the rest moved with `moveBefore()` where the browser has it, so focus and hover stay; since 2026-09-26): an unchanged part stays, a changed one is replaced, a picture already shown is carried over (the Workshop) |
 
-## The Listings mode's pages (since 2026-09-24)
+## An object's path — `path.js` (since 2026-09-30)
+
+`pathHtml(steps, {label, active, act})` — the strip of squares (numbers; with `icon` on every step — pictures,
+the word in the tooltip) (`.ws-strip`, `.ws-step`: ✓ done, half-filled started, dashed skipped, red ⚠ where something is
+wrong, the next one breathing), drawn for any object: an order's «Canva · Файли · Вичитка · Друк · Відправка» in its card
+and in the Order Creator of that order, **and a Workshop book's eleven steps** (one step at a time — `pathStep(s, i, steps,
+{act, active, tabs})` — so the book page's keyed patching keeps the strip smooth; `thumb` puts a picture in the square).
+The strip takes any number of steps (`--steps`).
+
+**One bar for a book's progress** — `book-tile.js`: `bookTile()` is the library's and the Workshop's tile (a square cover,
+a title, one quiet line, `segBar()` — four segments in the library, eleven in the Workshop, `.segbar i > b` filled by
+`scaleX`; a «next» line only where there is something to say). **The state alphabet** (the same in the strip and the bar):
+filled = done, half = started, empty = not yet, pale/dashed = not needed, red = something is wrong.
+
+## The book pages (cyan; the Listings mode's until 2026-09-30)
 
 - [The Workshop](../features/workshop.md) (the book console moved in, 2026-09-26) — `pages/workshop.js` (the gallery
   of the pipeline's books) and `pages/workshop-book.js` (the path strip and its panel, the rows — drawn by `pages/workshop-rows.js` —, the
@@ -131,14 +157,17 @@ code:
   picture, not an alias for the `package` box icon, which means "shipped on Etsy"); `plus` — "another
   book" in the Order Creator; `mockup` — the Mockups (a book in a picture frame); `hand` — "the
   owner fits this by hand" (the front cover in a mockup template); since 2026-09-24 `listing` — the Listings
-  mode (an Etsy listing's tag, its brand icon), `workshop` — the Workshop (the `book` with a pencil at its corner),
+  mode (an Etsy listing's tag, its brand icon), `workshop` — the Workshop (a hammer and a ruler crossed, the owner's wish of 2026-09-30),
   `mirror` — ⇄, a Workshop spread mirrored left to right (not `swap`, which trades a spread's two pages in the
   passport); since 2026-09-26 `agent` — the book agents in Antigravity (a chat bubble, the agent typing), `hero` — a
   book's hero, `minus` — a step not needed, `guides` — the printer's template lines (a cover with its spine inside
   crop marks). **The magic wand went** (the owner, 2026-09-26): `prompt` — a prompt for the generator (a prompt sign
   `>_` in a window; the prompt files' tabs), `generate` — «Генерувати» (▷: the prompt into the clipboard, a download
   awaited), `regenerate` — «Ще раз» (↻; not `sync`, which refreshes the orders); `original` — the Workshop's
-  originals (a wide picture; the square `images` there means the cut pages).
+  originals (a picture in four frame corners — the uncropped one; the square `images` there means the cut pages). The
+  weakest pictograms were redrawn on 2026-09-30 (late): `pin` is now a slanted push-pin (the old one read as a flask),
+  `original` the corners-and-picture, and `video` (a film frame with a play mark) is the Omni video — `motion` (a wave over
+  a line) stays the "reduce motion" switch only, so one icon means one thing.
 - Chips (`.chip`): a chip's text is one font (`.chip .num` doesn't switch fonts), `.chip-mono` sits 2 px
   lower so Consolas lines up with the text of other chips.
 - `keep.js` — saved pages (`stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`); pages with
@@ -192,13 +221,32 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
   theme is set before the first frame by a script in `index.html` (the `bs-theme` key in localStorage).
 - Fonts: Bahnschrift — the interface and headings, Segoe UI — text, Sitka — book texts, Consolas —
   numbers/codes.
-- Accent — **orange in the Orders mode** (since 2026-09-24, "like Etsy and Claude": `#bf4f1a` / `#f0874d`,
-  contrast 4.8/7.0 with the text on it), **"process cyan" in the Listings mode** (`[data-mode="listings"]` and
-  `[data-theme="dark"][data-mode="listings"]` redefine `--accent*`; the whole program's colour until then). Service colors: `--printify` (lime green), `--gelato` (blue), `--etsy`,
+- Accent — **orange for the orders' area** (since 2026-09-24, "like Etsy and Claude": `#bf4f1a` / `#f0874d`,
+  contrast 4.8/7.0 with the text on it), **"process cyan" for the books' area** (`[data-mode="listings"]` on the page
+  or on a part of it — the tools' groups — redefines `--accent*`; `html[data-mode="listings"] [data-mode="orders"]`
+  brings the orange back inside a cyan page). Service colors: `--printify` (lime green), `--gelato` (blue), `--etsy`,
   `--canva`. The Order Creator's Printify mode and the Printify send card (`.tint-printify`) recolor the
   accent to lime green; its Gelato mode (`.creator.mode-gelato`) — to the old blue, the same "process
   cyan" (the owner, 2026-09-25: once Orders turned orange, Gelato in the Order Creator became orange too — "як було").
-- Radii by role: paper is sharp (`--r-art`), controls are soft (`--r-ctl`).
+- **Type** (since 2026-09-30, [the redesign](../plans/ui-redesign.md)): five interface sizes with clear steps —
+  `--fs-s` 12 (captions, chips, meta) · `--fs` 13 (the base) · `--fs-m` 15 (a card's title) · `--fs-l` 19 (an
+  object's or a dialog's title) · `--fs-xl` 25 (a page's title); named exceptions `--fs-book` / `--fs-book-title` (the
+  books' own words in Sitka), `--fs-glyph` (a placeholder's letter), `--fs-micro` (keycaps, numbers on thumbnails).
+  Every `font-size` in the styles and the pages is a token (the pretend Photoshop dialog and the proof note's paper
+  keep their own). Weights 400 / 600 (500 only for the soft printer chips and the tooltips). Section labels in sentence
+  case — no tracked capitals (`.eyebrow`, `.section-title`). **Leading in three steps** (late 2026-09-30, was fifteen values):
+  `--lh-tight` 1.2, `--lh` 1.4, `--lh-read` 1.6. **Press feedback in two**: `--press` .96 for a control (`.ib`, `.btn`),
+  `--press-soft` .992 for a big surface (a queue row, a tool tile). The secondary text colour `--text-3` in light is
+  #63666c (4.6 : 1 on the page background; it was 4.0). A chip is 24 px high (the copy chips are click targets; 24 is
+  WCAG 2.2's floor).
+- Spacing steps `--sp-1…8` (4 / 8 / 12 / 16 / 20 / 24 / 32).
+- Radii by role: paper is sharp (`--r-art`), small tags `--r-sm`, controls are soft (`--r-ctl`), groups `--r-grp`,
+  cards `--r-card` — every radius is one of them.
+- **Three widths** (since 2026-09-30): ≥ 1280 as drawn; 961–1279 (half a screen beside Photoshop) two narrower
+  columns — the order card, the Order Creator and the Mockups keep the work and the book's structure side by side;
+  ≤ 960 one column.
+- The faintest grey `--text-4` is for decoration (placeholder letters, empty frames); text that says something uses
+  `--text-3` (4.7 : 1) or stronger.
 - **60 fps**: only `transform` and `opacity` animate, no blur; `data-motion="reduce"` and
   `prefers-reduced-motion` disable animation the same way (duration, delay and smooth scrolling).
 - Preview sizes of 1400 px and up that pages ask for are only the ones the server keeps
@@ -206,16 +254,19 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 - Class groups: `.lib-toolbar` (toolbars), `.ord-*` (orders), `.proof*`, `.strip*` (proofing),
   `.creator*`, `.spread-*` (the Order Creator), `.book-*`, `.slot-*` (the library), `.set-*` (settings),
   `.lightbox`, `.lb-*` (the viewer), `.mk-*` (the Mockups: `.mk-tpl`, `.mk-slot`, `.mk-spread`, `.mk-run`, `.mk-ask`, `.mk-turn`, `.mk-ghost`),
-  `.ws-*` (the Workshop: `.ws-card`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-block`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-pairart` — a spread's two pages, `.ws-cover`, `.ws-tpl`), `.brand-busy`
-  and `.vt-mode` (the mode switch).
+  `.ws-*` (the Workshop: `.ws-card-wait`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-block`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-pairart` — a spread's two pages, `.ws-cover`, `.ws-tpl`), `.nav-item` / `.nav-label` (the rail), `.path-strip` (an order's path), `.pal-*` (the search), `.tool-*`
+  («Інструменти»), `.fld` (a field with its name above it), `.is-missing`.
 - The owner's appearance requirements — [owner/ui-principles.md](../owner/ui-principles.md).
 
 ## Where in the code
 
 - [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
-- [app/web/js/app.js](../../app/web/js/app.js) — `MODES`, `HOME`, `ROUTES`, `navigate()`, `ordersTarget()`, `entryOf()`, `switchMode()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `buildNav()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
+- [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `navigate()`, `ordersTarget()`, `entryOf()`, `placeOf()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
+- [app/web/js/path.js](../../app/web/js/path.js) — `pathHtml()`, `pathStep()`
+- [app/web/js/book-tile.js](../../app/web/js/book-tile.js) — `bookTile()`, `segBar()`, `tickBadge()`
+- [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`; [app/web/js/palette.js](../../app/web/js/palette.js) — `openPalette()`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
-- [app/web/js/lib.js](../../app/web/js/lib.js) — `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `markMissing()`, `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`, `paintGenBar()`, `startPhoto()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`

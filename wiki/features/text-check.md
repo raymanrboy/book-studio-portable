@@ -15,9 +15,9 @@ code:
 > The owner's "AI validator": once the files from Canva are laid out in the order card, a local Gemma model (Ollama,
 > this PC's graphics card) reads the text pages, and the program checks what was printed against what should be there:
 > the book passport's texts with the child's name, the dedication, the "from whom" from Etsy. The result is in the
-> "Proofing" step — a badge, a list of problems, marks on the pages. **It never blocks printing — it only asks.**
+> «Вичитка» step — a badge, a list of problems, marks on the pages. **It never blocks printing — it only asks.**
 
-## What the owner sees (the order card, step 2 "Proofing")
+## What the owner sees (the order card, step 3 «Вичитка»; «Звірка» until 2026-09-30)
 
 - **Starts on its own** after a successful file check. The badge beside the heading: a spinner with a percentage →
   "Text matches" (green) / "N errors" (red) / "N questions" (yellow); its tooltip — what it was checked against, the

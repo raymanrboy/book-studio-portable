@@ -792,6 +792,8 @@ export async function mount(view, [whereParam, nParam]) {
   sigTimer = setTimeout(watch, SIG_EVERY);
 
   return {
+    // A book's slides are that book's: the rail stays on «Книги»; a scheme or an older set is the tool's (2026-09-30).
+    navFor: () => (/^\d{1,5}\./.test(whereParam) ? '#/books' : null),
     shown() { fit(); },
     unmount() {
       if (st.dirty) flush();   // a change made a moment ago still goes to disk

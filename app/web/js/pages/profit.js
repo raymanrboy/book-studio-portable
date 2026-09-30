@@ -155,10 +155,11 @@ export async function mount(view) {
         card('net', 'На руки (Etsy Net)', 'dollar', 'tone-green'),
         card('cost', 'Собівартість друку', 'bag', ''),
         card('profit', 'Чистий прибуток', 'chart', 'tone-green'),
-        card('margin', 'Середня маржа', 'shield', 'tone-accent'),
+        card('margin', 'Середня маржа', 'shield', ''), // a number, not an action: no ink of its own (2026-09-30)
       ]);
     }
     box.querySelector('[data-f="net"]').textContent = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}`;
+    box.classList.toggle('kpi-none', !k.n); // no sales in the period: grey zeros, not green ones that look earned
     const pf = box.querySelector('[data-f="profit"]');
     pf.textContent = k.issues ? `Повернення й заміни: ${money(k.impact)}` : '';
     pf.dataset.tip = k.issues ? `${k.issues} ${plural(k.issues, ['замовлення', 'замовлення', 'замовлень'])}: скасування, повернення, заміни` : '';

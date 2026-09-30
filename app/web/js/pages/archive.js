@@ -47,7 +47,7 @@ async function mountList(view) {
   let term = '', shown = [];
   const count = data.entries.length;
   setHtml(view, html`
-    <div class="page-head"><div><h1 class="page-title">Архів замовлень</h1>
+    <div class="page-head"><div><h1 class="page-title">Архів друку</h1>
       <div class="page-sub">${count ? `${count} ${plural(count, ['книга', 'книги', 'книг'])}` : ''}</div></div></div>
     ${count ? html`<div class="lib-toolbar"><div class="input-group">${ic('search')}<input class="input" id="ar-q" placeholder="Ім'я, номер чека або назва" aria-label="Пошук в архіві" autocomplete="off"></div></div>` : ''}
     <div class="ord-list" id="ar-list"></div>
@@ -110,12 +110,16 @@ async function mountBook(view, id) {
   if (e.receiptId) { try { o = await api(`/api/orders/${e.receiptId}`); } catch { o = null; } }
   const keepDays = e.keepDays;
   const child = childOf(e);
+  // Opened from its order's card: «back» and Esc lead there, and the rail stays on «Замовлення» (2026-09-30).
+  const fromOrder = e.receiptId && store.from === `#/orders/${e.receiptId}` ? store.from : '';
+  const backTo = fromOrder || '#/archive';
+  const backLabel = fromOrder ? 'До замовлення' : 'До архіву';
   let pick = Math.max(0, (o?.items || []).findIndex((it) => it.childName && it.childName === child));
   const item = () => o?.items?.[pick] || {};
 
   setHtml(view, html`
     <div class="page-head">
-      <button class="back-link" data-act="back" aria-label="До архіву" data-tip="До архіву" data-kbd="Esc">${ic('arrowLeft')}</button>
+      <button class="back-link" data-act="back" aria-label="${backLabel}" data-tip="${backLabel}" data-kbd="Esc">${ic('arrowLeft')}</button>
       <div class="grow">
         <div class="ord-title"><h1 class="page-title truncate">${e.buyer || o?.name || e.title}</h1>${statusChip(e)}</div>
         <div class="page-sub ord-sub">${e.receiptId ? html`${receiptCopy(e, 'mono')} · ` : ''}<span data-tip="${dateTime(e.sentAt)}">у друці ${relTime(e.sentAt)}</span>${e.stage ? ` · ${STAGE_LABEL[e.stage] || ''}` : ''}${trackChips(e)}</div>
@@ -235,7 +239,7 @@ async function mountBook(view, id) {
   const offs = [
     on(view, 'click', '[data-act]', (ev, t) => {
       const a = t.dataset.act;
-      if (a === 'back') location.hash = '#/archive';
+      if (a === 'back') location.hash = backTo;
       else if (a === 'keep') toggleKeep();
       else if (a === 'open-folder') post('/api/creator/open-folder', { path: e.folder }).catch((er) => toast(er.message, 'error'));
       else if (a === 'open-sendlog') post('/api/sends/open', { file: e.sendLog || '' }).catch((er) => toast(er.message, 'error'));
@@ -248,8 +252,8 @@ async function mountBook(view, id) {
     on(view, 'click', '[data-copy]', (ev, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
     on(view, 'click', '[data-lb]', (ev, c) => openLightbox(folderViewerItems(e.folder, e.pageCount, e.title), +c.dataset.lb)),
   ];
-  const esc = escBack('#/archive');
+  const esc = escBack(backTo);
 
   render();
-  return { unmount() { offs.forEach((fn) => fn()); esc(false); } };
+  return { navFor: () => (fromOrder ? '#/orders' : null), unmount() { offs.forEach((fn) => fn()); esc(false); } };
 }

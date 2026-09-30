@@ -8,8 +8,10 @@
   - `/wiki-lint` — wiki health check.
   - `/listing-slides` — change, look at and bake the six Etsy listing slides through their files (when the owner
     asks in words instead of the editor).
+  - `book-studio-ui-logic` — the owner's interface rules as a checklist; **apply it before writing any UI**
+    (the general design skills in `.claude/skills/` are local only — `wiki/dev/design-skills.md`).
 - **Interface preview**: `preview_start("book-studio-dev")` (`.claude/launch.json`, port 47890,
-  made-up data; both modes — the Workshop and the Mockups with a pretend Photoshop too). The hidden browser pane doesn't run `requestAnimationFrame` — check the DOM and swap
+  made-up data; every page — the Workshop and the Mockups with a pretend Photoshop too; set the **light** theme first). The hidden browser pane doesn't run `requestAnimationFrame` — check the DOM and swap
   rAF for `setTimeout`; after `resize_window`, set it back to `preset: "desktop"`; finish with
   `preview_stop`. Details — `wiki/dev/preview.md`.
 - **GitHub CLI** on this PC is not on PATH: `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe`

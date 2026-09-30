@@ -29,17 +29,17 @@ export async function oauthFlow(done) {
     body: html`<div class="stack">
       <div class="card-soft stack-s" style="padding:14px">
         <b>Варіант 1 — програма запущена на київському комп'ютері</b>
-        <div class="faint" style="font-size:12.5px">Сторінка входу відкриється у вашому браузері. Після підтвердження Etsy поверне вас у програму автоматично.</div>
+        <div class="faint" style="font-size: var(--fs)">Сторінка входу відкриється у вашому браузері. Після підтвердження Etsy поверне вас у програму автоматично.</div>
         <div><button class="btn btn-primary btn-sm" data-x="open">${ic('external', 'icon-s')}Відкрити сторінку входу Etsy</button></div>
       </div>
       <div class="card-soft stack-s" style="padding:14px">
         <b>Варіант 2 — програма на цьому ПК, а вхід робите на київському</b>
-        <div class="faint" style="font-size:12.5px">1) Скопіюйте посилання і відкрийте його в браузері на київському ПК. 2) Підтвердіть доступ. 3) Браузер перейде на адресу <span class="mono">localhost</span>, яка не відкриється — це нормально: скопіюйте повну адресу з рядка браузера й вставте нижче.</div>
+        <div class="faint" style="font-size: var(--fs)">1) Скопіюйте посилання і відкрийте його в браузері на київському ПК. 2) Підтвердіть доступ. 3) Браузер перейде на адресу <span class="mono">localhost</span>, яка не відкриється — це нормально: скопіюйте повну адресу з рядка браузера й вставте нижче.</div>
         <div><button class="btn btn-sm" data-x="copy">${ic('copy', 'icon-s')}Скопіювати посилання для Києва</button></div>
         <div class="row" style="margin-top:4px"><input class="input mono" id="oauth-back" placeholder="${start.redirectUri}?code=…&state=…" autocomplete="off" spellcheck="false">
           <button class="btn btn-primary" data-x="finish">Завершити</button></div>
       </div>
-      <div class="row faint" style="font-size:12px"><span class="spinner" style="width:14px;height:14px"></span>Очікування підтвердження від Etsy… Посилання дійсне 60 хвилин.</div>
+      <div class="row faint" style="font-size: var(--fs-s)"><span class="spinner" style="width:14px;height:14px"></span>Очікування підтвердження від Etsy… Посилання дійсне 60 хвилин.</div>
     </div>`,
     foot: html`<button class="btn btn-ghost" data-x="close">Закрити</button>`,
     onClose: () => { polling = false; },
@@ -109,7 +109,7 @@ export async function pickMaster(printify, done) {
       last = res.lastPage || 1;
       const cards = res.products.map((p) => html`<button class="prod ${p.id === selected ? 'sel' : ''}" data-pid="${p.id}">
         ${p.image ? html`<img src="${p.image}" alt="" loading="lazy">` : html`<div class="prod-ph"></div>`}
-        <div><b style="display:block" class="truncate">${p.title}</b><span class="faint mono" style="font-size:10.5px">bp ${p.blueprintId} · ${p.id.slice(-6)}</span></div></button>`);
+        <div><b style="display:block" class="truncate">${p.title}</b><span class="faint mono" style="font-size: var(--fs-s)">bp ${p.blueprintId} · ${p.id.slice(-6)}</span></div></button>`);
       if (reset) setHtml(list, cards); else list.insertAdjacentHTML('beforeend', String(html`${cards}`));
       setHtml(m.el.querySelector('#mp-more'), page < last ? html`<button class="btn btn-sm" data-x="more">Завантажити ще</button>` : '');
     } catch (err) { setHtml(list, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`); }
@@ -129,7 +129,7 @@ export async function pickMaster(printify, done) {
           <dt>Позиції</dt><dd>cover + ${analysis.pageCount} сторінок</dd>
           <dt>Увімкнені варіанти</dt><dd>${analysis.enabledVariants.join(', ') || '—'}</dd>
           <dt>Розміри artwork</dt><dd>обкладинка ${(analysis.coverSize || []).join('×') || '—'} · сторінки ${(analysis.pageSize || []).join('×') || '—'}</dd>
-          <dt>Обкладинка x / y / scale</dt><dd class="mono" style="font-size:11.5px">${analysis.placements.cover.x} / ${analysis.placements.cover.y} / ${analysis.placements.cover.scale}</dd>
+          <dt>Обкладинка x / y / scale</dt><dd class="mono" style="font-size: var(--fs-s)">${analysis.placements.cover.x} / ${analysis.placements.cover.y} / ${analysis.placements.cover.scale}</dd>
         </dl>
         ${bad ? html`<div class="notice notice-warn" style="margin-top:10px">${ic('alert')}<div>У цьому продукті ${analysis.pageCount} сторінок (очікується 24). Переконайтеся, що це правильний еталон.</div></div>` : ''}
       </div>`);

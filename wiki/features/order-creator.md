@@ -1,7 +1,7 @@
 ---
 title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/creator/
   - app/web/js/pages/creator.js
@@ -18,7 +18,11 @@ code:
 
 ## Screen (`#/creator`)
 
-- Header: the service name, the **"Send journal"** icon ([send-journal.md](send-journal.md)), and the
+- **Two ways in** (since 2026-09-30): on its own, from [«Інструменти»](modes.md) — the header says «Order Creator ·
+  Друк у Gelato з папки файлів»; from an order's card — the page is **that order's print step**: the buyer's name, the
+  receipt, «back» to the card, the order's path as icons (Canva ✓ files ✓ text check ✓ **printer** · truck; its steps lead back to
+  the card), and the rail stays on «Замовлення» (`navFor()`).
+- Header: the title above, the **"Send journal"** icon ([send-journal.md](send-journal.md)), and the
   **Printify / Gelato** switch (Printify mode uses a lime-green accent, Gelato — blue, `.creator.mode-gelato`; since 2026-09-25 set
   explicitly, because the Orders mode's own accent is orange). **From 1 October 2026 there is no switch**: only
   Gelato (`gelatoOnly` from `status.printify.retired`; a hand-over in Printify mode opens Gelato; the Printify routes
@@ -59,7 +63,9 @@ code:
   title stays what the owner and the printer see. A title that starts with a **different** number than
   the order's is refused before any upload (`receipt_for()`); a book entered by hand with no order takes
   its number from the start of the title, as before.
-- **Address**: an eraser icon clears it. State is required for US, CA, AU. For Gelato, an empty phone →
+- **Address**: every field has its name above it (since 2026-09-30 — only a placeholder before, so a filled form
+  could not tell «Місто» from «Штат»); the required ones are marked with the ink's *. «Створити» with a field missing
+  says which and lights them up (`markMissing()`). An eraser icon clears it. State is required for US, CA, AU. For Gelato, an empty phone →
   the made-up `+1 555 555 0100` (Gelato won't let an order through with no phone).
 - **The button**'s label changes: Gelato — "Create draft"; Printify with an address — "Create draft
   order", without one — "Create book without an order".
@@ -85,7 +91,7 @@ and the check starts right away. Visiting the page directly, with no such handof
 card, or by picking a new Etsy order, remembers its order (`st.receiptId`). Switching to another tab, the
 owner comes back to the same form, or to the result page (with the Gelato link's countdown still
 running), as long as the order is in "New"; after that — an empty page. On success, the order card shows
-"Draft … created" (`markSent()`, `sentText()`). **After a successful send, an "× Finish work on this
+"Draft … created" (`markSent()`, `sentText()`). **After a successful send, a "✓ Finish work on this
 order" appears in the header** (next to the journal): the page and the card forget the order
 (`keep.finish()`), and the queue opens (since 2026-09-20). A new handoff from the card or the archive
 replaces the saved one. A reprint from the archive isn't saved (the order is no longer new). How this is
@@ -203,7 +209,7 @@ exactly that — [Gelato](../integrations/gelato.md).
 
 ## Where in the code
 
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `openStructure()`, `mount()`, `renderStatus()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fillFromOrder()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `openStructure()`, `mount()`, `renderStatus()` (the order's head and path), `addressCard()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fillFromOrder()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
 - [app/web/js/pages/creator-picker.js](../../app/web/js/pages/creator-picker.js) — `pickEtsyOrder()`
 - [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`
 - [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `journaled_send()`, `mark_books()`, `record_order()`, `books_of()`, `receipt_for()`, `joint_title()`, `_unknown_outcome()`, `checked_files()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `validate_address()`

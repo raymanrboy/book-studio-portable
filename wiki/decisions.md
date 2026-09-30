@@ -9,6 +9,81 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-30 (the very last) — Wave 8: a drop anywhere, a picture that comes back, a keyboard that works
+
+- **The owner**: "do wave eight." **Decided**: (1) a file dropped outside a page's own field is accepted over the whole window and
+  asks **«Куди?»** (the Mockups or the Order Creator) — the program never chooses, nothing is copied before the choice, the
+  page that is open takes it itself; (2) removing a picture from a library book **sets the file aside** (`data/library/trash-assets/`,
+  never deleted by the program) and offers «Скасувати» — this also makes the old "file deleted for good" safer, in line with
+  "never permanently delete the owner's data"; (3) the real Tab walk found three faults, fixed: a group of tabs was four stops
+  without arrows, the focus was lost after a page change, a dialog did not give the focus back nor keep Tab inside.
+- **Left**: the live run of the print review (the owner), the rail unfolding its words on hover (the owner chose icons only).
+
+## 2026-09-30 (last) — The final waves: undo for what can be undone, one review before print, «Сьогодні», Ctrl+K that does
+
+- **The owner**: "the final waves". **Decided**: removing a library book acts at once and offers «Скасувати» (a real restore
+  from `data/library/trash`, a new route); a picture's delete, the Windows-Recycle-Bin deletions of the Workshop and the
+  print send keep their question, because an undo the program cannot keep is a lie; the send's up-to-four dialogs are one
+  review; the brand mark opens «Сьогодні» (a read-only to-do across the places — the program still *starts* in the orders);
+  Ctrl+K gets verbs for a Workshop book («Мокапи · №41», «Слайди · №41»).
+- **Not done, on purpose**: a «services ready» strip in Settings (each card's header already carries the green/amber mark —
+  a second one would say the same); shortening tracking numbers (the owner pastes them into Etsy's two fields and checks
+  them by eye, 25.09); a **drop zone for the whole window** that recognises a Canva ZIP — the real Explorer drag can't be tested
+  from here and a wrong guess would put files in the wrong place.
+
+## 2026-09-30 (night) — One book, one look: a shared tile, one bar, the Workshop's steps as pictures
+
+- **The owner**: "do the third and the fourth." The library's square tile and the Workshop's wide bordered card were two
+  components for the same object, and progress was drawn three ways (a bar of 11, four squares, a strip of squares).
+- **Decided**: one tile (`book-tile.js`, the library's "book on a shelf" look), one bar (`segBar()`), one state alphabet; the
+  Workshop's eleven steps use the order path's component (`pathStep()`), pictures with the word in the tooltip. *Lost on
+  purpose:* the step's written count under the dot («5/16», «14 помилок» in red text) — the dot is red with ⚠ and the tooltip
+  and the panel carry the numbers. The Workshop's two views of the same picture set (the gallery panel and the rows) stay:
+  one is the overview, the other the work.
+
+## 2026-09-30 (late) — The third pass: a hammer and a ruler, a tick for «done», quieter Workshop, tokens for leading and press
+
+- **The owner** asked for a full analysis with every design skill, the weakest icons redrawn, and — his own wish — **the
+  Workshop's glyph as a hammer and a ruler crossed**. Findings, the evidence and the waves still to come —
+  [the redesign plan](plans/ui-redesign.md).
+- **Decided (by the agent, "do as you see fit")**: `×` means *remove* only; finishing work on an order is a ✓ (and says so in
+  a toast); the Workshop header keeps one labelled button — «Передати в бібліотеку», only once the book is ready — the folder
+  and the shelf become icons; a prompt shows three lines; leading in three tokens, press feedback in two, `--text-3` in
+  light darkened to reach AA. *Not done on purpose:* the 500 weight on the soft printer chips (the owner's choice of
+  2026-09-17) and on tooltips; 32 px icon buttons (a mouse-driven Windows program; 24 px is the floor, 32 the norm).
+
+## 2026-09-30 — The interface redesign: objects with their path, tools on their own, one labelled rail
+
+- **The owner** (after a UI/UX audit): "the design isn't intuitive… the functions are scattered as if someone spilled
+  grain… even I get lost" — and he handed the decisions over: "I trust you completely, do it as you know; be
+  creative". His thought, "not a requirement": the program is a set of tools glued together, and he'd like to use each
+  on its own. The whole plan and both audits — [plans/ui-redesign.md](plans/ui-redesign.md).
+- **Decided (by the agent, with his leave)**, revising earlier decisions where named:
+  - **One labelled rail** — Замовлення · Книги · Прибуток | Інструменти, Пошук on top, Settings at the bottom — replaces
+    the two modes switched by the brand icon (2026-09-24). The inks stay and follow the area.
+  - **«Книги»** — the Workshop's gallery and the library's as the tabs «Майстерня · Бібліотека · Архів» (his own words;
+    "у магазині" was tried and dropped the same day: his vocabulary wins). The passport turns cyan with the books.
+  - **«Інструменти»** — the Order Creator and the print archive leave the rail (the archive was "a separate menu on the
+    left" since 2026-09-18); with the Mockups, the photo mockups and the slides' scheme they work on their own from
+    there, and inside their object from its step.
+  - **An order is one place**: its path in the card; «Друк» opens the Order Creator as that order's print step; a
+    printed order's card shows what went to print and leads to the reprint.
+  - **Search everywhere** (Ctrl+K).
+  - **Type**: five sizes 12 / 13 / 15 / 19 / 25 replace the seven of 2026-09-26 (five within 2 px); section labels in
+    sentence case.
+  - **One loud button per screen**: the Workshop book's «Папка книги» stays labelled but not in the ink (it was, at
+    the owner's word "an important button", 2026-09-26) — two ink buttons side by side read as two next steps.
+  - The queue's tabs in words; the address fields labelled; no silent grey buttons left (`markMissing()`).
+- **Revised the same day by the owner** ("show, don't tell — a minimum of captions, a maximum of icons"): the rail
+  is **icons only** (tooltips, the page's title), search moved to the **end** of the list, the queue's tabs and the
+  books' tabs are icons with counts (only the chosen one shows its word), an order's path is a row of icons, the rows'
+  next-step sentences went (a «Позначте в Etsy» that only opened the order was a lie), the refresh is an icon. **Fixed
+  a bug**: a placed order's card showed the printer rule's printer («Printify · 24 стор.» on a Gelato order) — it
+  shows `o.provider` now. Rules — `book-studio-ui-logic`, [ui-principles](owner/ui-principles.md). The owner's
+  **light theme** is the main one: judged first.
+- **Why**: recognition over recall — places and tabs seen in words; one object, one home, its next step visible; the
+  tools' own pages kept for work without an object, as he asked.
+
 ## 2026-09-30 — No «Слайди для лістингу» button in the Mockups' header
 
 - **The owner** didn't see why it was there, and asked to remove it. A book's slides open from the book (the

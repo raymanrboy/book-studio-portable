@@ -86,12 +86,14 @@ code:
 | POST | `/api/library/guide/save` | token | `_guide_save` | library.js `saveGuide` |
 | GET | `/api/library/books/([0-9a-f]{32})` | token | `_get` | book.js |
 | PATCH | `/api/library/books/([0-9a-f]{32})` | token | `_patch` | book.js (title, Canva, texts; checks `rev`) |
-| DELETE | `/api/library/books/([0-9a-f]{32})` | token | `_delete` | book.js (moves it to trash) |
+| DELETE | `/api/library/books/([0-9a-f]{32})` | token | `_delete` | book.js (moves it to trash; answers `trashName`) |
+| POST | `/api/library/trash/restore` | token | `_restore` | book.js «Скасувати» (`{name}` — the trash folder goes back to its own place, never over a book that is there) |
 | POST | `/api/library/books/([0-9a-f]{32})/archive` | token | `_archive` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/refresh-listing` | token | `_refresh_listing` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/thumbnail-from-listing` | token | `_thumb_from_listing` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/assets` | token | `_upload_asset` | book.js (`?slot=&name=&auto=`, body — the file) |
-| DELETE | `/api/library/books/([0-9a-f]{32})/assets` | token | `_remove_asset` | book.js |
+| DELETE | `/api/library/books/([0-9a-f]{32})/assets` | token | `_remove_asset` | book.js (the file is set aside in `data/library/trash-assets/<book>/` with a note of its slot; answers `trashAsset`) |
+| POST | `/api/library/books/([0-9a-f]{32})/assets/restore` | token | `_restore_asset` | book.js «Скасувати» (`{name}` — back into its own slot, only if that slot is empty now) |
 | POST | `/api/library/books/([0-9a-f]{32})/swap` | token | `_swap_halves` | book.js |
 | POST | `/api/library/books/([0-9a-f]{32})/text` | token | `_import_text` | book.js |
 | GET | `/api/library/books/([0-9a-f]{32})/text.json` | token | `_text_json` | book.js ("copy as JSON") |

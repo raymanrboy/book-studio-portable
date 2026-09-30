@@ -53,7 +53,7 @@ export async function mount(view) {
       <div class="ph-sec-head">
         <h2 class="section-title">${c.label}</h2>
         <span class="num ph-count">${n}</span>
-        <span class="ph-sec-ref">${ic(c.omni ? 'motion' : 'image', 'icon-s')}${c.omni ? `Відео в Gemini Omni · ${REF_HINT[c.ref].toLowerCase()}` : REF_HINT[c.ref]}</span>
+        <span class="ph-sec-ref">${ic(c.omni ? 'video' : 'image', 'icon-s')}${c.omni ? `Відео в Gemini Omni · ${REF_HINT[c.ref].toLowerCase()}` : REF_HINT[c.ref]}</span>
         <span class="spacer"></span>
         ${busy ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>додаю ${busy}</span>` : ''}
         <div class="tools">

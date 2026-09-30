@@ -1,7 +1,7 @@
 ---
 title: When orders are refreshed
 type: rule
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/studio/sync.py
   - app/studio/profit.py

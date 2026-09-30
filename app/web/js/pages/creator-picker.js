@@ -39,7 +39,7 @@ export async function pickEtsyOrder(onPick) {
         <div class="row" style="gap:8px"><b>${o.name}</b><span class="chip chip-mono">#${o.receiptId}</span>
           ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}
           ${o.provider ? svcChip(o.provider) : ''}</div>
-        <div class="faint" style="font-size:12px;margin-top:3px"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${o.coverLabel} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</div>
+        <div class="faint" style="font-size: var(--fs-s);margin-top:3px"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${o.coverLabel} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</div>
         ${variationsOf(o).length ? details(o) : ''}
       </div>
       ${o.childName ? html`<span class="chip chip-accent">${o.childName}</span>` : ''}

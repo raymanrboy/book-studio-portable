@@ -27,18 +27,18 @@ the packages from `requirements.txt` (already present on this PC; tested on Pyth
 check — Ollama with the `gemma4:12b-it-qat` model (~7 GB); without it the program still works, just
 without that check.
 
-## Two modes: Orders and Listings
+## The rail: Orders, Books, Profit, Tools
 
-A click on the Book Studio icon at the top left (or Alt+0) switches between **Orders** (everything below,
-orange, like Etsy) and **Listings** (blue): the **Workshop** — new books in development: the agents in Antigravity
+The icon rail on the left (Alt+1…4; the last icon, or Ctrl+K, is the search; the brand mark at the top opens «Сьогодні» — what
+needs you now). **Orders** (orange, like Etsy) holds everything below; **Books** (blue) holds the **Workshop** — new books in development: the agents in Antigravity
 write a book (the pipeline — the `pipeline/` folder), the Workshop shows its path, puts every prompt into the
 clipboard and catches the picture downloaded from Gemini into its row; passed to the library with their Etsy
-listing — and the **Mockups**. Book Studio always opens in Orders. More — [the wiki](../wiki/features/workshop.md).
+listing — the library and the archive; the **Mockups** and the other tools are under **Tools**. Book Studio always opens in Orders. More — [the wiki](../wiki/features/workshop.md).
 Antigravity once: Settings → Agent → *Agent Gitignore Access* on (the books are kept out of git).
 
 ## «Мокапи» — pictures for an Etsy listing
 
-In the Listings mode (until 2026-09-24 it was a separate program with its own shortcut — delete the old
+Under **Tools** (until 2026-09-24 it was a separate program with its own shortcut — delete the old
 **Мокапи** shortcut): drag the demo book's Canva ZIP onto the page, click the spreads you like (4 for Open 1, 2 for Open 2, one each for Cover & Open 1 and
 All & Open 1), press «Зробити мокапи» and pick a folder. Photoshop asks once whether to run the script —
 answer **Yes**. About half a minute later the folder has 7 pictures, and Photoshop has three templates

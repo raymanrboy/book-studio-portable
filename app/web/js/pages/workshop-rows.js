@@ -105,13 +105,13 @@ export function rowTemplates({ id, book, mem, uploading }) {
 
   function promptBlock(r, variant = '', title = 'Промпт') {
     const key = `${variant}/${r.key}`;
-    const long = r.prompt.split('\n').length > 7;
+    const long = r.prompt.split('\n').length > 3;
     const open = mem.open.has(key);
     return html`<div class="ws-block ws-prompt">
       <div class="ws-block-head"><span class="eyebrow">${title}</span><span class="spacer"></span>
         ${r.prompt ? ib('copy', 'Скопіювати промпт', `data-act="copy" data-what="prompt" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm' }) : ''}</div>
       ${r.prompt ? html`<pre class="ws-body ws-mono ${long && !open ? 'clamp' : ''}">${r.prompt}</pre>
-        ${long ? html`<button class="ws-more" data-act="whole-prompt" data-key="${key}">${open ? 'Згорнути' : 'Показати весь промпт'}</button>` : ''}`
+        ${long ? html`<button class="ws-more" data-act="whole-prompt" data-key="${key}">${open ? 'Згорнути' : 'Весь промпт'}</button>` : ''}`
         : html`<div class="ws-body empty-text">${r.key === 'cover' ? 'Промпту ще немає — його напише агент 6, коли розвороти будуть готові.' : 'Промпту ще немає — його напише агент.'}</div>`}
     </div>`;
   }

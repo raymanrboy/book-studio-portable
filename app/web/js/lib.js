@@ -222,14 +222,34 @@ export async function copyText(text, label = 'Скопійовано') {
 }
 
 // ------------------------------------------------------------------ toasts
-export function toast(message, type = 'info', ms = 3800) {
+/** `undo: {label, run}` (2026-09-30): a «Скасувати» on the toast — only for an action the program can really take back
+ *  (a book moved to the library's trash), never a promise it cannot keep. It stays longer than a plain message. */
+export function toast(message, type = 'info', ms = 3800, { undo = null } = {}) {
   const box = document.getElementById('toasts');
   const name = type === 'success' ? 'checkCircle' : type === 'error' ? 'alertCircle' : 'info';
-  const t = el(html`<div class="toast toast-${type}">${ic(name)}<div>${message}</div></div>`);
+  const t = el(html`<div class="toast toast-${type}">${ic(name)}<div>${message}</div>${undo ? html`<button type="button" class="toast-undo">${undo.label || 'Скасувати'}</button>` : ''}</div>`);
   box.appendChild(t);
   const close = () => { t.classList.add('out'); setTimeout(() => t.remove(), 220); };
   t.addEventListener('click', close);
-  setTimeout(close, type === 'error' ? Math.max(ms, 6500) : ms);
+  if (undo) t.querySelector('.toast-undo').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    e.currentTarget.disabled = true;
+    try { await undo.run(); } catch (err) { toast(err.message, 'error'); }
+    close();
+  });
+  setTimeout(close, type === 'error' ? Math.max(ms, 6500) : undo ? Math.max(ms, 9000) : ms);
+}
+
+/** A press that cannot go on yet lights up what is missing (the owner, 23.09.2026: "a button never ignores a press in
+ *  silence"): each field gets an amber edge until it is typed in, the first one takes the focus (2026-09-30). */
+export function markMissing(fields) {
+  const list = fields.filter(Boolean);
+  list.forEach((f) => {
+    f.classList.add('is-missing');
+    f.addEventListener('input', () => f.classList.remove('is-missing'), { once: true });
+    f.addEventListener('change', () => f.classList.remove('is-missing'), { once: true });
+  });
+  list[0]?.focus();
 }
 
 // ------------------------------------------------------------------ modal
@@ -247,6 +267,20 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Tab stays inside the dialog on top: it wraps from the last control to the first and back.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab' || !modalStack.length) return;
+  const top = modalStack[modalStack.length - 1];
+  if (top.root !== topLayer()) return;
+  const stops = [...top.el.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])')]
+    .filter((x) => x.offsetParent);
+  if (!stops.length) return;
+  const first = stops[0], last = stops[stops.length - 1];
+  if (!top.el.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
 export function modal({ title, sub = '', body = '', foot = null, size = '', dismissible = true, onClose } = {}) {
   const root = el(html`<div class="modal-root">
     <div class="modal ${size ? 'modal-' + size : ''}" role="dialog" aria-modal="true">
@@ -262,6 +296,7 @@ export function modal({ title, sub = '', body = '', foot = null, size = '', dism
   if (body instanceof Node) bodyEl.appendChild(body); else setHtml(bodyEl, body);
   if (footEl && foot !== null) { if (foot instanceof Node) footEl.appendChild(foot); else setHtml(footEl, foot); }
   let closed = false;
+  const opener = document.activeElement; // the control that opened it gets the focus back (2026-09-30, the Tab walk)
   const api_ = {
     root, el: root.querySelector('.modal'), body: bodyEl, foot: footEl, dismissible,
     close(result) {
@@ -270,6 +305,7 @@ export function modal({ title, sub = '', body = '', foot = null, size = '', dism
       root.classList.add('closing');
       setTimeout(() => root.remove(), 190);
       onClose?.(result);
+      if (opener && opener !== document.body && document.contains(opener) && root.contains(document.activeElement)) opener.focus({ preventScroll: true });
     },
   };
   root.addEventListener('mousedown', (e) => { if (e.target === root && dismissible) api_.close(); });
@@ -385,16 +421,19 @@ export function menu(anchor, items, { side = 'below' } = {}) {
 }
 
 // ------------------------------------------------------------------ segmented control
-export function segHtml(options, active, { accent = false, name = '' } = {}) {
-  return html`<div class="seg ${accent ? 'seg-accent' : ''}" data-seg="${name}" role="tablist">
+// `compact` — icons with their counts; only the active one shows its word (2026-09-30: show, don't tell).
+export function segHtml(options, active, { accent = false, name = '', compact = false } = {}) {
+  return html`<div class="seg ${accent ? 'seg-accent' : ''} ${compact ? 'seg-compact' : ''}" data-seg="${name}" role="tablist">
     <span class="seg-pill"></span>
     ${options.map((o) => html`<button type="button" role="tab" data-value="${o.value}" class="${o.value === active ? 'active' : ''} ${o.label ? '' : 'seg-ico'}"
-      ${o.tip ? raw(`data-tip="${esc(o.tip)}" aria-label="${esc(o.tip)}"`) : ''}>${o.icon ? ic(o.icon, o.label ? 'icon-s' : '') : ''}${o.label || ''}${o.count !== undefined ? html`<span class="seg-count">${o.count}</span>` : ''}</button>`)}
+      ${o.tip ? raw(`data-tip="${esc(o.tip)}" aria-label="${esc(o.tip)}"`) : ''}>${o.icon ? ic(o.icon, o.label ? 'icon-s' : '') : ''}${o.label ? html`<span class="seg-label">${o.label}</span>` : ''}${o.count !== undefined ? html`<span class="seg-count">${o.count}</span>` : ''}</button>`)}
   </div>`;
 }
 export function syncSeg(seg) {
   if (!seg) return;
   const active = seg.querySelector('button.active');
+  // One Tab stop for the group, arrows inside it (the tabs pattern): the chosen tab is the stop.
+  seg.querySelectorAll('button').forEach((b) => { b.tabIndex = !active || b === active ? 0 : -1; });
   const pill = seg.querySelector('.seg-pill');
   if (!active || !pill) return;
   pill.style.width = `${active.offsetWidth}px`;
@@ -405,6 +444,16 @@ export function setSeg(seg, value) {
   syncSeg(seg);
 }
 new ResizeObserver(() => document.querySelectorAll('.seg').forEach(syncSeg)).observe(document.documentElement);
+document.addEventListener('keydown', (e) => {
+  const tab = e.target.closest?.('.seg [role="tab"]');
+  if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+  const tabs = [...tab.closest('.seg').querySelectorAll('[role="tab"]')].filter((b) => !b.disabled);
+  const i = tabs.indexOf(tab);
+  const next = e.key === 'Home' ? tabs[0] : e.key === 'End' ? tabs[tabs.length - 1] : tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+  e.preventDefault();
+  next.focus();
+  if (next !== tab) next.click(); // the tab it lands on is chosen at once, as a click would
+});
 
 // ------------------------------------------------------------------ formatting
 /** Dollars: «$12.50», «-$5.00» (a minus before the sign — the Profit page's own `usd()` until 27.09.2026; this one

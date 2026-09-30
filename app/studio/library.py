@@ -32,6 +32,7 @@ from .server import ApiError, Request, file_response, route
 
 BOOKS_DIR = core.data_path("library", "books")
 TRASH_DIR = core.data_path("library", "trash")
+TRASH_ASSETS = core.data_path("library", "trash-assets")  # a picture the owner removed from a book: kept, with where it was
 MAX_IMAGE_BYTES = 150 * 1024 * 1024
 FIRST_SPREAD, LAST_SPREAD = 2, 15
 SPREAD_NUMBERS = list(range(FIRST_SPREAD, LAST_SPREAD + 1))
@@ -256,6 +257,22 @@ def _delete_asset_file(book_id: str, asset: dict | None) -> None:
             (_book_dir(book_id) / "assets" / asset["file"]).unlink(missing_ok=True)
         except OSError:
             core.log.warning("Could not delete asset %s", asset.get("file"))
+
+
+def _trash_asset(book_id: str, slot: str, asset: dict | None) -> str | None:
+    """«Прибрати картинку» (2026-09-30): the picture is not deleted but set aside, with a note of where it was, so that
+    «Скасувати» can put it back (`_restore_asset`). A Workshop page is the Workshop's file — only the record is noted."""
+    if not asset:
+        return None
+    folder = TRASH_ASSETS / book_id
+    folder.mkdir(parents=True, exist_ok=True)
+    name = f"{time.strftime('%Y%m%d-%H%M%S')}-{asset.get('file') or 'record'}"
+    if asset.get("file") and not asset.get("workshop"):
+        src = _book_dir(book_id) / "assets" / asset["file"]
+        if src.exists():
+            shutil.move(str(src), folder / name)
+    core.write_json(folder / f"{name}.json", {"slot": slot, "asset": asset})
+    return name
 
 
 def _parse_slot(slot: str) -> tuple[str, str]:
@@ -640,7 +657,26 @@ def _delete(req: Request):
         safe_title = re.sub(r"[^\w\- ]+", "", book.get("title") or "book")[:40].strip() or "book"
         target = TRASH_DIR / f"{stamp} {safe_title} {book_id[:8]}"
         shutil.move(str(src), target)
-    return {"ok": True, "trash": str(target)}
+    return {"ok": True, "trash": str(target), "trashName": target.name}
+
+
+@route("POST", r"/api/library/trash/restore")
+def _restore(req: Request):
+    """«Скасувати» after a book was removed (2026-09-30): the folder goes back from `data/library/trash`. Only a folder
+    that is really in the trash, only to its own place, never over a book that is there now."""
+    name = str((req.json or {}).get("name") or "")
+    if not name or name != Path(name).name:
+        raise ApiError("Невідома книга в кошику.")
+    src = TRASH_DIR / name
+    if not src.is_dir():
+        raise ApiError("Цієї книги вже немає в кошику бібліотеки.", 404)
+    book_id = str((core.read_json(src / "book.json") or {}).get("id") or "")
+    with _lock:
+        dest = _book_dir(book_id)
+        if dest.exists():
+            raise ApiError("Книга з цим номером уже є в бібліотеці.", 409)
+        shutil.move(str(src), dest)
+    return {"ok": True, "id": book_id}
 
 
 @route("POST", r"/api/library/books/([0-9a-f]{32})/refresh-listing")
@@ -744,8 +780,46 @@ def _remove_asset(req: Request):
             old = [s[part]] if s.get(part) else []
             s[part] = None
         save(book)          # the record first: if the write fails, the picture is still there
-        for asset in old:
-            _delete_asset_file(book_id, asset)
+        trashed = [_trash_asset(book_id, slot, asset) for asset in old]
+    out = _book_response(book)
+    out["trashAsset"] = next((t for t in trashed if t), None)
+    return out
+
+
+@route("POST", r"/api/library/books/([0-9a-f]{32})/assets/restore")
+def _restore_asset(req: Request):
+    """«Скасувати» after a picture was removed from a book: the file and its place come back — only into a place that
+    is empty now, never over another picture."""
+    book_id = req.groups[0]
+    name = str((req.json or {}).get("name") or "")
+    if not name or name != Path(name).name:
+        raise ApiError("Невідома картинка в кошику.")
+    folder = TRASH_ASSETS / _book_dir(book_id).name
+    meta = core.read_json(folder / f"{name}.json")
+    if not meta or not meta.get("slot") or not isinstance(meta.get("asset"), dict):
+        raise ApiError("Цієї картинки вже немає в кошику.", 404)
+    slot, asset = meta["slot"], meta["asset"]
+    with _lock:
+        book = load(book_id)
+        _own_slot(book, slot)
+        key, part = _parse_slot(slot)
+        if key in ("cover", "thumbnail"):
+            taken = bool(book.get(key))
+        else:
+            s = book["slots"][key]
+            taken = any(s.get(p) for p in ("image", "left", "right")) if part == "image" else bool(s.get(part) or s.get("image"))
+        if taken:
+            raise ApiError("Це місце вже зайняла інша картинка.", 409)
+        if asset.get("file") and not asset.get("workshop"):
+            src, dest = folder / name, _book_dir(book_id) / "assets" / asset["file"]
+            if not src.exists():
+                raise ApiError("Файл картинки вже немає в кошику.", 404)
+            if dest.exists():
+                raise ApiError("Файл із такою назвою вже є в книзі.", 409)
+            shutil.move(str(src), dest)
+        _set_asset(book, slot, asset)
+        save(book)
+        (folder / f"{name}.json").unlink(missing_ok=True)
     return _book_response(book)
 
 

@@ -1,7 +1,7 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
   api, post, html, ic, ib, setHtml, on, media, toast, runJob, segHtml, syncSeg, setSeg, bytes, copyText, openExternal,
-  debounce, keepFocus, fadeImages, setProgress, patch, enterOnce, confirmChecked,
+  debounce, keepFocus, fadeImages, setProgress, patch, enterOnce, confirmChecked, markMissing,
 } from '../lib.js';
 import { openFolderViewer } from '../folder-viewer.js';
 import {
@@ -12,6 +12,7 @@ import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { take } from '../handoff.js';
 import { markSent, finish } from '../keep.js';
 import { pickEtsyOrder } from './creator-picker.js';
+import { pathHtml } from '../path.js';
 
 export async function mount(view) {
   let status;
@@ -42,9 +43,12 @@ export async function mount(view) {
     printify: { books: [newBook()], pick: 0, running: false, result: null, error: null, address: { country: 'US' }, reprint: null },
     gelato: { books: [newBook()], pick: 0, running: false, result: null, error: null, address: { country: 'US' }, reprint: null },
   };
-  const handed = take('creator');
+  const parcel = take('creator');
+  const handedDrop = parcel?.drop || null; // files dropped anywhere in the window and sent here (drop-anywhere.js)
+  const handed = handedDrop ? null : parcel;
   // The new order this page works on (from its card, or picked below); a reprint from the archive is not one.
   st.receiptId = handed?.receiptId && !handed.reprint ? String(handed.receiptId) : '';
+  st.buyer = st.receiptId ? handed.buyer || '' : ''; // the order it prints: its head, its path (2026-09-30)
   if (handed && !(gelatoOnly && handed.mode === 'printify')) {
     st.mode = handed.mode;
     Object.assign(st[handed.mode], {
@@ -89,9 +93,11 @@ export async function mount(view) {
 
   setHtml(view, html`<div class="creator" id="cr">
     <div class="page-head">
-      <h1 class="page-title" id="cr-title-h">Order Creator</h1>
+      <span id="cr-back"></span>
+      <div class="grow"><h1 class="page-title truncate" id="cr-title-h">Order Creator</h1><div class="page-sub" id="cr-sub"></div></div>
       <div class="page-actions" id="cr-switch"></div>
     </div>
+    <div id="cr-path"></div>
     <div id="cr-status"></div>
     <div id="cr-tunnels"></div>
     <div class="creator-grid">
@@ -103,9 +109,9 @@ export async function mount(view) {
 
   // ---------------------------------------------------------------- header / status
   function renderSwitch() {
-    // The cross closes the work on this order: the page and its card forget it and the queue opens.
+    // The tick closes the work on this order: the page and its card forget it and the queue opens.
     setHtml($('#cr-switch'), html`<div class="tools cr-tools">${st.receiptId && cur().result
-      ? ib('x', 'Завершити роботу над замовленням', 'data-act="finish"') : ''}${ib('sendLog', 'Журнал відправок', 'data-act="open-sendlog"')}</div>${gelatoOnly ? '' : html`<div class="mode-switch">${segHtml([
+      ? ib('checkCircle', 'Завершити роботу над замовленням', 'data-act="finish"') : ''}${ib('sendLog', 'Журнал відправок', 'data-act="open-sendlog"')}</div>${gelatoOnly ? '' : html`<div class="mode-switch">${segHtml([
       { value: 'printify', icon: 'printify', tip: 'Printify — неопублікована книга' },
       { value: 'gelato', icon: 'gelato', tip: 'Gelato — чернетка замовлення' }], st.mode, { name: 'mode' })}</div>`}`);
     if (!gelatoOnly) requestAnimationFrame(() => syncSeg($('#cr-switch .seg')));
@@ -116,7 +122,19 @@ export async function mount(view) {
     const p = status.printify, g = status.gelato;
     const pr = st.mode === 'printify';
     root.classList.toggle('mode-gelato', !pr);
-    $('#cr-title-h').textContent = pr ? 'Printify' : 'Gelato';
+    // Opened from an order's card, this page is that order's print step: its buyer, the way back, its path. On its
+    // own (from «Інструменти»), the tool's name (2026-09-30; the service's name alone read like another program).
+    const printer = pr ? 'Printify' : 'Gelato';
+    $('#cr-title-h').textContent = st.receiptId ? (st.buyer || `#${st.receiptId}`) : 'Order Creator';
+    setHtml($('#cr-sub'), st.receiptId ? html`<span class="mono">#${st.receiptId}</span> · друк у ${printer}` : html`Друк у ${printer} з папки файлів`);
+    setHtml($('#cr-back'), st.receiptId ? html`<a class="back-link" href="#/orders/${st.receiptId}" aria-label="До замовлення" data-tip="До замовлення">${ic('arrowLeft')}</a>` : '');
+    const made = !!cur().result;
+    setHtml($('#cr-path'), st.receiptId ? pathHtml([
+      { key: 'canva', label: 'Canva', icon: 'canva', state: 'done' }, { key: 'files', label: 'Файли', icon: 'folderIn', state: 'done' },
+      { key: 'proof', label: 'Вичитка', icon: 'textScan', state: 'done' },
+      { key: 'print', label: 'Друк', icon: 'printer', state: made ? 'part' : 'todo', count: made ? 'підтвердіть' : '',
+        tip: made ? 'Чернетку створено — підтвердіть і оплатіть її в друкарні' : 'Друк: створіть чернетку нижче' },
+      { key: 'ship', label: 'Відправка', icon: 'truck', state: 'todo' }], { label: 'Шлях замовлення', active: 'print', act: 'order-path' }) : '');
     const missing = pr
       ? [!p.tokenConfigured && html`Немає токена Printify — <a href="#/settings/printify">Налаштування</a>`,
         p.tokenConfigured && !p.masterId && html`Не обрано шаблон книги — <a href="#/settings/printify">Налаштування</a>`]
@@ -161,7 +179,7 @@ export async function mount(view) {
         : 'Передрук з архіву: нова чернетка з тих самих файлів'}</span></div>` : ''}
       ${v && !b.validating ? html`
         ${checkNotices(v.errors, v.warnings, 'Перевірка не пройдена')}
-        <div class="row">${v.ok ? html`<span class="faint mono" style="font-size:12px">${bytes(v.totalBytes)}</span>` : ''}<span class="spacer"></span>
+        <div class="row">${v.ok ? html`<span class="faint mono" style="font-size: var(--fs-s)">${bytes(v.totalBytes)}</span>` : ''}<span class="spacer"></span>
           ${v.ok ? ib('folderOpen', 'Відкрити папку', `data-act="open-folder" data-book="${i}"`, { cls: 'sm' }) : ''}
           ${ib('scan', 'Перевірити файли знову', `data-act="revalidate" data-book="${i}"`, { cls: 'sm' })}</div>` : ''}
     </div>`;
@@ -207,17 +225,19 @@ export async function mount(view) {
 
   function addressCard(num) {
     const a = cur().address;
-    const inp = (key, ph, span = '') => html`<input class="input ${span}" id="addr-${key}" data-addr="${key}" placeholder="${ph}" value="${a[key] || ''}" autocomplete="off">`;
+    // Every field keeps its name above it once filled (2026-09-30: a filled form could not tell «Місто» from «Штат»).
+    const inp = (key, label, { span = '', ph = '', need = false } = {}) => html`<label class="fld ${span}"><span class="fld-label">${label}${need ? html`<i class="fld-need" aria-hidden="true">*</i>` : ''}</span>
+      <input class="input" id="addr-${key}" data-addr="${key}" placeholder="${ph}" value="${a[key] || ''}" autocomplete="off" ${need ? html`aria-required="true"` : ''}></label>`;
     return html`<section class="card card-pad stack">
       <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">Адреса отримувача</h3>
         ${ib('eraser', 'Очистити адресу', 'data-act="clear-address"', { cls: 'sm' })}</div>
       <div class="addr-grid">
-        ${inp('firstName', "Ім'я *")}${inp('lastName', 'Прізвище *')}
-        ${inp('addressLine1', 'Адреса, рядок 1 *', 'span2')}${inp('addressLine2', 'Адреса, рядок 2', 'span2')}
-        ${inp('city', 'Місто *')}${inp('state', 'Штат / провінція (US, CA, AU)')}
-        ${inp('postCode', 'Індекс *')}
-        <select class="select" data-addr="country">${COUNTRIES.map(([c, n]) => html`<option value="${c}" ${(a.country || 'US') === c ? 'selected' : ''}>${c} — ${n}</option>`)}</select>
-        ${inp('phone', st.mode === 'gelato' ? 'Телефон (порожньо — підставиться вигаданий)' : 'Телефон (необов’язково)', 'span2')}
+        ${inp('firstName', "Ім'я", { need: true })}${inp('lastName', 'Прізвище', { need: true })}
+        ${inp('addressLine1', 'Адреса', { span: 'span2', need: true })}${inp('addressLine2', 'Адреса, рядок 2', { span: 'span2' })}
+        ${inp('city', 'Місто', { need: true })}${inp('state', 'Штат / провінція', { ph: 'для US, CA, AU' })}
+        ${inp('postCode', 'Індекс', { need: true })}
+        <label class="fld"><span class="fld-label">Країна</span><select class="select" data-addr="country">${COUNTRIES.map(([c, n]) => html`<option value="${c}" ${(a.country || 'US') === c ? 'selected' : ''}>${c} — ${n}</option>`)}</select></label>
+        ${inp('phone', 'Телефон', { span: 'span2', ph: st.mode === 'gelato' ? 'порожньо — підставиться вигаданий' : 'необов’язково' })}
       </div>
     </section>`;
   }
@@ -232,9 +252,9 @@ export async function mount(view) {
           ${s.running ? html`<span class="spinner" style="border-color:color-mix(in srgb, currentColor 35%, transparent);border-top-color:currentColor"></span>Створення…` : html`${ic('send', 'icon-l')}<span id="cr-create-label">${createLabel()}</span>`}</button>
       </div>
       <div id="cr-progress" ${s.running ? '' : 'hidden'}>
-        <div class="row" style="margin-bottom:6px;font-size:12.5px"><span id="cr-step" style="font-weight:600" class="grow">Підготовка…</span><span class="num" id="cr-pct" style="color:var(--accent-ink);font-weight:600">0%</span></div>
+        <div class="row" style="margin-bottom:6px;font-size: var(--fs)"><span id="cr-step" style="font-weight:600" class="grow">Підготовка…</span><span class="num" id="cr-pct" style="color:var(--accent-ink);font-weight:600">0%</span></div>
         <div class="progress"><i id="cr-bar"></i></div>
-        <div class="faint mono truncate" id="cr-detail" style="font-size:11.5px;margin-top:6px"></div>
+        <div class="faint mono truncate" id="cr-detail" style="font-size: var(--fs-s);margin-top:6px"></div>
       </div>
       <div id="cr-result">${resultHtml()}</div>
     </section>`;
@@ -342,12 +362,12 @@ export async function mount(view) {
       <div class="stack-s"><div id="cr-st-spreads"></div><div class="spread-grid"></div></div></section>`);
     patch($('#cr-st-head'), [['head', html`
       <div class="row" style="align-items:baseline">
-        <h2 class="card-title grow" style="font-size:17px">Структура <span class="faint" style="font-weight:500">· ${many() ? `${bookName(cur().pick)} · ` : ''}${fmtLabel}</span></h2>
+        <h2 class="card-title grow" style="font-size: var(--fs-l)">Структура <span class="faint" style="font-weight:500">· ${many() ? `${bookName(cur().pick)} · ` : ''}${fmtLabel}</span></h2>
         <span class="v-badge ${count === expectedCount && v?.ok ? 'ok' : ''}" data-tip="Зображень у папці"><span class="num">${count}/${expectedCount}</span></span>
       </div>`]]);
     patch($('#cr-st-cover'), [['cover', html`
       <div class="stack-s">
-        <div class="row"><span class="eyebrow grow">Обкладинка</span><span class="num faint" style="font-size:12px">${coverRow?.width ? `${coverRow.width}×${coverRow.height}` : ''}</span></div>
+        <div class="row"><span class="eyebrow grow">Обкладинка</span><span class="num faint" style="font-size: var(--fs-s)">${coverRow?.width ? `${coverRow.width}×${coverRow.height}` : ''}</span></div>
         <div class="structure-cover" data-lb="0" style="aspect-ratio:${ratio}">
           ${has('Cover.png') ? html`<img data-fade decoding="async" src="${thumb(coverRow.file, 1400)}" alt="Обкладинка">` : html`<div class="cover-ph"><div>Задня</div><div>Лицьова</div></div>`}
           <div class="gutter"></div>
@@ -356,7 +376,7 @@ export async function mount(view) {
         </div>
       </div>`]]);
     patch($('#cr-st-spreads'), [['spreads', html`
-        <div class="row"><span class="eyebrow grow">Розвороти</span><span class="faint" style="font-size:12px">${known
+        <div class="row"><span class="eyebrow grow">Розвороти</span><span class="faint" style="font-size: var(--fs-s)">${known
           ? html`<span class="num">${spreads.length}</span> · <span class="num">${total}</span> стор.`
           : html`<span class="num">${pagesText(status.gelato.pageCounts)}</span> стор.`}</span></div>`]]);
     const cards = patch($('#cr-right .spread-grid'), spreads.map((sp, i) => {
@@ -441,9 +461,12 @@ export async function mount(view) {
     const order = withOrder();
     if (order) {
       const a = s.address;
-      const miss = Object.entries(ADDRESS_NEEDED).filter(([k]) => !(a[k] || '').trim()).map(([, v]) => v);
+      const empty = Object.keys(ADDRESS_NEEDED).filter((k) => !(a[k] || '').trim());
+      const miss = empty.map((k) => ADDRESS_NEEDED[k]);
       if (miss.length) problems.push(`Заповніть адресу: ${miss.join(', ')}.`);
-      if (['US', 'CA', 'AU'].includes((a.country || '').toUpperCase()) && !(a.state || '').trim()) problems.push('Для цієї країни потрібен штат/провінція.');
+      const needState = ['US', 'CA', 'AU'].includes((a.country || '').toUpperCase()) && !(a.state || '').trim();
+      if (needState) problems.push('Для цієї країни потрібен штат/провінція.');
+      markMissing([...empty, ...(needState ? ['state'] : [])].map((k) => $(`#addr-${k}`)));
       if (mode === 'printify' && !status.printify.matteVariant) problems.push('У шаблоні Printify немає увімкненого матового варіанту.');
     }
     if (problems.length) {
@@ -499,7 +522,7 @@ export async function mount(view) {
     return confirmChecked({
       title: 'Ручне затвердження замовлень у Printify',
       warning: html`Замовлення з Book Studio чекає в Printify «On hold» і не списує гроші, доки ви не натиснете <b>Submit order</b>. Але якщо в магазині стоїть <b>автоматичне</b> затвердження, Printify сам відправить його у виробництво в заданий час і спише оплату.`,
-      extra: html`<div class="faint" style="font-size:12.5px">Printify → Store settings → Order settings → Order approval: <b>Manual</b></div>`,
+      extra: html`<div class="faint" style="font-size: var(--fs)">Printify → Store settings → Order settings → Order approval: <b>Manual</b></div>`,
       check: 'У моєму магазині стоїть ручне затвердження (Manual)',
       act: async () => {
         await post('/api/printify/manual-approval', {});
@@ -526,7 +549,7 @@ export async function mount(view) {
   // ---------------------------------------------------------------- an Etsy order picked (creator-picker.js)
   function fillFromOrder(o) {
     const s = cur();
-    if (o.stage === 'new') st.receiptId = String(o.receiptId);
+    if (o.stage === 'new') { st.receiptId = String(o.receiptId); st.buyer = o.name || ''; renderStatus(); }
     // An order of several books gives a name to each of them (a folder is still chosen for each by hand).
     const names = (o.items || []).map((it) => it.childName || o.childName || '');
     while (s.books.length < Math.max(1, names.length)) s.books.push(newBook({ format: bk(0).format }));
@@ -571,6 +594,9 @@ export async function mount(view) {
     }
   }
   wireFolderDrop(view, (zone) => zone?.querySelector('.path-input') || $(`#cr-folder-${cur().pick}`), dropFolder);
+  // A drop anywhere else on this page is the current book's folder too; one handed over from another page is taken as it opens.
+  view.addEventListener('bs:dropped', (e) => { e.detail.handled = true; dropFolder(e.detail.dropped); });
+  if (handedDrop) dropFolder(handedDrop);
 
   // ---------------------------------------------------------------- events
   const offs = [
@@ -590,7 +616,8 @@ export async function mount(view) {
           const { path } = await post('/api/creator/pick-folder', { title: `Оберіть папку з Cover.png та ${(st.mode === 'printify' ? [status.printify.pageCount] : status.gelato.pageCounts).map((n) => `1–${n}.png`).join(' або ')}`, initial: b.folder });
           if (path) { Object.assign(b, { folder: path, label: null, validation: null }); s.pick = i; s.reprint = null; renderLeft(); renderRight(); validate(i); }
         } catch (err) { toast(err.message, 'error'); }
-      } else if (a === 'finish') { finished = true; finish(st.receiptId); location.hash = '#/orders'; }
+      } else if (a === 'finish') { finished = true; finish(st.receiptId); toast('Роботу над замовленням завершено', 'success'); location.hash = '#/orders'; }
+      else if (a === 'order-path') { if (t.dataset.step !== 'print') location.hash = `#/orders/${st.receiptId}`; }
       else if (a === 'revalidate') validate(i);
       else if (a === 'show-book') { s.pick = i; renderLeft(); renderRight(); }
       else if (a === 'add-book') {
@@ -656,6 +683,7 @@ export async function mount(view) {
   // Working on a new order, the page is kept when left and brought back as it was — while the order is new.
   return {
     get receiptId() { return st.receiptId; },
+    navFor: () => (st.receiptId ? '#/orders' : null),
     keep: () => !!st.receiptId && !finished,
     async revive() {
       const o = await api(`/api/orders/${st.receiptId}`);

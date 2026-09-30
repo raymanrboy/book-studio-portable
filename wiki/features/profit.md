@@ -1,7 +1,7 @@
 ---
 title: Profit (counts from 1 October 2026)
 type: feature
-updated: 2026-09-29
+updated: 2026-09-30
 code:
   - app/web/js/pages/profit.js
   - app/web/js/pages/profit-rows.js
@@ -14,7 +14,7 @@ code:
 # Profit
 
 > A full equivalent of the Etsy Profit Calculator: for every Etsy receipt — net Etsy revenue minus the
-> print cost. **In the rail since 2026-09-29** (the chart icon, between the archive and Settings; the owner: "it's time
+> print cost. **In the rail since 2026-09-29** («Прибуток», Alt+3 since 2026-09-30; the owner: "it's time
 > to turn on the accounting"); it counts **only sales from 1 October 2026** — until then it's empty («Продажів від
 > 1 жовтня ще немає»). The sync behind it (`sync.py`) feeds the queue too.
 
@@ -27,7 +27,9 @@ changes — `records.stamp()`) and its routes.
 
 ## Status
 
-- In `MODES.orders.nav` and `ROUTES` as `#/profit` ([app.js](../../app/web/js/app.js)), Alt+5 (Settings moved to Alt+6).
+- In `PLACES` and `ROUTES` as `#/profit` ([app.js](../../app/web/js/app.js)), Alt+3.
+- **No sales in the period** (since 2026-09-30): the four numbers stay grey (`kpi-none`) — green zeros looked earned;
+  the average margin has no ink of its own (the orange means an action).
 - **A clean slate on 1 October 2026** (the owner, 25 and 27.09.2026: "it must not include earlier orders at all"):
   `profit.ACCOUNTING_FROM` — midnight of 1 October on this computer's clock; `counted()` decides. The page's rows
   (`/api/profit/data`), one row (`/api/profit/row` — an older one is 404) and the print orders offered for a manual

@@ -1,5 +1,5 @@
 ---
-title: Mockups — listing pictures from a demo book (the Listings mode)
+title: Mockups — listing pictures from a demo book (a tool, and a Workshop book's step)
 type: feature
 updated: 2026-09-30
 code:
@@ -11,7 +11,9 @@ code:
 ---
 # Mockups (Мокапи)
 
-> A page of the **Listings mode** (`#/mockups`, Alt+2 — [two modes](modes.md)): bring in the demo book's Canva ZIP,
+> A tool (`#/mockups`) — among [«Інструменти»](modes.md) on its own, and a Workshop book's «Мокапи» step: opened from
+> the book it shows «Для книги №41 …», goes back to the book and keeps the rail on «Книги» (`arrived()`, `navFor()`;
+> since 2026-09-30). Bring in the demo book's Canva ZIP,
 > click the "presentable" spreads — one Photoshop script fills the owner's mockup templates and saves **6 PNG
 > pictures**; **4 templates are left open** (the 3 where the front cover shows — the owner fits it by hand — and
 > **Dedication**, whose background and table colours he picks), and **«Зберегти відкриті»** saves them too. Every saved
@@ -22,7 +24,7 @@ code:
 
 The page looks like the Order Creator (the owner: "exactly like Book Studio"): **numbered steps on the left**, the
 **demo book's structure on the right**. A done step's number turns into a ✓. **The page is kept when he steps away**:
-the book, the picks, a run and its result wait; a run going on elsewhere puts a cyan dot on the rail, and a notice says
+the book, the picks, a run and its result wait; a run going on elsewhere puts a cyan dot on «Інструменти», and a notice says
 when it ends.
 
 **The demo book** comes in on the right: a dashed veil «Перетягніть сюди ZIP із Canva» — drop the ZIP (anywhere on the
@@ -55,7 +57,10 @@ is the dedication; the spreads `2–3`, `4–5`, …; page 30 is not offered.
      `Cover.png`; «Зберегти відкриті» closes it only when unchanged (`doc.saved`).
 4. **Слайди для лістингу** — «Без фону · 5/6», the book's numbers, **«Зробити слайди»**, the six with ✎, «Відкрити в
    редакторі» — see [slides](slides.md).
-5. **«×» — «Завершити»**: the page starts clean for the next book, the unpacked demo book is deleted (`close()`). With
+4a. **The Photoshop card's summary is two counting chips** (since the late evening of 2026-09-30 — a paragraph before): a picture
+   icon with the number Photoshop saves itself, a hand with the number of templates it leaves open for the owner; the
+   sentences are their tooltips. The make button carries `aria-disabled` and `aria-describedby` while something is missing.
+5. **«✓» — «Завершити»** (was «×» until 2026-09-30): the page starts clean for the next book, the unpacked demo book is deleted (`close()`). With
    templates still waiting it asks first; they stay open, and the run is marked `dismissed`.
 
 The sliders button: where the templates and Photoshop are (a missing folder — a yellow line above the steps).
@@ -141,7 +146,7 @@ takes the demo book. Nothing goes to drive C (`core.own_temp()`, [runtime](../ar
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `_keep_canva_cover()`, `_to_etsy()`, `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `_cut_without_background()`, `_workshop_books()`, `_ticked()`, `make()`, `finish()`, `_run_script()`, `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
 - [app/studio/mockups.jsx](../../app/studio/mockups.jsx) — `openCover()`, `closeCover()`, `findLayer()`, `replaceContents()`, `fill()`, `savePng()`, `runTemplate()`, `findOpen()`, `finishOpen()`, `report()`, `cancelled()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
-- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `takeWorkshopBook()`, `FOR_BOOK`, `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
+- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `arrived()`, `paintBack()`, `takeWorkshopBook()`, `FOR_BOOK`, `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
 - [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — step 4, the listing slides: `slidesStep()` ([slides](slides.md))
 - [app/web/js/pages/mockups-run.js](../../app/web/js/pages/mockups-run.js) — step 3 drawn: `runView()`, `rowsHtml()`, `resultCard()`, `turnCard()`, `finishedCard()`
 - [app/web/js/app.js](../../app/web/js/app.js) — the route `#/mockups`, `paintBusy()` (the rail's dot)

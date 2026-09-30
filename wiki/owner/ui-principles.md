@@ -1,7 +1,7 @@
 ---
 title: The interface the owner wants
 type: owner
-updated: 2026-09-26
+updated: 2026-09-30
 code:
   - app/web/css/app.css
   - app/web/css/library.css
@@ -11,17 +11,84 @@ code:
 > Minimal, icon-driven, smooth (60 fps), tidy down to the pixel. No unnecessary explanations — only what
 > a given action needs. Gathered from his notes, 2026-09-14 to 16.
 
+## The light theme is the main one (2026-09-30)
+
+The owner uses the **light theme every day** ("all design decisions from now on — by it"). The program still starts dark
+until he picks otherwise in the rail's theme menu, but every design choice — contrast, inks, surfaces, icons, shadows — is
+made and checked in **light first**, then confirmed in dark. (The 2026-09-30 redesign was built and screenshot in dark;
+a light pass is owed — [the plan](../plans/ui-redesign.md).)
+
+## Show, don't tell (2026-09-30, later)
+
+The owner, looking at the labelled rail and the words in the queue: "there are more captions now — I want the interface
+to **show**, not tell: a minimum of captions, a maximum of icons and visual language." And, about a row's «Позначте в
+Etsy» that only opened the order: "it's nonsense — everything needed for it is already in the menu before. Such silly
+things are bad UX; find a skill that teaches you interface logic." The answer is the project skill
+`.claude/skills/book-studio-ui-logic` ([design-skills](../dev/design-skills.md)); its rules:
+
+- **Icons over words.** The rail is icons only (a tooltip names the place and its key; the page's own title says where
+  he is). The queue's tabs and «Книги»' tabs are icons with counts — only the chosen one shows its word. An order's path
+  is a row of pictures (Canva · files · text check · printer · truck), the word in the tooltip. The refresh is an icon.
+- **A label does what it says.** A row never says «Позначте в Etsy» when a click merely opens the order; the copyable
+  tracking chips are already in the row. No next-step sentences on rows; the truck tab's count takes the ink when it
+  holds something (the to-do is *shown*).
+- **Nothing redundant**: a printed order's card has no sentence repeating its status chip and path.
+- **The real state, not the rule's guess**: a placed order's chip names the printer it went to (`o.provider`); the printer
+  rule's answer is shown only before the order exists (a Gelato order said «Printify · 24 стор.»).
+- **Search is the last item of the rail**, not the first.
+
+## A question only for what cannot be taken back (2026-09-30, night)
+
+An action the program can undo **acts and offers «Скасувати»** (a book removed from the library comes back with one press);
+a question is for what is gone for good (sending to print; the Windows-Recycle-Bin deletions of the Workshop) — and then
+**one** review with everything noticed, most serious first, not a string of dialogs. A picture removed from a library book is
+set aside, not deleted, so it too comes back with one press (the last wave of 2026-09-30). An undo is offered only when it really restores.
+
+## The keyboard (2026-09-30, the last wave)
+
+A real Tab walk was made: every stop has a ring; a group of tabs is **one** stop with the arrow keys; after a page change
+the focus is on the new page's title; a dialog keeps Tab inside and returns the focus to the control that opened it. A new
+control or dialog keeps all four.
+
+## One object, one look (2026-09-30, late)
+
+A book is drawn **one way** everywhere: the library's and the Workshop's tiles are the same tile (`book-tile.js`), and progress
+is always the same alphabet — **filled = done, half = started, empty = not yet, pale/dashed = not needed, red = something is
+wrong** — in an order's path, a Workshop book's eleven steps, the tile's bar. A new place that shows a state uses that
+alphabet (`pathStep()`, `segBar()`), not its own shapes or sentences. `×` means *remove* only; «done» is a ✓.
+
+## Understood without hints (2026-09-30)
+
+The owner: "the functions are scattered as if someone spilled grain… I want to sit down and know at once where to
+click, with no labels and hints: everything needed in front of the eyes, everything extra appearing when needed." He
+handed the decisions over ("you're the expert, you're the boss") — [the redesign](../plans/ui-redesign.md):
+
+- **Every object has one home and one path.** An order lives in «Замовлення», a book in «Книги»; its path strip on
+  top says where it is and what's next, and the next step is the loudest thing on the screen.
+- **Tools work on their own too** (the owner's thought): the Order Creator, the print archive, the Mockups, the photo
+  mockups, the slides are in «Інструменти»; opened from an object's step they carry that object (its head, its way
+  back, its place lit in the rail).
+- **The rail is seen, not remembered**: each place an icon with its word; the inks follow the area (orders orange,
+  books cyan). The icon-only rule below stays for a page's secondary actions, not for the places.
+- **The queue is a to-do list**: its tabs in words («Позначити в Etsy» is a task, not a filter), each row says what's
+  next.
+- **Search everywhere** (Ctrl+K) — an order, a book, a tool, by any word the owner remembers.
+- **One loud button per screen** — the next step; the rest are quiet (a labelled button, an icon with its tooltip).
+- **Numbers that mean nothing yet look like nothing**: before the first sale the Profit's zeros are grey, not green.
+- **Three widths**: a half screen beside Photoshop keeps the work and the book's structure side by side.
+
 ## General
 
 - **A button never ignores a press in silence** (2026-09-23): a greyed-out button that does nothing on a
   click reads as "the program doesn't work". Keep it pressable and say what's missing (light up the empty
-  fields), and show what's being waited for (e.g. a Windows dialog).
+  fields — `markMissing()` since 2026-09-30), and show what's being waited for (e.g. a Windows dialog).
 - **A long job says when it's over** (2026-09-23, "is there any message that it's finished?"): the owner
   watches another program meanwhile (Photoshop), so the result card alone isn't enough — the window's
   taskbar button flashes, Windows plays its sound and the title says how it ended. Show the results
   themselves (the saved pictures), not just a count.
-- **Two modes, two inks** (2026-09-24): Orders are orange, "like Etsy and Claude"; Listings wear the cyan the
-  whole program had before (the owner's swap; magenta for a few hours first); the brand icon at the top of the rail switches them ([modes](../features/modes.md)).
+- **Two inks** (2026-09-24): the orders are orange, "like Etsy and Claude"; the books wear the cyan the whole program
+  had before (the owner's swap; magenta for a few hours first). Until 2026-09-30 two modes switched by the brand icon;
+  now one rail, the ink following the area ([the rail](../features/modes.md)).
 - **The Workshop's rows are of moderate width**, not the full window (2026-09-24): the prompt, the 2:1 frame
   and the text one under another, the frames empty until the pictures are generated
   ([workshop](../features/workshop.md)).
@@ -30,12 +97,14 @@ code:
   of the book on the right — the same parts, not look-alikes. Again for the Workshop (2026-09-26: "the icons, fonts
   and text look like some other style… go over the typography, everything neat and crisp, everywhere"): the
   header's actions as one group of icons, the passport's section headings, drop zones and text blocks, the Order
-  Creator's square step numbers, font sizes only from the program's scale (11.5 / 12 / 12.5 / 13 / 13.5 / 15 / 25);
+  Creator's square step numbers, font sizes only from the program's scale (since 2026-09-30 five sizes with clear
+  steps — 12 / 13 / 15 / 19 / 25 — replacing 11.5 / 12 / 12.5 / 13 / 13.5 / 15 / 25, where five sat within 2 px and
+  nothing outranked anything; section labels in sentence case, not tracked capitals);
   **no magic wand** — the generation has its own icons (▷ generate, ↻ once more, `>_` a prompt).
 - **A tooltip should be fully visible** — a long one wraps to a second line instead of getting cut off
   (2026-09-19).
 - **Icons instead of text buttons** for secondary actions; their meaning lives in the tooltip (`ib()`).
-  One icon — one meaning.
+  One icon — one meaning. Not for navigation: the rail's places and the queue's tabs carry words (2026-09-30).
 - **No explanatory text** in blocks ("unnecessary explanations" were removed several times). A hint line
   appears only when something is missing.
 - **Equal height** for elements in toolbars (the "+" button = the sort control's height, a bit wider).

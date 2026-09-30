@@ -4,7 +4,7 @@
 // click away, behind the details toggle, so the page stays quiet. Theme lives only in the rail.
 import {
   api, post, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, dateTime, slide, menu, remembered,
-  remember, runJob, setProgress, bytes, relTime, plural,
+  remember, runJob, setProgress, bytes, relTime, plural, markMissing,
 } from '../lib.js';
 import { refreshInfo } from '../info.js';
 import { oauthFlow, pickMaster } from './settings-dialogs.js';
@@ -156,7 +156,7 @@ export async function mount(view, [section]) {
         <div class="set-row">${ic('book')}<span class="grow">${ro ? html`Нові книги друкує Gelato <span class="faint">· з Printify програма лише читає старі замовлення</span>` : html`${m.title || 'Шаблон не обрано'} <span class="faint">· <span class="num">${p.pageCount}</span> стор.</span>`}</span>
           ${m.productId || ro ? '' : ib('template', 'Обрати шаблон (Master)', `data-act="master-pick" ${has ? '' : 'disabled'}`)}
           ${ib('pulse', 'Перевірити зв\'язок', `data-act="printify-test" ${has ? '' : 'disabled'}`)}</div>
-        <div id="printify-test" class="faint" style="font-size:12.5px" hidden></div>
+        <div id="printify-test" class="faint" style="font-size: var(--fs)" hidden></div>
       </div>`,
     });
   }
@@ -188,7 +188,7 @@ export async function mount(view, [section]) {
         ${g.old ? oldAccountField(g.old) : ''}
         <div class="set-row">${ic('book')}<span class="grow">${formats.join(' · ')} <span class="faint">· <span class="num">${(g.pageCounts || []).join(' або ')}</span> стор.</span></span>
           ${ib('pulse', 'Перевірити зв\'язок', `data-act="gelato-test" ${has ? '' : 'disabled'}`)}</div>
-        <div id="gelato-test" class="faint" style="font-size:12.5px" hidden></div>
+        <div id="gelato-test" class="faint" style="font-size: var(--fs)" hidden></div>
       </div>`,
     });
   }
@@ -253,7 +253,7 @@ export async function mount(view, [section]) {
             ? 'Ollama не запущена — програма запустить її сама, коли прийде час перевірки.'
             : 'Ollama не знайдена на цьому комп\'ютері.'}</div>${tc.canStart ? html`<button class="btn btn-sm" data-act="tc-start">Запустити</button>` : ''}</div>`
           : !tc.installed ? html`<div class="notice notice-warn">${ic('alert')}<div>В Ollama немає моделі ${tc.model}${tc.models.length ? ' — оберіть іншу' : ''}.</div></div>` : ''}
-        <div id="tc-test" class="faint" style="font-size:12.5px" hidden></div>
+        <div id="tc-test" class="faint" style="font-size: var(--fs)" hidden></div>
       </div>`,
     });
   }
@@ -297,9 +297,9 @@ export async function mount(view, [section]) {
           ${bk.driveFound ? ib('folderOpen', 'Відкрити папку копій', 'data-act="bk-open"') : ''}</div>
         <div class="set-row"><span class="grow">Уся папка програми й трафарети мокапів <span class="faint">· раз на <span class="num">${bk.everyDays}</span> дні, при запуску · ключі всередині · лишаються останні 7 і по одній на місяць за рік</span></span>
           <button class="btn btn-sm" data-act="bk-run" ${canRun ? '' : 'disabled'}>${ic('upload', 'icon-s')}Зробити копію зараз</button></div>
-        ${bkJob ? html`<div><div class="row" style="margin-bottom:6px"><span id="bk-step" class="grow" style="font-size:13px">${bkJob.step}</span><span id="bk-pct" class="mono faint">${Math.round(bkJob.percent)}%</span></div>
+        ${bkJob ? html`<div><div class="row" style="margin-bottom:6px"><span id="bk-step" class="grow" style="font-size: var(--fs)">${bkJob.step}</span><span id="bk-pct" class="mono faint">${Math.round(bkJob.percent)}%</span></div>
           <div class="progress"><i id="bk-bar" style="transform:scaleX(${bkJob.percent / 100})"></i></div></div>` : ''}
-        ${bk.last && !bkJob ? html`<div class="faint" style="font-size:12.5px">Остання копія: ${dateTime(bk.last.at)} · ${bytes(bk.last.size)} · <span class="mono">${bk.last.file}</span>${bk.last.skippedCount ? ` · пропущено файлів, відкритих іншими програмами: ${bk.last.skippedCount}` : ''}</div>` : ''}
+        ${bk.last && !bkJob ? html`<div class="faint" style="font-size: var(--fs)">Остання копія: ${dateTime(bk.last.at)} · ${bytes(bk.last.size)} · <span class="mono">${bk.last.file}</span>${bk.last.skippedCount ? ` · пропущено файлів, відкритих іншими програмами: ${bk.last.skippedCount}` : ''}</div>` : ''}
         ${failed && !bkJob ? html`<div class="notice notice-warn">${ic('alert')}<div>${dateTime(bk.error.at)}: ${bk.error.message}</div></div>` : ''}
       </div>`,
     });
@@ -346,7 +346,7 @@ export async function mount(view, [section]) {
 
   function render() {
     setHtml(view, html`
-      <div class="page-head"><div><h1 class="page-title">Налаштування</h1><div class="page-sub">Підключення до сервісів і файли програми</div></div></div>
+      <div class="page-head"><div><h1 class="page-title">Налаштування</h1></div></div>
       <div class="set-list">
         ${legacyCard()}
         ${etsyCard()}
@@ -398,7 +398,7 @@ export async function mount(view, [section]) {
     on(view, 'click', '[data-secret-save]', async (e, b) => {
       const name = b.dataset.secretSave;
       const value = view.querySelector(`[data-secret-input="${name}"]`).value.trim();
-      if (!value) { toast('Вставте значення', 'error'); return; }
+      if (!value) { toast('Вставте значення ключа', 'info'); markMissing([view.querySelector(`[data-secret-input="${name}"]`)]); return; }
       try { await post('/api/secrets', { name, value }); editing.delete(name); toast('Збережено у зашифрованому сховищі', 'success'); reload(); }
       catch (err) { toast(err.message, 'error'); }
     }),

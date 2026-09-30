@@ -1,6 +1,6 @@
 // Book passport: cover, 16 page slots (dedication, 14 spreads, afterword), texts, files.
 import {
-  api, post, html, ic, ib, raw, setHtml, on, media, toast, menu, confirmBox, upload, runJob, copyText, openExternal,
+  api, post, html, ic, ib, raw, setHtml, on, media, toast, menu, upload, runJob, copyText, openExternal,
   fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el, patch, enterOnce, escBack, notFound,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
@@ -17,17 +17,20 @@ export async function mount(view, [id]) {
   try {
     book = await api(`/api/library/books/${id}`);
   } catch (err) {
-    notFound(view, { back: '#/library', backLabel: 'До бібліотеки', icon: 'book', title: 'Книгу не знайдено', text: err.message });
+    notFound(view, { back: '#/books/shop', backLabel: 'До книг', icon: 'book', title: 'Книгу не знайдено', text: err.message });
     return null;
   }
   const busy = new Set();
+  // Where this book stands in «Книги» (2026-09-30): «back» and Esc lead to its own tab.
+  const shelf = () => (book.archived ? '#/books/archive' : '#/books/shop');
 
   const assetUrl = (a, w) => media(`/media/book/${id}/${a.file}`, w ? { w } : {});
 
   // ---------------------------------------------------------------- skeleton
   setHtml(view, html`
     <div class="page-head" style="margin-bottom:14px">
-      <button class="back-link" data-act="back" aria-label="До бібліотеки" data-tip="До бібліотеки" data-kbd="Esc">${ic('arrowLeft')}</button>
+      <button class="back-link" data-act="back" aria-label="До книг" data-tip="До книг" data-kbd="Esc">${ic('arrowLeft')}</button>
+      <a class="crumb" href="${shelf()}">Книги · ${book.archived ? 'Архів' : 'Бібліотека'}</a>
       <span class="spacer"></span>
       <div id="bk-actions"></div>
     </div>
@@ -105,7 +108,7 @@ export async function mount(view, [id]) {
           <span class="spacer"></span>
           ${readiness()}
         </div>
-        ${l.title && l.title !== book.title ? html`<div class="faint" style="font-size:12.5px">На Etsy: ${l.title}</div>` : ''}
+        ${l.title && l.title !== book.title ? html`<div class="faint" style="font-size: var(--fs)">На Etsy: ${l.title}</div>` : ''}
       </div>
     </div>`]]);
     autosize($('#bk-title'));
@@ -116,7 +119,7 @@ export async function mount(view, [id]) {
     const cover = book.cover;
     const own = !fromWorkshop();
     setHtml($('#bk-cover-head'), html`<span class="section-title">Обкладинка</span>
-      ${cover ? html`<span class="num">${cover.width}×${cover.height}</span><span class="faint" style="font-size:12px">${bytes(cover.bytes)}</span>` : ''}`);
+      ${cover ? html`<span class="num">${cover.width}×${cover.height}</span><span class="faint" style="font-size: var(--fs-s)">${bytes(cover.bytes)}</span>` : ''}`);
     patch($('#bk-cover'), [['cover', html`<div class="stack">
       <div class="cover-box ${cover?.lqip ? 'lqip' : ''}" ${own ? raw('data-drop="cover"') : ''} style="${cover ? `aspect-ratio:${cover.width} / ${cover.height}${cover.lqip ? `;background-image:url(${cover.lqip})` : ''}` : 'min-height:220px'}">
         ${cover ? html`<img data-fade decoding="async" src="${assetUrl(cover, 1400)}" alt="Обкладинка" data-zoom="cover"><div class="gutter"></div>
@@ -152,7 +155,7 @@ export async function mount(view, [id]) {
       <span class="num" data-tip="Сторінок з ілюстраціями">${c.illustrations}/16</span>
       ${!fromWorkshop() ? '' : book.workshopMissing
         ? html`<span class="spacer"></span><span class="chip chip-amber">${ic('alert', 'icon-s')}Папки книги ${book.workshopName} у Майстерні немає — сторінки не показати</span>`
-        : html`<span class="spacer"></span><span class="faint" style="font-size:12.5px">з Майстерні · ${book.workshopName}</span>
+        : html`<span class="spacer"></span><span class="faint" style="font-size: var(--fs)">з Майстерні · ${book.workshopName}</span>
           <button type="button" class="btn btn-sm" data-act="open-workshop">${ic('workshop', 'icon-s')}Змінити в Майстерні</button>`}`);
   }
 
@@ -321,14 +324,17 @@ export async function mount(view, [id]) {
     else renderRow(base);
   }
   async function removeAsset(slot) {
-    const ok = await confirmBox({ title: 'Видалити зображення?', text: 'Файл буде видалено з бібліотеки. Оригінал на вашому диску не зміниться.', confirm: 'Видалити', danger: true });
-    if (!ok) return;
+    // No question (2026-09-30): the file is set aside on the server and «Скасувати» puts it back where it was.
     try {
       const next = await api(`/api/library/books/${id}/assets?slot=${encodeURIComponent(slot)}`, { method: 'DELETE' });
       applyBook(next, slot.split(':')[0]);
+      if (!next.trashAsset) return;
+      toast('Зображення прибрано', 'success', 9000, { undo: { run: async () => {
+        applyBook(await post(`/api/library/books/${id}/assets/restore`, { name: next.trashAsset }), slot.split(':')[0]);
+        toast('Зображення повернуто', 'success');
+      } } });
     } catch (err) { toast(err.message, 'error'); }
   }
-
 
   // Several files, a folder or a ZIP: copied into the program, then laid out by the same rules as «Імпорт
   // з папки» (library.scan_folder) — one reading of file names for every way in (22.09.2026 audit: the drop
@@ -374,7 +380,7 @@ export async function mount(view, [id]) {
   const offs = [
     on(view, 'click', '[data-act]', async (e, t) => {
       const act = t.dataset.act;
-      if (act === 'back') { location.hash = '#/library'; return; }
+      if (act === 'back') { location.hash = shelf(); return; }
       if (act === 'pick') { e.stopPropagation(); pickSlot = t.dataset.slot; $('#bk-file').click(); return; }
       if (act === 'remove') { e.stopPropagation(); removeAsset(t.dataset.slot); return; }
       if (act === 'zoom') { e.stopPropagation(); zoom(t.dataset.key); return; }
@@ -412,7 +418,7 @@ export async function mount(view, [id]) {
           { label: fromWorkshop() ? 'Відкрити папку сторінок (Майстерня)' : 'Відкрити папку книги', icon: 'folderOpen', onClick: () => post(`/api/library/books/${id}/open-folder`, {}).catch((er) => toast(er.message, 'error')) },
           '-',
           book.archived ? { label: 'Відновити з архіву', icon: 'restore', onClick: () => setArchived(false) } : { label: 'Перенести в архів', icon: 'archive', onClick: () => setArchived(true) },
-          { label: 'Видалити книгу…', icon: 'trash', danger: true, onClick: deleteBook },
+          { label: 'Видалити книгу', icon: 'trash', danger: true, onClick: deleteBook },
         ]);
       }
     }),
@@ -437,16 +443,16 @@ export async function mount(view, [id]) {
     } catch (err) { toast(err.message, 'error'); }
   }
   async function deleteBook() {
-    const ok = await confirmBox({
-      title: 'Видалити книгу?',
-      text: fromWorkshop()
-        ? `«${book.title}» буде прибрано з бібліотеки (у папку data/library/trash, звідки її можна повернути вручну).\nОбкладинка й сторінки лишаються в Майстерні — там їх ніщо не зачепить.`
-        : `«${book.title}» разом з усіма ілюстраціями буде прибрано з бібліотеки.\nФайли перемістяться в папку data/library/trash, звідки їх можна повернути вручну.`,
-      confirm: 'Видалити', danger: true,
-    });
-    if (!ok) return;
-    try { await api(`/api/library/books/${id}`, { method: 'DELETE' }); toast('Книгу видалено', 'success'); refreshInfo(); location.hash = '#/library'; }
-    catch (err) { toast(err.message, 'error'); }
+    // The book goes to the library's trash and comes back with one press (2026-09-30): no question for what can be taken back.
+    const name = book.title, bookId = id, back = shelf();
+    try {
+      const res = await api(`/api/library/books/${bookId}`, { method: 'DELETE' });
+      refreshInfo(); location.hash = back;
+      toast(`«${name}» прибрано з бібліотеки`, 'success', 9000, { undo: { run: async () => {
+        await post('/api/library/trash/restore', { name: res.trashName });
+        refreshInfo(); location.hash = `#/book/${bookId}`; toast(`«${name}» повернуто`, 'success');
+      } } });
+    } catch (err) { toast(err.message, 'error'); }
   }
   async function exportBook() {
     let path;
@@ -526,7 +532,7 @@ export async function mount(view, [id]) {
   view.addEventListener('dragleave', onDragLeave);
   view.addEventListener('drop', onDrop);
 
-  const esc = escBack('#/library', { fields: true }); // a text being edited keeps its Esc
+  const esc = escBack(shelf(), { fields: true }); // a text being edited keeps its Esc
 
   return {
     unmount() {

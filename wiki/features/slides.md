@@ -203,7 +203,7 @@ real template: the desk and the book kept, the floor gone, the book's soft shado
 - [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — `slidesStep()`: the cut-outs line, the card, «Зробити слайди», the viewer
 - [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `mount()`, `SPEC`, `NEW`, `KIND` (inside: `isLocked`, `palettes()`, `swatches()`, `loadOthers()`, `openSchemes()`, `applyScheme()`, `saveScheme()`)
 - [app/web/css/slides.css](../../app/web/css/slides.css) — the editor's look
-- [app/web/js/app.js](../../app/web/js/app.js) — the route `#/slides/…` (`'lazy'`), the rail's «Мокапи» lit for it
+- [app/web/js/app.js](../../app/web/js/app.js) — the route `#/slides/…` (`'lazy'`); a book's slides keep the rail on «Книги», a scheme on «Інструменти» (since 2026-09-30); [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `navFor()`
 - [app/tools/slides.py](../../app/tools/slides.py) — `main()`
 - Tests: [app/tests/test_slides.py](../../app/tests/test_slides.py) (`TheCut`, `Scenes`, `WorkshopBooks`, `MakingThem`, `CommandLine`)
 

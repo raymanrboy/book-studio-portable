@@ -8,6 +8,8 @@ const P = {
   printer: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="7.5" rx="1.8"/><path d="M7 14h10v6.5H7z"/><path d="M17 12h.01"/>',
   sliders: '<path d="M4 6.5h8.5M16.5 6.5H20M4 12h3M11 12h9M4 17.5h10.5M18.5 17.5H20"/><circle cx="14.5" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16.5" cy="17.5" r="2"/>',
   chart: '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+  // «Інструменти» (2026-09-30): the tools that also work on their own — a set of four, one turned
+  tools: '<rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><path d="M16.5 3.4l3.1 3.1-3.1 3.1-3.1-3.1z"/>',
 
   // ---- generic actions
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -58,7 +60,7 @@ const P = {
   images: '<rect x="7" y="3.5" width="13.5" height="12" rx="2"/><path d="M4 7.5v11A1.5 1.5 0 0 0 5.5 20H16"/><path d="M20.5 12.5l-3.5-3.5-6 6"/>',
   // the Workshop's originals — the pictures as the generator made them, mostly 2:1 spreads: a wide picture (not the
   // square `images`, which there means the cut pages)
-  original: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="7" cy="10.2" r="1.5"/><path d="M22 15.2l-4.6-4.4L10 18"/>',
+  original: '<path d="M3 8.2V5.5A1.5 1.5 0 0 1 4.5 4h3.7M15.8 4h3.7A1.5 1.5 0 0 1 21 5.5v2.7M21 15.8v2.7a1.5 1.5 0 0 1-1.5 1.5h-3.7M8.2 20H4.5A1.5 1.5 0 0 1 3 18.5v-2.7"/><circle cx="9.2" cy="10" r="1.5"/><path d="M17.2 16l-4-4-5.4 5.4"/>',
   imageDown:'<path d="M20.5 13v5.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h5.5"/><path d="M3.5 17l4.5-4.5 3.5 3.5"/><path d="M17.5 3v7.5M14.5 7.5l3 3 3-3"/>',
   text: '<path d="M6 3.5h9l4 4v13H6z"/><path d="M14.5 3.5V8H19M9 12.5h7M9 16.5h7"/>',
   spread: '<path d="M12 6.5C9.5 5 6.5 4.5 3.5 5v13.5c3-.5 6 0 8.5 1.5 2.5-1.5 5.5-2 8.5-1.5V5c-3-.5-6 0-8.5 1.5z"/><path d="M12 6.5V20"/>',
@@ -97,10 +99,12 @@ const P = {
   moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
   monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
   motion: '<path d="M3 12c1.8-3.6 3.7-3.6 5.5 0s3.7 3.6 5.5 0 3.7-3.6 5.5 0"/><path d="M3 17h18" opacity=".45"/>',
+  // a film frame with a play mark: the Omni video (the Photo mockups) — «motion» stays the reduced-motion switch
+  video: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M10.2 9.4v5.2l4.3-2.6z"/>',
 
   // ---- order archive: books sent to print, kept for a while (a page with a clock); "keep" (a pin)
   orderArchive: '<path d="M14.5 10V5A1.5 1.5 0 0 0 13 3.5H5.5A1.5 1.5 0 0 0 4 5v14a1.5 1.5 0 0 0 1.5 1.5H10"/><path d="M7 7.5h4.5M7 11h3"/><circle cx="16.5" cy="16.5" r="4.5"/><path d="M16.5 14.3v2.4l1.7 1"/>',
-  pin: '<path d="M9.5 3.5h5l-.8 5.2 3 3v1.8H7.3v-1.8l3-3z"/><path d="M12 13.5V20.5"/>',
+  pin: '<path d="M14.6 3.6l5.8 5.8-2.4.9-3.4 3.4.4 3.3-1.5 1.5-9-9 1.5-1.5 3.3.4 3.4-3.4z"/><path d="M8.3 15.7L3.6 20.4"/>',
 
   // ---- send journal (what went to Printify / Gelato)
   sendLog: '<circle cx="5" cy="7" r="1.1"/><circle cx="5" cy="12" r="1.1"/><circle cx="5" cy="17" r="1.1"/><path d="M9 7h11M9 12h11M9 17h7.5"/>',
@@ -119,7 +123,8 @@ const P = {
 
   // ---- the Listings mode: its sign (an Etsy listing's tag), the Workshop (the book `book` with a pencil at its corner)
   listing: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.3 6.3a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8.2" cy="8.2" r="1.6"/>',
-  workshop: '<path d="M18 10.5V3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21H11"/><path d="M5 19.5A1.5 1.5 0 0 1 6.5 18H11"/><path d="M18.4 13.6a1.2 1.2 0 0 1 1.7 0l.8.8a1.2 1.2 0 0 1 0 1.7L15.6 21.4l-2.9.6.6-2.9z"/>',
+  // «Майстерня» (the owner, 2026-09-30): a hammer and a ruler crossed — the tools of making a book
+  workshop: '<path d="M12.1 9.6L6.2 3.7 3.7 6.2l5.9 5.9"/><path d="M14.4 11.9l5.9 5.9-2.5 2.5-5.9-5.9"/><path d="M5 7.5l1.1-1.1M7 9.5l1.1-1.1M13.7 16.2l1.1-1.1M15.7 18.2l1.1-1.1"/><path d="M20.4 8.1l-3.1 3.1-4.5-4.5 3.1-3.1z"/><path d="M15 9l-9.4 9.4"/>',
   // The Workshop's generation (26.09.2026, the owner: "the magic wand has to go"): a prompt is a command for the
   // picture generator (a prompt sign in a window — not `text`, which is the book's own words); `generate` starts
   // one (the prompt into the clipboard, a download awaited); `regenerate` — once more, the new picture replaces it

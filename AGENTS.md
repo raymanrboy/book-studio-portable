@@ -4,10 +4,12 @@
 > `pipeline/` and read **`pipeline/GEMINI.md`** — the book pipeline's rules. Everything below is for agents
 > working on Book Studio's code.
 
-A local Windows program for the owner of an Etsy shop selling personalized children's books. Two modes
-(the brand icon switches): **Orders** — the order queue, the book library, creating books/drafts in Printify
-and Gelato; **Listings** — the Workshop (new books in development) and the Photoshop mockups for listings. The owner is not a programmer and
-writes in Ukrainian.
+A local Windows program for the owner of an Etsy shop selling personalized children's books. One icon rail (since
+2026-09-30; before, two modes switched by the brand icon): **Orders** — the order queue and each order's path to print
+(the Order Creator is its print step); **Books** — the Workshop (new books in development), the library, the archive;
+**Profit**; **Tools** — the Order Creator, the print archive, the Photoshop mockups, the photo mockups, the listing slides;
+Search (Ctrl+K). The brand mark opens «Сьогодні». The owner is not a programmer, writes in Ukrainian, and **uses the light theme** —
+design and check in light first ([ui-principles](wiki/owner/ui-principles.md)).
 
 ## 1. Wiki first, then code
 
@@ -72,7 +74,7 @@ examples/               the owner's examples for the listing slides (his Canva s
 python app/tools/wiki_check.py                          # does the wiki match the code?
 python app/tools/wiki_check.py --changed                # which wiki pages to update after changes
 cd app && python -m unittest discover -s tests          # tests (including the wiki check)
-python app/tools/dev_server.py --sample                 # interface on made-up data (both modes, a pretend Photoshop), port 47890
+python app/tools/dev_server.py --sample                 # interface on made-up data (every page, a pretend Photoshop), port 47890
 python app/tools/make_shortcut.py                       # the desktop shortcut
 ```
 

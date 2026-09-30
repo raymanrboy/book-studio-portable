@@ -108,6 +108,34 @@ class NothingIsLostWhenAWriteFails(unittest.TestCase):
         self.assertFalse(self.file.exists())
         self.assertIsNone(library.load(self.book_id)["slots"]["spread2"].get("image"))
 
+    def restore(self, name):
+        req = Request(None, "POST", "/api/library/books/x/assets/restore", {}, (self.book_id,))
+        req._json, req._json_loaded = {"name": name}, True
+        return library._restore_asset(req)
+
+    def test_a_removed_picture_is_set_aside_and_can_come_back(self):
+        """2026-09-30: «Прибрати картинку» keeps the file; «Скасувати» puts it back where it was."""
+        name = self.remove()["trashAsset"]
+        self.assertTrue(name)
+        self.assertFalse(self.file.exists())
+        book = self.restore(name)
+        self.assertTrue(self.file.exists())
+        self.assertEqual(book["slots"]["spread2"]["image"]["file"], self.asset["file"])
+
+    def test_a_picture_never_comes_back_over_another(self):
+        name = self.remove()["trashAsset"]
+        book = library.load(self.book_id)
+        library._set_asset(book, "spread2", {"file": "other.png", "name": "other.png"})
+        library.save(book)
+        with self.assertRaises(ApiError) as caught:
+            self.restore(name)
+        self.assertEqual(caught.exception.status, 409)
+
+    def test_nothing_outside_the_trash_is_moved_back(self):
+        for bad in ("", "..", "../x", "a/b"):
+            with self.assertRaises(ApiError):
+                self.restore(bad)
+
 
 class DeletingABook(unittest.TestCase):
     def test_a_book_being_imported_is_not_deleted(self):
@@ -131,6 +159,36 @@ class DeletingABook(unittest.TestCase):
                 break
             time.sleep(0.02)
         self.assertTrue(library._delete(delete)["ok"])
+
+
+class RestoringABook(unittest.TestCase):
+    """«Скасувати» after deleting a book (2026-09-30): the trash folder goes back, and only it."""
+
+    def setUp(self):
+        self.book = library.create_book({"id": f"41{time.time_ns() % 10**8:08d}"}, "4100000078 - Rose")
+        delete = Request(None, "DELETE", f"/api/library/books/{self.book['id']}", {}, (self.book["id"],))
+        self.trash_name = library._delete(delete)["trashName"]
+
+    def restore(self, name=None):
+        req = Request(None, "POST", "/api/library/trash/restore", {}, ())
+        req._json, req._json_loaded = {"name": self.trash_name if name is None else name}, True
+        return library._restore(req)
+
+    def test_the_book_comes_back_to_its_own_place(self):
+        self.assertFalse(library._book_dir(self.book["id"]).exists())
+        self.assertEqual(self.restore()["id"], self.book["id"])
+        self.assertEqual(library.load(self.book["id"])["title"], self.book["title"])
+
+    def test_nothing_outside_the_trash_is_moved(self):
+        for bad in ("", "..", "../x", "a/b"):
+            with self.assertRaises(ApiError):
+                self.restore(bad)
+
+    def test_a_book_that_is_there_now_is_never_covered(self):
+        self.restore()
+        with self.assertRaises(ApiError) as caught:
+            self.restore()  # already back: the trash folder is gone
+        self.assertEqual(caught.exception.status, 404)
 
 
 class QueryNumbers(unittest.TestCase):

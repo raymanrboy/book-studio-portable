@@ -1,5 +1,5 @@
 ---
-title: The Workshop — books in development, with the book pipeline's agents (the Listings mode)
+title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
 updated: 2026-09-30
 code:
@@ -13,6 +13,7 @@ code:
   - app/studio/workshop/routes.py
   - app/studio/clipboard.py
   - app/web/js/pages/workshop.js
+  - app/web/js/book-tile.js
   - app/web/js/pages/workshop-book.js
   - app/web/js/pages/workshop-rows.js
   - app/web/js/workshop-live.js
@@ -25,7 +26,7 @@ code:
 > in Antigravity write its formula, hero, story, text and prompts; the Workshop shows the book's path, puts every prompt
 > into the clipboard, **catches the picture the owner downloads from Gemini** into its row — cut, flipped, upscaled,
 > the cover laid on the printer's template — and passes the finished book to the library with its Etsy listing. Part
-> of the [Listings mode](modes.md); its history — [the plan](../plans/book-console.md).
+> of [«Книги»](modes.md) — its first tab (the Listings mode's until 2026-09-30); its history — [the plan](../plans/book-console.md).
 
 ## Where a book lives
 
@@ -54,11 +55,13 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
   `AllowAgentAccessGitignoreFiles`), and picked a project on `Book Studio\pipeline` for new chats. Antigravity ignores a
   folder given at its start, so the words put into the clipboard carry the full paths (`agent_words()`).
 
-## The gallery (`#/workshop`)
+## The gallery («Книги» → «Майстерня», `#/books/work`; `#/workshop` leads there)
 
-- A card per book (`card()`): the cover (its front), else the cover's picture, else the first spread, else the hero;
-  `№25 Title`, the cover's title from `book-text.md`, the path as strips, «Далі: <step>», «Картинки n/16», the book
-  check's GO or «N помилок»; «чекаю картинку» on a book a picture is awaited for.
+- A card per book (`card()`) — **the library's tile** (`book-tile.js`, since the late evening of 2026-09-30; before, a wide
+  bordered card of its own): the cover as a square (its front), else the cover's picture, else the first spread, else the
+  hero; `№25 Title`, the cover's title from `book-text.md`, **one bar of eleven segments** (the steps), a chevron with the
+  next step (and «n/16» for the pictures), the prompts check's GO or «N помилок»; a pulsing mark with pictures on a book a
+  picture is awaited for.
 - Search (Ctrl+F or `/`), sort (`SORTS`, remembered in `bs-workshop-view`), «У роботі · У бібліотеці», the books
   folder, **«+» (N)** — Antigravity opens, the clipboard holds «Нова книга…» with the paths; the book appears by itself.
 
@@ -66,16 +69,20 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
 
 - **Header**: back (Esc), `№25 Title`, the cover's title, the Tier chip (H — a child hero on every spread; S — none);
   on the right a group of icons (the agent — Antigravity and «Продовжуємо книгу …» in the clipboard; the pages; the
-  originals; «Ще» → delete: the folder into the Recycle Bin), then **«Папка книги»** in the accent colour (the owner:
-  "an important button") and **«Передати в бібліотеку»** (in the accent colour once every picture and the cover are
-  there; «У бібліотеці» after).
+  originals; the book's folder — it was a labelled button the owner called "important", an icon since the late evening of
+  2026-09-30; «Ще» → delete: the folder into the Recycle Bin) and one more icon, «Передати в бібліотеку» (a shelf; a tick
+  «У бібліотеці» after) — which becomes **the one loud, labelled button** only once every picture and the cover are there.
+  A row's prompt shows three lines with a «Весь промпт» link (the JSON is for copying — the copy icon — not for reading).
+  The Workshop's own glyph (the tab, the palette) is a hammer and a ruler crossed — the owner's wish, 2026-09-30. «Back» and Esc lead to
+  «Книги» → «Майстерня».
 - **The generation bar** (sticky, `genBar()` drawn by `paintGenBar()`): what is awaited, what's in the clipboard, the
   parts of a several-part paste, «Далі» (F8), «покласти ще раз», «Стоп», the queue's progress. It slides in once when a
   wait begins; the next part only glides its line in (the owner: the bar coming in again "blinks the whole program").
   On another page it names the book that waits, with «Перейти». «Стоп» while a picture is still being cut stays a stop.
 - **The path strip** (`STEPS`): Формула → Герой → Історія → Текст → Промпти · GO → Картинки `n/16` → Обкладинка →
-  Canva → Мокапи → Фото `n/8` → Бібліотека — rounded squares with numbers, ✓ done, half-filled started, dashed skipped
-  (a Tier S book's hero); the next one breathes. **Ticked by the files** (`steps()`): the agents' files, the rows whose
+  Canva → Мокапи → Фото `n/8` → Бібліотека — **a picture per step** (since the late evening of 2026-09-30, the order path's
+  way — `pathStep()`; the word, the count and the check in the tooltip; the hero's own thumbnail still shows in its square), ✓ done,
+  half-filled started, dashed skipped (a Tier S book's hero), red with ⚠ where the check found mistakes; the next one breathes. **Ticked by the files** (`steps()`): the agents' files, the rows whose
   pages are all in `pictures/`, `Cover.png`. **Canva** — by hand; **Мокапи** — by itself when made for this book (or by
   hand); **Фото** — every photo mockup category (the Omni video too), or by hand; **Бібліотека** — when passed on (unticks if that library book
   went to the trash).
@@ -158,7 +165,7 @@ flipped — with a short sound. Nothing else in Downloads is touched.
   (`PasteWatch` — only while Chrome is in front; the keys are only looked at, every 20 ms, only during such a paste).
   **«Далі» or F8 anywhere** do the same (F8 is taken from Windows only then, `Hotkey`).
 - The cover's picture, once in, goes on to wait for its margins by itself.
-- **The work is the server's**: it goes on while the window is behind Gemini — a notice per catch, a dot on the rail,
+- **The work is the server's**: it goes on while the window is behind Gemini — a notice per catch, a dot on «Книги» in the rail,
   the window's title «● Розворот 10–11 · 6 з 16 — Book Studio» (`bs:busy`).
 
 ## «Передати в бібліотеку»
@@ -193,13 +200,14 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 - [app/studio/clipboard.py](../../app/studio/clipboard.py) — `set_text()`, `set_image()`, `Hotkey`, `PasteWatch`, `BROWSERS`, `PASTE_SETTLE`, `sandbox_file()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `save_file()`, `to_recycle_bin()`, `attention()`, `file_holders()`
 - [app/studio/library.py](../../app/studio/library.py) — `create_book()`, `listing_of()`, `follow()`, `keep_pages()`, `take_listing_image()`, `PAGES_FROM_WORKSHOP`
-- [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()`, `SORTS`
+- [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()` (`embedded` in «Книги»), `SORTS`
 - [app/web/js/workshop-bits.js](../../app/web/js/workshop-bits.js) — `picture()`, `checkWord()`, `STATE_WORDS`, `STATE_TEXT`, `ERRORS`
 - [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`, `photosBody()`
 - [app/web/js/pages/workshop-rows.js](../../app/web/js/pages/workshop-rows.js) — `rowTemplates()` (a row: its prompt, its frame, its text), `waitChip()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `startPhoto()`, `genAction()`, `genBar()`, `paintGenBar()`, `waitingFor()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `patch()`
-- [app/web/css/listings.css](../../app/web/css/listings.css) — `.ws-card`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-cover`, `.ws-tpl`
+- [app/web/js/book-tile.js](../../app/web/js/book-tile.js) — `bookTile()`, `segBar()`, `tickBadge()`
+- [app/web/css/listings.css](../../app/web/css/listings.css) — `.ws-card-wait`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-cover`, `.ws-tpl`
 - [pipeline/GEMINI.md](../../pipeline/GEMINI.md) — the book agents' rules; [pipeline/check_book.py](../../pipeline/check_book.py) — their start of the check
 - [app/tools/sample_books.py](../../app/tools/sample_books.py) — `make_books()`
 - Tests: [app/tests/test_workshop.py](../../app/tests/test_workshop.py) (`TheSandbox`, `TheBookList`, `ThePathStrip`, `OnlyInsideTheBook`, `TheSignature`, `TheRows`, `TheBookCheck`, `APictureIntoItsRow`, `CatchingDownloads`, `PassingToTheLibrary`)

@@ -2,7 +2,9 @@
 // pages. Its own module, so pages need not import the shell that loads them (app.js ↔ pages).
 import { api } from './lib.js';
 
-export const store = { info: null };
+// `here` — the page on screen (while the next one is built, still the one being left); `from` — the page shown before
+// it. The shell keeps both: «back» leads where the owner came from (2026-09-30).
+export const store = { info: null, here: '', from: '' };
 let onChange = () => {};
 
 /** The shell redraws its rail when the info changes (app.js sets this once). */

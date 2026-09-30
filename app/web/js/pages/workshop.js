@@ -7,6 +7,7 @@ import {
 } from '../lib.js';
 import { watch, paintGenBar, genAction, genState, act } from '../workshop-live.js';
 import { STATE_WORDS, checkWord, picture } from '../workshop-bits.js';
+import { bookTile, segBar, tickBadge } from '../book-tile.js';
 
 const PREF = 'bs-workshop-view';
 const SORTS = [
@@ -17,7 +18,9 @@ const SORTS = [
 const BOOKS = ['книга', 'книги', 'книг'];
 
 
-export async function mount(view) {
+// `embedded` — drawn inside «Книги» (pages/books.js, 2026-09-30): the head is the hub's, and only the books still
+// being made are shown (the ones passed on are the library's, under «У магазині»).
+export async function mount(view, params, { embedded = false } = {}) {
   const saved = remembered(PREF, {});
   const state = { books: [], folder: '', sort: SORTS.some((s) => s.value === saved.sort) ? saved.sort : 'number', query: '', shelf: 'work' };
   let first;
@@ -30,12 +33,12 @@ export async function mount(view) {
   Object.assign(state, { books: first.books, folder: first.folder });
 
   setHtml(view, html`
-    <div class="page-head">
+    ${embedded ? '' : html`<div class="page-head">
       <div>
         <h1 class="page-title">Майстерня</h1>
         <div class="page-sub" id="ws-sub"></div>
       </div>
-    </div>
+    </div>`}
     <div class="ws-genbar-slot" id="ws-gen"></div>
     <div class="lib-toolbar">
       <div class="input-group">${ic('search')}<input class="input" id="ws-q" placeholder="Назва або номер книги" aria-label="Пошук книг" autocomplete="off"></div>
@@ -43,7 +46,7 @@ export async function mount(view) {
       <div class="tools">${ib('sort', 'Сортування', 'data-act="sort" id="ws-sort"')}${ib('folderOpen', 'Відкрити папку книг', 'data-act="folder"')}</div>
       ${ib('plus', 'Нова книга — в Antigravity', 'data-act="add"', { cls: 'primary', kbd: 'N' })}
     </div>
-    <div class="ws-grid" id="ws-grid"></div>
+    <div class="lib-grid" id="ws-grid"></div>
     <div id="ws-empty"></div>`);
 
   const grid = view.querySelector('#ws-grid');
@@ -68,25 +71,22 @@ export async function mount(view) {
     const next = b.steps.find((s) => s.state === 'todo' || s.state === 'part');
     const check = b.steps.find((s) => s.key === 'prompts')?.check;
     const t = b.thumb;
-    return html`<button class="ws-card" data-open="${b.id}" aria-label="${b.title}">
-      <div class="ws-card-art">
-        ${t ? html`<img data-fade alt="" class="${t.kind}" src="${picture(b, t.area, t.name, 720)}">`
-          : html`<div class="ws-card-letter serif">${(b.title || '?').charAt(0).toUpperCase()}</div>`}
-        <span class="ws-card-wait" data-wait="${b.id}"><span class="ws-pulse"></span>чекаю картинку</span>
-        ${b.library ? html`<span class="book-badge" data-tip="У бібліотеці замовлень">${ic('check')}</span>` : ''}
-      </div>
-      <div class="ws-card-body">
-        <div class="ws-card-title">${b.number != null ? html`<span class="ws-no num">№${b.number}</span>` : ''}${b.title}</div>
-        <div class="ws-card-sub serif">${highlightTokens(b.coverTitle)}</div>
-        <div class="ws-card-bar">${b.steps.map((s) => html`<i class="${s.state}" data-tip="${s.label}: ${STATE_WORDS[s.state]}"></i>`)}</div>
-        <div class="ws-card-meta">${next ? html`<span>Далі: <b>${next.label}</b></span>` : html`<span><b>Усе готово</b></span>`}
-          <span class="num">Картинки ${b.pictures}/${b.picturesTotal}</span>
-          ${check ? html`<span class="${check.go ? 'ws-go' : 'ws-nogo'}" data-tip="Перевірка промптів">${checkWord(check)}</span>` : ''}</div>
-      </div>
-    </button>`;
+    const VALUE = { done: 1, part: 0.5, todo: 0, skip: 0 };
+    const count = next?.key === 'pictures' ? html` <span class="num">${b.pictures}/${b.picturesTotal}</span>` : '';
+    return bookTile({
+      key: b.id, title: b.title, number: b.number,
+      cover: { src: t ? picture(b, t.area, t.name, 720) : '', cls: t?.kind === 'cover' ? 'front' : '', letter: (b.title || '?').charAt(0).toUpperCase() },
+      over: html`<span class="ws-card-wait" data-wait="${b.id}" data-tip="Чекаю картинку"><span class="ws-pulse"></span>${ic('images', 'icon-s')}</span>
+        ${b.library ? tickBadge('У бібліотеці замовлень') : ''}`,
+      sub: html`<span class="serif">${highlightTokens(b.coverTitle)}</span>`,
+      bar: segBar(b.steps.map((s) => ({ v: VALUE[s.state] ?? 0, skip: s.state === 'skip', tip: `${s.label}: ${STATE_WORDS[s.state]}` }))),
+      meta: html`${next ? html`<span class="book-go">${ic('chevRight', 'icon-s')}<b>${next.label}</b>${count}</span>` : html`<span class="book-go done">${ic('check', 'icon-s')}</span>`}
+        ${check ? html`<span class="${check.go ? 'ws-go' : 'ws-nogo'}" data-tip="Перевірка промптів">${checkWord(check)}</span>` : ''}`,
+    });
   }
 
   function paintSub() {
+    if (embedded) { state.shelf = 'work'; return; }
     const n = state.books.length - passed().length;
     const done = passed().length;
     setHtml(view.querySelector('#ws-sub'), n || done

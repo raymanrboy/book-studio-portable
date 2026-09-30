@@ -12,6 +12,7 @@ import {
 import { openLightbox } from '../lightbox.js';
 import { openAddBook } from '../add-book.js';
 import { picture, checkWord, ERRORS, STATE_TEXT } from '../workshop-bits.js';
+import { pathStep } from '../path.js';
 import { watch, refresh, act, startGen, startPhoto, genAction, paintGenBar, genState, waitingFor } from '../workshop-live.js';
 import { rowTemplates, waitChip, slot } from './workshop-rows.js';
 
@@ -39,7 +40,7 @@ export async function mount(view, [rawId]) {
   try {
     first = await api(url());
   } catch (err) {
-    notFound(view, { back: '#/workshop', backLabel: 'До Майстерні', icon: 'workshop', title: 'Книгу не знайдено', text: err.message });
+    notFound(view, { back: '#/books/work', backLabel: 'До книг', icon: 'workshop', title: 'Книгу не знайдено', text: err.message });
     return null;
   }
   let b = first.book;
@@ -59,7 +60,7 @@ export async function mount(view, [rawId]) {
   setHtml(view, html`
     <div class="page-head ws-head" id="ws-head"></div>
     <div class="ws-genbar-slot" id="ws-gen"></div>
-    <div class="ws-strip" id="ws-strip" role="tablist" aria-label="Шлях книги"></div>
+    <div class="ws-strip path-strip path-icons" id="ws-strip" style="--steps:11" role="tablist" aria-label="Шлях книги"></div>
     <div class="ws-panel" id="ws-panel" hidden></div>
     <div class="ws-col">
       <div class="ws-rows-head" id="ws-rows-head"></div>
@@ -89,31 +90,29 @@ export async function mount(view, [rawId]) {
           <span class="sep"></span>
           ${ib('images', 'Сторінки — нарізані 1–30 і Cover.png, набір для Canva', 'data-act="open" data-what="pictures"')}
           ${ib('original', 'Оригінали — картинки, як їх віддав генератор', 'data-act="open" data-what="originals"')}
-          ${ib('more', 'Ще', 'data-act="more"')}</div>
-        <button class="btn btn-primary" data-act="open" data-what="folder" data-tip="Папка книги в Провіднику: сторінки, оригінали, мокапи, etsy">${ic('folderOpen')}Папка книги</button>
-        ${passed ? html`<button class="btn" data-act="to-library" data-tip="Книга вже в бібліотеці замовлень — відкрити її там">${ic('checkCircle')}У бібліотеці</button>`
-          : html`<button class="btn ${ready() ? 'btn-primary' : ''}" data-act="to-library">${ic('shelf')}Передати в бібліотеку</button>`}
+          ${ib('folderOpen', 'Папка книги в Провіднику: сторінки, оригінали, мокапи, etsy', 'data-act="open" data-what="folder"')}
+          ${ib('more', 'Ще', 'data-act="more"')}
+          ${ready() && !passed ? '' : html`<span class="sep"></span>${passed
+            ? ib('checkCircle', 'Книга вже в бібліотеці замовлень — відкрити її там', 'data-act="to-library"')
+            : ib('shelf', 'Передати в бібліотеку замовлень — коли сторінки й обкладинка готові', 'data-act="to-library"')}`}</div>
+        ${ready() && !passed ? html`<button class="btn btn-primary" data-act="to-library" data-tip="Книга готова — передати в бібліотеку замовлень">${ic('shelf')}Передати в бібліотеку</button>` : ''}
       </div>`],
     ];
   }
 
   // ---------------------------------------------------------------- the path strip
+  // The path strip is the shared one (path.js): a picture per step, the word and the count in the tooltip.
+  const STEP_ICON = { formula: 'sparkle', hero: 'hero', story: 'spread', text: 'text', prompts: 'prompt', pictures: 'images',
+    cover: 'book', canva: 'canva', mockups: 'mockup', photos: 'camera', library: 'shelf' };
   function stepHtml(s, i) {
-    const prev = b.steps[i - 1];
-    const dot = s.key === 'hero' && s.thumb ? html`<span class="ws-dot photo"><img alt="" src="${pic('agent', s.thumb, 96)}"></span>`
-      : html`<span class="ws-dot">${s.state === 'done' ? ic('check') : s.state === 'skip' ? ic('minus') : i + 1}</span>`;
-    let count = ['pictures', 'photos'].includes(s.key) ? html`<span class="ws-step-count num">${s.count}/${s.total}</span>` : '';
     let tip = `${s.label}: ${STATE_TEXT[s.state]}`;
-    if (s.check) {
-      count = html`<span class="ws-step-count ${s.check.go ? 'go' : 'nogo'}">${checkWord(s.check)}</span>`;
-      tip += ` · перевірка: ${checkWord(s.check)}`;
-    }
-    if (s.key === 'photos') tip += ` · ${s.count} з ${s.total} фото; категорії можна пропускати — тоді позначте вручну`;
+    if (['pictures', 'photos'].includes(s.key)) tip += ` · ${s.count} з ${s.total}`;
+    if (s.check) tip += ` · перевірка: ${checkWord(s.check)}`;
+    if (s.key === 'photos') tip += '; категорії можна пропускати — тоді позначте вручну';
     else if (s.manual) tip += ' · позначається вручну';
-    const cls = [s.state, s.next && 'next', prev && ['done', 'skip'].includes(prev.state) && 'after-done',
-      mem.step === s.key && 'sel', s.check && !s.check.go && 'nogo'].filter(Boolean).join(' ');
-    return html`<button class="ws-step ${cls}" data-act="step" data-step="${s.key}" role="tab" aria-selected="${mem.step === s.key}" data-tip="${tip}">
-      ${dot}<span class="ws-step-label">${s.label}</span>${count}</button>`;
+    const steps = b.steps.map((x) => ({ ...x, icon: STEP_ICON[x.key] || 'sparkle' }));
+    return pathStep({ ...steps[i], tip, nogo: !!(s.check && !s.check.go),
+      thumb: s.key === 'hero' && s.thumb ? pic('agent', s.thumb, 96) : '' }, i, steps, { act: 'step', active: mem.step, tabs: true });
   }
 
   // ---------------------------------------------------------------- the step's panel
@@ -222,7 +221,7 @@ export async function mount(view, [rawId]) {
         <div class="ws-drop ph-card-drop" data-drop="photo:${c.key}" data-video="${c.omni ? '1' : ''}">
           ${c.photo ? html`<div class="ph-card-art" data-act="photo-cat" data-cat="${c.key}">${art}
               <div class="img-actions">${look}${ib('download', 'Зберегти як…', `data-act="save" data-area="etsy" data-name="${c.photo}"`, { cls: 'sm' })}${ib('trash', `Прибрати ${c.omni ? 'відео' : 'фото'} — у папку .replaced книги`, `data-act="photo-remove" data-cat="${c.key}"`, { cls: 'sm danger' })}</div></div>`
-            : html`<button type="button" class="ph-card-ph" data-act="photo-cat" data-cat="${c.key}" aria-label="${c.label}">${ic(c.omni ? 'motion' : 'camera')}</button>`}
+            : html`<button type="button" class="ph-card-ph" data-act="photo-cat" data-cat="${c.key}" aria-label="${c.label}">${ic(c.omni ? 'video' : 'camera')}</button>`}
           ${waiting ? html`<div class="ws-wait"><span class="ws-pulse"></span>${c.omni ? 'Чекаю відео…' : 'Чекаю фото…'}</div>` : ''}${busy(`photo:${c.key}`)}
         </div>
         <button type="button" class="ph-card-label" data-act="photo-cat" data-cat="${c.key}">${c.photo ? ic('checkCircle', 'icon-s') : ''}${c.label}</button>
@@ -234,7 +233,7 @@ export async function mount(view, [rawId]) {
       <div class="ph-pick-head"><b>${sel.label}</b><span class="ph-flow">фото ${ic('chevRight', 'icon-s')} ${ref.label} ${ic('chevRight', 'icon-s')} промпт</span>
         <span class="spacer"></span>${ib('prompt', 'Промпт цієї категорії — у буфер', `data-act="photo-prompt" data-cat="${sel.key}"`)}</div>
       ${ref.name ? '' : html`<div class="notice notice-warn">${ic('alert')}<div>${ref.missing}</div></div>`}
-      ${sel.omni ? html`<div class="notice notice-info">${ic('motion')}<div>Це відео для Gemini Omni: фото, ${ref.label} і промпт ідуть у буфер як завжди. Завантажене відео Book Studio зловить сам, обріже перші 2 секунди й покладе в папку Etsy книги.</div></div>` : ''}
+      ${sel.omni ? html`<div class="notice notice-info">${ic('video')}<div>Це відео для Gemini Omni: фото, ${ref.label} і промпт ідуть у буфер як завжди. Завантажене відео Book Studio зловить сам, обріже перші 2 секунди й покладе в папку Etsy книги.</div></div>` : ''}
       ${tpl.length ? html`<div class="ph-tiles sm">${tpl.map((t) => html`<div class="ph-tile ${t.name === sel.template ? 'used' : ''} ${nowTpl(t.name) ? 'now' : ''}" style="aspect-ratio:${t.size ? `${t.size[0]} / ${t.size[1]}` : '1 / 1'}">
           <button type="button" class="ph-shot" data-act="photo-start" data-cat="${sel.key}" data-name="${t.name}" data-tip="${`У буфер: це фото, далі Ctrl+V у Chrome — ${ref.label}, ще раз — промпт${t.name === sel.template ? ' · цю заготовку брали востаннє' : ''}`}">
             <img data-fade alt="${t.name}" src="${media(`/media/photos/${encodeURIComponent(sel.key)}/${encodeURIComponent(t.name)}`, { w: 360, v: t.v })}" loading="lazy"></button>
@@ -576,7 +575,7 @@ export async function mount(view, [rawId]) {
     try {
       b = (await api(url())).book;
     } catch (err) {
-      if (err.status === 404) { toast('Книги більше немає в Майстерні', 'info'); location.hash = '#/workshop'; }
+      if (err.status === 404) { toast('Книги більше немає в Майстерні', 'info'); location.hash = '#/books/work'; }
       return;
     }
     draw();
@@ -699,7 +698,7 @@ export async function mount(view, [rawId]) {
     });
     if (!ok) return;
     const res = await act(btn, () => api(url(), { method: 'DELETE' }), `Книгу «${name}» видалено — папка в Кошику Windows`);
-    if (res) { memory.delete(id); location.hash = '#/workshop'; }
+    if (res) { memory.delete(id); location.hash = '#/books/work'; }
   }
 
   // ---------------------------------------------------------------- events
@@ -708,7 +707,7 @@ export async function mount(view, [rawId]) {
   const offs = [on(view, 'click', '[data-act]', (e, t) => {
     const a = t.dataset.act;
     const { key = '', variant = '' } = t.dataset;
-    if (a === 'back') { location.hash = '#/workshop'; return; }
+    if (a === 'back') { location.hash = '#/books/work'; return; }
     if (a === 'agent') { act(t, () => post('/api/workshop/agent', { book: id }), () => 'Antigravity відкривається · у буфері — ця книга з повною адресою; вставте в чат агента'); return; }
     if (a === 'open') { act(t, () => post('/api/workshop/open', { book: id, what: t.dataset.what, name: t.dataset.name || '' })); return; }
     if (a === 'more') {
@@ -818,7 +817,7 @@ export async function mount(view, [rawId]) {
     // defaultPrevented: the Esc a dialog took to close itself (it is already on its way out of the top layer).
     if (e.defaultPrevented || topLayer() || document.querySelector('.menu') || e.ctrlKey || e.altKey || e.metaKey) return;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
-    if (e.key === 'Escape') { location.hash = '#/workshop'; return; }
+    if (e.key === 'Escape') { location.hash = '#/books/work'; return; }
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       const i = Math.max(0, b.steps.findIndex((s) => s.key === mem.step));
       const next = b.steps[Math.max(0, Math.min(b.steps.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))];

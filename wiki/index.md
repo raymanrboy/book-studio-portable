@@ -90,6 +90,7 @@ code: []
 - [Tests](dev/testing.md)
 - [Interface preview](dev/preview.md) — a server on temporary data.
 - [How to run this wiki](dev/wiki-rules.md) — page format, checks, operations.
+- [Design and code skills](dev/design-skills.md) — the agent skills installed for interface logic, icons, visual craft and code.
 
 ## Decisions, recipes, plans
 
@@ -107,6 +108,9 @@ code: []
   into the Workshop (2026-09-26).
 - [The big cleanup](plans/cleanup.md) — the plan of 2026-09-26 and its progress: every finding of the code
   study fixed, phase by phase (bugs, money, speed, no blinking, duplicates, big files cut by job).
+- [The interface redesign](plans/ui-redesign.md) — the plan of 2026-09-30: one strict visual system (agreed), and a
+  program understood without hints — every order and book in one place with its path (decided point by point).
+- [The interface waves](plans/ui-waves.md) — every wave of the 2026-09-30 interface work in one plan, step by step (what to touch, how to check), and what is left.
 - [Open questions and technical debt](plans/open-questions.md)
 
 ## Housekeeping

@@ -19,3 +19,25 @@ pipeline/books/
 /examples/
 # A spare copy of the mockup templates (1.6 GB, purchased) — local only, never read by the program
 /Трафарети мастхев (копія)/
+# Third-party agent skills (installed 2026-09-30; some carry no licence) — local only. The project's own skills
+# (wiki-*, listing-slides, book-studio-ui-logic) stay in git.
+/.claude/skills/uxcraft/
+/.claude/skills/planning/
+/.claude/skills/product-design/
+/.claude/skills/ui-design/
+/.claude/skills/ui-verification/
+/.claude/skills/typography-audit/
+/.claude/skills/frontend-design/
+/.claude/skills/frontend-design-v2/
+/.claude/skills/icon-set-generator/
+/.claude/skills/icon-design/
+/.claude/skills/impeccable/
+/.claude/skills/make-interfaces-feel-better/
+/.claude/skills/verification-before-completion/
+/.claude/skills/systematic-debugging/
+/.claude/skills/tidy/
+/.claude/skills/python-performance-optimization/
+/.claude/skills/code-simplification/
+/.claude/skills/ux-heuristics/
+/.claude/skills/cognitive-load-audit/
+/.claude/skills/laws-of-ux/

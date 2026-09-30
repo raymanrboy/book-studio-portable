@@ -1,7 +1,7 @@
 ---
 title: Book structure — pages, spreads, slots
 type: rule
-updated: 2026-09-27
+updated: 2026-09-30
 code:
   - app/studio/library.py
   - app/web/js/order-bits.js
