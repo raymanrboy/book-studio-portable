@@ -64,15 +64,6 @@ def _view(where: str) -> dict:
     }
 
 
-@route("GET", "/api/slides/sets")
-def _sets(req: Request):
-    """The books whose slides are kept (the last dozen), newest first — the Mockups' header opens their editor."""
-    return {"sets": [{"id": r["id"], "name": r.get("name") or "", "created": r.get("created") or "",
-                      "folder": r.get("folder") or "", "baked": len(work.pictures(r)), "book": store.is_book(r["id"])}
-                     for r in store.list_sets()],
-            "scheme": {"key": store.default_scheme(), "name": store.scheme_name(store.default_scheme() or "")}}
-
-
 @route("GET", "/api/slides/state")
 def _state(req: Request):
     return _view(_where(req))

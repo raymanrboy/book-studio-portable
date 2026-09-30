@@ -54,7 +54,7 @@ is the dedication; the spreads `2–3`, `4–5`, …; page 30 is not offered.
    - **The book's cover opens beside them** (the owner: "so I can work with it at once") — the Canva cover as
      `Cover.png`; «Зберегти відкриті» closes it only when unchanged (`doc.saved`).
 4. **Слайди для лістингу** — «Без фону · 5/6», the book's numbers, **«Зробити слайди»**, the six with ✎, «Відкрити в
-   редакторі» — see [slides](slides.md). The header's ▣ opens the template's and other books' slides.
+   редакторі» — see [slides](slides.md).
 5. **«×» — «Завершити»**: the page starts clean for the next book, the unpacked demo book is deleted (`close()`). With
    templates still waiting it asks first; they stay open, and the run is marked `dismissed`.
 

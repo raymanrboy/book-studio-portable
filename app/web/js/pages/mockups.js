@@ -140,7 +140,7 @@ export async function mount(view) {
   function paintHead() {
     const box = $('#mk-actions');
     if (!box) return;
-    setHtml(box, html`<div class="tools">${ib('images', 'Слайди для лістингу — книг і шаблон', 'data-act="sl-sets"')}${ib('sliders', 'Де шаблони і Photoshop', 'data-act="places"')}
+    setHtml(box, html`<div class="tools">${ib('sliders', 'Де шаблони і Photoshop', 'data-act="places"')}
       ${something() ? html`<span class="sep"></span>${ib('x', 'Завершити — наступна книга з чистого аркуша', 'data-act="close"')}` : ''}</div>`);
   }
 

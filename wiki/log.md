@@ -3,6 +3,11 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-30] update | The Mockups' header loses its «Слайди для лістингу» button
+
+- The ▣ menu (the default scheme, the books with slides, older sets) removed at the owner's request, with its route
+  `/api/slides/sets` ([decisions](decisions.md)); slides open from the book, new books' design is set in the editor.
+
 ## [2026-09-30] update | The etsy/ folder numbered in the listing's order
 
 - A book's `etsy/` files carry their number in the owner's listing order («01 photo-main.png» … «14 photo-shelf.png»),

@@ -2,7 +2,7 @@
 // the next step; I press it and they are made by themselves; then a button offers to go into our editor"). Above it,
 // how far the pictures without background are (cut while Photoshop works — studio/slides/cutout.py). The six are
 // made from the template (studio/slides/work.py); the editor is its own page, loaded only when opened (#/slides/…).
-import { api, post, html, ic, ib, setHtml, media, toast, runJob, fadeImages, plural, confirmBox, menu, dateTime } from '../lib.js';
+import { api, post, html, ic, ib, setHtml, media, toast, runJob, fadeImages, plural, confirmBox } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 
 const SHOT_W = 480;
@@ -190,24 +190,9 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     location.hash = `#/slides/${sl.result.set}/${slide.replace('slide', '')}`;
   }
 
-  // The header's «Слайди»: the template and the books whose slides are kept — after a restart the card is gone, the
-  // editor is still one click away.
-  async function openSets(anchor) {
-    let r;
-    try { r = await api('/api/slides/sets'); } catch (err) { toast(err.message, 'error'); return; }
-    if (gone) return;
-    const books = r.sets.filter((x) => x.book), older = r.sets.filter((x) => !x.book);
-    menu(anchor, [
-      { label: `Схема для нових книг — ${r.scheme?.name || 'Nature'}`, icon: 'template', onClick: () => { location.hash = '#/slides/template/1'; } },
-      ...(books.length ? ['-', ...books.map((x) => ({ label: x.name, icon: 'book', onClick: () => { location.hash = `#/slides/${x.id}/1`; } }))] : []),
-      ...(older.length ? ['-', ...older.map((x) => ({ label: `${x.name || 'Книга'} · ${dateTime(x.created)}`, icon: 'images', onClick: () => { location.hash = `#/slides/${x.id}/1`; } }))] : []),
-    ]);
-  }
-
   // ---------------------------------------------------------------- events (from mockups.js's one listener)
   async function act(a, t) {
     if (a === 'sl-make') { make(); return true; }
-    if (a === 'sl-sets') { openSets(t); return true; }
     if (a === 'sl-edit') { edit(t.dataset.slide); return true; }
     if (a === 'sl-view') { view_(+t.dataset.i); return true; }
     if (a === 'open-nobg') { post('/api/mockups/open-folder', { path: t.dataset.path }).catch((err) => toast(err.message, 'error')); return true; }

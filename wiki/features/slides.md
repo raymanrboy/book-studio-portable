@@ -59,10 +59,7 @@ code:
    the owner: "an etsy folder in every book for the slides and the photo mockups"; `Listing N.png` beside the mockups
    before), for a folder of his own **`Listing 1.png … Listing 6.png`** beside the mockups; never over another file
    (` (2)`); the result's folder button opens that folder; the window's title, the taskbar flash and Windows' sound when the window is behind.
-4. **The header's ▣ «Слайди для лістингу — книг і шаблон»** (beside the sliders): «Схема для нових книг — Nature» (the
-   default scheme, edited in place), the Workshop books with slides («№25 Sleepy trucks bedtime»), then the slides made
-   before 29.09.2026 by time — the editor is one click away even after a restart.
-5. **From the Workshop at any time** (its step «Мокапи», [workshop](workshop.md)): «Редагувати мокапи», «Редагувати
+4. **From the Workshop at any time** (its step «Мокапи», [workshop](workshop.md)): «Редагувати мокапи», «Редагувати
    слайди», «Відкрити папку мокапів», «Зняти позначку».
 
 ## The editor (`#/slides/<book | set | template>/<1–6>`)
@@ -197,13 +194,13 @@ real template: the desk and the book kept, the floor gone, the book's soft shado
 - [app/studio/slides/store.py](../../app/studio/slides/store.py) — `SLIDES`, `FACTORY`, `SCHEMES`, `SETS`, `TEMPLATE`, `BOOK_SLOTS`, `PICTURE_SLOTS`, `SLOT_LABEL`, `NUMBERS`, `KINDS`, `ensure_schemes()`, `list_schemes()`, `default_scheme()`, `save_scheme()`, `set_default()`, `presets()`, `apply_preset()`, `is_book()`, `mockups_dir()`, `load()`, `check()`, `save()`, `reset()`, `sig()`, `new_set()`, `put_book()`, `put_picture()`, `list_sets()`, `workshop_sets()`, `forget_old_sets()`, `clean_temporary()`, `book_done()`
 - [app/studio/slides/work.py](../../app/studio/slides/work.py) — `_book_page30()`, `_tick()`, `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `title()`
 - [app/studio/slides/bake.py](../../app/studio/slides/bake.py) — `bake()`, `render()`, `outputs()`, `run_browser()`, `NAME`, `AT_ONCE`
-- [app/studio/slides/routes.py](../../app/studio/slides/routes.py) — `assets()`, `_make()`, `_bake()`, `_cutouts()`, `_save()`, `_sets()`, `_presets()`, `_apply()`, `_save_scheme()`, `_default_scheme()`
+- [app/studio/slides/routes.py](../../app/studio/slides/routes.py) — `assets()`, `_make()`, `_bake()`, `_cutouts()`, `_save()`, `_presets()`, `_apply()`, `_save_scheme()`, `_default_scheme()`
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `mockups_state()`, `MOCKUPS`, `_slides_done()` (in `to_library()`)
 - [app/studio/main.py](../../app/studio/main.py) — `slides.store.clean_temporary()` at launch and close
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `watch()` → `_cut_without_background()`
 - [app/web/js/slides/engine.js](../../app/web/js/slides/engine.js) — `setAssets()`, `ready()`, `boxOf()`, `DRAW`, `drawElement()`, `drawScene()`, `fill()`, `elTransform()`
 - [app/web/slides/render.html](../../app/web/slides/render.html) — the page headless Edge bakes
-- [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — `slidesStep()`: the cut-outs line, the card, «Зробити слайди», the viewer, `openSets()`
+- [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — `slidesStep()`: the cut-outs line, the card, «Зробити слайди», the viewer
 - [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `mount()`, `SPEC`, `NEW`, `KIND` (inside: `isLocked`, `palettes()`, `swatches()`, `loadOthers()`, `openSchemes()`, `applyScheme()`, `saveScheme()`)
 - [app/web/css/slides.css](../../app/web/css/slides.css) — the editor's look
 - [app/web/js/app.js](../../app/web/js/app.js) — the route `#/slides/…` (`'lazy'`), the rail's «Мокапи» lit for it

@@ -203,7 +203,6 @@ Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a 
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/slides/sets` | token | `_sets` | mockups-slides.js `openSets` (the header's ▣: the books whose slides are kept) |
 | GET | `/api/slides/state` | token | `_state` | slides-editor.js, mockups-slides.js `refresh` (`?w=`: name, folder, numbers, slides, the baked pictures, slots, signature) |
 | GET | `/api/slides/scene` | token | `_scene` | slides-editor.js (`?w=&s=` → `{scene, version}`) |
 | GET | `/media/slides/scene` | media | `_scene` | slides/render.html — the page headless Edge bakes |

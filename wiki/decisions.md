@@ -9,6 +9,14 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-30 — No «Слайди для лістингу» button in the Mockups' header
+
+- **The owner** didn't see why it was there, and asked to remove it. A book's slides open from the book (the
+  Workshop's «Мокапи» step → «Редагувати слайди»); the design new books start from is chosen in any book's editor
+  («Схема ▾» → «Нові книги — зі схеми …», or «Зберегти ці слайди як схему» with its tick). The route
+  `/api/slides/sets` went with it. The default scheme's own page (`#/slides/template/…`) stays, reached by its
+  address; the agent changes it through `/listing-slides`.
+
 ## 2026-09-30 — The etsy/ folder in the listing's order
 
 - **The owner:** the files of a book's `etsy/` stand in the order they go into the Etsy listing: 01 photo-main, 02 the
