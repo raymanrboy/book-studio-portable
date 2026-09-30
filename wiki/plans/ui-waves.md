@@ -39,7 +39,7 @@ code: []
 | 4 | A quiet Workshop page | done |
 | 5 | Quiet rooms | done (two items dropped on purpose) |
 | 6 | Undo instead of questions, one review before print | done (scoped to what can really be undone) |
-| 7 | Creative: «Сьогодні», Ctrl+K that does | done (the drop zone left out) |
+| 7 | Creative: «Сьогодні», Ctrl+K that does | Ctrl+K verbs done; «Сьогодні» built and then **removed at the owner's word** (see wave 9) |
 | Icons | Three redrawn, one added, the hammer and the ruler | done |
 | 8 | The drop anywhere, a picture that comes back, the keyboard | done (three items left to the owner or optional) |
 
@@ -124,9 +124,7 @@ Check (done on the preview server): delete → toast → «Скасувати» 
 
 ### Wave 7 — creative
 
-1. `pages/today.js` + the route `^#/today/?$` (area `orders`) + the brand mark as `<a href="#/today">` in `buildSidebar()` + an entry in `PLACES` (for the search).
-   Rows are `.tool-tile.today-row` (a picture, a few words, a chip): new orders; tracking to mark in Etsy (`data-stage="sent"` → `orders.js` `openStage('sent')` then the hash);
-   a Workshop book whose prompts check failed (red) or whose pictures and cover are done (green); services missing a key (`store.info.integrations`). Empty: «Усе гаразд». Read-only.
+1. ~~«Сьогодні»~~ — built (`pages/today.js`, the route `#/today`, the brand mark as a link) and **removed on 2026-09-30 at the owner's word** ("can be deleted entirely"): the file, the route, the link, the search entry and `openStage()` are gone; the brand mark is only the logo again.
 2. `palette.js`: `doers` — for each Workshop book not in the library «Мокапи · №N» (`remember('mk-for-book', {id})` then `#/mockups`) and «Слайди · №N» (`#/slides/<id>/1`); `go()` runs `x.run` when there is one.
 Check: "мокапи 41" + Enter opens the Mockups with that book selected.
 
@@ -157,6 +155,20 @@ Left:
 4. **The Workshop's step strip** is still 11 Tab stops (it has its own arrow handler; its `tabs` have no roving stop because no step may be chosen) — make «no step chosen» keep the first as the stop, then the same roving.
 5. **Optional, only when touching them**: split `workshop-book.js`, `mockups.js`, `slides-editor.js` by job, as in [the big cleanup](cleanup.md).
 6. Keep [ui-principles](../owner/ui-principles.md) and `.claude/skills/book-studio-ui-logic` in step with any new owner correction — the same day.
+
+## Wave 9 — the owner's first look at the real data (2026-09-30, after the commit)
+
+Found on real data, done (how to repeat):
+1. **The wheel trap** — `css/orders.css` `.ord-side`: no `max-height`, no `overflow-y`, no `overscroll-behavior: contain`; `position: sticky; top: 16px; align-self: start`; `lib.js` `stickyFit(el)` (called in `order-card.js`,
+   stopped in `unmount()`) sets `top` to `min(16, window − height − 16)` so a column taller than the window sticks by its bottom. Check: nothing under the pointer is a scroller but the page (`overflow-y` of the card's columns is `visible`).
+2. **Tools on their own** — `app.js` `entryOf()`: `#/tools` is always the list; `lib.js` `backToTools()` in the heads of the Order Creator (no order), the Mockups (no book), the Photo mockups (back to the book when it was opened from one),
+   the print archive's list; `slides-editor.js` keeps the `origin` it was entered from (module-level, reset when he enters from outside) and «back» goes there.
+3. **The slide reset** — `slides-editor.js` `sessions` (module-level, per book or template; a slide's JSON is stored the first time it is loaded in a session; the session ends when he enters the editor from outside):
+   «Повернути слайд» restores that, no question (Ctrl+Z undoes it), «nothing changed» when equal.
+4. **The Mockups' book** — `mockups.js` `takeWorkshopBook(force)`: a book only when asked (`mk-for-book`) or by the small book icon (`force`); the card «Книга» appears only with one.
+5. **Schemes inside the editor** (the owner's answer): `slides/store.py` `scheme_of()`, `is_plain()`, `valid_where()` / `scene_path()` / `load()` / `reset()` / `sig()` know `scheme:<key>`; `routes.py` treats it like the template (no numbers, no pictures, no bake, no apply); `_view` adds `defaultScheme`;
+   `app.js` route `scheme:[a-z0-9-]+`; `slides-editor.js` shows the «Схема» button on its own too (`openSchemes()`: pick → `#/slides/scheme:<key>/n`); `mockups-slides.js` `loadSchemes()` / `sl.scheme` — the choice before «Зробити слайди».
+Open: the slower start (not reproduced on made-up data: the server starts in 2.40 s both before and after; the owner says where it waits).
 
 ## Related
 

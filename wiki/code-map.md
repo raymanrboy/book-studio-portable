@@ -108,7 +108,6 @@ code:
 | [js/path.js](../app/web/js/path.js) | An object's path strip (an order's Canva → … → Відправка; a Workshop book's eleven steps) | `pathHtml()`, `pathStep()` |
 | [js/book-tile.js](../app/web/js/book-tile.js) | One book on a shelf — the library's and the Workshop's tile, one progress bar | `bookTile()`, `segBar()`, `tickBadge()` |
 | [js/pages/tools.js](../app/web/js/pages/tools.js) | «Інструменти» — every tool that works on its own | `mount()` |
-| [js/pages/today.js](../app/web/js/pages/today.js) | «Сьогодні» — what needs the owner now, across every place (the brand mark) | `mount()` |
 | [js/pages/books.js](../app/web/js/pages/books.js) | «Книги» — the Workshop's and the library's galleries as tabs | `mount()` |
 | [js/info.js](../app/web/js/info.js) | Info about the program (`/api/app`) for the shell and the pages | `store`, `refreshInfo()`, `whenInfoChanges()` |
 | [js/lib.js](../app/web/js/lib.js) | Shared helpers: templates, API, tooltips, dialogs, menus, animations, a detail page's Esc and "could not open", what's missing | `markMissing()`, `html()`, `api()`, `ib()`, `modal()`, `confirmChecked()`, `menu()`, `runJob()`, `upload()`, `toast()`, `segHtml()`, `escBack()`, `notFound()` |

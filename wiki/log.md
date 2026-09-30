@@ -3,6 +3,33 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-30] update | The owner switched to his own Gelato account
+
+- The owner used «Перейти на новий акаунт Gelato» at 23:26. Right after, both accounts were read whole: the old one has 595
+  orders (all still there), the new one has 1 old draft from July. Etsy's 88 receipts are unchanged.
+- Read-only check: the new key sees the same catalog (28–200 pages, the same sizes as [gelato](integrations/gelato.md)) and
+  the same base prices as the old one.
+- With the owner's permission in chat: one TEST draft was sent to the new account from a script, with made-up numbered
+  pages (hardcover 8×8, 28 pages), not through the program. It was created as a draft, and Gelato fetched the PDF through
+  the temporary link. Its reference is «TEST Book Studio - new account check (do not print)». The owner deletes it in Gelato.
+- The old account's orders have «CozyCovenant» on the return address, billing in EUR (Germany), a card, and USPS Ground
+  Advantage. A draft shows none of these, so the new account's settings get checked in Gelato itself.
+
+## [2026-09-30] update | «Сьогодні» removed; the tools open clean
+
+- «Сьогодні» is deleted as a function (the owner's word); a tool opened from «Інструменти» starts clean — live work excepted ([decisions](decisions.md)).
+
+## [2026-09-30] update | Schemes inside the slides editor and before the six are made
+
+- A scheme (Nature, Night, his own) is edited in place by its key and picked with the editor's «Схема» button even when it is opened on its own; the Mockups' step 4
+  offers the same choice before «Зробити слайди». **Restart Book Studio** (server routes changed).
+
+## [2026-09-30] update | The owner's first look at the real data: the wheel trap, the tools' way back, the slide reset
+
+- The order card's data column no longer scrolls on its own (`stickyFit()`); «Інструменти» always opens the list and a tool opened on its own has a back
+  arrow (`backToTools()`); the slides' back leads to where he came from and «Повернути слайд» returns to the session's start; the Mockups take a book only
+  when asked. Start time: measured, not reproduced — [decisions](decisions.md).
+
 ## [2026-09-30] update | The top-level docs follow the rail
 
 - README, app/README, AGENTS and CLAUDE no longer say «two modes»: the rail, «Сьогодні», the light theme as the main one, and the skill

@@ -109,7 +109,9 @@ after the program restarts. How this is built —
 [architecture/frontend.md](../architecture/frontend.md) (`keep.js`).
 
 **Layout** (since 2026-09-16, per the owner's request): work on the left, data on the right; the right
-column is "sticky" (stays on screen while scrolling through proofing). On a narrow window (< 1100 px) —
+column is "sticky" (stays on screen while scrolling through proofing) — **never a scroller of its own** (since 2026-09-30 the owner
+found that the wheel over its cards scrolled it and then stopped at its end, trapping the page); one taller than the window sticks by its
+bottom (`stickyFit()` in `lib.js`). On a narrow window (< 1100 px) —
 one column.
 
 ### Right — data (`#oc-data`, `renderLeft()`)

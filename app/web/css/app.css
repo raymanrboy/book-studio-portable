@@ -241,7 +241,6 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
   transition: background var(--t) ease, color var(--t) ease;
 }
 .brand-mark .icon { width: 20px; height: 20px; margin-top: -3px; }
-a.brand-mark:hover { text-decoration: none; color: var(--on-accent); filter: brightness(1.06); }
 .brand-busy, .nav-item .badge.busy {
   position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-c);
   box-shadow: 0 0 0 2px var(--bg-2); animation: busy-dot 1.6s ease-in-out infinite;
@@ -700,8 +699,6 @@ button.set-head:hover { background: var(--surface-hover); }
 .drop-any .drop-veil { opacity: 1; }
 .modal-where { width: min(420px, 100%); }
 .where-list { display: grid; gap: 10px; }
-.today-list { display: grid; gap: 10px; max-width: 560px; }
-.today-row .chip { flex: none; }
 .tool-tile:hover .tool-go { color: var(--accent-ink); }
 
 /* A detail page's place in its section, beside the back arrow (2026-09-30): where the owner is, in words. */

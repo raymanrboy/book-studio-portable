@@ -4,7 +4,8 @@
 // himself. Nothing is caught here: in a Workshop book the same photos go through its «Фото» step, with the book's cover
 // and its photo caught into the book. The templates live inside Book Studio (app/data/photo-mockups): a photo dropped
 // onto a category joins it, one taken out goes to the Recycle Bin.
-import { api, post, html, ic, ib, setHtml, on, toast, confirmBox, upload, fadeImages, patch, media, plural } from '../lib.js';
+import { api, post, html, ic, ib, setHtml, on, toast, confirmBox, upload, fadeImages, patch, media, plural, backToTools } from '../lib.js';
+import { store } from '../info.js';
 import { openLightbox } from '../lightbox.js';
 import { watch, refresh, act, paintGenBar, genAction, genState, startPhoto } from '../workshop-live.js';
 
@@ -26,9 +27,12 @@ export async function mount(view) {
     return null;
   }
   const adding = new Map();   // category → how many photos are still on their way in
+  // Opened from a Workshop book (its «Усі заготовки» link) the way back leads to that book; from «Інструменти» — to the tools.
+  const fromBook = /^#\/workshop\//.test(store.here) ? store.here : '';
 
   setHtml(view, html`
     <div class="page-head">
+      ${fromBook ? html`<a class="back-link" href="${fromBook}" aria-label="До книги" data-tip="До книги">${ic('arrowLeft')}</a>` : backToTools()}
       <div>
         <h1 class="page-title">Фотомокапи</h1>
         <div class="page-sub" id="ph-sub"></div>

@@ -38,6 +38,7 @@ DESIGN = ROOT / "design"                    # the template before schemes (29.09
 SCHEMES = ROOT / "schemes"
 SETS = ROOT / "sets"
 TEMPLATE = "template"                       # «where» for the default scheme, edited in place
+SCHEME_WHERE = "scheme:"                    # «where» for any scheme, edited in place: «scheme:night» (2026-09-30)
 SET_ID = r"\d{8}-\d{6}-[0-9a-f]{6}"
 BOOK_ID = r"\d{1,5}\.[^\\/:*?\"<>|]+"        # a Workshop book's folder: «25.sleepy-trucks-bedtime»
 SCHEME_KEY = r"[a-z0-9][a-z0-9-]{0,39}"
@@ -97,6 +98,18 @@ def list_schemes() -> list[dict]:
     if out and not any(s["default"] for s in out):
         next((s for s in out if s["key"] == "nature"), out[0])["default"] = True
     return out
+
+
+def scheme_of(where: str) -> str | None:
+    """«scheme:night» → «night»: a scheme edited in place, with no book behind it."""
+    w = str(where or "")
+    key = w[len(SCHEME_WHERE):] if w.startswith(SCHEME_WHERE) else ""
+    return key if re.fullmatch(SCHEME_KEY, key) else None
+
+
+def is_plain(where: str) -> bool:
+    """The default scheme («template») or a scheme picked by its key — slides with no book, no pictures, no numbers."""
+    return where == TEMPLATE or scheme_of(where) is not None
 
 
 def default_scheme() -> str | None:
@@ -177,7 +190,7 @@ def apply_preset(where: str, key: str) -> None:
     scenes = {slide: preset_scene(key, slide) for slide in SLIDES}   # all read first: a missing one changes nothing
     for slide, scene in scenes.items():
         save(where, slide, {**scene, "id": slide}, None)
-    if where != TEMPLATE:
+    if not is_plain(where):
         rec = read_set(where)
         rec["scheme"] = key
         write_set(rec)
@@ -199,6 +212,10 @@ def valid_where(where: str) -> str:
     where = str(where or TEMPLATE)
     if where == TEMPLATE:
         return where
+    if scheme_of(where):
+        if not (scheme_dir(scheme_of(where)) / "scheme.json").is_file():
+            raise _fail("Такої схеми немає.", 404)
+        return where
     if not (re.fullmatch(SET_ID, where) or is_book(where)):
         raise _fail("Некоректний запит.")
     if is_book(where):
@@ -215,6 +232,8 @@ def valid_slide(slide: str) -> str:
 
 
 def scene_path(where: str, slide: str) -> Path:
+    if scheme_of(where):
+        return scheme_dir(scheme_of(where)) / f"{slide}.json"
     if where == TEMPLATE:
         ensure_schemes()
         return SCHEMES / (default_scheme() or "nature") / f"{slide}.json"
@@ -250,7 +269,7 @@ def load(where: str, slide: str) -> tuple[dict, str]:
         if scene is not None:
             return scene, _version(path)
         core.log.warning("Slides: %s is damaged — its template is shown", path)
-    return (template(slide) if where != TEMPLATE else factory(slide)), ""
+    return (template(slide) if not is_plain(where) else factory(slide)), ""
 
 
 def check(scene) -> dict:
@@ -286,7 +305,7 @@ def save(where: str, slide: str, scene: dict, base: str | None) -> str:
 def reset(where: str, slide: str) -> tuple[dict, str]:
     """«Скинути слайд»: a book's slide back to its scheme (the one put on it, else the default); the default scheme
     back to its first design."""
-    if where == TEMPLATE:
+    if is_plain(where):
         scene = factory(slide)
     else:
         key = read_set(where).get("scheme")
@@ -299,7 +318,7 @@ def reset(where: str, slide: str) -> tuple[dict, str]:
 
 def sig(where: str) -> str:
     """Changes anywhere in these slides (a scene, the set) — what the editor asks for every 1.5 s."""
-    folder = scene_path(TEMPLATE, "slide1").parent if where == TEMPLATE else set_dir(where)
+    folder = scene_path(where, "slide1").parent if is_plain(where) else set_dir(where)
     stamps = []
     for path in sorted(folder.rglob("*.json")) if folder.is_dir() else []:
         try:

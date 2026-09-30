@@ -2,7 +2,7 @@
 // the next step; I press it and they are made by themselves; then a button offers to go into our editor"). Above it,
 // how far the pictures without background are (cut while Photoshop works — studio/slides/cutout.py). The six are
 // made from the template (studio/slides/work.py); the editor is its own page, loaded only when opened (#/slides/…).
-import { api, post, html, ic, ib, setHtml, media, toast, runJob, fadeImages, plural, confirmBox } from '../lib.js';
+import { api, post, html, ic, ib, setHtml, media, toast, runJob, fadeImages, plural, confirmBox, menu } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 
 const SHOT_W = 480;
@@ -18,6 +18,8 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     error: '',
     cuts: null,       // {files: {name: state}, busy, noBg}
     folder: '',       // the folder the cuts are asked for
+    scheme: '',       // the scheme the six start from — chosen here, before they are made; '' = the default for new books
+    schemes: null,    // the schemes to choose from [{key, name, default}]
   };
   let gone = false, timer = 0;
   const $ = (sel) => view.querySelector(sel);
@@ -60,6 +62,14 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     if (line) setHtml(line, cutsLine());
   }
 
+  // ---------------------------------------------------------------- the scheme (2026-09-30: "a new listing — and I can pick the scheme at once")
+  async function loadSchemes() {
+    sl.schemes = [];
+    try { sl.schemes = (await api('/api/slides/presets?w=template')).presets.filter((x) => x.kind === 'scheme'); } catch { /* the editor still offers it */ }
+    if (!gone) paint();
+  }
+  const schemeNow = () => sl.schemes?.find((x) => x.key === sl.scheme) || sl.schemes?.find((x) => x.default) || null;
+
   // ---------------------------------------------------------------- the card
   function paint() {
     const b = box();
@@ -67,6 +77,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     const show = ready() || !!sl.result || !!sl.run;
     b.hidden = !show;
     if (!show) return;
+    if (sl.schemes === null) loadSchemes();
     if (folder() && folder() !== sl.folder) pollCuts();
     const head = html`<div class="row">${stepNo(4, !!sl.result)}<h3 class="card-title grow">Слайди для лістингу</h3>
       ${sl.result && !sl.run ? ib('regenerate', 'Зробити слайди заново — зі схеми (ваші правки цієї книги пропадуть)', 'data-act="sl-again"', { cls: 'sm' }) : ''}</div>`;
@@ -80,7 +91,8 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   }
 
   function offerHtml() {
-    return html`<p class="mk-plan">Шість квадратних картинок для Etsy — зі схеми для нових книг і мокапів цієї книги (схему можна змінити в редакторі).</p>
+    return html`${sl.schemes?.length > 1 ? html`<button type="button" class="btn btn-block" data-act="sl-scheme" data-tip="Шість квадратних картинок для Etsy почнуться з цієї схеми; потім їх можна правити в редакторі">
+        ${ic('template', 'icon-s')}<span class="truncate">Схема: ${schemeNow()?.name || '—'}</span>${ic('chevDown', 'icon-s')}</button>` : ''}
       <div class="sl-nums">
         <label class="field"><span class="field-label">Сторінок</span><input class="input num" type="number" min="1" max="999" data-num="pages" value="${sl.numbers.pages}"></label>
         <label class="field"><span class="field-label">Віршів</span><input class="input num" type="number" min="1" max="999" data-num="poems" value="${sl.numbers.poems}"></label>
@@ -132,7 +144,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     busy(true);
     const order = [...(st.result?.saved || []), ...(st.finished?.saved || [])];
     try {
-      const res = await runJob(post('/api/slides/make', { folder: folder(), workshop: book(), order, book: st.book?.id || '', numbers: sl.numbers, fresh }), (job) => {
+      const res = await runJob(post('/api/slides/make', { folder: folder(), workshop: book(), order, book: st.book?.id || '', numbers: sl.numbers, fresh, scheme: sl.scheme || undefined }), (job) => {
         if (gone || !sl.run) return;
         Object.assign(sl.run, { step: job.step, percent: job.percent, rows: job.partial?.rows || sl.run.rows });
         patchRun();
@@ -193,6 +205,11 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   // ---------------------------------------------------------------- events (from mockups.js's one listener)
   async function act(a, t) {
     if (a === 'sl-make') { make(); return true; }
+    if (a === 'sl-scheme') {
+      menu(t, (sl.schemes || []).map((x) => ({ label: `${x.name}${x.default ? ' · для нових книг' : ''}`, icon: 'template', on: x.key === schemeNow()?.key,
+        onClick: () => { sl.scheme = x.default ? '' : x.key; paint(); } })));
+      return true;
+    }
     if (a === 'sl-edit') { edit(t.dataset.slide); return true; }
     if (a === 'sl-view') { view_(+t.dataset.i); return true; }
     if (a === 'open-nobg') { post('/api/mockups/open-folder', { path: t.dataset.path }).catch((err) => toast(err.message, 'error')); return true; }
@@ -215,6 +232,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     wake() { refresh(); if (folder()) pollCuts(); },
     runStarted() { sl.folder = ''; },   // a new Photoshop run: its pictures' cut-outs are followed again
     keep: () => !!(sl.run || sl.result),
+    running: () => !!sl.run,
     reset() { Object.assign(sl, { run: null, result: null, error: '', cuts: null, folder: '' }); clearTimeout(timer); paint(); },
     stop() { gone = true; clearTimeout(timer); },
   };

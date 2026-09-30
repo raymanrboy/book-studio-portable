@@ -29,8 +29,7 @@ without that check.
 
 ## The rail: Orders, Books, Profit, Tools
 
-The icon rail on the left (Alt+1…4; the last icon, or Ctrl+K, is the search; the brand mark at the top opens «Сьогодні» — what
-needs you now). **Orders** (orange, like Etsy) holds everything below; **Books** (blue) holds the **Workshop** — new books in development: the agents in Antigravity
+The icon rail on the left (Alt+1…4; the last icon, or Ctrl+K, is the search; the brand mark at the top is only the logo). **Orders** (orange, like Etsy) holds everything below; **Books** (blue) holds the **Workshop** — new books in development: the agents in Antigravity
 write a book (the pipeline — the `pipeline/` folder), the Workshop shows its path, puts every prompt into the
 clipboard and catches the picture downloaded from Gemini into its row; passed to the library with their Etsy
 listing — the library and the archive; the **Mockups** and the other tools are under **Tools**. Book Studio always opens in Orders. More — [the wiki](../wiki/features/workshop.md).

@@ -4,7 +4,6 @@
 
 /** The places of the rail — for the search. */
 export const PLACES = [
-  { label: 'Сьогодні', sub: 'Що чекає на вас', icon: 'checkCircle', hash: '#/today', words: 'що робити зараз завдання' },
   { label: 'Замовлення', sub: 'Черга замовлень Etsy', icon: 'inbox', hash: '#/orders', words: 'черга нові etsy' },
   { label: 'Книги', sub: 'Майстерня · бібліотека · архів', icon: 'shelf', hash: '#/books', words: 'бібліотека майстерня паспорт' },
   { label: 'Майстерня', sub: 'Книги · нові книги в розробці', icon: 'workshop', hash: '#/books/work', words: 'майстерня нова книга агент' },

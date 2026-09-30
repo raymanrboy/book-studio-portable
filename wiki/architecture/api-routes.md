@@ -213,7 +213,7 @@ Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a 
 | GET | `/media/slides/file/([^/]+)/(books\|pictures)/([\w.-]+\.png)` | media | `_file` | engine.js (a set's — a Workshop book's or an older one's — cut-out book, its shadow, a flat picture) |
 | GET | `/api/slides/sig` | token | `_sig` | slides-editor.js `watch` every 1.5 s (a scene changed by an agent shows up) |
 | POST | `/api/slides/scene` | token | `_save` | slides-editor.js `flush` (`{w, s, scene, base}` — a stale `base` → 409 with the scene as it is now) |
-| POST | `/api/slides/reset` | token | `_reset` | slides-editor.js «Скинути слайд» |
+| POST | `/api/slides/reset` | token | `_reset` | no longer the editor's button since 2026-09-30 (it resets in the session — see [slides](../features/slides.md)); kept for agents |
 | GET | `/api/slides/presets` | token | `_presets` | slides-editor.js «Схема ▾» (the schemes and the other Workshop books' slides, the one put on, the default) |
 | POST | `/api/slides/apply` | token | `_apply` | slides-editor.js — a scheme (or `book:<id>`) put on all six (`{w, key}`) |
 | POST | `/api/slides/save-scheme` | token | `_save_scheme` | slides-editor.js «Зберегти ці слайди як схему…» (`{w, name, default}`) |

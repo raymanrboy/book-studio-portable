@@ -21,6 +21,16 @@ export function unstash(hash) {
   pages.delete(hash);
   return page;
 }
+/** A tool opened from «Інструменти» starts clean (2026-09-30, the owner): what was kept of it goes — unless the page says it still
+ *  has live work (a Photoshop run, templates waiting for the owner's save). A page that belongs to an object (an order's Order
+ *  Creator) is left kept for that object and the tool opens a clean one beside it: returns true then. */
+export function startOver(hash) {
+  const page = pages.get(hash);
+  if (!page) return false;
+  if (page.ctrl?.belongsToObject?.()) return true;
+  if (page.ctrl?.canStartOver?.() !== false) release(hash);
+  return false;
+}
 export function release(hash) {
   const page = unstash(hash);
   try { page?.ctrl?.unmount?.(); } catch (err) { console.error(err); }

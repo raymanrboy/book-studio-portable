@@ -9,6 +9,31 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-30 (later) — «Сьогодні» removed; tools open clean
+
+- **The owner**: «"Сьогодні" можна повністю видалити як функцію» — done: the page, its route, the brand mark's link, its search entry and the helper
+  that opened the queue on a tab are deleted; the brand mark is only the logo. (The earlier decision below is history.)
+- **The owner**: a tool opened from «Інструменти» must open **clean every time**. Decided: entering a tool from the list drops what was kept of it
+  (`keep.js` `startOver()`), except live work — a Photoshop run or templates waiting for his save (`canStartOver()` in the Mockups), a send in progress;
+  an order's own Order Creator stays kept for that order and the tool opens a clean one beside it (`belongsToObject()`).
+
+## 2026-09-30 (the answer about the presets) — schemes inside the editor and before the six are made
+
+- **The owner**: "Night or Nature must be inside the editor, so that for a new listing I can pick the scheme at once." **Decided**: (1) a scheme is edited
+  in place by its key (`where = scheme:<key>`; 27 slides tests + a new one) and the standalone editor's «Схема» button picks which one; (2) the Mockups'
+  step 4 gets the same choice before «Зробити слайди» (the server already took `scheme`). The default scheme and `template` stay as they were.
+
+## 2026-09-30 (after the owner's first look at the real data) — the tools on their own, the slide reset, a column that trapped the wheel
+
+- **The owner**: the wheel did not scroll the page over the order card's white cards; a tool opened from «Інструменти» had no way back and the rail's
+  «Інструменти» went to the tool last used; the slides' back arrow paged through the slides' history; «Скинути слайд» went to a months-old
+  default; the Mockups always showed a «Книга» selector. **Decided**: the data column is never a scroller (bottom-sticky when taller than the
+  window); «Інструменти» always opens the list and a tool opened on its own has an arrow to it; the slides' back goes to where the owner came
+  from and the reset returns the slide **to how it was when the editor was opened** (no question, Ctrl+Z); the Mockups take a book only when it is
+  a book's step or asked for with an icon — otherwise they ask for a folder.
+- **Not done yet — a question to the owner**: a «presets» selector in the standalone slides editor; and a slower start could not be reproduced
+  (the server starts in 2.40 s both before and after; the page's requests are the same on made-up data) — it needs his description.
+
 ## 2026-09-30 (the very last) — Wave 8: a drop anywhere, a picture that comes back, a keyboard that works
 
 - **The owner**: "do wave eight." **Decided**: (1) a file dropped outside a page's own field is accepted over the whole window and

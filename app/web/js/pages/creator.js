@@ -1,7 +1,7 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
   api, post, html, ic, ib, setHtml, on, media, toast, runJob, segHtml, syncSeg, setSeg, bytes, copyText, openExternal,
-  debounce, keepFocus, fadeImages, setProgress, patch, enterOnce, confirmChecked, markMissing,
+  debounce, keepFocus, fadeImages, setProgress, patch, enterOnce, confirmChecked, markMissing, backToTools,
 } from '../lib.js';
 import { openFolderViewer } from '../folder-viewer.js';
 import {
@@ -127,7 +127,7 @@ export async function mount(view) {
     const printer = pr ? 'Printify' : 'Gelato';
     $('#cr-title-h').textContent = st.receiptId ? (st.buyer || `#${st.receiptId}`) : 'Order Creator';
     setHtml($('#cr-sub'), st.receiptId ? html`<span class="mono">#${st.receiptId}</span> · друк у ${printer}` : html`Друк у ${printer} з папки файлів`);
-    setHtml($('#cr-back'), st.receiptId ? html`<a class="back-link" href="#/orders/${st.receiptId}" aria-label="До замовлення" data-tip="До замовлення">${ic('arrowLeft')}</a>` : '');
+    setHtml($('#cr-back'), st.receiptId ? html`<a class="back-link" href="#/orders/${st.receiptId}" aria-label="До замовлення" data-tip="До замовлення">${ic('arrowLeft')}</a>` : backToTools());
     const made = !!cur().result;
     setHtml($('#cr-path'), st.receiptId ? pathHtml([
       { key: 'canva', label: 'Canva', icon: 'canva', state: 'done' }, { key: 'files', label: 'Файли', icon: 'folderIn', state: 'done' },
@@ -685,6 +685,8 @@ export async function mount(view) {
     get receiptId() { return st.receiptId; },
     navFor: () => (st.receiptId ? '#/orders' : null),
     keep: () => !!st.receiptId && !finished,
+    belongsToObject: () => !!st.receiptId,   // an order's own work stays kept for that order; «Інструменти» opens a clean Creator beside it
+    canStartOver: () => !st.printify.running && !st.gelato.running,
     async revive() {
       const o = await api(`/api/orders/${st.receiptId}`);
       return o.stage === 'new';

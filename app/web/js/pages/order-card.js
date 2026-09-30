@@ -4,7 +4,7 @@
 // to another tab and comes back as it was left (keep.js). The queue — orders.js.
 import {
   api, post, html, ic, ib, raw, esc, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
-  openExternal, runJob, fadeImages, plural, confirmBox, patch, escBack, notFound,
+  openExternal, runJob, fadeImages, plural, confirmBox, patch, escBack, notFound, stickyFit,
 } from '../lib.js';
 import { openFolderViewer, pageNo } from '../folder-viewer.js';
 import {
@@ -632,6 +632,7 @@ export async function mountCard(view, rid) {
   }
 
   // ---------------------------------------------------------------- events
+  const stopFit = stickyFit(view.querySelector('#oc-data'));
   const offs = [
     on(view, 'click', '[data-act]', (e, t) => {
       const a = t.dataset.act;
@@ -692,6 +693,6 @@ export async function mountCard(view, rid) {
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
     idle: () => !(work.some((w) => w.folder || w.busy || w.label) || sentOf(o.receiptId)),
-    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); esc(false); },
+    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopFit(); esc(false); },
   };
 }

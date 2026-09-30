@@ -69,10 +69,17 @@ module called only when needed") with its own styles (`css/slides.css`, linked b
 «Мокапи» lit; ← goes back where it came from (the Workshop book or the Mockups). Book Studio's look: its tokens and both themes, the Listings'
 cyan, `ib()` icons with tooltips.
 
-- **The bar**: back · «Слайди» with the book's name · the segmented **1–6** · undo / redo · «Скинути слайд» (a book's
-  slide → its scheme; the default scheme → its first design) · **«Схема: Night ▾»** — the schemes (the default marked
+- **The bar**: back · «Слайди» with the book's name · the segmented **1–6** · undo / redo · «Повернути слайд» (since 2026-09-30 — **back to how the slide was when the editor was opened**; a session lives only
+  while the owner stays in the editor, flipping between the six keeps it; nothing older; no question, Ctrl+Z undoes it; «nothing
+  changed» says so — before, it went to the scheme / the first design, months back) · back leads to where he came in from
+  (the Mockups, a Workshop book, the tools) — not through the browser's history of every slide flipped · **«Схема: Night ▾»** — the schemes (the default marked
   «для нових книг») and the other Workshop books' slides as presets ("e.g. another bedtime book"): a click puts one on
-  all six (asks first; the book's mockups and numbers stay); «Зберегти ці слайди як схему…» (a name — the same name
+  all six (asks first; the book's mockups and numbers stay). **Opened on its own, from «Інструменти», the same button picks which
+  scheme the editor edits** (since 2026-09-30, the owner: "Night or Nature must be inside the editor"): a scheme is edited in place
+  by its key — `where` = `scheme:night` (route `#/slides/scheme:night/1`; `template` is still the default scheme); choosing one opens it,
+  back still leads to where he came in from; «Нові книги — зі схеми …» makes the open one the default. **Before the six are made**
+  (the Mockups' step 4) the same choice is a button above the numbers — «Схема: Nature ▾» — and the six start from it (`scheme` in
+  `POST /api/slides/make`); «Зберегти ці слайди як схему…» (a name — the same name
   replaces that scheme; «Нові книги починаються з цієї схеми»); «Нові книги — зі схеми «…»» · the saved state («Збережено», «Не збереглось», «Малюю 3 з 6») ·
   **«Зберегти картинки»** (a book only: the six baked again into the same `Listing N.png` in `etsy\`, the Mockups' card shows them).
 - **Layers** (left, the top one in front): the kind's glyph, the name, the lock and 👁 on hover (a freed element's open

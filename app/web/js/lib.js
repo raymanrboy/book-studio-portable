@@ -221,6 +221,21 @@ export async function copyText(text, label = 'Скопійовано') {
   }
 }
 
+/** The way back from a tool that was opened on its own, from «Інструменти» (2026-09-30). */
+export const backToTools = () => html`<a class="back-link" href="#/tools" aria-label="До інструментів" data-tip="До інструментів">${ic('arrowLeft')}</a>`;
+
+/** A sticky column taller than the window sticks by its bottom, not its top (2026-09-30): the page scrolls on until the column's
+ *  end shows, then it stays — no scroller of its own for the wheel to get stuck in. Returns a function that stops watching. */
+export function stickyFit(el, gap = 16) {
+  if (!el) return () => {};
+  const fit = () => { const box = el.closest('.main') || document.documentElement; el.style.top = `${Math.min(gap, box.clientHeight - el.offsetHeight - gap)}px`; };
+  const ro = new ResizeObserver(fit);
+  ro.observe(el);
+  window.addEventListener('resize', fit);
+  fit();
+  return () => { ro.disconnect(); window.removeEventListener('resize', fit); };
+}
+
 // ------------------------------------------------------------------ toasts
 /** `undo: {label, run}` (2026-09-30): a «Скасувати» on the toast — only for an action the program can really take back
  *  (a book moved to the library's trash), never a promise it cannot keep. It stays longer than a plain message. */

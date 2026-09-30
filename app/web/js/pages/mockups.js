@@ -8,7 +8,7 @@
 // run is on, and a notice says when it ends.
 import {
   api, post, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered,
-  remember, setProgress, patch, tellBusy,
+  remember, setProgress, patch, tellBusy, backToTools,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { store } from '../info.js';
@@ -51,10 +51,13 @@ export async function mount(view) {
   st.pending = st.meta.pending || null;
   const bookById = (id) => (st.meta.books || []).find((b) => b.id === id) || null;
   // The Workshop's «Мокапи» step sends its book here (remember(FOR_BOOK) — a kept page takes it on revive()).
-  function takeWorkshopBook() {
+  // A book is the destination only when the owner asked for one — from the Workshop's step, or with the small book icon of
+  // «Куди зберегти» (`force`); on its own the page asks for a folder when it runs (2026-09-30: it used to pick the last or the
+  // first Workshop book by itself, so a standalone run could fill some book's folder).
+  function takeWorkshopBook(force = false) {
     const asked = remembered(FOR_BOOK, null);
     if (asked) remember(FOR_BOOK, null);
-    const pick = (asked && bookById(asked.id)) || (!st.workshop && !st.out
+    const pick = (asked && bookById(asked.id)) || (force && !st.workshop && !st.out
       && (bookById(remembered(LAST_BOOK, '')) || (st.meta.books || [])[0])) || null;
     if (!pick || (asked && st.run)) return false;
     const changed = st.workshop?.id !== pick.id;
@@ -74,7 +77,7 @@ export async function mount(view) {
   function paintBack() {
     const back = $('#mk-back'), sub = $('#mk-sub');
     if (!back || !sub) return;
-    setHtml(back, fromBook ? html`<a class="back-link" href="#/workshop/${encodeURIComponent(fromBook.id)}" aria-label="До книги" data-tip="До книги">${ic('arrowLeft')}</a>` : '');
+    setHtml(back, fromBook ? html`<a class="back-link" href="#/workshop/${encodeURIComponent(fromBook.id)}" aria-label="До книги" data-tip="До книги">${ic('arrowLeft')}</a>` : backToTools());
     setHtml(sub, fromBook ? html`Для книги <b>${fromBook.name}</b> · демо-книга з Canva → картинки для лістингу` : 'Демо-книга з Canva → картинки для лістингу Etsy');
   }
   let gone = false;
@@ -307,7 +310,7 @@ export async function mount(view) {
   function paintOut() {
     const last = st.meta.lastOut;
     const books = st.meta.books || [];
-    if (!st.out && books.length) {   // the Workshop book — its own folder «mockups», nothing asked
+    if (!st.out && st.workshop) {   // the Workshop book — its own folder «mockups», nothing asked
       setHtml($('#mk-s3'), html`
         <div class="row">${stepNo(2, !!st.workshop)}<h3 class="card-title grow">Книга</h3>
           ${st.workshop ? ib('folderOpen', 'Відкрити папку мокапів цієї книги', 'data-act="open-book-mockups"', { cls: 'sm' }) : ''}</div>
@@ -749,7 +752,7 @@ export async function mount(view) {
     if (act === 'pick-zip') { pickZip(); return; }
     if (act === 'pick-out') { if (!st.asking && !st.run) askFolder(false); return; }
     if (act === 'same-out') { st.out = st.meta.lastOut; paintOut(); paintMake(); return; }
-    if (act === 'to-book') { st.out = ''; takeWorkshopBook(); paintOut(); paintMake(); return; }
+    if (act === 'to-book') { st.out = ''; takeWorkshopBook(true); paintOut(); paintMake(); return; }
     if (act === 'open-book-mockups') {
       post('/api/workshop/open', { book: st.workshop.id, what: 'mockups' }).catch((err) => toast(err.message, 'error'));
       return;
@@ -833,6 +836,8 @@ export async function mount(view) {
   return {
     // Kept when the owner steps away while there is something to come back to: a book, a run, its result.
     keep: () => !!(st.book || st.run || st.result || st.finished || st.receiving !== null || slides.keep()),
+    // From «Інструменти» the page opens clean — except while Photoshop works for it or templates wait there for the owner's save.
+    canStartOver: () => !st.run && !st.pending && !slides.running(),
     navFor: () => (fromBook ? '#/books' : null),
     revive: () => {
       if (takeWorkshopBook()) { paintOut(); paintMake(); toast(`Мокапи — для ${st.workshop.name}`, 'info'); }

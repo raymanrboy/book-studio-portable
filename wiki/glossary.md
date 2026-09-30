@@ -45,7 +45,6 @@ Code paths below are relative to the repository root.
 | Записка (на форзаці) | The left half of the proof's first spread: the name and the buyer's fields | [order-card.js](../app/web/js/pages/order-card.js) `proofCard()`; CSS `.proof-note` in [orders.css](../app/web/css/orders.css) |
 | Стрічка, слайдер сторінок | The horizontal row of every spread in the proof | [order-card.js](../app/web/js/pages/order-card.js) `proofCard()`; [order-bits.js](../app/web/js/order-bits.js) `smoothWheel()` |
 | До друку | Handing the order off to the Order Creator | [order-card.js](../app/web/js/pages/order-card.js) `print()`; [handoff.js](../app/web/js/handoff.js) `give()` |
-| Сьогодні | The page the brand mark opens: what needs the owner now across every place (new orders, tracking to mark in Etsy, a Workshop book with mistakes or ready, services missing a key) | [today.js](../app/web/js/pages/today.js); [features/modes.md](features/modes.md) |
 | Скасувати (toast) | The button on a notice that takes the action back — offered only when it really restores (a library book from the trash) | [lib.js](../app/web/js/lib.js) `toast()`; [book.js](../app/web/js/pages/book.js) `deleteBook()` |
 | Order Creator | The book/draft creation page | [creator.js](../app/web/js/pages/creator.js) `mount()`; [creator/](../app/studio/creator/__init__.py) |
 | Чернетка Gelato | A Gelato order with `orderType: draft` | [creator/gelato_send.py](../app/studio/creator/gelato_send.py) `create_gelato_draft()` |

@@ -18,8 +18,6 @@ export function mount(view, [rid]) {
 // Where the owner was in the queue — the tab, the search, how far down: the card's back arrow (and Esc, the
 // Orders icon) bring him back there, not to «Нові» (owner, 19.09.2026). Memory only: the program starts at «Нові».
 const queueState = { stage: 'new', term: '', scroll: 0, visited: false };
-/** «Сьогодні» opens the queue on the tab it is about (2026-09-30). */
-export function openStage(stage) { queueState.stage = stage; queueState.term = ''; queueState.scroll = 0; }
 
 async function mountQueue(view) {
   let data;

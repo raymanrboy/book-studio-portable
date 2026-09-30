@@ -24,8 +24,9 @@ code:
 
 The page looks like the Order Creator (the owner: "exactly like Book Studio"): **numbered steps on the left**, the
 **demo book's structure on the right**. A done step's number turns into a ✓. **The page is kept when he steps away**:
-the book, the picks, a run and its result wait; a run going on elsewhere puts a cyan dot on «Інструменти», and a notice says
-when it ends.
+the book, the picks, a run and its result wait — but **only for a way back that is not the tools list**: a click on the tile in
+«Інструменти» opens it clean every time (2026-09-30, the owner), except while Photoshop works for it or templates wait there for his save;
+a run going on elsewhere puts a cyan dot on «Інструменти», and a notice says when it ends.
 
 **The demo book** comes in on the right: a dashed veil «Перетягніть сюди ZIP із Canva» — drop the ZIP (anywhere on the
 window), the unpacked folder or the pictures, or click for the Windows dialog (Downloads first, then where the last ZIP
@@ -39,8 +40,10 @@ is the dedication; the spreads `2–3`, `4–5`, …; page 30 is not offered.
    says where the next click goes); drag a spread onto a slot, or a slot onto another (they swap); × / Delete empties;
    the eraser empties all; the magnifier opens a spread large. **A book dropped in again gets its picks back** (the
    last 12, `localStorage`).
-2. **Книга** — the Workshop's books, newest first (the one the Workshop's «Мокапи» step sent — `mk-for-book` — else the
-   last chosen): its `mockups\` takes the pictures and their cut-outs — **no dialog** (the owner: "don't ask where").
+2. **Книга** — shown **only when the page is a book's step** (the Workshop's «Мокапи» step sent one — `mk-for-book` — or the
+   owner pressed the small book icon of «Куди зберегти»); opened from «Інструменти» it asks for a folder when it runs, and
+   never fills a Workshop book's folder by itself (until 2026-09-30 it chose the last or the first book on its own). The
+   Workshop's books, newest first: its `mockups\` takes the pictures and their cut-outs — **no dialog** (the owner: "don't ask where").
    For such a book the run also keeps **the Canva cover** as `mockups\canva-cover.*` (`_keep_canva_cover()`) and copies
    Cover & Open 1 and All & Open 1 into its **`etsy\`** once saved (`_to_etsy()`) — see [photo mockups](photo-mockups.md);
    its «Мокапи» step ticks itself (`_ticked()`). «Інша папка…» gives the folder field and dialog instead.
@@ -55,7 +58,7 @@ is the dedication; the spreads `2–3`, `4–5`, …; page 30 is not offered.
      copies removed. Saving by hand still works. A reloaded window offers the button again (`pending()`).
    - **The book's cover opens beside them** (the owner: "so I can work with it at once") — the Canva cover as
      `Cover.png`; «Зберегти відкриті» closes it only when unchanged (`doc.saved`).
-4. **Слайди для лістингу** — «Без фону · 5/6», the book's numbers, **«Зробити слайди»**, the six with ✎, «Відкрити в
+4. **Слайди для лістингу** — «Без фону · 5/6», **«Схема: Nature ▾»** (pick the scheme the six start from — Nature, Night, his own; since 2026-09-30), the book's numbers, **«Зробити слайди»**, the six with ✎, «Відкрити в
    редакторі» — see [slides](slides.md).
 4a. **The Photoshop card's summary is two counting chips** (since the late evening of 2026-09-30 — a paragraph before): a picture
    icon with the number Photoshop saves itself, a hand with the number of templates it leaves open for the owner; the

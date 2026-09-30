@@ -3,7 +3,7 @@
 // after the order became "shipped" (studio/archive.py); "Не видаляти" keeps a book until unmarked.
 import {
   api, post, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural,
-  patch, enterOnce, escBack, notFound,
+  patch, enterOnce, escBack, notFound, backToTools,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
@@ -47,7 +47,7 @@ async function mountList(view) {
   let term = '', shown = [];
   const count = data.entries.length;
   setHtml(view, html`
-    <div class="page-head"><div><h1 class="page-title">Архів друку</h1>
+    <div class="page-head">${backToTools()}<div><h1 class="page-title">Архів друку</h1>
       <div class="page-sub">${count ? `${count} ${plural(count, ['книга', 'книги', 'книг'])}` : ''}</div></div></div>
     ${count ? html`<div class="lib-toolbar"><div class="input-group">${ic('search')}<input class="input" id="ar-q" placeholder="Ім'я, номер чека або назва" aria-label="Пошук в архіві" autocomplete="off"></div></div>` : ''}
     <div class="ord-list" id="ar-list"></div>

@@ -7,7 +7,6 @@ code:
   - app/web/js/places.js
   - app/web/js/palette.js
   - app/web/js/pages/tools.js
-  - app/web/js/pages/today.js
   - app/web/js/pages/books.js
 ---
 # The rail: places, tools and search
@@ -20,12 +19,13 @@ code:
 ## How the owner uses it
 
 - **The rail, top to bottom** (**icons only** since the evening of 2026-09-30 — the owner: "show, don't tell"; the
-  words under the icons were tried for a few hours): the brand mark (opens «Сьогодні») · **Замовлення** (Alt+1) ·
+  words under the icons were tried for a few hours): the brand mark (only the logo) · **Замовлення** (Alt+1) ·
   **Книги** (Alt+2) · **Прибуток** (Alt+3) · a gap · **Інструменти** (Alt+4) · a gap · **Пошук** (Ctrl+K — the *last* of the
   list, the owner's wish) · at the bottom **Налаштування** (the dot when a service misses a key or a sign-in) and the
   theme. A tooltip names the place and its key; the page's title says where he is.
 - **A click on a place** goes back to where the owner was under it (the order card while it's kept, the book he
-  had open); a second click on the place he is in goes to its start (the queue, the gallery, the tools).
+  had open); a second click on the place he is in goes to its start (the queue, the gallery); **«Інструменти» always opens the list**, never the tool last
+  used (2026-09-30). A tool opened on its own has a back arrow to the list (`backToTools()`); opened from an object — to that object.
 - **The ink follows the area**: orange for the orders, the profit, the order tools and Settings; cyan for the books
   and the book tools (the Mockups, the photo mockups, the slides). The brand square takes the ink of where he is.
   Book Studio always starts in the orders.
@@ -41,10 +41,6 @@ code:
   **It also does** (since 2026-09-30, night): «Мокапи · №41», «Слайди · №41» for every book still in the Workshop — the
   verb and the object in a few letters ("мокапи 41" → Enter: the Mockups open with that book chosen). Only ways in: nothing
   is sent, changed or written from here.
-- **«Сьогодні»** (`#/today`, the brand mark): what needs the owner now, across every place, as a short list of rows (a
-  picture, a few words, a count) — new orders, the tracking numbers to mark in Etsy (opens that tab), a Workshop book whose
-  prompts check found mistakes (red) or which is ready for the library, services missing a key. Nothing listed that doesn't
-  need him; empty, it says all is well. It only reads — it never starts a sync.
 - **The first Tab** is «Перейти до вмісту»: past the rail straight to the page (15 presses to the first order before).
 - **Work going on elsewhere is never missed**: a mockups run in Photoshop puts a cyan dot on «Інструменти», a picture
   the Workshop waits for — on «Книги» (hidden while he is on that page); the window's title says what is awaited
@@ -77,7 +73,6 @@ mockups), switched by the brand icon (Alt+0); each mode its rail and ink. The in
 - [app/web/js/places.js](../../app/web/js/places.js) — `PLACES`, `TOOLS`, `SETTINGS`
 - [app/web/js/palette.js](../../app/web/js/palette.js) — `openPalette()`
 - [app/web/js/pages/tools.js](../../app/web/js/pages/tools.js) — `mount()`
-- [app/web/js/pages/today.js](../../app/web/js/pages/today.js) — `mount()`
 - [app/web/js/pages/books.js](../../app/web/js/pages/books.js) — «Книги» ([library](library.md), [workshop](workshop.md))
 - [app/web/js/info.js](../../app/web/js/info.js) — `store` (`here`, `from`)
 - [app/web/css/app.css](../../app/web/css/app.css) — `.nav-item`, `.nav-label`, `.skip-link`, `[data-mode="listings"]` tokens, `.pal-*`, `.tool-*`

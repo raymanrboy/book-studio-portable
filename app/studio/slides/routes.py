@@ -33,7 +33,7 @@ def _url(set_id: str, part: str, name: str) -> str:
 def assets(where: str) -> dict:
     """What the drawing needs besides the scene: the books in their slots (the picture, its shadow, where the book sits
     in it), the flat pictures, the numbers. The template is shown with the newest book's pictures."""
-    set_id = where if where != store.TEMPLATE else store.newest_set()
+    set_id = where if not store.is_plain(where) else store.newest_set()
     if not set_id:
         return {"set": None, "books": {}, "pictures": {}, "numbers": dict(store.NUMBERS)}
     rec = store.read_set(set_id)
@@ -47,11 +47,11 @@ def assets(where: str) -> dict:
 
 
 def _view(where: str) -> dict:
-    rec = store.read_set(where) if where != store.TEMPLATE else None
+    rec = store.read_set(where) if not store.is_plain(where) else None
     busy = jobs.running(EXCLUSIVE)
-    key = (rec or {}).get("scheme") or ("" if rec else store.default_scheme())
+    key = (rec or {}).get("scheme") or ("" if rec else (store.scheme_of(where) or store.default_scheme()))
     return {
-        "where": where, "name": rec.get("name") if rec else f"Схема {store.scheme_name(key)}",
+        "where": where, "name": rec.get("name") if rec else f"Схема {store.scheme_name(key)}", "defaultScheme": store.default_scheme(),
         "folder": rec.get("folder") if rec else "", "book": where if store.is_book(where) else None,
         "scheme": {"key": key, "name": store.scheme_name(key) if key and not key.startswith(store.BOOK_PRESET) else
                    (key[len(store.BOOK_PRESET):] if key else "")},
@@ -117,15 +117,15 @@ def _presets(req: Request):
     """The schemes (Nature, Night, the owner's own) and the other Workshop books' slides — what the editor's «Схема»
     offers to put on these six slides."""
     where = _where(req)
-    return {"presets": store.presets(exclude=where), "current": (store.read_set(where).get("scheme") if where != store.TEMPLATE
-            else store.default_scheme()), "default": store.default_scheme()}
+    return {"presets": store.presets(exclude=where), "current": (store.read_set(where).get("scheme") if not store.is_plain(where)
+            else (store.scheme_of(where) or store.default_scheme())), "default": store.default_scheme()}
 
 
 @route("POST", "/api/slides/apply")
 def _apply(req: Request):
     body = req.json or {}
     where, key = _where(req, body), str(body.get("key") or "")
-    if where == store.TEMPLATE:
+    if store.is_plain(where):
         raise ApiError("Схему кладуть на слайди книги.")
     store.apply_preset(where, key)
     core.log.info("Slides: %s put on the slides of %s", key, where)
@@ -151,7 +151,7 @@ def _default_scheme(req: Request):
 def _numbers(req: Request):
     body = req.json or {}
     where = _where(req, body)
-    if where == store.TEMPLATE:
+    if store.is_plain(where):
         raise ApiError("Числа — у слайдах книги.")
     rec = store.read_set(where)
     for key in store.NUMBERS:
@@ -170,7 +170,7 @@ def _picture(req: Request):
     body = req.json or {}
     where = _where(req, body)
     slot = str(body.get("slot") or "")
-    if where == store.TEMPLATE or slot not in store.PICTURE_SLOTS:
+    if store.is_plain(where) or slot not in store.PICTURE_SLOTS:
         raise ApiError("Некоректний запит.")
     path = desktop.pick_file(f"Картинка для «{store.SLOT_LABEL[slot]}»", "")
     if not path:
@@ -253,7 +253,7 @@ def _make(req: Request):
 def _bake(req: Request):
     body = req.json or {}
     where = _where(req, body)
-    if where == store.TEMPLATE:
+    if store.is_plain(where):
         raise ApiError("Запікаються слайди книги, не шаблон.")
     slides = [_slide(s) for s in body.get("slides") or store.SLIDES]
     rec = store.read_set(where)

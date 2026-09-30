@@ -2,7 +2,7 @@
 import {
   post, html, ic, setHtml, on, TOKEN, toast, syncSeg, reducedMotion, idle, menu, closeMenu, hideTip,
 } from './lib.js';
-import { isKept, stash, unstash, release } from './keep.js';
+import { isKept, stash, unstash, release, startOver } from './keep.js';
 import { waiting } from './handoff.js';
 import { installDropAnywhere } from './drop-anywhere.js';
 import { store, refreshInfo, whenInfoChanges } from './info.js';
@@ -68,7 +68,7 @@ function buildSidebar() {
   // place and its key. Search is the last of the list, not the first.
   setHtml(document.getElementById('sidebar'), html`
     <button class="skip-link" id="skip" type="button">Перейти до вмісту</button>
-    <a class="brand-mark" id="brand" href="#/today" aria-label="Сьогодні — що чекає на вас" data-tip="Сьогодні" data-tip-side="right">${ic('spread')}<span class="brand-busy" id="brand-busy" hidden></span></a>
+    <div class="brand-mark" id="brand" aria-hidden="true">${ic('spread')}<span class="brand-busy" id="brand-busy" hidden></span></div>
     <nav class="nav" id="nav" aria-label="Розділи">
       <span class="nav-pill" id="nav-pill" style="opacity:0"></span>
       ${PLACES.map((n) => n.gap ? html`<span class="nav-gap" aria-hidden="true"></span>`
@@ -90,6 +90,7 @@ function buildSidebar() {
 function entryOf(p, here) {
   if (here) return p.hash;
   if (p.hash === '#/orders') return ordersTarget();
+  if (p.hash === '#/tools') return p.hash; // the tools are a list to choose from, never the tool last used (2026-09-30)
   return lastIn[p.hash] || p.hash;
 }
 
@@ -207,7 +208,6 @@ const ROUTES = [
   [/^#\/books(?:\/(work|shop|archive))?\/?$/, () => import('./pages/books.js'), 'listings'],
   [/^#\/book\/([0-9a-f]{32})$/, () => import('./pages/book.js'), 'listings'],
   [/^#\/tools\/?$/, () => import('./pages/tools.js'), 'orders'],
-  [/^#\/today\/?$/, () => import('./pages/today.js'), 'orders'],
   [/^#\/creator\/?$/, () => import('./pages/creator.js'), 'orders'],
   [/^#\/archive(?:\/(\d{8}-\d{6}-[0-9a-f]{6}))?\/?$/, () => import('./pages/archive.js'), 'orders'],
   [/^#\/profit\/?$/, () => import('./pages/profit.js'), 'orders'],
@@ -216,7 +216,7 @@ const ROUTES = [
   [/^#\/mockups\/?$/, () => import('./pages/mockups.js'), 'listings'],
   [/^#\/photos\/?$/, () => import('./pages/photos.js'), 'listings'],
   // the slides' editor: its own module, loaded only when opened (the owner, 29.09.2026) — not warmed up below
-  [/^#\/slides\/(template|\d{8}-\d{6}-[0-9a-f]{6}|\d{1,5}\.[^/]+)\/([1-6])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
+  [/^#\/slides\/(template|scheme:[a-z0-9-]+|\d{8}-\d{6}-[0-9a-f]{6}|\d{1,5}\.[^/]+)\/([1-6])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
 ];
 // The two galleries became one «Книги» (2026-09-30): their old addresses still lead there.
 const ALIASES = [[/^#\/library\/?$/, '#/books/shop'], [/^#\/workshop\/?$/, '#/books/work']];
@@ -254,7 +254,9 @@ async function navigate() {
 
   let view = null, ctrl = null, scroll = 0, inner = [];
   if (waiting(hash.slice(2).split('/')[0])) release(hash);
-  const saved = unstash(hash);
+  // From the list of tools a tool opens clean, never as it was left (an order's kept Order Creator stays for its order).
+  const aside = !waiting(hash.slice(2).split('/')[0]) && store.here === '#/tools' && startOver(hash);
+  const saved = aside ? null : unstash(hash);
   if (saved) {
     let alive = false;
     try { alive = (await saved.ctrl?.revive?.()) !== false; } catch (err) { console.error(err); }

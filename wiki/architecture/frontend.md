@@ -64,7 +64,8 @@ code:
   screen and swaps them with one View Transition — no empty frames.
 - `unmount()` must remove every listener (`on()` returns an unsubscribe function) and timer.
 - **Saving work on an order** (since 2026-09-18, the owner's wish; `keep.js`): a controller can also
-  have `keep()`, `hidden()`, `revive()` and `receiptId`. If `keep()` returns true when leaving the page,
+  have `keep()`, `hidden()`, `revive()`, `receiptId`, and since 2026-09-30 `canStartOver()` / `belongsToObject()` (a tool opened from
+  «Інструменти» is never revived: `startOver()` drops what was kept — except live work, and an order's own Order Creator stays for its order). If `keep()` returns true when leaving the page,
   `navigate()` doesn't tear it down but hides it: it calls `hidden()` (release global listeners, like Esc
   in the card) and stores the view in `keep.js` along with the page's scroll position and any inner
   scrolling (the proof filmstrip, the right column). Returning to the same hash calls `revive()`
@@ -97,7 +98,7 @@ code:
 | External links | `openExternal()` — through the server, in the regular browser (Etsy is blocked) |
 | A compact switch | `segHtml(options, active, {compact: true})` — icons with counts; only the chosen one shows its word (`.seg-compact`, `.seg-label`); `countStages()` marks the to-do tab `.has` (its count takes the ink) |
 | What's missing | `markMissing(fields)` — a press that can't go on yet lights up the empty fields (an amber edge until typed in) and focuses the first; the button stays pressable and a notice says what's missing (since 2026-09-30) |
-| Notices | `toast()` (with `{undo: {label, run}}` — a «Скасувати» button, only for an action the program can really take back; 9 s), `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `confirmChecked()` (a warning and a box to tick before «Продовжити»; `act()` runs before it closes — the Etsy sign-in, the Printify manual approval), `menu()`, `closeMenu()`, `topLayer()` |
+| Notices | `backToTools()` (a tool opened on its own: the arrow to the list), `stickyFit()` (a sticky column taller than the window sticks by its bottom), `toast()` (with `{undo: {label, run}}` — a «Скасувати» button, only for an action the program can really take back; 9 s), `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `confirmChecked()` (a warning and a box to tick before «Продовжити»; `act()` runs before it closes — the Etsy sign-in, the Printify manual approval), `menu()`, `closeMenu()`, `topLayer()` |
 | The shell's dot | `tellBusy(detail)` — the `bs:busy` event: what runs (the mockups, the Workshop's generation) and how a run ended while the window was behind |
 | Detail pages | `escBack(hash, {fields})` — Esc back to the list when no dialog, viewer or menu (or, with `fields`, a text field) owns the key; returns `listen(yes)` for a kept page; `notFound(view, {back, backLabel, icon, title, text})` — the page that could not open (the order card, the archived book, the passport, the Workshop's book; since 2026-09-27) |
 | Segmented switch | `segHtml()`, `syncSeg()`, `setSeg()` |

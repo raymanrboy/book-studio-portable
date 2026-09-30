@@ -7,9 +7,16 @@
 import {
   api, post, html, ic, ib, setHtml, on, toast, runJob, menu, modal, confirmBox, segHtml, notFound, tellBusy,
 } from '../lib.js';
+import { store } from '../info.js';
 import {
   ready, setAssets, drawScene, drawElement, boxOf, elTransform, TSHADOW,
 } from '../slides/engine.js';
+
+// Where the owner came into the editor from, and how each slide looked when this editing session began (2026-09-30): the
+// way back leads there (the browser's history holds every slide he flipped through), and «Скинути» returns to that start —
+// a session lives only while he stays in the editor, so a slide is never reset to a default from months ago.
+let origin = '';
+const sessions = new Map();
 
 const CSS = '/css/slides.css';
 const SIG_EVERY = 1500;
@@ -95,12 +102,16 @@ export async function mount(view, [whereParam, nParam]) {
       ensureCss(), api(`/api/slides/state?w=${encodeURIComponent(where)}`), api(q('/api/slides/scene')),
       api(`/api/slides/assets?w=${encodeURIComponent(where)}`), ready()]);
   } catch (err) {
-    notFound(view, { back: '#/mockups', backLabel: 'До мокапів', icon: 'images', title: 'Слайди не відкрились', text: err.message });
+    notFound(view, { back: '#/tools', backLabel: 'До інструментів', icon: 'images', title: 'Слайди не відкрились', text: err.message });
     return null;
   }
   setAssets(assets);
   view.classList.add('se-view');
-  const isSet = where !== 'template';
+  if (!String(store.here || '').startsWith('#/slides/')) origin = store.here || '';   // a scheme picked inside the editor keeps the way out
+  if (!String(store.here || '').startsWith(`#/slides/${whereParam}/`)) sessions.delete(where);
+  const session = sessions.get(where) || sessions.set(where, {}).get(where);
+  if (!(slide in session)) session[slide] = JSON.stringify(scene);
+  const isSet = where !== 'template' && !where.startsWith('scheme:');   // a book's slides; else a scheme edited on its own
   const st = { sel: -1, bg: false, past: [], future: [], saving: null, dirty: false, sig: info.sig, drag: null, live: null, S: 1,
     baking: null, others: [], pressed: null };
   let gone = false, sigTimer = 0, saveTimer = 0;
@@ -122,16 +133,16 @@ export async function mount(view, [whereParam, nParam]) {
       <button type="button" class="back-link" data-act="back" aria-label="Назад" data-tip="Назад">${ic('arrowLeft', 'icon-s')}</button>
       <div class="se-title">
         <h1 class="page-title">Слайди</h1>
-        <div class="page-sub truncate">${info.name}${isSet ? '' : ' · з неї починається кожна нова книга'}</div>
+        <div class="page-sub truncate">${info.name}${isSet || info.scheme?.key !== info.defaultScheme ? '' : ' · з неї починається кожна нова книга'}</div>
       </div>
       ${segHtml(info.slides.map((s, i) => ({ value: s.id, label: String(i + 1), tip: `${i + 1} · ${s.title}` })), slide, { accent: true, name: 'slide' })}
       <span class="grow"></span>
       <div class="tools">
         ${ib('undo', 'Назад', 'data-act="undo"', { kbd: 'Ctrl+Z' })}${ib('redo', 'Вперед', 'data-act="redo"', { kbd: 'Ctrl+Y' })}
         <span class="sep"></span>
-        ${ib('restore', isSet ? 'Скинути слайд — як у схемі' : 'Скинути слайд — як був намальований спершу', 'data-act="reset"')}
+        ${ib('restore', 'Повернути слайд, як він був, коли ви відкрили редактор', 'data-act="reset"')}
       </div>
-      ${isSet ? html`<button type="button" class="btn se-scheme" data-act="scheme" id="se-scheme">${ic('template', 'icon-s')}<span class="truncate">${schemeLabel()}</span>${ic('chevDown', 'icon-s')}</button>` : ''}
+      <button type="button" class="btn se-scheme" data-act="scheme" id="se-scheme">${ic('template', 'icon-s')}<span class="truncate">${schemeLabel()}</span>${ic('chevDown', 'icon-s')}</button>
       <span class="se-saved" id="se-saved"></span>
       ${isSet ? html`<button type="button" class="btn btn-primary" data-act="bake">${ic('download', 'icon-s')}Зберегти картинки</button>` : ''}
     </header>
@@ -533,7 +544,7 @@ export async function mount(view, [whereParam, nParam]) {
     ev.stopPropagation();
     if (a === 'undo') undo();
     else if (a === 'redo') redo();
-    else if (a === 'back') { flush(); if (history.length > 1) history.back(); else location.hash = '#/mockups'; }
+    else if (a === 'back') { flush(); location.hash = origin && !origin.startsWith('#/slides/') ? origin : '#/tools'; }
     else if (a === 'scheme') openSchemes(t);
     else if (a === 'lock' || a === 'eye') {
       const i = +t.dataset.i, e = items()[i], before = snapshot();
@@ -554,15 +565,12 @@ export async function mount(view, [whereParam, nParam]) {
       drawProps(); drawLayers(); commit(before);
     } else if (a === 'pick-picture') pickPicture(t.dataset.slot);
     else if (a === 'reset') {
-      const ok = await confirmBox({ title: 'Скинути слайд?', text: isSet ? `Слайд стане таким, як у схемі «${info.scheme?.name || ''}». Ctrl+Z поверне.` : 'Цей слайд схеми стане таким, як був намальований спершу. Ctrl+Z поверне.', confirm: 'Скинути' });
-      if (!ok || gone) return;
-      await flush();
-      try {
-        const r = await post('/api/slides/reset', { w: where, s: slide });
-        st.past.push(snapshot()); st.future = [];
-        scene = r.scene; version = r.version; st.sel = -1;
-        redrawAll(); paintSaved('ok', 'Скинуто');
-      } catch (err) { toast(err.message, 'error'); }
+      // Back to how this slide was when the editor was opened; Ctrl+Z undoes it, so no question (and nothing older than the session).
+      const start = session[slide];
+      if (!start || start === snapshot()) { toast('З моменту відкриття редактора цей слайд не змінювали', 'info'); return; }
+      st.past.push(snapshot()); st.future = [];
+      scene = JSON.parse(start); st.sel = -1;
+      redrawAll(); save(); paintSaved('ok', 'Повернуто');
     } else if (a === 'bake') bake();
   }));
 
@@ -629,6 +637,16 @@ export async function mount(view, [whereParam, nParam]) {
     if (gone) return;
     const schemes = r.presets.filter((x) => x.kind === 'scheme'), books = r.presets.filter((x) => x.kind === 'book');
     const current = schemes.find((x) => x.key === r.current);
+    if (!isSet) {   // on its own: pick which scheme is edited here — Nature, Night, his own (2026-09-30)
+      menu(anchor, [
+        ...schemes.map((x) => ({ label: `${x.name}${x.default ? ' · для нових книг' : ''}`, icon: 'template', on: x.key === r.current,
+          onClick: () => { flush(); location.hash = `#/slides/${x.default ? 'template' : `scheme:${x.key}`}/${n}`; } })),
+        '-',
+        { label: 'Зберегти ці слайди як схему…', icon: 'download', onClick: () => saveScheme(current, schemes) },
+        ...(current && !current.default ? [{ label: `Нові книги — зі схеми «${current.name}»`, icon: 'check', onClick: () => makeDefault(current).then(() => { location.hash = `#/slides/template/${n}`; }) }] : []),
+      ]);
+      return;
+    }
     menu(anchor, [
       ...schemes.map((x) => ({ label: `${x.name}${x.default ? ' · для нових книг' : ''}`, icon: 'template', on: x.key === r.current, onClick: () => applyScheme(x) })),
       ...(books.length ? ['-', ...books.map((x) => ({ label: x.name, icon: 'book', on: x.key === r.current, onClick: () => applyScheme(x) }))] : []),

@@ -233,6 +233,26 @@ class Scenes(Base):
         with self.assertRaises(ApiError):
             store.save_scheme(rec["id"], "   ")
 
+    def test_a_scheme_can_be_edited_in_place_by_its_key(self):
+        """2026-09-30: the standalone editor picks which scheme it edits (Nature, Night…), not only the default one."""
+        rec = store.new_set("Goose", str(self.root))
+        for slide in store.SLIDES:
+            store.save(rec["id"], slide, self.scene(text=f"night {slide}"), None)
+        store.save_scheme(rec["id"], "Night")
+        where = "scheme:night"
+        self.assertEqual(store.valid_where(where), where)
+        self.assertTrue(store.is_plain(where) and store.is_plain("template") and not store.is_plain(rec["id"]))
+        self.assertEqual(store.load(where, "slide2")[0]["items"][0]["text"], "night slide2")
+        version = store.load(where, "slide2")[1]
+        store.save(where, "slide2", self.scene(text="night, touched"), version)
+        self.assertEqual(json.loads((store.SCHEMES / "night" / "slide2.json").read_text(encoding="utf-8"))["items"][0]["text"],
+                         "night, touched")
+        self.assertNotEqual(store.default_scheme(), "night")                 # editing one does not make it the default
+        self.assertNotEqual(store.sig(where), store.sig("template"))
+        for bad in ("scheme:", "scheme:../x", "scheme:nope", "scheme:NIGHT"):
+            with self.assertRaises(ApiError):
+                store.valid_where(bad)
+
     def test_the_signature_changes_with_any_scene(self):
         rec = store.new_set("Goose", str(self.root))
         before = store.sig(rec["id"])
