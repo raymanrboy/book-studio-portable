@@ -54,7 +54,8 @@ code:
    first: the book's edits go). A book whose slides exist gets **new pictures and keeps its six scenes** when the
    mockups are made again; its page 30 is the Workshop book's own `pictures\30.png` when the demo book isn't loaded;
    the Workshop's «Мокапи» step **ticks itself**. A slot without a mockup (e.g. one Open 2 only) is named in a yellow line; the slide shows
-   a dashed placeholder there. Files: a Workshop book's **`etsy\Listing 1.png … Listing 6.png`** (since 30.09.2026 —
+   a dashed placeholder there. Files: a Workshop book's **`etsy\Listing 1.png … Listing 6.png`**, each with its number in the
+   listing's order («05 Listing 1.png» — [photo mockups](photo-mockups.md#where-things-are)) (since 30.09.2026 —
    the owner: "an etsy folder in every book for the slides and the photo mockups"; `Listing N.png` beside the mockups
    before), for a folder of his own **`Listing 1.png … Listing 6.png`** beside the mockups; never over another file
    (` (2)`); the result's folder button opens that folder; the window's title, the taskbar flash and Windows' sound when the window is behind.

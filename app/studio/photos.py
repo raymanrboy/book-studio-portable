@@ -12,7 +12,14 @@ template and the prompt go into the clipboard — he adds the cover himself, not
     pipeline/books/<book>/mockups/canva-cover.png                the flat cover from the Canva ZIP (the grandmother)
     pipeline/books/<book>/etsy/photo-<category>.png              the results, beside the listing slides (Listing N.png)
                                                                  and copies of the whole-scene mockups (Cover & Open 1,
-                                                                 All & Open 1) — the owner's etsy/ folder, 30.09.2026
+                                                                 All & Open 1) — the owner's etsy/ folder, 30.09.2026;
+                                                                 each with its number in the listing («01 photo-main.png»
+                                                                 … — ETSY_ORDER, tidy_etsy())
+
+«Книга в руках у людини» (the owner, 30.09.2026) is no photo but a short video made in Gemini Omni: the same clipboard
+(a woman holding a blank book, Cover 1, then the owner's own tested video prompt — `OMNI_PROMPTS`); the video he
+downloads is caught, its first 2 seconds cut off (ffmpeg), into `etsy/video-<category>.mp4` — the uncut download kept
+in the book's `originals/`.
 
 Every name inside Book Studio is English; the page says it in Ukrainian (the owner, 30.09.2026).
 """
@@ -22,6 +29,7 @@ import hashlib
 import os
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 from . import core, desktop
@@ -31,6 +39,8 @@ ETSY = "etsy"             # a Workshop book's folder of what goes into its Etsy 
 MOCKUPS = "mockups"
 CANVA_COVER = "canva-cover"
 RESULT = "photo-{key}"    # etsy/photo-main.png …
+VIDEO_RESULT = "video-{key}"   # etsy/video-hands.mp4 — a video category's, its start cut off
+TRIM_SECONDS = 2          # the owner: cut the first 2 seconds of the Omni video (30.09.2026)
 
 # The categories, in the page's order; `ref` — which of the book's pictures goes into the clipboard second.
 CATEGORIES = [
@@ -40,9 +50,12 @@ CATEGORIES = [
     {"key": "child", "label": "У руках дитини", "ref": "cover1"},
     {"key": "shelf", "label": "На полиці", "ref": "cover1"},
     {"key": "video", "label": "Для відео", "ref": "cover1"},   # 9:16 phone photos for the listing's video
+    # A video, not a photo: animated in Gemini Omni with the owner's prompt (see OMNI_PROMPTS), caught and trimmed.
+    {"key": "hands", "label": "Книга в руках у людини", "ref": "cover1", "omni": True},
     {"key": "size", "label": "Розмір", "ref": "cover1"},       # the two formats side by side: softcover and hardcover
 ]
 BY_KEY = {c["key"]: c for c in CATEGORIES}
+PHOTOS = [c for c in CATEGORIES if not c.get("omni")]   # the categories with a photo (and a JSON prompt)
 
 # The book's reference pictures: how they are found in its mockups/ folder and what to do when one isn't there.
 REFS = {
@@ -67,13 +80,20 @@ def category(key: str) -> dict:
     return c
 
 
-def _pictures(folder: Path) -> list[os.DirEntry]:
+def _pictures(folder: Path, exts: tuple[str, ...] = core.IMAGE_EXTS) -> list[os.DirEntry]:
     try:
         with os.scandir(folder) as it:
-            return sorted((e for e in it if e.is_file() and e.name.lower().endswith(core.IMAGE_EXTS)),
+            return sorted((e for e in it if e.is_file() and e.name.lower().endswith(exts)),
                           key=lambda e: e.name.lower())
     except OSError:
         return []
+
+
+def _result(c: dict) -> tuple[str, tuple[str, ...]]:
+    """A category's file in etsy/: its stem and the extensions it may have — a photo, or a video category's video."""
+    if c.get("omni"):
+        return VIDEO_RESULT.format(key=c["key"]), core.VIDEO_EXTS
+    return RESULT.format(key=c["key"]), core.IMAGE_EXTS
 
 
 def _tag(e: os.DirEntry) -> str:
@@ -245,9 +265,38 @@ PROMPTS = {
 }
 
 
+# A video category's prompt: plain text for Gemini Omni, word for word as the owner tested it (30.09.2026) — it animates
+# the woman holding the book; "small" on every mention keeps the book from growing as she brings it closer.
+OMNI_PROMPTS = {
+    "hands": """Animate this exact scene. Keep the woman, the book, the cover and the background
+exactly as they are; do not redraw or change anything.
+
+[0-2s] The woman holds the small book in both hands in front of her chest,
+cover facing the camera straight on. Her fingers rest only on the side edges
+of the small book and never cover the cover artwork.
+
+[2-5s] She takes one calm step towards the camera and leans forward slightly,
+bringing the small book closer to the camera. The small book moves straight
+towards the camera, staying flat and parallel to it. It stays a small book
+the same size relative to her hands; it only looks a bit closer.
+As she leans in, her head stays above the top of the frame.
+
+[5-8s] She holds the small book close to the camera and gently rocks it a few
+degrees clockwise and back, like a slow steering-wheel motion, showing the cover
+artwork like a picture. The cover stays fully visible, sharp and facing the camera.
+
+The small book is never turned sideways, flipped, tilted towards or away from the
+camera, or opened. Its spine, pages and thickness are never visible.
+The small book's size, the cover artwork and the text stay exactly the same in
+every frame. Her face is never visible. Static camera, one unbroken shot, no cuts,
+no camera zoom. Quiet room ambience, no music, no dialogue.""",
+}
+
+
 def prompt(key: str) -> str:
     from .workshop.rows import as_prompt
-    return as_prompt(PROMPTS[category(key)["key"]])
+    key = category(key)["key"]
+    return OMNI_PROMPTS[key] if key in OMNI_PROMPTS else as_prompt(PROMPTS[key])
 
 
 # ---------------------------------------------------------------- a Workshop book's references and results
@@ -267,9 +316,14 @@ def references(book: Path) -> dict[str, str | None]:
 
 
 def results(book: Path) -> dict[str, str]:
-    """category → the file of its finished photo in etsy/."""
-    names = {Path(e.name).stem.lower(): e.name for e in _pictures(book / ETSY)}
-    return {c["key"]: names[RESULT.format(key=c["key"])] for c in CATEGORIES if RESULT.format(key=c["key"]) in names}
+    """category → the file of its finished photo (or video) in etsy/."""
+    names = {Path(bare(e.name)).stem.lower(): e.name for e in _pictures(book / ETSY, core.IMAGE_EXTS + core.VIDEO_EXTS)}
+    out = {}
+    for c in CATEGORIES:
+        stem, exts = _result(c)
+        if stem in names and names[stem].lower().endswith(exts):
+            out[c["key"]] = names[stem]
+    return out
 
 
 def count(book: Path) -> int:
@@ -285,7 +339,8 @@ def state(book: Path) -> dict:
     return {
         "refs": [{"key": k, "label": r["label"], "name": refs[k], "missing": r["missing"]} for k, r in REFS.items()],
         "cards": [{"key": c["key"], "label": c["label"], "ref": c["ref"], "refLabel": REFS[c["ref"]]["label"],
-                   "photo": done.get(c["key"]), "template": (record.get(c["key"]) or {}).get("template")}
+                   "photo": done.get(c["key"]), "template": (record.get(c["key"]) or {}).get("template"),
+                   "omni": bool(c.get("omni"))}
                   for c in CATEGORIES],
         "count": len(done), "total": len(CATEGORIES),
     }
@@ -306,11 +361,74 @@ def items(book_id: str | None, key: str, template: str) -> tuple[str, list[dict]
     return f"Фото · {c['label']}", out
 
 
-def _retire_all(book: Path, folder: Path, stem: str) -> None:
+def _retire_all(book: Path, folder: Path, stem: str, exts: tuple[str, ...] = core.IMAGE_EXTS) -> None:
     from .workshop.pictures import _retire
-    for e in _pictures(folder):
-        if Path(e.name).stem.lower() == stem:
+    for e in _pictures(folder, exts):
+        if Path(bare(e.name)).stem.lower() == stem:
             _retire(book, Path(e.path))
+
+
+# ---------------------------------------------------------------- the etsy/ folder in the listing's order
+
+# The owner's order of a listing's files (30.09.2026): a number in front of the name, so Explorer shows them in the
+# order they go into the listing. By the name without its number; a file that isn't here keeps its name and so comes
+# after the numbered ones. A number belongs to its file — a missing one leaves a gap, nothing moves up.
+ETSY_ORDER = {"photo-main": 1, "video-hands": 2, "photo-grandma": 3, "listing 1": 5, "photo-open-book": 6,
+              "listing 3": 7, "listing 4": 8, "photo-child": 9, "listing 2": 10, "photo-size": 11, "listing 5": 12,
+              "listing 6": 13, "photo-shelf": 14}
+ETSY_SCENES = {"all & open 1": 4, "cover & open 1": 6}   # by the start of the name: «All & Open 1 (8-9).png»
+OPEN_BOOK = "photo-open-book"   # when there is one, it takes Cover & Open 1's place: that mockup stays in mockups/ only
+_NUMBERED = re.compile(r"^(\d{2}) (.+)$")
+
+
+def bare(name: str) -> str:
+    """A file's name without the listing's number: «05 Listing 1.png» → «Listing 1.png»."""
+    m = _NUMBERED.match(name)
+    return m.group(2) if m else name
+
+
+def etsy_number(name: str) -> int | None:
+    """Where a file goes in the listing (by its name without a number), or None — not one of the program's."""
+    stem = Path(bare(name)).stem.lower()
+    if stem in ETSY_ORDER:
+        return ETSY_ORDER[stem]
+    return next((n for prefix, n in ETSY_SCENES.items() if stem.startswith(prefix)), None)
+
+
+def _has_open_book(folder: Path) -> bool:
+    return any(Path(bare(e.name)).stem.lower() == OPEN_BOOK for e in _pictures(folder))
+
+
+def tidy_etsy(book: Path) -> list[str]:
+    """Every file of the program's in the book's etsy/ gets its number («01 photo-main.png» …); the owner's own files
+    are left as they are. With an open-book photo there, Cover & Open 1's copy goes (to .replaced/ — the mockup itself
+    is in mockups/). Two of one kind (a slide baked anew beside a numbered one): the newer keeps the place, the older
+    goes to .replaced/. Returns the new names."""
+    from .workshop.pictures import _retire
+    folder = book / ETSY
+    open_book = _has_open_book(folder)
+    renamed = []
+    for e in _pictures(folder, core.IMAGE_EXTS + core.VIDEO_EXTS):
+        path, name = Path(e.path), bare(e.name)
+        n = etsy_number(name)
+        if n is None or not path.exists():
+            continue
+        if open_book and Path(name).stem.lower().startswith("cover & open 1"):
+            _retire(book, path)
+            continue
+        want = folder / f"{n:02d} {name}"
+        if path == want:
+            continue
+        if want.exists():
+            older = min((path, want), key=lambda p: p.stat().st_mtime)
+            _retire(book, older)
+            if older == path:
+                continue
+        path.rename(want)
+        renamed.append(want.name)
+    if renamed:
+        core.log.info("Etsy folder of %s in order: %s", book.name, ", ".join(renamed))
+    return renamed
 
 
 def place(book_id: str, key: str, source: Path, name: str, template: str | None = None, take: bool = False) -> dict:
@@ -319,6 +437,8 @@ def place(book_id: str, key: str, source: Path, name: str, template: str | None 
     from .workshop import books
     from .workshop.pictures import _move, open_picture
     c = category(key)
+    if c.get("omni"):
+        return place_video(book_id, key, source, name, template, take)
     book = books.book_path(book_id)
     open_picture(source, name)  # only a real picture goes anywhere, and nothing is moved before that
     folder = book / ETSY
@@ -336,17 +456,89 @@ def place(book_id: str, key: str, source: Path, name: str, template: str | None 
         photos[c["key"]] = {"template": template or (photos.get(c["key"]) or {}).get("template"),
                             "from": Path(name).name[:160], "at": core.now_iso()}
     books.update_state(book, change)
+    tidy_etsy(book)
     core.log.info("Photo mockups: %s → %s/%s", name, book_id, target.name)
     return {"key": f"photo:{c['key']}", "label": c["label"], "note": f"Фото «{c['label']}» на місці"}
 
 
+def ffmpeg() -> str:
+    """ffmpeg: the one Windows finds (installed on the owner's PC), else app/bin/ffmpeg.exe."""
+    found = shutil.which("ffmpeg") or (str(core.BIN_DIR / "ffmpeg.exe") if (core.BIN_DIR / "ffmpeg.exe").is_file() else None)
+    if not found:
+        raise ApiError("Не знайдено ffmpeg — без нього відео не обрізати. Встановіть ffmpeg або покладіть ffmpeg.exe "
+                       "у папку bin програми.")
+    return found
+
+
+def trim(source: Path, target: Path, seconds: float = TRIM_SECONDS) -> None:
+    """The video without its first `seconds`: cut exactly (encoded again — H.264 + AAC, the quality kept), the MP4 ready
+    to play at once (faststart). Written beside the target first, so a failure leaves nothing half-made."""
+    part = target.with_name(target.stem + ".part.mp4")
+    command = [ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-ss", str(seconds), "-i", str(source),
+               "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-preset", "medium", "-crf", "16",
+               "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(part)]
+    try:
+        run = subprocess.run(command, capture_output=True, timeout=600,
+                             creationflags=0x08000000 if os.name == "nt" else 0)   # no console window
+    except subprocess.TimeoutExpired:
+        part.unlink(missing_ok=True)
+        raise ApiError("ffmpeg обрізав відео надто довго — спробуйте ще раз.")
+    if run.returncode != 0 or not part.is_file() or part.stat().st_size < 1024:
+        part.unlink(missing_ok=True)
+        said = run.stderr.decode("utf-8", "replace").strip().splitlines()[-1:] if run.stderr else []
+        raise ApiError(f"Не вдалося обрізати відео (воно коротше за {seconds:g} с або пошкоджене)."
+                       + (f" ffmpeg: {said[0]}" if said else ""))
+    core.replace_file(part, target)
+
+
+def place_video(book_id: str, key: str, source: Path, name: str, template: str | None = None,
+                take: bool = False) -> dict:
+    """A video category's video: its first 2 seconds cut off into etsy/video-<category>.mp4, the download as it came
+    into the book's originals/ (`take` moves it out of Downloads); the ones before go to .replaced/."""
+    from .workshop import books
+    from .workshop.pictures import _move
+    c = category(key)
+    if not name.lower().endswith(core.VIDEO_EXTS):
+        raise ApiError(f"«{Path(name).name}» — не відео (MP4, MOV, WEBM).")
+    book = books.book_path(book_id)
+    stem = VIDEO_RESULT.format(key=c["key"])
+    folder = book / ETSY
+    folder.mkdir(exist_ok=True)
+    made = folder / f"{stem}.new.mp4"
+    trim(source, made)                  # nothing is moved or replaced before the cut is made
+    _retire_all(book, folder, stem, core.VIDEO_EXTS)
+    core.replace_file(made, folder / f"{stem}.mp4")
+    originals = book / books.ORIGINALS
+    originals.mkdir(exist_ok=True)
+    _retire_all(book, originals, stem, core.VIDEO_EXTS)
+    uncut = originals / f"{stem}{Path(name).suffix.lower()}"
+    if take:
+        _move(source, uncut)
+    else:
+        shutil.copyfile(source, uncut)
+
+    def change(data):
+        photos = data.setdefault("photos", {})
+        photos[c["key"]] = {"template": template or (photos.get(c["key"]) or {}).get("template"),
+                            "from": Path(name).name[:160], "at": core.now_iso()}
+    books.update_state(book, change)
+    tidy_etsy(book)
+    core.log.info("Photo mockups: video %s → %s/%s (first %ss cut)", name, book_id, stem, TRIM_SECONDS)
+    return {"key": f"photo:{c['key']}", "label": c["label"],
+            "note": f"Відео «{c['label']}» на місці — перші {TRIM_SECONDS} с обрізано"}
+
+
 def remove(book_id: str, key: str) -> dict:
-    """A finished photo out of etsy/ — into the book's .replaced/, never deleted."""
+    """A finished photo (or video) out of etsy/ — into the book's .replaced/, never deleted."""
     from .workshop import books
     c = category(key)
     book = books.book_path(book_id)
-    _retire_all(book, book / ETSY, RESULT.format(key=c["key"]))
+    stem, exts = _result(c)
+    _retire_all(book, book / ETSY, stem, exts)
     books.update_state(book, lambda d: (d.get("photos") or {}).pop(c["key"], None))
+    if c["key"] == "open-book":
+        scenes_to_etsy(book)   # its place goes back to Cover & Open 1
+    tidy_etsy(book)
     return {"removed": c["key"]}
 
 
@@ -356,18 +548,20 @@ SCENES = ("cover & open 1", "all & open 1")   # whole-scene mockups: they go int
 def scenes_to_etsy(book: Path) -> list[str]:
     """The newest «Cover & Open 1 …» and «All & Open 1 …» of the book's mockups/ copied into its etsy/ (the owner's
     etsy/ of book 25, 30.09.2026: the slides, the photos and these two). The same file there is left as it is; one of
-    another run (another spread) goes to .replaced/. Returns the names copied."""
+    another run (another spread) goes to .replaced/. Cover & Open 1 isn't copied while the book has its open-book photo
+    — the photo takes its place. The folder is put in order after. Returns the names copied."""
     from .workshop.pictures import _retire
     made = [e for e in _pictures(book / MOCKUPS)]
     folder = book / ETSY
+    open_book = _has_open_book(folder)
     copied = []
     for prefix in SCENES:
         found = [e for e in made if e.name.lower().startswith(prefix)]
-        if not found:
+        if not found or (open_book and prefix == "cover & open 1"):
             continue
         newest = Path(max(found, key=lambda e: e.stat().st_mtime).path)
-        there = [Path(e.path) for e in _pictures(folder) if e.name.lower().startswith(prefix)]
-        same = [p for p in there if p.name == newest.name and p.stat().st_size == newest.stat().st_size]
+        there = [Path(e.path) for e in _pictures(folder) if bare(e.name).lower().startswith(prefix)]
+        same = [p for p in there if bare(p.name) == newest.name and p.stat().st_size == newest.stat().st_size]
         for old in there:
             if old not in same:
                 _retire(book, old)
@@ -375,6 +569,7 @@ def scenes_to_etsy(book: Path) -> list[str]:
             folder.mkdir(exist_ok=True)
             shutil.copy2(newest, folder / newest.name)
             copied.append(newest.name)
+    tidy_etsy(book)
     return copied
 
 

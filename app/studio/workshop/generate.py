@@ -16,7 +16,8 @@ the base cover and the variant's hero go into the clipboard, if they are there.
 
 A photo mockup (photos.py, 30.09.2026) goes the same way: the template, the book's reference, the prompt — and the photo
 lands in the book's etsy/ folder. Without a book (the «Фотомокапи» page) only the template and the prompt go in, and
-nothing is caught: the wait ends once the prompt is in the clipboard.
+nothing is caught: the wait ends once the prompt is in the clipboard. For a video category («Книга в руках у людини»,
+made in Gemini Omni) a video is awaited instead of a picture — its first 2 seconds cut off (photos.place_video()).
 """
 from __future__ import annotations
 
@@ -136,7 +137,7 @@ class Session:
                 "active": None if not a else {
                     "book": a["book"], "title": books.display_name(a["book"]) if a["book"] else "", "variant": a["variant"],
                     "key": a["key"], "kind": a.get("kind", "row"), "catch": a.get("catch", True), "label": a["label"],
-                    "category": a.get("category"), "template": a.get("template"), "item": a["item"], "items": [i["label"] for i in a["items"]], "queue": len(a["queue"]),
+                    "category": a.get("category"), "template": a.get("template"), "video": a.get("video", False), "item": a["item"], "items": [i["label"] for i in a["items"]], "queue": len(a["queue"]),
                     "series": a["series"], "since": a["since"], "step": a["step"], "of": a["of"]},
                 "last": self.last, "error": self.error, "f8": self.hotkey.active, "f8Failed": self.hotkey.failed,
                 "paste": self.hotkey.paste,
@@ -200,11 +201,12 @@ class Session:
         is caught into the book's etsy/ folder, without one only the template and the prompt go in."""
         book_id = book_id or None
         label, items = photos.items(book_id, category, template)
+        video = bool(photos.category(category).get("omni"))
         with self.lock:
             self.error = ""
             self._open({"book": book_id, "variant": None, "key": f"photo:{category}", "kind": "photo",
                         "category": category, "template": template, "label": label, "items": items, "queue": [],
-                        "series": False, "step": 1, "of": 1}, catch=bool(book_id))
+                        "series": False, "step": 1, "of": 1, "video": video}, catch=bool(book_id))
             return self.status()
 
     def stop(self, book_id: str | None = None) -> dict:
@@ -268,19 +270,21 @@ class Session:
                 core.log.exception("Workshop: watching Downloads failed")
 
     def look(self):
-        """One look into Downloads: the first new picture that has finished downloading is caught."""
+        """One look into Downloads: the first new picture (a video, for a video category) that has finished
+        downloading is caught."""
         with self.lock:
             a = self.active
             if not a or not a["catch"]:
                 return
             known, since = a["known"], a["since"]
+            exts = core.VIDEO_EXTS if a.get("video") else core.IMAGE_EXTS
         try:
             entries = [e for e in os.scandir(downloads_folder()) if e.is_file() and e.name not in known]
         except OSError:
             return
         for e in sorted(entries, key=lambda e: e.stat().st_mtime):
             low = e.name.lower()
-            if low.endswith(PARTIAL) or not low.endswith(core.IMAGE_EXTS):
+            if low.endswith(PARTIAL) or not low.endswith(exts):
                 continue
             st = e.stat()
             if st.st_mtime < since - 2 or st.st_size == 0:

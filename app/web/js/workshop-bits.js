@@ -10,7 +10,7 @@ export const STATE_TEXT = { done: 'Готово', part: 'Почато', todo: '�
 export function picture(b, area, name, w, variant = '') {
   const v = b.v?.[`${area}/${variant ? `variants/${variant}/` : ''}${name}`];
   const path = `/media/workshop/${encodeURIComponent(b.id)}/${area}${variant ? `/v/${encodeURIComponent(variant)}` : ''}/${encodeURIComponent(name)}`;
-  return media(path, { w, ...(v ? { v } : {}) });
+  return media(path, { ...(w ? { w } : {}), ...(v ? { v } : {}) });   // no w: the file itself (a video)
 }
 
 /** «Промпти · GO» — the book check's word for a card or a step. */

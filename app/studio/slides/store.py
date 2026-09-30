@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import time
@@ -324,6 +325,19 @@ def out_dir(rec: dict) -> Path:
     return Path(rec["folder"])
 
 
+def _baked_file(book: Path, name: str) -> Path:
+    """A book's baked slide by its name: in etsy/, with or without the listing's number («05 Listing 1.png»), else
+    beside the mockups."""
+    from ..photos import bare
+    etsy = book / "etsy"
+    try:
+        with os.scandir(etsy) as entries:
+            found = next((e.name for e in entries if e.is_file() and bare(e.name) == bare(name)), None)
+    except OSError:
+        found = None
+    return etsy / found if found else book / "mockups" / name
+
+
 def mockups_dir(book_id: str) -> Path:
     """Where a Workshop book's mockups go — no question asked (the owner, 29.09.2026)."""
     folder = book_folder(book_id) / "mockups"
@@ -340,9 +354,8 @@ def read_set(set_id: str) -> dict:
         rec["folder"] = str(set_dir(set_id).parent)
         rec["name"] = _book_name(set_id)
         book = set_dir(set_id).parent.parent   # its folder may have been renamed: the names are kept, not the paths
-        # baked into etsy/ since 30.09.2026 (beside the mockups before — the owner moved them there himself)
-        rec["baked"] = {k: str(book / ("etsy" if (book / "etsy" / Path(v).name).is_file() else "mockups") / Path(v).name)
-                        for k, v in (rec.get("baked") or {}).items()}
+        # baked into etsy/ (beside the mockups before 30.09.2026), where the listing's number goes in front of the name
+        rec["baked"] = {k: str(_baked_file(book, Path(v).name)) for k, v in (rec.get("baked") or {}).items()}
     return rec
 
 

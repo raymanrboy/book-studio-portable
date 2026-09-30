@@ -1,7 +1,7 @@
 ---
 title: Setup, launch, GitHub
 type: dev
-updated: 2026-09-27
+updated: 2026-09-30
 code:
   - app/tools/make_shortcut.py
   - app/requirements.txt
@@ -15,6 +15,8 @@ code:
 - Packages: `python -m pip install -r app/requirements.txt` (Pillow, img2pdf, pikepdf, cryptography).
 - `app/bin/cloudflared.exe` — for Gelato's temporary links; **not in git**, on a new PC it has to be put
   there by hand (the official Cloudflare release).
+- **ffmpeg** — cuts the start off the [photo mockups](../features/photo-mockups.md)' Omni video; on the Wrocław PC
+  installed for Windows (on PATH), else `app/bin/ffmpeg.exe`.
 
 ## Launch
 

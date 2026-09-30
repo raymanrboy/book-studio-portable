@@ -378,9 +378,14 @@ class MakingThem(Base):
             res = work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book)
         self.assertEqual(res["set"], book)
         etsy = core.WORKSHOP_BOOKS / book / "etsy"   # a Workshop book's slides: in its etsy/ folder (30.09.2026)
-        self.assertEqual(sorted(p.name for p in etsy.glob("*.png")), [f"Listing {n}.png" for n in range(1, 7)])
+        numbered = ["05 Listing 1.png", "10 Listing 2.png", "07 Listing 3.png", "08 Listing 4.png", "12 Listing 5.png",
+                    "13 Listing 6.png"]                     # each with its number in the listing's order
+        self.assertEqual(sorted(p.name for p in etsy.glob("*.png")), sorted(numbered))
         self.assertFalse(list(out.glob("Listing*.png")))
-        self.assertEqual([p["name"] for p in res["pictures"]], [f"Listing {n}.png" for n in range(1, 7)])
+        self.assertEqual([p["name"] for p in res["pictures"]], numbered)
+        with mock.patch.object(bake, "run_browser", pretend_browser([])), mock.patch.object(bake, "browser", lambda: "x"):
+            work.bake_set(quiet_job(), store.read_set(book), ["slide2"], "http://127.0.0.1:1", "tok")
+        self.assertEqual(sorted(p.name for p in etsy.glob("*.png")), sorted(numbered))   # baked again: the same files
         self.assertEqual(res["folder"], str(etsy))
         self.assertIn("page30", store.read_set(book)["pictures"])
         self.assertTrue(workshop.state(core.WORKSHOP_BOOKS / book)["marks"]["mockups"])   # the step ticked itself

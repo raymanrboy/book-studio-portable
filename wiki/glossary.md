@@ -126,6 +126,8 @@ Code paths below are relative to the repository root.
 | Фотомокапи, фото-мокап, фото з книгою | Lifestyle photos with a blank white book (grandmother, child, shelf, open book, the main flat lay) in which the generator puts our book; a Workshop book's step «Фото» and the «Фотомокапи» page | [features/photo-mockups.md](features/photo-mockups.md); [photos.py](../app/studio/photos.py) |
 | Заготовки (обкладинок), пустишка | A photo mockup's template — the photo with the blank white book; «пустишка» — the template without a book's cover (the page «Фотомокапи») | [features/photo-mockups.md](features/photo-mockups.md) `photos.templates()` |
 | Ковер (з Canva), обкладинка з архіву Canva | The book's flat cover as Canva exports it (back · spine · front) — the photo mockups' reference for the grandmother, kept as `mockups/canva-cover.png` | [features/photo-mockups.md](features/photo-mockups.md); `mockups._keep_canva_cover()` |
+| Книга в руках у людини | The photo mockups' video category: a woman holding the book, animated in Gemini Omni with the owner's prompt | [features/photo-mockups.md](features/photo-mockups.md) `photos.OMNI_PROMPTS` |
+| Omni, Gemini Omni | Google's video generator the owner animates the photo mockups in | [features/photo-mockups.md](features/photo-mockups.md) |
 | Папка etsy | A Workshop book's folder of what goes into its Etsy listing: the slides and the photo mockups | [features/workshop.md](features/workshop.md) |
 | Мокапи, мокапи для лістингу | Etsy listing pictures: the demo book dropped into Photoshop templates; also the utility's shortcut name | [features/mockups.md](features/mockups.md) `mockups.py`; [plans/listing-mockups.md](plans/listing-mockups.md) |
 | Трафарети (мастхев), шаблони мокапів | The PSD templates in `D:\Roman\Desktop\Трафарети мастхев` — **read-only** | [plans/listing-mockups.md](plans/listing-mockups.md); [security.md](security.md) |
@@ -147,7 +149,7 @@ Code paths below are relative to the repository root.
 | Без фону (картинки без фону) | A mockup's book with its real shadow on a transparent background, saved beside the mockups in `no-background\` («Без фону» until 30.09.2026) while Photoshop works | [slides/cutout.py](../app/studio/slides/cutout.py) `ensure()`, `Cutter` |
 | Редактор (слайдів) | The Canva-like editor of the listing slides: layers, move, turn, resize, mirror, arc text | [pages/slides-editor.js](../app/web/js/pages/slides-editor.js) |
 | Зберегти відкриті (й закрити) | The button after a run: the templates left open, with the front cover fitted, saved as PNG next to the rest and closed | [mockups.py](../app/studio/mockups.py) `finish()`; [mockups.jsx](../app/studio/mockups.jsx) `finishOpen()` |
-| Тимчасові файли, «чистити за собою» | What a run leaves (template copies, prepared pictures, the unpacked book) and when it goes | [features/mockups.md](features/mockups.md#temporary-files--what-is-left-and-when-it-goes) |
+| Тимчасові файли, «чистити за собою» | What a run leaves (template copies, prepared pictures, the unpacked book) and when it goes | [features/mockups.md](features/mockups.md#temporary-files) |
 
 ## The program in general
 

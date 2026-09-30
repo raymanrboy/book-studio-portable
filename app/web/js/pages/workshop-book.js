@@ -16,6 +16,7 @@ import { watch, refresh, act, startGen, startPhoto, genAction, paintGenBar, genS
 import { rowTemplates, waitChip, slot } from './workshop-rows.js';
 
 const IMG_RE = /\.(png|jpe?g|webp)$/i;
+const VIDEO_RE = /\.(mp4|mov|webm)$/i;
 // Who writes a step's file — said where the file isn't there yet.
 const WHO = {
   formula: 'Агент 0 записує формулу книги й Tier (з героєм чи без) у formula.md.',
@@ -183,6 +184,8 @@ export async function mount(view, [rawId]) {
   // or an empty frame); a click shows the category's templates, and a click on one puts it into the clipboard, then the
   // book's reference (Cover 1, Cover & Open 1 or the Canva cover — shown on top), then the prompt; the photo the owner
   // downloads lands in the book's etsy/ folder. A category may be skipped: the step is ticked by all seven, or by hand.
+  // «Книга в руках у людини» is a video made in Gemini Omni: the same clipboard; the video is caught (its first 2 seconds
+  // cut off by the server) and its card plays it.
   let photoTemplates = null, photoTemplatesAt = 0;
   async function templatesOf(key) {
     if (!photoTemplates || Date.now() - photoTemplatesAt > 8000) {
@@ -209,12 +212,18 @@ export async function mount(view, [rawId]) {
     })}</div>`;
     const cards = html`<div class="ph-cards">${p.cards.map((c) => {
       const waiting = waitingFor(id, `photo:${c.key}`, null);
+      const art = c.omni
+        ? html`<video muted loop autoplay playsinline preload="metadata" src="${pic('etsy', c.photo)}"></video>`
+        : html`<img data-fade alt="${c.label}" src="${pic('etsy', c.photo, 480)}">`;
+      const look = c.omni
+        ? ib('external', 'Відкрити відео', `data-act="photo-play" data-name="${c.photo}"`, { cls: 'sm' })
+        : ib('expand', 'Переглянути', `data-act="photo-zoom" data-cat="${c.key}"`, { cls: 'sm' });
       return html`<div class="ph-card ${c.key === sel.key ? 'sel' : ''} ${c.photo ? 'full' : ''} ${waiting ? 'waiting' : ''}">
-        <div class="ws-drop ph-card-drop" data-drop="photo:${c.key}">
-          ${c.photo ? html`<div class="ph-card-art" data-act="photo-cat" data-cat="${c.key}"><img data-fade alt="${c.label}" src="${pic('etsy', c.photo, 480)}">
-              <div class="img-actions">${ib('expand', 'Переглянути', `data-act="photo-zoom" data-cat="${c.key}"`, { cls: 'sm' })}${ib('download', 'Зберегти як…', `data-act="save" data-area="etsy" data-name="${c.photo}"`, { cls: 'sm' })}${ib('trash', 'Прибрати фото — у папку .replaced книги', `data-act="photo-remove" data-cat="${c.key}"`, { cls: 'sm danger' })}</div></div>`
-            : html`<button type="button" class="ph-card-ph" data-act="photo-cat" data-cat="${c.key}" aria-label="${c.label}">${ic('camera')}</button>`}
-          ${waiting ? html`<div class="ws-wait"><span class="ws-pulse"></span>Чекаю фото…</div>` : ''}${busy(`photo:${c.key}`)}
+        <div class="ws-drop ph-card-drop" data-drop="photo:${c.key}" data-video="${c.omni ? '1' : ''}">
+          ${c.photo ? html`<div class="ph-card-art" data-act="photo-cat" data-cat="${c.key}">${art}
+              <div class="img-actions">${look}${ib('download', 'Зберегти як…', `data-act="save" data-area="etsy" data-name="${c.photo}"`, { cls: 'sm' })}${ib('trash', `Прибрати ${c.omni ? 'відео' : 'фото'} — у папку .replaced книги`, `data-act="photo-remove" data-cat="${c.key}"`, { cls: 'sm danger' })}</div></div>`
+            : html`<button type="button" class="ph-card-ph" data-act="photo-cat" data-cat="${c.key}" aria-label="${c.label}">${ic(c.omni ? 'motion' : 'camera')}</button>`}
+          ${waiting ? html`<div class="ws-wait"><span class="ws-pulse"></span>${c.omni ? 'Чекаю відео…' : 'Чекаю фото…'}</div>` : ''}${busy(`photo:${c.key}`)}
         </div>
         <button type="button" class="ph-card-label" data-act="photo-cat" data-cat="${c.key}">${c.photo ? ic('checkCircle', 'icon-s') : ''}${c.label}</button>
       </div>`;
@@ -225,6 +234,7 @@ export async function mount(view, [rawId]) {
       <div class="ph-pick-head"><b>${sel.label}</b><span class="ph-flow">фото ${ic('chevRight', 'icon-s')} ${ref.label} ${ic('chevRight', 'icon-s')} промпт</span>
         <span class="spacer"></span>${ib('prompt', 'Промпт цієї категорії — у буфер', `data-act="photo-prompt" data-cat="${sel.key}"`)}</div>
       ${ref.name ? '' : html`<div class="notice notice-warn">${ic('alert')}<div>${ref.missing}</div></div>`}
+      ${sel.omni ? html`<div class="notice notice-info">${ic('motion')}<div>Це відео для Gemini Omni: фото, ${ref.label} і промпт ідуть у буфер як завжди. Завантажене відео Book Studio зловить сам, обріже перші 2 секунди й покладе в папку Etsy книги.</div></div>` : ''}
       ${tpl.length ? html`<div class="ph-tiles sm">${tpl.map((t) => html`<div class="ph-tile ${t.name === sel.template ? 'used' : ''} ${nowTpl(t.name) ? 'now' : ''}" style="aspect-ratio:${t.size ? `${t.size[0]} / ${t.size[1]}` : '1 / 1'}">
           <button type="button" class="ph-shot" data-act="photo-start" data-cat="${sel.key}" data-name="${t.name}" data-tip="${`У буфер: це фото, далі Ctrl+V у Chrome — ${ref.label}, ще раз — промпт${t.name === sel.template ? ' · цю заготовку брали востаннє' : ''}`}">
             <img data-fade alt="${t.name}" src="${media(`/media/photos/${encodeURIComponent(sel.key)}/${encodeURIComponent(t.name)}`, { w: 360, v: t.v })}" loading="lazy"></button>
@@ -618,8 +628,12 @@ export async function mount(view, [rawId]) {
 
   // ---------------------------------------------------------------- pictures in, by hand
   let pickFor = null;
+  const videoKey = (key) => !!b.photos?.cards.find((c) => `photo:${c.key}` === key)?.omni;
   async function uploadTo(key, variant, file) {
-    if (!IMG_RE.test(file.name)) { toast(`«${file.name}» — не картинка (PNG, JPG, WEBP)`, 'error'); return; }
+    if (videoKey(key) ? !VIDEO_RE.test(file.name) : !IMG_RE.test(file.name)) {
+      toast(videoKey(key) ? `«${file.name}» — не відео (MP4, MOV, WEBM)` : `«${file.name}» — не картинка (PNG, JPG, WEBP)`, 'error');
+      return;
+    }
     if (uploading.has(key)) { toast('Попередня картинка ще вантажиться', 'info'); return; }
     uploading.set(key, 0);
     paintRows();
@@ -716,8 +730,9 @@ export async function mount(view, [rawId]) {
         .then((ok) => ok && act(t, () => post(url('/photos/remove'), { category: t.dataset.cat })));
       return;
     }
+    if (a === 'photo-play') { act(t, () => post('/api/workshop/open', { book: id, what: 'etsy', name: t.dataset.name })); return; }
     if (a === 'photo-zoom') {
-      const shots = b.photos.cards.filter((c) => c.photo);
+      const shots = b.photos.cards.filter((c) => c.photo && !c.omni);
       openLightbox(shots.map((c) => ({ key: c.key, src: pic('etsy', c.photo, 1400), full: pic('etsy', c.photo, 2600), title: `Фото · ${c.label}`, sub: c.photo,
         onOriginal: () => post('/api/workshop/open', { book: id, what: 'etsy', name: c.photo }).catch((err) => toast(err.message, 'error')) })),
       Math.max(0, shots.findIndex((c) => c.key === t.dataset.cat)));
@@ -786,9 +801,13 @@ export async function mount(view, [rawId]) {
     e.preventDefault();
     mark(null);
     const target = e.target.closest('[data-drop]');
-    const dropped = [...e.dataTransfer.files].filter((f) => IMG_RE.test(f.name));
     if (!target) { toast('Перетягніть картинку на її рамку', 'info'); return; }
-    if (dropped.length !== 1) { toast(dropped.length ? 'Одна картинка — в одну рамку' : 'Це не картинка (PNG, JPG, WEBP)', 'error'); return; }
+    const video = target.dataset.video === '1';
+    const dropped = [...e.dataTransfer.files].filter((f) => (video ? VIDEO_RE : IMG_RE).test(f.name));
+    if (dropped.length !== 1) {
+      toast(dropped.length ? `Один${video ? 'е відео' : 'а картинка'} — в одну рамку` : video ? 'Це не відео (MP4, MOV, WEBM)' : 'Це не картинка (PNG, JPG, WEBP)', 'error');
+      return;
+    }
     uploadTo(target.dataset.drop, target.dataset.variant || '', dropped[0]);
   };
   view.addEventListener('dragover', onOver);

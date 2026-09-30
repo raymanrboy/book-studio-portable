@@ -9,6 +9,27 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-09-30 — The etsy/ folder in the listing's order
+
+- **The owner:** the files of a book's `etsy/` stand in the order they go into the Etsy listing: 01 photo-main, 02 the
+  Omni video (`video-hands`, always second), 03 photo-grandma, 04 All & Open 1, 05 Listing 1, 06 Cover & Open 1, 07
+  Listing 3, 08 Listing 4, 09 photo-child, 10 Listing 2, 11 photo-size, 12 Listing 5, 13 Listing 6, 14 photo-shelf.
+  Anything else — no number, at the end.
+- **The open-book photo, when made, takes Cover & Open 1's place (06)**; that mockup then stays in `mockups/` only.
+- **A number belongs to its file**: a missing one leaves a gap (his "так"). The form «01 photo-main.png».
+- How it works — [photo mockups](features/photo-mockups.md#where-things-are). Book 25's folder was put in order once.
+
+## 2026-09-30 — «Книга в руках у людини»: a video category with the owner's own Omni prompt
+
+- **The owner:** remember the prompt that worked in Gemini Omni and add his photos «Книга в руках у людини» as the
+  seventh category of the photo mockups.
+- **Kept word for word** (`photos.OMNI_PROMPTS`), plain text: it was tuned over several tries in Omni (a prompt that
+  describes only the motion; one that described the whole scene made Omni redraw the frames; "small book" everywhere
+  stopped the book growing). Not turned into the photo categories' JSON frame.
+- **The video is caught, its first 2 seconds cut off** (the owner, the same day): into `etsy/video-hands.mp4`, by
+  ffmpeg, encoded again so the cut is exact; the download as it came kept in `originals/`. The category counts in the
+  step like the others (`n/8`).
+
 ## 2026-09-30 — Photo mockups: a step of the Workshop and a page of their own; `etsy/`; English inside
 
 - **The owner:** lifestyle photos with a blank white book (a grandmother reading, a child holding it, a shelf, an open
@@ -399,7 +420,7 @@ The owner: calibrate "the machine validator that decides what to show me in erro
 now that there are cases; then "do as you see fit — only if I make the wrong book, as happened once, it must be
 not just a message but a big red one that's noticeable, a guard against a slip".
 - **Decided on the journal** (30 checks, 10 orders): 4 real catches, the rest noise with 5 causes — the full
-  story in [features/text-check.md](features/text-check.md#calibration-2026-09-25).
+  story in [features/text-check.md](features/text-check.md#why-the-rules-are-what-they-are).
 - **Not shown any more**: a difference only in the capitals of the story's own words (the template's; a child's
   name in small letters stays red); a model remark that says itself there's no mistake; a remark only about
   where a line breaks (like commas and quotes — the owner lays out page 1 himself); the model's "a word is

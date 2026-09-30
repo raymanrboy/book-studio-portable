@@ -147,6 +147,10 @@ def bake_set(job: Job, rec: dict, slides: list[str], base: str, token: str, stat
         rec.setdefault("baked", {})[slide] = str(path)
     store.write_set(rec)
     core.log.info("Slides: baked %s of «%s» into %s", ", ".join(slides), rec.get("name"), rec.get("folder"))
+    if store.is_book(rec["id"]):   # a Workshop book's etsy/: the slides take their numbers in the listing's order
+        from .. import photos
+        photos.tidy_etsy(store.book_folder(rec["id"]))
+        rec = store.read_set(rec["id"])
     return pictures(rec)
 
 

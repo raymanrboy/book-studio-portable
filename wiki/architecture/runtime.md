@@ -80,7 +80,7 @@ inherits it. The folder is emptied on launch and when the program closes (`core.
 still held stays till the next launch). A Photoshop started by the Mockups gets `data\tmp\photoshop`,
 emptied only once Photoshop is closed. The tests and the preview servers write to `.tmp\` in the
 repository ([testing](../dev/testing.md), [preview](../dev/preview.md)). What «Мокапи» leaves and when it
-goes — [features/mockups.md](../features/mockups.md#temporary-files--what-is-left-and-when-it-goes).
+goes — [features/mockups.md](../features/mockups.md#temporary-files).
 
 ## Windowless mode (development)
 

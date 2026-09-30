@@ -88,7 +88,7 @@ code:
   pictures set `document.documentElement.dataset.motion = 'reduce'` (and `.theme` for the other theme) — only
   in the preview window.
 - The real Photoshop is checked only by hand, on copies, with a made-up book — see
-  [features/mockups.md](../features/mockups.md#what-was-checked).
+  [features/mockups.md](../features/mockups.md#where-things-are) (what is not checked live).
 
 ## Pitfalls of the built-in browser
 

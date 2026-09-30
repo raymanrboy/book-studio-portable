@@ -3,6 +3,66 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-09-30] update | The etsy/ folder numbered in the listing's order
+
+- A book's `etsy/` files carry their number in the owner's listing order («01 photo-main.png» … «14 photo-shelf.png»),
+  the open-book photo taking Cover & Open 1's place; the owner's own files keep their names and sort last
+  ([photo mockups](features/photo-mockups.md#where-things-are), [decisions](decisions.md)).
+- `photos.tidy_etsy()` after every photo, video, scene copy and slide bake; everything finds its file by the name
+  without the number (`bare()`); the slides' re-bake keeps writing into the numbered file.
+- Book 25's `etsy/` renamed once — exactly the owner's list.
+
+## [2026-09-30] update | «У руках дитини»: two more templates
+
+- The owner's two new photos (a boy holding the blank book: a nursery, a bedroom in the evening) copied into
+  `photo-mockups/child/` as `child-04-boy-nursery` and `child-05-boy-bedroom-evening`; the three others of his folder
+  were there already. No code changed.
+
+## [2026-09-30] update | «Розмір»: five more templates
+
+- The owner's `Заготовки обкладинок\Книга в руках у людини` (a woman holds the small softcover and the large hardcover
+  side by side, at home) copied into `photo-mockups/size/` as `size-02-nursery` … `size-06-terrace`. No code changed —
+  the category's prompt already describes this scene.
+
+## [2026-09-30] update | The Omni video is caught and its first 2 seconds cut; the card that blocked the page
+
+- The owner: the step «Фото» froze — a blue frame, no clicks. The video card was not inside a `ws-drop`, so its
+  absolute button covered the whole panel. Now it is a card like the others.
+- «Книга в руках у людини»: the video from Downloads is caught, ffmpeg cuts its first 2 s into `etsy/video-hands.mp4`,
+  the uncut one goes into `originals/`; a video can be dropped on the card; the card plays it; the step is `n/8`.
+- `picture()` no longer sends `w=undefined` when asked for the file itself (the video came back as an error).
+- Tests: `TheOmniVideo` makes real little videos with ffmpeg.
+
+## [2026-09-30] update | Photo mockups: «Книга в руках у людини» — the owner's Gemini Omni video prompt
+
+- A new category, seventh of eight: `hands` «Книга в руках у людини», the owner's five 9:16 photos (a woman holding
+  a blank book) copied into `app/data/photo-mockups/hands/`.
+- Its prompt is the owner's own, tested in Gemini Omni, kept word for word (`OMNI_PROMPTS`, plain text).
+- A video: nothing is caught, no photo is kept for it, the «Фото» step still counts seven; its card has a film icon and
+  a note. Tests — `TheOmniVideo`.
+
+## [2026-09-30] lint | Anchors after the rewrite, the mockups' real sizes, the generator, two questions
+
+- Four links to sections that no longer exist (three into the rewritten Mockups page, one in the roadmap) — fixed;
+  `wiki_check.py` doesn't look at `#anchors`, a script did.
+- The Mockups page said every picture is 4000×2670, ≈5 MB: book 25's are 3727×2397 / 3227×2248 (5–7 MB), the
+  whole scenes 4000×3000 (16–18 MB) — corrected. The tests page still said five photo categories — seven.
+- Photo mockups: book 25's came from ChatGPT, not Gemini — the page says either.
+- Checked and in order: the numbers on the rewritten pages against the code, the "1 October" rule on every page, no
+  page linked only from the index, the built plans each point to their feature page.
+- Two questions for the owner in [open questions](plans/open-questions.md): what of `etsy/` goes into the listing
+  (and Etsy's limits), which generator runs in which browser.
+
+## [2026-09-30] update | The wiki's own rules: the present only, one fact — one page, no counts
+
+- The owner agreed to three changes after the review of the wiki: pages say how things are **now** (history in the
+  log and decisions), **each fact in one place** with links elsewhere, **no counts** kept by hand
+  ([wiki rules](dev/wiki-rules.md)).
+- `wiki_check.py` no longer checks the numbers of tests and routes (`stale_numbers()` removed); the pages don't state
+  them.
+- Rewritten to the present: [Workshop](features/workshop.md) (335 → 210 lines), [Mockups](features/mockups.md)
+  (300 → 154), [Text check](features/text-check.md) (the calibration and measurements kept as a short "why").
+
 ## [2026-09-30] update | The generation bar no longer comes in again at every part
 
 - The owner: when the next part (a picture, the prompt) went into the clipboard "the whole program blinks". The bar was

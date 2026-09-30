@@ -1,7 +1,7 @@
 ---
 title: How to run this wiki
 type: dev
-updated: 2026-09-27
+updated: 2026-09-30
 code:
   - app/tools/wiki_check.py
   - app/tests/test_wiki.py
@@ -64,6 +64,14 @@ code:
 ```
 
 - One page — one topic; short, without retelling the code.
+- **A page says how things are now.** No "until 26.09 it was …, then …": the history of a change lives in
+  [log.md](../log.md), the owner's reasons in [decisions.md](../decisions.md). A page keeps only the *why* of the
+  present design in a few words ("the owner: …", with the date), when without it someone would "fix" it.
+- **One fact — one page.** A thing is described in full where it belongs (the photo mockups' `etsy/` folder — on
+  [photo-mockups](../features/photo-mockups.md)); every other page says it in a few words and links there. A change
+  then touches one page, not seven.
+- **No counts in prose** (how many tests, routes, pages): the runner and `wiki_check.py` say them; a number kept by
+  hand was only ever rewritten.
 - File names — Latin script, hyphenated; headings — in English.
 - Links — plain relative Markdown links; a path with spaces goes in angle brackets:
   `[x](<../app/Book Studio.pyw>)`.
@@ -85,15 +93,9 @@ python app/tools/wiki_check.py --map      # code file → pages
 ```
 It checks: headers, that links resolve, that every mentioned `function()` and `CONSTANT` exists in the
 file, that every page is in `index.md`, that every code file (`.py`, `.pyw`, `.js`, `.jsx`, `.css`, `.html`, `.bat`) is described by at least one page, that the
-[routes](../architecture/api-routes.md) table matches the code, the format of `log.md`, and **numbers
-the wiki states in words** (`stale_numbers()`, since 2026-09-22): how many tests are in `dev/testing.md`
-and how many routes are in `index.md`, `architecture/api-routes.md`, `architecture/server.md`
-(`NUMBER_CLAIMS`). The last one exists because the check used to pass while the wiki said 117 tests
-against a real 182, and 88 routes against a real 92 (found by the audit): it checked structure, but never
-the numbers in the prose. Since 2026-09-23 it checks **every** mention on these pages, not just the
-first; tests are counted the way the runner sees them (`ast`: `test_…` methods on a class), and
-"N … against M" is history, and it's left alone.
-Since 2026-09-27 a name after a file's link must be **defined** in that file (`defined_in()`: `def`, `function`,
+[routes](../architecture/api-routes.md) table matches the code, the format of `log.md`. It doesn't check that
+the prose is true — that is what the review (lint) is for.
+A name after a file's link must be **defined** in that file (`defined_in()`: `def`, `function`,
 `class`, `const`, an object's key or method, a name in quotes such as an environment variable): an import or a call
 used to be enough, so a function moved to another file kept passing on its old file's line (the cleanup's splits
 left eight such lines). `Class.method()` is looked for in the class's file; any other dotted `module.func()` is a
@@ -126,7 +128,7 @@ An entry's heading: `## [YYYY-MM-DD] kind | what happened`, kind is `setup`, `in
 
 ## Where in the code
 
-- [app/tools/wiki_check.py](../../app/tools/wiki_check.py) — `check()`, `stale_numbers()`, `NUMBER_CLAIMS`, `test_count()`, `coverage()`, `front_matter()`, `routes_in_code()`, `routes_in_wiki()`, `changed_files()`, `TYPES`
+- [app/tools/wiki_check.py](../../app/tools/wiki_check.py) — `check()`, `coverage()`, `front_matter()`, `routes_in_code()`, `routes_in_wiki()`, `changed_files()`, `TYPES`
 - [app/tests/test_wiki.py](../../app/tests/test_wiki.py) — `WikiMatchesCode`
 
 ## Related

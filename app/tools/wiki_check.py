@@ -12,11 +12,12 @@ What is checked:
   - every code file of the program is listed in the `code:` front matter of at least one page;
   - the route table in architecture/api-routes.md matches the @route declarations one to one;
   - log.md headings look like "## [YYYY-MM-DD] kind | title".
+Counts (how many tests, how many routes) are not written in the wiki at all — the code and the runner say them, and a
+number kept by hand was only ever rewritten (the owner, 30.09.2026).
 Standard library only.
 """
 from __future__ import annotations
 
-import ast
 import re
 import subprocess
 import sys
@@ -229,7 +230,6 @@ def check() -> list[str]:
         if not described:
             problems.append(f"{name}: no wiki page describes this file (add it to the code: of the right page).")
 
-    problems += stale_numbers()
 
     routes_page = WIKI / ROUTES_PAGE
     if routes_page.exists():
@@ -240,51 +240,6 @@ def check() -> list[str]:
             problems.append(f"{ROUTES_PAGE}: route {method} {pattern} no longer exists in the code")
     else:
         problems.append(f"Missing page {ROUTES_PAGE}.")
-    return problems
-
-
-def test_count() -> int:
-    """How many tests the runner finds: every test_… method of a class in app/tests, read with ast — a
-    `def test_` inside a string or a helper outside a class is not a test (22.09.2026 audit)."""
-    total = 0
-    for path in sorted((REPO / "app" / "tests").glob("test_*.py")):
-        for node in ast.parse(path.read_text(encoding="utf-8")).body:
-            if isinstance(node, ast.ClassDef):
-                total += sum(1 for f in node.body if isinstance(f, ast.FunctionDef) and f.name.startswith("test_"))
-    return total
-
-
-# Where the wiki states how many tests and routes there are, and how: every mention on these pages is checked,
-# not only the first. "117 tests against 182" is history (how it used to be) and is left alone.
-NUMBER_CLAIMS = [
-    ("dev/testing.md", r"(\d+)\s+tests?\b(?!\s+against)", "tests"),
-    ("index.md", r"all\s+(\d+)\b", "routes"),
-    ("architecture/api-routes.md", r"(\d+)\s+routes?\b(?!\s+against)", "routes"),
-    ("architecture/server.md", r"(\d+)\s+routes?\b(?!\s+against)", "routes"),
-]
-
-
-def stale_numbers() -> list[str]:
-    """Numbers the wiki states in plain words. Links, names and route tables were always checked; counts
-    were not, and they quietly drifted (117 tests against 162, 88 routes against 92 — audit, 22.09.2026)."""
-    real = {"tests": test_count(), "routes": len(routes_in_code())}
-    problems, seen = [], set()
-    for name, pattern, what in NUMBER_CLAIMS:
-        page = WIKI / name
-        if not page.exists():
-            continue
-        lines = page.read_text(encoding="utf-8").splitlines()
-        # index.md: "all N" counts routes only on the line about the routes
-        found = [(n, m) for n, line in enumerate(lines, 1) for m in re.finditer(pattern, line)
-                 if what != "routes" or name != "index.md" or "route" in line.lower()]
-        if found:
-            seen.add(what)
-        for n, m in found:
-            if int(m.group(1)) != real[what]:
-                problems.append(f"{name}:{n}: says {m.group(1)} {what}, actually {real[what]}.")
-    for what in real:
-        if what not in seen:
-            problems.append(f"No number for \"{what}\" found in the wiki — the stale-number check can't see it.")
     return problems
 
 

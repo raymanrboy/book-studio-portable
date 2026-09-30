@@ -86,6 +86,7 @@ def new_id() -> str:
 
 
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")  # a picture, wherever one is looked for (was written out five times)
+VIDEO_EXTS = (".mp4", ".mov", ".webm")            # a video (the photo mockups' Gemini Omni category)
 
 
 def inside(path: Path, folder: Path, or_same: bool = False) -> bool:

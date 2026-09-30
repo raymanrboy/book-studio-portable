@@ -1,7 +1,7 @@
 ---
 title: Open questions and technical debt
 type: plan
-updated: 2026-09-29
+updated: 2026-09-30
 code: []
 ---
 # Open questions
@@ -28,6 +28,13 @@ to discuss:
   new defect the audit found lived exactly at these seams.
 
 ## Questions for the owner
+
+- **(2026-09-30, the wiki review) The `etsy/` folder and Etsy's own limits.** A book's `etsy/` now gathers 6 slides,
+  2 whole-scene mockups and up to 7 photo mockups — 15 files, more than a listing may hold, and Cover & Open 1 / All &
+  Open 1 weigh 16–18 MB each. Which of them go into the listing, in what order, and does Etsy take files that big?
+  (Etsy's current limits were not checked from this PC — no Etsy here.) Could be a numbered order in `etsy/`.
+- **(2026-09-30) Which generator for which step?** The Workshop's pages are made in Gemini, book 25's photo mockups in
+  ChatGPT. Ctrl+V → the next part counts only in **Chrome** — is ChatGPT open in Chrome too?
 
 - **Exceptions to the printer rule.** The rule matches 51 of the last 54 orders; 2 softcovers in the US
   and 1 hardcover to Canada were printed in Printify. Deliberate exceptions (then the rule stays as is)

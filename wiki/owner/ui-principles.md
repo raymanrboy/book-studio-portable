@@ -53,7 +53,7 @@ code:
 - **A guard against a slip is loud** (2026-09-25, "not just a message — a big red one, a guard against a
   slip"): when the program sees the wrong book being made, it's a big red banner above everything in
   "Proofing", its own badge and its own question before print — not one more row in a list
-  ([text check](../features/text-check.md#another-books-pages-since-2026-09-25)).
+  ([text check](../features/text-check.md)).
 
 ## Specific requirements
 

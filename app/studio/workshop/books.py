@@ -249,7 +249,8 @@ def mockups_state(path: Path) -> dict:
     from ..slides.cutout import NO_BG
     folder = path / MOCKUPS
     pictures = [n for n in _names(folder) if n.lower().endswith(".png") and not n.lower().startswith("canva-cover")]
-    slides = [n for n in _names(path / ETSY) if n.lower().startswith("listing") and n.lower().endswith(".png")]
+    from ..photos import bare
+    slides = [n for n in _names(path / ETSY) if bare(n).lower().startswith("listing") and n.lower().endswith(".png")]
     old = [n for n in pictures if n.lower().startswith("listing ")]
     return {"mockups": len(pictures) - len(old), "noBg": len(_names(folder / NO_BG)),
             "slides": len(slides) + len(old), "editable": (folder / "slides" / "set.json").is_file()}
@@ -396,8 +397,10 @@ def all_books() -> list[dict]:
 
 
 def media_file(book_id: str, area: str, name: str, variant: str | None = None) -> Path:
-    """A picture of a book, only by a name that really is in that folder (a hero variant's: in its subfolder)."""
-    if area not in AREAS or not name.lower().endswith(core.IMAGE_EXTS):
+    """A picture of a book, only by a name that really is in that folder (a hero variant's: in its subfolder); in
+    etsy/ also a video (the photo mockups' Gemini Omni category)."""
+    exts = core.IMAGE_EXTS + core.VIDEO_EXTS if area == ETSY else core.IMAGE_EXTS
+    if area not in AREAS or not name.lower().endswith(exts):
         raise ApiError("Не знайдено.", 404)
     folder = book_path(book_id) / area
     if variant:
@@ -453,7 +456,7 @@ def open_in_windows(book_id: str | None, what: str, name: str = "", variant: str
                 raise ApiError("Не знайдено.", 404)
             target = target / "variants" / variant
         if name:
-            if what == "folder" or name not in _names(target) or not name.lower().endswith(core.IMAGE_EXTS + TEXT_SUFFIXES):
+            if what == "folder" or name not in _names(target) or not name.lower().endswith(core.IMAGE_EXTS + core.VIDEO_EXTS + TEXT_SUFFIXES):
                 raise ApiError("Файл не знайдено.", 404)
             target = target / name
         else:

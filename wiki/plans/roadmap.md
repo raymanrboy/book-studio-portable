@@ -26,7 +26,7 @@ code: []
   `profit.normalize_receipt()` doesn't keep it yet — it needs adding there (a full re-sync fills it for
   older receipts).
 - **The program draws the pages itself — "an order comes in, and it's all already filled in"** (the
-  owner's idea, 2026-09-19, "off the top of his head"; details — [below](#pages-with-no-canva-idea-2026-09-19)).
+  owner's idea, 2026-09-19, "off the top of his head"; details — [below](#pages-without-canva-an-idea-from-2026-09-19)).
   All the owner would need from Canva is placing text on the pages; the most manual work is long
   dedications.
 - **A "doesn't fit the 24-page version" mark** on spreads in a book's passport (exactly 3 per book; the
