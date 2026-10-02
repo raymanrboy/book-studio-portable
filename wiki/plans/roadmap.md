@@ -1,7 +1,7 @@
 ---
 title: Plans — what's next
 type: plan
-updated: 2026-09-29
+updated: 2026-10-02
 code: []
 ---
 # Plans
@@ -374,6 +374,10 @@ The owner wants a real program feature — a "check button", a strong one — no
 
 - Running tests automatically on GitHub (GitHub Actions) — possibly; the `gh` token already has
   `workflow` permission.
+
+- **A fully portable Book Studio** (every program, model and file it uses inside one folder) — started on 2026-09-30
+  in a separate copy on the Desktop, **set aside on 2026-10-02** (the owner: «від портативки поки відмовися»); the copy
+  is gone. Not to be picked up again without his word.
 
 ## Related
 

@@ -3,6 +3,10 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-02] decision | The portable Book Studio set aside
+
+- At the owner's word; recorded in [decisions](decisions.md) and the [roadmap](plans/roadmap.md#infrastructure).
+
 ## [2026-10-02] update | The Mockups opened from a book no longer trap the owner
 
 - The owner: from a book into the Mockups, and after a step elsewhere he couldn't get back — the arrow led to

@@ -9,6 +9,12 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
 
+## 2026-10-02 — The portable Book Studio is set aside
+
+- **The owner:** «від портативки поки відмовися». The fully portable copy started on 2026-09-30 (its own folder on
+  the Desktop, local git, no GitHub) is no longer there; the original `Book Studio` stays the only one. Not to be
+  restarted without his word ([roadmap](plans/roadmap.md#infrastructure)).
+
 ## 2026-10-01 (later) — a Gelato draft's card stays in the order card while its link lives
 
 - **The owner**: the green card with all of a draft's details vanished once he left the Order Creator; he wants it to stay
