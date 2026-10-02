@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-09-30
+updated: 2026-10-01
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -43,7 +43,7 @@ code:
 | POST | `/api/secrets` | token | `_secret` | settings.js (save / delete a key) |
 | POST | `/api/settings/legacy/import` | token | `_legacy_import` | settings.js (keys from the old programs) |
 | POST | `/api/app/open-data` | token | `_open_data` | settings.js |
-| POST | `/api/app/open-url` | token | `_open_url` | lib.js `openExternal` (Etsy is blocked, except for sign-in) |
+| POST | `/api/app/open-url` | token | `_open_url` | lib.js `openExternal` (Etsy is blocked, except for sign-in; Gelato and Canva open in the browser profile from settings, `_open_in_profile()`) |
 | POST | `/api/app/pick-folder` | token | `_pick_folder` | book.js, library.js |
 
 ## Backup — [backup.py](../../app/studio/backup.py)

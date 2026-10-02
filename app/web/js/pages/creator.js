@@ -12,6 +12,7 @@ import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { take } from '../handoff.js';
 import { markSent, finish } from '../keep.js';
 import { pickEtsyOrder } from './creator-picker.js';
+import { gelatoResultHtml, runCountdown, resultAction, linkUntil } from './gelato-result.js';
 import { pathHtml } from '../path.js';
 
 export async function mount(view) {
@@ -63,7 +64,7 @@ export async function mount(view) {
   const createLabel = () => (st.mode === 'gelato' ? (st.gelato.reprint ? 'Створити чернетку-передрук' : 'Створити чернетку')
     : st.printify.reprint ? 'Створити замовлення-передрук'
       : withOrder() ? 'Створити чернетку замовлення' : 'Створити книгу без замовлення');
-  let tunnelTimer = null;
+  let stopCountdown = () => {};
   let gone = false; // the page was let go: its polls stop (runJob keepGoing)
   const cur = () => st[st.mode];
   const bk = (i = cur().pick) => cur().books[i] || cur().books[0];   // the book being shown / edited
@@ -147,9 +148,9 @@ export async function mount(view) {
   function renderTunnels() {
     const active = status.gelato.activeTunnels || [];
     if (!active.length || st.mode !== 'gelato' || st.gelato.result) { setHtml($('#cr-tunnels'), ''); return; }
-    setHtml($('#cr-tunnels'), html`<div class="notice notice-warn" style="margin-bottom:16px">${ic('globe')}<div class="grow">
-      Активне тимчасове посилання для файлів чернетки Gelato (${active.map((t) => `${t.key.slice(0, 8)}… — ${Math.ceil(t.secondsLeft / 60)} хв`).join(', ')}).
-      Відкрийте чернетку в Gelato Dashboard, поки посилання працює.</div>
+    setHtml($('#cr-tunnels'), html`<div class="notice notice-warn" style="margin-bottom:16px">${ic('clock')}<div class="grow">
+      Тимчасове посилання на файли чернетки Gelato ще працює (${active.map((t) => `${t.key.slice(0, 8)}… — ${Math.ceil(t.secondsLeft / 60)} хв`).join(', ')}).
+      Gelato забирає файли сам, зазвичай за хвилину.</div>
       ${active.map((t) => ib('unlink', 'Закрити посилання', `data-close-tunnel="${t.key}"`, { cls: 'sm' }))}</div>`);
   }
 
@@ -291,26 +292,7 @@ export async function mount(view) {
           : html`<button class="btn btn-primary grow" data-act="open-product">${ic('external', 'icon-s')}Відкрити в Printify</button>${ib('copy', 'Копіювати Product ID', 'data-act="copy-id"')}`}${sendLogButton(r)}</div>
       </div>`;
     }
-    return html`<div class="result-card">
-      <h4>${ic('checkCircle')}${r.reprint ? 'Передрук: чернетку створено в Gelato!' : 'Чернетку замовлення створено в Gelato!'}</h4>
-      <dl class="kv">
-        <dt>Назва</dt><dd>${r.title}</dd>
-        <dt>Order ID</dt><dd class="mono">${r.orderId}</dd>
-        <dt>Reference</dt><dd class="mono">${r.orderReferenceId}</dd>
-        <dt>Тип</dt><dd class="mono">${r.orderType || 'draft'}</dd>
-        ${(r.books || []).length > 1
-          ? html`<dt>Книги</dt><dd>${r.books.map((b) => html`<div>${b.title} · ${b.format} · <span class="num">${b.pageCount}</span> стор.</div>`)}</dd>`
-          : html`<dt>Формат</dt><dd>${r.format}</dd>
-            ${r.pdfPages ? html`<dt>Файл</dt><dd>один PDF, <span class="num">${r.pdfPages}</span> стор.: обкладинка · форзац · <span class="num">${r.pdfPages - 3}</span> сторінок · нахзац</dd>` : ''}`}
-      </dl>
-      ${(r.warnings || []).map((w) => html`<div class="notice notice-warn" style="margin-top:10px">${ic('alert')}<div>${w}</div></div>`)}
-      <div class="notice notice-warn" style="margin-top:12px" id="cr-tunnel">${ic('clock')}<div class="grow">
-        <b>Важливо:</b> Gelato завантажує файли лише коли ви відкриєте чернетку в Dashboard. Зробіть це зараз, поки тимчасове посилання працює — лишилось <b class="mono" id="cr-countdown">--:--</b>.
-        <div class="row" style="margin-top:8px"><button class="btn btn-sm btn-primary" data-act="open-gelato">${ic('external', 'icon-s')}Gelato Dashboard</button>
-          ${ib('copy', 'Копіювати Order ID', 'data-act="copy-order"', { cls: 'sm' })}
-          ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="close-tunnel"', { cls: 'sm' })}
-          ${sendLogButton(r)}</div></div></div>
-    </div>`;
+    return gelatoResultHtml(r);
   }
 
   function renderLeft() {
@@ -493,7 +475,8 @@ export async function mount(view) {
         $('#cr-detail').textContent = j.detail || '';
         setProgress(bar, j.percent);
       });
-      if (st.receiptId && !reprint) markSent(st.receiptId, { provider: mode, what: sentText(mode, s.result) });
+      if (mode === 'gelato') linkUntil(s.result);
+      if (st.receiptId && !reprint) markSent(st.receiptId, { provider: mode, what: sentText(mode, s.result), result: mode === 'gelato' ? s.result : null });
       if (s.result?.orderError) toast('Книгу створено, але замовлення — ні. Подробиці в картці.', 'error', 7000);
       else if (reprint) toast(mode === 'gelato' ? 'Передрук: чернетку створено в Gelato' : 'Передрук: замовлення створено в Printify', 'success');
       else toast(mode === 'gelato' ? 'Чернетку створено в Gelato' : s.result?.order ? 'Чернетку замовлення створено в Printify' : 'Книгу створено в Printify', 'success');
@@ -532,18 +515,9 @@ export async function mount(view) {
   }
 
   function startCountdown() {
-    clearInterval(tunnelTimer);
-    const r = st.gelato.result;
-    if (!r) return;
-    const until = r._until || (r._until = Date.now() + r.keepAliveSeconds * 1000);
-    const tick = () => {
-      const left = Math.max(0, Math.round((until - Date.now()) / 1000));
-      const node = $('#cr-countdown');
-      if (node) node.textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;
-      if (!left) { clearInterval(tunnelTimer); const t = $('#cr-tunnel'); if (t) setHtml(t, html`${ic('info')}<div>Тимчасове посилання закрито. Якщо Gelato ще не завантажив файли — створіть чернетку повторно.</div>`); }
-    };
-    tick();
-    tunnelTimer = setInterval(tick, 1000);
+    stopCountdown();
+    const card = $('#cr-left .result-card');
+    if (st.gelato.result && card) stopCountdown = runCountdown(card, st.gelato.result, () => renderLeft());
   }
 
   // ---------------------------------------------------------------- an Etsy order picked (creator-picker.js)
@@ -633,15 +607,10 @@ export async function mount(view) {
       else if (a === 'copy-printify-order') copyText(st.printify.result?.order?.id || '', 'Order ID скопійовано');
       else if (a === 'open-product') openExternal(st.printify.result?.url);
       else if (a === 'copy-id') copyText(st.printify.result?.productId || '', 'Product ID скопійовано');
-      else if (a === 'copy-order') copyText(st.gelato.result?.orderId || '', 'Order ID скопійовано');
-      else if (a === 'open-gelato') openExternal('https://dashboard.gelato.com/');
-      else if (a === 'open-sendlog') post('/api/sends/open', { file: t.dataset.file || '' }).catch((er) => toast(er.message, 'error'));
-      else if (a === 'close-tunnel') {
-        try { await post('/api/creator/gelato/close-tunnel', { orderId: st.gelato.result.orderId }); } catch {}
-        clearInterval(tunnelTimer);
-        const box = $('#cr-tunnel');
-        if (box) setHtml(box, html`${ic('check')}<div>Тимчасове посилання закрито.</div>`);
+      else if (st.gelato.result && await resultAction(a, st.gelato.result, t)) {
+        if (a === 'close-tunnel') { stopCountdown(); renderLeft(); }
       }
+      else if (a === 'open-sendlog') post('/api/sends/open', { file: t.dataset.file || '' }).catch((er) => toast(er.message, 'error'));
     }),
     on(view, 'click', '#cr-create', () => create()),
     on(view, 'click', '[data-format]', (e, b) => {
@@ -692,9 +661,9 @@ export async function mount(view) {
       return o.stage === 'new';
     },
     // A kept page out of sight does not tick; back in sight, the countdown goes on from the same moment (_until).
-    hidden() { clearInterval(tunnelTimer); },
-    shown() { if (st.gelato.result && $('#cr-countdown')) startCountdown(); },
-    unmount() { gone = true; validateSoon.cancel(); offs.forEach((f) => f()); clearInterval(tunnelTimer); },
+    hidden() { stopCountdown(); },
+    shown() { if (st.gelato.result) startCountdown(); },
+    unmount() { gone = true; validateSoon.cancel(); offs.forEach((f) => f()); stopCountdown(); },
   };
 }
 

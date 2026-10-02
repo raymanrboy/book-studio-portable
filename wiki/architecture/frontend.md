@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-09-30
+updated: 2026-10-02
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -38,7 +38,8 @@ code:
   icon before): **Замовлення** `#/orders` (Alt+1), **Книги** `#/books` (Alt+2), **Прибуток**
   `#/profit` (Alt+3), **Інструменти** `#/tools` (Alt+4), «Пошук» (Ctrl+K, last of the list), at the bottom Settings
   `#/settings` and the theme menu (dark / light / follow Windows, "reduce motion"). Icons only (tooltips); a click goes back to where the owner
-  was under it (`lastIn`, `entryOf()`), a second click to its start. The ink is the area of the page's route
+  was under it (`lastIn`, `entryOf()`) — only while that page still belongs to it (`placeAt`: the Mockups opened
+  from a book and later as a tool must not keep pulling «Книги» into them), a second click to its start. The ink is the area of the page's route
   (`html[data-mode]`: `orders` orange, `listings` cyan). The start page is `HOME = '#/orders'`. A page serving an
   object claims its place with its controller's `navFor()` (the Order Creator of an order → «Замовлення»). While a
   dialog or the viewer is open, Alt+1…4 doesn't switch pages; every navigation closes any open menu and tooltip

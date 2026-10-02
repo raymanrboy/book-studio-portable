@@ -1,7 +1,7 @@
 ---
 title: Settings
 type: feature
-updated: 2026-09-30
+updated: 2026-10-01
 code:
   - app/studio/settings_api.py
   - app/studio/gelato_accounts.py
@@ -55,6 +55,11 @@ lives) are deliberately not shown or editable from the interface — the owner's
 `/api/settings/gelato` and `/api/settings/printify` routes, which the interface never called, were
 removed on 2026-09-23.
 
+- **The browser profile for chosen sites** (since 2026-10-01): the settings' `browser` section: `exe` (Cent Browser's
+  `Chrome.exe`), `profile` (`Profile 6` = «Work»), `hosts` (`gelato.com`, `canva.com`). With it, `_open_url()` opens
+  those sites in that profile (`_open_in_profile()`), and every other link opens in the default browser. It isn't in
+  the interface; it is written straight into `settings.json` ([decisions](../decisions.md)).
+
 - The theme and "reduce motion" are both saved in the program's settings, and both come from there on
   launch (the browser only remembers the theme for the first frame); a failed save shows a message.
 - Looking for keys in the old programs (`legacy_sources()`) only decrypts their files when those files
@@ -81,7 +86,7 @@ ever read.
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `backupCard()`, `watchBackup()`, `redrawBackup()`
 - [app/web/js/pages/settings-dialogs.js](../../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`, `pickMaster()`
-- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
+- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_open_in_profile()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
 - [app/studio/gelato_accounts.py](../../app/studio/gelato_accounts.py) — `status()`, `_switch()`, `_forget()`
 - [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
 - [app/studio/etsy.py](../../app/studio/etsy.py) — `status()`, `import_session()`

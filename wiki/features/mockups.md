@@ -1,7 +1,7 @@
 ---
 title: Mockups — listing pictures from a demo book (a tool, and a Workshop book's step)
 type: feature
-updated: 2026-09-30
+updated: 2026-10-02
 code:
   - app/studio/mockups.py
   - app/studio/mockups.jsx
@@ -12,8 +12,9 @@ code:
 # Mockups (Мокапи)
 
 > A tool (`#/mockups`) — among [«Інструменти»](modes.md) on its own, and a Workshop book's «Мокапи» step: opened from
-> the book it shows «Для книги №41 …», goes back to the book and keeps the rail on «Книги» (`arrived()`, `navFor()`;
-> since 2026-09-30). Bring in the demo book's Canva ZIP,
+> the book it shows «Для книги №41 …», goes back to the book and keeps the rail on «Книги» (`arrived()`, `navFor()`)
+> — **until it is opened from «Інструменти» or for another book**; coming back to it from anywhere else (the slides'
+> editor, another page) it stays the book's. Bring in the demo book's Canva ZIP,
 > click the "presentable" spreads — one Photoshop script fills the owner's mockup templates and saves **6 PNG
 > pictures**; **4 templates are left open** (the 3 where the front cover shows — the owner fits it by hand — and
 > **Dedication**, whose background and table colours he picks), and **«Зберегти відкриті»** saves them too. Every saved

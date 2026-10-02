@@ -1,7 +1,7 @@
 ---
 title: The order-to-print path, from Etsy
 type: flow
-updated: 2026-09-30
+updated: 2026-10-01
 code:
   - app/web/js/pages/orders.js
   - app/studio/orders.py
@@ -30,7 +30,7 @@ code:
 | 6a | Found a mistake — fixes the page in Canva, downloads **just that page** | A "Replace N" button in the viewer: the page takes the old one's place, files and text are checked again, "Undo" sits next to it | [folder-viewer.js](../../app/web/js/folder-viewer.js) `openFolderViewer()`; [creator/printfolder.py](../../app/studio/creator/printfolder.py) `replace_page()` |
 | 7 | "Send to print in …" | The Order Creator opens as the order's print step (its path, back to the card) and is filled in: mode, folder, title `receipt - name`, address, format | [order-card.js](../../app/web/js/pages/order-card.js) `print()`; [handoff.js](../../app/web/js/handoff.js) `take()` |
 | 8 | "Create draft (order)" | Printify: a book + an On-hold order; Gelato: a PDF + a draft. A copy of the files that went to print goes into the [order archive](../features/archive.md) | [creator.js](../../app/web/js/pages/creator.js) `create()`; [creator/printify_send.py](../../app/studio/creator/printify_send.py) `create_printify_draft()`; [creator/gelato_send.py](../../app/studio/creator/gelato_send.py) `create_gelato_draft()` |
-| 9 | In Printify — "Submit order"; in Gelato — open the draft in the Dashboard (while the link is alive), confirm and pay | Until then the order stays in "New" with a "Draft" / "On hold" chip: a draft doesn't count | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
+| 9 | In Printify — "Submit order"; in Gelato — open the draft from the orders list («Замовлення в Gelato»), confirm and pay | Until then the order stays in "New" with a "Draft" / "On hold" chip: a draft doesn't count | [integrations/printify.md](../integrations/printify.md), [integrations/gelato.md](../integrations/gelato.md) |
 | 10 | Clicks "Refresh" | A confirmed and paid order moves to "In progress" (the receipt number is in the reference / title); the printer status shows on the right; the book appears in the order archive | [stages.py](../../app/studio/stages.py) `order_stage()`; [printorders.py](../../app/studio/printorders.py) `is_placed()` |
 | 11 | Once the printer ships it — opens the «Позначити в Etsy» tab, clicks to copy the tracking number | An order with a tracking number or "shipped" status is on the truck tab, with a carrier and a number | [stages.py](../../app/studio/stages.py) `order_stage()`; [order-bits.js](../../app/web/js/order-bits.js) `trackChips()` |
 | 12 | Marks the order shipped on Etsy (on the Kyiv PC), then clicks "Refresh" | The order moves to "Sent" (a box); its 14-day countdown starts in the order archive | [rules/order-stages.md](../rules/order-stages.md); [archive.py](../../app/studio/archive.py) `refresh()` |

@@ -764,6 +764,33 @@ class OpenUrlGuard(unittest.TestCase):
             open_url("https://www.etsy.com/oauth/connect?response_type=code")  # sign-in, after the Kyiv check
         self.assertEqual(opened.call_count, 2)
 
+    def test_chosen_sites_open_in_their_browser_profile(self):
+        from studio import settings_api
+        open_url = lambda url: settings_api._open_url(SimpleNamespace(json={"url": url}))
+        exe = Path(tempfile.mkdtemp()) / "Chrome.exe"
+        exe.write_bytes(b"")
+        before = core.settings.section("browser")
+        core.settings.replace_section("browser", {"exe": str(exe), "profile": "Profile 6",
+                                                  "hosts": ["gelato.com", "canva.com"]})
+        try:
+            with mock.patch("webbrowser.open") as default, mock.patch("subprocess.Popen") as launched:
+                open_url("https://dashboard.gelato.com/orders/list")
+                open_url("https://www.canva.com/design/abc/edit")
+                open_url("https://printify.com/app/orders")  # not chosen: the default browser
+                open_url("https://notgelato.com/")  # only the site itself and its subdomains
+            self.assertEqual([c.args[0] for c in launched.call_args_list], [
+                [str(exe), "--profile-directory=Profile 6", "https://dashboard.gelato.com/orders/list"],
+                [str(exe), "--profile-directory=Profile 6", "https://www.canva.com/design/abc/edit"]])
+            self.assertEqual([c.args[0] for c in default.call_args_list],
+                             ["https://printify.com/app/orders", "https://notgelato.com/"])
+            exe.unlink()  # the browser gone → the default one, never an error
+            with mock.patch("webbrowser.open") as default, mock.patch("subprocess.Popen") as launched:
+                open_url("https://dashboard.gelato.com/orders/list")
+            launched.assert_not_called()
+            default.assert_called_once()
+        finally:
+            core.settings.replace_section("browser", before)
+
 
 class ProfitSyncFlow(unittest.TestCase):
     def test_sync_builds_snapshot(self):

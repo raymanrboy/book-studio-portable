@@ -68,10 +68,15 @@ export async function mount(view) {
   takeWorkshopBook();
   // Opened from a Workshop book (its «Мокапи» step): the page is that book's step — the book in its head, the way
   // back to it, the rail on «Книги». From «Інструменти» it is the tool on its own (2026-09-30).
+  // It stays the book's step until it is opened as a tool on its own (from «Інструменти») or for another book: coming back
+  // from the slides' editor or anywhere else used to drop the book — the arrow led to the tools, and «Книги» kept
+  // leading here (the owner, 02.10.2026).
   let fromBook = null;
   const arrived = () => {
-    const m = /^#\/workshop\/([^/]+)$/.exec(store.here || '');
-    fromBook = m && st.workshop && decodeURIComponent(m[1]) === st.workshop.id ? st.workshop : null;
+    const here = store.here || '';
+    const m = /^#\/workshop\/([^/]+)$/.exec(here);
+    if (m) fromBook = st.workshop && decodeURIComponent(m[1]) === st.workshop.id ? st.workshop : null;
+    else if (/^#\/tools/.test(here) || (fromBook && st.workshop?.id !== fromBook.id)) fromBook = null;
     paintBack();
   };
   function paintBack() {

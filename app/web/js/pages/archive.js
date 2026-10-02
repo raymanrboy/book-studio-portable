@@ -179,7 +179,7 @@ async function mountBook(view, id) {
       <div class="faint arc-clock">${ic(e.keep ? 'pin' : 'clock', 'icon-s')}<span>${clockText(e, keepDays)}</span></div>
       <div class="row">${pr
         ? html`<button class="btn btn-sm" data-act="open-product">${ic('external', 'icon-s')}Відкрити в Printify</button>`
-        : html`<button class="btn btn-sm" data-act="open-gelato">${ic('external', 'icon-s')}Gelato Dashboard</button>`}</div>
+        : html`<button class="btn btn-sm" data-act="open-gelato">${ic('external', 'icon-s')}Замовлення в Gelato</button>`}</div>
     </section>`;
   }
 
@@ -245,7 +245,7 @@ async function mountBook(view, id) {
       else if (a === 'open-sendlog') post('/api/sends/open', { file: e.sendLog || '' }).catch((er) => toast(er.message, 'error'));
       else if (a === 'reprint') reprint();
       else if (a === 'open-product') openExternal(e.url || `https://printify.com/app/product-details/${e.productId}`);
-      else if (a === 'open-gelato') openExternal('https://dashboard.gelato.com/');
+      else if (a === 'open-gelato') openExternal('https://dashboard.gelato.com/orders/list');
       else if (a === 'copy-id') copyText(t.dataset.text, 'Скопійовано');
       else if (a === 'copy-text') copyChip(ev, t);
     }),

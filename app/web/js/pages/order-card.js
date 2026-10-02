@@ -16,6 +16,7 @@ import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { give } from '../handoff.js';
 import { pathHtml } from '../path.js';
 import { sentOf, keptOrder, finish } from '../keep.js';
+import { gelatoResultHtml, runCountdown, resultAction, linkAlive } from './gelato-result.js';
 
 // Text check (textcheck/): how its findings are counted and why a check was only the light one.
 const LEVEL_WORDS = { error: ['помилка', 'помилки', 'помилок'], warn: ['питання', 'питання', 'питань'] };
@@ -422,6 +423,8 @@ export async function mountCard(view, rid) {
     const p = provider();
     const done = sentOf(o.receiptId);
     const result = keptOrder('#/creator') === String(o.receiptId);
+    // A Gelato draft's green card stays here, whole, while the temporary link to its files lives (owner, 01.10.2026).
+    const live = done?.result && linkAlive(done.result) ? done.result : null;
     const ready = readyBooks(p);
     // An order of several books: which of them this send takes, and what each one still waits for.
     const list = work.length > 1 ? html`<ul class="oc-books">${work.map((w, i) => {
@@ -433,7 +436,8 @@ export async function mountCard(view, rid) {
     return html`<section class="card card-pad stack ${p === 'printify' ? 'tint-printify' : ''}" id="oc-print">
       <div class="row"><span class="step-no">4</span><h3 class="card-title grow">Друк</h3></div>
       ${list}
-      ${done ? html`<div class="notice notice-success">${ic('checkCircle')}<div class="grow">${done.what}</div></div>
+      ${live ? html`${gelatoResultHtml(live)}<div class="row" style="justify-content:flex-end">${ib('send', 'Надіслати ще раз', 'data-act="print"')}</div>`
+    : done ? html`<div class="notice notice-success">${ic('checkCircle')}<div class="grow">${done.what}</div></div>
         <div class="row">${result ? html`<button class="btn btn-primary grow" data-act="to-creator">${ic('printer', 'icon-s')}Результат в Order Creator</button>` : ''}
           ${ib('send', 'Надіслати ще раз', 'data-act="print"')}</div>`
     : html`<button class="btn btn-xl btn-primary btn-block" data-act="print">${ic('send', 'icon-l')}До друку в ${providerName(p)}${ready.length > 1 ? html` · <span class="num">${ready.length}</span> книги` : ''}</button>`}
@@ -450,6 +454,19 @@ export async function mountCard(view, rid) {
   // The flow is redrawn in place (patch()): a card whose markup didn't change stays, and a changed one keeps every
   // picture it already showed — after a replaced page only that page loads, and the strip stays where it was (the
   // whole flow was redrawn, every picture faded in again and the strip jumped back to the first spread, 26.09.2026).
+  // The green card's countdown; when the link closes, the step shows the short «created» line again.
+  let stopLink = () => {};
+  function linkTimer() {
+    stopLink();
+    const card = $('#oc-print .result-card'), r = sentOf(o.receiptId)?.result;
+    if (card && r) stopLink = runCountdown(card, r, redrawPrint);
+  }
+  function redrawPrint() {
+    const step = $('#oc-print');
+    if (step) step.outerHTML = String(printCard());
+    linkTimer();
+  }
+
   function renderRight() {
     const ready = !!(f.folder && f.validation?.ok && !f.busy);
     renderFinish();
@@ -458,6 +475,7 @@ export async function mountCard(view, rid) {
     view.querySelector('.ord-grid').classList.toggle('ord-solo', !manual); // a printed order: its data alone
     patch($('#oc-flow'), manual ? [['files', filesCard()], ...(ready ? [['proof', proofCard()], ['print', printCard()]] : [])] : []);
     fadeImages($('#oc-flow'));
+    linkTimer();
     requestAnimationFrame(() => syncSeg($('#oc-flow .seg')));
     if ($('#oc-check')) markSeen();
     const strip = $('#oc-strip');
@@ -634,8 +652,10 @@ export async function mountCard(view, rid) {
   // ---------------------------------------------------------------- events
   const stopFit = stickyFit(view.querySelector('#oc-data'));
   const offs = [
-    on(view, 'click', '[data-act]', (e, t) => {
+    on(view, 'click', '[data-act]', async (e, t) => {
       const a = t.dataset.act;
+      const sent = sentOf(o.receiptId)?.result;
+      if (sent && t.closest('.result-card') && await resultAction(a, sent, t)) { if (a === 'close-tunnel') redrawPrint(); return; }
       if (a === 'back') location.hash = '#/orders';
       else if (a === 'finish') { finished = true; finish(o.receiptId); toast('Роботу над замовленням завершено', 'success'); location.hash = '#/orders'; }
       else if (a === 'canva') openExternal(item().book?.canvaUrl);
@@ -680,19 +700,18 @@ export async function mountCard(view, rid) {
   return {
     receiptId: String(o.receiptId),
     keep: () => o.stage === 'new' && !finished,
-    hidden() { esc(false); },
+    hidden() { esc(false); stopLink(); },
     async revive() {
       const fresh = await api(`/api/orders/${rid}`);
       if (fresh.stage !== 'new') return false;
       esc(true);
-      const step = $('#oc-print');
-      if (step) step.outerHTML = String(printCard());
+      redrawPrint();
       renderFinish();
       renderPath();
       return true;
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
     idle: () => !(work.some((w) => w.folder || w.busy || w.label) || sentOf(o.receiptId)),
-    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopFit(); esc(false); },
+    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopFit(); esc(false); stopLink(); },
   };
 }

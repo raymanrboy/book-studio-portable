@@ -3,6 +3,32 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-02] update | The Mockups opened from a book no longer trap the owner
+
+- The owner: from a book into the Mockups, and after a step elsewhere he couldn't get back — the arrow led to
+  «Інструменти», «Книги» led into the Mockups. The page took itself for a tool on its own whenever it was come back
+  to from anything but the book; meanwhile «Книги» still remembered the Mockups as its last page.
+- Now the Mockups stay the book's step until opened from «Інструменти» or for another book (`arrived()`), and a rail
+  place returns only to a page that still belongs to it (`placeAt` in `entryOf()`)
+  ([mockups](features/mockups.md), [frontend](architecture/frontend.md)). Checked in the preview: a kept page with a
+  demo book, a page opened clean, the tools' Mockups, the rail's «Книги».
+
+## [2026-10-01] update | The Gelato draft's card stays in the order card while its link lives
+
+- The new `gelato-result.js` holds the Gelato result card. The Order Creator and the order card both draw it, and the
+  order card keeps it while the temporary link lives. The button is now «Замовлення в Gelato», in the archive too. The
+  yellow notice stays, with a true text ([decisions](decisions.md), [orders](features/orders.md),
+  [order-creator](features/order-creator.md)).
+
+## [2026-10-01] update | «Gelato Dashboard» opens the orders list, in the browser profile «Work»
+
+- At the owner's request, the Gelato button after a draft is created (the Order Creator) and in the archive now opens
+  `dashboard.gelato.com/orders/list`, not Gelato's home page ([order-creator](features/order-creator.md),
+  [archive](features/archive.md)).
+- Gelato and Canva links open in Cent Browser's profile «Work» (`Profile 6`). This uses the settings' `browser` section
+  and `_open_in_profile()`; every other link opens in the default browser
+  ([decisions](decisions.md), [settings](features/settings.md)).
+
 ## [2026-09-30] update | The owner switched to his own Gelato account
 
 - The owner used «Перейти на новий акаунт Gelato» at 23:26. Right after, both accounts were read whole: the old one has 595

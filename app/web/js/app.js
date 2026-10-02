@@ -60,6 +60,7 @@ const currentTheme = () => localStorage.getItem('bs-theme') || 'dark';
 let mode = 'orders';     // the ink on screen: 'orders' (orange) or 'listings' (cyan) — the page's area
 let navOwner = null;      // a page that serves an object may claim its place (the Order Creator of an order → «Замовлення»)
 const lastIn = {};        // where the owner was under each place (until a restart)
+const placeAt = {};       // an address → the place it was last shown under (the Mockups serve «Книги» or «Інструменти»)
 const places = () => PLACES.filter((p) => !p.gap);
 const placeOf = (hash) => (navOwner && places().find((p) => p.hash === navOwner)) || places().find((p) => p.match.test(hash)) || null;
 
@@ -91,7 +92,10 @@ function entryOf(p, here) {
   if (here) return p.hash;
   if (p.hash === '#/orders') return ordersTarget();
   if (p.hash === '#/tools') return p.hash; // the tools are a list to choose from, never the tool last used (2026-09-30)
-  return lastIn[p.hash] || p.hash;
+  // Back to where he was under this place — unless that page has since gone over to another place (the Mockups opened
+  // from a book, later as a tool on their own): «Книги» kept leading into the Mockups (the owner, 02.10.2026).
+  const last = lastIn[p.hash];
+  return last && placeAt[last] === p.hash ? last : p.hash;
 }
 
 // Work going on while the owner is elsewhere: a mockups run in Photoshop (pages/mockups.js), a picture the Workshop
@@ -306,7 +310,7 @@ async function navigate() {
     if (/^#\/orders/.test(hash)) lastOrders = hash;
     try { navOwner = ctrl?.navFor?.() || null; } catch { navOwner = null; }
     const owner = placeOf(hash);
-    if (owner) lastIn[owner.hash] = hash;
+    if (owner) { lastIn[owner.hash] = hash; placeAt[hash] = owner.hash; }
     if (pageMode !== mode) { mode = pageMode; document.documentElement.dataset.mode = mode; }
     placeNavPill();
     paintBusy();

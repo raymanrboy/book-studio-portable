@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-09-30
+updated: 2026-10-01
 code:
   - app/web/js/path.js
   - app/studio/orders.py
@@ -70,6 +70,12 @@ code:
 **A "✓ Finish work on this order"** (an × until 2026-09-30 — the same glyph meant «remove» elsewhere) next to the "back"
 arrow appears once a draft has been created for the order (`sentOf()`, `renderFinish()`). Clicking it — the card and the
 Order Creator forget this order (`keep.finish()`), a toast says it is done, and the queue opens. The owner's wish, 2026-09-20: "sent it — and closed it."
+
+**A Gelato draft's green card stays in the card while its link lives** (since 2026-10-01, the owner: "щоб він лишався поки
+живе посилання"). The print step shows the Order Creator's whole result card (`gelatoResultHtml()`, `markSent()` carries
+the result), with the countdown, «Замовлення в Gelato», copying the Order ID and the send journal, and a «Надіслати ще раз»
+icon under it. When the link closes, by its timer or the close icon, the step goes back to the short «created» line
+(`linkTimer()`, `redrawPrint()`). Before that, leaving the Order Creator left only the short line here.
 
 **The order's path** (since 2026-09-30, `pathSteps()`, `renderPath()` — the Workshop's strip, [path.js](../architecture/frontend.md)):
 five **icons** under the header — Canva · files · text check · printer · truck, for the book shown: filled = done, ringed
@@ -244,7 +250,7 @@ one column.
 
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `queueState`
 - [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `mountCard()`, `readyBooks()`
-- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `pathSteps()`, `renderPath()`, `goStep()`, `printedHtml()`, `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
+- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `pathSteps()`, `renderPath()`, `goStep()`, `printedHtml()`, `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `linkTimer()`, `redrawPrint()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — shared with the [order archive](archive.md): `proofHtml()`, `STRIP_THUMB`, `fieldsHtml()`, `addressHtml()`, `etsyAddressLines()`, `svcChip()`, `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`

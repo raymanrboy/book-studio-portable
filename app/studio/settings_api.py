@@ -110,8 +110,29 @@ def _open_url(req: Request):
     host = (parts.hostname or "").lower()
     if (host == "etsy.com" or host.endswith(".etsy.com")) and parts.path.rstrip("/") != "/oauth/connect":
         raise ApiError("Etsy не відкривається з цього комп'ютера — лише з київського.", 403)
-    webbrowser.open(url)
+    if not _open_in_profile(url, host):
+        webbrowser.open(url)
     return {"ok": True}
+
+
+def _open_in_profile(url: str, host: str) -> bool:
+    """Sites the owner keeps in one browser profile (Gelato and Canva in Cent Browser's «Work», 01.10.2026) open in it.
+    The settings' "browser" section: `exe`, `profile` (the profile's folder name, "Profile 6"), `hosts`. Not set, another
+    site, or the browser not found → False, and the default browser opens the link as before."""
+    import subprocess
+    cfg = core.settings.section("browser")
+    exe, profile = cfg.get("exe"), cfg.get("profile")
+    if not (exe and profile and Path(exe).is_file()
+            and any(host == h or host.endswith("." + h) for h in cfg.get("hosts") or [])):
+        return False
+    try:
+        subprocess.Popen([exe, f"--profile-directory={profile}", url], close_fds=True,
+                         creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
+                         | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    except OSError:
+        core.log.exception("Opening %s in the browser profile failed; the default browser opens it", host)
+        return False
+    return True
 
 
 @route("POST", "/api/app/pick-folder")

@@ -1,13 +1,33 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-09-30
+updated: 2026-10-01
 code: []
 ---
 # Decisions
 
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top.
+
+## 2026-10-01 (later) — a Gelato draft's card stays in the order card while its link lives
+
+- **The owner**: the green card with all of a draft's details vanished once he left the Order Creator; he wants it to stay
+  **while the temporary link lives**. He also wanted the yellow notice kept («Лиши»). Decided: the order card's print step
+  shows the same card (`gelato-result.js`) until the link closes, then the short line. The button became «Замовлення в
+  Gelato» (like «Замовлення в Printify»), one row with the copy and journal icons. The notice's text became true:
+  Gelato fetches the files on its own within a minute (checked 17.09 and 30.09.2026), it does not wait for the draft to be
+  opened. A first try with a small timer in the corner, without the yellow notice, was undone the same day: it was a
+  misreading of a message typed without a Ukrainian keyboard.
+
+## 2026-10-01 — Gelato and Canva open in the browser profile «Work»
+
+- **The owner** asked that the «Gelato Dashboard» button open Gelato's orders list (`dashboard.gelato.com/orders/list`),
+  not its home page, and that Gelato and Canva links open in one profile of his browser. The default browser on
+  the Wrocław PC is Cent Browser (portable, Chromium); the profile he picked is «Work», which is the folder `Profile 6`.
+- Decided: the settings' `browser` section (`exe`, `profile`, `hosts: gelato.com, canva.com`) is written once in
+  `settings.json` and isn't shown in the interface, like other technical values. `_open_in_profile()` starts that
+  browser with `--profile-directory`. If another site is opened, the section is empty, or the browser isn't found, the
+  default browser opens the link as before. The Etsy block comes first and is unchanged.
 
 ## 2026-09-30 (later) — «Сьогодні» removed; tools open clean
 
@@ -32,7 +52,8 @@ code: []
   from and the reset returns the slide **to how it was when the editor was opened** (no question, Ctrl+Z); the Mockups take a book only when it is
   a book's step or asked for with an icon — otherwise they ask for a folder.
 - **Not done yet — a question to the owner**: a «presets» selector in the standalone slides editor; and a slower start could not be reproduced
-  (the server starts in 2.40 s both before and after; the page's requests are the same on made-up data) — it needs his description.
+  (the server starts in 2.40 s both before and after; the page's requests are the same on made-up data); **the owner later said it went away by itself** —
+  most likely the first launch after an update (nothing cached yet); if it comes back, note where it waits (the window, the first screen, the orders).
 
 ## 2026-09-30 (the very last) — Wave 8: a drop anywhere, a picture that comes back, a keyboard that works
 

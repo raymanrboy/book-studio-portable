@@ -1,11 +1,12 @@
 ---
 title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
-updated: 2026-09-30
+updated: 2026-10-01
 code:
   - app/studio/creator/
   - app/web/js/pages/creator.js
   - app/web/js/pages/creator-picker.js
+  - app/web/js/pages/gelato-result.js
   - app/web/js/folder-viewer.js
 ---
 # Order Creator
@@ -70,7 +71,12 @@ code:
 - **The button**'s label changes: Gelato — "Create draft"; Printify with an address — "Create draft
   order", without one — "Create book without an order".
 - **Result**: a card with the ID, checks, warnings; Printify — "Order in Printify" or "Open in Printify";
-  Gelato — the PDF's build, a temporary-link timer, and "Gelato Dashboard". Both have a "Send journal"
+  Gelato — the PDF's build, a yellow notice with the temporary link's countdown («Gelato забирає їх сам, зазвичай за
+  хвилину», plus a close-the-link icon), and the orange «Замовлення в Gelato» button, which opens the orders list
+  `dashboard.gelato.com/orders/list` (since 2026-10-01; before that it was «Gelato Dashboard», which opened the home page,
+  and its notice wrongly said Gelato fetches the files only once the draft is opened). The Gelato card is one markup shared
+  with the order card (`gelato-result.js`); while the link lives, the order card shows it whole too
+  ([orders](orders.md#card-ordersreceipt-number)). Both have a "Send journal"
   icon (`sendLogButton()`); on an error card, it opens the journal folder
   ([send-journal.md](send-journal.md)).
 
@@ -211,6 +217,7 @@ exactly that — [Gelato](../integrations/gelato.md).
 
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `openStructure()`, `mount()`, `renderStatus()` (the order's head and path), `addressCard()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fillFromOrder()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
 - [app/web/js/pages/creator-picker.js](../../app/web/js/pages/creator-picker.js) — `pickEtsyOrder()`
+- [app/web/js/pages/gelato-result.js](../../app/web/js/pages/gelato-result.js) — `gelatoResultHtml()`, `linkNotice()`, `runCountdown()`, `resultAction()`, `linkUntil()`, `linkAlive()`, `ORDERS_URL`
 - [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`
 - [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `journaled_send()`, `mark_books()`, `record_order()`, `books_of()`, `receipt_for()`, `joint_title()`, `_unknown_outcome()`, `checked_files()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `validate_address()`
 - [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`

@@ -1,7 +1,7 @@
 ---
 title: Order archive — what went to print, and reprints
 type: feature
-updated: 2026-09-30
+updated: 2026-10-01
 code:
   - app/studio/archive.py
   - app/web/js/pages/archive.js
@@ -89,7 +89,7 @@ countdown starts — nothing.
 - on the left — "What went to print": the cover, the first spread with its note, a filmstrip of every
   spread, the viewer (click); below it, the **"Reprint in Printify/Gelato"** button;
 - on the right — "The send" (printer, when, title, Product/Order ID with copying, a link to the first
-  send for a reprint, when the files will be deleted, "Open in Printify" / "Gelato Dashboard"),
+  send for a reprint, when the files will be deleted, "Open in Printify" / «Замовлення в Gelato» — the orders list),
   personalization from Etsy (if the order is still in the sync), **the shipping address**.
 - Esc — back to the list.
 

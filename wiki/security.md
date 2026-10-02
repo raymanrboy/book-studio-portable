@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-09-30
+updated: 2026-10-01
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -74,7 +74,8 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 ### Etsy
 - Read-only access: `SCOPES = "shops_r transactions_r"`; requests are `GET` only.
 - Etsy pages never open from the program: the server refuses in `_open_url()` for any etsy.com address
-  except the sign-in page `/oauth/connect`.
+  except the sign-in page `/oauth/connect`. This check runs before anything else, so a site kept in a browser profile
+  (the settings' `browser` section, `_open_in_profile()`) can never let Etsy through.
 - Signing in to Etsy from Settings only opens after confirming "I'm on the Kyiv PC" (`oauthFlow()`); the
   second path is transferring a session with an "access link" from Profit Calculator.
 - The page after Etsy's consent (`/etsy/callback`, reached without the token) shows the link's text escaped
