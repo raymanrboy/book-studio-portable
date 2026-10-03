@@ -1,7 +1,7 @@
 ---
 title: Working with the owner
 type: owner
-updated: 2026-09-24
+updated: 2026-10-03
 code: []
 ---
 # Working with the owner
@@ -63,16 +63,16 @@ code: []
   files on C go at the end of its task.
 - **Photoshop CC 2019 (20.0.5), portable** — `D:\Programs\Portable\Photoshop_Portable` (the program itself:
   `Portable Adobe Photoshop\App\Photoshop\Photoshop.exe`); used for Etsy listing mockups, the templates
-  are in `D:\Roman\Desktop\Трафарети мастхев` (read-only) — [plans/listing-mockups.md](../plans/listing-mockups.md).
+  are in `D:\Roman\Desktop\Трафарети мастхев` (read-only) — [mockups](../features/mockups.md#the-templates).
   `ffmpeg` is on PATH (2026-09-23).
 - **About visuals he's "pixel-perfect"**: the cover sells, so he fits covers himself (2026-09-23).
   He doesn't want an agent watching videos frame by frame ("too slow and costly") — he writes a text
   description instead.
 - On the Wrocław PC: an RTX 4070 SUPER (12 GB), 32 GB RAM; Ollama (`D:\Programs\Regular\Ollama`) with the
   `gemma4:12b-it-qat` model (the owner decided to drop Qwen, 2026-09-19); user variables `OLLAMA_MODELS`,
-  `OLLAMA_NUM_PARALLEL=4` ([the text-check plan](../plans/roadmap.md)). Ollama is started from the Start
+  `OLLAMA_NUM_PARALLEL=4` ([text check](../features/text-check.md#why-this-model-and-this-design)). Ollama is started from the Start
   menu.
 
 ## Related
 
-- [Interface principles](ui-principles.md) · [Decisions](../decisions.md) · [Plans](../plans/roadmap.md)
+- [Interface principles](ui-principles.md) · [Decisions](../decisions.md)

@@ -1,7 +1,7 @@
 ---
 title: Text check (AI validator on a local model)
 type: feature
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/studio/textcheck/
   - app/studio/wording.py
@@ -117,6 +117,23 @@ which text, `ollama.py` — the model, `journal.py` — the journal and the owne
   and drift from them in words.
 - Details and dates — [decisions](../decisions.md), [log](../log.md).
 
+## Why this model and this design
+
+Tested on the owner's real Canva pages (a full-page verse, the brand's own font, illustrated backgrounds, a curved cover
+caption) with planted mistakes: a misspelt name, a forgotten `{Name}`, another child's name, a missing diacritic, a
+missing word, words stuck together, text cut off at an edge.
+
+- **Gemma 4 12B QAT** (`gemma4:12b-it-qat`, ~7.7 GB on the 12 GB card) found every planted mistake with no false
+  positives, at ~1.5–4 s a page; Qwen 3.5 9B was slower and missed some (it "corrects" what it reads when told the right
+  name) — dropped. Gemini (cloud) found everything too but pages with children's names would leave the computer, so
+  the check is local only.
+- **A hint plus the program's own comparison** is the chosen design: the model is told what should be there and
+  transcribes word for word; `diff()` decides. Blind transcription alone missed words stuck together at 1024 px.
+- Pictures go to the model at 768–1024 px; four pages at a time (`OLLAMA_NUM_PARALLEL=4`, the owner's user variable) —
+  a whole book in ~25 s.
+- Known quirk: after Ollama 0.35.1 gemma4 occasionally loops on a correct page with a JSON schema (ollama#15502) and the
+  answer is cut at `JUDGE_TOKENS` — shown as "модель не змогла прочитати сторінку"; ↻ retries (see [known limits](../dev/limits.md)).
+
 ## Settings
 
 The "Text check" block in [Settings](settings.md): a switch, the quick scan (`prescan`), a model (those installed that
@@ -146,4 +163,4 @@ A disabled Ollama makes Windows wait 2 s per attempt, so the probe is capped at 
 ## Related
 
 - [Orders](orders.md) · [The path to print](../flows/order-to-print.md) · [Library](library.md) · [Settings](settings.md)
-- [Model research and tests](../plans/roadmap.md) · [Decisions](../decisions.md) · [Security](../security.md)
+- [Known limits](../dev/limits.md) · [Decisions](../decisions.md) · [Security](../security.md)

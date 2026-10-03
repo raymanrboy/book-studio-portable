@@ -1,7 +1,7 @@
 ---
-title: Profit (counts from 1 October 2026)
+title: Profit (counts only sales from 1 October 2026)
 type: feature
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/web/js/pages/profit.js
   - app/web/js/pages/profit-rows.js
@@ -14,9 +14,8 @@ code:
 # Profit
 
 > A full equivalent of the Etsy Profit Calculator: for every Etsy receipt — net Etsy revenue minus the
-> print cost. **In the rail since 2026-09-29** («Прибуток», Alt+3 since 2026-09-30; the owner: "it's time
-> to turn on the accounting"); it counts **only sales from 1 October 2026** — until then it's empty («Продажів від
-> 1 жовтня ще немає»). The sync behind it (`sync.py`) feeds the queue too.
+> print cost. In the rail as «Прибуток» (Alt+3); it counts **only sales from 1 October 2026** (the owner: "it must not
+> include earlier orders at all") — before the first one it says «Продажів від 1 жовтня ще немає». The sync behind it (`sync.py`) feeds the queue too.
 
 **How the server side is built (since 2026-09-26, the big cleanup).** Before, one `profit.py` held the sync, the
 files, the stages, the Profit view and its routes, and the archive and it loaded each other. Now:
@@ -85,4 +84,4 @@ changes — `records.stamp()`) and its routes.
 
 ## Related
 
-- [Matching and profit](../rules/reconciliation.md) · [Sync](../rules/sync-policy.md) · [Open questions](../plans/open-questions.md)
+- [Matching and profit](../rules/reconciliation.md) · [Sync](../rules/sync-policy.md) · [Known limits](../dev/limits.md)

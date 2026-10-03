@@ -1,7 +1,7 @@
 ---
 title: Design and code skills for agents
 type: dev
-updated: 2026-09-30
+updated: 2026-10-03
 code: []
 ---
 # Design and code skills for agents
@@ -42,4 +42,4 @@ Trail of Bits' `differential-review` (crypto-oriented), `code-improver` (an auto
 
 ## Related
 
-- [The interface the owner wants](../owner/ui-principles.md) · [The redesign](../plans/ui-redesign.md) · [Preview](preview.md)
+- [The interface the owner wants](../owner/ui-principles.md) · [Preview](preview.md)

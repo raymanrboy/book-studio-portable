@@ -1,7 +1,7 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-09-27
+updated: 2026-10-03
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -24,10 +24,8 @@ code:
    Otherwise it takes its own temp folder on drive D (`core.own_temp()`, [below](#temporary-files-and-drive-c)).
 4. Imports every module with routes (`archive`, `creator`, `drops`, `etsy`, `gelato`, `images`, `library`,
    `mockups`, `orders`, `printify`, `profit`, `sendlog`, `settings_api`, `textcheck`, `tunnel`, `workshop`) —
-   the import itself registers the routes. (`mockups` joined on 2026-09-24, when the separate «Мокапи»
-   program moved in, and `workshop` came with the [Listings mode](../features/modes.md); since 2026-09-26 `workshop`
-   is a package — the book console moved in, its routes in `workshop/routes.py`. Its generation mode starts its
-   Downloads watcher, and the F8 thread, the first time it's asked for.)
+   the import itself registers the routes. (`workshop` is a package, its routes in `workshop/routes.py`; its generation
+   mode starts its Downloads watcher and the F8 thread the first time it's asked for.)
 5. Cleanup: old Gelato temp folders (`cleanup_stale()`), dropped files from the previous session
    (`drops.clear_drops()`), the mockups' unpacked demo book (`mockups.clear_books()`). (The one-time cleanings —
    the old Order Creator form, what the separate «Мокапи» left in `data/mockups` — did their work on the owner's PC
@@ -61,13 +59,10 @@ code:
 - The Windows "Choose a folder" / "Choose a page" dialogs run as a separate Python process with Tk (one
   shared script for both, `_dialog()`), because Tk wants its own main thread.
 
-## «Мокапи» — no longer a program of its own (2026-09-24)
+## «Мокапи» — a page of Book Studio
 
-From 2026-09-23 to 2026-09-24 the [listing-mockups utility](../features/mockups.md) was a second program
-(`Mockups.pyw`, `mockups_app.py`, port 47831, its own window and data folder `app/data/mockups`). It is now a
-page of Book Studio's [Listings mode](../features/modes.md); its data stays in `app/data/mockups` (places, runs),
-the utility's own temp files, previews and window profile there go on the first launch. The desktop shortcut
-«Мокапи» points at a file that is gone — the owner deletes it.
+The [mockups](../features/mockups.md) are a page of Book Studio, not a program of their own; their data lives in
+`app/data/mockups` (places, runs).
 
 ## Temporary files and drive C
 

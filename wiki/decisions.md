@@ -1,19 +1,31 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-01
+updated: 2026-10-03
 code: []
 ---
 # Decisions
 
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
-> deliberate choice by the owner. Newest decisions are at the top.
+> deliberate choice by the owner. Newest decisions are at the top. An entry is a record of its day: where it says
+> "not built yet", the feature page tells what exists now.
+
+## 2026-10-02 — Listing slide 7: the hero's looks, each in its own frame, on its white background
+
+- **The owner** asked for a new listing slide for the books with appearance variants, on the basis of slide 4 (his
+  reference: «7 appearance options», a big G1, the others G2–G7 with their names). Then: "each must have its own place
+  (a frame, a «зірочка») — I'll arrange them exactly later", and "it can stay with its white background, no cutting".
+- Decided: slide 7 exists only for a Workshop book whose hero has **two looks or more** (`agent/variants/*/hero.png`);
+  seven frames `hero:1…7` filled by the looks' numbers, the name from the folder («B2_blond» → «B2»); an empty frame shows
+  only in the editor. The big one is a whole-body card, the six — scalloped frames with the head and shoulders. Old
+  schemes get slide 7 recoloured from their own slide 4. In `etsy/` it is `15 Listing 7.png` — **last in the numbering**; the owner
+  puts it into the listing himself. The texts are defaults he rewrites in the editor.
 
 ## 2026-10-02 — The portable Book Studio is set aside
 
 - **The owner:** «від портативки поки відмовися». The fully portable copy started on 2026-09-30 (its own folder on
   the Desktop, local git, no GitHub) is no longer there; the original `Book Studio` stays the only one. Not to be
-  restarted without his word ([roadmap](plans/roadmap.md#infrastructure)).
+  restarted without his word.
 
 ## 2026-10-01 (later) — a Gelato draft's card stays in the order card while its link lives
 
@@ -96,8 +108,7 @@ code: []
 ## 2026-09-30 (late) — The third pass: a hammer and a ruler, a tick for «done», quieter Workshop, tokens for leading and press
 
 - **The owner** asked for a full analysis with every design skill, the weakest icons redrawn, and — his own wish — **the
-  Workshop's glyph as a hammer and a ruler crossed**. Findings, the evidence and the waves still to come —
-  [the redesign plan](plans/ui-redesign.md).
+  Workshop's glyph as a hammer and a ruler crossed**. Findings and the waves are in the log of 2026-09-30.
 - **Decided (by the agent, "do as you see fit")**: `×` means *remove* only; finishing work on an order is a ✓ (and says so in
   a toast); the Workshop header keeps one labelled button — «Передати в бібліотеку», only once the book is ready — the folder
   and the shelf become icons; a prompt shows three lines; leading in three tokens, press feedback in two, `--text-3` in
@@ -109,7 +120,7 @@ code: []
 - **The owner** (after a UI/UX audit): "the design isn't intuitive… the functions are scattered as if someone spilled
   grain… even I get lost" — and he handed the decisions over: "I trust you completely, do it as you know; be
   creative". His thought, "not a requirement": the program is a set of tools glued together, and he'd like to use each
-  on its own. The whole plan and both audits — [plans/ui-redesign.md](plans/ui-redesign.md).
+  on its own. The audits and waves are in the log of 2026-09-30.
 - **Decided (by the agent, with his leave)**, revising earlier decisions where named:
   - **One labelled rail** — Замовлення · Книги · Прибуток | Інструменти, Пошук on top, Settings at the bottom — replaces
     the two modes switched by the brand icon (2026-09-24). The inks stay and follow the area.
@@ -206,7 +217,7 @@ code: []
 - **Decision (the owner, the same evening):** "integrate it into our program at once" — the slide tool becomes a
   **separate module of Book Studio's Listings mode, called only when needed**, with the editor in Book Studio's
   style, plus a **skill** for working on the slides through an agent ("sometimes it will be easier for me to work
-  through an LLM"). Plan first, then built phase by phase ([plan](plans/listing-pictures.md)). Replaces
+  through an LLM"). Built phase by phase the same evening. Replaces
   "outside Book Studio for now" below.
 - **How (the owner, then the defaults of the plan):** no page in the rail — the slides are the Mockups' next steps
   ("after the Photoshop script the Mockups page offers the next step; I press it and they are made by themselves;
@@ -222,8 +233,7 @@ code: []
   no Canva, no Canva connector ("create an entirely new tool of your own"). His layout, reproduced closely,
   with torn-paper edges, a die-cut sticker, sparkles and faint leaf shadows; the final touches he makes by hand
   in a small Canva-like editor, then the agent bakes them. **It stays an external tool for now** — "don't
-  integrate it into Book Studio yet" — in `D:\Roman\Desktop\moсkup studio\Slide Editor\`
-  ([plan](plans/listing-pictures.md)).
+  integrate it into Book Studio yet" — in `D:\Roman\Desktop\moсkup studio\Slide Editor\` (moved in the same evening, see above).
 - **How the book is cut out** (the agent): the templates' Multiply/Screen shadow layers turned into
   transparent black/white, the outline from `BOOK/OBJECT`'s mask — nothing to change in Photoshop or the
   templates (only read).
@@ -329,8 +339,8 @@ code: []
 
 ## 2026-09-27 — Profit from 1 October only; the Gelato account's currencies; a smooth switch to his own Gelato
 
-- **Decision (the owner):** accounting starts on 1 October 2026 and does not include earlier orders at all. Not in
-  the code yet (open questions) — to be done before the Profit page is turned on.
+- **Decision (the owner):** accounting starts on 1 October 2026 and does not include earlier orders at all. Built on 2026-09-29
+  (`profit.ACCOUNTING_FROM`).
 - **Why the program asks the printers now:** it is the queue's sync, not the accounting's — the order's stage, the
   printer's status, the tracking number, the archive's 14 days all come from it (its old names — the job
   `profit-sync`, `/api/profit/sync`, `data/profit/` — are from the time it lived in `profit.py`). The Profit page
@@ -339,8 +349,8 @@ code: []
   other people's orders (he plans an account of his own). The euro's rate stays; nothing to decide.
 - **His own Gelato account — a smooth switch** (the owner chose it over a frozen copy of the old orders): the old
   account's orders are never forgotten, and for the transition the program reads both accounts — the old key only
-  reads, everything new goes to the new account. Not built; planned before his account opens (about 1 October) —
-  [roadmap](plans/roadmap.md). Until then the Gelato key isn't replaced.
+  reads, everything new goes to the new account. Built on 2026-09-29 ([gelato](integrations/gelato.md)); the old key
+  stays until none of its orders waits, prints or travels.
 
 ## 2026-09-27 — The big cleanup, phase 6: big files cut by job
 
@@ -393,7 +403,7 @@ code: []
 ## 2026-09-26 — The big cleanup: every finding of the code study is fixed
 
 - **Decision (the owner):** "fix everything you found — I need a flawless app; the wiki and GitHub up to date".
-  The plan and its progress — [plans/cleanup.md](plans/cleanup.md); `main` is updated after every phase.
+  The work went phase by phase (bugs, money, speed, no blinking, duplicates, big files cut by job); `main` was updated after each.
 - **Changed on purpose in phase 1** (not to be "fixed" back):
   - Printify: **every book's pictures go up before any book is made**; the steps after a book or a draft exists
     (reading it back, the Master's check) only warn — they never fail the send, or a retry would make it twice.
@@ -463,7 +473,7 @@ code: []
   opening all of his disk to the agents (*Non-Workspace File Access*).
 - **The sandbox** (`core.SANDBOX`): the preview and the tests never touch the owner's clipboard, keyboard, Downloads,
   books or screen.
-- Details — [plans/book-console.md](plans/book-console.md#into-book-studio--the-integration-plan-2026-09-26).
+- Details — [workshop](features/workshop.md).
 
 ## 2026-09-26 — The cover's margins follow the printer's template; a deleted book goes to the Recycle Bin
 
@@ -484,7 +494,7 @@ code: []
   confuse me").
 - **The cover has two stages:** the picture, then its margins outpainted by the generator (white margins of 8 %
   of its height, adjustable) → Cover.png — the owner's own step, shown on his example screenshot.
-- Details — [plans/book-console.md](plans/book-console.md#the-prototype-2026-09-26).
+- Details — [workshop](features/workshop.md).
 
 ## 2026-09-26 — The book console's generation mode: the clipboard by the program, F8 for the next part
 
@@ -498,7 +508,7 @@ code: []
 - **Nothing the console replaces is deleted** — it goes to the book's `.replaced/`; Downloads is only read.
 - **The cover's mockup and reference are chosen once for every book**; a listing photo's mockup once per book
   (the agent's choice at the step, 2026-09-26 — the owner may change it).
-- Details — [plans/book-console.md](plans/book-console.md#the-prototype-2026-09-26).
+- Details — [workshop](features/workshop.md).
 
 ## 2026-09-26 — The book console prototype: its own folder, no SEO guide, no git until the move
 
@@ -508,7 +518,7 @@ code: []
 - **The agents write only into a book's `agent/` folder** (the agent's proposal, accepted with «роби»): the
   console owns `pictures/`, `listing/` and `book.json`, so an agent can't break a book or lose the owner's
   edits. The old validator became the console's `check_book.py` (same rules).
-- Details — [plans/book-console.md](plans/book-console.md#the-prototype-2026-09-26).
+- Details — [workshop](features/workshop.md).
 
 ## 2026-09-25 — Pictures are generated on the websites (Gemini, ChatGPT), never through a paid API
 
@@ -519,13 +529,12 @@ code: []
   lifestyle pictures — **ChatGPT** (JPEG); the cover — a Photoshop cover mockup put into the chat as context
   plus one of his existing listings as a reference, asking to replace the picture.
 - **Tier H books (a child hero):** for now he swaps the hero to the buyer's look **per order**, in the same
-  chat. Pre-generating every look is too costly — look, clothing colour and eye colour multiply. **Later:** one
-  look per hero, then every variant can be made once ([plans](plans/roadmap.md)).
+  chat. Pre-generating every look is too costly — look, clothing colour and eye colour multiply. If it ever comes, one
+  look per hero would let every variant be made once.
 
 ## 2026-09-25 — Ideas reviewed: what the owner keeps and what he turns down
 
-An agent offered ten ideas for the whole pipeline; the owner answered each one. Kept ones are in the
-[plans](plans/roadmap.md). **Turned down, and why:**
+An agent offered ten ideas for the whole pipeline; the owner answered each one. **Turned down, and why:**
 - **Upscaling for orders** — his Canva books already hold upscaled pages. (Upscaling in the **Workshop**,
   right after a drop — kept.)
 - **Pages from the library instead of Canva** — not now: storage and internet are fine, and a mixed
@@ -600,7 +609,7 @@ choice, the warnings stay amber.
 
 The owner: "Book Studio will have two modes — working with orders and creating listings", switched "by a
 click on the main Book Studio icon", the second one "like another program, separated from everything".
-The agent's plan was approved without changes ([plan](plans/listings-mode.md), his words in
+The agent's plan was approved without changes (his words in
 [raw/](raw/2026-09-24-listings-mode-owner-answers.md)).
 - **The Listings mode is magenta** (changed the same day — see above: Orders orange, Listings cyan), its own
   icon and rail items (Майстерня, Мокапи). Reason: the owner picked it; magenta is the logo's second ink, and
@@ -686,7 +695,7 @@ not asked of the owner, easy to change if he wants otherwise:
 ## 2026-09-23 — Listing mockups: a separate utility, the front cover stays manual
 
 The owner described how he makes listing mockups in Photoshop and answered the agent's questions
-([plan](plans/listing-mockups.md), sources in [raw/](raw/2026-09-23-mockups-owner-answers.md)). Nothing
+(plan, sources in [raw/](raw/2026-09-23-mockups-owner-answers.md)). Nothing
 was built yet (built the same day — the entry above).
 - **A separate utility first**, with its own window; it moves into Book Studio later. Reason: the owner
   wants to try it on its own before it goes into the main program.
@@ -844,7 +853,7 @@ shows this, but doesn't change the stage itself — left for discussion with the
   needs all the readings — there, comparison still starts after reading finishes, as before.
 - **What this gets:** the first mistakes are visible ~3–5 s before the check finishes; the check's total
   time barely changed (the model still does the same work) — the point is that the owner sees the
-  problem sooner. To be honest: the "5–10 s" savings promised in the plans didn't materialize — the
+  problem sooner. To be honest: the "5–10 s" savings promised at the time didn't materialize — the
   queue to the model was already full.
 - **Warm-up:** as soon as the card takes in the files, the program asks Ollama to load the model onto
   the graphics card while the server copies and checks the PNGs. This is the real saving: usually 4 s,
@@ -872,7 +881,7 @@ shows this, but doesn't change the stage itself — left for discussion with the
 ## 2026-09-19 — Text check with a local model: where it sits in the pipeline
 
 - **Assigned to the agent** (the owner: "think it through properly… work out the feature that fits the
-  pipeline best, and go for it"). Answers to the open questions from the [plans](plans/roadmap.md):
+  pipeline best, and go for it"). Answers to the open questions of the time:
   - **Right away, not by button**: the check starts on its own after the file check — the owner watches
     the comparison for those 20–50 s anyway; ↻ — check again.
   - **Warn, don't block**: "To print" asks "Anyway?" if there are red findings or the check is still
@@ -968,8 +977,7 @@ shows this, but doesn't change the stage itself — left for discussion with the
 
 ## 2026-09-17 — Text check via Gemini: deferred, free tier
 
-- **Decision (the owner):** the idea is recorded in the [plans](plans/roadmap.md), to be built later.
-  No paid subscription — the key is the AI Studio free tier. **Why:** the pages only have the book's
+- **Decision (the owner):** deferred. No paid subscription — the key is the AI Studio free tier. **Why:** the pages only have the book's
   character names and dedications; only pages with text (up to 17) need checking, so the free tier's
   limits (requests per minute / per day) aren't a problem.
 - **Worth knowing:** the Gemini API terms forbid sending personal data on the free tier, **but** for
@@ -1145,4 +1153,4 @@ shows this, but doesn't change the stage itself — left for discussion with the
 
 ## Related
 
-- [How to work with the owner](owner/working-with-owner.md) · [Plans](plans/roadmap.md) · [Log](log.md)
+- [How to work with the owner](owner/working-with-owner.md) · [Known limits](dev/limits.md) · [Log](log.md)

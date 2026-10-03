@@ -1,7 +1,7 @@
 ---
 title: Photo mockups — lifestyle photos with our book (the Workshop's «Фото» step and the «Фотомокапи» page)
 type: feature
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/studio/photos.py
   - app/web/js/pages/photos.js
@@ -97,6 +97,7 @@ pipeline/books/<book>/originals/video-hands.mp4              the Omni video as i
 | 05 | `Listing 1` | 12 | `Listing 5` |
 | 06 | `photo-open-book` when there is one, else `Cover & Open 1 (…)` | 13 | `Listing 6` |
 | 07 | `Listing 3` | 14 | `photo-shelf` |
+|  |  | 15 | `Listing 7` — the hero's looks (only a book with them; last in the numbering) |
 
 - A number belongs to its file (`ETSY_ORDER`, `ETSY_SCENES`): a missing one leaves a gap — nothing moves up.
 - **The open-book photo takes Cover & Open 1's place**: that copy leaves `etsy/` (to `.replaced/`; the mockup itself stays
@@ -130,4 +131,4 @@ Tests — `app/tests/test_photos.py`.
 
 ## Related
 
-- [Workshop](workshop.md) · [Mockups](mockups.md) · [Listing slides](slides.md) · [Two modes](modes.md) · [Decisions](../decisions.md)
+- [Workshop](workshop.md) · [Mockups](mockups.md) · [Listing slides](slides.md) · [The rail](modes.md) · [Decisions](../decisions.md)

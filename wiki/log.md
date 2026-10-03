@@ -3,9 +3,43 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-03] lint | The wiki as a finished product: plans and ideas removed, pages synced with the code
+
+- Removed `wiki/plans/` (the roadmap, open questions and seven build plans/histories — all stay in git history). What was
+  durable moved: the Photoshop templates' structure and scripting facts → [mockups](features/mockups.md#the-templates); the
+  model research → [text check](features/text-check.md#why-this-model-and-this-design); limits and what was only tried against
+  fakes → the new [known limits](dev/limits.md).
+- Pages that still described the pre-October (Printify) or two-mode state as current were rewritten to how it is now
+  (overview, index, orders, order-creator, order-to-print, printer rule, security, gelato, printify, modes, runtime, preview,
+  glossary); forward-looking words ("for now", "later", "planned") and counts in prose removed; dangling links to the removed
+  pages turned into plain text in the log and the decisions.
+- `app/README.md` and `README.md` rewritten for the current product; code comments no longer point at removed pages; the wiki
+  skills and `AGENTS.md` no longer mention plans; the `plan` page type left `wiki_check.py`.
+- Checked: `wiki_check.py` and the tests pass; constants in the text (text-check, archive, backup, mockups, tunnel, accounting
+  date) compared with the code.
+
+## [2026-10-03] query | The text check after Ollama 0.35.1: the model loops on one correct page
+
+- Diagnosis only, no code changed; the deferred fix — open-questions ("Waiting to see if it
+  happens again").
+
+## [2026-10-02] update | Slide 7: the caption under a look's frame is the owner's own
+
+- The owner asked to edit the caption under a «зірочка»: «Підпис» in the frame's properties — his text (lines,
+  `{name}` — the look's name), empty — the name as before ([slides](features/slides.md)). Checked in the preview and a bake.
+
+## [2026-10-02] update | Listing slide 7 — the hero's looks
+
+- A seventh listing slide for a book whose hero has looks (two or more `hero.png` in `agent/variants/`), drawn on slide 4
+  after the owner's reference: each look in its own frame with its name, on its white background
+  ([slides](features/slides.md#slide-7--the-heros-looks-since-2026-10-02), [decisions](decisions.md)).
+- The frame («Картинка») got Зірочка / Прямокутна, Наблизити, Що видно, and a name under / over it; `{looks}` in texts.
+- Old schemes get it in their own colours; `etsy/15 Listing 7.png` ([photo mockups](features/photo-mockups.md)).
+- Checked: tests (made-up looks), the bake with the looks of book 28 copied into the preview's temporary book, the editor.
+
 ## [2026-10-02] decision | The portable Book Studio set aside
 
-- At the owner's word; recorded in [decisions](decisions.md) and the [roadmap](plans/roadmap.md#infrastructure).
+- At the owner's word; recorded in [decisions](decisions.md) and the roadmap.
 
 ## [2026-10-02] update | The Mockups opened from a book no longer trap the owner
 
@@ -69,12 +103,12 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - A file dropped outside a page's own field asks «Куди?» (the Mockups / the Order Creator) and is handed over (`drop-anywhere.js`); a removed
   library picture is set aside and «Скасувати» restores it (`POST …/assets/restore`, tested); a real Tab walk fixed three faults (a tab group is one
-  stop with arrows, the focus lands on the new page's title, a dialog keeps Tab inside and returns the focus). Plan: [ui-waves](plans/ui-waves.md).
+  stop with arrows, the focus lands on the new page's title, a dialog keeps Tab inside and returns the focus). Plan: ui-waves.
 - **Restart Book Studio** (a server route was added).
 
 ## [2026-09-30] update | One plan for all the interface waves
 
-- [plans/ui-waves.md](plans/ui-waves.md): waves 0–7 and the icons with step-by-step instructions (files, functions, checks), what was left out
+- plans/ui-waves.md: waves 0–7 and the icons with step-by-step instructions (files, functions, checks), what was left out
   on purpose, and wave 8 — what is still open, in the order to take it.
 
 ## [2026-09-30] update | The final waves: undo, one review before print, «Сьогодні», Ctrl+K verbs
@@ -105,7 +139,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   Omni video from `motion` (which stays the reduce-motion switch — one icon, one meaning); the full icon sheet was looked
   over at 96 px and at 16–20 px, the rest of the set stays ([frontend](architecture/frontend.md)).
 - A library/Workshop book card had no visible keyboard focus (`outline: none` with no replacement) — the frame takes the ring.
-- An analysis pass of every page in light found more to do; the plan comes next ([ui-redesign](plans/ui-redesign.md)).
+- An analysis pass of every page in light found more to do; the plan comes next (ui-redesign).
 
 ## [2026-09-30] update | Show, don't tell: the rail and the tabs as icons, a printer bug, design skills
 
@@ -130,13 +164,13 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   order's card with what went to print (`archive.card_facts()` → `printed`).
 - Five type sizes, radii on tokens, readable faint text, labelled fields, no silent grey buttons, three widths.
 - Pages updated: modes, frontend, code-map, glossary, recipes, ui-principles, orders, order-creator, archive, library,
-  workshop, mockups, photo-mockups, profit, settings, slides, text-check, the flows, [the plan](plans/ui-redesign.md).
+  workshop, mockups, photo-mockups, profit, settings, slides, text-check, the flows, the plan.
 
 ## [2026-09-30] decision | The interface redesign planned
 
 - A UI/UX audit of every page (made-up data, four widths) and the flows; eight design skills installed into
   `.claude/skills/` (texts only, not in git). The owner agreed to one strict visual system and asked for the most
-  effort on intuitiveness — [plans/ui-redesign.md](plans/ui-redesign.md): the findings, the proposed structure (an
+  effort on intuitiveness — plans/ui-redesign.md: the findings, the proposed structure (an
   order and a book each in one place with its path), the open decisions asked one at a time. Nothing built yet.
 
 ## [2026-09-30] update | The Mockups' header loses its «Слайди для лістингу» button
@@ -191,7 +225,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - Photo mockups: book 25's came from ChatGPT, not Gemini — the page says either.
 - Checked and in order: the numbers on the rewritten pages against the code, the "1 October" rule on every page, no
   page linked only from the index, the built plans each point to their feature page.
-- Two questions for the owner in [open questions](plans/open-questions.md): what of `etsy/` goes into the listing
+- Two questions for the owner in open questions: what of `etsy/` goes into the listing
   (and Etsy's limits), which generator runs in which browser.
 
 ## [2026-09-30] update | The wiki's own rules: the present only, one fact — one page, no counts
@@ -227,7 +261,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 ## [2026-09-29] update | Listing slides: schemes, the Workshop book's folder, locked by default, Dedication without its floor
 
-- The owner's eleven wishes built ([slides](features/slides.md), [plan](plans/listing-pictures.md)): **schemes** in the
+- The owner's eleven wishes built ([slides](features/slides.md), plan): **schemes** in the
   editor («Схема ▾»: Nature — the default, Night, his own, the other Workshop books' slides as presets; «Зберегти ці слайди
   як схему…»; «Зробити шаблоном» went); **«Тло»** as the bottom layer; **«З інших слайдів»** colours; «Який мокап» without
   the file name; **every element locked by default** (a click selects it, the mouse and arrows don't move it, the lock
@@ -252,7 +286,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   hand-set colours on «4k Трафарет, копія» saved as **Night**, the template as **Nature** (the default), in
   `app/data/slides/schemes/` (a copy of the six also in `app/data/slides/saved-colours/`). The editor's scheme choice
   and five more touches (the background as a layer, colours from the other slides, no file name in «Який мокап», locked
-  by default, Dedication without its wall) agreed, waiting for his word ([plan](plans/listing-pictures.md)).
+  by default, Dedication without its wall) agreed, waiting for his word (plan).
 - Added the same evening: books numbered as his Etsy listings (№41 → №25), the mockups saved into the Workshop book's
   folder without asking, and the Workshop's «Мокапи» step leading back to the mockups (its folder, the editor),
   ticking itself.
@@ -270,7 +304,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 ## [2026-09-29] update | Listing slides moved into Book Studio: «Без фону», «Зробити слайди», the editor, the skill
 
-- The plan's five phases built ([slides](features/slides.md), [plan](plans/listing-pictures.md)). The package
+- The plan's five phases built ([slides](features/slides.md), plan). The package
   `app/studio/slides/` (the cut-out and its background cutter, the template and a book's sets with versions, «Зробити
   слайди», the headless bake) — nothing of it runs at launch; the drawing engine `web/js/slides/engine.js` and the page
   `web/slides/render.html`; Comica in `web/fonts/`; the command line `app/tools/slides.py`.
@@ -303,7 +337,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - The owner asked to bring the slide tool into Book Studio as a separate module called only when needed, in Book
   Studio's style, and a skill for working on slides through an agent. Five phases written down (the engine and
   data, the «Слайди» page, the editor, the skill with live redraw, checks) with three questions and their
-  defaults ([plan](plans/listing-pictures.md), [decisions](decisions.md)). All six re-baked with his touches first.
+  defaults (plan, [decisions](decisions.md)). All six re-baked with his touches first.
 - His addition: the Mockups also save every picture **without background** (cut out by the program while Photoshop
   works, into `Без фону\`), then offer «Зробити слайди» — made by themselves — and «Відкрити в редакторі»; no
   separate page in the rail.
@@ -312,7 +346,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - Slides 1, 2, 3, 5, 6 measured off the owner's Canva pictures and drawn in slide №4's style; the editor learned
   texts, arrows, flat pictures (a scalloped page), ribbons and a heart, and got a slide switcher
-  ([plan](plans/listing-pictures.md)). Checked: all six baked at 2000², slide 2 opened and edited in the editor.
+  (plan). Checked: all six baked at 2000², slide 2 opened and edited in the editor.
 
 ## [2026-09-29] decision | Listing slides: a hand editor, kept outside Book Studio
 
@@ -321,7 +355,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   resize, Ctrl+Z; every change saved to disk), then "bake" at 2000².
 - The owner: not in Book Studio yet — an external tool in `D:\Roman\Desktop\moсkup studio\Slide Editor\`
   (launcher `Відкрити редактор.bat`); the repo gets only the `slide-editor` preview entry in `.claude/launch.json`
-  ([plan](plans/listing-pictures.md), [decisions](decisions.md)).
+  (plan, [decisions](decisions.md)).
 - Checked: cut-outs regenerated by `cutout.py` match the prototype's; saving from the editor lands on disk;
   `bake.py slide4` → 2000×2000.
 
@@ -329,7 +363,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - The owner makes 6 square Etsy pictures from the mockups in Canva by hand; agreed: Book Studio's own tool does
   it (no Canva), he picks the mockup per slide, 24 pages / 11 poems, font Comica, full creative freedom
-  ([plan](plans/listing-pictures.md)).
+  (plan).
 - Solved: cutting the book out of the grey background with its real shadow (the templates' Multiply/Screen
   layers turned into transparent black/white; the outline from `BOOK/OBJECT`'s mask) — checked on Open 1,
   Open 2, Cover 1. Prototype of slide №4 in the scratchpad; no code in `app/` yet.
@@ -431,8 +465,8 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   test picture in a temporary folder (1456×720 → 2912×1440, the progress read, a Cyrillic path); in the preview — a
   caught spread upscaled and marked «×2», the switch off, «Апскейлити решту (1)», the progress chip. **Not
   checked:** a whole book in the running program on his books (the preview uses a pretend engine).
-- Pages: [workshop](features/workshop.md#upscaling), [decisions](decisions.md), [roadmap](plans/roadmap.md),
-  [book-console](plans/book-console.md), [api-routes](architecture/api-routes.md), [data](architecture/data.md),
+- Pages: [workshop](features/workshop.md#upscaling), [decisions](decisions.md), roadmap,
+  book-console, [api-routes](architecture/api-routes.md), [data](architecture/data.md),
   [glossary](glossary.md), [code-map](code-map.md), [testing](dev/testing.md), [index](index.md).
 
 ## [2026-09-27] update | The Workshop: the hero with every spread's prompt, Ctrl+V in Chrome turns to the next part, a cover per variant
@@ -630,7 +664,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - The owner, after the study (7 parallel audits, report as a private page): "fix everything you found — a
   flawless app; the wiki and GitHub up to date". The parallel mockups work committed, `book-console` merged into
   `main` and pushed; the work goes on in the branch `cleanup`, merged after every phase.
-- The plan and its progress: [plans/cleanup.md](plans/cleanup.md). Pages: index.md.
+- The plan and its progress: plans/cleanup.md. Pages: index.md.
 
 ## [2026-09-26] update | Mockups: Dedication left open for its background and table colours
 
@@ -711,7 +745,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 ## [2026-09-26] update | The book console moves into the Workshop (branch book-console)
 
 - The owner: "create a new branch on GitHub and integrate the console into the Workshop — a plan, then the
-  integration". The plan — [plans/book-console.md](plans/book-console.md#into-book-studio--the-integration-plan-2026-09-26).
+  integration". The plan — plans/book-console.md.
 - The pipeline moved into the project (`pipeline/`: the agents' rules with a Book Studio fork, the playbook, notes,
   listing prompts, `check_book.py`); its `books/` kept out of git. The root `AGENTS.md` got a fork for book agents.
 - The Workshop rebuilt as the console: `app/studio/workshop/` (books, rows, pictures, generate, check, routes),
@@ -820,7 +854,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 ## [2026-09-25] decision | The book console planned: the pipeline and the Workshop as one place
 
 - The owner: into the roadmap, a prototype apart from Book Studio first, then a separate branch; only planning
-  for now. New page [plans/book-console.md](plans/book-console.md): the path strip, the generation mode
+  for now. New page plans/book-console.md: the path strip, the generation mode
   (Downloads → the row, the next prompt in the clipboard), hero variants, the pipeline moved in cleaned (agents
   write only into `agent/`), the catches. His agents run in Antigravity; spreads — Gemini (PNG), listing photos —
   ChatGPT (JPEG). No code changed. Pages: plans/book-console.md, plans/roadmap.md, index.md.
@@ -946,7 +980,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - The owner: Book Studio gets a second mode for making listings, switched by a click on the brand icon, "like
   another program". Two rounds of questions, the plan approved without changes (his words —
   [raw/2026-09-24-listings-mode-owner-answers.md](raw/2026-09-24-listings-mode-owner-answers.md), the
-  agreements — [plans/listings-mode.md](plans/listings-mode.md), [decisions](decisions.md)). Branch
+  agreements — plans/listings-mode.md, [decisions](decisions.md)). Branch
   `photoshop-module` (from `audit-fixes`).
 - **Two modes** ([features/modes.md](features/modes.md)): `MODES` and a mode per route in `app.js`; the brand
   icon (Alt+0) switches; Listings in magenta (`[data-mode="listings"]` tokens, both themes), its own rail
@@ -1037,17 +1071,17 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - Agreed: a separate "Mockups" utility first (Book Studio later); the script fills pages, spine, back
   cover (and the front cover's rim in the open-book templates); the owner fits the front cover by hand;
   PNG into a folder picked every time; the templates are read-only, the script opens copies.
-- New page: [plans/listing-mockups.md](plans/listing-mockups.md). Updated:
-  [plans/roadmap.md](plans/roadmap.md), [decisions.md](decisions.md), [glossary.md](glossary.md),
+- New page: plans/listing-mockups.md. Updated:
+  plans/roadmap.md, [decisions.md](decisions.md), [glossary.md](glossary.md),
   [security.md](security.md) (rule 10), [owner/working-with-owner.md](owner/working-with-owner.md),
-  [integrations/canva.md](integrations/canva.md), [plans/open-questions.md](plans/open-questions.md),
+  [integrations/canva.md](integrations/canva.md), plans/open-questions.md,
   [index.md](index.md), `AGENTS.md`. Corrected: `psd-tools` does read the large templates (the
   2026-09-19 "over ~350 MB" note). No code changed.
 - **Photoshop scripting check** (on copies of two templates, made-up pictures): a `.jsx` launched from
   outside runs after a "run this script?" confirmation; replacing smart-object contents by layer name,
   swapping spreads and saving PNGs works — 11 s for two templates; hidden layers become visible when
   selected by a script; `Cover & Open 1`'s visible top copies change nothing. Results — in
-  [plans/listing-mockups.md](plans/listing-mockups.md).
+  plans/listing-mockups.md.
 
 ## [2026-09-23] update | Fixes from the owner's own audit (everything except accounting)
 
@@ -1075,7 +1109,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   [architecture/runtime.md](architecture/runtime.md), [architecture/api-routes.md](architecture/api-routes.md),
   [security.md](security.md), [dev/testing.md](dev/testing.md), [dev/preview.md](dev/preview.md),
   [dev/wiki-rules.md](dev/wiki-rules.md), [code-map.md](code-map.md), [decisions.md](decisions.md),
-  [index.md](index.md), [plans/open-questions.md](plans/open-questions.md).
+  [index.md](index.md), plans/open-questions.md.
 
 ## [2026-09-22] update | Fixes from the external code audit
 
@@ -1096,7 +1130,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   [rules/reconciliation.md](rules/reconciliation.md), [architecture/data.md](architecture/data.md),
   [security.md](security.md), [dev/testing.md](dev/testing.md), [dev/preview.md](dev/preview.md),
   [dev/wiki-rules.md](dev/wiki-rules.md), [code-map.md](code-map.md), [glossary.md](glossary.md),
-  [decisions.md](decisions.md), [index.md](index.md), [plans/open-questions.md](plans/open-questions.md).
+  [decisions.md](decisions.md), [index.md](index.md), plans/open-questions.md.
 
 ## [2026-09-20] update | Replacing a single page from the viewer — built
 
@@ -1114,7 +1148,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   [rules/file-naming.md](rules/file-naming.md), [architecture/frontend.md](architecture/frontend.md),
   [architecture/api-routes.md](architecture/api-routes.md), [dev/testing.md](dev/testing.md),
   [code-map.md](code-map.md), [glossary.md](glossary.md), [decisions.md](decisions.md),
-  [plans/roadmap.md](plans/roadmap.md).
+  plans/roadmap.md.
 
 ## [2026-09-20] decision | Replacing a fixed page — from the viewer
 
@@ -1122,7 +1156,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   spread), the native file-picker window, re-checking only that page, "Undo", both in the card and in
   the Order Creator. Waiting on his "go ahead". Also recorded there: the requirement to clear "not an
   error" marks when new files arrive.
-- [plans/roadmap.md](plans/roadmap.md), [decisions.md](decisions.md).
+- plans/roadmap.md, [decisions.md](decisions.md).
 
 ## [2026-09-20] update | The model — only pages that might have text
 
@@ -1152,8 +1186,8 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   [integrations/printify.md](integrations/printify.md), [integrations/gelato.md](integrations/gelato.md),
   [architecture/frontend.md](architecture/frontend.md), [dev/preview.md](dev/preview.md),
   [dev/testing.md](dev/testing.md), [code-map.md](code-map.md), [glossary.md](glossary.md),
-  [decisions.md](decisions.md), [plans/roadmap.md](plans/roadmap.md),
-  [plans/open-questions.md](plans/open-questions.md).
+  [decisions.md](decisions.md), plans/roadmap.md,
+  plans/open-questions.md.
 
 ## [2026-09-20] update | Text check: findings as the check runs, and warming up the model
 
@@ -1167,7 +1201,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - Updated: [features/text-check.md](features/text-check.md), [architecture/server.md](architecture/server.md),
   [architecture/api-routes.md](architecture/api-routes.md), [architecture/frontend.md](architecture/frontend.md),
   [dev/testing.md](dev/testing.md), [code-map.md](code-map.md), [decisions.md](decisions.md),
-  [plans/roadmap.md](plans/roadmap.md).
+  plans/roadmap.md.
 
 ## [2026-09-20] update | An "X — done with this order" button
 
@@ -1193,7 +1227,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - The model frees the graphics card right after a check; the check stops once it's no longer needed (a
   new route, `…/textcheck/cancel`); idle cards — no more than three; the preview cache is cleared
-  (21 days); minor fixes from [plans/open-questions.md](plans/open-questions.md). Decisions —
+  (21 days); minor fixes from plans/open-questions.md. Decisions —
   [decisions.md](decisions.md).
 - Updated: [features/text-check.md](features/text-check.md), [features/orders.md](features/orders.md),
   [features/settings.md](features/settings.md), [features/library.md](features/library.md),
@@ -1205,7 +1239,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - At the owner's request — an analysis of code quality and smoothness (no code changes): the server is
   fast, the main suspect is the model sitting on the graphics card during and after the text check; the
-  list of flaws and the order to fix them — [plans/open-questions.md](plans/open-questions.md).
+  list of flaws and the order to fix them — plans/open-questions.md.
 
 ## [2026-09-19] update | Text check with a local model — built
 
@@ -1219,7 +1253,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   [architecture/api-routes.md](architecture/api-routes.md), [architecture/data.md](architecture/data.md),
   [architecture/frontend.md](architecture/frontend.md), [security.md](security.md),
   [code-map.md](code-map.md), [glossary.md](glossary.md), [decisions.md](decisions.md),
-  [plans/roadmap.md](plans/roadmap.md), [dev/testing.md](dev/testing.md), [dev/preview.md](dev/preview.md),
+  plans/roadmap.md, [dev/testing.md](dev/testing.md), [dev/preview.md](dev/preview.md),
   [overview.md](overview.md), [index.md](index.md).
 
 ## [2026-09-19] decision | Ideas: pages without Canva, listing mockups via a Photoshop script
@@ -1227,43 +1261,43 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - Recorded at the owner's request ("we'll build it later"): the program draws its own pages and
   dedications (with Gemma's help), first as a "lab"; researched tools for Linux; listing mockups — a
   Photoshop CC 2019 script fills in the templates' pages, the owner still makes the covers himself.
-  [plans/roadmap.md](plans/roadmap.md). No code changed.
+  plans/roadmap.md. No code changed.
 
 ## [2026-09-19] query | Thoughts: the text check as a program feature
 
 - At the owner's request ("too early to build, just write it down") — what a check button in the order
   card could look like, what to compare against, the steps, and open questions:
-  [plans/roadmap.md](plans/roadmap.md).
+  plans/roadmap.md.
 
 ## [2026-09-19] update | Cut-off text: Gemma always finds it
 
 - Two pages with text running off the edge (including a name that vanished entirely) — found in every
-  variant. [plans/roadmap.md](plans/roadmap.md).
+  variant. plans/roadmap.md.
 
 ## [2026-09-19] update | Words stuck together: blind transcription can "add" a space; Qwen — dropped
 
 - Page "Isabellawalked": Gemma without a hint missed it at 1024 px, with a hint it always found it. The
   design for the future feature — a hint plus the program's own comparison (6/6 at every size). The owner
-  decided to drop Qwen. [plans/roadmap.md](plans/roadmap.md).
+  decided to drop Qwen. plans/roadmap.md.
 
 ## [2026-09-19] update | The GPU: both models already run at full load, parallel processing — twice as fast
 
 - Both models run 100% on the GPU; Qwen is louder because it reads the picture at full resolution. The
   owner turned on `OLLAMA_NUM_PARALLEL=4`: a hard test with 4 pages at once — 10.3 s, the same result.
-  Updated [plans/roadmap.md](plans/roadmap.md), [owner/working-with-owner.md](owner/working-with-owner.md).
+  Updated plans/roadmap.md, [owner/working-with-owner.md](owner/working-with-owner.md).
 
 ## [2026-09-19] update | A hard test on the owner's own pages: Gemma 5/5, no false positives
 
 - 12 pages from real Canva templates (5 with mistakes, 7 clean, 2 of which were a real book the owner
   planted himself). Gemma 4 12B QAT: blind transcription plus the program's comparison — every mistake,
   no false alarms, even at 768 px, ~1.5 s per page; Qwen 3.5 9B was weaker. No code changed. Results —
-  [plans/roadmap.md](plans/roadmap.md).
+  plans/roadmap.md.
 
 ## [2026-09-19] update | Gemma 4 12B QAT: the text-check test passed in full
 
 - Installed `gemma4:12b-it-qat` at the owner's request (on D). The same test: both methods with no
   mistakes (with a name hint — like Gemini; blind transcription 3 of 3), ~1–3 s per page. It's now the
-  main candidate. No code changed. Updated [plans/roadmap.md](plans/roadmap.md).
+  main candidate. No code changed. Updated plans/roadmap.md.
 
 ## [2026-09-19] update | A local model installed (Ollama + qwen3.5:9b) and tested
 
@@ -1271,7 +1305,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   Tested on the same pages used for Gemini: with a name hint the model "corrects" the mistake in the
   name; blind transcription plus the program's comparison — every mistake found, ~2.5 s per page. No
   code changed.
-- Updated [plans/roadmap.md](plans/roadmap.md), [owner/working-with-owner.md](owner/working-with-owner.md)
+- Updated plans/roadmap.md, [owner/working-with-owner.md](owner/working-with-owner.md)
   (programs only on D).
 
 ## [2026-09-18] update | The order card: a long dedication in the note now scrolls
@@ -1345,25 +1379,25 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   [features/order-creator.md](features/order-creator.md), [features/profit.md](features/profit.md),
   [rules/order-stages.md](rules/order-stages.md), [rules/sync-policy.md](rules/sync-policy.md),
   [flows/order-to-print.md](flows/order-to-print.md), [security.md](security.md), [decisions.md](decisions.md),
-  [glossary.md](glossary.md), [code-map.md](code-map.md), [plans/roadmap.md](plans/roadmap.md),
+  [glossary.md](glossary.md), [code-map.md](code-map.md), plans/roadmap.md,
   [dev/preview.md](dev/preview.md), [dev/testing.md](dev/testing.md), [index.md](index.md).
 
 ## [2026-09-18] decision | Plan: "Order archive"; the program only runs on the Wrocław PC
 
 - Agreed with the owner (no code changed): a separate "Order archive" menu with the files of books that
   went to print, comparison, and reprints; auto-deletion 14 days after "Sent", a "Don't delete" button,
-  new orders only — [plans/roadmap.md](plans/roadmap.md), [decisions.md](decisions.md),
+  new orders only — plans/roadmap.md, [decisions.md](decisions.md),
   [glossary.md](glossary.md).
 - The owner doesn't run Book Studio on the Kyiv PC: clarified in [overview.md](overview.md),
   [owner/working-with-owner.md](owner/working-with-owner.md), [integrations/etsy.md](integrations/etsy.md);
-  removed the question about a Kyiv-PC copy from [plans/open-questions.md](plans/open-questions.md).
+  removed the question about a Kyiv-PC copy from plans/open-questions.md.
 
 ## [2026-09-17] decision | Text check via Gemini — into the plans
 
 - Discussed and tested on made-up pages (3.6 / 3.5 Flash found every planted mistake; 3.8 / 3.7 Flash
   were overloaded). No code changed; the owner saved the key `gemini_api_key` in the program's vault.
 - The owner deferred building it; the free tier, only pages with text (up to 17). Plan —
-  [plans/roadmap.md](plans/roadmap.md), the decision and Google's EEA terms — [decisions.md](decisions.md).
+  plans/roadmap.md, the decision and Google's EEA terms — [decisions.md](decisions.md).
 
 ## [2026-09-17] update | The queue: one tone, copying the order number, a status next to the name
 
@@ -1386,7 +1420,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   [rules/sync-policy.md](rules/sync-policy.md), [flows/order-to-print.md](flows/order-to-print.md),
   [architecture/frontend.md](architecture/frontend.md), [owner/ui-principles.md](owner/ui-principles.md),
   [security.md](security.md), [dev/preview.md](dev/preview.md), [dev/testing.md](dev/testing.md),
-  [glossary.md](glossary.md), [decisions.md](decisions.md); the idea removed from [plans/roadmap.md](plans/roadmap.md).
+  [glossary.md](glossary.md), [decisions.md](decisions.md); the idea removed from plans/roadmap.md.
 
 ## [2026-09-17] update | Send journal — a button in the Order Creator's header
 
@@ -1411,7 +1445,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - New: [features/send-journal.md](features/send-journal.md) (the send journal, route
   `POST /api/sends/open`), checking the link over public DNS, a cover-trim warning only past 10 mm.
 - Also updated: [features/order-creator.md](features/order-creator.md), [rules/book-structure.md](rules/book-structure.md),
-  [architecture/data.md](architecture/data.md), [security.md](security.md), [plans/open-questions.md](plans/open-questions.md),
+  [architecture/data.md](architecture/data.md), [security.md](security.md), plans/open-questions.md,
   [glossary.md](glossary.md), [code-map.md](code-map.md), [recipes.md](recipes.md), [index.md](index.md).
 
 ## [2026-09-17] ingest | The owner's answers about the "truck" tab and statuses
@@ -1419,18 +1453,18 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - The truck — a fourth tab between "In progress" and "Sent": the printer has shipped it, not yet marked
   in Etsy; once marked in Etsy, the order moves to "Sent". The status on the right — exactly as
   Printify/Gelato give it, in English; no separate marks needed for drafts.
-- Updated [plans/roadmap.md](plans/roadmap.md), [glossary.md](glossary.md) (the truck, the box, the
+- Updated plans/roadmap.md, [glossary.md](glossary.md) (the truck, the box, the
   clock), [rules/order-stages.md](rules/order-stages.md), [features/orders.md](features/orders.md); two
-  questions removed from [plans/open-questions.md](plans/open-questions.md). No code changed.
+  questions removed from plans/open-questions.md. No code changed.
 
 ## [2026-09-17] update | Gelato: a 28- or 30-page book
 
 - Built the idea from the plans: the number of pages downloaded (28 or 30) decides the Gelato book's
-  length; the decision — in [decisions.md](decisions.md), the item removed from [plans/roadmap.md](plans/roadmap.md).
+  length; the decision — in [decisions.md](decisions.md), the item removed from plans/roadmap.md.
 - The program reads from Gelato's catalog how many pages each format prints; a new route,
   `GET /api/creator/gelato/page-counts` ([architecture/api-routes.md](architecture/api-routes.md)).
 - A 28-page softcover — not checked live (Gelato's docs say "from 30"); the program will show the answer
-  after a restart — [plans/open-questions.md](plans/open-questions.md).
+  after a restart — plans/open-questions.md.
 - Updated: [integrations/gelato.md](integrations/gelato.md), [features/order-creator.md](features/order-creator.md),
   [features/orders.md](features/orders.md), [rules/printer-rule.md](rules/printer-rule.md),
   [rules/book-structure.md](rules/book-structure.md), [rules/file-naming.md](rules/file-naming.md), and others.
@@ -1439,8 +1473,8 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - Source: [raw/2026-09-17-vidpravleni-i-trek-nomery.md](raw/2026-09-17-vidpravleni-i-trek-nomery.md)
   (the owner's text; the screenshot wasn't kept — it had real buyer names on it).
-- Recorded in [plans/roadmap.md](plans/roadmap.md) (the truck tab, the status on the right, the name in
-  the grey row, the tracking-number chip), questions — in [plans/open-questions.md](plans/open-questions.md),
+- Recorded in plans/roadmap.md (the truck tab, the status on the right, the name in
+  the grey row, the tracking-number chip), questions — in plans/open-questions.md,
   new terms — in [glossary.md](glossary.md), "planned" marks — in [features/orders.md](features/orders.md)
   and [rules/order-stages.md](rules/order-stages.md). No code changed.
 

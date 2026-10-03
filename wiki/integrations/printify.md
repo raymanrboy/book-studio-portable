@@ -1,14 +1,14 @@
 ---
 title: Printify
 type: integration
-updated: 2026-09-29
+updated: 2026-10-03
 code:
   - app/studio/printify.py
 ---
 # Printify
 
-> **From 1 October 2026 only read** (the owner, 29.09.2026: "from 1 October I move only to Gelato"): every new
-> book goes to Gelato. Until then it printed **hardcovers for the US** (24 pages). Shop CozyCovenant, template
+> **Since 1 October 2026 only read** (the owner, 29.09.2026: "from 1 October I move only to Gelato"): every new
+> book goes to Gelato. Before, it printed **hardcovers for the US** (24 pages). Shop CozyCovenant, template
 > "Hardcover 8x8 Template" (the Master). API `https://api.printify.com/v1`, token — a Personal Access Token.
 
 ## Read only from 1 October 2026
@@ -22,7 +22,7 @@ code:
   Order Creator has no Printify/Gelato switch; an archived Printify book has no «Передрук» — its 24 pages don't fit
   Gelato, so a reprint starts from the order's card with the book downloaded anew (28 or 30 pages).
 
-## What's allowed (until 1 October 2026)
+## What was allowed (before 1 October 2026; the rails stay in the code)
 
 | Action | API path | When |
 |---|---|---|
@@ -47,7 +47,7 @@ Everything else is blocked in `_check()` ([security](../security.md)).
   `address_to` (`first_name`, `last_name`, `address1`, `address2`, `city`, `region`, `zip`, `country`,
   `phone`).
 - A book's finish is **always matte**.
-- The first real On-hold order hasn't been observed yet — see [open questions](../plans/open-questions.md).
+- The first real On-hold order hasn't been observed live — see [known limits](../dev/limits.md).
 
 ## The Master
 

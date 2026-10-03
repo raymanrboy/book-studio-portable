@@ -1,18 +1,18 @@
 ---
 title: The printer rule — Printify or Gelato
 type: rule
-updated: 2026-09-29
+updated: 2026-10-03
 code:
   - app/studio/orders.py
   - app/studio/reconcile.py
 ---
 # The printer rule
 
-> **From 1 October 2026 every book → Gelato, 28 or 30 pages** (the owner, 29.09.2026: "from 1 October I move only
-> to Gelato, on my own account"). Before: a hardcover shipping to the US → Printify, 24 pages; everything else →
-> Gelato.
+> **Since 1 October 2026 every book → Gelato, 28 or 30 pages** (the owner, 29.09.2026: "from 1 October I move only
+> to Gelato, on my own account"). The earlier rule (a US hardcover → Printify, 24 pages) is still in the code, behind
+> `printify.retired()`, and described at the bottom.
 
-## From 1 October 2026: only Gelato
+## Only Gelato
 
 - `printing()` carries `gelatoOnly` (= `printify.retired()`) and only Gelato's page counts; `plan_for()` then gives
   a hardcover — US too — `provider: "gelato"`, `hardcover_8x8`, no `choice`. The queue's chip is Gelato.
@@ -23,10 +23,10 @@ code:
   Gelato's lengths (24 pages → "Потрібно 28 або 30 сторінок").
 - Printify itself only reads — [integrations/printify.md](../integrations/printify.md).
 
-## 25–30 September 2026: a hardcover goes where its files say
+## Before 1 October 2026: a hardcover goes where its files say
 
-Printify started printing faulty books, so the owner decides every **hardcover** himself — by how many
-pages he downloads from Canva:
+While Printify was printing faulty books, the owner decided every **hardcover** himself — by how many
+pages he downloaded from Canva:
 
 | Hardcover, any country, files with | Printer |
 |---|---|
@@ -36,16 +36,16 @@ pages he downloads from Canva:
 
 - **Softcovers (the small 5.5×5.5 too) are only Gelato's**, as always; unknown cover type — the switch,
   as always.
-- The rule below stays as **the suggestion**: in the queue a US hardcover still has the green "Printify"
+- The rule below was **the suggestion**: in the queue a US hardcover still has the green "Printify"
   chip, the tooltip says "usually Printify; the files decide". In the card the header chip shows
   "Printify · 24 pages" (no question mark — the owner asked to remove it) until the files are in, then the printer the files picked ("Gelato · 30 pages").
-- No switch in Settings (the owner, 2026-09-25): going back to the rule is a small code change —
+- No switch in Settings (the owner, 2026-09-25): going back to the rule would be a small code change —
   remove `choice` in `plan_for()`.
 - Technically: the plan of a hardcover carries `choice` (`{"printify": [24], "gelato": [28, 30]}`) and
   `pages: [24, 28, 30]`; the card sends the files with `provider: "files"`, the server lays out any of
   those lengths and answers with the printer (`provider_by_pages()`).
 
-## The rule itself (the suggestion while the files decide)
+## The rule behind it (the suggestion the files overrode)
 
 | Order | Printer | Pages | Gelato format |
 |---|---|---|---|
@@ -76,11 +76,10 @@ printer.
 
 The country comes from `country_iso` in the shipping address on the Etsy receipt.
 
-## Open question
+## Exceptions seen
 
-The rule matches 51 of the last 54 orders. Exceptions: 2 softcovers in the US and 1 hardcover to Canada
-were printed in Printify. Whether these are deliberate exceptions, or the rule needs to be broader — see
-[open-questions.md](../plans/open-questions.md).
+Before the switch the rule matched 51 of the last 54 orders; 2 softcovers in the US and 1 hardcover to Canada had been
+printed in Printify — the owner's own choices, not a bug. With Gelato only, the question no longer arises.
 
 ## Where in the code
 

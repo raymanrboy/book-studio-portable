@@ -1,7 +1,7 @@
 ---
 title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
-updated: 2026-10-01
+updated: 2026-10-03
 code:
   - app/studio/creator/
   - app/web/js/pages/creator.js
@@ -11,10 +11,10 @@ code:
 ---
 # Order Creator
 
-> The last link in the chain: from a folder of PNGs (`Cover.png` + pages) it creates an unpublished book
-> in **Printify** (and, if the address is filled in, an "On hold" order), and a draft order with a PDF
-> in **Gelato**. An order with several books goes as **one draft to one address** (since 2026-09-20).
-> Nothing is published and nothing goes into production. Opens empty — except for work on a new order,
+> The last link in the chain: from a folder of PNGs (`Cover.png` + pages) it creates a draft order with a PDF
+> in **Gelato**. An order with several books goes as **one draft to one address**. Until 30 September it also created
+> an unpublished book (and an "On hold" order) in **Printify**; that code stays, but Printify is read-only now
+> ([printify](../integrations/printify.md)). Nothing is published and nothing goes into production. Opens empty — except for work on a new order,
 > which is kept while the order is in "New" (see below).
 
 ## Screen (`#/creator`)
@@ -23,10 +23,9 @@ code:
   Друк у Gelato з папки файлів»; from an order's card — the page is **that order's print step**: the buyer's name, the
   receipt, «back» to the card, the order's path as icons (Canva ✓ files ✓ text check ✓ **printer** · truck; its steps lead back to
   the card), and the rail stays on «Замовлення» (`navFor()`).
-- Header: the title above, the **"Send journal"** icon ([send-journal.md](send-journal.md)), and the
-  **Printify / Gelato** switch (Printify mode uses a lime-green accent, Gelato — blue, `.creator.mode-gelato`; since 2026-09-25 set
-  explicitly, because the Orders mode's own accent is orange). **From 1 October 2026 there is no switch**: only
-  Gelato (`gelatoOnly` from `status.printify.retired`; a hand-over in Printify mode opens Gelato; the Printify routes
+- Header: the title above and the **"Send journal"** icon ([send-journal.md](send-journal.md)). There is **no
+  printer switch** — only Gelato (blue, `.creator.mode-gelato`; the Printify mode with its lime-green accent and the
+  switch show only before `printify.retired()`) (`gelatoOnly` from `status.printify.retired`; a hand-over in Printify mode opens Gelato; the Printify routes
   refuse — [printify](../integrations/printify.md)). Drafts go to the main Gelato account only — after the move to
   his own account, the new one ([gelato](../integrations/gelato.md)). Below it, a line
   appears only when something is missing (a key, the template, `cloudflared.exe`), with a link to
@@ -68,8 +67,8 @@ code:
   could not tell «Місто» from «Штат»); the required ones are marked with the ink's *. «Створити» with a field missing
   says which and lights them up (`markMissing()`). An eraser icon clears it. State is required for US, CA, AU. For Gelato, an empty phone →
   the made-up `+1 555 555 0100` (Gelato won't let an order through with no phone).
-- **The button**'s label changes: Gelato — "Create draft"; Printify with an address — "Create draft
-  order", without one — "Create book without an order".
+- **The button**: "Create draft" (before 1 October, Printify's: with an address — "Create draft order", without one —
+  "Create book without an order").
 - **Result**: a card with the ID, checks, warnings; Printify — "Order in Printify" or "Open in Printify";
   Gelato — the PDF's build, a yellow notice with the temporary link's countdown («Gelato забирає їх сам, зазвичай за
   хвилину», plus a close-the-link icon), and the orange «Замовлення в Gelato» button, which opens the orders list
@@ -125,7 +124,7 @@ reads them; `mark_books()` — each book's name in the progress and the errors w
 print order recorded here (as a reprint, or as its receipts' order), never failing a finished send. Printify's and
 Gelato's own parts (uploads and the Master; the PDF and the link) stay in their own files.
 
-## Printify: what happens on the server
+## Printify: what happens on the server (before 1 October 2026; the routes now refuse)
 
 `create_printify_draft(books, job, address)` — `books` is a list of `{folder, title}` (one book, or
 every book of a receipt; `books_of()` checks them, `joint_title()` gives a shared title

@@ -1,7 +1,7 @@
 ---
 title: Canva — book templates
 type: integration
-updated: 2026-09-23
+updated: 2026-10-03
 code: []
 ---
 # Canva
@@ -33,7 +33,7 @@ be copied instead of retyped ([decisions.md](../decisions.md)).
 
 **A demo book for the listing** (a new book in the shop): the same template with a sample name on the
 cover ("Oliver") and a literal `{Name}` in the pages, downloaded as a ZIP; its cover and chosen spreads
-go into Photoshop mockups — by hand for now, a utility is planned ([listing-mockups.md](../plans/listing-mockups.md)).
+go into Photoshop mockups — a Photoshop script fills the templates ([mockups](../features/mockups.md)).
 
 ## Where in the code
 
@@ -44,5 +44,4 @@ go into Photoshop mockups — by hand for now, a utility is planned ([listing-mo
 
 ## Related
 
-- [The order-to-print path](../flows/order-to-print.md) · [Plans](../plans/roadmap.md) (pages from the
-  library instead of Canva, text recognition)
+- [The order-to-print path](../flows/order-to-print.md) · [Text check](../features/text-check.md)

@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-01
+updated: 2026-10-03
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -106,7 +106,7 @@ code:
 
 ## The Workshop — [workshop/routes.py](../../app/studio/workshop/routes.py)
 
-The Listings mode's books in development — the book pipeline's folders ([features/workshop.md](../features/workshop.md));
+The books in development (the Workshop) — the book pipeline's folders ([features/workshop.md](../features/workshop.md));
 `<book>` is a book's folder name (`41.some-book`). The page asks `sig` every 1.5 s and redraws on a change.
 
 | Method | Pattern | Access | Function | Who calls it |
@@ -201,14 +201,14 @@ them) — see [features/mockups.md](../features/mockups.md).
 
 ## Listing slides — [slides/routes.py](../../app/studio/slides/routes.py)
 
-Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a Workshop book's folder name, an older set's id or `template` (the default scheme), `s` — `slide1…6`. `/api/slides/make` and `/api/slides/cutouts` take `workshop` (a book) instead of `folder`; `/api/mockups/make` takes `workshop` too.
+Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a Workshop book's folder name, an older set's id or `template` (the default scheme), `s` — `slide1…7` (7 — the hero's looks, only for a book that has two or more, 2026-10-02). `/api/slides/make` and `/api/slides/cutouts` take `workshop` (a book) instead of `folder`; `/api/mockups/make` takes `workshop` too.
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/slides/state` | token | `_state` | slides-editor.js, mockups-slides.js `refresh` (`?w=`: name, folder, numbers, slides, the baked pictures, slots, signature) |
+| GET | `/api/slides/state` | token | `_state` | slides-editor.js, mockups-slides.js `refresh` (`?w=`: name, folder, numbers, slides — 7 only with the hero's looks, the baked pictures, slots — `hero:1…7` with the look's name, signature; a Workshop book's looks made after its slides are taken here — `work.sync_heroes()`) |
 | GET | `/api/slides/scene` | token | `_scene` | slides-editor.js (`?w=&s=` → `{scene, version}`) |
 | GET | `/media/slides/scene` | media | `_scene` | slides/render.html — the page headless Edge bakes |
-| GET | `/api/slides/assets` | token | `_assets` | slides-editor.js (the slots' pictures, where the books sit, the numbers) |
+| GET | `/api/slides/assets` | token | `_assets` | slides-editor.js (the slots' pictures — the looks with their names and `aspect`, where the books sit, the numbers with `looks`) |
 | GET | `/media/slides/assets` | media | `_assets` | slides/render.html |
 | GET | `/media/slides/file/([^/]+)/(books\|pictures)/([\w.-]+\.png)` | media | `_file` | engine.js (a set's — a Workshop book's or an older one's — cut-out book, its shadow, a flat picture) |
 | GET | `/api/slides/sig` | token | `_sig` | slides-editor.js `watch` every 1.5 s (a scene changed by an agent shows up) |
@@ -223,7 +223,7 @@ Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a 
 | GET | `/api/slides/cutouts` | token | `_cutouts` | mockups-slides.js (`?folder=` — which mockups are cut out without background) |
 | POST | `/api/slides/make` | token | `_make` | mockups-slides.js «Зробити слайди» (job `slides`: `{folder, order, book, numbers}` → a set, the six baked) |
 | POST | `/api/slides/bake` | token | `_bake` | slides-editor.js «Зберегти картинки» (job `slides`: the set's slides into the same files) |
-| GET | `/media/slides/out/([^/]+)/(slide[1-6])` | media | `_out` | mockups-slides.js (`?w=&v=` — a baked slide's preview) |
+| GET | `/media/slides/out/([^/]+)/(slide[1-7])` | media | `_out` | mockups-slides.js (`?w=&v=` — a baked slide's preview) |
 | POST | `/api/slides/open-picture` | token | `_open_picture` | mockups-slides.js, the viewer's "original" button |
 | POST | `/api/slides/open-folder` | token | `_open_folder` | (a set's folder — a Workshop book's `etsy/`, where its slides are; `noBg` — its cut-outs, `no-background/`) |
 

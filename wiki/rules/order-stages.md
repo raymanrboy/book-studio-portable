@@ -1,7 +1,7 @@
 ---
 title: Order stages — new, in progress, shipped by the printer, sent
 type: rule
-updated: 2026-09-28
+updated: 2026-10-03
 code:
   - app/studio/stages.py
   - app/studio/printorders.py
@@ -56,8 +56,8 @@ only the mark on Etsy does.
   ([sync-policy.md](sync-policy.md)) → matching ([reconciliation.md](reconciliation.md)) finds the
   confirmed order — and the receipt moves to "In progress".
 
-A known gap: a book created in Printify **without** an order doesn't move the receipt. The idea of a
-"product already created" mark is in the [plans](../plans/roadmap.md).
+A known gap: a book created in Printify **without** an order doesn't move the receipt (the queue's chip `On hold` /
+`Draft` already says a book was sent and waits for confirmation).
 
 ## A reprint doesn't change the stage (since 2026-09-18)
 

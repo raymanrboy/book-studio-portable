@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-09-30
+updated: 2026-10-03
 code: []
 ---
 # Glossary
@@ -97,7 +97,7 @@ Code paths below are relative to the repository root.
 | Кошик | `data/library/trash` — where a deleted book goes | [library.py](../app/studio/library.py) `_delete()` |
 | Переглядач (лайтбокс) | The full-screen zoomable viewer | [lightbox.js](../app/web/js/lightbox.js) `openLightbox()` |
 
-## The Listings mode (since 2026-09-24)
+## Books, the rail and the Workshop
 
 | Owner's word (Ukrainian) | What it is | Where |
 |---|---|---|
@@ -110,7 +110,7 @@ Code paths below are relative to the repository root.
 | Архів друку (архів замовлень) | The print archive — among «Інструменти»; a printed order's card links to its entry | [features/archive.md](features/archive.md) |
 | Кольори режимів: студія — оранжева, «як у Etsy і Claude»; майстерня — як була студія (блакитна) | The `--accent*` tokens: orange by default (Orders), cyan under `[data-mode="listings"]`; magenta for a few hours before the owner swapped them | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |
 | Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library — since 2026-09-26 the book console moved in: the agents write a book, the Workshop shows its path and catches its pictures | [features/workshop.md](features/workshop.md); [workshop/books.py](../app/studio/workshop/books.py) |
-| Пульт, пульт книги | The book console — a prototype window apart from Book Studio (2026-09-26), moved into the Workshop the same day; now the Workshop's book page | [plans/book-console.md](plans/book-console.md); [features/workshop.md](features/workshop.md) |
+| Пульт, пульт книги | The book console — a prototype window apart from Book Studio (2026-09-26), moved into the Workshop the same day; now the Workshop's book page | [features/workshop.md](features/workshop.md) |
 | Пайплайн, агенти 0–6, Antigravity | The book pipeline: the agents that write a book's formula, hero, story, text and prompts, in Antigravity opened on `pipeline/`; their files go into a book's `agent/` | [pipeline/GEMINI.md](../pipeline/GEMINI.md); [workshop/books.py](../app/studio/workshop/books.py) `open_agent()` |
 | Смуга шляху; «Далі: …» | The book's path strip: Формула → … → Бібліотека, ticked by the files that exist | [workshop/books.py](../app/studio/workshop/books.py) `STEPS`, `steps()` |
 | GO, перевірка книги | The book check before generating: the old pipeline validator's rules — GO or N errors on the strip | [workshop/check.py](../app/studio/workshop/check.py) `run()`; [workshop/rows.py](../app/studio/workshop/rows.py) `book_check()` |
@@ -119,13 +119,14 @@ Code paths below are relative to the repository root.
 | Плейсхолдер, рамка під картинку (розворот 2:1) | An empty frame in a Workshop row: the caught download or a picture dropped (or picked) lands there, one at a time | [workshop-rows.js](../app/web/js/pages/workshop-rows.js) `rowTemplates()`; [features/workshop.md](features/workshop.md) |
 | Поля обкладинки, аутпейнт, шаблон друкарні | The cover's second stage: the picture on the printer's template, white margins, the outpaint prompt → Cover.png 5370×2850 | [workshop/rows.py](../app/studio/workshop/rows.py) `TEMPLATE`, `outpaint_prompt()`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `fit_template()` |
 | Варіанти героя (G2, G3 …) | A Tier H book's hero looks: a variant's hero and its swap prompts per spread | [workshop/rows.py](../app/studio/workshop/rows.py) `variants()` |
+| Варіанти зовнішності, слайд з варіаціями, «рамка-зірочка» | Listing slide 7: the hero's looks, each in its own frame (a scalloped «зірочка» or a plain card) with its name («B2») — only for a book with looks | [features/slides.md](features/slides.md#slide-7--the-heros-looks-since-2026-10-02); [slides/work.py](../app/studio/slides/work.py) `put_heroes()` |
 | Відправити (передати) в бібліотеку з замовленнями | «Передати в бібліотеку»: a library book made from the Workshop book's pages, texts and its Etsy listing | [workshop/books.py](../app/studio/workshop/books.py) `to_library()`; [add-book.js](../app/web/js/add-book.js) `openAddBook()` |
-| Фотошоп модуль | The Mockups, moved into the Listings mode (2026-09-24) | [features/mockups.md](features/mockups.md) |
+| Фотошоп модуль | The Mockups tool | [features/mockups.md](features/mockups.md) |
 | Фліпер, фліпати (розворот) | Mirroring a spread left to right: his `mirror-alternate.py` rule (4–5, 8–9 … 28–29) on the drop, ⇄ by hand | [workshop/rows.py](../app/studio/workshop/rows.py) `MIRRORED`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `flip()`; [features/workshop.md](features/workshop.md#a-picture-into-its-row) |
 | Нарізати на квадрати, два квадрати як у паспорті | A 2:1 spread cut into its left and right square pages (his `slice-spreads.py`) | [workshop/pictures.py](../app/studio/workshop/pictures.py) `place()`, `two_squares()` |
-| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` (2026-09-26) | [plans/book-console.md](plans/book-console.md) |
+| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` (2026-09-26) | [pipeline/](../pipeline/GEMINI.md) |
 
-## Listing mockups (the «Мокапи» utility, built 2026-09-23; in the Listings mode since 2026-09-24)
+## Listing mockups (the «Мокапи» tool)
 
 | Owner's word (Ukrainian) | What it is | Where |
 |---|---|---|
@@ -135,15 +136,15 @@ Code paths below are relative to the repository root.
 | Книга в руках у людини | The photo mockups' video category: a woman holding the book, animated in Gemini Omni with the owner's prompt | [features/photo-mockups.md](features/photo-mockups.md) `photos.OMNI_PROMPTS` |
 | Omni, Gemini Omni | Google's video generator the owner animates the photo mockups in | [features/photo-mockups.md](features/photo-mockups.md) |
 | Папка etsy | A Workshop book's folder of what goes into its Etsy listing: the slides and the photo mockups | [features/workshop.md](features/workshop.md) |
-| Мокапи, мокапи для лістингу | Etsy listing pictures: the demo book dropped into Photoshop templates; also the utility's shortcut name | [features/mockups.md](features/mockups.md) `mockups.py`; [plans/listing-mockups.md](plans/listing-mockups.md) |
-| Трафарети (мастхев), шаблони мокапів | The PSD templates in `D:\Roman\Desktop\Трафарети мастхев` — **read-only** | [plans/listing-mockups.md](plans/listing-mockups.md); [security.md](security.md) |
-| Смарт-об'єкт | A layer that's a "container": the picture inside is bent by the template | [plans/listing-mockups.md](plans/listing-mockups.md) |
-| Папка Main | Hidden linked copies of the layers to fill, at the bottom of templates 1–4 | [plans/listing-mockups.md](plans/listing-mockups.md) |
-| Ковер, обкладинка (у мокапі) | The front cover — the owner fits it by hand (`COVER_` / `Cover` / `Front Cover`) | [plans/listing-mockups.md](plans/listing-mockups.md) |
+| Мокапи, мокапи для лістингу | Etsy listing pictures: the demo book dropped into Photoshop templates; also the utility's shortcut name | [features/mockups.md](features/mockups.md) `mockups.py` |
+| Трафарети (мастхев), шаблони мокапів | The PSD templates in `D:\Roman\Desktop\Трафарети мастхев` — **read-only** | [features/mockups.md](features/mockups.md#the-templates); [security.md](security.md) |
+| Смарт-об'єкт | A layer that's a "container": the picture inside is bent by the template | [features/mockups.md](features/mockups.md#the-templates) |
+| Папка Main | Hidden linked copies of the layers to fill, at the bottom of templates 1–4 | [features/mockups.md](features/mockups.md#the-templates) |
+| Ковер, обкладинка (у мокапі) | The front cover — the owner fits it by hand (`COVER_` / `Cover` / `Front Cover`) | [features/mockups.md](features/mockups.md#the-templates) |
 | Корінець | The spine: the middle strip of the wide cover (`Rige` / `Spine`, files `RIDGE*.psb`) | [mockups.py](../app/studio/mockups.py) `cover_pictures()` |
 | Задня частина (обкладинки) | The back cover — the left half of the wide cover (`Back Cover`) | [mockups.py](../app/studio/mockups.py) `cover_pictures()` |
 | Презентабельні розвороти | The spreads the owner picks for the mockups, different for every book | [pages/mockups.js](../app/web/js/pages/mockups.js) `put()`; [features/mockups.md](features/mockups.md) |
-| Опен 1, Опен 2 (копії) | Templates `2. Open 1` (used 4 times) and `3. Open 2` (twice), each time with another spread | [plans/listing-mockups.md](plans/listing-mockups.md) |
+| Опен 1, Опен 2 (копії) | Templates `2. Open 1` (used 4 times) and `3. Open 2` (twice), each time with another spread | [features/mockups.md](features/mockups.md#the-templates) |
 | Демо-книга, архів з Канви (для мокапів) | The Canva ZIP of a book with a sample name on the cover and `{Name}` in the pages | [mockups.py](../app/studio/mockups.py) `read_book()` |
 | Кант (у мокапі) | The thin rim of the cover around the pages of an open book — filled from the cover by the script | [mockups.py](../app/studio/mockups.py) `plan()` |
 | Драг енд дроп зона з пошуком (як у Бук Студіо) | The path field with the folder-and-magnifier button (`folderPick`) that lights up when files are dragged over the window — the look «Мокапи» took from the Order Creator (their «Куди зберегти»; the demo book comes into «Структура» since 2026-09-29) | [pages/mockups.js](../app/web/js/pages/mockups.js) `paintOut()`, `paintStructure()`; [features/mockups.md](features/mockups.md) |

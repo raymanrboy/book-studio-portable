@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-10-01
+updated: 2026-10-03
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -83,10 +83,10 @@ code:
 | [slides/\_\_init\_\_.py](../app/studio/slides/__init__.py) | [Listing slides](features/slides.md): the package, what's where | — |
 | [slides/cutout.py](../app/studio/slides/cutout.py) | A mockup → the book and its real shadow, transparent (the template's mask and Multiply layers, only read; Dedication — the desk and the book, the floor gone); `no-background/` («Без фону»); the background cutter | `kind_of()`, `read_psd()`, `cut()`, `combined()`, `ensure()`, `Cutter`, `cutter`, `READER` |
 | [slides/store.py](../app/studio/slides/store.py) | The schemes (Nature, Night, the owner's own) and a book's slides (a Workshop book's in its folder): scenes with their versions (a stale save refused), slots, pictures, the cleaning | `list_schemes()`, `save_scheme()`, `apply_preset()`, `presets()`, `load()`, `save()`, `reset()`, `sig()`, `new_set()`, `mockups_dir()`, `clean_temporary()`, `book_done()` |
-| [slides/work.py](../app/studio/slides/work.py) | «Зробити слайди»: the mockups into slots, the set, the six baked; a re-bake | `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()` |
+| [slides/work.py](../app/studio/slides/work.py) | «Зробити слайди»: the mockups into slots, the set, the six (seven) baked; a re-bake; the hero's looks into slide 7 | `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `looks()`, `put_heroes()`, `sync_heroes()` |
 | [slides/bake.py](../app/studio/slides/bake.py) | Headless Edge draws `slides/render.html` at 2000², three at once; the names in the owner's folder | `bake()`, `render()`, `outputs()`, `run_browser()` |
 | [slides/routes.py](../app/studio/slides/routes.py) | The slides' routes | `assets()`, `_make()`, `_bake()`, `_save()` |
-| `slides/design/slide1…6.json` | The six slides' first design (the template's «Скинути» goes back to it) | — |
+| `slides/design/slide1…6.json`, `slides/design/slide7.json` | The slides' first design (the template's «Скинути» goes back to it); 7 — the hero's looks, on slide 4 (2026-10-02) | — |
 | [sync.py](../app/studio/sync.py) | Pulling the orders: Etsy receipts (changed ones, a full read weekly), Printify and Gelato orders, into the snapshot | `_sync()`, `startup_sync()`, `normalize_receipt()`, `merge_receipts()` |
 | [records.py](../app/studio/records.py) | What is kept about orders on disk: the snapshot, manual links and states, the print orders this program sent | `load_snapshot()`, `stamp()`, `remember_print_order()`, `add_replacement()`, `unmark_reprint()`, `SNAPSHOT`, `SENDS` |
 | [printorders.py](../app/studio/printorders.py) | One reading of a Printify / Gelato order: its cost in dollars, dead or placed, name, label, tracking | `facts()`, `all_facts()`, `is_placed()`, `dead()`, `to_usd()`, `rates()`, `carrier_label()` |
@@ -136,8 +136,8 @@ code:
 | [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: the path strip and its panel, the rows, the cover's two stages, hero variants, «Передати в бібліотеку» | `mount()` |
 | [js/pages/workshop-rows.js](../app/web/js/pages/workshop-rows.js) | A Workshop book's rows drawn: a spread or a page with its prompt, its frame, its text; the parts the cover's card shares | `rowTemplates()`, `waitChip()` |
 | [js/workshop-live.js](../app/web/js/workshop-live.js) | The Workshop's live link: what changed, the generation mode's state and bar, the rail's dot and title | `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genBar()` |
-| [js/pages/photos.js](../app/web/js/pages/photos.js) | «Фотомокапи» (the Listings mode, `#/photos`): the templates by category — a click puts the template, then the prompt into the clipboard; add, remove | `mount()` |
-| [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups (the Listings mode): the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
+| [js/pages/photos.js](../app/web/js/pages/photos.js) | «Фотомокапи» (`#/photos`): the templates by category — a click puts the template, then the prompt into the clipboard; add, remove | `mount()` |
+| [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups: the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
 | [js/pages/mockups-run.js](../app/web/js/pages/mockups-run.js) | Mockups, step 3 drawn: the run and Photoshop's question, the result, «Ваша черга», the pictures saved after it | `runView()`, `resultCard()`, `turnCard()`, `finishedCard()` |
 | [js/pages/mockups-slides.js](../app/web/js/pages/mockups-slides.js) | Mockups, step 4 — the listing slides: «Без фону», «Зробити слайди», the six, the editor's door | `slidesStep()` |
 | [js/pages/slides-editor.js](../app/web/js/pages/slides-editor.js) | The listing slides' editor (loaded only when opened): layers, the slide with its handles, the grouped properties, live saving, an agent's change shown | `mount()`, `SPEC`, `NEW` |

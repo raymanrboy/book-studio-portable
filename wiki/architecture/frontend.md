@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-02
+updated: 2026-10-03
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -30,12 +30,11 @@ code:
 > One HTML page with no build step: ES modules from `app/web/js`, styles in `app/web/css/` (`app.css` and a file
 > per section, loaded in that order).
 > Pages switch by `#hash`, each one its own module with `mount()`. Since 2026-09-30 one labelled
-> [rail of places and tools](../features/modes.md) (the two modes of 2026-09-24 went); the ink follows the area.
+> [rail of places and tools](../features/modes.md) ; the ink follows the area.
 
 ## Shell and routing — `app.js`
 
-- **The rail** (`PLACES`, since 2026-09-30 — [features/modes.md](../features/modes.md); two modes switched by the brand
-  icon before): **Замовлення** `#/orders` (Alt+1), **Книги** `#/books` (Alt+2), **Прибуток**
+- **The rail** (`PLACES`, since 2026-09-30 — [features/modes.md](../features/modes.md)): **Замовлення** `#/orders` (Alt+1), **Книги** `#/books` (Alt+2), **Прибуток**
   `#/profit` (Alt+3), **Інструменти** `#/tools` (Alt+4), «Пошук» (Ctrl+K, last of the list), at the bottom Settings
   `#/settings` and the theme menu (dark / light / follow Windows, "reduce motion"). Icons only (tooltips); a click goes back to where the owner
   was under it (`lastIn`, `entryOf()`) — only while that page still belongs to it (`placeAt`: the Mockups opened
@@ -57,7 +56,7 @@ code:
   `#/workshop` there), `#/book/<id>` → `book.js`, `#/tools` → `tools.js`, `#/creator` → `creator.js`, `#/archive[/<id>]` → `archive.js`,
   `#/profit` → `profit.js` (since 2026-09-29; counts from 1 October — [features/profit.md](../features/profit.md)),
   `#/settings[/<section>]` → `settings.js` — orange; `#/book/<id>`, `#/workshop/<book folder>` →
-  `workshop-book.js`, `#/mockups` → `mockups.js`, `#/photos` → `photos.js`, `#/slides/<set | template>/<1–6>` →
+  `workshop-book.js`, `#/mockups` → `mockups.js`, `#/photos` → `photos.js`, `#/slides/<set | template>/<1–7>` →
   `slides-editor.js` (the listing slides' editor, since 2026-09-29) — cyan. A route marked `'lazy'` is left out of the pages' warm-up in `boot()`:
   the editor's code loads the first time it is opened (the owner: "a separate module called only when needed").
 - **A page's contract**: `export async function mount(view, params)` builds content in the given
@@ -124,7 +123,7 @@ a title, one quiet line, `segBar()` — four segments in the library, eleven in 
 `scaleX`; a «next» line only where there is something to say). **The state alphabet** (the same in the strip and the bar):
 filled = done, half = started, empty = not yet, pale/dashed = not needed, red = something is wrong.
 
-## The book pages (cyan; the Listings mode's until 2026-09-30)
+## The book pages (cyan)
 
 - [The Workshop](../features/workshop.md) (the book console moved in, 2026-09-26) — `pages/workshop.js` (the gallery
   of the pipeline's books) and `pages/workshop-book.js` (the path strip and its panel, the rows — drawn by `pages/workshop-rows.js` —, the
@@ -139,7 +138,8 @@ filled = done, half = started, empty = not yet, pale/dashed = not needed, red = 
 - [The listing slides](../features/slides.md) (2026-09-29) — the Mockups' step 4 (`pages/mockups-slides.js`) and the
   editor `pages/slides-editor.js`, which links its own `css/slides.css` when it mounts (`ensureCss()`), widens its view
   (`.se-view`) and draws with `js/slides/engine.js` — the same engine the headless bake uses (`web/slides/render.html`,
-  served as a static file with `fonts/` since the static routes took `fonts` and `slides`).
+  served as a static file with `fonts/` since the static routes took `fonts` and `slides`). The bake page sets
+  `bake: true` in the assets: slide 7's empty frames (`hero:N` with no look) leave no mark there, only in the editor.
 - [The Mockups](../features/mockups.md) — `pages/mockups.js`, the separate utility's page moved in (its own
   window `mockups.html` + `mockups-shell.js` went). It keeps the usual page contract and adds `keep()`/`revive()`
   so the book, the picks and a run survive stepping away; it tells the rail about a run through the `bs:busy`
@@ -230,7 +230,7 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
   `--canva`. The Order Creator's Printify mode and the Printify send card (`.tint-printify`) recolor the
   accent to lime green; its Gelato mode (`.creator.mode-gelato`) — to the old blue, the same "process
   cyan" (the owner, 2026-09-25: once Orders turned orange, Gelato in the Order Creator became orange too — "як було").
-- **Type** (since 2026-09-30, [the redesign](../plans/ui-redesign.md)): five interface sizes with clear steps —
+- **Type** (since 2026-09-30): five interface sizes with clear steps —
   `--fs-s` 12 (captions, chips, meta) · `--fs` 13 (the base) · `--fs-m` 15 (a card's title) · `--fs-l` 19 (an
   object's or a dialog's title) · `--fs-xl` 25 (a page's title); named exceptions `--fs-book` / `--fs-book-title` (the
   books' own words in Sitka), `--fs-glyph` (a placeholder's letter), `--fs-micro` (keycaps, numbers on thumbnails).
@@ -281,4 +281,4 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 
 ## Related
 
-- [Two modes](../features/modes.md) · [Code map](../code-map.md) · [Interface principles](../owner/ui-principles.md) · [Recipes](../recipes.md)
+- [The rail](../features/modes.md) · [Code map](../code-map.md) · [Interface principles](../owner/ui-principles.md) · [Recipes](../recipes.md)

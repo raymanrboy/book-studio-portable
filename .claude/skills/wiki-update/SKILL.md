@@ -20,7 +20,7 @@ description: Bring the Book Studio wiki up to date after code changes. Use at th
    - an owner decision or a meaningful technical choice → an entry at the top of `wiki/decisions.md`
      (date, decision, why);
    - a new term from the owner → `wiki/glossary.md`;
-   - a new "for later" idea or open question → `wiki/plans/`;
+   - a new known limit → `wiki/dev/limits.md`;
    - a new page → a link in `wiki/index.md`.
 4. An entry at the top of `wiki/log.md`: `## [YYYY-MM-DD] update | what changed` and 1–5 bullet points.
 5. `python app/tools/wiki_check.py` — should say "Wiki is in order." Then run the tests

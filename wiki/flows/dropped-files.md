@@ -1,7 +1,7 @@
 ---
 title: Dragging folders and ZIP archives
 type: flow
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/web/js/order-bits.js
   - app/web/js/app.js

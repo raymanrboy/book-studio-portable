@@ -1,7 +1,7 @@
 ---
 title: Settings
 type: feature
-updated: 2026-10-01
+updated: 2026-10-03
 code:
   - app/studio/settings_api.py
   - app/studio/gelato_accounts.py
@@ -32,7 +32,7 @@ code:
 - **Gelato**: the key; three formats and "28 or 30 pages"; a connection check. A saved key has **«Перейти на новий
   акаунт Gelato»** (the swap icon) in place of «Замінити ключ» — a dialog for the new account's key; the current one
   becomes «Старий акаунт · лише читання» with its hint, «Ще N замовлень в роботі» / «Його замовлення завершено», its
-  own connection check and a bin to remove it (since 2026-09-29, [gelato](../integrations/gelato.md#his-own-account--two-keys-during-the-move-built-2026-09-29)).
+  own connection check and a bin to remove it (since 2026-09-29, [gelato](../integrations/gelato.md#his-own-account--two-keys-during-the-move)).
   While the old one is kept, the new key has the usual «Замінити ключ» (to fix a mistyped one).
 - **Text check** (since 2026-09-19): a "Check page text in the order card" switch, a "First take a quick
   look at which pages even have text" switch (since 2026-09-20 — the program decides on its own which

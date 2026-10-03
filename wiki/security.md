@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-10-01
+updated: 2026-10-03
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -26,10 +26,10 @@ code:
    (OAuth) is done only on the Kyiv computer where the shop is registered: otherwise Etsy might block
    the shop over a foreign IP address.
 2. **Etsy — read-only.** No changes in the shop at all.
-3. **Printify** — only image uploads, an unpublished product, and "On hold" orders (only after
-   confirming manual approval). **Never**: sending to production, cancelling, Express, publishing, or
-   changing/deleting products. **The Master product is never changed.** **From 1 October 2026 Printify is
-   read-only** — nothing is written there at all (the owner moved every new book to Gelato).
+3. **Printify is read-only since 1 October 2026** — nothing is written there at all (the owner moved every new book to
+   Gelato). Before that date it allowed only image uploads, an unpublished product, and "On hold" orders (only after
+   confirming manual approval); the code keeps those rails. **Never**: sending to production, cancelling, Express,
+   publishing, or changing/deleting products. **The Master product is never changed.**
 4. **Gelato** — drafts only (`orderType: draft`), and only in the main account; the old account (kept after the
    move to the owner's own one) is only read.
 5. **No live writes** to the owner's accounts (Etsy, Printify, Gelato) without his direct permission in
@@ -50,7 +50,7 @@ code:
 10. **The mockup templates `D:\Roman\Desktop\Трафарети мастхев` — read-only** (the owner's rule,
     2026-09-23: "only reading, no editing, and God forbid deleting"). Never edit, save over, move,
     rename or delete anything there; scripts open **copies** only
-    ([plans/listing-mockups.md](plans/listing-mockups.md), how the utility keeps to it — below).
+    ([features/mockups.md](features/mockups.md#the-templates), how the utility keeps to it — below).
 11. **Photoshop's own settings are the owner's**: an agent doesn't add `WarnRunningScripts 0` or change
     anything else there. In a test, an agent may answer Photoshop's "run this script?" only when the
     question names its own test script (2026-09-23).

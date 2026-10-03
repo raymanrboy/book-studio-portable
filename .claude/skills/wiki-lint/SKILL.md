@@ -13,9 +13,9 @@ description: Health-check the Book Studio wiki against the code and itself - con
    - concepts mentioned in several places with no page of their own;
    - pages with no inbound links other than from `index.md`;
    - places where the description just retells the code instead of explaining *what* and *why*;
-   - stale items in `plans/` (already built → move into `decisions.md` / the relevant page).
-3. Fix what's obvious; put anything debatable in a list of questions for the owner (in
-   `plans/open-questions.md` and in the report).
+   - forward-looking text ("later", "planned", "not built", "open question") — the wiki describes the program as it is now;
+     limits go to `dev/limits.md`.
+3. Fix what's obvious; put anything debatable in a list of questions for the owner (in the report).
 4. Suggest 1–3 new questions or sources the wiki is missing.
 5. An entry at the top of `wiki/log.md`: `## [YYYY-MM-DD] lint | summary`.
 6. `python app/tools/wiki_check.py` and the tests — no errors.

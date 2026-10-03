@@ -1,7 +1,7 @@
 ---
 title: Book structure — pages, spreads, slots
 type: rule
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/studio/library.py
   - app/web/js/order-bits.js
@@ -25,8 +25,7 @@ code:
 Texts (`TEXT_KEYS`): `cover`, `page1`, `spread2…spread15`, `page30` — 16 slots + the cover.
 A book is "complete" once it has the cover, all 16 illustrations, and all 17 texts (`completeness()`).
 
-Every spread has one page with text and one that's just a picture (matters for the
-[plans](../plans/roadmap.md)).
+Every spread has one page with text and one that's just a picture.
 
 **The Workshop** (since 2026-09-24) has the same 17 rows — the cover, page 1, spreads 2–15, page 30 — each with
 a prompt (`PROMPT_KEYS`, the same keys as the texts) beside its text; a spread is dropped as one 2:1 picture and

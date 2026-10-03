@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-10-01
+updated: 2026-10-03
 code:
   - app/web/js/path.js
   - app/studio/orders.py
@@ -36,8 +36,8 @@ code:
 - A row (since 2026-09-17 — per the owner's wishes):
   - top row: the buyer's name, `#receipt number` (**a click copies the number without "#"**,
     `receiptCopy()`), the number of books (if > 1), the printer chip (for "New" — from the rule, with an
-    explanation in the tooltip; for a hardcover, for now, only the suggestion — the files decide; after that — where it was actually ordered; "printer?" — if the cover
-    type couldn't be read), the **tracking chip** (`trackChips()`): a truck icon, carrier | number,
+    explanation in the tooltip — Gelato; after that — where it was actually ordered, so an order printed earlier in
+    Printify keeps its chip), the **tracking chip** (`trackChips()`): a truck icon, carrier | number,
     separated by a thin line; **a click on the carrier copies the carrier, on the number (or the truck)
     — the number** (the owner, 2026-09-25: two separate fields in Etsy; the part under the cursor is
     underlined); on a narrow window the chip wraps to its
@@ -92,15 +92,10 @@ a reprint".
 Header: the buyer's name and, centered next to it, a printer-status chip (`.ord-title`, the owner's
 request, 2026-09-17); below them, in gray, the receipt number (a click copies it), the time, the stage
 (`STAGE_LABEL`), the tracking chip (the same one as in the queue, a click copies it); on the right, a
-chip "Printify · 24 pages" (the same soft shade) / "Gelato · 28 or 30 pages" (once the files are laid
-out — the exact number, e.g. "Gelato · 28 pages"; the whole chip's text is one font, so the digits don't
-"jump" — the owner's note, 2026-09-17). **A hardcover, for now (since 2026-09-25):** "Printify · 24
-pages" / "Gelato · 28 or 30 pages" — the rule's suggestion (no question mark, the owner's wish) — until the files are
-in; then the printer the files decided (24 pages → Printify, 28/30 → Gelato;
-[rules/printer-rule.md](../rules/printer-rule.md)). If the cover type is unknown — a printer switch (page options
-from the order's `pageOptions`). **From 1 October 2026** every card says "Gelato · 28 or 30 pages" — a US hardcover
-too; an unknown cover type has no switch, it goes to Gelato and its format is picked in the Order Creator
-(`planText()`). For "In progress" / the truck / "Sent" — a warning "only print again for
+chip "Gelato · 28 or 30 pages" (the same soft shade; once the files are laid out — the exact number, e.g. "Gelato · 28
+pages"; the whole chip's text is one font, so the digits don't "jump" — the owner's note, 2026-09-17). Every card says
+so, a US hardcover too ([printer rule](../rules/printer-rule.md)); an unknown cover type has no switch, it goes to Gelato
+and its format is picked in the Order Creator (`planText()`). For "In progress" / the truck / "Sent" — a warning "only print again for
 a reprint" (for the truck — also "mark it shipped on Etsy"). Esc — back to the queue.
 
 **The card remembers where the owner left off** (since 2026-09-18, his request): while the order is in
@@ -139,9 +134,8 @@ one column.
 1. **Files from Canva** (`filesCard()`): drag a ZIP/folder, or pick a folder. Dropping one or two loose
    pictures onto an already-prepared book **destroys nothing** — the program suggests replacing one page
    in the viewer instead (before 2026-09-20, such a drop used to wipe out all the work on the book). The
-   server lays out the pages (`arrange_pages()`: cover + 24 pages for Printify, 28 or 30 for Gelato —
-   however many were downloaded, see [rules/file-naming.md](../rules/file-naming.md); a hardcover, for
-   now, takes any of 24/28/30 and the length picks the printer — `w.decided`), shows what it
+   server lays out the pages (`arrange_pages()`: cover + 28 or 30 pages for Gelato —
+   however many were downloaded, see [rules/file-naming.md](../rules/file-naming.md)), shows what it
    renamed ("pages 2–25 → 1–24"), then runs a full check, just like in the Order Creator. For Gelato the
    server immediately asks the catalog whether it prints that many pages in the order's format; if not —
    an error in the same block ([integrations/gelato.md](../integrations/gelato.md)).
@@ -177,8 +171,6 @@ one column.
      is sitting at the printer; the card knows this even after the program restarts (`atPrinter` from
      the archive). The question, and any replacement error, appear **above the viewer** (since
      2026-09-23; they used to be hidden underneath it, with keystrokes going to the invisible window).
-     For Printify the page has to be 4000×4000: an un-upscaled size will be caught by the file check
-     ("run it through Upscayl").
      **"Undo" survives leaving the card and restarting the program** (since 2026-09-22): whether there's
      anything to undo is decided by the file check (a `replaced` flag on each page), not by the open
      page's memory — before this, a copy sat on disk but the button disappeared (found by the audit).
@@ -195,10 +187,10 @@ one column.
      "Це не та книга!" above the list, with the ordered book's and the look-alike book's covers
      (`wrongBook()`); "Not an error" is also written into the check's journal (`keepMark()`).
      In detail — [text-check.md](text-check.md).
-3. **Print** (`printCard()`, `#oc-print`): "Send to print in Printify/Gelato" → the Order Creator **as this order's
+3. **Print** (`printCard()`, `#oc-print`): "Send to print in Gelato" → the Order Creator **as this order's
    print step** (its buyer and path on top, «back» to the card, the rail on «Замовлення» — since 2026-09-30),
    filled in with the receipt number, the buyer, the title `receipt number - name`, the address, the format, and
-   the files (`print()` → `give('creator', …)`). The Printify card uses the lime-green accent. **One review before
+   the files (`print()` → `give('creator', …)`). **One review before
    the send** (since 2026-09-30, night; before, up to four questions in a row): if something was noticed — not every
    book ready, the text still checking, mistakes found, or another book's pages («Це не та книга!», since 2026-09-25) —
    one dialog lists it all, most serious first, with «Все одно до друку» (red when it is the wrong book or mistakes) or
@@ -227,22 +219,20 @@ one column.
   in the card's header: this receipt has N more print orders besides the one whose status is shown. The
   tooltip says which printers. Where the program learns this, and how it counts the money — see
   [Profit](profit.md).
-- Next — the [Order Creator](order-creator.md): Printify makes a product for every book and **one**
-  order with several line items; Gelato — one draft with several items.
+- Next — the [Order Creator](order-creator.md): one Gelato draft with several items.
 
 ## What the server returns
 
 - `GET /api/orders` → `{orders, syncedAt}`; every order from `picker_orders()` (`stage`: `new` /
   `work` / `sent` / `shipped`, `provider`, `printStatus`, `tracking`), extended by
   `enrich()`: for every book — `book` (from the library, by listing number), `plan` (the printer rule;
-  `plan.pages` — the list of allowed lengths: `[24]` or `[28, 30]`; a hardcover for now — `[24, 28, 30]`
-  and `plan.choice`), `childName`; for the order —
+  `plan.pages` — the list of allowed lengths, `[28, 30]`), `childName`; for the order —
   `pageOptions` (the lengths for each printer, when it's picked by hand).
 - `GET /api/orders/<receipt>` → the same, for one order, plus `buyerMessage`, `earlierSends` (sends
   that never became a print-shop order, whose files are still in the archive), `atPrinter` and `printed` (the sends
   that went to print, newest first — since 2026-09-30) — all from `archive.card_facts()`.
 - `POST /api/orders/<receipt>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount, provider}`;
-  `provider: "files"` — a hardcover whose printer the length decides (the answer's `provider`).
+  `provider: "files"` — a card opened before 1 October (the answer's `provider` is Gelato).
 - `POST /api/orders/<receipt>/textcheck` `{folder, pages, pick}` → `{jobId}` (or `{off: true}`, when the
   check is turned off); the job's result — `{mode, issues, pages, skipped, …}` ([text-check.md](text-check.md)).
 
@@ -273,4 +263,4 @@ one column.
 ## Related
 
 - [The order-to-print path](../flows/order-to-print.md) · [Printer rule](../rules/printer-rule.md) · [Stages](../rules/order-stages.md)
-- [Order Creator](order-creator.md) · [Text check](text-check.md) · [Canva](../integrations/canva.md) · [Open questions](../plans/open-questions.md)
+- [Order Creator](order-creator.md) · [Text check](text-check.md) · [Canva](../integrations/canva.md) · [Known limits](../dev/limits.md)

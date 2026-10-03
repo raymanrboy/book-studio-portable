@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -26,7 +26,7 @@ code:
 > in Antigravity write its formula, hero, story, text and prompts; the Workshop shows the book's path, puts every prompt
 > into the clipboard, **catches the picture the owner downloads from Gemini** into its row — cut, flipped, upscaled,
 > the cover laid on the printer's template — and passes the finished book to the library with its Etsy listing. Part
-> of [«Книги»](modes.md) — its first tab (the Listings mode's until 2026-09-30); its history — [the plan](../plans/book-console.md).
+> of [«Книги»](modes.md) — its first tab.
 
 ## Where a book lives
 
@@ -214,5 +214,5 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 
 ## Related
 
-- [The plan and its history](../plans/book-console.md) · [Two modes](modes.md) · [Library](library.md) · [Photo mockups](photo-mockups.md) ·
+- [The rail](modes.md) · [Library](library.md) · [Photo mockups](photo-mockups.md) ·
   [Mockups](mockups.md) · [Book structure](../rules/book-structure.md) · [Decisions](../decisions.md)

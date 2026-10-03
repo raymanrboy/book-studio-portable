@@ -1,7 +1,7 @@
 ---
 title: Gelato and the temporary link
 type: integration
-updated: 2026-09-29
+updated: 2026-10-03
 code:
   - app/studio/gelato.py
   - app/studio/gelato_accounts.py
@@ -9,7 +9,7 @@ code:
 ---
 # Gelato
 
-> From 1 October 2026 prints **every book** (28 or 30 pages), US hardcovers too — Printify only reads
+> Since 1 October 2026 prints **every book** (28 or 30 pages), US hardcovers too — Printify only reads
 > ([printer rule](../rules/printer-rule.md)); before that, everything except US hardcovers. The program only
 > creates **drafts** of orders. API: `order.gelatoapis.com/v4`,
 > `product.gelatoapis.com/v3`, the key in the `X-API-KEY` header. The rules below were checked on
@@ -138,10 +138,10 @@ once; read again only while it has no tracking number and its status has changed
 Documentation: [Get order](https://dashboard.gelato.com/docs/orders/v4/get/),
 [statuses](https://dashboard.gelato.com/docs/orders/order_details/).
 
-## His own account — two keys during the move (built 2026-09-29)
+## His own account — two keys during the move
 
-The owner moves to his own Gelato account on 1 October 2026 (the old one holds other people's orders too; agreed
-2026-09-27, "the smooth switch" — [roadmap](../plans/roadmap.md#printers)).
+The owner moved to his own Gelato account (switched on 2026-09-30; the old one holds other people's orders too; agreed
+2026-09-27, "the smooth switch").
 
 - **Settings → Gelato → «Перейти на новий акаунт Gelato»** (the swap icon in place of «Замінити ключ»): the owner
   pastes the new key; the program reads **one** order with it (`check_key()` — a mistyped key is told before anything

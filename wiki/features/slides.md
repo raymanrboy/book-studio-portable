@@ -1,10 +1,11 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
+  - app/studio/slides/design/slide7.json
   - app/studio/slides/cutout.py
   - app/studio/slides/store.py
   - app/studio/slides/work.py
@@ -25,8 +26,7 @@ code:
 > background** (`no-background\`, «Без фону» until 30.09.2026); after the run, «Зробити слайди» makes the six by themselves; «Відкрити в редакторі» opens a
 > Canva-like editor for the owner's touches. **A book's slides belong to its Workshop book** (its scenes in
 > `mockups\slides\`, the six pictures in **`etsy\`** beside its [photo mockups](photo-mockups.md) since 30.09.2026), their look is a **scheme** (Nature, Night, the owner's own — "not only the colours but the settings of
-> the whole mockup"). Built on 2026-09-29 from [the plan](../plans/listing-pictures.md) (its
-> history: the design, the cut-out, the external prototype); the owner may also have them changed **through an agent**
+> the whole mockup"). Built on 2026-09-29; the owner may also have them changed **through an agent**
 > — the skill `/listing-slides` (`.claude/skills/listing-slides/SKILL.md`).
 
 ## How the owner uses it
@@ -62,7 +62,36 @@ code:
 4. **From the Workshop at any time** (its step «Мокапи», [workshop](workshop.md)): «Редагувати мокапи», «Редагувати
    слайди», «Відкрити папку мокапів», «Зняти позначку».
 
-## The editor (`#/slides/<book | set | template>/<1–6>`)
+## Slide 7 — the hero's looks (since 2026-10-02)
+
+The owner: "a new slide for the books that have variants and characters, made on the basis of slide 4" (his reference —
+«7 appearance options», «Choose your little one: G1», a big G1 and the other looks G2–G7 with their names). **Only for
+a Workshop book whose hero has two looks or more** — `agent/variants/<B2_blond>/hero.png`, the ones the Workshop saved
+(`work.looks()`): then the book has seven slides (the editor's 1–7, the bake, the card), else six as before.
+
+- **Each look in its own frame** (the owner: "each must have its own place — I'll arrange them exactly later"): the
+  frames `hero:1 … hero:7` on the slide, filled in the order of the looks' numbers (B1, B2, B3, B10); the name is the
+  folder's start («B2_blond» → «B2»). `hero:1` — the big one on the left (a whole-body card, its name over it), `hero:2…7`
+  — the grid of six «зірочки» (the scalloped frame, as page 30 on slide 3), the name under each.
+- **The pictures keep their white background — no cutting** (the owner: "it can stay with its white background"; a
+  cut-out from the white page was tried first: the shadow under the feet and the gap between the legs came out badly).
+- **A frame with no look** (the hero has fewer than seven) shows a dashed «Герой 6 — немає» in the editor only — the
+  baked picture has nothing there; the owner moves, removes or keeps the frames himself.
+- **Looks made after the slides**: the slides take them when opened (`work.sync_heroes()` in the editor's state, the
+  command line) — by the files' names and times; «Зробити слайди» takes them too.
+- **The sticker** says `{looks}` — how many looks the book's hero has. **The texts are defaults** («You can customize
+  the eye color», «Choose your little one:») the owner rewrites in the editor.
+- **A frame's knobs** in the editor (the kind «Картинка»): **Рамка** — Зірочка / Прямокутна, Біла кромка, Хвильок,
+  **Наблизити** (`zoom`, 1–3) and **Що видно: верх → низ** (`fy`, 0–1) — which part of the picture the frame shows;
+  **Підпис** (only for a look's frame) — **its own text** (the owner, 2026-10-02: "so I can edit the caption under the
+  star"; `labelText`, lines; empty — the look's name, `{name}` — the name inside his text), under / over / none, the
+  letters' size, the gap, the colour.
+- **Schemes**: every scheme has slide 7; one made before it gets it **in its own colours** — slide 4's colours in the first
+  design swapped for the ones this scheme's slide 4 has (`store._recoloured()`, Night's comes out blue); a scheme shown
+  on its own takes the looks of the newest book that has them.
+- **In the listing**: `etsy/15 Listing 7.png` — last in the numbering; the owner puts it into the listing where he wants.
+
+## The editor (`#/slides/<book | set | template>/<1–7>`)
 
 Its own module, **loaded only when opened** (`app.js` leaves it out of the pages' warm-up — the owner: "a separate
 module called only when needed") with its own styles (`css/slides.css`, linked by the editor itself). The rail keeps
@@ -108,7 +137,7 @@ cyan, `ib()` icons with tooltips.
 
 | What | Where |
 |---|---|
-| The first design (the agent's drawing of his Canva slides) | `app/studio/slides/design/slide1…6.json` (in git) |
+| The first design (the agent's drawing of his Canva slides; slide 7 — the hero's looks, 2026-10-02) | `app/studio/slides/design/slide1…7.json` (in git) |
 | **The schemes** — `scheme.json` (name, default, colours by role) + the six scenes: **Nature** (the default — the template as it was), **Night** (his blue slides), his own | `app/data/slides/schemes/<key>/` |
 | **A Workshop book's slides** — `set.json` (numbers, slots, the scheme put on, baked files), `scenes/`, `books/<slot>.png` + `_shadow.png`, `pictures/` | `pipeline/books/<n>.<slug>/mockups/slides/` (beside its mockups and `no-background/`; the six baked — `etsy/Listing 1…6.png`) |
 | Slides made before 29.09.2026 evening, or for a folder that is no Workshop book | `app/data/slides/sets/<time>-<id>/` (the last 12 kept) |
@@ -124,7 +153,8 @@ template) became the scheme Nature and is no longer read.
 A book on a slide names its **slot**, not a file: `open1:1…4` (the Open 1 mockups in the owner's picks order — slides
 1 and 4), `open2:1…2` (slides 5, 6), `cover` (slide 2, twice); a flat picture — `dedication` (the whole Dedication
 mockup), `page30` (the demo book's last page, taken from the Mockups' demo book while it is loaded; «Інша картинка…»
-otherwise; for a Workshop book — its own page 30). A new set copies the default scheme's six scenes; `set.json` maps
+otherwise; for a Workshop book — its own page 30); `hero:1…7` — the hero's looks (slide 7, each with its `label` and
+`aspect`, its file `pictures/hero-N.png`). A new set copies the default scheme's six scenes; `set.json` maps
 the slots to its pictures. The default scheme is shown in the editor with the newest book's pictures.
 
 The first set, **«Приклад»**, is the owner's sample book as the external editor showed it (its baked pictures in
@@ -198,15 +228,16 @@ real template: the desk and the book kept, the floor gone, the book's soft shado
 ## Where in the code
 
 - [app/studio/slides/cutout.py](../../app/studio/slides/cutout.py) — `read_psd_desk()`, `DESK_READER`, `kind_of()`, `spread_of()`, `KINDS`, `NO_BG`, `CUTS`, `HAZE`, `MAX_WIDTH`, `read_psd()`, `_near_book()`, `READER`, `template()`, `cut()`, `smaller()`, `combined()`, `ensure()`, `Cutter`, `cutter`
-- [app/studio/slides/store.py](../../app/studio/slides/store.py) — `SLIDES`, `FACTORY`, `SCHEMES`, `SETS`, `TEMPLATE`, `BOOK_SLOTS`, `PICTURE_SLOTS`, `SLOT_LABEL`, `NUMBERS`, `KINDS`, `ensure_schemes()`, `list_schemes()`, `default_scheme()`, `save_scheme()`, `set_default()`, `presets()`, `apply_preset()`, `is_book()`, `mockups_dir()`, `load()`, `check()`, `save()`, `reset()`, `sig()`, `new_set()`, `put_book()`, `put_picture()`, `list_sets()`, `workshop_sets()`, `forget_old_sets()`, `clean_temporary()`, `book_done()`
-- [app/studio/slides/work.py](../../app/studio/slides/work.py) — `_book_page30()`, `_tick()`, `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `title()`
+- [app/studio/slides/store.py](../../app/studio/slides/store.py) — `SLIDES`, `LOOKS_SLIDE`, `HERO_SLOTS`, `shown()`, `_recoloured()`, `_new_slides()`, `FACTORY`, `SCHEMES`, `SETS`, `TEMPLATE`, `BOOK_SLOTS`, `PICTURE_SLOTS`, `SLOT_LABEL`, `NUMBERS`, `KINDS`, `ensure_schemes()`, `list_schemes()`, `default_scheme()`, `save_scheme()`, `set_default()`, `presets()`, `apply_preset()`, `is_book()`, `mockups_dir()`, `load()`, `check()`, `save()`, `reset()`, `sig()`, `new_set()`, `put_book()`, `put_picture()`, `list_sets()`, `workshop_sets()`, `forget_old_sets()`, `clean_temporary()`, `book_done()`
+- [app/studio/slides/work.py](../../app/studio/slides/work.py) — `looks()`, `put_heroes()`, `sync_heroes()`, `_book_page30()`, `_tick()`, `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `title()`
 - [app/studio/slides/bake.py](../../app/studio/slides/bake.py) — `bake()`, `render()`, `outputs()`, `run_browser()`, `NAME`, `AT_ONCE`
-- [app/studio/slides/routes.py](../../app/studio/slides/routes.py) — `assets()`, `_make()`, `_bake()`, `_cutouts()`, `_save()`, `_presets()`, `_apply()`, `_save_scheme()`, `_default_scheme()`
+- [app/studio/slides/routes.py](../../app/studio/slides/routes.py) — `assets()`, `_slot_label()`, `_make()`, `_bake()`, `_cutouts()`, `_save()`, `_presets()`, `_apply()`, `_save_scheme()`, `_default_scheme()`
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `mockups_state()`, `MOCKUPS`, `_slides_done()` (in `to_library()`)
 - [app/studio/main.py](../../app/studio/main.py) — `slides.store.clean_temporary()` at launch and close
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `watch()` → `_cut_without_background()`
-- [app/web/js/slides/engine.js](../../app/web/js/slides/engine.js) — `setAssets()`, `ready()`, `boxOf()`, `DRAW`, `drawElement()`, `drawScene()`, `fill()`, `elTransform()`
-- [app/web/slides/render.html](../../app/web/slides/render.html) — the page headless Edge bakes
+- [app/web/js/slides/engine.js](../../app/web/js/slides/engine.js) — `isHero()`, `lookLabel()` (the look's name or `labelText`), `setAssets()`, `ready()`, `boxOf()`, `DRAW`, `drawElement()`, `drawScene()`, `fill()`, `elTransform()`
+- [app/web/slides/render.html](../../app/web/slides/render.html) — the page headless Edge bakes (`bake: true`)
+- [app/studio/slides/design/slide7.json](../../app/studio/slides/design/slide7.json) — slide 7's first design (on slide 4)
 - [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — `slidesStep()`: the cut-outs line, the card, «Зробити слайди», the viewer
 - [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `mount()`, `SPEC`, `NEW`, `KIND` (inside: `isLocked`, `palettes()`, `swatches()`, `loadOthers()`, `openSchemes()`, `applyScheme()`, `saveScheme()`)
 - [app/web/css/slides.css](../../app/web/css/slides.css) — the editor's look
@@ -216,5 +247,5 @@ real template: the desk and the book kept, the floor gone, the book's soft shado
 
 ## Related
 
-- [Mockups](mockups.md) · [The plan and its history](../plans/listing-pictures.md) · [Two modes](modes.md) ·
+- [Mockups](mockups.md) · [The rail](modes.md) ·
   [Decisions](../decisions.md) · [Security](../security.md)

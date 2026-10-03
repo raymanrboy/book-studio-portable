@@ -1,7 +1,7 @@
 ---
 title: How to run this wiki
 type: dev
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/tools/wiki_check.py
   - app/tests/test_wiki.py
@@ -37,7 +37,6 @@ code:
 | `owner/` | how the owner wants to work and see the interface | `owner` |
 | `decisions.md`, `recipes.md` | decisions with reasons; "how to change X" | `decision`, `recipe` |
 | `dev/` | setup, tests, preview, this page | `dev` |
-| `plans/` | plans and open questions | `plan` |
 | `raw/` | the owner's sources, as-is | — |
 
 ## A page

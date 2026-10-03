@@ -1,7 +1,7 @@
 ---
 title: Mockups — listing pictures from a demo book (a tool, and a Workshop book's step)
 type: feature
-updated: 2026-10-02
+updated: 2026-10-03
 code:
   - app/studio/mockups.py
   - app/studio/mockups.jsx
@@ -19,7 +19,7 @@ code:
 > pictures**; **4 templates are left open** (the 3 where the front cover shows — the owner fits it by hand — and
 > **Dedication**, whose background and table colours he picks), and **«Зберегти відкриті»** saves them too. Every saved
 > picture is cut out without its background, and step 4 makes the [listing slides](slides.md). The templates' structure
-> and the first agreements — [the plan](../plans/listing-mockups.md).
+> and what was learned about scripting Photoshop — below.
 
 ## How the owner uses it
 
@@ -93,6 +93,61 @@ template with `hand` (the front cover) or `keep` (Dedication's colours).
   Open 1 3727×2397 and Open 2 3227×2248 (5–7 MB), the whole scenes Cover & Open 1 and All & Open 1 4000×3000
   (16–18 MB).
 
+## The templates
+
+Folder `D:\Roman\Desktop\Трафарети мастхев` ("must-have templates") — **read-only**, never edited, saved over, moved
+or deleted ([security](../security.md)); the program only ever opens copies. All six are 300 ppi, 8-bit RGB, every smart
+object inside is 300 ppi. Two vendors:
+
+- **A — hardcover** (files 1–4). Groups `PRESENTATIONS / VIEW_xx / BOOK / OBJECT / SMART OBJECTS`, plus `ITEMS` and
+  `FILTERS` (all filter looks off). At the bottom of the layer list a group **`Main`** holds **hidden linked copies** of
+  the smart objects that matter (the same content id as the visible ones): replacing a copy's contents changes the book
+  in the picture.
+- **B — softcover** (`Cover & Open 1`, `All & Open 1`). Groups `Editable Layers / Design Smart Objects / Reflection /
+  Shadow`, colour layers `Change Color`, `Back Color`, `Front Color`. No `Main`: the linked copies are at the top.
+
+| Template | Canvas | In the picture | Layers to fill → inner size |
+|---|---|---|---|
+| `1. Cover 1` | 2670×2670 | a closed hardcover from above | `Main/COVER_` → 2100×2200 |
+| `2. Open 1` (×4) | 4000×2670 | an open book, flat | `Main/Left`, `Main/Right` → 1900²; `Main/Cover`, `Main/Back Cover` → 2100×2200; `Main/Rige` → 80×2200 |
+| `3. Open 2` (×2) | 4000×2670 | an open book at an angle | the same names and sizes |
+| `4. Dedication` | 4000×2670 | open on the dedication (the cover's inside left, page 1 right) | `Main/Page 1` → 1900²; `Cover`, `Back Cover`, `Rige` as above |
+| `Cover & Open 1` | 4000×3000 | a closed softcover + an open one | `Front Cover`, `Left Page`, `Right Page` → 1935² |
+| `All & Open 1` | 4000×3000 | five books: front, back, a cover laid open, an open spread | `Front Cover`, `Back Cover`, `Left `, `Right ` → 1935²; `Spine` → 164×1935 |
+
+What matters for the script:
+- **Linked copies.** One content id can sit in several layers (in `All & Open 1`, `Front Cover`, `Back Cover` and `Spine`
+  are there twice): replacing any one updates all. In `Cover & Open 1` the top copies are visible and change nothing.
+- **Names aren't uniform:** the front cover is `COVER_` / `Cover` / `Front Cover`; pages `Left` / `Left Page` / `Left `
+  (**a trailing space** in `All & Open 1`, `Right ` too); the spine is `Rige` (A) or `Spine` (B). Hence the per-template
+  table and names compared trimmed.
+- **In the open-book templates the cover shows only as a thin rim** around the pages (left — the front board, right —
+  the back): white if left empty, a real book when filled from the cover.
+- **Never touched:** `BACKGROUND`, `BACKGROUND_desk color`, `PAPER_edge color`, `SHADOW_editable`, `LIGHT_editable`, the
+  pages under the open spread (`PAGE 2_`, `PAGE 5_`, `COVER_endpaper_`), `Rectangle 1`, and `SELECTIVE VARNISH`.
+- The templates are clean (1–4 white, B with the vendor's demo design); the owner never saves a book into them. The other
+  files in the folder (`Cover.png`, `Shelf.png`, `Size.jpg`) are his flat examples, not part of the tool.
+- `psd-tools` reads a template's layer tree and preview in under a second (up to 406 MB); rendering a finished mockup
+  still needs Photoshop (custom warps).
+
+## Photoshop facts (checked on copies)
+
+- **Launching.** Photoshop is the owner's portable CC 2019: the launcher `Photoshoр.exe` (**the "р" is Cyrillic**, found by
+  `Photosho*.exe`) keeps its settings inside its own folder, off drive C — start it through the launcher, not
+  `Photoshop.exe`. A `.jsx` handed to a running Photoshop runs there. There is no COM; a script file is the way.
+- **Every externally launched script asks "run this script?"** (Yes / No). `WarnRunningScripts 0` in `PSUserConfig.txt`
+  would silence it, but that is the owner's setting, never an agent's; hence **one script per run → one "Yes"**.
+- **The core operation:** make the layer active, `placedLayerReplaceContents` with an exact-size 300-dpi PNG — the picture
+  takes the template's bend, shadows and light as by hand. Replacing the hidden copy in `Main` works.
+  Selecting a hidden layer makes it visible, so `visible` is restored at once. Swapping the spread and saving again in
+  the same open document works (one opening per template). `layer.bounds` is NaN unless the units are set — not relied on.
+- **"Save a copy" and "Replace Contents" act on the active document**, whatever document the script calls them on — the
+  script makes its document active before every replacement and save.
+- A "Yes" given after the tool stopped waiting runs a script that sees the stop mark and ends at once.
+- **Speed:** a template opens in 1.2–1.5 s, a replacement 0.2–0.4 s, a PNG saves in 0.9–1.6 s; a cold start to the "run this
+  script?" question ~5 s; a real run (7 pictures, 3 templates left open) 32–37 s.
+- PNGs: 4000×3000 ≈ 17 MB, 4000×2670 ≈ 5 MB (compression 3), 300 dpi.
+
 ## How it works inside
 
 1. `plan()` decides everything first: the pictures, the template copies, which layer gets which picture, the names. A
@@ -160,6 +215,6 @@ takes the demo book. Nothing goes to drive C (`core.own_temp()`, [runtime](../ar
 
 ## Related
 
-- [Listing slides](slides.md) · [Photo mockups](photo-mockups.md) · [Two modes](modes.md) · [The plan and the templates](../plans/listing-mockups.md) · [Security](../security.md) ·
+- [Listing slides](slides.md) · [Photo mockups](photo-mockups.md) · [The rail](modes.md) · [Security](../security.md) ·
   [Dragging files](../flows/dropped-files.md) · [Decisions](../decisions.md) · [Preview](../dev/preview.md) ·
   [Launch and shutdown](../architecture/runtime.md)

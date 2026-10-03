@@ -1,7 +1,7 @@
 # Book Studio
 
 A local Windows program for a shop selling personalized children's books on Etsy: an order queue, a book
-library, and creating books/drafts in Printify and Gelato — and making new books and their Etsy listing pictures.
+library, and Gelato print drafts (Printify is read-only since 1 October 2026) — and making new books and their Etsy listing pictures.
 
 - **How to use it** — [app/README.md](app/README.md)
 - **How it's all built** — the project wiki: [wiki/index.md](wiki/index.md)

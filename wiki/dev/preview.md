@@ -1,7 +1,7 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/tools/dev_server.py
   - app/tools/sample_data.py
@@ -53,13 +53,14 @@ code:
   shows the "+N more in print" chip, and how the cost of a receipt split between printers is calculated
   ([reconciliation.md](../rules/reconciliation.md)).
 
-## The Listings mode: the Workshop and the Mockups (since 2026-09-24)
+## The Workshop and the Mockups
 
 - The same `--sample` server has them (the separate `--mockups` server on port 47891 went with the utility).
 - **The Workshop** (since 2026-09-26 — the book console moved in): the preview is its **sandbox** (`core.SANDBOX`):
   three made-up books in `.tmp\bsdev\workshop-books` (`seed_workshop()` → [tools/sample_books.py](../../app/tools/sample_books.py)
   `make_books()`, only when there are none): **40** — Tier H, the hero, story, text, no prompts yet, a hero variant
-  G2_brunette, and made-up photo-mockup references in its `mockups\` (Cover 1, Cover & Open 1, the Canva cover); **41** —
+  G2_brunette, four looks with a made-up `hero.png` (G3_blond, G4_east_asian, G5_redhead, G6_afro — the listing
+  slide 7's frames), and made-up photo-mockup references in its `mockups\` (Cover 1, Cover & Open 1, the Canva cover); **41** —
   Tier S, every prompt (the book check says 14 errors), 5 rows of pictures, Canva ticked, no references (the photo
   step's missing states); **42** — just started. The [photo mockups](../features/photo-mockups.md)' made-up templates —
   a coloured scene with a white book, per category — in `.tmp\bsdev\photo-mockups` (`make_photo_templates()`, only
@@ -119,7 +120,7 @@ so. Changes to `app/web/*` are picked up by reloading the window (Ctrl+R).
 - [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()` (`BOOK_STUDIO_SAMPLE`), `claim()`, `MARK`, `PORT` (split by job on 2026-09-27: the made-up data is in the two files below)
 - [app/tools/sample_data.py](../../app/tools/sample_data.py) — `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`
 - [app/tools/sample_mockups.py](../../app/tools/sample_mockups.py) — `seed_mockups()`, `pretend_photoshop()`
-- [app/tools/sample_books.py](../../app/tools/sample_books.py) — `make_books()`, `make_photo_templates()`, `book_shot()`, `seed_workshop()`
+- [app/tools/sample_books.py](../../app/tools/sample_books.py) — `make_books()`, `hero_png()`, `make_photo_templates()`, `book_shot()`, `seed_workshop()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (`--no-window` mode)
 
 ## Related

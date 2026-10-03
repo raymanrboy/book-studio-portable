@@ -1,7 +1,7 @@
 ---
 title: The interface the owner wants
 type: owner
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/web/css/app.css
   - app/web/css/library.css
@@ -15,8 +15,7 @@ code:
 
 The owner uses the **light theme every day** ("all design decisions from now on — by it"). The program still starts dark
 until he picks otherwise in the rail's theme menu, but every design choice — contrast, inks, surfaces, icons, shadows — is
-made and checked in **light first**, then confirmed in dark. (The 2026-09-30 redesign was built and screenshot in dark;
-a light pass is owed — [the plan](../plans/ui-redesign.md).)
+made and checked in **light first**, then confirmed in dark. (The 2026-09-30 redesign was built in dark and then checked in light.)
 
 ## Show, don't tell (2026-09-30, later)
 
@@ -61,7 +60,7 @@ alphabet (`pathStep()`, `segBar()`), not its own shapes or sentences. `×` means
 
 The owner: "the functions are scattered as if someone spilled grain… I want to sit down and know at once where to
 click, with no labels and hints: everything needed in front of the eyes, everything extra appearing when needed." He
-handed the decisions over ("you're the expert, you're the boss") — [the redesign](../plans/ui-redesign.md):
+handed the decisions over ("you're the expert, you're the boss") ([decisions](../decisions.md)):
 
 - **Every object has one home and one path.** An order lives in «Замовлення», a book in «Книги»; its path strip on
   top says where it is and what's next, and the next step is the loudest thing on the screen.

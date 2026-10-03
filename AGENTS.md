@@ -50,7 +50,7 @@ requirements — [`wiki/owner/ui-principles.md`](wiki/owner/ui-principles.md).
   and what he needs to do.
 - "Just analyze, don't change anything" / "discussion mode" → no file changes. Start only on command
   ("go ahead", "do it").
-- Record plans and agreements in the wiki, not only in memory.
+- Record decisions and agreements in the wiki, not only in memory.
 - After changes under `app/studio/`, remind him to restart Book Studio.
 
 ## 4. Repository

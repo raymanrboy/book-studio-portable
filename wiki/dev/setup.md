@@ -1,7 +1,7 @@
 ---
 title: Setup, launch, GitHub
 type: dev
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/tools/make_shortcut.py
   - app/requirements.txt
@@ -12,7 +12,7 @@ code:
 
 - Windows 10/11, Microsoft Edge (or Chrome).
 - Python 3.11+ (on the Wrocław PC — 3.14, `C:\Users\Roman\AppData\Local\Programs\Python\Python314`).
-- Packages: `python -m pip install -r app/requirements.txt` (Pillow, img2pdf, pikepdf, cryptography).
+- Packages: `python -m pip install -r app/requirements.txt` (Pillow, img2pdf, pikepdf, cryptography, psd-tools, numpy).
 - `app/bin/cloudflared.exe` — for Gelato's temporary links; **not in git**, on a new PC it has to be put
   there by hand (the official Cloudflare release).
 - **ffmpeg** — cuts the start off the [photo mockups](../features/photo-mockups.md)' Omni video; on the Wrocław PC
@@ -20,9 +20,8 @@ code:
 
 ## Launch
 
-- The **Book Studio** shortcut on the desktop. The [Mockups](../features/mockups.md) live inside it since
-  2026-09-24 (the Listings mode; they need Photoshop CC 2019 and the templates folder) — the old **Мокапи**
-  shortcut points at a removed file, the owner deletes it. No shortcut, or the program was moved —
+- The **Book Studio** shortcut on the desktop. The [Mockups](../features/mockups.md) live inside it (they need
+  Photoshop CC 2019 and the templates folder). No shortcut, or the program was moved —
   `python app/tools/make_shortcut.py`.
 - Won't start — `app/Запуск з консоллю.bat` (Run with console) will show the error; also
   `app/data/logs/startup-error.txt`.
@@ -33,8 +32,6 @@ code:
 - Code — from GitHub (see below). Data — copy `app/data`.
 - Keys in `vault.json` are DPAPI-encrypted for one specific Windows user: they won't decrypt on another
   PC → enter the keys again in Settings, connect Etsy with an "access link".
-- **After the 2026-09-17 move** (the code moved into `app/`): in the old copy of the project, move
-  `data/` and `bin/` into `app/` and recreate the shortcut.
 
 ## GitHub
 

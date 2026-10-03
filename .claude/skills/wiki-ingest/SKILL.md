@@ -16,7 +16,7 @@ description: Add knowledge from the Book Studio owner (text, screenshots, docume
    - facts about the business and process → `overview.md`, `flows/`, `rules/`, `integrations/`;
    - preferences about how to work and how things should look → `owner/`;
    - decisions → `decisions.md` (date, decision, why);
-   - ideas for later → `plans/roadmap.md`; unresolved questions → `plans/open-questions.md`;
+   - limits and things not seen live → `dev/limits.md`;
    - new terms → `glossary.md`.
    Don't silently overwrite a contradiction with what's already there: update the page and note what
    changed and from which source.

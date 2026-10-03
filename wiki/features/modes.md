@@ -1,7 +1,7 @@
 ---
-title: The rail — places, tools and search (the two modes until 2026-09-30)
+title: The rail — places, tools and search
 type: feature
-updated: 2026-09-30
+updated: 2026-10-03
 code:
   - app/web/js/app.js
   - app/web/js/places.js
@@ -11,10 +11,10 @@ code:
 ---
 # The rail: places, tools and search
 
-> Since 2026-09-30 ([the redesign](../plans/ui-redesign.md)) one labelled rail replaces the two modes (Orders and
-> Listings, switched by the brand icon since 2026-09-24): the owner got lost among unlabelled icons in two hidden
-> sets. **Places** hold the objects — an order, a book — each with its path; **tools** also work on their own. The
-> two inks stay and now follow the area on screen.
+> One rail of **places** and **tools** (the owner got lost among two hidden sets of icons, so the two modes — Orders and
+> Listings, switched by the brand icon — were replaced on 2026-09-30, [decisions](../decisions.md)). **Places** hold the
+> objects — an order, a book — each with its path; **tools** also work on their own. The two inks (orange, cyan)
+> follow the area on screen.
 
 ## How the owner uses it
 
@@ -60,13 +60,6 @@ code:
 - The busy dots: the Mockups page sends `bs:busy` when a run starts and ends, `workshop-live.js` — while a picture is
   awaited; `paintBusy()` shows them and writes the title.
 
-## Before 2026-09-30
-
-Two modes, "like another program, separated from everything" (the owner, 24.09.2026): Orders (the queue, the
-library, the Order Creator, the archive, Profit, Settings) and Listings (the Workshop, the Mockups, the photo
-mockups), switched by the brand icon (Alt+0); each mode its rail and ink. The inks stayed; the switch went — see
-[decisions](../decisions.md).
-
 ## Where in the code
 
 - [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `buildSidebar()`, `entryOf()`, `placeOf()`, `placeNavPill()`, `paintBusy()`, `navigate()`, `openSearch`
@@ -80,5 +73,4 @@ mockups), switched by the brand icon (Alt+0); each mode its rail and ink. The in
 ## Related
 
 - [Interface](../architecture/frontend.md) · [Workshop](workshop.md) · [Mockups](mockups.md) ·
-  [The interface the owner wants](../owner/ui-principles.md) · [The redesign](../plans/ui-redesign.md) ·
-  [The plan of 24.09](../plans/listings-mode.md)
+  [The interface the owner wants](../owner/ui-principles.md) · [Decisions](../decisions.md)

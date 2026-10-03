@@ -30,7 +30,7 @@ WIKI = REPO / "wiki"
 CODE_SUFFIXES = {".py", ".pyw", ".js", ".jsx", ".css", ".html", ".bat"}
 SKIP_DIRS = {"data", "bin", "__pycache__", ".git", "node_modules"}
 TYPES = {"index", "overview", "reference", "architecture", "feature", "integration", "rule", "flow", "owner",
-         "decision", "recipe", "dev", "plan"}
+         "decision", "recipe", "dev"}
 ROUTES_PAGE = "architecture/api-routes.md"
 
 _LINK = re.compile(r"\]\((<[^>]+>|[^)\s]+)\)")

@@ -1,7 +1,7 @@
 ---
 title: Recipes — how to change common things
 type: recipe
-updated: 2026-09-30
+updated: 2026-10-03
 code: []
 ---
 # Recipes
@@ -114,7 +114,7 @@ code: []
 ## Mockups: a new template, a renamed layer, another number of spreads
 - [app/studio/mockups.py](../app/studio/mockups.py) — `TEMPLATES` (file, `slots`, the layer path of each
   role, `hand` for the owner's front cover, `size`), `RUN_ORDER`; the smart objects' inner sizes — `HARD`,
-  `SOFT` (read them from the template with psd-tools, read-only: [plan](plans/listing-mockups.md)).
+  `SOFT` (read them from the template with psd-tools, read-only: [the templates](features/mockups.md#the-templates)).
 - The page takes the slots from `/api/mockups/state` on its own.
 - Tests: `trees()` in [app/tests/test_mockups.py](../app/tests/test_mockups.py) — the pretend layer tree of
   each template. Wiki: [features/mockups.md](features/mockups.md).

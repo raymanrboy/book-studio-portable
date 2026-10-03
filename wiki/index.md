@@ -1,7 +1,7 @@
 ---
 title: Book Studio wiki — index
 type: index
-updated: 2026-09-30
+updated: 2026-10-03
 code: []
 ---
 # Book Studio wiki
@@ -26,24 +26,24 @@ code: []
 - [Book library](features/library.md) — the gallery, a new book, a book's passport, the `book.json` model.
 - [Text check](features/text-check.md) — a local Gemma model reads the pages, the program checks them
   against the book passport.
-- [Order Creator](features/order-creator.md) — a book/On-hold order in Printify, a Gelato draft.
-- [Settings](features/settings.md) — keys, Etsy, the Printify Master, data.
+- [Order Creator](features/order-creator.md) — a Gelato draft (Printify's book + On-hold order until 30 September).
+- [Settings](features/settings.md) — keys, Etsy, Gelato (two accounts during the move), the Printify Master, data.
 - [Send journal](features/send-journal.md) — exactly what went to Printify and Gelato on every attempt.
 - [Order archive](features/archive.md) — files of books that went to print (14 days after "Sent"), and
   reprints.
-- [Profit](features/profit.md) — in the rail since 2026-09-29; counts only sales from 1 October 2026.
+- [Profit](features/profit.md) — counts only sales from 1 October 2026.
 - [Backup](features/backup.md) — every 3 days the whole program and the mockup templates go to Google Drive as
   one 7-Zip archive under the owner's password.
-- [Two modes](features/modes.md) — Orders and Listings: the brand icon switches, each mode its rail and ink
+- [The rail](features/modes.md) — places (Orders, Books, Profit), tools and search; the ink follows the area
   (orange / cyan).
-- [Workshop](features/workshop.md) — the Listings mode: books in development, written by the book pipeline's
+- [Workshop](features/workshop.md) — «Книги»: books in development, written by the book pipeline's
   agents (`pipeline/`); the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches
   the pictures from Downloads, the cover on the printer's template; passed to the library with their Etsy listing.
-- [Photo mockups](features/photo-mockups.md) — the Listings mode: lifestyle photos with a blank book → our book in
+- [Photo mockups](features/photo-mockups.md) — lifestyle photos with a blank book → our book in
   them (a Workshop book's step «Фото» and the «Фотомокапи» page): template, cover, JSON prompt into the clipboard.
-- [Mockups](features/mockups.md) — the Listings mode: a Canva demo book → Etsy listing pictures from the
-  Photoshop templates (the owner fits the front cover by hand).
-- [Listing slides](features/slides.md) — the Mockups' next steps: the pictures without background, the six Etsy
+- [Mockups](features/mockups.md) — a Canva demo book → Etsy listing pictures from the Photoshop templates (the owner
+  fits the front cover by hand); the templates' structure.
+- [Listing slides](features/slides.md) — the Mockups' last step: the pictures without background, the six Etsy
   slides made by themselves, a Canva-like editor loaded only when opened; the skill `/listing-slides`.
 
 ## Domain rules
@@ -92,26 +92,11 @@ code: []
 - [How to run this wiki](dev/wiki-rules.md) — page format, checks, operations.
 - [Design and code skills](dev/design-skills.md) — the agent skills installed for interface logic, icons, visual craft and code.
 
-## Decisions, recipes, plans
+## Decisions and recipes
 
 - [Decisions](decisions.md) — what was decided and why (with dates).
 - [Recipes](recipes.md) — where to change code for common tasks.
-- [Plans](plans/roadmap.md) — agreed ideas for later.
-- [Listing mockups](plans/listing-mockups.md) — the agreements and the templates' structure behind the
-  [Mockups](features/mockups.md).
-- [Listing pictures](plans/listing-pictures.md) — the plan of 2026-09-29 and its history: the six Etsy slides made by
-  Book Studio instead of Canva; cutting the book out with its shadow; the design; the external prototype; the move in.
-- [Two modes: Orders and Listings](plans/listings-mode.md) — the agreements of 2026-09-24: the mode switch
-  on the brand icon, the Workshop, the mockups inside Book Studio.
-- [The book console](plans/book-console.md) — the plan of 2026-09-25 and its history: the book pipeline and the
-  Workshop as one place, a generation mode that catches downloads; a prototype apart from Book Studio, then moved
-  into the Workshop (2026-09-26).
-- [The big cleanup](plans/cleanup.md) — the plan of 2026-09-26 and its progress: every finding of the code
-  study fixed, phase by phase (bugs, money, speed, no blinking, duplicates, big files cut by job).
-- [The interface redesign](plans/ui-redesign.md) — the plan of 2026-09-30: one strict visual system (agreed), and a
-  program understood without hints — every order and book in one place with its path (decided point by point).
-- [The interface waves](plans/ui-waves.md) — every wave of the 2026-09-30 interface work in one plan, step by step (what to touch, how to check), and what is left.
-- [Open questions and technical debt](plans/open-questions.md)
+- [Known limits](dev/limits.md) — what the program deliberately doesn't do, what was only tried against fakes.
 
 ## Housekeeping
 

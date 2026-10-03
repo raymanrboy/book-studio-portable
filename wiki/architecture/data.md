@@ -1,7 +1,7 @@
 ---
 title: Program data — the app/data folder
 type: architecture
-updated: 2026-09-29
+updated: 2026-10-03
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -10,8 +10,8 @@ code:
 ---
 # Program data
 
-> Everything the program remembers lives in `app/data/` (≈6.6 GB as of 2026-09-22: the order archive
-> 4.0 GB, the library 1.6 GB, the preview cache 364 MB; not in git). Every 3 days the program backs it up to
+> Everything the program remembers lives in `app/data/` (gigabytes: the order archive and the library are
+> the biggest parts, then the preview cache; not in git). Every 3 days the program backs it up to
 > Google Drive itself, with the whole program folder ([backup](../features/backup.md)). The `BOOK_STUDIO_DATA` environment variable swaps in a different folder (tests, preview).
 
 ## What lives where
