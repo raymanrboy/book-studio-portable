@@ -274,10 +274,13 @@ class Scenes(Base):
                 if it["type"] == "book":
                     self.assertIn(it["slot"], store.BOOK_SLOTS)
                 if it["type"] == "image":
-                    self.assertIn(it["slot"], store.PICTURE_SLOTS)
+                    self.assertIn(it["slot"], store.PICTURE_SLOTS + store.HERO_SLOTS)
         texts = json.dumps([store.factory(s) for s in store.SLIDES], ensure_ascii=False)
         self.assertIn("{pages}", texts)
         self.assertIn("{poems}", texts)
+        self.assertIn("{looks}", texts)
+        frames = [it["slot"] for it in store.factory(store.LOOKS_SLIDE)["items"] if it["type"] == "image"]
+        self.assertEqual(frames, store.HERO_SLOTS)                           # slide 7: a frame for every look
 
 
 class WorkshopBooks(Base):
@@ -409,6 +412,68 @@ class MakingThem(Base):
         self.assertEqual(res["folder"], str(etsy))
         self.assertIn("page30", store.read_set(book)["pictures"])
         self.assertTrue(workshop.state(core.WORKSHOP_BOOKS / book)["marks"]["mockups"])   # the step ticked itself
+
+    def looks(self, book: str, *names: str) -> None:
+        for i, name in enumerate(names):
+            hero = core.WORKSHOP_BOOKS / book / "agent" / "variants" / name / "hero.png"
+            hero.parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGB", (200, 300), (250, 250, 250 - i)).save(hero)
+
+    def test_a_book_whose_hero_has_looks_gets_slide_7_with_each_look_in_its_frame(self):
+        """The owner, 2026-10-02: a slide for the books with appearance variants — each in its own frame, the name
+        under it; the pictures keep their white background."""
+        book = self.workshop_book()
+        self.looks(book, "B10_extra", "B2_blond", "B1_brunette", "B3_east_asian")
+        (core.WORKSHOP_BOOKS / book / "agent" / "variants" / "B4_afro").mkdir()   # no hero.png yet: not a look
+        out = store.mockups_dir(book)
+        mockup(out / "2. Open 1 (2-3).png")
+        calls = []
+        with mock.patch.object(bake, "run_browser", pretend_browser(calls)), mock.patch.object(bake, "browser", lambda: "x"):
+            res = work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book)
+        self.assertEqual(len(calls), 7)
+        self.assertEqual(res["pictures"][-1]["name"], "15 Listing 7.png")      # the listing's place: last for now
+        rec = store.read_set(book)
+        self.assertEqual([rec["pictures"][s]["label"] for s in store.HERO_SLOTS if s in rec["pictures"]],
+                         ["B1", "B2", "B3", "B10"])                            # by their numbers
+        self.assertEqual(rec["pictures"]["hero:1"]["aspect"], 1.5)
+        self.assertTrue((store.set_dir(book) / "pictures" / "hero-1.png").is_file())
+        with Image.open(store.set_dir(book) / "pictures" / "hero-1.png") as im:
+            self.assertEqual(im.getpixel((0, 0))[:3], (250, 250, 248))         # B1's own, its white background kept
+        self.assertEqual(store.shown(book), store.SLIDES)
+        self.assertEqual(res["missing"], [m for m in res["missing"] if not m.startswith("Герой")])
+
+    def test_slide_7_only_with_two_looks_and_it_takes_looks_made_later(self):
+        book = self.workshop_book()
+        self.looks(book, "G1_base")
+        rec = store.new_set("x", str(self.root), book=book)
+        self.assertTrue(work.put_heroes(rec, book))
+        store.write_set(rec)
+        self.assertNotIn(store.LOOKS_SLIDE, store.shown(book))                 # one look: nothing to choose from
+        self.assertFalse(work.put_heroes(store.read_set(book), book))          # nothing changed: nothing done
+        self.looks(book, "G1_base", "G2_brunette")                             # the Workshop made another one
+        work.sync_heroes(book)
+        self.assertEqual(store.shown(book)[-1], store.LOOKS_SLIDE)
+        self.assertEqual(store.read_set(book)["pictures"]["hero:2"]["label"], "G2")
+        self.assertEqual(store.shown(store.TEMPLATE), store.SLIDES)            # a scheme has all seven to edit
+
+    def test_a_scheme_made_before_slide_7_gets_it_in_its_own_colours(self):
+        store.ensure_schemes()
+        night = store.SCHEMES / "night"
+        night.mkdir()
+        for slide in store.SLIDES[:6]:
+            scene = store.factory(slide)
+            if slide == "slide4":
+                scene["bg"] = "#555876"
+                for e in scene["items"]:
+                    if e.get("name") == "Оливкова смуга":
+                        e["color"] = "#5c7d88"
+            core.write_json(night / f"{slide}.json", scene, backup=False)
+        core.write_json(night / "scheme.json", {"name": "Night", "default": False}, backup=False)
+        store.list_schemes()
+        seven = json.loads((night / "slide7.json").read_text(encoding="utf-8"))
+        self.assertEqual(seven["bg"], "#555876")
+        self.assertIn("#5c7d88", [e.get("color") for e in seven["items"]])    # slide 4's olive, Night's blue here
+        self.assertTrue((store.SCHEMES / "nature" / "slide7.json").is_file())
 
     def test_names_never_go_over_the_owners_files(self):
         out = self.root / "out"

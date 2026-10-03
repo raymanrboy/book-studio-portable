@@ -1,4 +1,4 @@
-// The listing slides' editor (#/slides/<set | template>/<1–6>) — the owner's touches on a book's six slides, the way
+// The listing slides' editor (#/slides/<set | template>/<1–7>; 7 — the hero's looks, only for a book that has them) — the owner's touches on a book's six slides, the way
 // he asked on 29.09.2026: "like Canva — layers, moving, rotating, resizing", then «Зберегти картинки» bakes them.
 // Moved in from the external Slide Editor the same day, in Book Studio's own look. A separate module, loaded only when
 // opened (left out of the pages' warm-up in app.js) with its own styles (css/slides.css).
@@ -9,7 +9,7 @@ import {
 } from '../lib.js';
 import { store } from '../info.js';
 import {
-  ready, setAssets, drawScene, drawElement, boxOf, elTransform, TSHADOW,
+  ready, setAssets, drawScene, drawElement, boxOf, elTransform, TSHADOW, isHero,
 } from '../slides/engine.js';
 
 // Where the owner came into the editor from, and how each slide looked when this editing session began (2026-09-30): the
@@ -42,8 +42,14 @@ const TSH = range('tshadow', 'Тінь тексту', 0, 1, 0.01, TSHADOW);
 const SPEC = {
   book: [['Мокап', [{ k: 'slot', kind: 'bookSlot' }]], ['Положення', [...XYR, W]],
     ['Тінь', [range('bake', 'З Photoshop', 0, 1, 0.01, 0.6), range('shadow', 'Додаткова', 0, 1, 0.01, 0.18)]], ['Вигляд', [OPACITY]]],
-  image: [['Картинка', [{ k: 'slot', kind: 'picSlot' }, num('rim', 'Біла кромка', { def: 0 }), num('bumps', 'Хвильок у рамці', { def: 10 })]],
-    ['Положення', [...XYR, W, H]], ['Вигляд', [OPACITY]]],
+  image: [['Картинка', [{ k: 'slot', kind: 'picSlot' },
+    { k: 'shape', label: 'Рамка', kind: 'seg', def: 'rect', options: [['scallop', 'Зірочка'], ['rect', 'Прямокутна']] },
+    num('rim', 'Біла кромка', { def: 0 }), num('bumps', 'Хвильок у рамці', { def: 10 }),
+    range('zoom', 'Наблизити', 1, 3, 0.01, 1), range('fy', 'Що видно: верх → низ', 0, 1, 0.01, 0.5)]],
+  ['Підпис', [{ k: 'labelText', kind: 'caption' }, { k: 'label', label: 'Де підпис', kind: 'seg', def: 'below', options: [['below', 'Під рамкою'], ['above', 'Над рамкою'], ['none', 'Без']] },
+    num('labelSize', 'Розмір літер', { def: 46 }), num('labelGap', 'Відступ', { def: 14 }),
+    { k: 'labelColor', label: 'Колір', kind: 'color', def: '#3b2a1e' }], (e) => isHero(e.slot)],
+  ['Положення', [...XYR, W, H]], ['Вигляд', [OPACITY]]],
   text: [['Текст', [{ k: 'text', kind: 'text' }, num('size', 'Розмір літер'), num('lh', 'Між рядками', { step: 0.01, def: 1.18 }),
     range('arc', 'Дуга °', -180, 180, 1, 0), { k: 'align', label: 'Вирівняти', kind: 'seg', def: 'left', options: [['left', 'Ліворуч'], ['center', 'Центр'], ['right', 'Праворуч']] }]],
   ['Положення', [...XYR, num('w', 'Ширина рамки')]], ['Вигляд', [color(), OPACITY]], ['Тінь', [TSH]]],
@@ -93,7 +99,7 @@ function ensureCss() {
 
 export async function mount(view, [whereParam, nParam]) {
   const where = whereParam === 'template' ? 'template' : whereParam;
-  const n = Math.min(6, Math.max(1, +nParam || 1));
+  const n = Math.min(7, Math.max(1, +nParam || 1));
   const slide = `slide${n}`;
   const q = (path) => `${path}?w=${encodeURIComponent(where)}&s=${slide}`;
   let info = null, scene = null, version = '', assets = null;
@@ -103,6 +109,10 @@ export async function mount(view, [whereParam, nParam]) {
       api(`/api/slides/assets?w=${encodeURIComponent(where)}`), ready()]);
   } catch (err) {
     notFound(view, { back: '#/tools', backLabel: 'До інструментів', icon: 'images', title: 'Слайди не відкрились', text: err.message });
+    return null;
+  }
+  if (!info.slides.some((s) => s.id === slide)) {   // slide 7 of a book whose hero has no looks
+    location.replace(`#/slides/${whereParam}/1`);
     return null;
   }
   setAssets(assets);
@@ -256,7 +266,7 @@ export async function mount(view, [whereParam, nParam]) {
   function coloursOf(sc) {
     const out = [];
     if (HEX.test(sc?.bg || '')) out.push(sc.bg.toLowerCase());
-    (sc?.items || []).forEach((e) => { for (const k of ['color', 'textColor']) if (HEX.test(e[k] || '')) out.push(e[k].toLowerCase()); });
+    (sc?.items || []).forEach((e) => { for (const k of ['color', 'textColor', 'labelColor']) if (HEX.test(e[k] || '')) out.push(e[k].toLowerCase()); });
     return out;
   }
   // [this slide's colours, the other five slides' ones not on this one]
@@ -265,9 +275,9 @@ export async function mount(view, [whereParam, nParam]) {
     const others = [...new Set(st.others.flatMap(coloursOf))].filter((c) => !mine.includes(c));
     return [mine.slice(0, 14), others.slice(0, 14)];
   }
-  function swatches(current, act, pick) {
+  function swatches(current, act, pick, key = 'color') {
     const [mine, others] = palettes();
-    const sw = (c) => html`<button type="button" class="se-sw ${String(current).toLowerCase() === c ? 'on' : ''}" style="--c:${c}" data-act="${act}" data-c="${c}" aria-label="${c}" data-tip="${c}"></button>`;
+    const sw = (c) => html`<button type="button" class="se-sw ${String(current).toLowerCase() === c ? 'on' : ''}" style="--c:${c}" data-act="${act}" data-k="${key}" data-c="${c}" aria-label="${c}" data-tip="${c}"></button>`;
     return html`<div class="se-swatches">${mine.map(sw)}${pick}</div>
       ${others.length ? html`<div class="se-swatches se-others"><span class="se-others-label">З інших слайдів</span>${others.map(sw)}</div>` : ''}`;
   }
@@ -292,13 +302,18 @@ export async function mount(view, [whereParam, nParam]) {
     }
     if (f.kind === 'color') {
       return html`<div class="se-f se-wide"><span>${f.label}</span>${swatches(v, 'swatch',
-        html`<label class="se-sw se-pick" data-tip="Інший колір" style="--c:${v}"><input type="color" data-k="${f.k}" data-kind="color" value="${v}"></label>`)}</div>`;
+        html`<label class="se-sw se-pick" data-tip="Інший колір" style="--c:${v}"><input type="color" data-k="${f.k}" data-kind="color" value="${v}"></label>`, f.k)}</div>`;
     }
     if (f.kind === 'seg') {
       return html`<div class="se-f se-wide"><span>${f.label}</span>${segHtml(f.options.map(([value, label]) => ({ value: String(value), label })), String(v), { name: `f-${f.k}` })}</div>`;
     }
+    if (f.kind === 'caption') {   // a look's caption: empty — its name (2026-10-02)
+      const name = assets.pictures[e.slot]?.label || '';
+      return html`<label class="se-f se-wide"><span>Підпис · порожньо — «${name || 'назва варіанта'}» · {name} — назва варіанта</span>
+        <textarea class="textarea" rows="2" data-k="labelText" data-kind="caption" spellcheck="false" placeholder="${name}">${e.labelText || ''}</textarea></label>`;
+    }
     if (f.kind === 'text') {
-      return html`<label class="se-f se-wide"><span>Текст · Enter — новий рядок · {pages} і {poems} — числа книги</span>
+      return html`<label class="se-f se-wide"><span>Текст · Enter — новий рядок · {pages} і {poems} — числа книги, {looks} — скільки варіантів героя</span>
         <textarea class="textarea" rows="4" data-k="text" data-kind="text" spellcheck="false">${e.text}</textarea></label>`;
     }
     if (f.kind === 'lines') {
@@ -310,7 +325,7 @@ export async function mount(view, [whereParam, nParam]) {
       const has = (s) => (want === 'book' ? assets.books[s] : assets.pictures[s]);
       return html`<div class="se-f se-wide"><span>${want === 'book' ? 'Який мокап' : 'Яка картинка'}</span>
         <select class="select" data-k="slot" data-kind="slot">${info.slots.filter((s) => s.kind === want).map((s) => html`<option value="${s.slot}" ${s.slot === e.slot ? 'selected' : ''}>${s.label}${has(s.slot) ? '' : '  ·  немає'}</option>`)}</select>
-        ${want === 'picture' && isSet ? html`<button type="button" class="btn btn-sm btn-ghost se-repick" data-act="pick-picture" data-slot="${e.slot}">${ic('folderPick', 'icon-s')}Інша картинка…</button>` : ''}
+        ${want === 'picture' && isSet && !isHero(e.slot) ? html`<button type="button" class="btn btn-sm btn-ghost se-repick" data-act="pick-picture" data-slot="${e.slot}">${ic('folderPick', 'icon-s')}Інша картинка…</button>` : ''}
       </div>`;
     }
     return '';
@@ -330,7 +345,7 @@ export async function mount(view, [whereParam, nParam]) {
         ${ib('trash', 'Прибрати зі слайда', 'data-act="del"', { cls: 'sm', kbd: 'Delete' })}</div>
       <div class="se-scroll">
         <label class="se-f se-wide"><span>Назва</span><input class="input" data-k="name" data-kind="name" value="${e.name || ''}" spellcheck="false"></label>
-        ${(SPEC[e.type] || []).map(([title, fields]) => html`<section class="se-group"><h4>${title}</h4><div class="se-grid">${fields.map((f) => fieldHtml(e, f))}</div></section>`)}
+        ${(SPEC[e.type] || []).filter(([, , when]) => !when || when(e)).map(([title, fields]) => html`<section class="se-group"><h4>${title}</h4><div class="se-grid">${fields.map((f) => fieldHtml(e, f))}</div></section>`)}
       </div>`);
   }
 
@@ -557,7 +572,7 @@ export async function mount(view, [whereParam, nParam]) {
     } else if (a === 'dup') duplicate();
     else if (a === 'del') remove();
     else if (a === 'swatch') {
-      change(() => { cur().color = t.dataset.c; }, { props: true });
+      change(() => { cur()[t.dataset.k || 'color'] = t.dataset.c; }, { props: true });
     } else if (a === 'bg') {
       const before = snapshot();
       scene.bg = t.dataset.c;
@@ -620,13 +635,14 @@ export async function mount(view, [whereParam, nParam]) {
       return;
     }
     if (kind === 'text') { change(() => { e.text = t.value; }); drawSel(); return; }
+    if (kind === 'caption') { change(() => { if (t.value.trim()) e.labelText = t.value; else delete e.labelText; }); drawSel(); return; }
     if (kind === 'lines') {
       change(() => {
         e.lines = t.value.split('\n').map((s) => s.trim()).filter(Boolean).map((s, i) => ({ ...(e.lines[i] || {}), t: s }));
       });
       return;
     }
-    if (kind === 'slot') { change(() => { e.slot = t.value; }); drawSel(); }
+    if (kind === 'slot') { change(() => { e.slot = t.value; }, { props: true }); drawSel(); }
   }));
 
   // The schemes (the owner, 29.09.2026: "a colour scheme you can save while working in the editor… not only the

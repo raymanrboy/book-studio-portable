@@ -9,7 +9,7 @@ Photoshop, because he fits the front cover himself ("the cover sells", 23.09.202
 
 Since 24.09.2026 a page of Book Studio's Listings mode (it was a program of its own, with its own window).
 Its places and runs stay in app/data/mockups; the demo book it unpacks lives there too (BOOKS), apart from
-the files dropped for orders. Plan and agreements: wiki/plans/listing-mockups.md, wiki/plans/listings-mode.md.
+the files dropped for orders. The templates' structure and how it works: wiki/features/mockups.md.
 """
 from __future__ import annotations
 

@@ -47,6 +47,7 @@ def main(argv: list[str]) -> int:
                       f"\tpictures: {', '.join(rec.get('pictures', {}))}\tnumbers: {rec.get('numbers')}")
             return 0
         where = store.valid_where(a.set)
+        work.sync_heroes(where)   # a Workshop book's hero looks → slide 7
         if a.command == "path":
             slide = store.valid_slide(a.args[0] if a.args else "")
             path = store.scene_path(where, slide)
@@ -66,7 +67,7 @@ def main(argv: list[str]) -> int:
         if a.command == "bake":
             if where == store.TEMPLATE:
                 raise UserError("Запікаються слайди книги: --set <id> (python app/tools/slides.py list).")
-            slides = [store.valid_slide(s) for s in a.args] or store.SLIDES
+            slides = [store.valid_slide(s) for s in a.args] or store.shown(where)
             base, token = _server()
             quiet = types.SimpleNamespace(progress=lambda *x, **k: None, share=lambda *x: None)
             for p in work.bake_set(quiet, store.read_set(where), slides, base, token):

@@ -1,0 +1,359 @@
+{
+ "id": "slide7",
+ "bg": "#eedec7",
+ "items": [
+  {
+   "name": "Світла пляма 1",
+   "type": "blob",
+   "x": 640,
+   "y": 470,
+   "w": 560,
+   "h": 520,
+   "rot": 0,
+   "seed": 3,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 2",
+   "type": "blob",
+   "x": 950,
+   "y": 420,
+   "w": 240,
+   "h": 840,
+   "rot": 0,
+   "seed": 5,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Світла пляма 3",
+   "type": "blob",
+   "x": 660,
+   "y": 5,
+   "w": 280,
+   "h": 90,
+   "rot": 0,
+   "seed": 2,
+   "color": "#f5e9d8"
+  },
+  {
+   "name": "Зерно паперу",
+   "type": "grain",
+   "x": 500,
+   "y": 500,
+   "locked": true
+  },
+  {
+   "name": "Оливкова смуга",
+   "type": "band",
+   "x": 117,
+   "y": 420,
+   "w": 320,
+   "h": 960,
+   "rot": -4.2,
+   "color": "#a2a066",
+   "seed": 4
+  },
+  {
+   "name": "Заголовок — смуга",
+   "type": "band",
+   "x": 652,
+   "y": 82,
+   "w": 600,
+   "h": 118,
+   "rot": -1.2,
+   "color": "#a2a066",
+   "seed": 9,
+   "rim": 6
+  },
+  {
+   "name": "Заголовок",
+   "type": "text",
+   "text": "You can customize\nthe eye color",
+   "x": 652,
+   "y": 82,
+   "size": 36,
+   "w": 580,
+   "lh": 1.12,
+   "rot": -1.2,
+   "align": "center",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Напис над героєм",
+   "type": "text",
+   "text": "Choose your\nlittle one:",
+   "x": 140,
+   "y": 395,
+   "size": 27,
+   "w": 250,
+   "lh": 1.2,
+   "rot": -4.2,
+   "align": "center",
+   "color": "#ffffff"
+  },
+  {
+   "name": "Герой 1 — великий",
+   "type": "image",
+   "slot": "hero:1",
+   "x": 140,
+   "y": 650,
+   "w": 214,
+   "h": 300,
+   "rot": -4.2,
+   "rim": 7,
+   "zoom": 1.06,
+   "fy": 0.5,
+   "label": "above",
+   "labelSize": 42,
+   "labelGap": 12,
+   "labelColor": "#ffffff"
+  },
+  {
+   "name": "Стрілка до героя",
+   "type": "arrow",
+   "x": 300,
+   "y": 760,
+   "w": 110,
+   "h": 90,
+   "w0": 110,
+   "h0": 90,
+   "rot": 0,
+   "pts": [
+    [
+     100,
+     80
+    ],
+    [
+     12,
+     14
+    ]
+   ],
+   "bow": -0.25,
+   "loop": 0,
+   "color": "#6b3a3a",
+   "sw": 7,
+   "locked": true
+  },
+  {
+   "name": "Герой 2",
+   "type": "image",
+   "slot": "hero:2",
+   "x": 440,
+   "y": 292,
+   "w": 186,
+   "h": 186,
+   "rot": -3,
+   "shape": "scallop",
+   "bumps": 10,
+   "depth": 0.07,
+   "rim": 7,
+   "zoom": 1.18,
+   "fy": 0.04,
+   "label": "below",
+   "labelSize": 40,
+   "labelGap": 12,
+   "labelColor": "#3b2a1e"
+  },
+  {
+   "name": "Герой 3",
+   "type": "image",
+   "slot": "hero:3",
+   "x": 655,
+   "y": 292,
+   "w": 186,
+   "h": 186,
+   "rot": 2,
+   "shape": "scallop",
+   "bumps": 10,
+   "depth": 0.07,
+   "rim": 7,
+   "zoom": 1.18,
+   "fy": 0.04,
+   "label": "below",
+   "labelSize": 40,
+   "labelGap": 12,
+   "labelColor": "#3b2a1e"
+  },
+  {
+   "name": "Герой 4",
+   "type": "image",
+   "slot": "hero:4",
+   "x": 870,
+   "y": 292,
+   "w": 186,
+   "h": 186,
+   "rot": -1.5,
+   "shape": "scallop",
+   "bumps": 10,
+   "depth": 0.07,
+   "rim": 7,
+   "zoom": 1.18,
+   "fy": 0.04,
+   "label": "below",
+   "labelSize": 40,
+   "labelGap": 12,
+   "labelColor": "#3b2a1e"
+  },
+  {
+   "name": "Герой 5",
+   "type": "image",
+   "slot": "hero:5",
+   "x": 440,
+   "y": 598,
+   "w": 186,
+   "h": 186,
+   "rot": 2.5,
+   "shape": "scallop",
+   "bumps": 10,
+   "depth": 0.07,
+   "rim": 7,
+   "zoom": 1.18,
+   "fy": 0.04,
+   "label": "below",
+   "labelSize": 40,
+   "labelGap": 12,
+   "labelColor": "#3b2a1e"
+  },
+  {
+   "name": "Герой 6",
+   "type": "image",
+   "slot": "hero:6",
+   "x": 655,
+   "y": 598,
+   "w": 186,
+   "h": 186,
+   "rot": -2,
+   "shape": "scallop",
+   "bumps": 10,
+   "depth": 0.07,
+   "rim": 7,
+   "zoom": 1.18,
+   "fy": 0.04,
+   "label": "below",
+   "labelSize": 40,
+   "labelGap": 12,
+   "labelColor": "#3b2a1e"
+  },
+  {
+   "name": "Герой 7",
+   "type": "image",
+   "slot": "hero:7",
+   "x": 870,
+   "y": 598,
+   "w": 186,
+   "h": 186,
+   "rot": 1.5,
+   "shape": "scallop",
+   "bumps": 10,
+   "depth": 0.07,
+   "rim": 7,
+   "zoom": 1.18,
+   "fy": 0.04,
+   "label": "below",
+   "labelSize": 40,
+   "labelGap": 12,
+   "labelColor": "#3b2a1e"
+  },
+  {
+   "name": "Персикова смуга",
+   "type": "band",
+   "x": 500,
+   "y": 953,
+   "w": 1120,
+   "h": 220,
+   "rot": -0.9,
+   "color": "#e8c59d",
+   "seed": 21
+  },
+  {
+   "name": "Пунктир",
+   "type": "dashes",
+   "x": 553,
+   "y": 925.5,
+   "w": 1042,
+   "h": 20,
+   "rot": -1.7,
+   "count": 11,
+   "dash": 62,
+   "color": "#ffffff"
+  },
+  {
+   "name": "Тінь листя",
+   "type": "leaves",
+   "x": 850,
+   "y": 150,
+   "w": 600,
+   "h": 600,
+   "rot": 0,
+   "opacity": 0.085
+  },
+  {
+   "name": "Наліпка «7»",
+   "type": "sticker",
+   "x": 163,
+   "y": 190,
+   "r": 128,
+   "rot": -6,
+   "tape": [
+    34,
+    -14
+   ],
+   "color": "#e8c59d",
+   "lines": [
+    {
+     "t": "{looks}",
+     "k": 2.5
+    },
+    {
+     "t": "appearance"
+    },
+    {
+     "t": "options"
+    }
+   ]
+  },
+  {
+   "name": "Зірочка 1",
+   "type": "sparkle",
+   "x": 255,
+   "y": 470,
+   "size": 18
+  },
+  {
+   "name": "Зірочка 2",
+   "type": "sparkle",
+   "x": 282,
+   "y": 440,
+   "size": 9
+  },
+  {
+   "name": "Зірочка 3",
+   "type": "sparkle",
+   "x": 975,
+   "y": 470,
+   "size": 19
+  },
+  {
+   "name": "Зірочка 4",
+   "type": "sparkle",
+   "x": 982,
+   "y": 538,
+   "size": 10
+  },
+  {
+   "name": "Зірочка 5",
+   "type": "sparkle",
+   "x": 330,
+   "y": 815,
+   "size": 16
+  },
+  {
+   "name": "Зірочка 6",
+   "type": "sparkle",
+   "x": 352,
+   "y": 790,
+   "size": 8
+  }
+ ],
+ "title": "Слайд №7 · Appearance options"
+}

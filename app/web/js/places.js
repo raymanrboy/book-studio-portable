@@ -1,4 +1,4 @@
-// Where things are (2026-09-30, wiki/plans/ui-redesign.md): the places that hold the objects, and the tools that work
+// Where things are (2026-09-30, wiki/decisions.md): the places that hold the objects, and the tools that work
 // on their own as well as inside their object. One list for the «Інструменти» page and the search (Ctrl+K), so a tool
 // is named and drawn the same way everywhere.
 

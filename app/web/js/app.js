@@ -36,7 +36,7 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
 });
 
 // ------------------------------------------------------------------ the rail: places and tools
-// One labelled rail (2026-09-30, wiki/plans/ui-redesign.md) instead of two modes switched by the brand icon: the
+// One labelled rail (2026-09-30, wiki/decisions.md) instead of two modes switched by the brand icon: the
 // owner got lost among unlabelled icons in two hidden sets. **Places** hold the objects — an order, a book — each
 // with its path; **tools** also work on their own (the Order Creator, the Mockups, the photo mockups, the slides,
 // the print archive) and open inside their object from its step. The two inks stay and follow the area: the orders,
@@ -220,7 +220,7 @@ const ROUTES = [
   [/^#\/mockups\/?$/, () => import('./pages/mockups.js'), 'listings'],
   [/^#\/photos\/?$/, () => import('./pages/photos.js'), 'listings'],
   // the slides' editor: its own module, loaded only when opened (the owner, 29.09.2026) — not warmed up below
-  [/^#\/slides\/(template|scheme:[a-z0-9-]+|\d{8}-\d{6}-[0-9a-f]{6}|\d{1,5}\.[^/]+)\/([1-6])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
+  [/^#\/slides\/(template|scheme:[a-z0-9-]+|\d{8}-\d{6}-[0-9a-f]{6}|\d{1,5}\.[^/]+)\/([1-7])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
 ];
 // The two galleries became one «Книги» (2026-09-30): their old addresses still lead there.
 const ALIASES = [[/^#\/library\/?$/, '#/books/shop'], [/^#\/workshop\/?$/, '#/books/work']];

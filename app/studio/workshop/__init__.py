@@ -13,6 +13,6 @@ the printer's template — and passes the finished book to the library with its 
     check.py      the book check's rules (the old pipeline's validator; the agents run it too)
     routes.py     the routes
 
-Plan and agreements: wiki/plans/book-console.md; how it works: wiki/features/workshop.md.
+How it works: wiki/features/workshop.md.
 """
 from . import routes  # noqa: F401  (registers the routes)

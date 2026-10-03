@@ -2,7 +2,8 @@
 // Mockups' previews and the baked picture (web/slides/render.html in headless Edge — studio/slides/bake.py).
 // Moved in from the owner's external Slide Editor on 29.09.2026 (wiki/features/slides.md): the drawing is the same;
 // a book or a flat picture now names its slot (which mockup — open1:1…4, open2:1…2, cover, dedication, page30), and a
-// book's set says what fills the slots (setAssets()). Texts may carry {pages} and {poems} — the book's numbers.
+// book's set says what fills the slots (setAssets()). Texts may carry {pages} and {poems} — the book's numbers — and
+// {looks}, how many looks the hero has (slide 7, 2026-10-02: each look a picture in its own frame, hero:1 … hero:7).
 const SVGNS = 'http://www.w3.org/2000/svg';
 const mk = (tag, attrs, parent) => {
   const e = document.createElementNS(SVGNS, tag);
@@ -16,14 +17,14 @@ export const TSHADOW = 0.7;                           // the shadow under letter
 export const FONT = '/fonts/ComicaRegular.otf';
 
 // ---------------------------------------------------------------- what fills the slots
-let ASSETS = { books: {}, pictures: {}, numbers: {} };
+let ASSETS = { books: {}, pictures: {}, numbers: {} };   // + bake: true — the final picture (render.html)
 export function setAssets(a) { ASSETS = { books: {}, pictures: {}, numbers: {}, ...(a || {}) }; }
 // a book whose mockup is missing is drawn as a placeholder of its usual shape
 const ASPECT = { open1: 0.518, open2: 0.62, cover: 1.008 };
 export const bookInfo = (e) => ASSETS.books[e.slot] || null;
 export const bookAspect = (e) => bookInfo(e)?.aspect || ASPECT[String(e.slot || '').split(':')[0]] || 0.6;
-// {pages}, {poems} — the book's numbers
-export const fill = (t) => String(t ?? '').replace(/\{(pages|poems)\}/g, (_, k) => String(ASSETS.numbers?.[k] ?? ''));
+// {pages}, {poems} — the book's numbers; {looks} — how many looks its hero has
+export const fill = (t) => String(t ?? '').replace(/\{(pages|poems|looks)\}/g, (_, k) => String(ASSETS.numbers?.[k] ?? ''));
 
 let fontReady = null;
 /** Comica loaded once (the drawing measures its letters). */
@@ -217,7 +218,26 @@ function placeholder(el, w, h, label) {
   t.textContent = label;
 }
 const SLOT_NAME = { cover: 'Cover 1', dedication: 'Dedication', page30: 'Сторінка 30' };
-const slotName = (slot) => SLOT_NAME[slot] || String(slot || '?').replace('open1:', 'Open 1 · ').replace('open2:', 'Open 2 · ');
+const slotName = (slot) => SLOT_NAME[slot] || String(slot || '?').replace('open1:', 'Open 1 · ').replace('open2:', 'Open 2 · ').replace('hero:', 'Герой ');
+export const isHero = (slot) => String(slot || '').startsWith('hero:');
+
+// A look's caption by its frame — under it, over it, or none; flat Comica, no shadow (his reference, 2026-10-02).
+// The look's name («B2») unless the owner wrote his own (`labelText`, 2026-10-02): lines, {name} — the look's name.
+function lookLabel(svg, e, name, edge) {
+  const where = e.label || 'below';
+  const own = String(e.labelText ?? '').trim();
+  const lines = (own ? fill(own).replace(/\{name\}/g, name || '') : name || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  if (!lines.length || where === 'none') return;
+  const size = e.labelSize || 46, cx = e.w / 2, ls = size * 0.05, color = e.labelColor || '#3b2a1e', step = size * 1.12;
+  const gap = e.labelGap ?? 14;
+  lines.forEach((line, i) => {
+    const y = where === 'above' ? -edge - gap - size * 0.12 - (lines.length - 1 - i) * step : e.h + edge + gap + size * 0.74 + i * step;
+    const t = mk('text', { x: cx + ls / 2, y, 'text-anchor': 'middle', 'font-family': 'Comica', 'font-size': size, 'letter-spacing': ls,
+      fill: color, stroke: color, 'stroke-width': size * 0.04, 'stroke-linejoin': 'round', 'paint-order': 'stroke',
+      transform: `translate(${cx} 0) scale(${STRETCH} 1) translate(${-cx} 0)` }, svg);
+    t.textContent = caps(line);
+  });
+}
 
 export const DRAW = {
   grain(el, e, id) {
@@ -381,6 +401,10 @@ export const DRAW = {
   // a flat picture (a page, a whole mockup), optionally in a scalloped die-cut frame
   image(el, e, id) {
     const pic = ASSETS.pictures[e.slot];
+    if (!pic && isHero(e.slot)) {   // a frame with no look (the hero has fewer): nothing in the final picture
+      if (!ASSETS.bake) placeholder(el, e.w, e.h, `${slotName(e.slot)} — немає`);
+      return;
+    }
     if (!pic) { placeholder(el, e.w, e.h, `${slotName(e.slot)} — немає картинки`); return; }
     if (pic.cut && e.shape !== 'scallop') {
       // cut out (Dedication: the book and the desk, the floor see-through, the shadows in the picture itself):
@@ -399,7 +423,15 @@ export const DRAW = {
     const g = mk('g', e.shadow === false ? {} : { filter: `url(#${id}s)` }, svg);
     if (e.rim) mk('path', { d: shape, fill: 'none', stroke: '#fffaf2', 'stroke-width': e.rim * 2, 'stroke-linejoin': 'round' }, g);
     mk('path', { d: shape, fill: '#fff' }, g);
-    mk('image', { href: pic.src, x: 0, y: 0, width: e.w, height: e.h, preserveAspectRatio: 'xMidYMid slice', 'clip-path': `url(#${id}c)` }, svg);
+    // what the frame shows: the whole frame covered (× `zoom`), `fy` — from the top (0) to the bottom (1) of the picture
+    const zoom = Math.max(1, e.zoom ?? 1), fy = e.fy ?? 0.5;
+    if (pic.aspect && (zoom !== 1 || e.fy != null)) {
+      const iw = Math.max(e.w, e.h / pic.aspect) * zoom, ih = iw * pic.aspect;
+      mk('image', { href: pic.src, x: (e.w - iw) / 2, y: (e.h - ih) * fy, width: iw, height: ih, preserveAspectRatio: 'none', 'clip-path': `url(#${id}c)` }, svg);
+    } else {
+      mk('image', { href: pic.src, x: 0, y: 0, width: e.w, height: e.h, preserveAspectRatio: 'xMidYMid slice', 'clip-path': `url(#${id}c)` }, svg);
+    }
+    if (isHero(e.slot)) lookLabel(svg, e, pic.label, e.rim || 0);
   },
   // a bookmark ribbon (a V-notch at the bottom) with fitted text
   ribbon(el, e, id) {

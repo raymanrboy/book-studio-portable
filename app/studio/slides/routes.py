@@ -32,21 +32,31 @@ def _url(set_id: str, part: str, name: str) -> str:
 
 def assets(where: str) -> dict:
     """What the drawing needs besides the scene: the books in their slots (the picture, its shadow, where the book sits
-    in it), the flat pictures, the numbers. The template is shown with the newest book's pictures."""
+    in it), the flat pictures (slide 7's looks among them, each with its name), the numbers ({looks} — how many looks).
+    The template is shown with the newest book's pictures (its looks — the newest book's that has them)."""
     set_id = where if not store.is_plain(where) else store.newest_set()
     if not set_id:
-        return {"set": None, "books": {}, "pictures": {}, "numbers": dict(store.NUMBERS)}
+        return {"set": None, "books": {}, "pictures": {}, "numbers": {**store.NUMBERS, "looks": len(store.HERO_SLOTS)}}
     rec = store.read_set(set_id)
     books = {slot: {**info, "src": _url(set_id, "books", f"{store.slot_file(slot)}.png"),
                     "shadow": _url(set_id, "books", f"{store.slot_file(slot)}_shadow.png")}
              for slot, info in rec.get("books", {}).items()}
-    pictures = {slot: {**info, "src": _url(set_id, "pictures", f"{slot}.png")}
+    pictures = {slot: {**info, "src": _url(set_id, "pictures", f"{store.slot_file(slot)}.png")}
                 for slot, info in rec.get("pictures", {}).items()}
+    looks = sum(1 for s in store.HERO_SLOTS if s in pictures)
+    if store.is_plain(where) and not looks:
+        other = next((r for r in store.list_sets() if any(s in (r.get("pictures") or {}) for s in store.HERO_SLOTS)), None)
+        if other:
+            pictures.update({slot: {**other["pictures"][slot], "src": _url(other["id"], "pictures", f"{store.slot_file(slot)}.png")}
+                             for slot in store.HERO_SLOTS if slot in other["pictures"]})
+            looks = sum(1 for s in store.HERO_SLOTS if s in pictures)
     return {"set": set_id, "name": rec.get("name"), "books": books, "pictures": pictures,
-            "numbers": {**store.NUMBERS, **(rec.get("numbers") or {})}}
+            "numbers": {**store.NUMBERS, **(rec.get("numbers") or {}),
+                        "looks": looks or (len(store.HERO_SLOTS) if store.is_plain(where) else 0)}}
 
 
 def _view(where: str) -> dict:
+    work.sync_heroes(where)   # looks made after the slides: slide 7 takes them now
     rec = store.read_set(where) if not store.is_plain(where) else None
     busy = jobs.running(EXCLUSIVE)
     key = (rec or {}).get("scheme") or ("" if rec else (store.scheme_of(where) or store.default_scheme()))
@@ -56,12 +66,17 @@ def _view(where: str) -> dict:
         "scheme": {"key": key, "name": store.scheme_name(key) if key and not key.startswith(store.BOOK_PRESET) else
                    (key[len(store.BOOK_PRESET):] if key else "")},
         "numbers": {**store.NUMBERS, **((rec or {}).get("numbers") or {})},
-        "slides": [{"id": s, "title": work.title(s)} for s in store.SLIDES],
+        "slides": [{"id": s, "title": work.title(s)} for s in store.shown(where, rec)],
         "pictures": work.pictures(rec) if rec else [],
-        "slots": [{"slot": s, "label": store.SLOT_LABEL[s], "kind": "book" if s in store.BOOK_SLOTS else "picture"}
-                  for s in store.BOOK_SLOTS + store.PICTURE_SLOTS],
+        "slots": [{"slot": s, "label": _slot_label(s, rec), "kind": "book" if s in store.BOOK_SLOTS else "picture"}
+                  for s in store.BOOK_SLOTS + store.PICTURE_SLOTS + store.HERO_SLOTS],
         "sig": store.sig(where), "jobId": busy.id if busy else None,
     }
+
+
+def _slot_label(slot: str, rec: dict | None) -> str:
+    label = ((rec or {}).get("pictures", {}).get(slot) or {}).get("label")
+    return f"{store.SLOT_LABEL[slot]} · {label}" if label else store.SLOT_LABEL[slot]
 
 
 @route("GET", "/api/slides/state")
@@ -255,7 +270,7 @@ def _bake(req: Request):
     where = _where(req, body)
     if store.is_plain(where):
         raise ApiError("Запікаються слайди книги, не шаблон.")
-    slides = [_slide(s) for s in body.get("slides") or store.SLIDES]
+    slides = [_slide(s) for s in body.get("slides") or store.shown(where)]
     rec = store.read_set(where)
     if not Path(rec.get("folder") or "").is_dir():
         raise ApiError("Папки цієї книги вже немає — слайди нікуди зберегти.")
@@ -273,7 +288,7 @@ def _baked(where: str, slide: str) -> Path:
     return path
 
 
-@route("GET", r"/media/slides/out/([^/]+)/(slide[1-6])", auth="media")
+@route("GET", r"/media/slides/out/([^/]+)/(slide[1-7])", auth="media")
 def _out(req: Request):
     path = _baked(store.valid_where(req.groups[0]), req.groups[1])
     return file_response(images.preview(path, req.int_param("w", 480, 64, 4096)), "image/jpeg", cache="private, max-age=600")

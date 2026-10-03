@@ -1,4 +1,4 @@
-// «Книги» (2026-09-30, wiki/plans/ui-redesign.md): every book in one place — the ones being made (the Workshop), the
+// «Книги» (2026-09-30, wiki/decisions.md): every book in one place — the ones being made (the Workshop), the
 // finished ones of the shop's listings (the library) and the archive — the owner's own words as the tabs — instead of two galleries in two modes. The galleries themselves
 // are the Workshop's and the library's own pages, drawn here without their heads (`embedded`); a tab only swaps them.
 import { api, html, setHtml, on, segHtml, setSeg, syncSeg, plural, remembered, remember } from '../lib.js';

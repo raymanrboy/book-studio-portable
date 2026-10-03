@@ -3,6 +3,8 @@
     make_books(folder) → three books in different states:
       40.moonlit-garden-lullaby  Tier H: formula, hero (canonical.png), story, text — prompts not yet;
                                  a hero variant G2_brunette (its hero prompt, swap prompts for spreads 3 and 4);
+                                 four looks with their hero.png (G3_blond, G4_east_asian, G5_redhead, G6_afro) —
+                                 the listing slide 7's frames;
                                  the photo mockups' references in mockups/ (Cover 1, Cover & Open 1, the Canva cover)
       41.little-lamb-prayers     Tier S: everything to the prompts (the cover's too), 5 of 16 rows in pictures/,
                                  Canva ticked
@@ -98,6 +100,25 @@ PHOTO_TEMPLATES = {
 }
 
 
+def hero_png(path: Path, hair: tuple[int, int, int], skin: tuple[int, int, int] = (246, 214, 190)) -> Path:
+    """A made-up look of the hero: a toddler drawn in a few shapes on a white page, 2:3 (as Gemini gives them)."""
+    from PIL import Image, ImageDraw
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im = Image.new("RGB", (400, 600), (253, 253, 251))
+    d = ImageDraw.Draw(im)
+    d.ellipse((120, 560, 280, 590), fill=(236, 214, 196))                       # the floor's shadow
+    d.rounded_rectangle((135, 250, 265, 470), 30, fill=(236, 150, 60), outline=(120, 70, 40), width=4)   # overalls
+    d.rectangle((150, 470, 190, 560), fill=(236, 150, 60), outline=(120, 70, 40), width=4)
+    d.rectangle((210, 470, 250, 560), fill=(236, 150, 60), outline=(120, 70, 40), width=4)
+    d.ellipse((115, 70, 285, 250), fill=skin, outline=(120, 70, 40), width=4)    # the head
+    d.chord((105, 50, 295, 200), 180, 360, fill=hair, outline=(120, 70, 40), width=4)
+    for x in (170, 230):
+        d.ellipse((x - 9, 150, x + 9, 172), fill=(60, 40, 30))
+    d.arc((175, 170, 225, 210), 20, 160, fill=(150, 60, 50), width=4)
+    im.save(path)
+    return path
+
+
 def make_photo_templates(folder: Path) -> Path:
     folder = Path(folder)
     for key, shots in PHOTO_TEMPLATES.items():
@@ -128,6 +149,10 @@ def make_books(folder: Path) -> Path:
         (v / f"{n}.json").write_text(json.dumps({"edit_target": f"{n}.png", "character_reference": "hero.png",
                                                  "prompt": "Replace only the main toddler with the one from Image 2."}, indent=2),
                                      encoding="utf-8")
+
+    for name, hair in (("G3_blond", (232, 196, 110)), ("G4_east_asian", (35, 30, 30)), ("G6_afro", (60, 40, 30)),
+                       ("G5_redhead", (214, 90, 40))):
+        hero_png(h / "variants" / name / "hero.png", hair)
 
     m = folder / "40.moonlit-garden-lullaby" / "mockups"   # what the Mockups leave: the photo mockups' references
     book_shot(m / "1. Cover 1.png", (800, 600), (225, 225, 230), [(250, 110, 550, 490)], (70, 90, 150))

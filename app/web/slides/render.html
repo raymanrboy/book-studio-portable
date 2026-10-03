@@ -15,7 +15,7 @@ const q = new URLSearchParams(location.search);
 const get = (path) => fetch(`${path}?${new URLSearchParams({ w: q.get('w') || 'template', s: q.get('s') || '', t: q.get('t') || '' })}`, { cache: 'no-store' })
   .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
 const [{ scene }, assets] = await Promise.all([get('/media/slides/scene'), get('/media/slides/assets'), ready()]);
-setAssets(assets);
+setAssets({ ...assets, bake: true });   // a slide 7 frame with no look leaves no mark
 drawScene(scene, document.getElementById('stage'));
 </script>
 </body></html>

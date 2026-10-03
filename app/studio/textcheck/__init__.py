@@ -3,7 +3,7 @@ reads every page of the Canva export, and the program compares what is printed w
 the book's texts from the library with the child's name, the dedication and who the book is from.
 
 Two passes (the scheme that found every planted mistake on the owner's own Canva pages without a false
-alarm, 19.09.2026 — wiki/plans/roadmap.md):
+alarm, 19.09.2026 — wiki/features/text-check.md):
   read   the story pages are copied blind, only their first lines — enough to learn which pages carry
          text and which library text each one is (a Printify book lacks three spreads, a 28-page
          Gelato book one);

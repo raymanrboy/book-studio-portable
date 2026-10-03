@@ -4,6 +4,7 @@ page offers the next step, the listing slides; I press it and they are made by t
 """
 from __future__ import annotations
 
+import re
 import time
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from . import bake, cutout, store
 TITLES = {  # what the rows say while the six are drawn
     "slide1": "Made just for them", "slide2": "Choose your format", "slide3": "Dedication & afterword",
     "slide4": "Unique little poems", "slide5": "Personalization made simple", "slide6": "Thank you",
+    "slide7": "Appearance options",
 }
 
 
@@ -52,7 +54,7 @@ def slots_of(found: dict[str, list[Path]]) -> dict[str, Path]:
 
 
 def rows(states: dict[str, str]) -> list[dict]:
-    return [{"slide": s, "title": title(s), "state": states.get(s, "wait")} for s in store.SLIDES]
+    return [{"slide": s, "title": title(s), "state": states.get(s, "wait")} for s in states]
 
 
 def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Path | None, numbers: dict,
@@ -95,9 +97,11 @@ def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Pat
     page30 = page30 if page30 and page30.is_file() else _book_page30(book)
     if page30:
         store.put_picture(rec, "page30", page30)
+    if book:
+        put_heroes(rec, book)
     store.write_set(rec)
     store.forget_old_sets()
-    baked = bake_set(job, rec, store.SLIDES, base, token, states)
+    baked = bake_set(job, rec, store.shown(rec["id"], rec), base, token, states)
     if book:
         _tick(book)
     missing = [store.SLOT_LABEL[s] for s in store.BOOK_SLOTS + store.PICTURE_SLOTS
@@ -115,6 +119,68 @@ def _book_page30(book: str | None) -> Path | None:
     except Exception:
         return None
     return next((p for p in sorted(pictures.glob("30.*")) if p.suffix.lower() in core.IMAGE_EXTS), None)
+
+
+_LOOK = re.compile(r"^([A-Za-z]{1,3})(\d{1,3})")
+
+
+def looks(book: str) -> list[tuple[str, Path]]:
+    """The hero's looks of a Workshop book — agent/variants/<B2_blond>/hero.png (saved by the Workshop), by their names'
+    numbers: [(«B2», the picture), …], at most seven (slide 7's frames)."""
+    from ..workshop.rows import variant_names
+    try:
+        folder = store.book_folder(book)
+    except Exception:
+        return []
+    out = []
+    for name in variant_names(folder):
+        hero = folder / "agent" / "variants" / name / "hero.png"
+        if hero.is_file():
+            m = _LOOK.match(name)
+            out.append(((m.group(1).upper(), int(m.group(2))) if m else (name, 0), m.group(0).upper() if m else name, hero))
+    out.sort(key=lambda x: x[0])
+    return [(label, hero) for _, label, hero in out[:len(store.HERO_SLOTS)]]
+
+
+def _looks_sig(found: list[tuple[str, Path]]) -> str:
+    stamps = []
+    for label, hero in found:
+        try:
+            stamps.append(f"{label}:{hero.parent.name}:{hero.stat().st_mtime_ns}")
+        except OSError:
+            pass
+    return "|".join(stamps)
+
+
+def put_heroes(rec: dict, book: str) -> bool:
+    """The hero's looks into slide 7's frames (hero:1 … hero:7), each on its own white background — no cutting (the owner,
+    2026-10-02: "it can stay with its white background"). Returns whether anything changed."""
+    found = looks(book)
+    sig = _looks_sig(found)
+    if rec.get("looks") == sig and all(s in rec.get("pictures", {}) for s in store.HERO_SLOTS[:len(found)]):
+        return False
+    pictures = rec.setdefault("pictures", {})
+    for slot in store.HERO_SLOTS:
+        pictures.pop(slot, None)
+        (store.set_dir(rec["id"]) / "pictures" / f"{store.slot_file(slot)}.png").unlink(missing_ok=True)
+    for slot, (label, hero) in zip(store.HERO_SLOTS, found):
+        store.put_picture(rec, slot, hero, name=f"{hero.parent.name}/hero.png")
+        pictures[slot]["label"] = label
+    rec["looks"] = sig
+    return True
+
+
+def sync_heroes(where: str) -> None:
+    """A Workshop book's looks made (or changed) after its slides: slide 7 takes them when the slides are opened."""
+    if not store.is_book(where):
+        return
+    try:
+        rec = store.read_set(where)
+        if put_heroes(rec, where):
+            store.write_set(rec)
+            core.log.info("Slides: the hero's looks of %s put on slide 7", where)
+    except Exception:
+        core.log.warning("Slides: the hero's looks of %s not taken", where, exc_info=True)
 
 
 def _tick(book: str) -> None:
@@ -157,7 +223,7 @@ def bake_set(job: Job, rec: dict, slides: list[str], base: str, token: str, stat
 def pictures(rec: dict) -> list[dict]:
     """The baked slides that are in the owner's folder, in order: {slide, name, v} (v — changes with the file)."""
     out = []
-    for slide in store.SLIDES:
+    for slide in store.shown(rec["id"], rec) if rec.get("id") else store.SLIDES:
         path = Path(rec.get("baked", {}).get(slide) or "")
         if path.name and path.is_file():
             out.append({"slide": slide, "name": path.name, "v": path.stat().st_mtime_ns})

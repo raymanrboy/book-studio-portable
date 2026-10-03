@@ -1,4 +1,4 @@
-// One book on a shelf (2026-09-30, late — wiki/plans/ui-redesign.md, «one book, one language»): the library's tile and
+// One book on a shelf (2026-09-30, late — wiki/decisions.md, «one book, one language»): the library's tile and
 // the Workshop's card were two components for the same object. Now both are this: a square cover (the book's face), its
 // title, one quiet line under it, a bar of segments and — only where it has something to say — a line for what is next.
 import { html, ic } from './lib.js';

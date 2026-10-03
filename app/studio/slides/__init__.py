@@ -12,6 +12,6 @@ Nothing here runs at launch: no timers, no browser, no psd_tools until a picture
     bake.py     headless Edge draws web/slides/render.html at 2000×2000
     routes.py   the routes
 
-How it works: wiki/features/slides.md; the plan and its history: wiki/plans/listing-pictures.md.
+How it works: wiki/features/slides.md.
 """
 from . import routes  # noqa: F401  (registers the routes)

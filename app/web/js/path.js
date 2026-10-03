@@ -1,4 +1,4 @@
-// An object's path (2026-09-30, wiki/plans/ui-redesign.md): where an order or a book is and what comes next, drawn
+// An object's path (2026-09-30, wiki/decisions.md): where an order or a book is and what comes next, drawn
 // the one way — a strip of squares, ✓ done, half-filled started, dashed skipped, the next one breathing, red where
 // something is wrong. A step is `{key, label, state: 'done'|'part'|'todo'|'skip', icon?, thumb?, count?, tip?, nogo?}`;
 // the first step not done is the next. With `icon` the square shows the step's picture instead of its number and the

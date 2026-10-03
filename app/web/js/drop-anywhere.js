@@ -1,4 +1,4 @@
-// Files dropped anywhere in the window (2026-09-30, wiki/plans/ui-waves.md, wave 8): a drop on a page's own folder field
+// Files dropped anywhere in the window (2026-09-30, wiki/decisions.md): a drop on a page's own folder field
 // is that page's (`wireFolderDrop()`); a drop anywhere else used to do nothing — or let the browser open the file in place of
 // the program. Now: the page in view may take it (`bs:dropped`); otherwise one question — «Куди?» — with the two places a
 // Canva ZIP or a book folder goes, and the files are handed to the one chosen. The program never chooses for the owner and

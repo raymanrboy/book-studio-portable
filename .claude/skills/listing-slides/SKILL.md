@@ -27,7 +27,7 @@ Workshop books first (`25.sleepy-trucks-bedtime  №25 Sleepy trucks bedtime  <i
 numbers: …`), then older sets by time. "The slides" = the book he names («№25», «сонні вантажівки»), else the newest.
 "For all new books" / «шаблон» / the default scheme = `template` (it edits the default scheme in place).
 
-Slides are `slide1 … slide6`:
+Slides are `slide1 … slide6` (+ `slide7` for a book whose hero has looks):
 
 | № | What's on it |
 |---|---|
@@ -37,6 +37,7 @@ Slides are `slide1 … slide6`:
 | 4 | Unique little poems — two Open 1 spreads, «{poems} unique little poems» sticker |
 | 5 | Personalization made simple — one Open 2, two step cards |
 | 6 | Thank you for shopping small — one Open 2, a heart with a thumbs-up |
+| 7 | Appearance options — **only a book whose hero has looks** (2+ `agent/variants/*/hero.png`): «{looks} appearance options» sticker, the big look `hero:1`, six scalloped frames `hero:2…7`, each with its name («B2») |
 
 ```
 python app/tools/slides.py path slide3 --set <id|template>
@@ -70,8 +71,9 @@ Every element may have: `name`, `x`, `y`, `rot`, `flipX` / `flipY` (mirror ↔ /
 | `type` | Fields (default) |
 |---|---|
 | `book` | `slot` — which mockup: `open1:1…4`, `open2:1…2`, `cover`; `w` width (height follows the book); `bake` — the shadow from Photoshop (0.6); `shadow` — the extra soft lift (0.18) |
-| `image` | `slot`: `dedication` or `page30`; `w`, `h`; `shape: "scallop"` (a wavy die-cut frame) with `bumps` (10), `depth` (0.07); `rim` — white edge px; `shadow: false` turns its shadow off |
-| `text` | `text` (`\n` = new line; `{pages}` / `{poems}` = the book's numbers); `size` letter size; `w` frame width; `lh` line height (1.18); `align` left/center/right; `color` (#fff); `tshadow` text shadow (0.7); `arc` degrees the line bends (+ arch ∩, − smile ∪, 0 straight); `font: "sans"` for plain Segoe UI (else Comica, capitals, stretched 1.32×) |
+| `image` | `slot`: `dedication`, `page30` or a look `hero:1…7`; `w`, `h`; `shape: "scallop"` (a wavy die-cut frame, «зірочка») with `bumps` (10), `depth` (0.07); `rim` — white edge px; `shadow: false` turns its shadow off; `zoom` (1–3) and `fy` (0 top … 1 bottom) — what the frame shows; a look's caption: `labelText` (own text, `
+` lines, `{name}` = the look's name; none — just the name), `label` below/above/none, `labelSize` (46), `labelGap` (14), `labelColor` (#3b2a1e); a look's frame with no look is left out of the bake |
+| `text` | `text` (`\n` = new line; `{pages}` / `{poems}` = the book's numbers, `{looks}` = how many looks the hero has); `size` letter size; `w` frame width; `lh` line height (1.18); `align` left/center/right; `color` (#fff); `tshadow` text shadow (0.7); `arc` degrees the line bends (+ arch ∩, − smile ∪, 0 straight); `font: "sans"` for plain Segoe UI (else Comica, capitals, stretched 1.32×) |
 | `sticker` | scalloped die-cut badge: `r` radius; `color`; `lines: [{"t": "24", "k": 2.5}, {"t": "unique"}, …]` — `k` makes a line bigger; text fits itself evenly; `pad` margin (0.22); `tape: [dx, angle]` washi tape (omit = none); `bumps` (14); `tshadow` |
 | `ribbon` | bookmark with a V-notch: `w`, `h`, `color`, `lines` (as sticker), `pad` (0.16), `rim` (7), `notch` (0.13), `tshadow` |
 | `arrow` | `pts` — first and last point (in a `w0`×`h0` box, stretched to `w`×`h`); `bow` arc (−0.5…0.5, sign = side); `loop` round loop size (0 = none), `loopAt` where (0–1, 0.45), `loopDir` 1/−1; `sw` line width (7); `solid: true` sharp filled head; `color` (#6b3a3a); `tshadow` (0.45) |

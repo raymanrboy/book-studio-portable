@@ -2,7 +2,7 @@
 slides (its set).
 
     app/studio/slides/design/slideN.json   the design as first drawn (in git) — the last «Скинути» goes back to it
-    app/data/slides/schemes/<key>/         a scheme: scheme.json (name, default) + slide1…6.json — "not only the colours
+    app/data/slides/schemes/<key>/         a scheme: scheme.json (name, default) + slide1…7.json — "not only the colours
                                            but the settings of the whole mockup" (the owner, 29.09.2026): Nature (the
                                            default), Night, and whatever the owner saves from the editor
     pipeline/books/<n>.<slug>/mockups/slides/   a Workshop book's slides (since 29.09.2026 — "tied to the book in the
@@ -14,6 +14,9 @@ A scene is {id, title, bg, items[]} — every element with its kind, its centre 
 and angle (wiki/features/slides.md). A book on a slide names its *slot* (which mockup: open1:1…4, open2:1…2, cover),
 a flat picture its slot too (dedication, page30): the same six drawings serve every book, each set says which
 pictures fill the slots. «template» — where the default scheme is edited in place.
+
+Slide 7 — the hero's looks (the owner, 2026-10-02): only for a book whose hero has variants (agent/variants/<B2_blond>/
+hero.png); each look in its own frame, hero:1 … hero:7, on its own white background, its name («B2») under it.
 
 Every save carries the version the editor started from: a scene changed on disk meanwhile (the agent, working on
 the same slide) is never overwritten — the editor takes the new one (the owner, 29.09.2026: "sometimes it will be
@@ -31,7 +34,8 @@ from pathlib import Path
 
 from .. import core
 
-SLIDES = [f"slide{n}" for n in range(1, 7)]
+SLIDES = [f"slide{n}" for n in range(1, 8)]
+LOOKS_SLIDE = "slide7"                      # the hero's looks: shown only for a book with two looks or more (2026-10-02)
 FACTORY = Path(__file__).with_name("design")
 ROOT = core.data_path("slides")
 DESIGN = ROOT / "design"                    # the template before schemes (29.09.2026) — becomes the scheme Nature
@@ -47,10 +51,11 @@ BOOK_PRESET = "book:"                       # a Workshop book's slides offered a
 # The mockups a book's slides hold, in the order they are filled (the Mockups' picks order)
 BOOK_SLOTS = ["open1:1", "open1:2", "open1:3", "open1:4", "open2:1", "open2:2", "cover"]
 PICTURE_SLOTS = ["dedication", "page30"]
+HERO_SLOTS = [f"hero:{n}" for n in range(1, 8)]   # the hero's looks on slide 7, in the order of their names
 SLOT_KIND = {"open1": "open1", "open2": "open2", "cover": "cover1"}
 SLOT_LABEL = {"open1:1": "Open 1 · 1", "open1:2": "Open 1 · 2", "open1:3": "Open 1 · 3", "open1:4": "Open 1 · 4",
               "open2:1": "Open 2 · 1", "open2:2": "Open 2 · 2", "cover": "Cover 1",
-              "dedication": "Dedication", "page30": "Сторінка 30"}
+              "dedication": "Dedication", "page30": "Сторінка 30", **{s: f"Герой {s[5:]}" for s in HERO_SLOTS}}
 NUMBERS = {"pages": 24, "poems": 11}        # «24 unique pages», «11 unique little poems» (the owner, 29.09.2026)
 
 KINDS = ("blob", "grain", "band", "book", "dashes", "leaves", "sticker", "sparkle", "text", "arrow", "image",
@@ -76,6 +81,7 @@ def _read(path: Path) -> dict | None:
 def ensure_schemes() -> None:
     """The first scheme, Nature, is the template as it was — made once, from the owner's template if there is one."""
     if SCHEMES.is_dir() and any(SCHEMES.glob("*/scheme.json")):
+        _new_slides()
         return
     target = SCHEMES / "nature"
     target.mkdir(parents=True, exist_ok=True)
@@ -84,6 +90,35 @@ def ensure_schemes() -> None:
         shutil.copyfile(src if src.is_file() else FACTORY / f"{slide}.json", target / f"{slide}.json")
     core.write_json(target / "scheme.json", {"name": "Nature", "default": True, "saved": core.now_iso(),
                                              "from": "the template"}, backup=False)
+
+
+def _recoloured(slide: str, folder: Path) -> dict:
+    """A slide the scheme never had (slide 7, 2026-10-02), in the scheme's colours: drawn on slide 4, so the colours slide
+    4 has in the first design are swapped for the ones it has in this scheme (Night's slide 7 comes out blue)."""
+    first, mine = factory("slide4"), _read(folder / "slide4.json") or {}
+    swap = {str(first.get("bg")).lower(): mine.get("bg")} if mine.get("bg") else {}
+    named = {e.get("name"): e for e in mine.get("items") or [] if isinstance(e, dict)}
+    for e in first["items"]:
+        twin = named.get(e.get("name")) or {}
+        for k in ("color", "textColor"):
+            if isinstance(e.get(k), str) and isinstance(twin.get(k), str):
+                swap.setdefault(e[k].lower(), twin[k])
+    scene = factory(slide)
+    if isinstance(scene.get("bg"), str):
+        scene["bg"] = swap.get(scene["bg"].lower(), scene["bg"])
+    for e in scene["items"]:
+        for k in ("color", "textColor"):
+            if isinstance(e.get(k), str):
+                e[k] = swap.get(e[k].lower(), e[k])
+    return scene
+
+
+def _new_slides() -> None:
+    for meta in SCHEMES.glob("*/scheme.json"):
+        for slide in SLIDES:
+            path = meta.parent / f"{slide}.json"
+            if not path.exists():
+                core.write_json(path, {**_recoloured(slide, meta.parent), "id": slide}, backup=False)
 
 
 def list_schemes() -> list[dict]:
@@ -223,6 +258,15 @@ def valid_where(where: str) -> str:
     if not (set_dir(where) / "set.json").is_file():
         raise _fail("Слайдів цієї книги вже немає.", 404)
     return where
+
+
+def shown(where: str, rec: dict | None = None) -> list[str]:
+    """The slides these are: a scheme has all seven; a book's — slide 7 only when its hero has two looks or more."""
+    if is_plain(where):
+        return list(SLIDES)
+    rec = rec if rec is not None else read_set(where)
+    looks = sum(1 for s in HERO_SLOTS if s in (rec.get("pictures") or {}))
+    return [s for s in SLIDES if s != LOOKS_SLIDE or looks >= 2]
 
 
 def valid_slide(slide: str) -> str:
@@ -476,8 +520,8 @@ def put_picture(rec: dict, slot: str, source, name: str = "", cut: bool = False)
     im = im.convert("RGBA") if im.mode in ("RGBA", "LA", "P") else im.convert("RGB")
     if max(im.size) > PICTURE_MAX:
         im.thumbnail((PICTURE_MAX, PICTURE_MAX), Image.LANCZOS)
-    im.save(pictures / f"{slot}.png", compress_level=3)
-    rec["pictures"][slot] = {"source": label, **({"cut": True} if cut else {})}
+    im.save(pictures / f"{slot_file(slot)}.png", compress_level=3)
+    rec["pictures"][slot] = {"source": label, "aspect": round(im.height / im.width, 4), **({"cut": True} if cut else {})}
 
 
 def delete_set(set_id: str) -> None:

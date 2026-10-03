@@ -375,7 +375,7 @@ def _retire_all(book: Path, folder: Path, stem: str, exts: tuple[str, ...] = cor
 # after the numbered ones. A number belongs to its file — a missing one leaves a gap, nothing moves up.
 ETSY_ORDER = {"photo-main": 1, "video-hands": 2, "photo-grandma": 3, "listing 1": 5, "photo-open-book": 6,
               "listing 3": 7, "listing 4": 8, "photo-child": 9, "listing 2": 10, "photo-size": 11, "listing 5": 12,
-              "listing 6": 13, "photo-shelf": 14}
+              "listing 6": 13, "photo-shelf": 14, "listing 7": 15}   # 7 — the hero's looks (2026-10-02), last for now
 ETSY_SCENES = {"all & open 1": 4, "cover & open 1": 6}   # by the start of the name: «All & Open 1 (8-9).png»
 OPEN_BOOK = "photo-open-book"   # when there is one, it takes Cover & Open 1's place: that mockup stays in mockups/ only
 _NUMBERED = re.compile(r"^(\d{2}) (.+)$")
