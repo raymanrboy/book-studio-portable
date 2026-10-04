@@ -525,7 +525,8 @@ def put_picture(rec: dict, slot: str, source, name: str = "", cut: bool = False)
 
 def delete_set(set_id: str) -> None:
     if re.fullmatch(SET_ID, set_id) and set_dir(set_id).is_dir():
-        shutil.rmtree(set_dir(set_id), ignore_errors=True)
+        from .. import desktop
+        desktop.to_recycle_bin(set_dir(set_id))        # the owner's work: restorable from the Recycle Bin, never deleted for good
 
 
 def forget_old_sets(keep: int = 12) -> None:

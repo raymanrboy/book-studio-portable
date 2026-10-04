@@ -1204,3 +1204,10 @@ The owner: «створи окремий приватний репозиторі
 ## The repository is self-sufficient (2026-10-04)
 
 The owner: the plan, the launchers and the wiki must live in the repository, so that it alone is enough. `ROADMAP.md` and `portable/` (the three `.bat` and `ПРОЧИТАЙ.md`) are in the repository root; the files in the portable root are copies laid out by `app/tools/setup_portable.py`, which also builds a new portable folder from a clone (launchers, an empty `runtime/` with a note, a copy of the PC's Python with pip, the shortcut) and names what is still missing. `runtime/` itself (Python, ffmpeg, Photoshop, templates, Antigravity) and the owner's data stay out of git — size, licences, privacy; [how to restore them](dev/portable-setup.md). How to apply: change a launcher or the note in `portable/`, then run the script; the colleague build takes the launchers from `portable/` and writes its own note and no roadmap.
+
+## Nothing the owner's data holds is lost by one bad write (2026-10-04)
+
+The owner, after the accident with the made-up data: precautions so that data is not overwritten and what is deleted goes only to the Recycle Bin, so that it can always
+be restored. Done as layers ([data safety](architecture/data-safety.md)): a history of every write of the important files, a daily snapshot, a guard that keeps the send
+journal add-only, tests and the preview unable to reach the real data, the owner's slide sets to the Recycle Bin, and `tools/data_history.py` to put a version back. How to apply:
+a new file that holds the owner's work gets a rule in `core.HISTORY_RULES`; a new deletion of something he made uses `desktop.to_recycle_bin()`.

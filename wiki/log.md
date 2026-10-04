@@ -7,6 +7,19 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - `make_shortcut.py` in the portable copy also writes `Book Studio.lnk` into the portable folder itself (and `Book Studio Portable.lnk` on the desktop). The `.bat` files, `ROADMAP.md` and `ПРОЧИТАЙ.md` in the folder's root are hidden (the owner: he only needs a shortcut); `ПРОЧИТАЙ.md` says how to show them and what to do after the folder is moved.
 
+## [2026-10-04] update | Data safety: history of writes, a daily snapshot, guards, the Recycle Bin, a restore tool
+
+- `core.keep_history()` (every write of the important files keeps the old version, the last 20), `core.daily_snapshot()` (14 days), `records.DataGuard` (the send journal only grows; the snapshot does not collapse), `studio.core` refuses to run under `unittest` on the real data, the owner's slide sets go to the Recycle Bin, `tools/data_history.py list|restore`. 582 tests. See [data safety](architecture/data-safety.md).
+
+## [2026-10-04] fix | The open Cloudflare link is shown in the order card (properly) — and an accident with the made-up data
+
+- The owner reopened an order with the Gelato link still open and saw nothing: the first version kept the link in the page's memory and showed it only in the print step. Now `archive.card_facts()` returns `links` from the open tunnels; the card shows a strip with the countdown and a close button on every step (test in `test_archive.py`; seen in the preview on a pretend link, the close button too).
+- **Accident:** a wrapper script that imported `studio` before naming the made-up data folder made `tools/sample_data.seed()` write into the REAL portable data — `profit/snapshot.json` and `profit/print-orders.json` were overwritten with made-up ones. Restored the same minutes from their `.bak` copies (98 receipts, 25 sends) and the 13:16 send (receipt 4193126506) re-added from its archive entry; the made-up files are in `app/data/merge-backup/…-sample-overwrite`. Nothing else was touched (checked: no other file changed). Now `seed()` refuses unless `studio.core` points at the made-up folder (`test_sample_guard.py`). Rule: never start the sample server any other way than `tools/dev_server.py` (or set `BOOK_STUDIO_DATA` and `BOOK_STUDIO_SAMPLE` before the first `import studio`).
+
+## [2026-10-04] data | The ordinary program's last night merged into the portable data
+
+- Both programs had been used on the night of 03–04.10 and their data had parted: the portable had two archive entries (00:29, 00:37) the ordinary lacked, the ordinary one (02:41) the portable lacked. Merged by hand, once, with a copy first (`app/data/merge-backup/<time>/`): `profit/print-orders.json` as the union (23 + 24 → 25, no conflicting entry), the missing archive entry and its send journal copied in. Settings were equal but for the Upscayl path; the keys were not compared. Nothing was removed from either side. After this the ordinary program is not to be used for orders.
+
 ## [2026-10-04] update | The colleague's folder looks like the owner's
 
 - The colleague build starts with `Start Book Studio.bat` and the note visible. The first start makes `Book Studio.lnk` (here and on the desktop) and hides the launchers and the note (`make_shortcut.py --tidy`, `tidy()`): afterwards the folder shows only the shortcut, `Book Studio/` and `runtime/` — as the owner's. A shortcut made at build time could not be shipped: it holds an absolute path and an icon path of the place it was made.

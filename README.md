@@ -18,3 +18,4 @@ wiki/      knowledge base
 ```
 
 Tests: `cd app && python -m unittest discover -s tests` · wiki check: `python app/tools/wiki_check.py`
+Data safety (history of every write, a daily snapshot, `python app/tools/data_history.py` to put a version back): [wiki/architecture/data-safety.md](wiki/architecture/data-safety.md)

@@ -87,6 +87,12 @@ def _gelato(rid: int, status: str, carrier: str = "", tracking: str = "") -> dic
 
 def seed(data: Path) -> None:
     from studio import core, records, sync  # imported after BOOK_STUDIO_DATA is set
+    # The seed writes orders, books and archive entries: never into a data folder that is not this tool's own. `studio.core` fixes its folder
+    # when it is first imported — if something imported it before BOOK_STUDIO_DATA was set (a wrapper script, 04.10.2026), the made-up orders
+    # would land in the real data and overwrite the owner's snapshot and send journal.
+    if core.DATA_DIR != Path(data).resolve() or not core.SAMPLE:
+        raise SystemExit(f"Відмова: studio.core працює з {core.DATA_DIR}, а не з тимчасовою {data} (або не в режимі SAMPLE). "
+                         "Нічого не записано. Запускайте tools/dev_server.py напряму.")
 
     hard, soft = "Hardcover 8&quot; x 8&quot;", "Softcover 8&quot; x 8&quot;"
     receipts = [

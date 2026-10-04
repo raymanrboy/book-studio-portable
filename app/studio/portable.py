@@ -185,7 +185,7 @@ def startup_report() -> tuple[str, bool] | None:
 
 # ---------------------------------------------------------------- the folder moved: paths inside the data follow it
 
-_SKIP_DATA = ("logs", "tmp", "cache", "window-profile", "import-backup", "rebase-backup", "recycle-bin")
+_SKIP_DATA = ("logs", "tmp", "cache", "window-profile", "import-backup", "rebase-backup", "recycle-bin", "history", "merge-backup")
 _REPO_PATH = re.compile(r'([A-Za-z]:(?:\\\\[^"\\]+)+?)(?=\\\\(?:pipeline\\\\books|app\\\\data|wiki)\\\\)')   # inside JSON text
 
 

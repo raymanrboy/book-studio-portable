@@ -41,3 +41,11 @@ pipeline/books/
 /.claude/skills/ux-heuristics/
 /.claude/skills/cognitive-load-audit/
 /.claude/skills/laws-of-ux/
+# Archives and key files that must never be committed by accident (the backups, an exported settings file, a plain keys file)
+*.7z
+*.7z.part
+Ключі*.json
+Налаштування*.json
+.env
+.env.*
+*.dpapi

@@ -100,6 +100,7 @@ export async function mountCard(view, rid) {
       <div id="oc-plan"></div>
     </div>
     <div class="ord-path-slot" id="oc-path"></div>
+    <div id="oc-link"></div>
     ${o.stage !== 'new' ? printedHtml() : ''}
     <div class="ord-grid">
       <div class="stack-l" id="oc-flow"></div>
@@ -468,6 +469,24 @@ export async function mountCard(view, rid) {
       ? ib('checkCircle', 'Завершити роботу над замовленням', 'data-act="finish"', { cls: 'sm' }) : '');
   }
 
+  // The temporary link to this order's files for Gelato (a Cloudflare tunnel) is still open: said here, at the top, whatever the step —
+  // also after «Завершити» and when the card is opened again (the server knows: `links`, from the archive's sends and the open
+  // tunnels; the owner, 04.10.2026 — Gelato may still be fetching the PDFs). The print step's own green card, when it is on screen, says it too.
+  let stopPlaque = () => {};
+  let plaqueR = null;                                  // the one countdown of this link: a redraw must not start it over
+  function renderLink() {
+    stopPlaque();
+    const slot = $('#oc-link');
+    const link = (o.links || [])[0];
+    if (!slot) return;
+    if (!link || $('#oc-print .result-card')) { setHtml(slot, ''); return; }
+    if (!plaqueR || plaqueR.orderId !== link.orderId) plaqueR = { orderId: link.orderId, keepAliveSeconds: link.secondsLeft };
+    setHtml(slot, html`<div class="notice notice-success">${ic('link')}<div class="grow">Тимчасове посилання на файли для Gelato ще працює —
+      <b class="num" data-countdown>--:--</b>. Gelato забирає файли сам, зазвичай за хвилину.</div>
+      ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="link-close"', { cls: 'sm' })}</div>`);
+    stopPlaque = runCountdown(slot, plaqueR, () => { o.links = []; setHtml(slot, ''); });
+  }
+
   // The flow is redrawn in place (patch()): a card whose markup didn't change stays, and a changed one keeps every
   // picture it already showed — after a replaced page only that page loads, and the strip stays where it was (the
   // whole flow was redrawn, every picture faded in again and the strip jumped back to the first spread, 26.09.2026).
@@ -493,6 +512,7 @@ export async function mountCard(view, rid) {
     patch($('#oc-flow'), manual ? [['files', filesCard()], ...(ready ? [['proof', proofCard()], ['print', printCard()]] : [])] : []);
     fadeImages($('#oc-flow'));
     linkTimer();
+    renderLink();
     requestAnimationFrame(() => syncSeg($('#oc-flow .seg')));
     if ($('#oc-check')) markSeen();
     const strip = $('#oc-strip');
@@ -671,6 +691,13 @@ export async function mountCard(view, rid) {
   const offs = [
     on(view, 'click', '[data-act]', async (e, t) => {
       const a = t.dataset.act;
+      if (a === 'link-close') {
+        try { await post('/api/creator/gelato/close-tunnel', { orderId: o.links?.[0]?.orderId }); }
+        catch (er) { toast(`Посилання не закрилося: ${er.message}`, 'error'); return; }
+        stopPlaque(); o.links = []; setHtml($('#oc-link'), '');
+        toast('Посилання закрито', 'success', 2200);
+        return;
+      }
       const sent = sentOf(o.receiptId)?.result || linkOf(o.receiptId);
       if (sent && t.closest('.result-card') && await resultAction(a, sent, t)) { if (a === 'close-tunnel') redrawPrint(); return; }
       if (a === 'back') location.hash = '#/orders';
@@ -718,18 +745,20 @@ export async function mountCard(view, rid) {
   return {
     receiptId: String(o.receiptId),
     keep: () => o.stage === 'new' && !finished,
-    hidden() { listenEsc(false); stopLink(); },
+    hidden() { listenEsc(false); stopLink(); stopPlaque(); },
     async revive() {
       const fresh = await api(`/api/orders/${rid}`);
       if (fresh.stage !== 'new') return false;
       listenEsc(true);
+      o.links = fresh.links || [];
       redrawPrint();
+      renderLink();
       renderFinish();
       renderPath();
       return true;
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
     idle: () => !(work.some((w) => w.folder || w.busy || w.label) || sentOf(o.receiptId)),
-    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopFit(); listenEsc(false); stopLink(); },
+    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopFit(); listenEsc(false); stopLink(); stopPlaque(); },
   };
 }

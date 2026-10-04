@@ -89,6 +89,7 @@ code: []
 - [Setup, launch, GitHub](dev/setup.md)
 - [Tests](dev/testing.md)
 - [Interface preview](dev/preview.md) — a server on temporary data.
+- [Data safety](architecture/data-safety.md) — history of every write, the daily snapshot, guards, the Recycle Bin, putting a version back.
 - [Building a portable folder from the repository](dev/portable-setup.md) — the clone, `setup_portable.py`, what goes into `runtime/`.
 - [Optional modules](features/modules.md) — the text check and upscaling, installed from the interface when asked.
 - [Moving the settings and keys](features/settings-transfer.md) — one file for another PC or the other Book Studio.

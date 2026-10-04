@@ -133,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     threading.Thread(target=archive.refresh_quietly, daemon=True).start()
     threading.Thread(target=images.prune_cache_quietly, daemon=True).start()  # old previews go
     threading.Thread(target=mockups.clean_runs, daemon=True).start()  # runs Photoshop no longer needs go
+    threading.Thread(target=core.daily_snapshot, name="daily-snapshot", daemon=True).start()   # yesterday's state is always on the disk
     threading.Thread(target=textcheck.run.prime, name="textcheck-prime", daemon=True).start()  # the model read in quietly, for the first check
     # A Workshop book passed on before 27.09.2026 kept a copy of its pages in the library: it takes them from the
     # Workshop instead, its copies to the Recycle Bin (once; a copy that differs keeps its book as it is).

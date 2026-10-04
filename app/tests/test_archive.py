@@ -321,6 +321,24 @@ class OnlyWhatWentToPrint(ArchiveCase):
         with mock.patch.object(archive, "_facts", lambda: facts(placed=cancelled)):
             self.assertFalse(archive.card_facts("4100000001")["atPrinter"])
 
+    def test_the_card_knows_a_temporary_link_of_its_order_is_still_open(self):
+        """Gelato may still be fetching the PDFs when the owner opens the order again — the card says the link is open (04.10.2026)."""
+        from studio import tunnel
+        self.keep(provider="gelato", orderId="g1")
+        draft = {"gelato:g1": {"status": "draft", "placed": False, "tracking": []}}
+        with mock.patch.object(archive, "_facts", lambda: facts(placed=draft)):
+            self.assertEqual(archive.card_facts("4100000001")["links"], [])               # no tunnel yet
+            fake = mock.Mock()
+            self.addCleanup(tunnel.registry.close, "g1")
+            tunnel.registry.keep("g1", fake, Path(tempfile.mkdtemp()), 600)
+            links = archive.card_facts("4100000001")["links"]
+            self.assertEqual([l["orderId"] for l in links], ["g1"])
+            self.assertTrue(0 < links[0]["secondsLeft"] <= 600)
+            self.assertEqual(archive.card_facts("4100000002")["links"], [])               # another order: nothing
+            tunnel.registry.close("g1")
+            self.assertEqual(archive.card_facts("4100000001")["links"], [])               # closed: gone
+        fake.stop.assert_called_once()
+
     def test_a_placed_order_is_not_offered_again(self):
         self.keep(provider="gelato", orderId="g1")
         with mock.patch.object(archive, "_facts", lambda: facts(placed={"gelato:g1": {"status": "passed", "placed": True}})):

@@ -265,6 +265,8 @@ one column.
 - [The order-to-print path](../flows/order-to-print.md) · [Printer rule](../rules/printer-rule.md) · [Stages](../rules/order-stages.md)
 - [Order Creator](order-creator.md) · [Text check](text-check.md) · [Canva](../integrations/canva.md) · [Known limits](../dev/limits.md)
 
-## The link stays after «Завершити» (2026-10-04)
+## The link stays after «Завершити» (2026-10-04, redone the same day)
 
 A Gelato draft's temporary link to the print files is shown in the order's card (the green card with the countdown) for as long as it lives, also after «Завершити роботу над замовленням»: `keep.finish()` moves the result to `linkOf(rid)`; `order-card.js` `printCard()` / `linkTimer()` read `sentOf(...)?.result || linkOf(...)`. It goes when the link closes or the order is no longer new.
+
+**The plaque (the first version only kept it in the page's memory and only inside the print step — it did not show when the owner came back to an order whose files step was on screen).** Now the **server** says it: `archive.card_facts()` has `links` (`archive._open_links()`: the open Cloudflare tunnels of `tunnel.registry` matched to this receipt's Gelato sends by order id), and `GET /api/orders/<receipt>` carries it. The order card shows a green strip under the path — «Тимчасове посилання на файли для Gelato ще працює — mm:ss» with «Файли забрано — закрити посилання» — whatever step is on screen, after «Завершити» too, until the link closes (`order-card.js` `renderLink()`; the strip hides itself when the print step's own green card is showing). It does not survive closing the program: the tunnels close with it.

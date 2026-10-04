@@ -130,3 +130,9 @@ so. Changes to `app/web/*` are picked up by reloading the window (Ctrl+R).
 ## In the portable copy (2026-10-04)
 
 `.claude/launch.json` here starts the portable copy's own Python (`../runtime/python/python.exe`). Open the session **in this folder**: a session opened in the ordinary Book Studio folder starts *that* program's preview — its pages differ and nothing here is proven by them (found the hard way). `/api/ping` answers a `data` id: the preview of this copy is the one whose id matches `core.data_id()`.
+
+## Never wrap the sample server (2026-10-04)
+
+`studio.core` fixes the data folder the first time anything imports it. A script that imports `studio` before `BOOK_STUDIO_DATA` is set (a wrapper
+around `dev_server.py`, a patch for a look) makes the seed write into the REAL data. Start `tools/dev_server.py` directly; to look at a pretend state set
+`BOOK_STUDIO_DATA` (a made-up folder) and `BOOK_STUDIO_SAMPLE=1` first, import `studio` after, then patch. `sample_data.seed()` now refuses when core points elsewhere.

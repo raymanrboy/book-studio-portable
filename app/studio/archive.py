@@ -433,7 +433,17 @@ def card_facts(receipt_id: str) -> dict:
                              for e in own if facts is not None and standing(e, facts) != "counted"],
             "atPrinter": any(standing(e, facts) != "dropped" for e in own),
             "printed": [{**{k: e.get(k) for k in brief}, "reprint": bool(e.get("reprintOf"))}
-                        for e in own if standing(e, facts) == "counted"]}
+                        for e in own if standing(e, facts) == "counted"],
+            "links": _open_links(own)}
+
+
+def _open_links(own: list[dict]) -> list[dict]:
+    """The temporary links (Cloudflare tunnels) still open for the files of this order's Gelato drafts: Gelato may be fetching the
+    PDFs, and the card says so after «Завершити» and when it is opened again (the owner, 04.10.2026)."""
+    from . import tunnel
+    open_now = {a["key"]: a["secondsLeft"] for a in tunnel.registry.active() if a["secondsLeft"] > 0}
+    return [{"orderId": e["orderId"], "secondsLeft": open_now[e["orderId"]], "sentAt": e.get("sentAt")}
+            for e in own if e.get("provider") == "gelato" and e.get("orderId") in open_now]
 
 
 _BOOK_FILE = re.compile(r"Cover\.png|\d{1,3}\.png")

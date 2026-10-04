@@ -46,6 +46,8 @@ In full — [`wiki/security.md`](wiki/security.md). Briefly:
   `app/data/vault.json`. The file `.secrets.txt` in the repo root (keys in plain text, ignored by git) —
   never read, print, commit, change or delete it without the owner's direct request for exactly that.
   Never ask the owner to paste keys into chat.
+- **A script that writes into `app/data` or `pipeline/books`**: first copy what it will touch, never import `studio` without `BOOK_STUDIO_DATA` set before it, start
+  the preview only with `tools/dev_server.py`; a wrong write is undone from the history (`python app/tools/data_history.py`) — [wiki/architecture/data-safety.md](wiki/architecture/data-safety.md).
 - Never permanently delete the owner's data. The mockup templates `D:\Roman\Desktop\Трафарети мастхев`
   are read-only — never edit, save over or delete them; work on copies.
 - **Commit and push only when the owner asks.** `app/data/`, `app/bin/` and real customer data never go

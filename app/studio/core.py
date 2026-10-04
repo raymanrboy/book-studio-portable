@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import copy
+import fnmatch
 import json
 import logging
 import os
+import sys
 import threading
 import time
 import uuid
@@ -20,6 +22,9 @@ ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = ROOT / "web"
 BIN_DIR = ROOT / "bin"
 DATA_DIR = Path(os.environ.get("BOOK_STUDIO_DATA") or (ROOT / "data")).resolve()
+if "unittest" in sys.modules and DATA_DIR == (ROOT / "data").resolve():
+    # A test (or a script run under unittest) that reached the real data would write made-up things over the owner's (04.10.2026).
+    raise RuntimeError("Tests must run on a data folder of their own: import tests (it sets BOOK_STUDIO_DATA) before studio.")
 # app/tools/dev_server.py: made-up data for looking at the pages — a real key is never stored or offered there.
 SAMPLE = os.environ.get("BOOK_STUDIO_SAMPLE") == "1"
 # The preview server and the tests: the Workshop touches nothing of the owner's — its clipboard goes into files in
@@ -162,10 +167,85 @@ def write_json(path: Path, obj: Any, backup: bool = True) -> None:
             os.fsync(f.fileno())
         if backup and path.exists():
             _keep_backup(path)
+            keep_history(path)
         replace_file(tmp, path)
     except BaseException:
         tmp.unlink(missing_ok=True)           # a failed write leaves no `.name.xxxx.tmp` behind
         raise
+
+
+# ---------------------------------------------------------------- history: nothing the owner's data holds is lost by a write
+
+HISTORY_KEEP = 20          # versions kept of each file
+DAILY_KEEP = 14            # days kept of the daily snapshot
+# What is worth a history (a glob relative to the data folder) and how often at most (seconds between two kept versions): the small files
+# that hold the owner's work. The big, re-fetchable snapshot of the shops is kept hourly.
+HISTORY_RULES = (("profit/print-orders.json", 0), ("profit/links.json", 0), ("profit/states.json", 0), ("profit/snapshot.json", 3600),
+                 ("settings.json", 300), ("vault.json", 300), ("library/books/*/book.json", 60), ("archive/*/entry.json", 0),
+                 ("creator/*.json", 300))
+
+
+def _history_rule(path: Path) -> tuple[str, int] | None:
+    try:
+        rel = Path(path).resolve().relative_to(DATA_DIR).as_posix()
+    except ValueError:
+        return None
+    for pattern, every in HISTORY_RULES:
+        if fnmatch.fnmatchcase(rel, pattern):
+            return rel, every
+    return None
+
+
+def keep_history(path: Path) -> None:
+    """Before a write replaces `path`, the file as it is goes to `history/<its path>/<time>.json` (the last HISTORY_KEEP, not twice the same,
+    not more often than its rule says). The `.bak` is only the last version; this is how a bad write — a made-up file, a wrong merge — is
+    undone after the next ones (04.10.2026: the real send journal and snapshot were overwritten by made-up ones). Never raises."""
+    try:
+        rule = _history_rule(path)
+        if not rule or not Path(path).is_file():
+            return
+        rel, every = rule
+        folder = DATA_DIR / "history" / rel
+        have = sorted(folder.glob("*.json")) if folder.is_dir() else []
+        raw = Path(path).read_bytes()
+        if have:
+            newest = have[-1]
+            if newest.read_bytes() == raw or (every and time.time() - newest.stat().st_mtime < every):
+                return
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / (time.strftime("%Y%m%d-%H%M%S") + f"-{int(time.time() * 1000) % 1000:03d}.json")).write_bytes(raw)
+        for old in sorted(folder.glob("*.json"))[:-HISTORY_KEEP]:
+            old.unlink(missing_ok=True)
+    except Exception:
+        log.warning("History of %s not kept", path, exc_info=True)
+
+
+def daily_snapshot() -> Path | None:
+    """Once a day: every file the history rules name — and the Workshop books' `book.json` — copied to `history/daily/<date>/`; the last
+    DAILY_KEEP days stay. So whatever went wrong, a state from yesterday is on the disk. Returns the folder made (None: today's exists)."""
+    import shutil
+    today = DATA_DIR / "history" / "daily" / time.strftime("%Y-%m-%d")
+    if today.exists() or SANDBOX:
+        return None
+    try:
+        today.mkdir(parents=True)
+        for pattern, _ in HISTORY_RULES:
+            for src in DATA_DIR.glob(pattern):
+                if src.is_file():
+                    dst = today / src.relative_to(DATA_DIR)
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, dst)
+        for src in WORKSHOP_BOOKS.glob("*/book.json") if WORKSHOP_BOOKS.is_dir() else ():
+            dst = today / "workshop-books" / src.parent.name / "book.json"
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+        for old in sorted(p for p in today.parent.iterdir() if p.is_dir())[:-DAILY_KEEP]:
+            shutil.rmtree(old, ignore_errors=True)
+        log.info("Daily snapshot made: %s", today.name)
+        return today
+    except Exception:
+        log.warning("Daily snapshot not made", exc_info=True)
+        return None
 
 
 def _keep_backup(path: Path) -> None:

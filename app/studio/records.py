@@ -53,7 +53,23 @@ def load_sends() -> dict:
     return core.read_json(SENDS, {}) or {}
 
 
+class DataGuard(Exception):
+    """A write that would lose what the owner's data holds is refused (the file stays as it is)."""
+
+
+def _guard(path: Path, data: dict) -> None:
+    if path == SENDS:      # what was sent to print is only ever added to: a receipt's sends vanishing would let it be sent twice
+        lost = set(core.read_json(SENDS, {}) or {}) - set(data)
+        if lost:
+            raise DataGuard(f"print-orders.json: {len(lost)} receipts would be lost — the write is refused")
+    elif path == SNAPSHOT:  # the shops' snapshot does not shrink to a fraction of itself
+        old = len((core.read_json(SNAPSHOT, {}) or {}).get("receipts") or [])
+        if old >= 20 and len(data.get("receipts") or []) < old // 2:
+            raise DataGuard(f"snapshot.json: {old} receipts would become {len(data.get('receipts') or [])} — the write is refused")
+
+
 def save(path: Path, data: dict) -> None:
+    _guard(path, data)
     core.write_json(path, data)
 
 
