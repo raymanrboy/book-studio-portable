@@ -8,3 +8,5 @@ if not exist "%PY%" (
   exit /b 1
 )
 start "" "%PY%" "%BS%Book Studio\app\Book Studio.pyw"
+rem The first start: the "Book Studio" shortcut is made here and on the desktop, then these launchers are hidden (only the shortcut stays in view).
+if not exist "%BS%Book Studio.lnk" "%BS%runtime\python\python.exe" "%BS%Book Studio\app\tools\make_shortcut.py" --tidy

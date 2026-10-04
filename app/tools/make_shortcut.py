@@ -18,7 +18,23 @@ if (ROOT.parent.parent / "runtime").is_dir():    # the portable copy: its own sh
     SHORTCUTS = [("Book Studio Portable", script, icon, note) for _, script, icon, note in SHORTCUTS]
 
 
-def main() -> int:
+HELPERS = ("Start Book Studio.bat", "Start with console.bat", "Make desktop shortcut.bat", "ПРОЧИТАЙ.md", "ROADMAP.md")
+
+
+def tidy(root: Path) -> list[str]:
+    """The portable folder shows only `Book Studio.lnk`, `Book Studio/` and `runtime/`: the launchers and the notes in its root get
+    the Hidden attribute (Explorer → View → Hidden items shows them). Returns the names hidden. Nothing is moved or deleted."""
+    done = []
+    for name in HELPERS:
+        path = root / name
+        if path.is_file():
+            subprocess.run(["attrib", "+h", str(path)], check=False)
+            done.append(name)
+    return done
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
@@ -57,6 +73,9 @@ def main() -> int:
         if saved != link:
             os.replace(saved, link)
         print(f"Ярлик створено: {link}")
+    root = ROOT.parent.parent
+    if "--tidy" in argv and (root / "runtime").is_dir() and (root / "Book Studio.lnk").is_file():     # first start: the shortcut is there, the rest hides
+        print("Сховано службові файли: " + ", ".join(tidy(root)))
     return 0
 
 

@@ -25,6 +25,7 @@ Book Studio Portable/          (any name, any place — also a USB drive)
   Book Studio/                 ← this repository (git clone)
   runtime/                     ← the programs it runs on (below)
   Start Book Studio.bat        ← the launchers and ПРОЧИТАЙ.md, laid out from the repository's portable/
+                                  (visible until the first start, then hidden; the shortcut Book Studio.lnk takes their place)
   Start with console.bat
   Make desktop shortcut.bat
   ПРОЧИТАЙ.md
@@ -42,7 +43,9 @@ Book Studio Portable/          (any name, any place — also a USB drive)
 3. Put into `runtime/` what the script cannot: **ffmpeg** (a Windows build, `ffmpeg.exe` anywhere inside `runtime/ffmpeg`),
    **Photoshop** and **Templates** (the owner's own portable Photoshop and the mockup templates), **Antigravity**
    (`runtime/Antigravity/app/Antigravity.exe`), and optionally `Installers/vc_redist.x64.exe`.
-4. Start it (`Book Studio.lnk`). The window at the start lists what is still missing and what to log in to by hand.
+4. Start it: **the first time** with `Start Book Studio.bat` — it makes `Book Studio.lnk` here (and on the desktop) and then hides the launchers and
+   the note (`make_shortcut.py --tidy`), so the folder shows only the shortcut, `Book Studio/` and `runtime/`; afterwards with the shortcut.
+   The window at the start lists what is still missing and what to log in to by hand.
    The text check and the upscaling are installed from Settings → «Модулі» (the program downloads and checks them itself).
 
 ## What does not come with a clone

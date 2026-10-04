@@ -84,5 +84,32 @@ class Layout(unittest.TestCase):
             sp.copy_python(self.target, self.target / "nothing")
 
 
+class FirstStart(unittest.TestCase):
+    """The first start of a fresh folder makes the shortcut and hides the launchers, so only «Book Studio», `Book Studio/` and `runtime/` show."""
+
+    def test_the_start_launcher_asks_for_the_shortcut_and_the_tidy_only_when_it_is_missing(self):
+        text = (sp.LAUNCHERS / "Start Book Studio.bat").read_text(encoding="utf-8")
+        self.assertIn('if not exist "%BS%Book Studio.lnk"', text)
+        self.assertIn("make_shortcut.py", text)
+        self.assertIn("--tidy", text)
+
+    @unittest.skipUnless(sys.platform == "win32", "the hidden flag is Windows's")
+    def test_tidy_hides_the_launchers_and_the_notes_and_nothing_else(self):
+        import stat
+        import make_shortcut
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        sp.layout(root)
+        (root / "Book Studio.lnk").write_bytes(b"x")
+        (root / "Book Studio").mkdir()
+        (root / "my notes.txt").write_text("keep", encoding="utf-8")
+        hidden = make_shortcut.tidy(root)
+        self.assertEqual(sorted(hidden), sorted(sp.REFRESHED + sp.KEPT))
+        for name in hidden:
+            self.assertTrue((root / name).stat().st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN, name)
+        for name in ("Book Studio.lnk", "Book Studio", "runtime", "my notes.txt"):
+            self.assertFalse((root / name).stat().st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN, name)
+
+
 if __name__ == "__main__":
     unittest.main()

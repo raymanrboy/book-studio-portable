@@ -7,6 +7,10 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - `make_shortcut.py` in the portable copy also writes `Book Studio.lnk` into the portable folder itself (and `Book Studio Portable.lnk` on the desktop). The `.bat` files, `ROADMAP.md` and `ПРОЧИТАЙ.md` in the folder's root are hidden (the owner: he only needs a shortcut); `ПРОЧИТАЙ.md` says how to show them and what to do after the folder is moved.
 
+## [2026-10-04] update | The colleague's folder looks like the owner's
+
+- The colleague build starts with `Start Book Studio.bat` and the note visible. The first start makes `Book Studio.lnk` (here and on the desktop) and hides the launchers and the note (`make_shortcut.py --tidy`, `tidy()`): afterwards the folder shows only the shortcut, `Book Studio/` and `runtime/` — as the owner's. A shortcut made at build time could not be shipped: it holds an absolute path and an icon path of the place it was made.
+
 ## [2026-10-04] update | The repository made self-sufficient
 
 - `ROADMAP.md` and `portable/` (launchers, `ПРОЧИТАЙ.md`) moved into the repository; the portable root keeps copies (hidden) and a pointer in place of the roadmap.
