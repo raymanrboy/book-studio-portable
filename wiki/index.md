@@ -1,7 +1,7 @@
 ---
 title: Book Studio wiki — index
 type: index
-updated: 2026-10-03
+updated: 2026-10-04
 code: []
 ---
 # Book Studio wiki
@@ -89,6 +89,7 @@ code: []
 - [Setup, launch, GitHub](dev/setup.md)
 - [Tests](dev/testing.md)
 - [Interface preview](dev/preview.md) — a server on temporary data.
+- [Building a portable folder from the repository](dev/portable-setup.md) — the clone, `setup_portable.py`, what goes into `runtime/`.
 - [Optional modules](features/modules.md) — the text check and upscaling, installed from the interface when asked.
 - [Moving the settings and keys](features/settings-transfer.md) — one file for another PC or the other Book Studio.
 - [MANUAL.md](../MANUAL.md) — the user manual written for an LLM: how to use the program, step by step, and what to do when it breaks.

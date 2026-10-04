@@ -1,7 +1,7 @@
 ---
 title: The portable copy
 type: dev
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/portable.py
   - app/tests/test_portable.py
@@ -12,7 +12,8 @@ code:
 # The portable copy
 
 > A copy of Book Studio that carries every program it needs, so the folder can go to another PC. This copy lives
-> in `Book Studio Portable/`; the plan by stages is `ROADMAP.md` in its root. The original install is untouched.
+> in `Book Studio Portable/`; the plan by stages is `ROADMAP.md` in this repository's root. The original install is untouched. The repository alone is enough
+> to build such a folder: [building a portable folder](portable-setup.md).
 
 ## Layout
 
@@ -37,7 +38,7 @@ Without `runtime/` they all answer None and every place looks where it always di
 
 ## Launch and the start-up check (stage 2, 03.10.2026)
 
-- **Launchers in the root** (ASCII names — `cmd` does not read Cyrillic): `Start Book Studio.bat` (runtime Python,
+- **Launchers in the root** (kept in the repository's `portable/` and laid out by `setup_portable.py`; ASCII names — `cmd` does not read Cyrillic): `Start Book Studio.bat` (runtime Python,
   no window), `Start with console.bat` (errors stay on screen), `Make desktop shortcut.bat` (→ `tools/make_shortcut.py`;
   in the portable copy the shortcut is named «Book Studio Portable», the original's is left alone).
 - **`portable.startup_report()`**, called by `Book Studio.pyw` before the server starts, shows one window: what is missing

@@ -7,6 +7,12 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 - `make_shortcut.py` in the portable copy also writes `Book Studio.lnk` into the portable folder itself (and `Book Studio Portable.lnk` on the desktop). The `.bat` files, `ROADMAP.md` and `ПРОЧИТАЙ.md` in the folder's root are hidden (the owner: he only needs a shortcut); `ПРОЧИТАЙ.md` says how to show them and what to do after the folder is moved.
 
+## [2026-10-04] update | The repository made self-sufficient
+
+- `ROADMAP.md` and `portable/` (launchers, `ПРОЧИТАЙ.md`) moved into the repository; the portable root keeps copies (hidden) and a pointer in place of the roadmap.
+- New `app/tools/setup_portable.py` (+ test): builds a portable folder from a clone — launchers (a hidden one is refreshed and stays hidden), `runtime/` skeleton with `README.txt`, `--python` (copies the PC's Python, ensurepip, pip install of `requirements.txt` — the pip step was not run here, it needs the internet), `--shortcut`, and a list of what `runtime/` still lacks. Checked on a temporary target: the copied Python (52 MB) runs, tkinter works, `ensurepip` works offline.
+- New page `dev/portable-setup.md`; README, AGENTS.md, MANUAL.md, `portable.md` point to it. The colleague builder takes the launchers from `portable/` and leaves `ROADMAP.md` out.
+
 ## [2026-10-04] update | The portable copy gets its own private GitHub repository
 
 - `raymanrboy/book-studio-portable` (private): the whole copy committed and pushed once (the owner asked). A scan of the 282 files to commit found no key or token; nothing from `app/data`, `app/bin`, `pipeline/books`, `.secrets.txt`. The docs said «the repository is `raymanrboy/book-studio`» — that is the original's: rewritten to the new one (AGENTS.md, CLAUDE.md, setup.md, decisions.md).

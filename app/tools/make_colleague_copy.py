@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]          # …/Book Studio (the repos
 PORTABLE = ROOT.parent
 sys.path.insert(0, str(ROOT / "app"))
 
-KEEP_OUT_PREFIXES = ("wiki/raw/", "app/tools/colleague_docs/")   # the owner's own words; the colleague's docs are put in below
+KEEP_OUT_PREFIXES = ("wiki/raw/", "app/tools/colleague_docs/", "ROADMAP.md", "portable/ПРОЧИТАЙ.md")   # the owner's own words and plan; the colleague's docs are put in below
 # Personal names in the docs (his GitHub account, his Windows profile) — said neutrally in the copy.
 # The names are written in pieces: this file is copied into the colleague's copy too, and must not carry them itself.
 _ACCOUNT, _PROFILE, _MAIL = "ray" + "manrboy", "Ro" + "man", "anna" + "miller764"
@@ -101,6 +101,29 @@ def neutral_docs(repo: Path) -> None:
     text = text.replace("**The mockup templates `D:\\Roman\\Desktop\\Трафарети мастхев` — read-only** (the owner's rule,\n    2026-09-23:",
                         "**The mockup templates (`runtime\\Templates`) — read-only** (the first owner's rule,\n    2026-09-23:")
     sec.write_text(text, encoding="utf-8")
+
+
+def without_roadmap(repo: Path) -> None:
+    """The owner's plan is not in the copy: the pages and the README that point at it lose those lines."""
+    nl = chr(10)
+    edits = {
+        "wiki/dev/portable-setup.md": (
+            (f"  - ROADMAP.md{nl}", ""),
+            ("the launchers (`portable/`), the plan (`ROADMAP.md`) and the notes", "the launchers (`portable/`) and the notes"),
+            (f"- `ROADMAP.md` (repository root) is the plan by stages and the list of what is not yet checked. Take one stage per session.{nl}", ""),
+            (f"`ПРОЧИТАЙ.md`;{nl}  `ROADMAP.md` stays out of it.{nl}", f"`ПРОЧИТАЙ.md`.{nl}"),
+            (f"- [ROADMAP.md](../../ROADMAP.md) — the plan{nl}", "")),
+        "wiki/dev/portable.md": ((" the plan by stages is `ROADMAP.md` in this repository's root.", ""),),
+        "README.md": (("; the plan — [ROADMAP.md](ROADMAP.md)", ""),),
+    }
+    for name, pairs in edits.items():
+        page = repo / name
+        if not page.is_file():
+            continue
+        text = page.read_text(encoding="utf-8")
+        for old, new in pairs:
+            text = text.replace(old, new)
+        page.write_text(text, encoding="utf-8")
 
 
 def scrub(repo: Path) -> int:
@@ -299,15 +322,18 @@ def main(argv: list[str]) -> int:
             (target / "runtime" / name).mkdir(parents=True, exist_ok=True)
 
     if not dry:
-        for bat in PORTABLE.glob("*.bat"):
+        for bat in (ROOT / "portable").glob("*.bat"):          # the launchers as the repository keeps them
             shutil.copy2(bat, target / bat.name)
             subprocess.run(["attrib", "-h", str(target / bat.name)], check=False)     # the colleague sees them (the owner hides his)
         (target / "ПРОЧИТАЙ.md").write_text(README, encoding="utf-8")
+        (target / "Book Studio" / "portable").mkdir(parents=True, exist_ok=True)
+        (target / "Book Studio" / "portable" / "ПРОЧИТАЙ.md").write_text(README, encoding="utf-8")   # setup_portable.py lays it out from here
         data = target / "Book Studio" / "app" / "data"
         data.mkdir(parents=True, exist_ok=True)
         (data / "settings.json").write_text(json.dumps(SETTINGS, indent=2), encoding="utf-8")
         repo = target / "Book Studio"
         neutral_docs(repo)
+        without_roadmap(repo)
         print(f"Особисті імена прибрано з {scrub(repo)} документів; правила для агентів написано для колеги")
         subprocess.run(["git", "-C", str(repo), "init", "-q", "-b", "main"], check=True)
         subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)

@@ -31,6 +31,8 @@ Book Studio Portable/
   Start Book Studio.bat          start (no console window)       Start with console.bat — start, errors stay visible
   Make desktop shortcut.bat      puts «Book Studio Portable» on the desktop
   ПРОЧИТАЙ.md                    a short note for the person
+  (the launchers and the note are kept in the repository's portable/; a missing portable folder is built from a clone:
+   python app/tools/setup_portable.py --python — see wiki/dev/portable-setup.md)
   runtime/                       the programs the app needs — nothing is installed on the PC:
     python/  Photoshop/  Templates/  ffmpeg/  Antigravity/  Installers/   (always there)
     Ollama/ (+models)  Upscayl/                                           (appear when the optional modules are installed, §3)

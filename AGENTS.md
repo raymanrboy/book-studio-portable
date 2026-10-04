@@ -15,8 +15,9 @@ design and check in light first ([ui-principles](wiki/owner/ui-principles.md)).
 
 You are in `Book Studio Portable\Book Studio\` — the repository of the **portable** Book Studio. Next to it lies `runtime\`
 (Python, Photoshop, the mockup templates, Antigravity, Ollama, Upscayl, ffmpeg): the program finds them there
-(`app/studio/portable.py`, [wiki/dev/portable.md](wiki/dev/portable.md)). The plan by stages is `..\ROADMAP.md` — read it
-first and take one stage per session. The original install (`D:\Roman\Desktop\Book Studio`) is a separate project: do not
+(`app/studio/portable.py`, [wiki/dev/portable.md](wiki/dev/portable.md)). The plan by stages is [`ROADMAP.md`](ROADMAP.md) in
+this repository — read it first and take one stage per session. The repository is self-sufficient: the launchers are in `portable/`,
+and a portable folder is built from a clone by `app/tools/setup_portable.py` ([wiki/dev/portable-setup.md](wiki/dev/portable-setup.md)). The original install (`D:\Roman\Desktop\Book Studio`) is a separate project: do not
 change it from here. Python for the commands below: `..\runtime\python\python.exe`. This copy has its **own private GitHub repository**
 `raymanrboy/book-studio-portable` (remote `origin`, since 2026-10-04) — never the original's `raymanrboy/book-studio`; commit and push only when the owner asks.
 
@@ -67,6 +68,8 @@ requirements — [`wiki/owner/ui-principles.md`](wiki/owner/ui-principles.md).
 ```
 AGENTS.md, CLAUDE.md    rules for agents (this file and the Claude Code addendum)
 MANUAL.md              the program's manual written for an AI (what is where, how to use, what to do when it breaks)
+ROADMAP.md             the plan of the portable version by stages, and what is not yet checked
+portable/              the launchers (.bat) and the note for people — laid out beside the repository by app/tools/setup_portable.py
 README.md               short intro for people
 app/                    the program: studio/ (Python server), web/ (interface), tests/, tools/
                         data/ and bin/ — local only, not in git
