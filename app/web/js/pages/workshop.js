@@ -3,7 +3,7 @@
 // the gallery follows the files by itself (an agent's new book appears, a caught picture shows) without a reload.
 import {
   api, post, html, ic, ib, setHtml, on, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg,
-  highlightTokens, remembered, remember,
+  highlightTokens, remembered, remember, galleryKeys, BOOKS,
 } from '../lib.js';
 import { watch, paintGenBar, genAction, genState, act } from '../workshop-live.js';
 import { STATE_WORDS, checkWord, picture } from '../workshop-bits.js';
@@ -15,7 +15,6 @@ const SORTS = [
   { value: 'recent', label: 'Нещодавно змінені', icon: 'clock' },
   { value: 'least', label: 'Спочатку найменш готові', icon: 'alertCircle' },
 ];
-const BOOKS = ['книга', 'книги', 'книг'];
 
 
 // `embedded` — drawn inside «Книги» (pages/books.js, 2026-09-30): the head is the hub's, and only the books still
@@ -166,11 +165,7 @@ export async function mount(view, params, { embedded = false } = {}) {
     on(view, 'click', '[data-gen]', (e, b) => genAction(b, b.dataset.gen)),
   ];
   q.addEventListener('input', () => { state.query = q.value; runSearch(); });
-  const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '') || document.querySelector('.modal-root');
-  const onKey = (e) => {
-    if ((e.ctrlKey && e.key.toLowerCase() === 'f') || (e.key === '/' && !typing())) { e.preventDefault(); q.focus(); q.select(); }
-    else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.altKey && !e.metaKey && !typing()) { e.preventDefault(); newBook(view.querySelector('[data-act="add"]')); }
-  };
+  const onKey = galleryKeys(q, () => newBook(view.querySelector('[data-act="add"]')));
   document.addEventListener('keydown', onKey);
 
   return {

@@ -366,7 +366,6 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
 .btn-sm { --h: 30px; padding: 0 10px; font-size: var(--fs); gap: 6px; }
 .btn-xs { --h: 26px; padding: 0 8px; font-size: var(--fs-s); border-radius: var(--r-sm); gap: 5px; }
 .btn-xl { --h: 50px; padding: 0 26px; font-size: var(--fs-m); border-radius: var(--r-grp); gap: 10px; font-family: var(--font-display); letter-spacing: .01em; }
-.btn-icon { width: var(--h); padding: 0; }
 .btn-block { width: 100%; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -501,7 +500,8 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 
 .menu { position: fixed; z-index: 965; min-width: 220px; padding: 5px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-l); animation: menu-in 200ms var(--ease) both; transform-origin: top right; }
 .menu button { width: 100%; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: none; border-radius: var(--r-ctl); font-size: var(--fs); color: var(--text); text-align: left; }
-.menu button:hover { background: var(--surface-3); }
+.menu button:hover, .menu button:focus-visible { background: var(--surface-3); }
+.menu button:focus-visible { outline-offset: -2px; }
 .menu button .icon { color: var(--text-3); width: 16px; height: 16px; }
 .menu button.on .icon, .menu button.on { color: var(--accent-ink); }
 .menu button.danger, .menu button.danger .icon { color: var(--red); }
@@ -533,6 +533,7 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .lb-zoom { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-size: var(--fs); color: var(--text-3); min-width: 50px; text-align: center; }
 .lb-text { position: absolute; right: 18px; bottom: 18px; width: min(380px, 40vw); max-height: 45%; overflow: auto; padding: 14px 16px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-l); font-family: var(--font-book-text); font-size: var(--fs-m); line-height: var(--lh-read); white-space: pre-wrap; color: var(--text); z-index: 2; }
 .lb-spinner { position: absolute; left: 50%; top: 50%; margin: -13px; }
+.lb-error { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--red); color: var(--red); font-size: var(--fs); }
 
 /* ------------------------------------------------------------------ artwork, drop zones */
 .drop-hot { outline: 2px dashed var(--accent) !important; outline-offset: -5px; background-color: var(--accent-soft) !important; }
@@ -557,7 +558,7 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .drop-ph .drop-ico { width: 38px; height: 38px; border-radius: var(--r-grp); display: grid; place-items: center; border: 1.5px dashed currentColor; opacity: .8; }
 .drop-ph b { color: var(--text-2); font-weight: 600; }
 .drop-ph:hover b { color: var(--accent-ink); }
-.drop-ph .num { font-size: var(--fs-s); color: var(--text-4); }
+.drop-ph .num { font-size: var(--fs-s); color: var(--text-3); }
 /* Floating actions over a picture: a dark instrument strip that appears on hover. */
 .img-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; padding: 3px; border-radius: var(--r-grp); background: rgba(16, 17, 19, .84); opacity: 0; transform: translateY(-3px); transition: opacity var(--t) ease, transform var(--t) var(--ease); z-index: 2; }
 .img-actions .ib { color: #e9e9e9; width: 28px; height: 28px; }
@@ -587,6 +588,8 @@ button.set-head:hover { background: var(--surface-hover); }
 .details-toggle .icon { transition: transform 320ms var(--ease); }
 .details-toggle.on .icon { transform: rotate(180deg); }
 .set-row > .icon { color: var(--text-3); }
+/* A module's own settings, nested under its row in «Модулі». */
+.mod-sub { margin: -2px 0 8px 12px; padding: 4px 0 2px 16px; border-left: 2px solid var(--border); }
 .state-mark { display: grid; place-items: center; width: 24px; height: 24px; flex: none; }
 .state-mark.ok { color: var(--green); }
 .state-mark.warn { color: var(--amber); }

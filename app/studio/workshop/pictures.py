@@ -16,6 +16,7 @@ takes, goes to the book's `.replaced/` folder — never deleted. A row's picture
 """
 from __future__ import annotations
 
+import copy
 import filecmp
 import functools
 import shutil
@@ -84,8 +85,9 @@ def square(im: Image.Image) -> tuple[Image.Image, str]:
 
 # ---------------------------------------------------------------- files
 
-def _retire(book: Path, target: Path) -> None:
-    """A file a new picture replaces, or a removal takes, into the book's .replaced/ — never deleted."""
+def _retire(book: Path, target: Path) -> Path | None:
+    """A file a new picture replaces, or a removal takes, into the book's .replaced/ — never deleted. Returns where it went
+    (None when there was nothing to move)."""
     if target.exists():
         keep = book / ".replaced"
         keep.mkdir(exist_ok=True)
@@ -98,11 +100,12 @@ def _retire(book: Path, target: Path) -> None:
         for attempt in range(4):  # ~5 s in all: an antivirus or the indexer lets go in a moment
             try:
                 core.replace_file(target, dest)
-                return
+                return dest
             except PermissionError:
                 if attempt == 3:
                     raise _held(target) from None
                 time.sleep(0.8)
+    return None
 
 
 def _held(target: Path) -> ApiError:
@@ -425,12 +428,15 @@ def remove(book_id: str, key: str, variant: str | None = None) -> dict:
     book = books.book_path(book_id)
     variant = _variant(book, variant)
     originals = book / books.ORIGINALS / ("variants/" + variant if variant else "")
+    rows_before = copy.deepcopy(books.state(book).get("rows") or {})
+    touched: list[str] = []                       # the row marks this removal clears — «Скасувати» puts them back
     if variant and key == "cover":
         raise ApiError("У варіанта одна обкладинка — одразу розширена (з полями).")
     if variant and key == "cover-wrap":  # a variant's one cover
         targets = [_pictures_dir(book, variant) / "Cover.png"] + [
             originals / n for n in books._names(originals) if Path(n).stem == "cover-wrap"]
         _mark(book, variant, "cover-wrap", None)
+        touched.append(f"{variant}/cover-wrap")
     elif key in ("cover", "cover-wrap"):
         targets = [_pictures_dir(book, None) / "Cover.png"]
         stems = ("cover-art", "cover-wrap") if key == "cover" else ("cover-wrap",)
@@ -438,15 +444,48 @@ def remove(book_id: str, key: str, variant: str | None = None) -> dict:
             targets.append(originals / "cover-expanded.png")
             _mark(book, None, "cover", None)
             _mark(book, None, "cover-expanded", None)
+            touched += ["cover", "cover-expanded"]
         targets += [originals / n for n in books._names(originals) if Path(n).stem in stems]
         _mark(book, None, "cover-wrap", None)
+        touched.append("cover-wrap")
     else:
         targets = _pages(book, key, variant) + [originals / n for n in books._names(originals)
                                                 if Path(n).stem == original_stem(key)]
         _mark(book, variant, key, None)
+        touched.append(f"{variant}/{key}" if variant else key)
+    files = []
     for t in targets:
-        _retire(book, t)
-    return {"key": key}
+        moved = _retire(book, t)
+        if moved:
+            files.append({"kept": moved.name, "to": t.relative_to(book).as_posix()})
+    # What «Скасувати» needs, handed back to the page: where each file waits and where it belongs, and the marks as they were.
+    return {"key": key, "undo": {"files": files, "marks": {s: rows_before[s] for s in touched if s in rows_before}}}
+
+
+@_one_at_a_time
+def restore(book_id: str, undo: dict) -> dict:
+    """«Скасувати» after `remove`: the files come back from .replaced/ to their places and the row's marks as they were. A place
+    taken meanwhile (a new picture put there) is never overwritten — then nothing at all is restored."""
+    book = books.book_path(book_id)
+    keep = book / ".replaced"
+    plan = []
+    for item in (undo or {}).get("files") or []:
+        kept_name, to = str(item.get("kept") or ""), str(item.get("to") or "")
+        source, target = keep / kept_name, (book / to)
+        if not kept_name or "/" in kept_name or "\\" in kept_name or not source.is_file():
+            raise ApiError("Файл для відновлення не знайдено в .replaced — вже нічого скасовувати.", 404)
+        if not core.inside(target, book):
+            raise ApiError("Некоректний шлях відновлення.")
+        if target.exists():
+            raise ApiError("На цьому місці вже лежить нова картинка — стару не повертаю поверх неї. Вона у .replaced книги.", 409)
+        plan.append((source, target))
+    for source, target in plan:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        core.replace_file(source, target)
+    for slot, marks in ((undo or {}).get("marks") or {}).items():
+        variant, _, key = slot.rpartition("/")
+        _mark(book, variant or None, key, marks if isinstance(marks, dict) else None)
+    return {"restored": len(plan)}
 
 
 def spread_panorama(book_id: str, key: str) -> Image.Image:

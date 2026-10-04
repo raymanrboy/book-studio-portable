@@ -225,7 +225,7 @@ class JsonFiles(unittest.TestCase):
         real = core.replace_file
 
         def locked(src, dst, copy_only=False):
-            if copy_only:
+            if str(dst).endswith(".bak"):
                 raise PermissionError("the .bak is held by another program")
             return real(src, dst, copy_only)
 

@@ -78,7 +78,6 @@ const P = {
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.01"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.8l3 1.8"/>',
   shield: '<path d="M12 3.5l7.5 2.8v5.6c0 4.3-3.2 7.6-7.5 8.6-4.3-1-7.5-4.3-7.5-8.6V6.3z"/><path d="M9 12l2 2 4-4"/>',
-  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z"/>',
   database: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-13M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   sparkle: '<path d="M12 3.5l1.8 5.2 5.2 1.8-5.2 1.8L12 17.5l-1.8-5.2L5 10.5l5.2-1.8z"/>',
@@ -122,7 +121,6 @@ const P = {
   hand: '<path d="M8.5 12.5V6.2a1.5 1.5 0 0 1 3 0V11"/><path d="M11.5 10.5V4.8a1.5 1.5 0 0 1 3 0v5.7"/><path d="M14.5 10.5V6.5a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.6-2.2l-2.7-3.4a1.6 1.6 0 0 1 2.4-2.1l2 1.9"/>',
 
   // ---- the Listings mode: its sign (an Etsy listing's tag), the Workshop (the book `book` with a pencil at its corner)
-  listing: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.3 6.3a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8.2" cy="8.2" r="1.6"/>',
   // «Майстерня» (the owner, 2026-09-30): a hammer and a ruler crossed — the tools of making a book
   workshop: '<path d="M12.1 9.6L6.2 3.7 3.7 6.2l5.9 5.9"/><path d="M14.4 11.9l5.9 5.9-2.5 2.5-5.9-5.9"/><path d="M5 7.5l1.1-1.1M7 9.5l1.1-1.1M13.7 16.2l1.1-1.1M15.7 18.2l1.1-1.1"/><path d="M20.4 8.1l-3.1 3.1-4.5-4.5 3.1-3.1z"/><path d="M15 9l-9.4 9.4"/>',
   // The Workshop's generation (26.09.2026, the owner: "the magic wand has to go"): a prompt is a command for the

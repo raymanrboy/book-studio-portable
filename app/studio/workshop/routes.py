@@ -134,6 +134,12 @@ def _remove(req: Request):
     return pictures.remove(req.groups[0], str(body.get("key") or ""), _variant(body))
 
 
+@route("POST", r"/api/workshop/books/([^/]+)/restore")
+def _restore(req: Request):
+    """«Скасувати» after «Прибрати»: the pictures come back from .replaced/ (the `undo` that `remove` handed out)."""
+    return pictures.restore(req.groups[0], (req.json or {}).get("undo") or {})
+
+
 @route("POST", r"/api/workshop/books/([^/]+)/no-margins")
 def _no_margins(req: Request):
     generate.stop(req.groups[0])
@@ -208,7 +214,8 @@ def _upscale_start(req: Request):
     """«Апскейлити решту» / «Перерізати з великих оригіналів» — `keys` (every row not upscaled yet without them); with
     `key` — that row again."""
     body = req.json or {}
-    keys = [str(body["key"])] if body.get("key") else [str(k) for k in body["keys"]] if body.get("keys") else None
+    raw = body.get("keys")
+    keys = [str(body["key"])] if body.get("key") else [str(k) for k in raw] if isinstance(raw, list) and raw else None
     return upscale.start(req.groups[0], keys)
 
 

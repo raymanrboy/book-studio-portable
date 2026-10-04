@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -100,6 +100,7 @@ code:
 | What's missing | `markMissing(fields)` — a press that can't go on yet lights up the empty fields (an amber edge until typed in) and focuses the first; the button stays pressable and a notice says what's missing (since 2026-09-30) |
 | Notices | `backToTools()` (a tool opened on its own: the arrow to the list), `stickyFit()` (a sticky column taller than the window sticks by its bottom), `toast()` (with `{undo: {label, run}}` — a «Скасувати» button, only for an action the program can really take back; 9 s), `modal()`, `confirmBox()` (`extra` — markup under the text, e.g. the texts about to be saved), `confirmChecked()` (a warning and a box to tick before «Продовжити»; `act()` runs before it closes — the Etsy sign-in, the Printify manual approval), `menu()`, `closeMenu()`, `topLayer()` |
 | The shell's dot | `tellBusy(detail)` — the `bs:busy` event: what runs (the mockups, the Workshop's generation) and how a run ended while the window was behind |
+| Keyboard and safe attributes (2026-10-04) | `attr(name, value)` — an attribute written with `esc()` (for `ib(…, attrs)` strings built from names or paths); `data-press` on a `role="button" tabindex="0"` non-button — Enter/Space presses it (one handler in `lib.js`; a page that handles the keys itself leaves it off); `menu()` takes focus, Up/Down/Home/End/Esc, and gives focus back; `modal()` has `aria-labelledby`, a `danger` confirm focuses «Скасувати»; `typing()` and `galleryKeys()` (the Books pages' N/F// keys by physical key, so the Ukrainian layout works); `replaceKeyed()` (a card swapped keeping its `data-key`); `BOOKS` + `plural()`; `listingState()` (Etsy's listing states in Ukrainian) |
 | Detail pages | `escBack(hash, {fields})` — Esc back to the list when no dialog, viewer or menu (or, with `fields`, a text field) owns the key; returns `listen(yes)` for a kept page; `notFound(view, {back, backLabel, icon, title, text})` — the page that could not open (the order card, the archived book, the passport, the Workshop's book; since 2026-09-27) |
 | Segmented switch | `segHtml()`, `syncSeg()`, `setSeg()` |
 | Formatting | `money()` («-$5.00» for a minus; the Profit page's own `usd()` merged into it, 2026-09-27), `dateTime()`, `relTime()`, `bytes()`, `plural()`, `highlightTokens()` |
@@ -268,7 +269,7 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 - [app/web/js/book-tile.js](../../app/web/js/book-tile.js) — `bookTile()`, `segBar()`, `tickBadge()`
 - [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`; [app/web/js/palette.js](../../app/web/js/palette.js) — `openPalette()`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
-- [app/web/js/lib.js](../../app/web/js/lib.js) — `markMissing()`, `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
+- [app/web/js/lib.js](../../app/web/js/lib.js) — `markMissing()`, `attr()`, `typing()`, `galleryKeys()`, `replaceKeyed()`, `listingState()`, `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`, `paintGenBar()`, `startPhoto()`
 - [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`

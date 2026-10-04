@@ -66,7 +66,7 @@ One set of rules for the "Import from folder" button, a dropped folder, a ZIP, a
 
 When the owner replaces a single page from the viewer (`replace_page()`), the old one lands next to it
 in a **hidden** `.replaced` subfolder, named `7.png.20260920-142530`. Checks, page counting, and the
-archive only look at the files in the folder itself (`_files_by_lower()`, `_signature()` use
+archive only look at the files in the folder itself (`_files_by_lower()` and the like use
 `is_file()`), so this subfolder doesn't get in their way; "Undo" (`restore_page()`) takes the newest
 copy from there.
 

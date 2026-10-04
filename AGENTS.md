@@ -1,7 +1,7 @@
 # Book Studio — rules for agents
 
 > **Making a book** (a new book, its story, text, prompts)? These rules are not yours: open the folder
-> `pipeline/` and read **`pipeline/GEMINI.md`** — the book pipeline's rules. Everything below is for agents
+> `pipeline/` and read **`pipeline/AGENTS.md`** — the book pipeline's rules. Everything below is for agents
 > working on Book Studio's code.
 
 A local Windows program for the owner of an Etsy shop selling personalized children's books. One icon rail (since
@@ -10,6 +10,15 @@ A local Windows program for the owner of an Etsy shop selling personalized child
 **Profit**; **Tools** — the Order Creator, the print archive, the Photoshop mockups, the photo mockups, the listing slides;
 Search (Ctrl+K). The owner is not a programmer, writes in Ukrainian, and **uses the light theme** —
 design and check in light first ([ui-principles](wiki/owner/ui-principles.md)).
+
+## 0. This is the portable copy
+
+You are in `Book Studio Portable\Book Studio\` — the repository of the **portable** Book Studio. Next to it lies `runtime\`
+(Python, Photoshop, the mockup templates, Antigravity, Ollama, Upscayl, ffmpeg): the program finds them there
+(`app/studio/portable.py`, [wiki/dev/portable.md](wiki/dev/portable.md)). The plan by stages is `..\ROADMAP.md` — read it
+first and take one stage per session. The original install (`D:\Roman\Desktop\Book Studio`) is a separate project: do not
+change it from here. Python for the commands below: `..\runtime\python\python.exe`. This copy has its **own private GitHub repository**
+`raymanrboy/book-studio-portable` (remote `origin`, since 2026-10-04) — never the original's `raymanrboy/book-studio`; commit and push only when the owner asks.
 
 ## 1. Wiki first, then code
 
@@ -57,6 +66,7 @@ requirements — [`wiki/owner/ui-principles.md`](wiki/owner/ui-principles.md).
 
 ```
 AGENTS.md, CLAUDE.md    rules for agents (this file and the Claude Code addendum)
+MANUAL.md              the program's manual written for an AI (what is where, how to use, what to do when it breaks)
 README.md               short intro for people
 app/                    the program: studio/ (Python server), web/ (interface), tests/, tools/
                         data/ and bin/ — local only, not in git
@@ -64,7 +74,6 @@ pipeline/               the book pipeline — the book agents' rules and playboo
                         its books/ (the Workshop's books, every picture) — local only, not in git
 wiki/                   knowledge base (index.md — entry point, log.md — change log, raw/ — owner's sources)
 examples/               the owner's examples for the listing slides (his Canva slides, sample mockups) — local only
-Трафарети мастхев (копія)/  a spare copy of the mockup templates — local only, read-only, never used by the program
 .claude/                interface preview and Claude Code skills
 ```
 

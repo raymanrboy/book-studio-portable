@@ -1,7 +1,7 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -112,3 +112,7 @@ Cyrillic shortcut name is saved under a Latin one and then renamed.
 ## Related
 
 - [Server](server.md) · [Interface](frontend.md) · [Setup](../dev/setup.md)
+
+## When the window counts as closed (2026-10-04)
+
+The Edge `--app` window is started with the occlusion/backgrounding throttles off (`CalculateNativeWinOcclusion`, `--disable-background-timer-throttling`, …): a window covered by another program must keep sending its heartbeat. `main.run_until_closed()`: a page's «bye» counts only when our window process is gone; a window process **seen running** that ends = closed after 12 s (`GRACE`); one that ended at once (Edge handed the window to a process that was already running) = closed only after 90 s without a ping (`SILENCE`). Before this a covered window could be taken for a closed one and the program shut down. The server logs every request longer than 1 s («Slow request») — that is where a slow start shows by name. `/api/app` counts books with `library.counts()` (no following of the Workshop's files).

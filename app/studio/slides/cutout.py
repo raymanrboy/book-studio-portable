@@ -289,10 +289,10 @@ class Cutter:
             if files.get(png.name) in ("wait", "work", "done"):
                 return True
             files[png.name] = "wait"
+            self._q.put((png, Path(templates_dir)))       # in the lock: a thread that is just timing out cannot miss it
             if not self._thread or not self._thread.is_alive():
                 self._thread = threading.Thread(target=self._run, name="slides-cutter", daemon=True)
                 self._thread.start()
-        self._q.put((png, Path(templates_dir)))
         return True
 
     def _set(self, png: Path, value: str) -> None:

@@ -21,9 +21,14 @@ export function html(strings, ...vals) {
 }
 export const ic = (name, cls) => raw(icon(name, cls));
 
+/** One attribute for `ib()`'s `attrs` (or any markup string) with its value escaped: `attr('data-name', file.name)` —
+ *  for anything that comes from the server or a file name. */
+export const attr = (name, value) => `${name}="${esc(value)}"`;
+
 /**
  * Icon-only button. Its meaning travels in the tooltip and the screen-reader label.
- * `attrs` is trusted markup written in this codebase (data-act etc.), never user text.
+ * `attrs` is trusted markup written in this codebase (data-act etc.); a value from the server or a file goes
+ * through `attr()`, never in raw.
  */
 export function ib(iconName, tip, attrs = '', { cls = '', kbd = '' } = {}) {
   return raw(`<button type="button" class="ib ${cls}" aria-label="${esc(tip)}" data-tip="${esc(tip)}"${kbd ? ` data-kbd="${esc(kbd)}"` : ''} ${attrs}>${icon(iconName)}</button>`);
@@ -152,7 +157,11 @@ export async function api(path, { method = 'GET', body, headers = {}, signal } =
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-  if (!res.ok) throw new ApiError(data?.error || `Помилка ${res.status}`, res.status, data);
+  if (!res.ok) {
+    // The server's bare «Forbidden» is a stale session (the program was restarted behind an old window); other 403s have their own words.
+    const stale = res.status === 403 && data?.error === 'Forbidden';
+    throw new ApiError(stale ? 'Це вікно застаріло — натисніть F5, щоб перезавантажити сторінку.' : data?.error || `Помилка ${res.status}`, res.status, data);
+  }
   return data;
 }
 
@@ -296,11 +305,13 @@ document.addEventListener('keydown', (e) => {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
 
+let modalSeq = 0;
 export function modal({ title, sub = '', body = '', foot = null, size = '', dismissible = true, onClose } = {}) {
+  const titleId = `modal-title-${++modalSeq}`;
   const root = el(html`<div class="modal-root">
-    <div class="modal ${size ? 'modal-' + size : ''}" role="dialog" aria-modal="true">
+    <div class="modal ${size ? 'modal-' + size : ''}" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
       <div class="modal-head">
-        <div class="grow"><h3>${title}</h3>${sub ? html`<div class="modal-sub">${sub}</div>` : ''}</div>
+        <div class="grow"><h3 id="${titleId}">${title}</h3>${sub ? html`<div class="modal-sub">${sub}</div>` : ''}</div>
         ${dismissible ? ib('x', 'Закрити', 'data-close', { kbd: 'Esc' }) : ''}
       </div>
       <div class="modal-body"></div>
@@ -359,8 +370,9 @@ export function confirmBox({ title, text = '', extra = '', confirm = 'Підтв
     const m = modal({
       title,
       body: html`<p class="muted" style="white-space:pre-line">${text}</p>${extra}`,
-      foot: html`<button class="btn btn-ghost" data-no>${cancel}</button>
-        <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-yes autofocus>${confirm}</button>`,
+      // A destructive question starts on «Скасувати»: a stray Enter must not be the destructive press.
+      foot: html`<button class="btn btn-ghost" data-no ${danger ? 'autofocus' : ''}>${cancel}</button>
+        <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-yes ${danger ? '' : 'autofocus'}>${confirm}</button>`,
       onClose: () => resolve(result),
     });
     m.foot.querySelector('[data-no]').onclick = () => m.close();
@@ -409,7 +421,7 @@ export function menu(anchor, items, { side = 'below' } = {}) {
   closeMenu();
   document.querySelectorAll('.menu').forEach((m) => m.remove());
   const m = el(html`<div class="menu" role="menu">${items.map((it, i) => it === '-' ? raw('<hr>') :
-    html`<button role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''} ${it.on ? 'on' : ''}" ${it.disabled ? 'disabled' : ''}>${ic(it.icon || 'chevRight')}<span class="grow">${it.label}</span>${it.on ? ic('check', 'icon-s') : ''}</button>`)}</div>`);
+    html`<button type="button" role="menuitem" tabindex="-1" data-i="${i}" class="${it.danger ? 'danger' : ''} ${it.on ? 'on' : ''}" ${it.disabled ? 'disabled' : ''}>${ic(it.icon || 'chevRight')}<span class="grow">${it.label}</span>${it.on ? ic('check', 'icon-s') : ''}</button>`)}</div>`);
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect();
   const w = m.offsetWidth, h = m.offsetHeight;
@@ -419,36 +431,66 @@ export function menu(anchor, items, { side = 'below' } = {}) {
   else if (top + h > window.innerHeight - 10) top = Math.max(10, r.top - h - 6);
   m.style.left = `${Math.max(10, left)}px`;
   m.style.top = `${top}px`;
-  const close = () => {
+  const stops = () => [...m.querySelectorAll('button[role="menuitem"]:not(:disabled)')];
+  let closed = false;
+  // `restore`: the focus goes back to the control that opened the menu (Esc, a pick, Tab) — not when the page changes
+  // under it or the pointer went elsewhere.
+  const close = (restore = false) => {
+    if (closed) return; closed = true; // the listeners below may not even have been added yet (the timeout)
+    const hadFocus = m.contains(document.activeElement);
     m.remove(); document.removeEventListener('mousedown', outside, true); document.removeEventListener('keydown', key, true);
-    if (closeOpenMenu === close) closeOpenMenu = null;
+    if (closeOpenMenu === closeThis) closeOpenMenu = null;
+    if (restore && (hadFocus || document.activeElement === document.body) && anchor.isConnected) anchor.focus({ preventScroll: true });
   };
-  closeOpenMenu = close;
-  const outside = (e) => { if (!m.contains(e.target)) close(); };
-  const key = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
-  setTimeout(() => { document.addEventListener('mousedown', outside, true); document.addEventListener('keydown', key, true); });
+  const closeThis = () => close(false);
+  closeOpenMenu = closeThis;
+  const outside = (e) => { if (!m.contains(e.target)) close(false); };
+  const key = (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); close(true); return; }
+    if (e.key === 'Tab') { close(true); return; } // the Tab goes on from the opener
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    const list = stops();
+    if (!list.length) return;
+    e.preventDefault(); e.stopPropagation();
+    const i = list.indexOf(document.activeElement);
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1
+      : e.key === 'ArrowDown' ? (i + 1) % list.length : (i <= 0 ? list.length - 1 : i - 1);
+    list[next].focus();
+  };
+  setTimeout(() => {
+    if (closed) return; // closed before the timeout fired: no listener may be left behind
+    document.addEventListener('mousedown', outside, true); document.addEventListener('keydown', key, true);
+  });
   m.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-i]');
     if (!b) return;
-    close();
+    close(true);
     items[+b.dataset.i].onClick?.();
   });
+  // The first item takes the focus: Up/Down walk the list, Enter picks, Esc closes (a mouse opens it the same way).
+  stops()[0]?.focus({ preventScroll: true });
 }
 
 // ------------------------------------------------------------------ segmented control
 // `compact` — icons with their counts; only the active one shows its word (2026-09-30: show, don't tell).
 export function segHtml(options, active, { accent = false, name = '', compact = false } = {}) {
+  // The accessible name starts with the visible word (a tip alone would replace it); an icon-only tab is named by its tip.
+  const label = (o) => {
+    if (!o.tip) return '';
+    const base = o.label ? (String(o.tip).startsWith(String(o.label)) ? o.tip : `${o.label} — ${o.tip}`) : o.tip;
+    return raw(`data-tip="${esc(o.tip)}" aria-label="${esc(o.count !== undefined && o.count !== '' ? `${base}, ${o.count}` : base)}"`);
+  };
   return html`<div class="seg ${accent ? 'seg-accent' : ''} ${compact ? 'seg-compact' : ''}" data-seg="${name}" role="tablist">
     <span class="seg-pill"></span>
-    ${options.map((o) => html`<button type="button" role="tab" data-value="${o.value}" class="${o.value === active ? 'active' : ''} ${o.label ? '' : 'seg-ico'}"
-      ${o.tip ? raw(`data-tip="${esc(o.tip)}" aria-label="${esc(o.tip)}"`) : ''}>${o.icon ? ic(o.icon, o.label ? 'icon-s' : '') : ''}${o.label ? html`<span class="seg-label">${o.label}</span>` : ''}${o.count !== undefined ? html`<span class="seg-count">${o.count}</span>` : ''}</button>`)}
+    ${options.map((o) => html`<button type="button" role="tab" aria-selected="${String(o.value === active)}" data-value="${o.value}" class="${o.value === active ? 'active' : ''} ${o.label ? '' : 'seg-ico'}"
+      ${label(o)}>${o.icon ? ic(o.icon, o.label ? 'icon-s' : '') : ''}${o.label ? html`<span class="seg-label">${o.label}</span>` : ''}${o.count !== undefined ? html`<span class="seg-count">${o.count}</span>` : ''}</button>`)}
   </div>`;
 }
 export function syncSeg(seg) {
   if (!seg) return;
   const active = seg.querySelector('button.active');
   // One Tab stop for the group, arrows inside it (the tabs pattern): the chosen tab is the stop.
-  seg.querySelectorAll('button').forEach((b) => { b.tabIndex = !active || b === active ? 0 : -1; });
+  seg.querySelectorAll('button').forEach((b) => { b.tabIndex = !active || b === active ? 0 : -1; b.setAttribute('aria-selected', String(b === active)); });
   const pill = seg.querySelector('.seg-pill');
   if (!active || !pill) return;
   pill.style.width = `${active.offsetWidth}px`;
@@ -469,6 +511,32 @@ document.addEventListener('keydown', (e) => {
   next.focus();
   if (next !== tab) next.click(); // the tab it lands on is chosen at once, as a click would
 });
+
+// A clickable non-button (a row, a chip, a picture) is marked `role="button" tabindex="0" data-press`: Enter or Space on
+// its own focus presses it, as on a real button. (A page that handles the keys itself leaves `data-press` off.)
+document.addEventListener('keydown', (e) => {
+  if ((e.key !== 'Enter' && e.key !== ' ') || e.defaultPrevented || e.target !== document.activeElement) return;
+  if (!e.target.matches?.('[data-press]')) return;
+  e.preventDefault();
+  e.target.click();
+});
+
+/** True while the keyboard belongs to a field or a dialog: a page's single-key shortcuts stay quiet then. */
+export const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')
+  || !!document.activeElement?.isContentEditable || !!document.querySelector('.modal-root, .lightbox');
+
+/** The gallery pages' keys (the Workshop, the library): Ctrl+F or «/» goes to the search `q`; a lone «N» runs `onNew`.
+ *  Keys are told by their place on the keyboard (`code`), so the Ukrainian layout works as well as the Latin one;
+ *  with Ctrl/Alt/Meta/Shift held, in a field or under a dialog, «N» does nothing. Returns the keydown handler. */
+export function galleryKeys(q, onNew) {
+  return (e) => {
+    if (e.defaultPrevented) return;
+    if (e.ctrlKey && !e.altKey && !e.metaKey && e.code === 'KeyF') { e.preventDefault(); q.focus(); q.select(); return; }
+    if (e.ctrlKey || e.altKey || e.metaKey || typing()) return;
+    if (e.key === '/' || (e.code === 'Slash' && !e.shiftKey)) { e.preventDefault(); q.focus(); q.select(); }
+    else if (e.code === 'KeyN' && !e.shiftKey && !e.repeat) { e.preventDefault(); onNew(); }
+  };
+}
 
 // ------------------------------------------------------------------ formatting
 /** Dollars: «$12.50», «-$5.00» (a minus before the sign — the Profit page's own `usd()` until 27.09.2026; this one
@@ -496,6 +564,10 @@ export function relTime(iso) {
   if (diff < 86400 * 7) return `${Math.round(diff / 86400)} дн тому`;
   return dateOnly(iso);
 }
+// An Etsy listing's state in plain Ukrainian; a state not listed here shows as Etsy wrote it.
+const LISTING_STATES = { active: 'активний', inactive: 'неактивний', draft: 'чернетка', sold_out: 'розпродано', expired: 'термін минув',
+  edit: 'редагується', create: 'створюється', private: 'приватний', unavailable: 'недоступний' };
+export const listingState = (s) => LISTING_STATES[String(s ?? '').toLowerCase()] || s;
 export function bytes(n) {
   if (!n && n !== 0) return '';
   if (n < 1024) return `${n} Б`;
@@ -503,6 +575,8 @@ export function bytes(n) {
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} МБ`;
   return `${(n / 1024 ** 3).toFixed(2)} ГБ`;
 }
+/** The plural forms of «книга», for `plural(n, BOOKS)`. */
+export const BOOKS = ['книга', 'книги', 'книг'];
 export function plural(n, [one, few, many]) {
   const m10 = n % 10, m100 = n % 100;
   if (m10 === 1 && m100 !== 11) return one;
@@ -612,6 +686,16 @@ export function patch(container, items, redraw = null) {
     else container.insertBefore(node, cursor);
   }
   return drawn;
+}
+/** One keyed child redrawn by hand (not through patch()) keeps its `data-key` and what it was drawn from, so the next patch()
+ *  finds it unchanged instead of making a new one. Returns the new node. */
+export function replaceKeyed(node, markup) {
+  const text = render(markup);
+  const next = el(raw(text));
+  if (node.dataset.key !== undefined) next.dataset.key = node.dataset.key;
+  drawnFrom.set(next, text);
+  node.replaceWith(next);
+  return next;
 }
 function carryPictures(from, to) {
   const shown = new Map([...from.querySelectorAll('img[data-fade="in"]')].map((img) => [img.getAttribute('src'), img]));

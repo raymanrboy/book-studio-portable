@@ -1,7 +1,7 @@
 // A Workshop book's rows drawn: a spread or a page with its prompt, its frame (the picture, or the place to drop
 // one) and its text — and the small parts the cover's card shares (out of workshop-book.js on 27.09.2026); a row's
 // upscaling shows as a chip over its picture.
-import { html, ic, ib, highlightTokens } from '../lib.js';
+import { html, ic, ib, highlightTokens, attr } from '../lib.js';
 import { picture } from '../workshop-bits.js';
 import { waitingFor } from '../workshop-live.js';
 
@@ -44,7 +44,7 @@ export function rowTemplates({ id, book, mem, uploading }) {
     const u = book().upscale;
     if (!u?.on || !u.available || u.current?.key === key || u.queue.includes(key) || u.sides?.[key]?.big) return '';
     const tip = u.sides?.[key]?.recut ? 'Перерізати з великого оригіналу' : m.upscaled ? 'Апскейлити ще раз (з оригіналу)' : 'Апскейлити ×2';
-    return ib('sparkle', tip, `data-act="upscale-row" data-key="${key}"`, { cls: 'sm' });
+    return ib('sparkle', tip, `data-act="upscale-row" ${attr('data-key', key)}`, { cls: 'sm' });
   }
 
   function marks(r, variant = '') {
@@ -77,13 +77,13 @@ export function rowTemplates({ id, book, mem, uploading }) {
       <img data-fade alt="${r.label}" src="${pic('pictures', name, 900, variant)}" data-act="zoom" data-key="${r.key}" data-part="${i}">
       ${saveBtn('pictures', name, variant, `Зберегти сторінку ${name.replace(/\.\w+$/, '')} як…`)}</div>`;
     const tools = html`<div class="img-actions">
-      ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${r.key}"`, { cls: 'sm' })}
-      ${r.kind === 'spread' ? ib('mirror', r.marks?.mirrored ? 'Віддзеркалено — клацніть, щоб повернути' : 'Віддзеркалити розворот', `data-act="flip" data-key="${r.key}" data-variant="${variant}"`, { cls: `sm ${r.marks?.mirrored ? 'on' : ''}` }) : ''}
-      ${variant ? '' : ib('copy', r.kind === 'spread' ? 'Копіювати розворот як картинку (як його зробив Gemini) — наприклад, агенту 6 як найкращий кадр' : 'Копіювати сторінку як картинку', `data-act="copy-picture" data-key="${r.key}"`, { cls: 'sm' })}
+      ${ib('expand', 'Переглянути', `data-act="zoom" ${attr('data-key', r.key)}`, { cls: 'sm' })}
+      ${r.kind === 'spread' ? ib('mirror', r.marks?.mirrored ? 'Віддзеркалено — клацніть, щоб повернути' : 'Віддзеркалити розворот', `data-act="flip" ${attr('data-key', r.key)} ${attr('data-variant', variant)}`, { cls: `sm ${r.marks?.mirrored ? 'on' : ''}` }) : ''}
+      ${variant ? '' : ib('copy', r.kind === 'spread' ? 'Копіювати розворот як картинку (як його зробив Gemini) — наприклад, агенту 6 як найкращий кадр' : 'Копіювати сторінку як картинку', `data-act="copy-picture" ${attr('data-key', r.key)}`, { cls: 'sm' })}
       ${upBtn(slot(r.key, variant), r.marks)}
-      ${r.original && !variant ? ib('imageDown', 'Зберегти оригінал як…', `data-act="save" data-area="originals" data-name="${r.original}" data-variant=""`, { cls: 'sm' }) : ''}
-      ${ib('upload', 'Замінити файлом', `data-act="pick" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm' })}
-      ${ib('trash', 'Прибрати картинку', `data-act="remove" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm danger' })}</div>`;
+      ${r.original && !variant ? ib('imageDown', 'Зберегти оригінал як…', `data-act="save" data-area="originals" ${attr('data-name', r.original)} data-variant=""`, { cls: 'sm' }) : ''}
+      ${ib('upload', 'Замінити файлом', `data-act="pick" ${attr('data-key', r.key)} ${attr('data-variant', variant)}`, { cls: 'sm' })}
+      ${ib('trash', 'Прибрати картинку', `data-act="remove" ${attr('data-key', r.key)} ${attr('data-variant', variant)}`, { cls: 'sm danger' })}</div>`;
     if (r.kind === 'spread') {
       return html`<div class="ws-frame">${drop(html`<div class="ws-art ws-pairart">${r.pictures.map(page)}<div class="gutter"></div>${marks(r, variant)}${tools}</div>`)}</div>`;
     }
@@ -99,7 +99,8 @@ export function rowTemplates({ id, book, mem, uploading }) {
     // A spread of a book with a hero: the hero goes first, then the prompt (the owner, 27.09.2026).
     const hero = r.kind === 'spread' && !variant && book().steps.find((s) => s.key === 'hero')?.thumb;
     const what = hero ? 'У буфер герой, потім промпт — Ctrl+V у Chrome сам перемикає' : 'Промпт — у буфер';
-    return html`<button class="btn btn-sm ${again ? '' : 'btn-primary'}" data-act="gen" data-key="${r.key}" data-variant="${variant}"
+    // Quiet: up to sixteen empty rows each shouting «Генерувати» read as sixteen next steps; the loud one is «Генерувати всю книгу».
+    return html`<button class="btn btn-sm" data-act="gen" data-key="${r.key}" data-variant="${variant}"
       data-tip="${again ? `Згенерувати ще раз — нова картинка замінить цю (стара піде в .replaced). ${what}` : `${what}; Майстерня чекає картинку з «Завантажень»`}">${ic(again ? 'regenerate' : 'generate')}${label || (again ? 'Ще раз' : 'Генерувати')}</button>`;
   }
 
@@ -109,7 +110,7 @@ export function rowTemplates({ id, book, mem, uploading }) {
     const open = mem.open.has(key);
     return html`<div class="ws-block ws-prompt">
       <div class="ws-block-head"><span class="eyebrow">${title}</span><span class="spacer"></span>
-        ${r.prompt ? ib('copy', 'Скопіювати промпт', `data-act="copy" data-what="prompt" data-key="${r.key}" data-variant="${variant}"`, { cls: 'sm' }) : ''}</div>
+        ${r.prompt ? ib('copy', 'Скопіювати промпт', `data-act="copy" data-what="prompt" ${attr('data-key', r.key)} ${attr('data-variant', variant)}`, { cls: 'sm' }) : ''}</div>
       ${r.prompt ? html`<pre class="ws-body ws-mono ${long && !open ? 'clamp' : ''}">${r.prompt}</pre>
         ${long ? html`<button class="ws-more" data-act="whole-prompt" data-key="${key}">${open ? 'Згорнути' : 'Весь промпт'}</button>` : ''}`
         : html`<div class="ws-body empty-text">${r.key === 'cover' ? 'Промпту ще немає — його напише агент 6, коли розвороти будуть готові.' : 'Промпту ще немає — його напише агент.'}</div>`}
@@ -119,7 +120,7 @@ export function rowTemplates({ id, book, mem, uploading }) {
   function textBlock(r) {
     return html`<div class="ws-block ws-text">
       <div class="ws-block-head"><span class="eyebrow">${r.key === 'cover' ? 'Назва на обкладинці' : 'Текст'}</span><span class="spacer"></span>
-        ${r.text ? ib('copy', 'Скопіювати текст', `data-act="copy" data-what="text" data-key="${r.key}" data-variant=""`, { cls: 'sm' }) : ''}</div>
+        ${r.text ? ib('copy', 'Скопіювати текст', `data-act="copy" data-what="text" ${attr('data-key', r.key)} data-variant=""`, { cls: 'sm' }) : ''}</div>
       ${r.text ? html`<div class="ws-body">${highlightTokens(r.text)}</div>` : html`<div class="ws-body empty-text">Тексту ще немає.</div>`}
     </div>`;
   }

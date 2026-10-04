@@ -52,16 +52,21 @@ export async function receiveDrop({ entries, files }, onProgress, { withText = f
   const report = () => onProgress?.(Math.max(1, Math.min(99, (sent / total) * 100)));
   if (zip) await upload(`/api/drop/zip?${new URLSearchParams({ session, name: zip.name, ...(withText ? { text: '1' } : {}) })}`, zip, (p) => { sent = p * total; report(); });
   else {
-    let next = 0;
+    let next = 0, failure = null;
+    // One failure stops the others from starting more files; the workers never reject, so the error is reported once,
+    // after every upload that was already out has finished (not while the others still run on in the background).
     const worker = async () => {
-      while (next < list.length) {
+      while (!failure && next < list.length) {
         const x = list[next++];
         let done = 0;
-        await upload(`/api/drop/file?${new URLSearchParams({ session, name: x.name, ...(withText ? { text: '1' } : {}) })}`, x.file, (p) => { sent += p * x.file.size - done; done = p * x.file.size; report(); });
+        try {
+          await upload(`/api/drop/file?${new URLSearchParams({ session, name: x.name, ...(withText ? { text: '1' } : {}) })}`, x.file, (p) => { sent += p * x.file.size - done; done = p * x.file.size; report(); });
+        } catch (err) { failure ||= err; return; }
         sent += x.file.size - done; report();
       }
     };
     await Promise.all([worker(), worker(), worker()]);
+    if (failure) throw failure;
   }
   return (await post('/api/drop/done', { session, whole: withText })).path;
 }

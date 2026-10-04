@@ -18,15 +18,16 @@ left (Alt+1…4; the magnifier or Ctrl+K is the search):
 
 ## Launch
 
-Double-click the **Book Studio** shortcut on the desktop. A separate program window opens.
+Double-click the **Book Studio** shortcut (in the portable folder, or on the desktop). A separate program window opens.
 When the window is closed, the program shuts itself down on its own (but first waits for any unfinished
-uploads and Gelato's temporary link).
+uploads, upscaling and Gelato's temporary link) and stops its own Ollama.
 
-If there's no shortcut: `python app\tools\make_shortcut.py` (from the Book Studio folder). If the program
-doesn't start — `Запуск з консоллю.bat` (Run with console) will show the error. Needs Python 3.11+ with
-the packages from `requirements.txt` (already present on this PC; tested on Python 3.14). For the text
-check — Ollama with the `gemma4:12b-it-qat` model (~7 GB); without it the program still works, just
-without that check.
+If there's no shortcut: the hidden `Make desktop shortcut.bat` next to the program folder makes them (in the ordinary
+install: `python app/tools/make_shortcut.py`). If the program doesn't start — `Start with console.bat` (also hidden) shows the error;
+the same text is in `app/data/logs/`. The portable folder carries its own Python (`runtime/python`); the ordinary install needs
+Python 3.11+ with the packages from `requirements.txt`. The text check and the upscaling are **optional modules**
+(Settings → «Модулі»): the check needs Ollama and the `gemma4:12b-it-qat` model (~9 GB together); without them the program still
+works, just without that check.
 
 ## «Книги» — the Workshop and the library
 
@@ -48,16 +49,17 @@ the six square Etsy slides, which open in a Canva-like editor for final touches.
 
 ## First-time setup (1 minute)
 
-1. **Settings → Quick start → Import.** The program finds the keys in Order Creator Printify and Etsy
-   Profit Calculator on its own and moves them into its own encrypted vault.
-2. **Etsy:** the simplest way — in Profit Calculator click "Скопіювати лінк доступу" (Copy access link)
-   and paste it into Settings → Etsy → "Активувати" (Activate). Or "Авторизуватися в Etsy (Київ)" (Sign
-   in to Etsy — Kyiv) — signing in on the Etsy page is done **only on the Kyiv computer**; the program
-   gives a link for Kyiv and accepts back the address the browser was sent to. The callback URL is shown
-   in Settings — it needs to be added to Etsy Developers once.
+1. **Keys.** If the card «Знайдено ключі з попередніх програм» is in Settings, press «Перенести»: the keys of the earlier programs
+   go into the program's own encrypted vault. On a new PC, or from the ordinary Book Studio, use Settings →
+   «Перенесення налаштувань» (export on one side, import on the other; the file is closed with the backup password).
+2. **Etsy:** the simplest way — in Profit Calculator copy the access link and paste it into Settings → Etsy → «Підключити за лінком».
+   Or «Увійти в Etsy»: with the rule «Etsy only from Kyiv» on (the owner's own copy) the sign-in is done **only on the Kyiv
+   computer** — the program gives a link for Kyiv and accepts back the address the browser was sent to. The callback URL is
+   shown in Settings — it needs to be added to Etsy Developers once.
 3. **Gelato:** paste the key in Settings → Gelato. To move to another Gelato account use «Перейти на новий акаунт
    Gelato»: the old key is kept read-only until its orders are finished. **Printify** only reads (its token stays
    for the earlier orders).
+4. **Backup:** Settings → Backup — a password of at least 12 characters; the copy goes to Google Drive every 3 days.
 
 ## Book library
 

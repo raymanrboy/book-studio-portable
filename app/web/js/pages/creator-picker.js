@@ -20,7 +20,7 @@ export async function pickEtsyOrder(onPick) {
     body: html`<div class="stack"><div class="row eo-head"><div class="input-group grow">${ic('search')}<input class="input" id="eo-q" placeholder="Ім'я покупця або номер чека" aria-label="Пошук замовлення" autofocus></div>
         ${segHtml(STAGES.map((s) => ({ ...s, count: 0 })), stage, { name: 'stage' })}
         <div class="tools">${ib('sync', 'Оновити замовлення з Etsy', 'data-x="sync"')}</div></div>
-      <div class="cand-list" id="eo-list" style="max-height:440px"></div></div>`,
+      <div class="cand-list" id="eo-list" role="listbox" aria-label="Замовлення Etsy" style="max-height:440px"></div></div>`,
     foot: null,
   });
   const list = m.el.querySelector('#eo-list');
@@ -34,7 +34,7 @@ export async function pickEtsyOrder(onPick) {
       ${o.items.map((it) => html`${o.items.length > 1 ? html`<div class="cand-item">${it.quantity > 1 ? `${it.quantity} × ` : ''}${it.title}</div>` : ''}
         <dl class="cand-vars">${(it.variations || []).map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>`)}
     </div></div>`;
-  const rowHtml = (o, entering) => html`<div class="cand ${entering ? 'enter' : ''}" data-rid="${o.receiptId}" style="align-items:flex-start">
+  const rowHtml = (o, entering) => html`<div class="cand ${entering ? 'enter' : ''}" data-rid="${o.receiptId}" role="option" aria-selected="false" tabindex="0" data-press style="align-items:flex-start">
       <div class="grow">
         <div class="row" style="gap:8px"><b>${o.name}</b><span class="chip chip-mono">#${o.receiptId}</span>
           ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}

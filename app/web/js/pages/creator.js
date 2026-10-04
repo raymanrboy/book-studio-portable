@@ -1,7 +1,7 @@
 // Order Creator: Printify unpublished photo books and Gelato draft orders from Canva PNG folders.
 import {
   api, post, html, ic, ib, setHtml, on, media, toast, runJob, segHtml, syncSeg, setSeg, bytes, copyText, openExternal,
-  debounce, keepFocus, fadeImages, setProgress, patch, enterOnce, confirmChecked, markMissing, backToTools,
+  debounce, keepFocus, fadeImages, setProgress, patch, enterOnce, confirmChecked, markMissing, backToTools, plural, BOOKS, attr,
 } from '../lib.js';
 import { openFolderViewer } from '../folder-viewer.js';
 import {
@@ -170,10 +170,10 @@ export async function mount(view) {
     // A dragged folder is shown by its own name (b.label); b.folder is where the program copied it.
     return html`<div class="cr-book ${many() && i === cur().pick ? 'is-shown' : ''}" data-folder-drop data-book="${i}">
       ${many() ? html`<div class="row cr-book-head"><button class="cr-book-name" data-act="show-book" data-book="${i}" data-tip="Показати структуру цієї книги">${ic('book', 'icon-s')}Книга ${i + 1}</button>
-        <span class="spacer"></span>${checkBadge(b, i)}${cur().books.length > 2 || !cur().books[i].folder ? ib('x', 'Прибрати книгу', `data-act="drop-book" data-book="${i}"`, { cls: 'sm' }) : ''}</div>` : ''}
+        <span class="spacer"></span>${checkBadge(b, i)}${cur().books.length > 2 || !cur().books[i].folder ? ib('x', 'Прибрати книгу', `data-act="drop-book" ${attr('data-book', i)}`, { cls: 'sm' }) : ''}</div>` : ''}
       <div class="input-group">
         <input class="input path-input" id="cr-folder-${i}" data-book="${i}" placeholder="Папку ще не вибрано" value="${b.label || b.folder}" title="${b.label ? b.folder : ''}" spellcheck="false" autocomplete="off" aria-label="Шлях до папки">
-        ${ib('folderPick', 'Обрати папку', `data-act="browse" data-book="${i}"`)}
+        ${ib('folderPick', 'Обрати папку', `data-act="browse" ${attr('data-book', i)}`)}
       </div>
       ${s.reprint && i === 0 ? html`<div class="row faint cr-reprint">${ic('orderArchive', 'icon-s')}<span>${st.mode === 'printify'
         ? 'Передрук з архіву: нове замовлення на книгу, яка вже є в Printify'
@@ -181,8 +181,8 @@ export async function mount(view) {
       ${v && !b.validating ? html`
         ${checkNotices(v.errors, v.warnings, 'Перевірка не пройдена')}
         <div class="row">${v.ok ? html`<span class="faint mono" style="font-size: var(--fs-s)">${bytes(v.totalBytes)}</span>` : ''}<span class="spacer"></span>
-          ${v.ok ? ib('folderOpen', 'Відкрити папку', `data-act="open-folder" data-book="${i}"`, { cls: 'sm' }) : ''}
-          ${ib('scan', 'Перевірити файли знову', `data-act="revalidate" data-book="${i}"`, { cls: 'sm' })}</div>` : ''}
+          ${v.ok ? ib('folderOpen', 'Відкрити папку', `data-act="open-folder" ${attr('data-book', i)}`, { cls: 'sm' }) : ''}
+          ${ib('scan', 'Перевірити файли знову', `data-act="revalidate" ${attr('data-book', i)}`, { cls: 'sm' })}</div>` : ''}
     </div>`;
   }
 
@@ -190,7 +190,7 @@ export async function mount(view) {
     const one = !many();
     const badge = one ? checkBadge(bk(), cur().pick) : '';
     return html`<section class="card card-pad stack">
-      <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">${one ? 'Папка з файлами' : `Папки з файлами · ${cur().books.length} книги`}</h3>${badge}</div>
+      <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">${one ? 'Папка з файлами' : `Папки з файлами · ${cur().books.length} ${plural(cur().books.length, BOOKS)}`}</h3>${badge}</div>
       ${cur().books.map((x, i) => folderBlock(i))}
       ${st.receiptId || many() ? html`<button class="btn btn-sm btn-ghost" style="align-self:flex-start" data-act="add-book"
         data-tip="Ще одна книга цього ж замовлення — вони підуть у друк разом, однією чернеткою">${ic('plus', 'icon-s')}Ще книга</button>` : ''}
@@ -262,7 +262,7 @@ export async function mount(view) {
   }
 
   // Every send is written to data/logs/sends — the icon opens this one's record (or the folder).
-  const sendLogButton = (r) => ib('sendLog', 'Журнал відправки', `data-act="open-sendlog" data-file="${r?.sendLog || ''}"`, { cls: 'sm' });
+  const sendLogButton = (r) => ib('sendLog', 'Журнал відправки', `data-act="open-sendlog" ${attr('data-file', r?.sendLog || '')}`, { cls: 'sm' });
 
   function resultHtml() {
     const s = cur();
@@ -350,8 +350,8 @@ export async function mount(view) {
     patch($('#cr-st-cover'), [['cover', html`
       <div class="stack-s">
         <div class="row"><span class="eyebrow grow">Обкладинка</span><span class="num faint" style="font-size: var(--fs-s)">${coverRow?.width ? `${coverRow.width}×${coverRow.height}` : ''}</span></div>
-        <div class="structure-cover" data-lb="0" style="aspect-ratio:${ratio}">
-          ${has('Cover.png') ? html`<img data-fade decoding="async" src="${thumb(coverRow.file, 1400)}" alt="Обкладинка">` : html`<div class="cover-ph"><div>Задня</div><div>Лицьова</div></div>`}
+        <div class="structure-cover" data-lb="0" role="button" tabindex="0" data-press aria-label="Відкрити обкладинку" style="aspect-ratio:${ratio}">
+          ${has('Cover.png') ? html`<img data-fade decoding="async" src="${thumb(coverRow.file, 1400)}" alt="Обкладинка">` : html`<div class="cover-ph"><div>Задня</div><div>Передня</div></div>`}
           <div class="gutter"></div>
           ${coverRow && !coverRow.ok ? html`<div class="page-tag" style="background:var(--red);left:auto;right:8px">${coverRow.error}</div>` : ''}
           <i class="crops"></i>
@@ -366,7 +366,7 @@ export async function mount(view) {
           const rp = i === 0 ? 2 : lp + 1;
           const lf = sp.left ? `${sp.left}.png` : null, rf = sp.right ? `${sp.right}.png` : null;
           const mark = (f) => { if (!f) return ''; const x = fileState(f); return html`<span class="${x === 'ok' ? 'file-ok' : x ? 'file-bad' : ''}">${f}</span>`; };
-          return [`s${i}`, html`<div class="spread-card" data-lb="${i + 1}">
+          return [`s${i}`, html`<div class="spread-card" data-lb="${i + 1}" role="button" tabindex="0" data-press aria-label="Відкрити розворот ${lp}–${rp}">
             <div class="spread-view">${half(sp.left, 'left', 'Форзац')}${half(sp.right, 'right', 'Нахзац')}<div class="gutter-s"></div><i class="crops"></i></div>
             <div class="spread-card-head"><span class="spread-no">${lp}–${rp}</span><span class="spacer"></span><span class="spread-files">${mark(lf)}${mark(rf)}</span></div></div>`];
         }));
@@ -492,7 +492,7 @@ export async function mount(view) {
   /** What the order's card says once the draft is made (its print step shows it instead of «До друку»). */
   function sentText(mode, r) {
     const n = (r?.books || []).length;
-    const books = n > 1 ? ` · ${n} книги` : '';
+    const books = n > 1 ? ` · ${n} ${plural(n, BOOKS)}` : '';
     if (mode === 'gelato') return `Чернетку замовлення створено в Gelato${books}`;
     if (r?.orderError) return `${n > 1 ? 'Книги' : 'Книгу'} створено в Printify, замовлення — ні (подробиці в Order Creator)`;
     return r?.order ? `Чернетку замовлення створено в Printify (On hold)${books}`

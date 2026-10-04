@@ -3,7 +3,7 @@
 // after the order became "shipped" (studio/archive.py); "Не видаляти" keeps a book until unmarked.
 import {
   api, post, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural,
-  patch, enterOnce, escBack, notFound, backToTools,
+  patch, enterOnce, escBack, notFound, backToTools, BOOKS, attr,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import {
@@ -48,7 +48,7 @@ async function mountList(view) {
   const count = data.entries.length;
   setHtml(view, html`
     <div class="page-head">${backToTools()}<div><h1 class="page-title">Архів друку</h1>
-      <div class="page-sub">${count ? `${count} ${plural(count, ['книга', 'книги', 'книг'])}` : ''}</div></div></div>
+      <div class="page-sub">${count ? `${count} ${plural(count, BOOKS)}` : ''}</div></div></div>
     ${count ? html`<div class="lib-toolbar"><div class="input-group">${ic('search')}<input class="input" id="ar-q" placeholder="Ім'я, номер чека або назва" aria-label="Пошук в архіві" autocomplete="off"></div></div>` : ''}
     <div class="ord-list" id="ar-list"></div>
     <div id="ar-empty"></div>`);
@@ -172,8 +172,8 @@ async function mountBook(view, id) {
         <dt>Друкарня</dt><dd>${providerName(e.provider)} · ${e.pageCount} стор.${e.formatLabel ? ` · ${e.formatLabel}` : ''}</dd>
         <dt>Коли</dt><dd>${dateTime(e.sentAt)}</dd>
         <dt>Назва</dt><dd>${e.title}</dd>
-        ${pr && e.productId ? html`<dt>Product ID</dt><dd class="mono arc-id">${e.productId}${ib('copy', 'Копіювати Product ID', `data-act="copy-id" data-text="${e.productId}"`, { cls: 'sm' })}</dd>` : ''}
-        ${e.orderId ? html`<dt>Order ID</dt><dd class="mono arc-id">${e.orderId}${ib('copy', 'Копіювати Order ID', `data-act="copy-id" data-text="${e.orderId}"`, { cls: 'sm' })}</dd>` : ''}
+        ${pr && e.productId ? html`<dt>Product ID</dt><dd class="mono arc-id">${e.productId}${ib('copy', 'Копіювати Product ID', `data-act="copy-id" ${attr('data-text', e.productId)}`, { cls: 'sm' })}</dd>` : ''}
+        ${e.orderId ? html`<dt>Order ID</dt><dd class="mono arc-id">${e.orderId}${ib('copy', 'Копіювати Order ID', `data-act="copy-id" ${attr('data-text', e.orderId)}`, { cls: 'sm' })}</dd>` : ''}
         ${e.reprintOf ? html`<dt>Передрук</dt><dd><a href="#/archive/${e.reprintOf}">першої відправки</a></dd>` : ''}
       </dl>
       <div class="faint arc-clock">${ic(e.keep ? 'pin' : 'clock', 'icon-s')}<span>${clockText(e, keepDays)}</span></div>

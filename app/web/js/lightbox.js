@@ -21,8 +21,9 @@ export function openLightbox(items, start = 0) {
   let fit = 1, natW = 0, natH = 0, active = null, raf = 0, last = 0, dragging = null, seq = 0;
   let hiFor = null, hiReady = null;
   const cache = new Map();
+  const opener = document.activeElement; // the control that opened the viewer gets the focus back when it closes
 
-  const root = el(html`<div class="lightbox" role="dialog" aria-modal="true">
+  const root = el(html`<div class="lightbox" role="dialog" aria-modal="true" aria-label="Перегляд зображення" tabindex="-1" style="outline:none">
     <div class="lb-top">
       <div class="grow"><div class="lb-title"></div><div class="lb-sub"></div></div>
       <button class="lb-btn" data-a="text" aria-label="Текст сторінки" data-tip="Текст сторінки" data-kbd="T">${ic('captions')}</button>
@@ -30,7 +31,7 @@ export function openLightbox(items, start = 0) {
       <button class="lb-btn" data-a="original" aria-label="Відкрити файл-оригінал" data-tip="Відкрити файл-оригінал">${ic('fileOpen')}</button>
       <button class="lb-btn" data-a="close" aria-label="Закрити" data-tip="Закрити" data-kbd="Esc">${ic('x')}</button>
     </div>
-    <div class="lb-stage"><div class="spinner spinner-l lb-spinner" hidden></div><img alt="" draggable="false" decoding="async"><img alt="" draggable="false" decoding="async"><div class="lb-text" hidden></div></div>
+    <div class="lb-stage"><div class="spinner spinner-l lb-spinner" hidden></div><img alt="" draggable="false" decoding="async"><img alt="" draggable="false" decoding="async"><div class="lb-text" hidden></div><div class="lb-error" role="alert" hidden>Не вдалося завантажити зображення</div></div>
     <div class="lb-bottom">
       <button class="lb-btn" data-a="prev" aria-label="Попереднє" data-tip="Попереднє" data-kbd="←">${ic('chevLeft')}</button>
       <span class="lb-counter"></span>
@@ -45,8 +46,10 @@ export function openLightbox(items, start = 0) {
   const imgs = [...root.querySelectorAll('.lb-stage img')];
   const spinner = root.querySelector('.lb-spinner');
   const textBox = root.querySelector('.lb-text');
+  const errorBox = root.querySelector('.lb-error');
   const zoomLabel = root.querySelector('.lb-zoom');
   document.body.appendChild(root);
+  root.focus({ preventScroll: true }); // the keyboard works from the first moment, and Tab stays inside (onKey)
 
   // ---------------------------------------------------------------- render loop
   let shownZoom = '';
@@ -84,6 +87,7 @@ export function openLightbox(items, start = 0) {
     tgt.s = fit; tgt.x = (w - natW * fit) / 2; tgt.y = (h - natH * fit) / 2;
   }
   function zoomAt(factor, px, py) {
+    if (!active) return; // no picture (it did not load): nothing to zoom
     const ns = Math.max(fit * 0.5, Math.min(fit * MAX_ZOOM, tgt.s * factor));
     tgt.x = px - (px - tgt.x) * (ns / tgt.s);
     tgt.y = py - (py - tgt.y) * (ns / tgt.s);
@@ -123,7 +127,9 @@ export function openLightbox(items, start = 0) {
       const im = new Image();
       im.decoding = 'async';
       im.src = src;
-      cache.set(src, (im.decode ? im.decode() : new Promise((r, j) => { im.onload = r; im.onerror = j; })).then(() => im));
+      const loading = (im.decode ? im.decode() : new Promise((r, j) => { im.onload = r; im.onerror = j; })).then(() => im);
+      cache.set(src, loading);
+      loading.catch(() => { if (cache.get(src) === loading) cache.delete(src); }); // a failure is not remembered: the next try loads again
     }
     return cache.get(src);
   }
@@ -151,7 +157,18 @@ export function openLightbox(items, start = 0) {
     textBox.innerHTML = it.text ? String(highlightTokens(it.text)) : '';
     const slow = setTimeout(() => { if (my === seq) spinner.hidden = false; }, 120);
     let im;
-    try { im = await load(it.src); } catch { clearTimeout(slow); spinner.hidden = true; return; }
+    errorBox.hidden = true;
+    try { im = await load(it.src); }
+    catch {
+      clearTimeout(slow);
+      if (my !== seq) return;
+      // The old picture must not stay under the new title: hide it and say so.
+      spinner.hidden = true;
+      imgs.forEach((x) => x.classList.remove('on'));
+      active = null; hiFor = null; hiReady = null;
+      errorBox.hidden = false;
+      return;
+    }
     clearTimeout(slow);
     if (my !== seq) return;
     spinner.hidden = true;
@@ -177,22 +194,34 @@ export function openLightbox(items, start = 0) {
 
   // ---------------------------------------------------------------- input
   function close() {
+    if (root.classList.contains('closing')) return;
     root.classList.add('closing');
     cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', onResize);
     setTimeout(() => root.remove(), 170);
+    if (opener && opener !== document.body && document.contains(opener) && (root.contains(document.activeElement) || document.activeElement === document.body)) opener.focus({ preventScroll: true });
   }
-  const onResize = () => { stageRect = null; const atFit = Math.abs(tgt.s - fit) < fit * 0.01; if (atFit) { fitTarget(); jump(); } else keepInView(); };
+  const fitNow = () => { if (active) { fitTarget(); kick(); } };
+  const onResize = () => { stageRect = null; if (!active) return; const atFit = Math.abs(tgt.s - fit) < fit * 0.01; if (atFit) { fitTarget(); jump(); } else keepInView(); };
   function onKey(e) {
     if (topLayer() !== root) return; // a dialog asked from the viewer is on top: the keys are its own
     const k = e.key;
+    if (k === 'Tab') { // Tab wraps inside the viewer, never out to the page behind it
+      const stops = [...root.querySelectorAll('button:not(:disabled)')].filter((x) => !x.hidden && x.offsetParent);
+      if (!stops.length) { e.preventDefault(); return; }
+      const first = stops[0], last = stops[stops.length - 1];
+      if (!root.contains(document.activeElement) || document.activeElement === root) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      return;
+    }
     if (k === 'Escape') { e.stopPropagation(); close(); }
     else if (k === 'ArrowRight') show(index + 1, 1);
     else if (k === 'ArrowLeft') show(index - 1, -1);
     else if (k === '+' || k === '=') zoomAt(1.4, ...center());
     else if (k === '-') zoomAt(1 / 1.4, ...center());
-    else if (k === '0') { fitTarget(); kick(); }
+    else if (k === '0') fitNow();
     else if (k.toLowerCase() === 't' || k.toLowerCase() === 'е') toggleText();
     else return;
     e.preventDefault();
@@ -216,7 +245,7 @@ export function openLightbox(items, start = 0) {
     else if (a === 'next') show(index + 1, 1);
     else if (a === 'in') zoomAt(1.5, ...center());
     else if (a === 'out') zoomAt(1 / 1.5, ...center());
-    else if (a === 'fit') { fitTarget(); kick(); }
+    else if (a === 'fit') fitNow();
     else if (a === 'text') toggleText();
     else if (a === 'original') items[index].onOriginal?.();
     else if (a === 'act') items[index].actions?.[+b.dataset.i]?.run?.(api);
@@ -266,7 +295,7 @@ export function openLightbox(items, start = 0) {
   stage.addEventListener('pointercancel', endDrag);
   stage.addEventListener('dblclick', (e) => {
     const [, , r] = stageSize();
-    if (tgt.s > fit * 1.05) { fitTarget(); kick(); } else zoomAt(2.6, e.clientX - r.left, e.clientY - r.top);
+    if (tgt.s > fit * 1.05) fitNow(); else zoomAt(2.6, e.clientX - r.left, e.clientY - r.top);
   });
 
   show(index);

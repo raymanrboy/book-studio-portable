@@ -5,7 +5,7 @@
 // Every change is saved at once with the version it was made on; what an agent changes in the files meanwhile shows
 // up by itself (the signature is asked every 1.5 s) — the owner may work on the slides through an LLM too.
 import {
-  api, post, html, ic, ib, setHtml, on, toast, runJob, menu, modal, confirmBox, segHtml, notFound, tellBusy,
+  api, post, html, ic, ib, setHtml, on, toast, runJob, menu, modal, confirmBox, segHtml, notFound, tellBusy, attr,
 } from '../lib.js';
 import { store } from '../info.js';
 import {
@@ -207,19 +207,24 @@ export async function mount(view, [whereParam, nParam]) {
   // ---------------------------------------------------------------- the layers (the top one is in front)
   function drawLayers() {
     const list = $('#se-layers');
+    // A redraw replaces the rows: a press made from the keyboard (Enter on a layer, on its lock or eye) keeps the focus.
+    const was = document.activeElement;
+    const focusSel = was && list.contains(was)
+      ? (was.classList.contains('se-layer') ? `.se-layer[data-i="${was.dataset.i}"]` : was.dataset.act ? `[data-act="${was.dataset.act}"][data-i="${was.dataset.i}"]` : '') : '';
     setHtml(list, [...items().keys()].reverse().map((i) => {
       const e = items()[i];
       const [kind, glyph] = KIND[e.type] || [e.type, 'image'];
       const locked = isLocked(e) && !THROUGH.includes(e.type);
-      return html`<div class="se-layer ${i === st.sel ? 'sel' : ''} ${e.hidden ? 'off' : ''}" data-i="${i}" draggable="true" role="button" tabindex="0">
+      return html`<div class="se-layer ${i === st.sel ? 'sel' : ''} ${e.hidden ? 'off' : ''}" data-i="${i}" draggable="true" role="button" tabindex="0" data-press>
         <span class="se-kind" data-tip="${kind}">${ic(glyph, 'icon-s')}</span>
         <span class="grow truncate">${e.name || kind}</span>
-        ${THROUGH.includes(e.type) ? '' : ib(locked ? 'lock' : 'unlock', locked ? 'Закріплено — зняти замок, щоб рухати мишкою' : 'Вільно рухається — закріпити', `data-act="lock" data-i="${i}"`, { cls: `xs se-lock ${locked ? '' : 'free'}` })}
-        ${ib(e.hidden ? 'eyeOff' : 'eye', e.hidden ? 'Показати' : 'Сховати', `data-act="eye" data-i="${i}"`, { cls: `xs se-eye ${e.hidden ? 'on' : ''}` })}
+        ${THROUGH.includes(e.type) ? '' : ib(locked ? 'lock' : 'unlock', locked ? 'Закріплено — зняти замок, щоб рухати мишкою' : 'Вільно рухається — закріпити', `data-act="lock" ${attr('data-i', i)}`, { cls: `xs se-lock ${locked ? '' : 'free'}` })}
+        ${ib(e.hidden ? 'eyeOff' : 'eye', e.hidden ? 'Показати' : 'Сховати', `data-act="eye" ${attr('data-i', i)}`, { cls: `xs se-eye ${e.hidden ? 'on' : ''}` })}
       </div>`;
-    }).concat([html`<div class="se-layer se-bg-row ${st.bg ? 'sel' : ''}" data-i="bg" role="button" tabindex="0">
+    }).concat([html`<div class="se-layer se-bg-row ${st.bg ? 'sel' : ''}" data-i="bg" role="button" tabindex="0" data-press>
         <span class="se-kind se-bg-chip" style="--c:${scene.bg}" data-tip="Тло"></span><span class="grow truncate">Тло</span></div>`]));
     list.querySelector('.se-layer.sel')?.scrollIntoView({ block: 'nearest' });
+    if (focusSel) list.querySelector(focusSel)?.focus({ preventScroll: true });
   }
 
   // ---------------------------------------------------------------- the selection and its handles
@@ -338,7 +343,7 @@ export async function mount(view, [whereParam, nParam]) {
     const [kind] = KIND[e.type] || [e.type];
     setHtml(box, html`
       <div class="se-panel-head"><span class="eyebrow grow">${kind}</span>
-        ${THROUGH.includes(e.type) ? '' : ib(isLocked(e) ? 'lock' : 'unlock', isLocked(e) ? 'Закріплено — зняти замок, щоб рухати мишкою' : 'Вільно рухається — закріпити', `data-act="lock" data-i="${st.sel}"`, { cls: `sm ${isLocked(e) ? 'on' : ''}` })}
+        ${THROUGH.includes(e.type) ? '' : ib(isLocked(e) ? 'lock' : 'unlock', isLocked(e) ? 'Закріплено — зняти замок, щоб рухати мишкою' : 'Вільно рухається — закріпити', `data-act="lock" ${attr('data-i', st.sel)}`, { cls: `sm ${isLocked(e) ? 'on' : ''}` })}
         ${ib('mirror', 'Віддзеркалити зліва направо', 'data-act="flipX"', { cls: `sm ${e.flipX ? 'on' : ''}` })}
         ${ib('mirrorV', 'Віддзеркалити догори дригом', 'data-act="flipY"', { cls: `sm ${e.flipY ? 'on' : ''}` })}
         ${ib('copy', 'Копія', 'data-act="dup"', { cls: 'sm', kbd: 'Ctrl+D' })}
@@ -394,7 +399,10 @@ export async function mount(view, [whereParam, nParam]) {
       version = r.version;
       if (!gone) paintSaved('ok', 'Збережено');
     }).catch((err) => {
-      if (gone) return;
+      if (gone) { // the page is already left: the chip is gone, but a lost last change must still be said
+        toast(err.status === 409 ? 'Останню зміну слайда не збережено: його тим часом змінили.' : `Останню зміну слайда не збережено: ${err.message}`, 'error');
+        return;
+      }
       if (err.status === 409 && err.data?.scene) {   // changed on disk meanwhile (an agent): its version wins
         takeTheirs(err.data.scene, err.data.version, 'Слайд тим часом змінили — показано новий; ваша остання зміна не збереглась');
       } else {
@@ -438,10 +446,10 @@ export async function mount(view, [whereParam, nParam]) {
       try {
         const { sig } = await api(`/api/slides/sig?w=${encodeURIComponent(where)}`);
         if (sig !== st.sig && !gone) {
-          st.sig = sig;
           const [{ scene: theirs, version: v }, a, i] = await Promise.all([api(q('/api/slides/scene')),
             api(`/api/slides/assets?w=${encodeURIComponent(where)}`), api(`/api/slides/state?w=${encodeURIComponent(where)}`)]);
           if (gone) return;
+          st.sig = sig; // remembered only once the three answers are in: a failed round asks again next time
           const assetsChanged = JSON.stringify(a) !== JSON.stringify(assets);
           assets = a; info = i; setAssets(a);
           if (v !== version && !st.dirty && !st.saving) takeTheirs(theirs, v, 'Слайд змінено ззовні — показано новий');

@@ -12,8 +12,8 @@ If the user provides **the entire brief at once** — use the autonomous `playbo
 (agents 0→5 without questions until story generation; Agent 6 after approved story panoramas; stopping
 only for **style** / canonical.png / GO-NO-GO / generation / final wide image).
 
-> **Entry point for book agents.** `GEMINI.md` and `AGENTS.md` — two IDENTICAL copies (Antigravity may
-> read either); change both together. `CLAUDE.md` is a different file on purpose — it is for coding agents
+> **Entry point for book agents.** `AGENTS.md` — the one file, read by any agent
+> (Antigravity, Claude Code, Codex…; there is no separate `GEMINI.md` since 2026-10-03). `CLAUDE.md` is a different file on purpose — it is for coding agents
 > working on Book Studio's code. This folder is the book pipeline inside Book Studio (the user's program): a clean
 > copy of the old `Etsy-Book-Pipeline` (2026-09-26); the old folder is an archive — never write to it. Everything
 > outside this folder is Book Studio's code and data — not yours to read or change.
@@ -125,7 +125,7 @@ explicitly requested to `draft ahead`. In draft-ahead mode, mark all downstream 
 ## Project Map
 
 ```
-GEMINI.md / AGENTS.md          ← entry point for book agents (two identical copies)
+AGENTS.md                      ← entry point for book agents (any agent)
 CLAUDE.md                      ← for coding agents (Book Studio's code) — not for making books
 playbook/
   README.md                    ← navigation

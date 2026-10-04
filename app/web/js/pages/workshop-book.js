@@ -7,10 +7,11 @@
 // file changes (workshop-live.js, patch()): what stayed, stays — pictures, scroll, an opened prompt.
 import {
   api, post, html, ic, ib, raw, setHtml, on, toast, menu, confirmBox, upload, copyText, fadeImages, highlightTokens,
-  plural, patch, syncSeg, runJob, topLayer, notFound, remember, media,
+  plural, patch, syncSeg, runJob, topLayer, notFound, remember, media, attr,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { openAddBook } from '../add-book.js';
+import { offerModule } from '../modules-ui.js';
 import { picture, checkWord, ERRORS, STATE_TEXT } from '../workshop-bits.js';
 import { pathStep } from '../path.js';
 import { watch, refresh, act, startGen, startPhoto, genAction, paintGenBar, genState, waitingFor } from '../workshop-live.js';
@@ -215,12 +216,12 @@ export async function mount(view, [rawId]) {
         ? html`<video muted loop autoplay playsinline preload="metadata" src="${pic('etsy', c.photo)}"></video>`
         : html`<img data-fade alt="${c.label}" src="${pic('etsy', c.photo, 480)}">`;
       const look = c.omni
-        ? ib('external', 'Відкрити відео', `data-act="photo-play" data-name="${c.photo}"`, { cls: 'sm' })
-        : ib('expand', 'Переглянути', `data-act="photo-zoom" data-cat="${c.key}"`, { cls: 'sm' });
+        ? ib('external', 'Відкрити відео', `data-act="photo-play" ${attr('data-name', c.photo)}`, { cls: 'sm' })
+        : ib('expand', 'Переглянути', `data-act="photo-zoom" ${attr('data-cat', c.key)}`, { cls: 'sm' });
       return html`<div class="ph-card ${c.key === sel.key ? 'sel' : ''} ${c.photo ? 'full' : ''} ${waiting ? 'waiting' : ''}">
         <div class="ws-drop ph-card-drop" data-drop="photo:${c.key}" data-video="${c.omni ? '1' : ''}">
           ${c.photo ? html`<div class="ph-card-art" data-act="photo-cat" data-cat="${c.key}">${art}
-              <div class="img-actions">${look}${ib('download', 'Зберегти як…', `data-act="save" data-area="etsy" data-name="${c.photo}"`, { cls: 'sm' })}${ib('trash', `Прибрати ${c.omni ? 'відео' : 'фото'} — у папку .replaced книги`, `data-act="photo-remove" data-cat="${c.key}"`, { cls: 'sm danger' })}</div></div>`
+              <div class="img-actions">${look}${ib('download', 'Зберегти як…', `data-act="save" data-area="etsy" ${attr('data-name', c.photo)}`, { cls: 'sm' })}${ib('trash', `Прибрати ${c.omni ? 'відео' : 'фото'} — у папку .replaced книги`, `data-act="photo-remove" ${attr('data-cat', c.key)}`, { cls: 'sm danger' })}</div></div>`
             : html`<button type="button" class="ph-card-ph" data-act="photo-cat" data-cat="${c.key}" aria-label="${c.label}">${ic(c.omni ? 'video' : 'camera')}</button>`}
           ${waiting ? html`<div class="ws-wait"><span class="ws-pulse"></span>${c.omni ? 'Чекаю відео…' : 'Чекаю фото…'}</div>` : ''}${busy(`photo:${c.key}`)}
         </div>
@@ -231,7 +232,7 @@ export async function mount(view, [rawId]) {
     const nowTpl = (name) => a?.kind === 'photo' && a.book === id && a.category === sel.key && a.template === name;
     const pick = html`<div class="ph-pick">
       <div class="ph-pick-head"><b>${sel.label}</b><span class="ph-flow">фото ${ic('chevRight', 'icon-s')} ${ref.label} ${ic('chevRight', 'icon-s')} промпт</span>
-        <span class="spacer"></span>${ib('prompt', 'Промпт цієї категорії — у буфер', `data-act="photo-prompt" data-cat="${sel.key}"`)}</div>
+        <span class="spacer"></span>${ib('prompt', 'Промпт цієї категорії — у буфер', `data-act="photo-prompt" ${attr('data-cat', sel.key)}`)}</div>
       ${ref.name ? '' : html`<div class="notice notice-warn">${ic('alert')}<div>${ref.missing}</div></div>`}
       ${sel.omni ? html`<div class="notice notice-info">${ic('video')}<div>Це відео для Gemini Omni: фото, ${ref.label} і промпт ідуть у буфер як завжди. Завантажене відео Book Studio зловить сам, обріже перші 2 секунди й покладе в папку Etsy книги.</div></div>` : ''}
       ${tpl.length ? html`<div class="ph-tiles sm">${tpl.map((t) => html`<div class="ph-tile ${t.name === sel.template ? 'used' : ''} ${nowTpl(t.name) ? 'now' : ''}" style="aspect-ratio:${t.size ? `${t.size[0]} / ${t.size[1]}` : '1 / 1'}">
@@ -260,7 +261,7 @@ export async function mount(view, [rawId]) {
       return b.library
         ? html`<div class="ws-manual"><div>Книга в бібліотеці замовлень${b.library.listingId ? html` · лістинг <span class="num">#${b.library.listingId}</span>` : ''}: замовлення знаходять її за лістингом. Обкладинку й сторінки бібліотека бере звідси: заміните тут — зміниться й там.</div>
           <button class="btn" data-act="to-library">${ic('shelf')}Відкрити в бібліотеці</button></div>`
-        : html`<div class="ws-manual">${missingSummary()}<button class="btn ${ready() ? 'btn-primary' : ''}" data-act="to-library">${ic('shelf')}Передати в бібліотеку</button></div>`;
+        : html`<div class="ws-manual">${missingSummary()}<button class="btn" data-act="to-library">${ic('shelf')}Передати в бібліотеку</button></div>`;
     }
     if (s.key === 'pictures') {
       return html`${s.count ? '' : html`<div class="ws-missing">Картинок ще немає — натисніть «Генерувати всю книгу» над рядками.</div>`}${miniRows()}`;
@@ -313,7 +314,7 @@ export async function mount(view, [rawId]) {
     const drawn = patch(panel, [
       ['head', html`<div class="ws-panel-head">
         <div class="ws-panel-title">${s.key === 'photos' ? html`${ic('camera', 'icon-s')}Фотомокапи` : s.label}</div><div class="ws-panel-state ${s.state}">${state}</div>
-        <div class="ws-panel-tools">${tabs}${canOpen ? ib('fileOpen', 'Відкрити файл у Windows', `data-act="open" data-what="agent" data-name="${file.name}"`) : ''}${ib('x', 'Згорнути', 'data-act="fold"')}</div></div>`],
+        <div class="ws-panel-tools">${tabs}${canOpen ? ib('fileOpen', 'Відкрити файл у Windows', `data-act="open" data-what="agent" ${attr('data-name', file.name)}`) : ''}${ib('x', 'Згорнути', 'data-act="fold"')}</div></div>`],
       ['body', html`<div class="ws-panel-body">${body}</div>`],
     ]);
     drawn.forEach(fadeImages);
@@ -439,7 +440,7 @@ export async function mount(view, [rawId]) {
   function upSwitch(v) {
     const u = b.upscale;
     if (!u) return '';
-    const tip = !u.available ? 'Upscayl не знайдено — встановіть його або запустіть хоч раз, щоб програма його знайшла'
+    const tip = !u.available ? 'Апскейл — додатковий модуль: він ще не встановлений. Кнопка поруч встановить його (≈ 40 МБ)'
       : u.on ? `Кожна сторінка й обкладинка після того, як лягла в рядок, збільшується ×${u.scale} (Upscayl, ${u.model}) — у фоні, по одній. Вимкніть, щоб лишити книгу як є`
         : 'Апскейл вимкнено для цієї книги — сторінки лишаються такими, як їх зробив генератор';
     const busy = u.queue.length + (u.current ? 1 : 0);
@@ -451,6 +452,7 @@ export async function mount(view, [rawId]) {
     const left = free.filter((k) => !u.sides[k]?.recut);
     const keys = (list) => JSON.stringify(list);
     return html`<label class="ws-upscale ${u.available ? '' : 'off'}" data-tip="${tip}"><span class="switch"><input type="checkbox" data-act="upscale" ${u.on && u.available ? 'checked' : ''} ${u.available ? '' : 'disabled'} aria-label="Апскейл ×${u.scale}"></span>Апскейл ×${u.scale}</label>
+      ${u.available ? '' : html`<button class="btn btn-sm" data-act="install-module" data-module="upscale" data-tip="Встановити модуль «Апскейл» (≈ 40 МБ) — тоді нові картинки збільшуватимуться самі">${ic('download', 'icon-s')}Встановити апскейл</button>`}
       ${u.on && busy ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>апскейл · ще ${busy}</span>`
         : html`${u.on && u.available && left.length ? html`<button class="btn btn-sm" data-act="upscale-all" data-keys="${keys(left)}" data-tip="Сторінки цієї вкладки, які ще не апскейлені й не великі (від ${u.big} px) — у чергу">${ic('sparkle')}Апскейлити решту (${left.length})</button>` : ''}
           ${recut.length ? html`<button class="btn btn-sm" data-act="upscale-all" data-keys="${keys(recut)}" data-tip="Оригінали в папці вже великі (їх апскейлили окремо), а сторінки нарізані з маленьких — перерізати сторінки з великих, без Upscayl">${ic('images')}Перерізати з великих оригіналів (${recut.length})</button>` : ''}`}`;
@@ -465,7 +467,7 @@ export async function mount(view, [rawId]) {
     const keys = b.leftBehind?.[name] || [];
     if (!keys.length) return '';
     const folder = v ? `originals\\variants\\${v.name}` : 'originals';
-    return html`<button class="btn btn-sm btn-primary" data-act="adopt" data-tip="${`У папці ${folder} є картинки з правильними назвами, для яких ще немає сторінок — розрізати, віддзеркалити й апскейлити їх, як перетягнуті`}">${ic('folderIn')}Підхопити з папки (${keys.length})</button>`;
+    return html`<button class="btn btn-sm" data-act="adopt" data-tip="${`У папці ${folder} є картинки з правильними назвами, для яких ще немає сторінок — розрізати, віддзеркалити й апскейлити їх, як перетягнуті`}">${ic('folderIn')}Підхопити з папки (${keys.length})</button>`;
   }
 
   async function adopt(btn) {
@@ -648,11 +650,15 @@ export async function mount(view, [rawId]) {
     refresh();
   }
 
+  // A removal acts at once and offers «Скасувати» (the owner's rule, 2026-09-30: a question only for what cannot be taken back):
+  // the files wait in the book's .replaced and the server hands back what is needed to return them.
   async function removePicture(btn, key, variant) {
-    const title = key === 'cover' ? 'Прибрати обкладинку разом з її полями?' : key === 'cover-wrap' ? 'Прибрати поля обкладинки?' : 'Прибрати картинку з цього рядка?';
-    const text = `${key === 'cover-wrap' ? 'Сама обкладинка лишиться. ' : ''}Нічого не зникає назавжди — файли підуть у папку .replaced книги.`;
-    if (!await confirmBox({ title, text, confirm: 'Прибрати', danger: true })) return;
-    act(btn, () => post(url('/remove'), { key, variant }));
+    const done = await act(btn, () => post(url('/remove'), { key, variant }));
+    if (!done?.undo) return;
+    const what = key === 'cover' ? 'Обкладинку прибрано' : key === 'cover-wrap' ? 'Поля обкладинки прибрано' : 'Картинку прибрано';
+    toast(what, 'success', 9000, {
+      undo: { label: 'Скасувати', run: async () => { await post(url('/restore'), { undo: done.undo }); toast('Повернуто', 'success', 2000); refresh(); } },
+    });
   }
 
   // ---------------------------------------------------------------- the library
@@ -749,6 +755,7 @@ export async function mount(view, [rawId]) {
     if (a === 'save') { act(t, () => post(url('/save-as'), { area: t.dataset.area, name: t.dataset.name, variant }), (r) => (r.saved ? `Збережено: ${r.name}` : null)); return; }
     if (a === 'flip') { act(t, () => post(url('/flip'), { key, variant }), (r) => (r.mirrored ? 'Віддзеркалено' : 'Повернуто, як було')); return; }
     if (a === 'remove') { removePicture(t, key, variant); return; }
+    if (a === 'install-module') { offerModule(t.dataset.module).then(async (ok) => { if (ok) { try { b = (await api(url())).book; draw(); } catch { /* the page's own watcher will catch up */ } } }); return; }
     if (a === 'upscale') {
       act(t, () => post(url('/upscale'), { on: t.checked }), t.checked ? 'Апскейл увімкнено — нові картинки збільшуватимуться ×2' : 'Апскейл вимкнено для цієї книги');
       return;

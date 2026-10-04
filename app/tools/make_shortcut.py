@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SHORTCUTS = [
     ("Book Studio", "Book Studio.pyw", "icon.ico", "Book Studio - orders and listings: library, Workshop, mockups"),
 ]
+if (ROOT.parent.parent / "runtime").is_dir():    # the portable copy: its own shortcut, the original's is left alone
+    SHORTCUTS = [("Book Studio Portable", script, icon, note) for _, script, icon, note in SHORTCUTS]
 
 
 def main() -> int:
@@ -27,8 +29,9 @@ def main() -> int:
     desktop = Path(os.environ.get("USERPROFILE", "")) / "Desktop"
     # The user's Desktop may be redirected (e.g. to D:\...\Desktop); ask Windows for the real one.
     try:
-        out = subprocess.run(["powershell", "-NoProfile", "-Command", "[Environment]::GetFolderPath('Desktop')"],
-                             capture_output=True, text=True, check=True).stdout.strip()
+        out = subprocess.run(["powershell", "-NoProfile", "-Command",
+                              "[Console]::OutputEncoding=[Text.Encoding]::UTF8; [Environment]::GetFolderPath('Desktop')"],
+                             capture_output=True, text=True, encoding="utf-8", check=True).stdout.strip()   # a Cyrillic user name survives
         if out:
             desktop = Path(out)
     except Exception:
@@ -42,9 +45,12 @@ def main() -> int:
         "$s.Description=$env:BS_NOTE;"
         "$s.Save()"
     )
-    for name, script, icon, note in SHORTCUTS:
-        link = desktop / f"{name}.lnk"
-        saved = link if name.isascii() else desktop / "book-studio-shortcut.lnk"
+    places = [desktop]
+    if (ROOT.parent.parent / "runtime").is_dir():    # the portable copy: also one inside its own folder, the only thing the owner opens
+        places.append(ROOT.parent.parent)
+    for place, (name, script, icon, note) in ((w, s) for w in places for s in SHORTCUTS):
+        link = place / ("Book Studio.lnk" if place != desktop else f"{name}.lnk")
+        saved = link if link.name.isascii() else place / "book-studio-shortcut.lnk"
         env = {**os.environ, "BS_LINK": str(saved), "BS_TARGET": str(pythonw), "BS_SCRIPT": str(ROOT / script),
                "BS_ROOT": str(ROOT), "BS_ICON": str(ROOT / "web" / "img" / icon), "BS_NOTE": note}
         subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True, env=env)

@@ -89,6 +89,10 @@ code: []
 - [Setup, launch, GitHub](dev/setup.md)
 - [Tests](dev/testing.md)
 - [Interface preview](dev/preview.md) — a server on temporary data.
+- [Optional modules](features/modules.md) — the text check and upscaling, installed from the interface when asked.
+- [Moving the settings and keys](features/settings-transfer.md) — one file for another PC or the other Book Studio.
+- [MANUAL.md](../MANUAL.md) — the user manual written for an LLM: how to use the program, step by step, and what to do when it breaks.
+- [The portable copy](dev/portable.md) — `runtime/` and how the program finds its programs there.
 - [How to run this wiki](dev/wiki-rules.md) — page format, checks, operations.
 - [Design and code skills](dev/design-skills.md) — the agent skills installed for interface logic, icons, visual craft and code.
 

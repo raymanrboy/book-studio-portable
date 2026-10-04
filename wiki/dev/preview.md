@@ -1,7 +1,7 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/tools/dev_server.py
   - app/tools/sample_data.py
@@ -126,3 +126,7 @@ so. Changes to `app/web/*` are picked up by reloading the window (Ctrl+R).
 ## Related
 
 - [Tests](testing.md) · [Security](../security.md) · [Setup](setup.md)
+
+## In the portable copy (2026-10-04)
+
+`.claude/launch.json` here starts the portable copy's own Python (`../runtime/python/python.exe`). Open the session **in this folder**: a session opened in the ordinary Book Studio folder starts *that* program's preview — its pages differ and nothing here is proven by them (found the hard way). `/api/ping` answers a `data` id: the preview of this copy is the one whose id matches `core.data_id()`.

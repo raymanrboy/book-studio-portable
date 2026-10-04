@@ -8,7 +8,7 @@
 // run is on, and a notice says when it ends.
 import {
   api, post, html, ic, ib, setHtml, el, on, media, toast, runJob, fadeImages, plural, modal, confirmBox, remembered,
-  remember, setProgress, patch, tellBusy, backToTools,
+  remember, setProgress, patch, tellBusy, backToTools, markMissing, attr, raw,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { store } from '../info.js';
@@ -204,7 +204,7 @@ export async function mount(view) {
       !m.photoshopFound ? { what: 'photoshop', text: `Не знайшов Photoshop у ${m.photoshopDir}` } : null,
     ].filter(Boolean);
     setHtml($('#mk-lost'), lost.map((x) => html`<div class="notice notice-warn mk-lost">${ic('alert')}<div class="grow">${x.text}</div>
-      ${ib('folderPick', x.what === 'templates' ? 'Вказати папку з трафаретами' : 'Вказати папку з Photoshop', `data-act="place" data-what="${x.what}"`, { cls: 'sm' })}</div>`));
+      ${ib('folderPick', x.what === 'templates' ? 'Вказати папку з трафаретами' : 'Вказати папку з Photoshop', `data-act="place" ${attr('data-what', x.what)}`, { cls: 'sm' })}</div>`));
   }
 
   // ---------------------------------------------------------------- the demo book's state, in the structure's header
@@ -256,7 +256,7 @@ export async function mount(view) {
   }
 
   // ✋ — the owner's own touch, so the template stays open in Photoshop: the front cover, or Dedication's colours.
-  const yours = (t) => (t.keep === 'colours' ? 'колір фону й столу обираєте ви' : 'лицьову обкладинку підганяєте ви');
+  const yours = (t) => (t.keep === 'colours' ? 'колір фону й столу обираєте ви' : 'передню обкладинку підганяєте ви');
   function handMark(t) {
     return html`<span class="mk-hand" data-tip="${yours(t).replace(/^./, (c) => c.toUpperCase())}: шаблон лишиться відкритим у Photoshop">${ic('hand', 'icon-s')}</span>`;
   }
@@ -272,7 +272,7 @@ export async function mount(view) {
     const active = isActive(t.key, i) && !st.run;
     if (n === null) {
       return html`<button type="button" class="mk-slot ${active ? 'active' : ''}" data-slot="${t.key}:${i}" data-n=""
-        ${st.book && !st.run ? '' : 'disabled'} aria-label="${t.label}, місце ${i + 1}"><span class="num">${i + 1}</span></button>`;
+        ${st.book && !st.run ? '' : raw('aria-disabled="true"')} aria-label="${t.label}, місце ${i + 1}"><span class="num">${i + 1}</span></button>`;
     }
     return html`<div class="mk-slot filled ${active ? 'active' : ''}" data-slot="${t.key}:${i}" data-n="${n}" draggable="true"
         role="button" tabindex="0" aria-label="${t.label}: розворот ${pages(n)}">
@@ -300,7 +300,7 @@ export async function mount(view) {
       else {
         row.forEach((n, i) => {
           const old = box.children[i];
-          if (old.dataset.n !== String(n ?? '') || (n === null && old.disabled !== !(st.book && !st.run))) {
+          if (old.dataset.n !== String(n ?? '') || (n === null && (old.getAttribute('aria-disabled') === 'true') !== !(st.book && !st.run))) {
             box.replaceChild(el(slotHtml(t, n, i)), old);
           } else old.classList.toggle('active', isActive(t.key, i) && !st.run);
         });
@@ -374,7 +374,7 @@ export async function mount(view) {
     setHtml(box, html`
       <div class="mk-plan">
         <span class="chip" data-tip="Photoshop сам збереже ${saves} ${plural(saves, PICTURES)}">${ic('image', 'icon-s')}<b class="num">${saves}</b></span>
-        <span class="chip" data-tip="${hands} ${plural(hands, TEMPLATES)} Photoshop залишить відкритими — лицьову обкладинку й кольори Dedication підганяєте ви">${ic('hand', 'icon-s')}<b class="num">${hands}</b></span></div>
+        <span class="chip" data-tip="${hands} ${plural(hands, TEMPLATES)} Photoshop залишить відкритими — передню обкладинку й кольори Dedication підганяєте ви">${ic('hand', 'icon-s')}<b class="num">${hands}</b></span></div>
       <button type="button" class="btn btn-primary btn-block mk-make ${need ? 'waiting' : ''}" data-act="make" ${st.book && !st.out && !st.workshop ? 'data-tip="Папку для результату спитаю, коли натиснете"' : ''} ${ready ? '' : 'disabled'} ${need ? 'aria-disabled="true" aria-describedby="mk-left"' : ''}>${ic('mockup')}Зробити мокапи</button>
       ${need ? html`<div class="mk-left" id="mk-left">${need}</div>` : ''}`);
   }
@@ -401,7 +401,7 @@ export async function mount(view) {
         <div class="mk-ghost ${busy ? 'busy' : ''}" data-act="pick-zip" role="button" tabindex="0" aria-label="Обрати ZIP-архів із Canva">
           <div class="mk-ghost-art">
             <div class="mk-top">
-              <div class="structure-cover" style="aspect-ratio:1.9"><div class="cover-ph"><div>Задня</div><div>Лицьова</div></div></div>
+              <div class="structure-cover" style="aspect-ratio:1.9"><div class="cover-ph"><div>Задня</div><div>Передня</div></div></div>
               <div class="spread-view"><div class="half blank"><span>Форзац</span></div><div class="half"><span class="ph-num">1</span></div><div class="gutter-s"></div></div>
             </div>
             <div class="spread-grid">${[2, 4, 6, 8, 10, 12].map((n) => html`<div class="spread-card"><div class="spread-view"><div class="half"><span class="ph-num">${n}</span></div>
@@ -427,7 +427,7 @@ export async function mount(view) {
           <div class="row"><span class="eyebrow grow">Обкладинка</span><span class="mk-to">задня й корінець → у шаблони</span></div>
           <div class="structure-cover mk-cover" data-act="cover" style="aspect-ratio:${b.cover ? `${b.cover[0]} / ${b.cover[1]}` : '1.9'}">
             <img data-fade decoding="async" draggable="false" src="${src('cover', { w: BIG })}" alt="Обкладинка">
-            <div class="mk-zones" aria-hidden="true"><span>Задня<small>у всі шаблони</small></span><span class="spine"></span><span>Лицьова<small>підганяєте ви</small></span></div>
+            <div class="mk-zones" aria-hidden="true"><span>Задня<small>у всі шаблони</small></span><span class="spine"></span><span>Передня<small>підганяєте ви</small></span></div>
             <i class="crops"></i>
           </div>
         </div>
@@ -454,7 +454,7 @@ export async function mount(view) {
       <div class="mk-art">
         <img data-fade alt="" draggable="false" src="${src('spread', { n, h: THUMB_H })}">
         <i class="gutter-s"></i><span class="crops"></span>
-        <span class="img-actions">${ib('zoomIn', 'Роздивитися', `data-act="zoom" data-n="${n}"`)}</span>
+        <span class="img-actions">${ib('zoomIn', 'Роздивитися', `data-act="zoom" ${attr('data-n', n)}`)}</span>
         <span class="mk-put"></span>
       </div>
       <div class="spread-card-head"><span class="spread-no">${pages(n)}</span><span class="spacer"></span><span class="mk-uses"></span></div>
@@ -767,14 +767,26 @@ export async function mount(view) {
     if (act === 'place') { place(t.dataset.what); return; }
     if (act === 'make') { make(); return; }
     if (act === 'finish') { if (!st.run && st.pending) start('finish', post('/api/mockups/finish', { run: st.pending.run })); return; }
-    if (act === 'stop') { post('/api/mockups/cancel', {}).catch(() => {}); t.disabled = true; return; }
+    if (act === 'stop') {
+      t.disabled = true;
+      post('/api/mockups/cancel', {}).catch((err) => { t.disabled = false; toast(`Зупинити не вдалося: ${err.message}`, 'error'); });
+      return;
+    }
     if (act === 'open-out') { post('/api/mockups/open-folder', { path: t.dataset.path }).catch((err) => toast(err.message, 'error')); return; }
     if (act === 'shot') { openShots(t.dataset.which, +t.dataset.i); return; }
     if (act === 'tpl-view') { openTemplates(t.dataset.key); return; }
-    if (act === 'cover') { viewer([{ src: src('cover', { w: BIG }), full: src('cover', { w: SHARP }), title: 'Обкладинка', sub: 'задня й корінець — у шаблони самі, лицьову підганяєте ви' }]); return; }
+    if (act === 'cover') { viewer([{ src: src('cover', { w: BIG }), full: src('cover', { w: SHARP }), title: 'Обкладинка', sub: 'задня й корінець — у шаблони самі, передню підганяєте ви' }]); return; }
     if (act === 'dedication') { viewer([{ src: src('page', { n: 1, w: BIG }), full: src('page', { n: 1, w: SHARP }), title: 'Присвята · сторінка 1', sub: 'іде в шаблон Dedication сама' }]); return; }
     if (t.classList.contains('mk-spread')) { put(+t.dataset.spread); return; }
-    if (t.dataset.slot && !st.run && !t.disabled) {
+    if (t.dataset.slot) {
+      // A slot that cannot take a spread yet still answers a press: it says why (no silent grey buttons).
+      if (st.run) { toast('Photoshop працює — місця зараз не змінити', 'info'); return; }
+      if (!st.book) {
+        toast('Спершу додайте книгу: ZIP із Canva праворуч', 'info');
+        const ghost = view.querySelector('.mk-ghost');
+        if (ghost) { markMissing([ghost]); setTimeout(() => ghost.classList.remove('is-missing'), 2500); }
+        return;
+      }
       const s = slotOf(t.dataset.slot);
       st.active = isActive(s.key, s.i) ? null : s;
       paintPicks(); paintTiles();

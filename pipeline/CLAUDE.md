@@ -2,7 +2,7 @@
 
 This folder is the book pipeline inside Book Studio. Pick yours:
 
-- **Making a book** (a new book, its story, text, prompts) → stop here and read **`GEMINI.md`**
+- **Making a book** (a new book, its story, text, prompts) → stop here and read **`AGENTS.md`**
   (the book pipeline's rules). Nothing below applies to you.
 - **Working on Book Studio's code** (the Workshop that shows these books included) → you are in the wrong folder:
   read `../AGENTS.md` and `../CLAUDE.md`. The Workshop's code is `../app/studio/workshop/`; `check_book.py` here is

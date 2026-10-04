@@ -65,9 +65,22 @@ READ_ONLY_FROM = date(2026, 10, 1)
 RETIRED_TEXT = "З 1 жовтня Printify лише для читання — нові книги друкує Gelato."
 
 
+def read_only_from() -> date | None:
+    """The day Printify turns read-only: the owner's 2026-10-01 unless the settings say otherwise
+    (`printify.readOnlyFrom`: an ISO date, or null/"" for never — a copy for someone who still prints on Printify)."""
+    cfg = core.settings.section("printify")
+    if "readOnlyFrom" not in cfg:
+        return READ_ONLY_FROM
+    try:
+        return date.fromisoformat(str(cfg["readOnlyFrom"])) if cfg["readOnlyFrom"] else None
+    except ValueError:
+        return READ_ONLY_FROM
+
+
 def retired(today: date | None = None) -> bool:
-    """Whether Printify only reads now (from READ_ONLY_FROM on this computer's calendar)."""
-    return (today or date.today()) >= READ_ONLY_FROM
+    """Whether Printify only reads now (from `read_only_from()` on this computer's calendar)."""
+    since = read_only_from()
+    return since is not None and (today or date.today()) >= since
 
 
 def _check(method: str, path: str, order: bool = False) -> None:
@@ -323,7 +336,10 @@ def _products(req: Request):
 @route("POST", "/api/printify/master/analyze")
 def _analyze(req: Request):
     body = req.json or {}
-    shop_id = int(body.get("shopId") or core.settings.section("printify").get("shopId"))
+    try:
+        shop_id = int(body.get("shopId") or core.settings.section("printify").get("shopId"))
+    except (TypeError, ValueError):
+        raise ApiError("Не вказано магазин Printify (shopId).") from None
     product_id = str(body.get("productId") or "").strip()
     m = re.search(r"([0-9a-f]{24})", product_id)
     if not m:
@@ -349,7 +365,10 @@ def _save_master(req: Request):
     if analysis.get("pageSize"):
         patch["pageSize"] = analysis["pageSize"]
     if shop_id:
-        patch["shopId"] = int(shop_id)
+        try:
+            patch["shopId"] = int(shop_id)
+        except (TypeError, ValueError):
+            raise ApiError("Некоректний shopId.") from None
         patch["shopTitle"] = shop_title
     cfg = core.settings.section("printify")
     cfg.update(patch)

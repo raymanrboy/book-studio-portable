@@ -51,9 +51,9 @@ const statusText = (s) => String(s).replace(/[-_]+/g, ' ').trim().replace(/^./, 
  * on the same baseline). A click on the carrier copies the carrier, anywhere else — the number (the owner,
  * 25.09.2026: he pastes them into Etsy's two fields). o: { provider, tracking }. */
 const NUMBER_COPY = 'data-act="copy-text" data-done="Трек-номер скопійовано" data-tip="Копіювати трек-номер"';
-export const trackChips = (o) => (o.tracking || []).map((t) => html`<span class="chip svc-${o.provider} ord-track ord-copy" role="button"
+export const trackChips = (o) => (o.tracking || []).map((t) => html`<span class="chip svc-${o.provider} ord-track ord-copy" role="button" tabindex="0" data-press
     ${raw(NUMBER_COPY)} data-text="${t.number}">${ic('truck', 'icon-s')}<span class="ord-track-text">${t.carrier
-      ? html`<span class="ord-carrier" data-act="copy-text" data-text="${t.carrier}" data-done="Перевізника скопійовано" data-tip="Копіювати перевізника">${t.carrier}</span><span class="ord-track-sep"></span>` : ''}<span class="ord-track-no" ${raw(NUMBER_COPY)} data-text="${t.number}">${t.number}</span></span></span>`);
+      ? html`<span class="ord-carrier" role="button" tabindex="0" data-press data-act="copy-text" data-text="${t.carrier}" data-done="Перевізника скопійовано" data-tip="Копіювати перевізника">${t.carrier}</span><span class="ord-track-sep"></span>` : ''}<span class="ord-track-no" ${raw(NUMBER_COPY)} data-text="${t.number}">${t.number}</span></span></span>`);
 
 /** The printer's status (its own word, in English, as the owner asked); nothing before the book is ordered. */
 export const statusChip = (o) => (o.printStatus
@@ -123,10 +123,10 @@ export function proofHtml({ src, pages, ratio, name, variations, stripId, marks 
     : html`<div class="half"${at(n)}><img data-fade loading="lazy" decoding="async" src="${src(`${n}.png`, STRIP_THUMB)}" alt=""></div>`);
   const notes = (variations || []).filter((v) => !isNameField(v) && !isFormatField(v)); // only what the page itself says
   return html`<div class="proof">
-      <div class="structure-cover" data-lb="0"${at(0)} style="aspect-ratio:${ratio}">
+      <div class="structure-cover" data-lb="0"${at(0)} role="button" tabindex="0" data-press aria-label="Відкрити обкладинку" style="aspect-ratio:${ratio}">
         <img data-fade decoding="async" src="${src('Cover.png', 1400)}" alt="Обкладинка"><div class="gutter"></div><i class="crops"></i>
       </div>
-      <div class="spread-view proof-spread" data-lb="1">
+      <div class="spread-view proof-spread" data-lb="1" role="button" tabindex="0" data-press aria-label="Відкрити першу сторінку">
         <div class="half proof-note">
           ${name ? html`<div class="proof-name">${name}</div>` : ''}
           <dl>${notes.map((v) => html`<dt>${v.name}</dt><dd>${v.value}</dd>`)}</dl>
@@ -136,10 +136,10 @@ export function proofHtml({ src, pages, ratio, name, variations, stripId, marks 
       </div>
     </div>
     <div class="strip" id="${stripId}">
-      <div class="strip-item" data-lb="0" style="width:${Math.round(110 * ratio)}px">
+      <div class="strip-item" data-lb="0" role="button" tabindex="0" data-press aria-label="Відкрити обкладинку" style="width:${Math.round(110 * ratio)}px">
         <div class="structure-cover"${at(0)} style="height:110px"><img data-fade loading="lazy" decoding="async" src="${src('Cover.png', STRIP_THUMB)}" alt=""></div>
         <span class="strip-no">обкладинка</span></div>
-      ${spreadsOf(pages).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}">
+      ${spreadsOf(pages).map((sp, i) => html`<div class="strip-item" data-lb="${i + 1}" role="button" tabindex="0" data-press aria-label="Відкрити розворот ${[sp.left, sp.right].filter(Boolean).join('–')}">
         <div class="spread-view">${half(sp.left)}${half(sp.right)}<div class="gutter-s"></div></div>
         <span class="strip-no num">${[sp.left, sp.right].filter(Boolean).join('–')}</span></div>`)}
     </div>`;
@@ -155,7 +155,7 @@ export const alsoSentChip = (o) => {
 };
 
 /** The receipt number without "#": a click copies it (in the queue, the card header and the archive). */
-export const receiptCopy = (o, cls) => html`<span class="${cls} ord-copy" role="button" data-act="copy-text" data-text="${o.receiptId}"
+export const receiptCopy = (o, cls) => html`<span class="${cls} ord-copy" role="button" tabindex="0" data-press data-act="copy-text" data-text="${o.receiptId}"
     data-done="Номер замовлення скопійовано" data-tip="Копіювати номер замовлення">#${o.receiptId}</span>`;
 
 /** Receipt and tracking numbers may sit inside a row link: copy without opening it. */

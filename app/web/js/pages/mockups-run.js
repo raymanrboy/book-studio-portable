@@ -1,7 +1,7 @@
 // Mockups, step 4 drawn: the run (its rows, Photoshop's «run this script?»), the result, «Ваша черга» with the
 // templates left open, the pictures saved after it — templates of what the page holds (out of mockups.js on
 // 27.09.2026).
-import { html, ic, ib, media, plural } from '../lib.js';
+import { html, ic, ib, media, plural, attr } from '../lib.js';
 
 const SHOT_W = 480;           // a saved picture in the result
 export const PICTURES = ['картинка', 'картинки', 'картинок'];
@@ -51,7 +51,7 @@ export function resultCard(r) {
   return html`<div class="result-card mk-result">
     <h4>${ic(r.cancelled ? 'alert' : 'checkCircle')}<span class="grow">${r.cancelled ? 'Зупинено' : 'Готово'} · <span class="num">${count}</span> ${plural(count, PICTURES)}</span>
       <span class="mk-secs num">${r.seconds} с</span>
-      ${ib('folderOpen', 'Відкрити папку з картинками', `data-act="open-out" data-path="${r.folder}"`, { cls: 'sm' })}</h4>
+      ${ib('folderOpen', 'Відкрити папку з картинками', `data-act="open-out" ${attr('data-path', r.folder)}`, { cls: 'sm' })}</h4>
     ${shotsGrid(r, 'result')}
     ${problemsHtml(r.problems)}
   </div>`;
@@ -60,7 +60,7 @@ export function resultCard(r) {
 export function turnCard(p) {
   return html`<div class="mk-turn">
     <div class="mk-turn-head">${ic('hand')}<span>Ваша черга — у Photoshop</span></div>
-    <p>Відкриті: <b>${p.open.join(', ')}</b>${p.cover ? html` і обкладинка книги <b>Cover</b> — з неї й беріть лицьову` : ''}. Підженіть лицьову обкладинку${p.open.includes('Dedication') ? ' й кольори фону та столу в Dedication' : ''} — і збережіть усі разом:</p>
+    <p>Відкриті: <b>${p.open.join(', ')}</b>${p.cover ? html` і обкладинка книги <b>Cover</b> — з неї й беріть передню` : ''}. Підженіть передню обкладинку${p.open.includes('Dedication') ? ' й кольори фону та столу в Dedication' : ''} — і збережіть усі разом:</p>
     <button type="button" class="btn btn-block mk-finish" data-act="finish">${ic('download')}Зберегти відкриті й закрити</button>
     <div class="mk-turn-note">Картинки ляжуть у ту саму папку й будуть названі, як решта. Можна зберегти їх і самому, як звикли, — тимчасові копії програма прибере сама.</div>
   </div>`;
@@ -70,7 +70,7 @@ export function finishedCard(f) {
   const count = f.saved.length;
   return html`<div class="result-card mk-result">
     <h4>${ic('checkCircle')}<span class="grow">Збережено ще <span class="num">${count}</span> ${plural(count, PICTURES)}</span>
-      ${ib('folderOpen', 'Відкрити папку з картинками', `data-act="open-out" data-path="${f.folder}"`, { cls: 'sm' })}</h4>
+      ${ib('folderOpen', 'Відкрити папку з картинками', `data-act="open-out" ${attr('data-path', f.folder)}`, { cls: 'sm' })}</h4>
     ${shotsGrid(f, 'finished')}
     ${f.cleaned ? html`<div class="mk-clean">${ic('check', 'icon-s')}Тимчасові копії шаблонів прибрано</div>` : ''}
     ${problemsHtml(f.problems)}

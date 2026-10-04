@@ -1,6 +1,6 @@
 # Playbook — Navigation
 
-Entry point is `../GEMINI.md`. This is the playbook map.
+Entry point is `../AGENTS.md`. This is the playbook map.
 
 The story pipeline is 6 single-responsibility agents (0–5). Agent 6 runs later for the final wide
 image. Each reads from `knowledge/` and the bibles, writes one short file into `books/[number].[slug]/agent/`,
@@ -51,7 +51,7 @@ playbook/
 - 2:1 story panoramas, 1:1 square end images, text-safe/overlay area, and safe text/style negatives.
   Watercolor only unless a different locked medium preset is chosen; no 3D/vector/anime/photoreal.
 
-## Entry points (GEMINI.md = AGENTS.md)
-`GEMINI.md` and `AGENTS.md` in the project root are two identical copies (Antigravity may read either).
-Change one — copy it onto the other by hand. `CLAUDE.md` is different on purpose: a fork for coding
+## Entry points
+`AGENTS.md` in the project root is the one entry point for book agents (any agent reads it; the separate
+`GEMINI.md` copy was dropped on 2026-10-03). `CLAUDE.md` is different on purpose: a fork for coding
 agents working on Book Studio's code (the Workshop is part of it).

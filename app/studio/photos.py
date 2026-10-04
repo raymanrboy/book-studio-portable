@@ -32,7 +32,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import core, desktop
+from . import core, desktop, portable
 from .server import ApiError
 
 ETSY = "etsy"             # a Workshop book's folder of what goes into its Etsy listing: the slides and these photos
@@ -463,7 +463,7 @@ def place(book_id: str, key: str, source: Path, name: str, template: str | None 
 
 def ffmpeg() -> str:
     """ffmpeg: the one Windows finds (installed on the owner's PC), else app/bin/ffmpeg.exe."""
-    found = shutil.which("ffmpeg") or (str(core.BIN_DIR / "ffmpeg.exe") if (core.BIN_DIR / "ffmpeg.exe").is_file() else None)
+    found = (str(portable.ffmpeg()) if portable.ffmpeg() else None) or shutil.which("ffmpeg") or (str(core.BIN_DIR / "ffmpeg.exe") if (core.BIN_DIR / "ffmpeg.exe").is_file() else None)
     if not found:
         raise ApiError("Не знайдено ffmpeg — без нього відео не обрізати. Встановіть ffmpeg або покладіть ffmpeg.exe "
                        "у папку bin програми.")

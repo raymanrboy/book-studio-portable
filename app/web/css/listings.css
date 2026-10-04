@@ -199,7 +199,7 @@
 }
 .ws-single .ws-ph, .ws-hero-shot .ws-ph { grid-template-columns: 1fr; }
 .ws-single .ws-ph::after, .ws-hero-shot .ws-ph::after { display: none; }
-.ws-half { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-4); }
+.ws-half { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-3); }
 .ws-ph-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: var(--fs-s); line-height: var(--lh); pointer-events: none; text-align: center; }
 .ws-ph-text .drop-ico { width: 38px; height: 38px; border-radius: var(--r-grp); display: grid; place-items: center; margin-bottom: 2px; border: 1.5px dashed currentColor; opacity: .8; }
 .ws-ph-text b { color: var(--text-2); font-weight: 600; }
@@ -319,8 +319,8 @@
   transition: background var(--t-fast) ease, color var(--t-fast) ease, outline-color var(--t-fast) ease;
 }
 .mk-slot:hover { background: var(--accent-soft); color: var(--accent-ink); }
-.mk-slot:disabled { cursor: default; opacity: .55; }
-.mk-slot:disabled:hover { background: var(--surface-2); color: var(--text-4); }
+.mk-slot:disabled, .mk-slot[aria-disabled="true"] { cursor: default; opacity: .55; }
+.mk-slot:disabled:hover, .mk-slot[aria-disabled="true"]:hover { background: var(--surface-2); color: var(--text-4); }
 .mk-slot .num { font-size: var(--fs-s); font-weight: 600; }
 .mk-slot.active { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--accent-soft); color: var(--accent-ink); }
 .mk-slot.filled { outline: 0; background: var(--paper); box-shadow: var(--art-shadow); }

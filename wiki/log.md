@@ -3,6 +3,139 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-03] update | The portable folder shows one shortcut
+
+- `make_shortcut.py` in the portable copy also writes `Book Studio.lnk` into the portable folder itself (and `Book Studio Portable.lnk` on the desktop). The `.bat` files, `ROADMAP.md` and `ПРОЧИТАЙ.md` in the folder's root are hidden (the owner: he only needs a shortcut); `ПРОЧИТАЙ.md` says how to show them and what to do after the folder is moved.
+
+## [2026-10-04] update | The portable copy gets its own private GitHub repository
+
+- `raymanrboy/book-studio-portable` (private): the whole copy committed and pushed once (the owner asked). A scan of the 282 files to commit found no key or token; nothing from `app/data`, `app/bin`, `pipeline/books`, `.secrets.txt`. The docs said «the repository is `raymanrboy/book-studio`» — that is the original's: rewritten to the new one (AGENTS.md, CLAUDE.md, setup.md, decisions.md).
+
+## [2026-10-04] update | The Workshop's «Прибрати» acts at once and offers «Скасувати»
+
+- `pictures.remove()` returns `undo`; new `pictures.restore()` and `POST /api/workshop/books/<id>/restore`; the page no longer asks, it removes and shows «Картинку прибрано · Скасувати» (checked in the portable copy's own preview on the made-up book: removed, then restored, the row's marks back). The book photo's «Прибрати» keeps its question.
+
+## [2026-10-04] update | The audit's findings fixed (second pass: everything that was left)
+
+- **Server:** one copy per data (a named Windows mutex); a refused length no longer moves the dropped files (`arrange_pages(precheck=…)`); `data/tmp` leftovers swept at start (`core.sweep_tmp()`); closing waits for the upscaler; a new backup is opened and checked before old ones are pruned, the two programs' copies are told apart by name (`Book Studio Portable …`), a young `.part` is not deleted, a 12-character password; the portable Ollama is stopped with the program; a key's redirect to another host drops the key (`httpc._SafeRedirects`); a missing file is a 404, an expected failure a 400; `book.json` is no longer overwritten after a failed read; a cut-short Cutter, `write_json` leaving `.tmp`/damaging `.bak`, a vault warning on every request, an Etsy photo without a size limit — all fixed; `visual C++` check by version, its «no» remembered, its result said.
+- **Interface (by an agent, reviewed here):** keyboard and screen reader (menus, viewer, picker rows, chips, `data-press`), no silent grey buttons (Settings and Mockups say what is missing), typed text kept after a failed save, one loud button per view, `--text-3` for real information, plurals and words, escaped attributes, dead code out.
+- **Wiki and docs:** the dead names, `app/README.md`, `CLAUDE.md`/`setup.md` (the portable copy), the glossary, the data page; `wiki_check` now also flags a `name()` that is nowhere in the code (the log is exempt).
+- **Not changed on purpose:** «Повернути» walks back version by version (the owner's design); the Workshop's «Прибрати» keeps its question (no restore route); `/api/orders` still follows the Workshop's files (the slow-request log will say whether it matters).
+- **Caught late:** the preview of this session runs the ORIGINAL program (its `launch.json`); the portable copy's own dev server must be started by hand with `runtime/python/python.exe -B app/tools/dev_server.py --sample`. 556 tests.
+
+## [2026-10-04] update | Quiet model read-in, hidden Ollama windows, the link stays, the window no longer shuts when covered
+
+- Black windows: measured with a window watcher — the flashing came from Ollama's helpers (`llama-server.exe`, `gpu-discover`) of an Ollama started the old way; started with `CREATE_NO_WINDOW` nothing appears. The portable Ollama was restarted that way.
+- `run.prime()`: the model is read in quietly 8 s after the start and let go.
+- A Gelato draft's link stays in the order's card after «Завершити» while it lives (`keep.linkOf`).
+- Shutting down by itself: the window is started without throttling, and the «closed» rules are stricter (see runtime.md). `main()` crashed at start for a moment during this work (`transfer` used before its import) — fixed, and `test_server_http.StartUp` now starts the real program in a process.
+- `/api/app` no longer follows every Workshop book (`library.counts()`); slow requests are logged.
+- The Etsy shop's name (as Etsy gives it) is in the window's title.
+
+## [2026-10-04] update | Self-improvement audit: findings fixed
+
+- Five read-only audits (server core, portability, interface, security, tests/docs). Fixed in code:
+  - `images.py`: previews and the folder check could deadlock each other (opposite lock order) — one order now; the page strips could hang for good.
+  - Settings transfer no longer carries or accepts `security.*` and Printify's read-only switches; keys file removed right after reading, leftovers swept at start; only known key names go to the vault.
+  - `desktop.to_recycle_bin` warns when Windows would delete for good; the file dialogs work with Cyrillic paths (`-X utf8`); `make_shortcut.py` too.
+  - A second launch on the same PC no longer opens the other Book Studio's window (`/api/ping` carries `data`); HTTP replies forbid framing; Etsy host guard normalised.
+  - Modules: a cut-short Ollama unpacking is redone, the Upscayl engine and its model count only whole, a module ZIP may hold only its own folder, no path on the plain install route.
+  - The upscale thread survives any error; a failed Gelato PDF build removes its folder; negative Content-Length clamped.
+  - Interface: a failed text save keeps the typed text; «посилання закрито» only when it is; a page that failed to redraw retries; the modules progress cannot show «NaN%»; a stale window says to press F5; a late Etsy-link answer cannot overwrite a newer one.
+  - Tests: five files get the made-up data folder when run alone; new `test_server_http.py` (the HTTP layer) and transfer tests. 536 tests.
+  - The colleague-copy builder no longer carries the owner's names itself and scrubs the Desktop path too.
+- Left for the owner's choice or a later day: see ROADMAP «Аудит 04.10».
+
+## [2026-10-03] update | Ollama starts without blinking windows; the interface says it is starting
+
+- `_start_ollama` uses `CREATE_NO_WINDOW` instead of `DETACHED_PROCESS`: Ollama's helper processes no longer open a black console each (they blinked).
+- `status()` has `starting`; `/api/textcheck/warm` answers `starting` when it is about to start Ollama; the order card shows «Запускається Ollama…» and then «Ollama запущена».
+- The module install window no longer says the program can be used meanwhile (it is blocked): «Вікно не закривайте — воно саме закриється».
+
+## [2026-10-03] update | The spare copy of the templates removed from the portable copy
+
+- `Трафарети мастхев (копія)` (1.5 GB) in the repository folder went to the Recycle Bin (the owner agreed): it was never read by the program, and all 9 files
+  match `runtime/Templates`. The line is gone from this copy's `AGENTS.md`.
+
+## [2026-10-03] update | The text check's settings moved under its module
+
+- The «Перевірка тексту» card is gone from Settings: its switches, model and «Запустити» are nested under the installed «Розумна вичитка тексту» in «Модулі»
+  (`textcheckSettings()`); `#/settings/textcheck` and the search lead to «Модулі». Checked in the preview, both installed and not installed.
+
+## [2026-10-03] update | Modules isolated from the PC's own Ollama and Upscayl (before the owner's remove-and-reinstall test)
+
+- The copy's Ollama: own port 11435, `OLLAMA_MODELS` always in `runtime/`, started by its exe; Upscayl only from `runtime/`; `installed()` strict;
+  removal closes the module's processes first. Tests added (16 in test_modules). Page: [optional modules](features/modules.md).
+
+## [2026-10-03] update | The manual proofread against the live program
+
+- Every claim of `MANUAL.md` checked against the running program (sample data, a clean start, the code): the labels (the queue's tabs, the order
+  card's steps and buttons «До друку в Gelato» / «Створити чернетку» / «Передрук у Gelato», the Mockups' four steps, the Workshop's strip and
+  «Генерувати решту», the photo categories, Settings), the shortcuts, the shutdown, the paths. About a dozen wrong or stale statements were
+  fixed; new facts added: Chrome for the generation mode (Ctrl+V / F8), the Etsy Callback URL and the port, the Printify preset, slide 7. One
+  real bug found and fixed on the way: a fresh install had no `browser.hosts`, so Gelato and Canva would not open in the program's own Edge
+  profile — the defaults now name `gelato.com` and `canva.com` (`core.DEFAULT_SETTINGS`).
+
+## [2026-10-03] update | Optional modules: the text check and upscaling installed from the interface
+
+- New `studio/modules.py`, `web/js/modules-ui.js`, Settings → «Модулі», offers in the Workshop and the order card; the colleague copy leaves Ollama and
+  Upscayl out and ships a lean Python and ffmpeg. The upscale install was run for real. Page: [optional modules](features/modules.md).
+
+## [2026-10-03] update | The portable copy independent of the place: paths follow the folder, quiet install of Windows prerequisites
+
+- `portable.rebase_paths()` (paths in the data follow a moved repository, the old files backed up), `portable.prerequisites()` / `install()`
+  (Visual C++ x64 offered at start and installed quietly: a bundled installer or winget). Page: [the portable copy](dev/portable.md).
+
+## [2026-10-03] update | The code cleaned of the owner's paths, a manual for agents, stock Photoshop in the colleague copy
+
+- The light theme is now the code's default; the owner's `D:\\…` paths are gone from the code (the mockups' defaults are the portable layout);
+  the start-up window is shorter (a list of missing programs and one line of what to do) — seen on the screen. New `MANUAL.md` for agents;
+  the colleague copy takes a stock Photoshop and mentions the manual in its note. Page: [the portable copy](dev/portable.md).
+
+## [2026-10-03] update | A copy for the colleague: his own agents' docs, light theme, Photoshop and templates in
+
+- `make_colleague_copy.py` puts in neutral `AGENTS.md`/`CLAUDE.md`/working-with-the-owner (templates in `app/tools/colleague_docs/`), cuts the
+  owner's personal rules out of `security.md`, seeds the light theme, takes Photoshop and the templates by default. Rebuilt and checked:
+  501 tests and the wiki check pass inside the copy.
+
+## [2026-10-03] update | The portable copy, stage 7 (part): audit, switchable owner rules, a copy for a colleague
+
+- Audit of the whole code (syntax warnings, JS, unused imports, risky calls, the server, a clean start on empty data): clean. Found and
+  fixed: Etsy-only-from-Kyiv and Printify-read-only-from-1-Oct were hard-wired → settings; new `tools/make_colleague_copy.py`. Page: [the portable copy](dev/portable.md).
+
+## [2026-10-03] update | The portable copy, stage 6 (part): export/import of settings and keys
+
+- New `studio/transfer.py`, the Settings block «Перенесення налаштувань», `desktop.pick_7z()`, the tests. Page: [moving the settings](features/settings-transfer.md).
+  Not yet: carrying it over to the ordinary Book Studio (it is built only in the portable copy), and syncing.
+
+## [2026-10-03] update | The portable copy, stage 5: the copy as a project
+
+- `AGENTS.md` §0 (what this copy is), `ПРОЧИТАЙ.md` for the owner, no git remote; page [the portable copy](dev/portable.md).
+
+## [2026-10-03] update | The portable copy, stage 4 (part): checked after moving the folder
+
+- The folder moved to another name: the paths of Photoshop, templates, Antigravity, ffmpeg and Upscayl (also the one saved in
+  `settings.json`) follow it; 489 tests pass there. Antigravity from `runtime/` writes only to its own `user-data` and `home`;
+  Ollama (own port), Upscayl and ffmpeg run from `runtime/`. Still for a human/another PC: see the ROADMAP.
+
+## [2026-10-03] update | The portable copy, stage 3: Antigravity's own profile, Edge instead of Cent, AGENTS.md
+
+- Antigravity starts from `runtime/` with its own user-data folder and home (`.gemini`); Gelato/Canva open in Edge with a
+  profile of the copy; Cent Browser removed from the copy; `pipeline/GEMINI.md` dropped, `AGENTS.md` is the one rules file
+  (code, tests, wiki, playbook updated). Page: [the portable copy](dev/portable.md).
+
+## [2026-10-03] update | The portable copy, stage 2: launchers and the start-up check
+
+- `Start Book Studio.bat` and two more in the root; `portable.check()` / `startup_report()` (what is missing, what to log in to,
+  once per computer); the shortcut tool names the portable shortcut apart. Found: the keys are DPAPI-locked to the Windows
+  user and do not open on another PC — reported at start, the choice is the owner's. Page: [the portable copy](dev/portable.md).
+
+## [2026-10-03] update | The portable copy, stage 1: the path layer
+
+- The copy's own folder `Book Studio Portable/` (the original untouched). New `studio/portable.py`; Photoshop, templates,
+  Antigravity, Ollama, Upscayl, ffmpeg and the Cent Browser profile are found in `runtime/`; saved old-PC paths are taken into
+  it. Tests isolate themselves from it. Page: [the portable copy](dev/portable.md).
+
 ## [2026-10-03] lint | The wiki as a finished product: plans and ideas removed, pages synced with the code
 
 - Removed `wiki/plans/` (the roadmap, open questions and seven build plans/histories — all stay in git history). What was

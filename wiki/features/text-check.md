@@ -1,7 +1,7 @@
 ---
 title: Text check (AI validator on a local model)
 type: feature
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/textcheck/
   - app/studio/wording.py
@@ -136,7 +136,7 @@ missing word, words stuck together, text cut off at an edge.
 
 ## Settings
 
-The "Text check" block in [Settings](settings.md): a switch, the quick scan (`prescan`), a model (those installed that
+The text check's settings, under its module in [Settings → «Модулі»](settings.md): a switch, the quick scan (`prescan`), a model (those installed that
 see pictures), Ollama's status, "Start", "Check connection". `settings.json` → `textcheck` (`enabled`, `prescan`,
 `model`, `url`); the address is **127.0.0.1 only** (`_base()`) — pages with children's names never leave the computer.
 A disabled Ollama makes Windows wait 2 s per attempt, so the probe is capped at 1 s (`PROBE_TIMEOUT`).
@@ -155,7 +155,7 @@ A disabled Ollama makes Windows wait 2 s per attempt, so the probe is capped at 
 - [app/studio/images.py](../../app/studio/images.py) — `text_score()`, `_percentile()`, `TEXT_SIDE`
 - [app/studio/jobs.py](../../app/studio/jobs.py) — `Job.share()` (findings ready before the whole check is)
 - [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `checkTip()`, `markPages()`, `paintCheck()`, `readings()`, `learnable()`, `learnPassport()`, `dropCheck()`, `print()`, `alarmOf()`, `wrongBook()`, `findingsHtml()`, `keepMark()`, `LEVEL_WORDS`, `LIGHT_TIP`
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `textcheckSettings()`, `loadTextcheck()`, `saveTextcheck()`
 - [app/web/css/orders.css](../../app/web/css/orders.css) — `.tc-list`, `.tc-issue`, `.tc-where`, `.tc-note`, `.tc-light`, `.tc-error`, `.tc-warn`, `.v-badge.warn`, `.tc-passport`, `.tc-slot`, `.tc-alarm`, `.tc-alarm-head`, `.tc-alarm-books`, `.tc-alarm-book`, `.tc-alarm-dismiss`
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS` (`textcheck`)
 - Tests: [app/tests/test_textcheck.py](../../app/tests/test_textcheck.py) — the model is faked; the real Ollama isn't needed
@@ -164,3 +164,12 @@ A disabled Ollama makes Windows wait 2 s per attempt, so the probe is capped at 
 
 - [Orders](orders.md) · [The path to print](../flows/order-to-print.md) · [Library](library.md) · [Settings](settings.md)
 - [Known limits](../dev/limits.md) · [Decisions](../decisions.md) · [Security](../security.md)
+
+## Ollama's start (2026-10-03)
+
+Ollama is started with `CREATE_NO_WINDOW` (no black windows from its helper processes). While it starts, `status()` says `starting`, and the order card tells the owner («Запускається Ollama…» → «Ollama запущена»).
+
+## Quiet start-up and no black windows (2026-10-04)
+
+- `run.prime()` (a thread started by `main()`, 8 s after the start): Ollama is started and the model read once, then let go at once — so the first check does not wait ~70 s for the disk (the file stays in Windows' memory cache; loading it again takes ~4 s) and the graphics card stays free (the 19.09 decision). Nothing happens when the check is off or the module is not installed.
+- Ollama is started with `CREATE_NO_WINDOW`. Measured: with the old `DETACHED_PROCESS` its helpers (`llama-server.exe`, `ollama.exe gpu-discover`) each opened a black console at every model load; with the new flag none appeared during a load and an unload. An Ollama started by an earlier version keeps flashing until it is ended (task manager → `ollama.exe`).

@@ -1,7 +1,7 @@
 // Book passport: cover, 16 page slots (dedication, 14 spreads, afterword), texts, files.
 import {
   api, post, html, ic, ib, raw, setHtml, on, media, toast, menu, upload, runJob, copyText, openExternal,
-  fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el, patch, enterOnce, escBack, notFound,
+  fadeImages, highlightTokens, dateTime, bytes, naturalCompare, el, patch, enterOnce, escBack, notFound, attr, listingState,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { refreshInfo } from '../info.js';
@@ -101,7 +101,7 @@ export async function mount(view, [id]) {
             : html`<span class="chip chip-lg chip-amber">без лістингу</span>`}
           ${book.canvaUrl ? html`<button type="button" class="chip chip-lg" data-act="open-canva" data-tip="Відкрити макет у Canva"><span class="svc-canva" style="display:inline-grid">${ic('canva', 'icon-s')}</span>Canva</button>`
             : html`<button type="button" class="chip chip-lg chip-amber" data-act="canva-link" data-tip="Додати посилання на макет у Canva">${ic('canva', 'icon-s')}без Canva</button>`}
-          ${l.state && l.state !== 'active' ? html`<span class="chip chip-lg chip-amber">${l.state}</span>` : ''}
+          ${l.state && l.state !== 'active' ? html`<span class="chip chip-lg chip-amber">${listingState(l.state)}</span>` : ''}
           ${l.verifiedAt ? html`<span class="chip chip-lg" data-tip="Лістинг перевірено ${dateTime(l.verifiedAt)}">${ic('shield')}</span>`
             : l.id ? html`<span class="chip chip-lg chip-amber" data-tip="Лістинг ще не перевірено в Etsy">${ic('alert')}</span>` : ''}
           ${book.archived ? html`<span class="chip chip-lg chip-purple" data-tip="Книга в архіві">${ic('archive')}</span>` : ''}
@@ -142,8 +142,8 @@ export async function mount(view, [id]) {
     const t = book.text[key] || '';
     return html`<div class="text-block" data-textblock="${key}">
       <div class="text-block-head"><span class="eyebrow">${label}</span><span class="spacer"></span>
-        ${ib('copy', 'Копіювати текст', `data-act="copy-text" data-key="${key}" ${t ? '' : 'disabled'}`, { cls: 'sm' })}
-        ${ib('edit', 'Редагувати', `data-act="edit-text" data-key="${key}"`, { cls: 'sm' })}</div>
+        ${ib('copy', 'Копіювати текст', `data-act="copy-text" ${attr('data-key', key)} ${t ? '' : 'disabled'}`, { cls: 'sm' })}
+        ${ib('edit', 'Редагувати', `data-act="edit-text" ${attr('data-key', key)}`, { cls: 'sm' })}</div>
       <div class="text-body ${t ? '' : 'empty-text'}" data-act="edit-text" data-key="${key}">${t ? highlightTokens(t) : 'Текст ще не додано — натисніть, щоб написати.'}</div>
     </div>`;
   }
@@ -166,8 +166,8 @@ export async function mount(view, [id]) {
     const t = book.text[key] || '';
     const textCol = html`<div class="slot-text" data-textcol="${key}">
       <div class="slot-text-head"><span class="slot-label">${label}</span><span class="slot-pages">${pages}</span><span class="spacer"></span>
-        ${ib('copy', 'Копіювати текст', `data-act="copy-text" data-key="${key}" ${t ? '' : 'disabled'}`, { cls: 'sm' })}
-        ${ib('edit', 'Редагувати', `data-act="edit-text" data-key="${key}"`, { cls: 'sm' })}</div>
+        ${ib('copy', 'Копіювати текст', `data-act="copy-text" ${attr('data-key', key)} ${t ? '' : 'disabled'}`, { cls: 'sm' })}
+        ${ib('edit', 'Редагувати', `data-act="edit-text" ${attr('data-key', key)}`, { cls: 'sm' })}</div>
       <div class="slot-text-body ${t ? '' : 'empty-text'}" data-act="edit-text" data-key="${key}">${t ? highlightTokens(t) : 'Текст ще не додано'}</div>
     </div>`;
     const busyOv = (slot) => busy.has(slot) ? html`<div class="busy-overlay"><div class="spinner spinner-l"></div></div>` : '';
@@ -177,10 +177,10 @@ export async function mount(view, [id]) {
     const pageSq = (slot, asset, tag, hint) => html`<div class="page-sq ${asset?.lqip ? 'lqip' : ''}" ${drop(slot)} ${bg(asset)}>
       ${asset ? html`<img data-fade decoding="async" src="${assetUrl(asset, 720)}" alt="" data-zoom="${slot}" loading="lazy">
         <div class="img-actions">
-          ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${slot}"`, { cls: 'sm' })}
-          ${own ? html`${ib('upload', 'Замінити', `data-act="pick" data-slot="${slot}"`, { cls: 'sm' })}
-            ${slot.includes(':') && s.left && s.right ? ib('swap', 'Поміняти сторінки місцями', `data-act="swap" data-key="${key}"`, { cls: 'sm' }) : ''}
-            ${ib('trash', 'Видалити', `data-act="remove" data-slot="${slot}"`, { cls: 'sm danger' })}` : ''}
+          ${ib('expand', 'Переглянути', `data-act="zoom" ${attr('data-key', slot)}`, { cls: 'sm' })}
+          ${own ? html`${ib('upload', 'Замінити', `data-act="pick" ${attr('data-slot', slot)}`, { cls: 'sm' })}
+            ${slot.includes(':') && s.left && s.right ? ib('swap', 'Поміняти сторінки місцями', `data-act="swap" ${attr('data-key', key)}`, { cls: 'sm' }) : ''}
+            ${ib('trash', 'Видалити', `data-act="remove" ${attr('data-slot', slot)}`, { cls: 'sm danger' })}` : ''}
         </div>
         <span class="page-tag">${tag}</span>`
         : own ? html`<div class="drop-ph" data-act="pick" data-slot="${slot}"><div class="drop-ico">${ic('upload')}</div><b>${hint}</b><span class="num">${tag}</span></div>`
@@ -197,9 +197,9 @@ export async function mount(view, [id]) {
         images = html`<div class="spread-img ${s.image.lqip ? 'lqip' : ''}" ${drop(key)} ${bg(s.image)}>
           <img data-fade decoding="async" src="${assetUrl(s.image, 1400)}" alt="" data-zoom="${key}" loading="lazy"><div class="gutter"></div>
           <div class="img-actions">
-            ${ib('expand', 'Переглянути', `data-act="zoom" data-key="${key}"`, { cls: 'sm' })}
-            ${own ? html`${ib('upload', 'Замінити розворот', `data-act="pick" data-slot="${key}"`, { cls: 'sm' })}
-              ${ib('trash', 'Видалити', `data-act="remove" data-slot="${key}"`, { cls: 'sm danger' })}` : ''}
+            ${ib('expand', 'Переглянути', `data-act="zoom" ${attr('data-key', key)}`, { cls: 'sm' })}
+            ${own ? html`${ib('upload', 'Замінити розворот', `data-act="pick" ${attr('data-slot', key)}`, { cls: 'sm' })}
+              ${ib('trash', 'Видалити', `data-act="remove" ${attr('data-slot', key)}`, { cls: 'sm danger' })}` : ''}
           </div>
           <span class="page-tag">${lp}–${rp}</span>${busyOv(key)}<i class="crops"></i></div>`;
       } else {
@@ -281,7 +281,8 @@ export async function mount(view, [id]) {
       if (finished) return; finished = true;
       if (save && ta.value !== (book.text[key] || '')) {
         const ok = await saveBook({ text: { [key]: ta.value } }, key);
-        if (ok) toast('Текст збережено', 'success', 1400);
+        if (!ok) { finished = false; ta.focus(); return; }       // not saved: the typed text stays in the box, not lost
+        toast('Текст збережено', 'success', 1400);
       }
       if (key === 'cover') renderCover(true); else renderRow(key);
       renderHero(); renderPagesHead();

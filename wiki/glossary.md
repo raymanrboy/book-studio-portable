@@ -111,7 +111,7 @@ Code paths below are relative to the repository root.
 | Кольори режимів: студія — оранжева, «як у Etsy і Claude»; майстерня — як була студія (блакитна) | The `--accent*` tokens: orange by default (Orders), cyan under `[data-mode="listings"]`; magenta for a few hours before the owner swapped them | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |
 | Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library — since 2026-09-26 the book console moved in: the agents write a book, the Workshop shows its path and catches its pictures | [features/workshop.md](features/workshop.md); [workshop/books.py](../app/studio/workshop/books.py) |
 | Пульт, пульт книги | The book console — a prototype window apart from Book Studio (2026-09-26), moved into the Workshop the same day; now the Workshop's book page | [features/workshop.md](features/workshop.md) |
-| Пайплайн, агенти 0–6, Antigravity | The book pipeline: the agents that write a book's formula, hero, story, text and prompts, in Antigravity opened on `pipeline/`; their files go into a book's `agent/` | [pipeline/GEMINI.md](../pipeline/GEMINI.md); [workshop/books.py](../app/studio/workshop/books.py) `open_agent()` |
+| Пайплайн, агенти 0–6, Antigravity | The book pipeline: the agents that write a book's formula, hero, story, text and prompts, in Antigravity opened on `pipeline/`; their files go into a book's `agent/` | [pipeline/AGENTS.md](../pipeline/AGENTS.md); [workshop/books.py](../app/studio/workshop/books.py) `open_agent()` |
 | Смуга шляху; «Далі: …» | The book's path strip: Формула → … → Бібліотека, ticked by the files that exist | [workshop/books.py](../app/studio/workshop/books.py) `STEPS`, `steps()` |
 | GO, перевірка книги | The book check before generating: the old pipeline validator's rules — GO or N errors on the strip | [workshop/check.py](../app/studio/workshop/check.py) `run()`; [workshop/rows.py](../app/studio/workshop/rows.py) `book_check()` |
 | Генерувати, режим генерації; Далі / F8 | The row's prompt into the clipboard, the Workshop waits for the downloaded picture and puts the next prompt in | [workshop/generate.py](../app/studio/workshop/generate.py) `Session`; [features/workshop.md](features/workshop.md#the-generation-mode) |
@@ -124,7 +124,7 @@ Code paths below are relative to the repository root.
 | Фотошоп модуль | The Mockups tool | [features/mockups.md](features/mockups.md) |
 | Фліпер, фліпати (розворот) | Mirroring a spread left to right: his `mirror-alternate.py` rule (4–5, 8–9 … 28–29) on the drop, ⇄ by hand | [workshop/rows.py](../app/studio/workshop/rows.py) `MIRRORED`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `flip()`; [features/workshop.md](features/workshop.md#a-picture-into-its-row) |
 | Нарізати на квадрати, два квадрати як у паспорті | A 2:1 spread cut into its left and right square pages (his `slice-spreads.py`) | [workshop/pictures.py](../app/studio/workshop/pictures.py) `place()`, `two_squares()` |
-| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` (2026-09-26) | [pipeline/](../pipeline/GEMINI.md) |
+| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` (2026-09-26) | [pipeline/](../pipeline/AGENTS.md) |
 
 ## Listing mockups (the «Мокапи» tool)
 
@@ -177,3 +177,12 @@ Code paths below are relative to the repository root.
 ## Related
 
 - [Code map](code-map.md) · [Overview](overview.md)
+
+## Settings and modules
+
+| Owner's word (Ukrainian) | What it is | Where in the code |
+|---|---|---|
+| Модулі | The two optional parts installed from Settings: the smart text check (Ollama + the model) and the upscaling (Upscayl) | [modules.py](../app/studio/modules.py); [settings.js](../app/web/js/pages/settings.js) `modulesCard()`; [features/modules.md](features/modules.md) |
+| Розумна вичитка тексту | The text check's module (its own switches and model sit under it in «Модулі») | [features/text-check.md](features/text-check.md) |
+| Перенесення налаштувань | Export/import of the settings and keys in one file under the backup password (not the safety switches) | [transfer.py](../app/studio/transfer.py); [features/settings-transfer.md](features/settings-transfer.md) |
+| Позначити в Etsy | The queue tab of orders the printer has shipped: their tracking numbers are copied, and the owner marks them shipped on Etsy by hand (Etsy is read-only for the program) | [flows/order-to-print.md](flows/order-to-print.md); [stages.py](../app/studio/stages.py) `order_stage()` |

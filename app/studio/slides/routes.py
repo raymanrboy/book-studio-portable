@@ -219,14 +219,6 @@ def _cutouts(req: Request):
     return {"files": states, "busy": cutout.cutter.busy(folder), "noBg": str(folder / cutout.NO_BG)}
 
 
-def cut_later(png: Path, templates_dir: Path) -> None:
-    """The Mockups hand every picture Photoshop saves (mockups.watch)."""
-    try:
-        cutout.cutter.add(png, templates_dir)
-    except Exception:
-        core.log.warning("Slides: %s not handed to the cutter", png, exc_info=True)
-
-
 @route("POST", "/api/slides/make")
 def _make(req: Request):
     from .. import mockups

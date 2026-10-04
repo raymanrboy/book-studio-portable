@@ -161,6 +161,18 @@ class Accounts(unittest.TestCase):
             with self.assertRaises(gelato.GelatoError):                      # a key being checked only reads too
                 gelato.call("POST", url, {"orderType": "draft"}, key=NEW_KEY)
 
+    def test_the_main_account_creates_drafts_only_and_changes_nothing(self):
+        """«Gelato — drafts only» holds for the main account too: not an order that goes to print, not a change, not a delete."""
+        url = f"{gelato.ORDER_API}/orders"
+        self.assertTrue(gelato._allowed("POST", url, {"orderType": "draft"}))
+        for body in ({"orderType": "order"}, {}, None, "draft", {"orderType": "DRAFT"}):
+            self.assertFalse(gelato._allowed("POST", url, body), body)
+        for method in ("DELETE", "PATCH", "PUT"):
+            self.assertFalse(gelato._allowed(method, f"{url}/abc", {"orderType": "draft"}), method)
+        for word in ("cancel", "publish", "production", "confirm"):
+            self.assertFalse(gelato._allowed("GET", f"{url}/abc/{word}", None), word)
+        self.assertFalse(gelato._allowed("GET", "https://evil.example/orders/abc", None))
+
     def test_a_new_key_is_checked_by_reading_one_order(self):
         seen = []
         with mock.patch.object(httpc, "request_json",

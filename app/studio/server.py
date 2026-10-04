@@ -24,6 +24,7 @@ from .httpc import HttpError
 from .jobs import JobError, UserError, jobs
 
 SESSION_TOKEN = secrets.token_urlsafe(24)
+SLOW_REQUEST = 1.0       # seconds: a longer answer is written to the log
 MAX_JSON_BYTES = 25 * 1024 * 1024
 
 mimetypes.add_type("text/javascript", ".js")
@@ -105,7 +106,7 @@ class Request:
 
     def content_length(self) -> int:
         try:
-            return int(self.headers.get("Content-Length") or 0)
+            return max(0, int(self.headers.get("Content-Length") or 0))
         except ValueError:
             return 0
 
@@ -205,11 +206,17 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             if not self._host_ok():
                 raise ApiError("Forbidden host", 403)
+            began = time.monotonic()
             response = self._route(method, path, query)
+            took = time.monotonic() - began
+            if took > SLOW_REQUEST and not path.startswith("/api/jobs/"):     # what makes a page slow shows in the log, by name
+                core.log.info("Slow request: %s %s took %.1f s", method, path, took)
         except ApiError as err:
             response = json_response({"error": str(err), **err.extra}, err.status)
         except JobError as err:
             response = json_response({"error": str(err)}, 409)
+        except UserError as err:                  # an expected failure with its own words, not an «internal error»
+            response = json_response({"error": str(err)}, 400)
         except HttpError as err:
             response = json_response({"error": str(err)}, 502)
         except Exception as err:
@@ -258,7 +265,10 @@ class _Handler(BaseHTTPRequestHandler):
             headers = dict(response.headers)
             body = response.body
             if response.file is not None:
-                stat = response.file.stat()
+                try:
+                    stat = response.file.stat()
+                except OSError:                       # the file went between the route's answer and now
+                    return self._send(json_response({"error": "Файл зник."}, 404))
                 etag = f'"{stat.st_mtime_ns:x}-{stat.st_size:x}"'
                 headers.setdefault("ETag", etag)
                 if self.headers.get("If-None-Match") == etag:
@@ -276,6 +286,8 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(length))
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("X-Frame-Options", "DENY")                      # no other web page may frame this one (clickjacking)
+            self.send_header("Content-Security-Policy", "frame-ancestors 'none'")
             for k, v in headers.items():
                 self.send_header(k, v)
             self.end_headers()
@@ -286,6 +298,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self.wfile.write(body)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass
+        except OSError:
+            core.log.warning("A file could not be sent in full", exc_info=True)       # it vanished or changed while it was being sent
 
 
 class StudioServer(ThreadingHTTPServer):
@@ -314,7 +328,9 @@ def base_url() -> str:
 
 @route("GET", "/api/ping", auth="none")
 def _ping(req: Request):
-    return {"app": core.APP_NAME, "version": core.APP_VERSION}  # a second launch knows the running copy and only opens a window
+    # A second launch knows the running copy and only opens a window — but only when it is the same data: the ordinary and the
+    # portable Book Studio both want this port, and one must never open the other's window (audit, 2026-10-04).
+    return {"app": core.APP_NAME, "version": core.APP_VERSION, "data": core.data_id()}
 
 
 @route("POST", "/api/app/heartbeat")

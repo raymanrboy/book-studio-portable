@@ -20,6 +20,7 @@ code:
 | [app/Запуск з консоллю.bat](<../app/Запуск з консоллю.bat>) | The same, with a console — to see the error | — |
 | [app/tools/restore_keys.py](../app/tools/restore_keys.py) | After a restore on another PC: the keys from the backup's JSON back into the vault | `main()` |
 | [app/tools/make_shortcut.py](../app/tools/make_shortcut.py) | Creates the "Book Studio" shortcut on the desktop (the «Мокапи» one until 2026-09-24) | `main()`, `SHORTCUTS` |
+| [app/tools/make_colleague_copy.py](../app/tools/make_colleague_copy.py) | A clean copy of the portable folder for someone else: no data, keys, books or history; two personal rules off | `main()`, `tracked_files()`, `scrub()` |
 | [app/tools/textcheck_replay.py](../app/tools/textcheck_replay.py) | The text-check journal through today's rules: what the card would show for every past check, next to what it showed, and the owner's "Not an error" marks — for calibrating what the check shows | `replay()`, `rebuild()`, `main()` |
 | [app/tools/wiki_check.py](../app/tools/wiki_check.py) | Checks the wiki against the code: headers, links, named functions, routes, file coverage | `check()`, `coverage()`, `changed_files()` |
 | [app/tools/dev_server.py](../app/tools/dev_server.py) | A server for previewing the interface on temporary data (including a two-book order, a receipt with two print orders, a Workshop book, the mockups' made-up templates and a pretend Photoshop); writes only to its own folder, never takes keys (`BOOK_STUDIO_SAMPLE`) | `main()`, `claim()`, `MARK` |
@@ -39,6 +40,7 @@ code:
 | [httpc.py](../app/studio/httpc.py) | HTTPS client: retries without duplicates, one shared read of printer errors, call logs, incomplete lists | `request()`, `request_json()`, `human()`, `audit_log()`, `HttpError`, `Listing` |
 | [vault.py](../app/studio/vault.py) | Keys under Windows DPAPI | `Vault`, `protect()`, `unprotect()`, `unprotect_powershell_securestring()` |
 | [backup.py](../app/studio/backup.py) | The backup to Google Drive: the whole program and the templates in a 7-Zip archive with a password, every 3 days | `make()`, `start_if_due()`, `to_remove()`, `drive_root()`, `status()` |
+| [transfer.py](../app/studio/transfer.py) | Settings and keys in one 7-Zip file under the backup password: export, import (what it replaces is kept aside) | `export_to()`, `import_from()`, `_portable_settings()`, `_save_current()` |
 | [desktop.py](../app/studio/desktop.py) | The program window, folder/file picker, Explorer | `open_app_window()`, `pick_folder()`, `pick_file()`, `open_in_explorer()`, `find_browser()`, `file_holders()` (which programs hold a file — Restart Manager) |
 | [settings_api.py](../app/studio/settings_api.py) | Settings, keys, opening links, import from old programs | `integrations()`, `_open_url()`, `_legacy_values()`, `legacy_sources()` |
 | [etsy.py](../app/studio/etsy.py) | Etsy API v3: OAuth, session, listings, receipts | `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `fetch_listing()`, `fetch_all_receipts()`, `decode_session_key()` |
@@ -78,6 +80,8 @@ code:
 | [orders.py](../app/studio/orders.py) | Order pipeline: printer, book, laying out pages | `plan_for()`, `page_options()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()` |
 | [drops.py](../app/studio/drops.py) | Dragged-in files (saving, unpacking a ZIP, the book folder) and how a Canva export names its files — shared by the orders, the library and the mockups | `export_files()`, `page_number()`, `COVER_NAME`, `UPSCAYL_TAIL`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `clear_drops()`, `DROPS` |
 | [photos.py](../app/studio/photos.py) | [Photo mockups](features/photo-mockups.md): the templates by category (`app/data/photo-mockups`), the five JSON prompts, a book's references (`mockups/`) and photos (`etsy/`) | `CATEGORIES`, `REFS`, `PROMPTS`, `templates()`, `add_template()`, `references()`, `items()`, `place()`, `state()`, `set_canva_cover()` |
+| [modules.py](../app/studio/modules.py) | Optional modules (the text check, upscaling): installed on request from checked official files into `runtime/`, or from a ZIP; removed | `MODULES`, `installed()`, `listing()`, `download()`, `unpack()`, `start_install()`, `remove()` |
+| [portable.py](../app/studio/portable.py) | The portable copy's `runtime/`: where each program is, saved paths taken into it, `PATH`/`OLLAMA_MODELS` | `root()`, `runtime()`, `relocate()`, `antigravity_launch()`, `ffmpeg()`, `env()`, `check()`, `rebase_paths()`, `prerequisites()`, `install()` |
 | [mockups.py](../app/studio/mockups.py) | [Listing mockups](features/mockups.md): the demo book (in its own folder), pictures for the smart objects, the run plan, Photoshop | `TEMPLATES`, `BOOKS`, `read_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `plan()`, `script()`, `launch()`, `watch()`, `make()` |
 | [mockups.jsx](../app/studio/mockups.jsx) | The Photoshop script (ExtendScript, CC 2019) the mockups run: fills copies of the templates, saves PNGs | `findLayer()`, `replaceContents()`, `runTemplate()` |
 | [slides/\_\_init\_\_.py](../app/studio/slides/__init__.py) | [Listing slides](features/slides.md): the package, what's where | — |
@@ -167,6 +171,11 @@ code:
 | [test_archive.py](../app/tests/test_archive.py) | Order archive: file copies, 14/30 days, "Keep", Printify/Gelato reprints, the replacement mark |
 | [test_textcheck.py](../app/tests/test_textcheck.py) | Text check: comparison, name rules, matching pages (24 and 30), a full check with a fake model, updating the passport, 127.0.0.1 only |
 | [test_orders.py](../app/tests/test_orders.py) | The printer rule, laying out pages, Gelato book length, the guide, partial import, the sync rule |
+| [test_etsy_rule.py](../app/tests/test_etsy_rule.py) | The owner's own rules as settings: Etsy only from Kyiv, Printify read-only from a date — on by default, off for a copy |
+| [test_transfer.py](../app/tests/test_transfer.py) | The settings file: what goes in and what does not, import puts it back and keeps the old, a wrong password changes nothing |
+| [test_modules.py](../app/tests/test_modules.py) | The optional modules: install from checked files, a wrong hash, a package that climbs out, removal |
+| [test_portable_move.py](../app/tests/test_portable_move.py) | The folder moves: paths inside the data follow it, the quiet install of Windows prerequisites |
+| [test_portable.py](../app/tests/test_portable.py) | The portable copy: programs found in `runtime/`, saved paths taken into it, the ordinary install unchanged |
 | [test_mockups.py](../app/tests/test_mockups.py) | Mockups: the demo book (its own folder, apart from an order's dropped files), the cuts, the run plan, following Photoshop, the Photoshop script run by Node.js against a pretend Photoshop |
 | [test_photos.py](../app/tests/test_photos.py) | Photo mockups: the templates, the five prompts, a book's clipboard order and the photo caught into `etsy/`, the step, without a book, the Canva cover kept |
 | [test_slides.py](../app/tests/test_slides.py) | Listing slides: the cut-out and `no-background/`, the background cutter, the template and a set (a stale save refused), «Зробити слайди» with a pretend browser, names, the command line |

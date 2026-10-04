@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -22,7 +22,7 @@ code:
 
 ## Rules for agents (strict)
 
-1. **Never open Etsy from the Wrocław PC** — not in a browser, not any other way. Signing in to Etsy
+1. *(A setting since 2026-10-03: `security.etsyKyivOnly`, on unless switched off — a copy for someone else has it off.)* **Never open Etsy from the Wrocław PC** — not in a browser, not any other way. Signing in to Etsy
    (OAuth) is done only on the Kyiv computer where the shop is registered: otherwise Etsy might block
    the shop over a foreign IP address.
 2. **Etsy — read-only.** No changes in the shop at all.
@@ -164,7 +164,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   without saving.
 - The output folder may **not** be the templates folder — refused in the dialog (`_pick_out()`) and in the
   run (`make()`). An existing picture is never overwritten (`_free_name()`).
-- The spare copy `Трафарети мастхев (копія)` in the Book Studio folder (2026-09-29) is **read-only too** (its files marked
+- The spare copy `Трафарети мастхев (копія)` in the Book Studio folder (2026-09-29; in the portable copy it was removed on 2026-10-03 — `runtime/Templates` holds the templates there) is **read-only too** (its files marked
   so) and never used by the program; it is not in git and not in the backup (the templates themselves are).
 - The listing slides' cut-out **only reads** the templates (their book mask and shadow layers, psd_tools); what it
   writes goes beside the mockups (`no-background\`, never over a file that is there) and into `app/data/slides`; the
@@ -248,3 +248,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 
 - [Printify](integrations/printify.md) · [Gelato](integrations/gelato.md) · [Etsy](integrations/etsy.md)
 - [Decisions](decisions.md) · [Working with the owner](owner/working-with-owner.md)
+
+## Audit of 2026-10-04
+
+A five-part audit (server core, portability, interface, security, tests/docs) found no way to write to Etsy/Printify/Gelato against the rules. Fixed: the settings transfer could carry the safety switches (now it cannot); the Recycle Bin call now warns instead of deleting for good when a folder cannot be recycled (`FOF_WANTNUKEWARNING`); the Etsy-open guard also catches `www.etsy.com.` and `etsy.me`; the pages cannot be framed by other sites; a module ZIP cannot overwrite other parts of `runtime/`. Open (owner's choice): `.secrets.txt` is readable by other Windows accounts (set its rights or keep the folder on an encrypted disk); the backup password is only checked for 8 characters.

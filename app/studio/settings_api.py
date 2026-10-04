@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from . import core, desktop, etsy, gelato_accounts, library, printify, tunnel
+from . import core, desktop, etsy, gelato_accounts, library, portable, printify, tunnel
 from .server import ApiError, Request, route, state
 from .vault import SECRET_NAMES, unprotect_powershell_securestring, vault
 
@@ -28,7 +28,6 @@ def integrations() -> dict:
 
 @route("GET", "/api/app")
 def _app(req: Request):
-    books = library.all_books()
     return {
         "name": core.APP_NAME,
         "version": core.APP_VERSION,
@@ -37,8 +36,7 @@ def _app(req: Request):
         "ui": core.settings.section("ui"),
         "integrations": integrations(),
         "cloudflared": tunnel.CLOUDFLARED.exists(),
-        "library": {"active": sum(1 for b in books if not b.get("archived")),
-                    "archived": sum(1 for b in books if b.get("archived"))},
+        "library": library.counts(),
     }
 
 
@@ -47,6 +45,7 @@ def _settings(req: Request):
     data = core.settings.get()
     return {
         "ui": data["ui"],
+        "security": {"etsyKyivOnly": core.etsy_kyiv_only()},
         "etsy": {**data["etsy"], **etsy.status()},
         "printify": {**data["printify"], "readOnly": printify.retired()},
         "gelato": {**data["gelato"], **gelato_accounts.status()},
@@ -104,11 +103,12 @@ def _open_url(req: Request):
     url = str((req.json or {}).get("url") or "").strip()
     if not re.match(r"^https?://[^\s]+$", url):
         raise ApiError("Некоректне посилання.")
-    # Etsy may only ever be opened on the Kyiv computer. The one exception is the Etsy sign-in page,
-    # which Settings opens only after the user confirms they are working on that computer.
+    # The owner's rule: Etsy may only ever be opened on the Kyiv computer (`core.etsy_kyiv_only()`; off in a copy for someone
+    # else). The one exception is the Etsy sign-in page, which Settings opens only after the user confirms they are on it.
     parts = urllib.parse.urlsplit(url)
-    host = (parts.hostname or "").lower()
-    if (host == "etsy.com" or host.endswith(".etsy.com")) and parts.path.rstrip("/") != "/oauth/connect":
+    host = (parts.hostname or "").lower().rstrip(".")      # «www.etsy.com.» is the same site
+    if (core.etsy_kyiv_only() and any(host == d or host.endswith("." + d) for d in ("etsy.com", "etsy.me"))
+            and parts.path.rstrip("/") != "/oauth/connect"):
         raise ApiError("Etsy не відкривається з цього комп'ютера — лише з київського.", 403)
     if not _open_in_profile(url, host):
         webbrowser.open(url)
@@ -118,15 +118,23 @@ def _open_url(req: Request):
 def _open_in_profile(url: str, host: str) -> bool:
     """Sites the owner keeps in one browser profile (Gelato and Canva in Cent Browser's «Work», 01.10.2026) open in it.
     The settings' "browser" section: `exe`, `profile` (the profile's folder name, "Profile 6"), `hosts`. Not set, another
-    site, or the browser not found → False, and the default browser opens the link as before."""
+    site, or the browser not found → False, and the default browser opens the link as before. In the portable copy it is
+    Edge with a profile of its own (`work-browser` in the data folder): a login cannot travel between PCs anyway."""
     import subprocess
     cfg = core.settings.section("browser")
-    exe, profile = cfg.get("exe"), cfg.get("profile")
-    if not (exe and profile and Path(exe).is_file()
-            and any(host == h or host.endswith("." + h) for h in cfg.get("hosts") or [])):
+    if not any(host == h or host.endswith("." + h) for h in cfg.get("hosts") or []):
+        return False
+    if portable.root():        # the portable copy: Edge (every Windows has it) with a profile of its own in the data folder
+        exe = desktop.find_browser()
+        args = [exe, f"--user-data-dir={core.data_path('work-browser')}", "--no-first-run",
+                "--no-default-browser-check", url] if exe else None
+    else:
+        exe, profile = cfg.get("exe"), cfg.get("profile")
+        args = [exe, f"--profile-directory={profile}", url] if exe and profile and Path(exe).is_file() else None
+    if not args:
         return False
     try:
-        subprocess.Popen([exe, f"--profile-directory={profile}", url], close_fds=True,
+        subprocess.Popen(args, close_fds=True,
                          creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
                          | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
     except OSError:

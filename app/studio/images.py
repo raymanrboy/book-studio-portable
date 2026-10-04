@@ -192,10 +192,11 @@ def _previews_from(im: Image.Image, path: Path, stat, sizes: tuple[int, ...]) ->
     source = im
     for size in sorted(sizes, reverse=True):
         key, out = _cached(path, stat, size)
-        with _lock_for(key):
+        with _lock_for(key):            # the order is always: the preview's lock, then a slot (as in preview()) — never the reverse
             if not out.exists():
-                source = _shrink(source.copy() if source is im else source, size)
-                _store(source, out)
+                with _gen_slots:
+                    source = _shrink(source.copy() if source is im else source, size)
+                    _store(source, out)
 
 
 def copy_previews(src: Path, dst: Path, sizes: tuple[int, ...] = VIEW_SIDES) -> None:
@@ -301,8 +302,7 @@ def _check(path: Path, st, previews: tuple[int, ...]) -> tuple[dict | None, str 
                     "frames": getattr(im, "n_frames", 1)}
             im.load()
             if previews:
-                with _gen_slots:
-                    _previews_from(im, path, st, previews)
+                _previews_from(im, path, st, previews)
         return info, None
     except Exception as err:  # Pillow raises many different types for damaged files
         return None, f"не вдалося прочитати файл ({err})"

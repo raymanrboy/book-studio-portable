@@ -5,7 +5,7 @@ import difflib
 import re
 import unicodedata
 
-from .. import core, library
+from .. import core, library, modules, portable
 from ..jobs import jobs
 from ..wording import alike
 from ..server import ApiError, Request, route
@@ -133,7 +133,10 @@ def _mark(req: Request):
 @route("POST", "/api/textcheck/warm")
 def _warm(req: Request):
     """The card is taking files: the model is asked for now, so the check does not wait for it later."""
-    return {"warming": warm()}
+    if portable.root() and not modules.installed("textcheck"):
+        return {"warming": False}                      # an optional module that is not installed has nothing to warm
+    warming = warm()
+    return {"warming": warming, "starting": warming and bool(_ollama_command()) and not ollama._alive()}
 
 
 @route("POST", r"/api/orders/(\d{5,20})/textcheck/cancel")
@@ -147,6 +150,8 @@ def _check(req: Request):
     body = req.json or {}
     if not _settings()["enabled"]:
         return {"off": True}
+    if portable.root() and not modules.installed("textcheck"):
+        return {"off": True, "module": "textcheck"}      # the optional module is not installed: the card offers it
     try:
         count, pick = int(body.get("pages") or 0), int(body.get("pick") or 0)
     except (TypeError, ValueError):

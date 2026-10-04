@@ -37,6 +37,18 @@ def data_path(*parts: str) -> Path:
     return DATA_DIR.joinpath(*parts)
 
 
+def data_id() -> str:
+    """Tells which data folder a running Book Studio works on (the ordinary and the portable copy are different ones)."""
+    import hashlib
+    return hashlib.sha1(str(DATA_DIR).casefold().encode("utf-8")).hexdigest()[:12]
+
+
+def data_id() -> str:
+    """Tells which data folder a running Book Studio works on (the ordinary and the portable copy are different ones)."""
+    import hashlib
+    return hashlib.sha1(str(DATA_DIR).casefold().encode("utf-8")).hexdigest()[:12]
+
+
 def ensure_dirs() -> None:
     for sub in (
         "library/books",
@@ -74,6 +86,26 @@ def own_temp() -> Path:
     os.environ["TEMP"] = os.environ["TMP"] = str(folder)
     tempfile.tempdir = str(folder)
     return folder
+
+
+OWN_TMP_NAMES = ("upload-", "listing-", "upscale-", "import-")      # what the program's own routes park in data/tmp for a moment
+
+
+def sweep_tmp() -> int:
+    """At the start (one copy runs on this data, so nothing of these is in use): what a crash or a kill left in data/tmp — an upload
+    waiting to be stored, an upscale copy, an opened keys file of a cut-short import. Returns how many were removed."""
+    import shutil
+    tmp = data_path("tmp")
+    removed = 0
+    if tmp.is_dir():
+        for item in tmp.iterdir():
+            if item.name.startswith(OWN_TMP_NAMES):
+                if item.is_dir():
+                    shutil.rmtree(item, ignore_errors=True)
+                else:
+                    item.unlink(missing_ok=True)
+                removed += 1
+    return removed
 
 
 def clear_own_temp() -> None:
@@ -123,17 +155,32 @@ def write_json(path: Path, obj: Any, backup: bool = True) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex[:8]}.tmp")
     data = json.dumps(obj, ensure_ascii=False, indent=2)
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(data)
-        f.flush()
-        os.fsync(f.fileno())
-    if backup and path.exists():
-        try:
-            replace_file(path, path.with_name(path.name + ".bak"), copy_only=True)
-        except OSError:
-            # The write goes on (the new data matters more); the .bak is now older than one write.
-            log.warning("Backup copy of %s not made; the .bak keeps an older state", path.name, exc_info=True)
-    replace_file(tmp, path)
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        if backup and path.exists():
+            _keep_backup(path)
+        replace_file(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)           # a failed write leaves no `.name.xxxx.tmp` behind
+        raise
+
+
+def _keep_backup(path: Path) -> None:
+    """The .bak is the file as it was before this write — made whole (a temp copy, then a replace) and only from a file that still
+    parses: a damaged main file must not push the last good .bak out."""
+    bak = path.with_name(path.name + ".bak")
+    try:
+        raw = path.read_bytes()
+        json.loads(raw.decode("utf-8-sig"))
+        part = bak.with_name(bak.name + ".part")
+        part.write_bytes(raw)
+        replace_file(part, bak)
+    except (OSError, ValueError):
+        # The write goes on (the new data matters more); the .bak keeps an older state.
+        log.warning("Backup copy of %s not made; the .bak keeps an older state", path.name, exc_info=True)
 
 
 def replace_file(src: Path, dst: Path, copy_only: bool = False) -> None:
@@ -165,7 +212,13 @@ def _default_placements(page_count: int) -> dict:
 
 
 DEFAULT_SETTINGS: dict = {
-    "ui": {"theme": "dark", "reduceMotion": False},
+    "ui": {"theme": "light", "reduceMotion": False},
+    # The owner's own rule: Etsy is opened only on his Kyiv computer. On for him; a copy for someone else is made with it off
+    # (`security.etsyKyivOnly: false` in settings.json) — then Etsy opens and signs in like any site.
+    "security": {"etsyKyivOnly": True},
+    # Sites that open in the program's own browser profile (the portable copy: Edge, `data/work-browser`), so the logins to them stay
+    # apart from the person's own browser. A fresh install has these two; the original's settings may add `exe` and `profile`.
+    "browser": {"hosts": ["gelato.com", "canva.com"]},
     "etsy": {
         "redirectUri": "",
         "shopId": None,
@@ -229,7 +282,6 @@ DEFAULT_SETTINGS: dict = {
                   "prescan": True},  # a local look first: only pages that may carry text go to the model
 }
 
-# Settings saved before 2026-09-17 still name the inch-sized Gelato products.
 def _merge(base: dict, extra: dict) -> dict:
     out = copy.deepcopy(base)
     for key, value in (extra or {}).items():
@@ -280,3 +332,8 @@ class Settings:
 
 
 settings = Settings()
+
+
+def etsy_kyiv_only() -> bool:
+    """The owner's rule «Etsy only from the Kyiv computer» (settings → security → etsyKyivOnly; on unless switched off)."""
+    return settings.section("security").get("etsyKyivOnly", True) is not False

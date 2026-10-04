@@ -7,8 +7,8 @@ import {
 // ---------------------------------------------------------------- Etsy OAuth flow
 /** The Etsy sign-in: first the owner confirms he is on the Kyiv PC, then the Etsy page (here, or on the Kyiv PC with
  *  the address pasted back). `done()` — the page reloads what it shows. */
-export async function oauthFlow(done) {
-  const confirmed = await confirmChecked({
+export async function oauthFlow(done, { kyiv = true } = {}) {
+  const confirmed = !kyiv || await confirmChecked({
     title: 'Перевірка безпеки Etsy',
     sub: 'Захист від блокування через сторонній IP',
     warning: html`Ви збираєтеся перейти на офіційну сторінку авторизації Etsy.<br><b>Переконайтеся, що ви зараз працюєте через віддалений київський комп'ютер</b>, де зареєстрований магазин. Якщо ви на польському ноутбуці чи телефоні — закрийте це вікно.`,
@@ -24,21 +24,21 @@ export async function oauthFlow(done) {
   let polling = true;
   const m = modal({
     title: 'Авторизація Etsy',
-    sub: 'Оберіть, де ви зараз працюєте',
+    sub: kyiv ? 'Оберіть, де ви зараз працюєте' : 'Сторінка входу відкриється у вашому браузері',
     size: 'l',
     body: html`<div class="stack">
       <div class="card-soft stack-s" style="padding:14px">
-        <b>Варіант 1 — програма запущена на київському комп'ютері</b>
+        <b>${kyiv ? 'Варіант 1 — програма запущена на київському комп\'ютері' : 'Вхід в Etsy'}</b>
         <div class="faint" style="font-size: var(--fs)">Сторінка входу відкриється у вашому браузері. Після підтвердження Etsy поверне вас у програму автоматично.</div>
         <div><button class="btn btn-primary btn-sm" data-x="open">${ic('external', 'icon-s')}Відкрити сторінку входу Etsy</button></div>
       </div>
-      <div class="card-soft stack-s" style="padding:14px">
+      ${kyiv ? html`      <div class="card-soft stack-s" style="padding:14px">
         <b>Варіант 2 — програма на цьому ПК, а вхід робите на київському</b>
         <div class="faint" style="font-size: var(--fs)">1) Скопіюйте посилання і відкрийте його в браузері на київському ПК. 2) Підтвердіть доступ. 3) Браузер перейде на адресу <span class="mono">localhost</span>, яка не відкриється — це нормально: скопіюйте повну адресу з рядка браузера й вставте нижче.</div>
         <div><button class="btn btn-sm" data-x="copy">${ic('copy', 'icon-s')}Скопіювати посилання для Києва</button></div>
         <div class="row" style="margin-top:4px"><input class="input mono" id="oauth-back" placeholder="${start.redirectUri}?code=…&state=…" autocomplete="off" spellcheck="false">
           <button class="btn btn-primary" data-x="finish">Завершити</button></div>
-      </div>
+      </div>`: ''}
       <div class="row faint" style="font-size: var(--fs-s)"><span class="spinner" style="width:14px;height:14px"></span>Очікування підтвердження від Etsy… Посилання дійсне 60 хвилин.</div>
     </div>`,
     foot: html`<button class="btn btn-ghost" data-x="close">Закрити</button>`,
@@ -125,11 +125,11 @@ export async function pickMaster(printify, done) {
       setHtml(m.el.querySelector('#mp-analysis'), html`<div class="card-soft" style="padding:14px">
         <div style="font-weight:650;margin-bottom:8px">${analysis.title}</div>
         <dl class="master-card">
-          <dt>Blueprint / постачальник</dt><dd>${analysis.blueprintId} / ${analysis.printProviderId}</dd>
-          <dt>Позиції</dt><dd>cover + ${analysis.pageCount} сторінок</dd>
+          <dt>Тип виробу / друкарня (Blueprint / Print Provider)</dt><dd>${analysis.blueprintId} / ${analysis.printProviderId}</dd>
+          <dt>Позиції</dt><dd>обкладинка + ${analysis.pageCount} сторінок</dd>
           <dt>Увімкнені варіанти</dt><dd>${analysis.enabledVariants.join(', ') || '—'}</dd>
-          <dt>Розміри artwork</dt><dd>обкладинка ${(analysis.coverSize || []).join('×') || '—'} · сторінки ${(analysis.pageSize || []).join('×') || '—'}</dd>
-          <dt>Обкладинка x / y / scale</dt><dd class="mono" style="font-size: var(--fs-s)">${analysis.placements.cover.x} / ${analysis.placements.cover.y} / ${analysis.placements.cover.scale}</dd>
+          <dt>Розміри зображень (artwork)</dt><dd>обкладинка ${(analysis.coverSize || []).join('×') || '—'} · сторінки ${(analysis.pageSize || []).join('×') || '—'}</dd>
+          <dt>Обкладинка: зсув x / y і масштаб (x / y / scale)</dt><dd class="mono" style="font-size: var(--fs-s)">${analysis.placements.cover.x} / ${analysis.placements.cover.y} / ${analysis.placements.cover.scale}</dd>
         </dl>
         ${bad ? html`<div class="notice notice-warn" style="margin-top:10px">${ic('alert')}<div>У цьому продукті ${analysis.pageCount} сторінок (очікується 24). Переконайтеся, що це правильний еталон.</div></div>` : ''}
       </div>`);

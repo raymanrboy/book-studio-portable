@@ -25,8 +25,8 @@ code: []
 
 ## A different Gelato book length (besides 28 and 30)
 - [app/studio/core.py](../app/studio/core.py) — `DEFAULT_SETTINGS` `gelato.pageCounts`. But `_merge()`
-  doesn't change a list already saved in the owner's `settings.json` — a migration in `_upgrade()` is
-  needed.
+  doesn't change a list already saved in the owner's `settings.json` — the new list has to be written into it
+  (there is no migration step at load: `Settings.__init__` only lays the saved file over the defaults).
 - Check with a test draft with numbered pages (Page 0 blank, then 1…N).
 - The rest is computed from this list: [app/studio/creator/printfolder.py](../app/studio/creator/printfolder.py)
   `gelato_page_options()`, `_gelato_page_count()`; [app/studio/orders.py](../app/studio/orders.py)

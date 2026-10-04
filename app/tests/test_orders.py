@@ -190,6 +190,21 @@ class ArrangePages(unittest.TestCase):
         self.assertEqual(len(list(Path(res["path"]).iterdir())), 25)
 
 
+    def test_a_refusal_before_the_move_leaves_the_dropped_files_where_they_were(self):
+        """Gelato's length check used to come after the move: the card kept the old path and the files were gone from it."""
+        scratch = self.root / "drops"
+        d = scratch / "abc" / "Madelynn"
+        d.mkdir(parents=True)
+        for i in range(3, 27):
+            png(d / f"{i}.png")
+        png(d / "Cover.png", (96, 50))
+        with mock.patch.object(drops, "DROPS", scratch):
+            with self.assertRaises(ApiError) as caught:
+                orders.arrange_pages(d, 24, precheck=lambda count: "Gelato не друкує таку довжину")
+        self.assertIn("Gelato не друкує", str(caught.exception))
+        self.assertEqual(len(list(d.iterdir())), 25)
+
+
 class GelatoLength(unittest.TestCase):
     """A Gelato book is as long as the Canva export: 30 pages, or 28 when one spread was left out."""
 

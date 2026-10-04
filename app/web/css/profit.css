@@ -79,7 +79,6 @@
 .kpi-value { color: var(--kpi-ink, var(--text)); }
 .kpi.tone-green { --kpi-ink: var(--green); }
 .kpi.tone-red { --kpi-ink: var(--red); }
-.kpi.tone-accent { --kpi-ink: var(--accent); }
 .kpi-foot:empty::after { content: "\00a0"; }
 .kpi-foot.neg { color: var(--red); }
 .sk-label { height: 12px; width: 50%; }

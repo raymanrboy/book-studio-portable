@@ -45,7 +45,7 @@ moment, without jargon.
 > (`knowledge/media-presets.md`). We will lock it for ALL frames of the book.
 
 *(Note on folder structure: when a new book is initialized, create only `books/[number].[slug]/agent/` and write
-every file there — the numbering rule is in `GEMINI.md`. The Workshop makes the rest.)*
+every file there — the numbering rule is in `AGENTS.md`. The Workshop makes the rest.)*
 
 ## Step 3 — Hero (Tier H only): reference
 > Send a **character reference** — a photo or any picture of the baby. I will prepare the hero's design for

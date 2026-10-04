@@ -129,10 +129,10 @@ and its files are still in the archive, this order's card shows a **"Take files 
 ago"** button in the "Files from Canva" step (only for the chosen printer). The button makes a working
 copy in `tmp/dropped` (hard links, `POST /api/archive/<id>/reuse`), and everything else goes as usual:
 laying out pages, proofing, "Print" — this is a **normal order, not a reprint**. The list of such sends
-is `earlierSends` in `GET /api/orders/<receipt>` (`earlier_sends()`).
+is `earlierSends` in `GET /api/orders/<receipt>` (a key of `archive.card_facts()`).
 
 The same card also knows the opposite — that a send for this order **is already at the printer** (a
-book, draft, or order, not cancelled or deleted): `atPrinter` (`at_printer()`). Then a page replacement
+book, draft, or order, not cancelled or deleted): `atPrinter` (also a key of `archive.card_facts()`). Then a page replacement
 first asks "A draft already exists…", even after the program has been restarted (previously only the
 page itself remembered this).
 

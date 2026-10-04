@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/web/js/path.js
   - app/studio/orders.py
@@ -264,3 +264,7 @@ one column.
 
 - [The order-to-print path](../flows/order-to-print.md) · [Printer rule](../rules/printer-rule.md) · [Stages](../rules/order-stages.md)
 - [Order Creator](order-creator.md) · [Text check](text-check.md) · [Canva](../integrations/canva.md) · [Known limits](../dev/limits.md)
+
+## The link stays after «Завершити» (2026-10-04)
+
+A Gelato draft's temporary link to the print files is shown in the order's card (the green card with the countdown) for as long as it lives, also after «Завершити роботу над замовленням»: `keep.finish()` moves the result to `linkOf(rid)`; `order-card.js` `printCard()` / `linkTimer()` read `sentOf(...)?.result || linkOf(...)`. It goes when the link closes or the order is no longer new.

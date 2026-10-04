@@ -18,6 +18,8 @@ function transition(update) {
 }
 
 // ------------------------------------------------------------------ theme
+// The browser's storage can be blocked or broken: the theme is then the default, never an error that stops the shell.
+const storedTheme = () => { try { return localStorage.getItem('bs-theme') || 'dark'; } catch { return 'dark'; } };
 function applyTheme(theme) {
   try { localStorage.setItem('bs-theme', theme); } catch {}
   const resolved = theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : theme;
@@ -32,7 +34,7 @@ function applyMotion(reduce) {
   if (reduce) document.documentElement.dataset.motion = 'reduce'; else delete document.documentElement.dataset.motion;
 }
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
-  if ((localStorage.getItem('bs-theme') || 'dark') === 'system') applyTheme('system');
+  if (storedTheme() === 'system') applyTheme('system');
 });
 
 // ------------------------------------------------------------------ the rail: places and tools
@@ -56,7 +58,7 @@ const THEMES = [
   { value: 'light', label: 'Світла', icon: 'sun' },
   { value: 'system', label: 'Як у Windows', icon: 'monitor' },
 ];
-const currentTheme = () => localStorage.getItem('bs-theme') || 'dark';
+const currentTheme = storedTheme;
 let mode = 'orders';     // the ink on screen: 'orders' (orange) or 'listings' (cyan) — the page's area
 let navOwner = null;      // a page that serves an object may claim its place (the Order Creator of an order → «Замовлення»)
 const lastIn = {};        // where the owner was under each place (until a restart)
@@ -112,7 +114,9 @@ function paintBusy() {
   document.querySelectorAll('[data-busy]').forEach((dot) => {
     dot.hidden = !(busy[dot.dataset.busy] && !BUSY_PAGE[dot.dataset.busy].test(hash));
   });
-  const title = busy.workshop ? `● ${busy.workshop} — ${TITLE}` : TITLE;
+  const shop = store.info?.integrations?.etsy?.shopName;      // the owner's shop in the window's title (04.10.2026)
+  const base = shop ? `${TITLE} · ${shop}` : TITLE;
+  const title = busy.workshop ? `● ${busy.workshop} — ${base}` : base;
   document.title = busy.done ? `${busy.done} · ${title}` : title;
 }
 
@@ -147,6 +151,7 @@ function updateSidebar() {
   if (badge && store.info) badge.hidden = !!(integ.etsy?.connected && integ.printify?.configured && integ.gelato?.configured);
   const theme = THEMES.find((t) => t.value === currentTheme()) || THEMES[0];
   setHtml(document.getElementById('theme-btn'), ic(theme.icon));
+  paintBusy();                                                // the shop's name may have just arrived
 }
 
 function openThemeMenu(anchor) {
@@ -273,7 +278,13 @@ async function navigate() {
   }
   if (!view) {
     let mod;
-    try { mod = await loader(); } catch (err) { console.error(err); topbarDone(); toast('Не вдалося відкрити сторінку', 'error'); return; }
+    try { mod = await loader(); } catch (err) {
+      console.error(err); topbarDone();
+      // The address must not point at a page that never opened: it goes back to the one still on screen.
+      if (currentHash && my === navToken) { history.replaceState(null, '', currentHash); placeNavPill(); }
+      toast('Не вдалося відкрити сторінку', 'error');
+      return;
+    }
     if (my !== navToken) return;
     view = document.createElement('div');
     view.className = 'view';

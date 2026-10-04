@@ -4,7 +4,7 @@
 // to another tab and comes back as it was left (keep.js). The queue — orders.js.
 import {
   api, post, html, ic, ib, raw, esc, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
-  openExternal, runJob, fadeImages, plural, confirmBox, patch, escBack, notFound, stickyFit,
+  openExternal, runJob, fadeImages, plural, confirmBox, patch, escBack, notFound, stickyFit, replaceKeyed, BOOKS,
 } from '../lib.js';
 import { openFolderViewer, pageNo } from '../folder-viewer.js';
 import {
@@ -14,8 +14,9 @@ import {
 } from '../order-bits.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { give } from '../handoff.js';
+import { offerModule } from '../modules-ui.js';
 import { pathHtml } from '../path.js';
-import { sentOf, keptOrder, finish } from '../keep.js';
+import { sentOf, keptOrder, finish, linkOf } from '../keep.js';
 import { gelatoResultHtml, runCountdown, resultAction, linkAlive } from './gelato-result.js';
 
 // Text check (textcheck/): how its findings are counted and why a check was only the light one.
@@ -81,7 +82,7 @@ export async function mountCard(view, rid) {
     // the order is (2026-09-30).
     return html`<section class="card card-pad oc-printed">
       <span class="oc-printed-icon">${ic(o.stage === 'sent' ? 'truck' : o.stage === 'work' ? 'hourglass' : 'package')}</span>
-      <div class="grow">${last ? html`<span class="faint">${dateTime(last.sentAt)} · ${last.pageCount || ''} стор.${last.formatLabel ? ` · ${last.formatLabel}` : ''}${(o.printed || []).length > 1 ? ` · відправок: ${o.printed.length}` : ''}</span>`
+      <div class="grow">${last ? html`<span class="faint">${dateTime(last.sentAt)}${last.pageCount ? ` · ${last.pageCount} стор.` : ''}${last.formatLabel ? ` · ${last.formatLabel}` : ''}${(o.printed || []).length > 1 ? ` · відправок: ${o.printed.length}` : ''}</span>`
           : html`<span class="faint">Файлів цієї відправки в архіві друку немає</span>`}</div>
       ${last ? ib('orderArchive', 'Що пішло в друк · передрук', `data-href="#/archive/${last.id}"`) : ''}
       ${last ? ib('upload', 'Покласти інші файли й надіслати ще раз', 'data-act="manual" id="oc-manual"') : ''}
@@ -171,7 +172,7 @@ export async function mountCard(view, rid) {
         <div class="stack-s grow">
           ${b ? html`<a class="ord-book-title" href="#/book/${b.id}" data-tip="Паспорт книги">${b.title}</a>`
             : html`<b>Книги немає в бібліотеці</b><span class="faint mono" style="font-size: var(--fs-s)">лістинг #${it.listingId || '—'}</span>`}
-          ${b?.canvaUrl ? html`<button class="btn btn-primary" data-act="canva">${ic('canva')}Відкрити шаблон у Canva</button>`
+          ${b?.canvaUrl ? html`<button class="btn ${f.folder || f.busy || (o.printed || []).length ? '' : 'btn-primary'}" data-act="canva">${ic('canva')}Відкрити шаблон у Canva</button>`
             : b ? html`<a class="btn" href="#/book/${b.id}">${ic('link')}Додати посилання на Canva</a>`
               : html`<a class="btn" href="#/books/shop">${ic('shelf')}До книг</a>`}
         </div>
@@ -257,6 +258,7 @@ export async function mountCard(view, rid) {
     if (c.state === 'run') {
       return html`<span class="v-badge run" data-tip="${c.step || 'Перевірка тексту…'}"><span class="spinner"></span>${ic('textScan')}<span class="num">${Math.round(c.percent)}%</span></span>`;
     }
+    if (c.state === 'module') return html`<span class="v-badge" data-tip="Розумна вичитка — додатковий модуль, ще не встановлений">${ic('textScan')}Вичитка не встановлена</span>${ib('download', 'Встановити модуль «Розумна вичитка тексту» (≈ 9 ГБ) — тоді текст перевірятиметься сам', 'data-act="install-module"', { cls: 'sm' })}`;
     const again = ib('sync', 'Перевірити текст ще раз', 'data-act="recheck"', { cls: 'sm' });
     if (c.state === 'error') return html`<span class="v-badge" data-tip="${c.message}">${ic('textScan')}Текст не перевірено</span>`;
     const tip = checkTip(c.result);
@@ -267,7 +269,7 @@ export async function mountCard(view, rid) {
     return html`<span class="v-badge ok" data-tip="${tip}">${ic('textScan')}Текст збігається</span>${again}`;
   }
 
-  const issueRow = (i) => html`<div class="tc-issue ${i.level} ${isNew(i.id) ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}">
+  const issueRow = (i) => html`<div class="tc-issue ${i.level} ${isNew(i.id) ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}" role="button" tabindex="0" data-press>
       <span class="tc-where">${i.label}</span>
       <span class="tc-text">${quoteBold(i.text)}${i.note ? html`<span class="tc-note">${i.note}</span>` : ''}</span>
       ${ib('check', 'Це не помилка', `data-dismiss="${i.id}"`, { cls: 'sm' })}
@@ -278,7 +280,7 @@ export async function mountCard(view, rid) {
     const cover = (b, what) => html`<figure class="tc-alarm-book">${b.image ? html`<img decoding="async" src="${bookImage(b, 160)}" alt="">` : ic('book')}
       <figcaption><span>${what}</span>${b.title}</figcaption></figure>`;
     const mine = item().book;
-    return html`<div class="tc-alarm ${fresh ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}" role="alert">
+    return html`<div class="tc-alarm ${fresh ? 'enter' : ''}" data-lb="${viewerIndex(i.page)}" role="alert" tabindex="0" data-press>
       <div class="tc-alarm-head">${ic('alertCircle')}<span class="grow">Це не та книга!</span>
         <button class="btn btn-sm tc-alarm-dismiss" data-dismiss="${i.id}" data-tip="Сторінки правильні — прибрати попередження">Це та книга</button></div>
       <div>Сторінки не з книги, яку замовили: ${i.note}. Мабуть, у Canva відкрито шаблон іншої книги.</div>
@@ -317,6 +319,7 @@ export async function mountCard(view, rid) {
   }
 
   async function learnPassport() {
+    const w = f; // the book this passport is for: the tab may switch while the dialog is open
     const r = f.check.result, pages = learnable();
     const body = { bookId: r.bookId, child: r.child, pages: pages.map((p) => ({ key: p.learn, text: p.text })) };
     let texts;
@@ -333,7 +336,7 @@ export async function mountCard(view, rid) {
     try {
       await post('/api/textcheck/passport', body);
       toast('Паспорт книги оновлено', 'success');
-      startCheck();
+      startCheck(w);
     } catch (err) { toast(err.message, 'error'); }
   }
 
@@ -375,7 +378,20 @@ export async function mountCard(view, rid) {
 
   // The model takes ~4 s to reach the graphics card (~70 s when it comes from disk): it is asked for while
   // the files are still being copied and checked, so the check right after them does not wait for it.
-  const warmModel = () => { post('/api/textcheck/warm').catch(() => {}); };
+  // When Ollama is not running yet, it is started now (no console window): the owner is told, and told when it is ready.
+  const warmModel = async () => {
+    let r;
+    try { r = await post('/api/textcheck/warm'); } catch { return; }
+    if (!r?.starting) return;
+    toast('Запускається Ollama… це кілька секунд', 'info', 5000);
+    for (let i = 0; i < 40; i++) {
+      await new Promise((ok) => setTimeout(ok, 1500));
+      let s;
+      try { s = await api('/api/textcheck/status'); } catch { return; }
+      if (s.running) { toast('Ollama запущено', 'success', 3000); return; }
+      if (!s.starting && i > 2) return;
+    }
+  };
 
   async function startCheck(w = f, at = w.seq) {
     const mine = ++w.checkSeq;
@@ -386,7 +402,7 @@ export async function mountCard(view, rid) {
     try {
       const start = await post(`/api/orders/${o.receiptId}/textcheck`, { folder: w.folder, pages: w.pages, pick: work.indexOf(w) });
       if (!live()) return;
-      if (start.off) { w.check = null; paint(); return; } // switched off in Settings
+      if (start.off) { w.check = start.module ? { state: 'module', module: start.module } : null; paint(); return; } // switched off in Settings, or its module is not installed
       w.check.jobId = start.jobId;
       const result = await runJob(Promise.resolve(start), (j) => {
         if (!live() || w.check?.state !== 'run') return;
@@ -424,7 +440,8 @@ export async function mountCard(view, rid) {
     const done = sentOf(o.receiptId);
     const result = keptOrder('#/creator') === String(o.receiptId);
     // A Gelato draft's green card stays here, whole, while the temporary link to its files lives (owner, 01.10.2026).
-    const live = done?.result && linkAlive(done.result) ? done.result : null;
+    const shown = done?.result || linkOf(o.receiptId);          // a finished order keeps its link here while it lives
+    const live = shown && linkAlive(shown) ? shown : null;
     const ready = readyBooks(p);
     // An order of several books: which of them this send takes, and what each one still waits for.
     const list = work.length > 1 ? html`<ul class="oc-books">${work.map((w, i) => {
@@ -440,7 +457,7 @@ export async function mountCard(view, rid) {
     : done ? html`<div class="notice notice-success">${ic('checkCircle')}<div class="grow">${done.what}</div></div>
         <div class="row">${result ? html`<button class="btn btn-primary grow" data-act="to-creator">${ic('printer', 'icon-s')}Результат в Order Creator</button>` : ''}
           ${ib('send', 'Надіслати ще раз', 'data-act="print"')}</div>`
-    : html`<button class="btn btn-xl btn-primary btn-block" data-act="print">${ic('send', 'icon-l')}До друку в ${providerName(p)}${ready.length > 1 ? html` · <span class="num">${ready.length}</span> книги` : ''}</button>`}
+    : html`<button class="btn btn-xl btn-primary btn-block" data-act="print">${ic('send', 'icon-l')}До друку в ${providerName(p)}${ready.length > 1 ? html` · <span class="num">${ready.length}</span> ${plural(ready.length, BOOKS)}` : ''}</button>`}
     </section>`;
   }
 
@@ -458,12 +475,12 @@ export async function mountCard(view, rid) {
   let stopLink = () => {};
   function linkTimer() {
     stopLink();
-    const card = $('#oc-print .result-card'), r = sentOf(o.receiptId)?.result;
+    const card = $('#oc-print .result-card'), r = sentOf(o.receiptId)?.result || linkOf(o.receiptId);
     if (card && r) stopLink = runCountdown(card, r, redrawPrint);
   }
   function redrawPrint() {
     const step = $('#oc-print');
-    if (step) step.outerHTML = String(printCard());
+    if (step) replaceKeyed(step, printCard()); // keeps its key: the next patch() does not make the print card again
     linkTimer();
   }
 
@@ -654,7 +671,7 @@ export async function mountCard(view, rid) {
   const offs = [
     on(view, 'click', '[data-act]', async (e, t) => {
       const a = t.dataset.act;
-      const sent = sentOf(o.receiptId)?.result;
+      const sent = sentOf(o.receiptId)?.result || linkOf(o.receiptId);
       if (sent && t.closest('.result-card') && await resultAction(a, sent, t)) { if (a === 'close-tunnel') redrawPrint(); return; }
       if (a === 'back') location.hash = '#/orders';
       else if (a === 'finish') { finished = true; finish(o.receiptId); toast('Роботу над замовленням завершено', 'success'); location.hash = '#/orders'; }
@@ -665,6 +682,7 @@ export async function mountCard(view, rid) {
       else if (a === 'to-creator') location.hash = '#/creator';
       else if (a === 'copy-text') copyChip(e, t);
       else if (a === 'recheck') startCheck();
+      else if (a === 'install-module') offerModule('textcheck').then((ok) => { if (ok) startCheck(); });
       else if (a === 'path') goStep(t.dataset.step);
       else if (a === 'manual') { manual = true; t.remove(); renderRight(); $('#oc-flow')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       else if (a === 'learn') learnPassport();
@@ -692,7 +710,7 @@ export async function mountCard(view, rid) {
   ];
   wireFolderDrop(view, () => $('#oc-folder'), takeDrop);
 
-  const esc = escBack('#/orders');
+  const listenEsc = escBack('#/orders'); // Esc steps back to the queue (not named esc: that is the HTML escape imported above)
 
   renderPlan(); renderLeft(); renderRight();
   // A new order's card is kept when the owner steps to another tab (keep.js): hidden, it lets go of Esc;
@@ -700,11 +718,11 @@ export async function mountCard(view, rid) {
   return {
     receiptId: String(o.receiptId),
     keep: () => o.stage === 'new' && !finished,
-    hidden() { esc(false); stopLink(); },
+    hidden() { listenEsc(false); stopLink(); },
     async revive() {
       const fresh = await api(`/api/orders/${rid}`);
       if (fresh.stage !== 'new') return false;
-      esc(true);
+      listenEsc(true);
       redrawPrint();
       renderFinish();
       renderPath();
@@ -712,6 +730,6 @@ export async function mountCard(view, rid) {
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
     idle: () => !(work.some((w) => w.folder || w.busy || w.label) || sentOf(o.receiptId)),
-    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopFit(); esc(false); stopLink(); },
+    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopFit(); listenEsc(false); stopLink(); },
   };
 }

@@ -44,11 +44,17 @@ export function settle(orders) {
     if (rid && !open.has(String(rid))) release(hash);
   }
   for (const rid of [...sent.keys()]) if (!open.has(rid)) sent.delete(rid);
+  for (const rid of [...links.keys()]) if (!open.has(rid)) links.delete(rid);
 }
 
 /** The Order Creator made the draft for this order; its card shows it instead of «До друку». */
 export const markSent = (rid, info) => { sent.set(String(rid), info); };
 export const sentOf = (rid) => sent.get(String(rid)) || null;
+
+/** A Gelato draft's temporary link to the files outlives «Завершити»: while it is open, the order's card still shows it
+ *  (owner, 04.10.2026 — Gelato may still be fetching the PDFs). */
+const links = new Map();
+export const linkOf = (rid) => links.get(String(rid)) || null;
 
 /** «Завершити» (owner, 20.09.2026): the work on this order is done — its kept pages and the
  *  «draft created» mark go, so the card and the Order Creator start clean next time. */
@@ -56,5 +62,7 @@ export function finish(rid) {
   const id = String(rid || '');
   if (!id) return;
   for (const [hash, page] of [...pages]) if (String(page.ctrl?.receiptId || '') === id) release(hash);
+  const result = sent.get(id)?.result;
+  if (result) links.set(id, result);         // the card shows its link until it closes
   sent.delete(id);
 }

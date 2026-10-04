@@ -14,7 +14,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import core
+from . import core, portable
 from .jobs import Job, JobError, jobs
 from .server import ApiError, Request, route
 from .vault import vault
@@ -27,19 +27,26 @@ KEEP_LAST = 7                                  # the last 7 copies,
 KEEP_MONTHS = 12                               # and the newest of each month for a year
 START_DELAY = 120                              # seconds after launch: the orders' sync and the first pages go first
 FOLDER_NAME = "Book Studio — резервні копії"
-NAME = re.compile(r"^Book Studio (\d{4}-\d{2}-\d{2} \d{2}-\d{2})\.7z$")
+def family() -> str:
+    """The ordinary and the portable Book Studio share the Drive folder: each keeps, prunes and cleans only its own copies."""
+    return "Book Studio Portable" if portable.root() else "Book Studio"
+
+
+def _name_re() -> "re.Pattern[str]":
+    return re.compile(r"^" + re.escape(family()) + r" (\d{4}-\d{2}-\d{2} \d{2}-\d{2})\.7z$")
 # Left out: what Edge holds open while the window is up, and the temp folders (they are emptied anyway).
 # The spare copy of the templates (the owner, 29.09.2026) is left out too: the templates themselves are in every copy.
-SKIP = (r"app\data\window-profile", r"app\data\tmp", ".tmp", "Трафарети мастхев (копія)")
+SKIP = (r"app\data\window-profile", r"app\data\work-browser", r"app\data\tmp", ".tmp", "Трафарети мастхев (копія)")
 KEYS_FILE = "Ключі (відкрито).json"
 README_FILE = "Як відновити.txt"
 README = """Резервна копія Book Studio.
 
 1. Розпакуйте архів (7-Zip, з тим самим паролем) у будь-яке місце, напр. на Робочий стіл.
-2. Папка "Book Studio" — уся програма з даними. Папка "Трафарети мастхев" — трафарети мокапів.
+2. Папка "Book Studio" — уся програма з даними. Папка "Трафарети мастхев" (в портативній версії вони лежать у runtime/Templates) — трафарети мокапів.
 3. Якщо це інший комп'ютер або інший користувач Windows, ключі зі сховища там не відкриються.
    Їх поверне команда (у папці Book Studio):
        python app/tools/restore_keys.py "шлях до файлу Ключі (відкрито).json"
+   (в портативній версії замість python — ../runtime/python/python.exe; або просто Налаштування → Перенесення налаштувань)
    Після цього файл з ключами краще видалити.
 4. Ярлик на робочому столі: python app/tools/make_shortcut.py
 """
@@ -103,7 +110,7 @@ def copies(folder: Path) -> list[tuple[datetime, Path]]:
     found = []
     try:
         for p in folder.iterdir():
-            m = NAME.match(p.name)
+            m = _name_re().match(p.name)
             if m and p.is_file():
                 found.append((datetime.strptime(m.group(1), "%Y-%m-%d %H-%M"), p))
     except OSError:
@@ -190,12 +197,16 @@ def make(job: Job) -> dict:
     if not folder:
         raise JobError("Google Диск не знайдено: запустіть Google Диск і увійдіть у свій акаунт.")
     folder.mkdir(parents=True, exist_ok=True)
-    for stale in folder.glob("Book Studio *.7z.part"):  # left by a copy that was cut off (the PC switched off)
-        stale.unlink(missing_ok=True)
+    for stale in folder.glob(f"{family()} *.7z.part"):  # left by a copy that was cut off (the PC switched off); a young one may be
+        try:                                           # the other program's copy being written right now
+            if time.time() - stale.stat().st_mtime > 6 * 3600:
+                stale.unlink(missing_ok=True)
+        except OSError:
+            pass
     started = time.time()
     stamp = datetime.now().strftime("%Y-%m-%d %H-%M")
-    part = folder / f"Book Studio {stamp}.7z.part"
-    final = folder / f"Book Studio {stamp}.7z"
+    part = folder / f"{family()} {stamp}.7z.part"
+    final = folder / f"{family()} {stamp}.7z"
     skipped: list[str] = []
     try:
         # The two small files first, from memory (the keys never touch the disk readable); each later addition
@@ -216,6 +227,11 @@ def make(job: Job) -> dict:
     except BaseException:
         part.unlink(missing_ok=True)
         raise
+    try:
+        _seven_zip(["l", str(final)], password)         # it opens with the password and lists its files: only then may the old ones go
+    except JobError as err:
+        final.unlink(missing_ok=True)
+        raise JobError(f"Нова резервна копія не відкрилась ({err}) — її видалено, старі копії лишено.") from err
     size = final.stat().st_size
     removed = []
     for old in to_remove(copies(folder)):
@@ -284,8 +300,8 @@ def _status(req: Request):
 @route("POST", "/api/backup/password")
 def _password(req: Request):
     value = str((req.json or {}).get("value") or "")
-    if len(value) < 8:
-        raise ApiError("Пароль має бути щонайменше з 8 символів.")
+    if len(value) < 12:
+        raise ApiError("Пароль має бути щонайменше з 12 символів: у копії всі ваші ключі, і вона лежить на Google Диску.")
     if value != value.strip() or '"' in value:
         raise ApiError("Без пробілів на початку й у кінці та без лапок \".")
     vault.set(PASSWORD, value)

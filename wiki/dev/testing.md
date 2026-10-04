@@ -1,7 +1,7 @@
 ---
 title: Tests
 type: dev
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/tests/
 ---
@@ -32,7 +32,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 
 - `tests/__init__.py` sets `BOOK_STUDIO_DATA` to a fresh temp folder before any import, and wipes it
   after the tests — the real `app/data` is never touched. Every test module starts with
-  `from tests import __init__`.
+  `from tests import __init__` (the five portable-era files got it on 2026-10-04: run alone, they used to touch the real data folder).
   **On drive D** (since 2026-09-23): Python's temp folder and `TEMP`/`TMP` (for node too) point to
   `<repository>\.tmp`, not Windows' temp folder on drive C, which the owner keeps clean; `.tmp` goes when
   the run ends (unless a preview server's folder lives there). Before that, the wipe also failed quietly:
@@ -74,7 +74,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 - **Photoshop** — never started by the tests: `mockups.launch` is swapped for a stand-in that writes the
   status file; the Photoshop script itself (ExtendScript is plain old JavaScript) runs under **Node.js**
   against a small pretend Photoshop — layers, visibility, "Replace Contents", saving that takes the active
-  document (`HARNESS` in `test_mockups.py`). Node.js is on the Wrocław PC; without it these tests are skipped.
+  document (`HARNESS` in `test_mockups.py`). Node.js is on the Wrocław PC; without it these tests are skipped (the portable `runtime/` has no Node, so on another PC they skip silently).
   **Node reads more than Photoshop 2019's ExtendScript does**: `/^.*[\\/]/` ran in Node but stopped the real
   script at once ("Error 25: Expected: )", 2026-09-26) — so a test reads the script's text for what ExtendScript
   can't parse (a `/` inside a regex's `[...]`; `test_no_slash_inside_a_regex_class_which_photoshop_cannot_read`).
@@ -92,7 +92,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 - Test order doesn't matter; settings state is restored in `tearDown`. To reset a state file, it's
   enough to delete the file itself: the `.bak` of a deleted file is no longer read (since 2026-09-23).
 - Send-journal steps are checked as "these steps in this order" (`assert_steps()`), not an exact list: a
-  new step doesn't break a dozen tests. There are no real pauses (`time.sleep`) for timing — the
+  new step doesn't break a dozen tests. There are almost no real pauses (`time.sleep` only in a few thread-wait loops) for timing — the
   record's time is supplied instead.
 - The order of interface layers and preview sizes are checked straight from the page files
   (`SharedNumbers`): there are no browser tests, so a human or an agent checks page behavior on the
@@ -115,6 +115,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 | [test_slides.py](../../app/tests/test_slides.py) | `TheCut` (Dedication: the desk and the book stay, the floor goes, its shadow kept; the book opaque, the grey Multiply shadow → a transparent black one, no haze, a wrong size refused, «Без фону» never over a file, the background cutter and what it can't cut, the Mockups hand each saved picture once), `Scenes` (the schemes — Nature first, an old template becomes it, the six saved / put on / reset / the default; a book's set, a stale save refused with the scene as it is now, a wrong scene refused, reset, «Зробити шаблоном», the signature, the first design's slots and numbers), `WorkshopBooks` (a book's slides in its folder, its touches kept, «Зробити заново», a done book's cache gone and its six a preset, the «Мокапи» step ticks itself, the quite temporary goes), `MakingThem` (a Workshop book with its own page 30, its six in `etsy/Listing N.png`; slide 7 — a book's looks each in its frame by their numbers with their names, on their white background, `15 Listing 7.png`, only with two looks, looks made later taken, a scheme made before it gets it in its own colours; (the slots follow the picks, «Зробити слайди» end to end with a pretend browser — six files, its profile gone, a re-bake into the same files — names never over the owner's files, nothing to show said), `CommandLine` |
 | [test_workshop.py](../../app/tests/test_workshop.py) | In the sandbox, on made-up books: `TheSandbox` (the owner's books, clipboard and Downloads never reached; «Відкрити агента» puts the words with the pipeline's full paths — the rules and the books' folder — into the fake clipboard, since Antigravity 2 ignores the folder it is started with), `TheBookList`, `ThePathStrip`, `OnlyInsideTheBook`, `TheSignature`, `TheRows`, `TheBookCheck`, `APictureIntoItsRow`, `CatchingDownloads` (a spread of a book with a hero — the hero, then the prompt; a variant's one cover, brought to the template), `CtrlVInTheBrowser` (Ctrl+V in Chrome counts once, after V is let go; V alone or another program — never), `PassingToTheLibrary`, `OnePlaceForThePages` (a passed book's pages stay the Workshop's: nothing copied, a page changed there, the passport changes only the thumbnail, export, the Workshop book deleted, a book copied before moved over) |
 | [test_backup.py](../../app/tests/test_backup.py) | `Rules` (which copies stay, every 3 days, never by itself in the sandbox), `RealArchive` — **a real 7-Zip run** on a made-up folder: the password, the keys and the instruction inside, Edge's profile and `.tmp` left out (skipped without `app/bin/7za.exe`) |
+| [test_server_http.py](../../app/tests/test_server_http.py) | `HttpLayer` — the real server on a free port: no token → 401, another Host → 403, framing headers, the ping's data id, no climbing out of the web folder, only three routes open |
 | [test_scripts.py](../../app/tests/test_scripts.py) | `ScriptsParse` (each script a valid ES module, by Node.js), `ScriptsImport` (a missing or unused import, a name left undeclared) |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode`, `NamedInTheRightFile` |
 

@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from .. import core
+from .. import core, portable
 from ..jobs import UserError
 
 
@@ -44,7 +44,7 @@ _NO_PROXY = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def _base() -> str:
-    url = str(core.settings.section("textcheck").get("url") or DEFAULT_URL).rstrip("/")
+    url = (portable.ollama_url() or str(core.settings.section("textcheck").get("url") or DEFAULT_URL)).rstrip("/")
     if (urllib.parse.urlsplit(url).hostname or "") not in ("127.0.0.1", "localhost", "::1"):
         raise ModelError("Перевірка тексту працює лише з моделлю на цьому комп'ютері (адреса 127.0.0.1).")
     return url
@@ -84,9 +84,14 @@ def _same_model(a: str, b: str) -> bool:
 
 
 def _ollama_command() -> list[str] | None:
-    """How to start Ollama the way the Start menu does: its tray app next to ollama.exe on PATH."""
+    """How to start Ollama the way the Start menu does: its tray app next to ollama.exe on PATH. In the portable copy only its own
+    `runtime/Ollama/ollama.exe serve` — never the PC's."""
+    if portable.root():
+        exe = (portable.ollama_folder() or Path()) / "ollama.exe"
+        return [str(exe), "serve"] if portable.ollama_folder() and exe.is_file() else None
     found = shutil.which("ollama")
-    folders = [Path(found).parent] if found else []
+    folders = [portable.ollama_folder()] if portable.ollama_folder() else []
+    folders += [Path(found).parent] if found else []
     if os.environ.get("LOCALAPPDATA"):
         folders.append(Path(os.environ["LOCALAPPDATA"]) / "Programs" / "Ollama")
     for folder in folders:
@@ -104,6 +109,11 @@ def _alive() -> bool:
 
 
 _start_lock = threading.Lock()
+_starting = False        # Ollama is being started right now: the interface says so instead of staying silent
+
+
+def starting() -> bool:
+    return _starting
 
 
 def start_ollama(wait: float = 40) -> bool:
@@ -113,16 +123,26 @@ def start_ollama(wait: float = 40) -> bool:
     if _alive():
         return True
     with _start_lock:
-        return _alive() or _start_ollama(wait)
+        global _starting
+        _starting = True
+        try:
+            return _alive() or _start_ollama(wait)
+        finally:
+            _starting = False
 
 
 def _start_ollama(wait: float) -> bool:
     command = _ollama_command()
     if not command:
         return False
-    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    if portable.root():
+        (portable.ollama_folder() / "models").mkdir(exist_ok=True)      # its models go here, nowhere else
+    # No console window: with DETACHED_PROCESS every helper process Ollama spawns opened its own black window (it blinked).
+    # CREATE_NO_WINDOW gives them all one hidden console to inherit.
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     try:
         subprocess.Popen(command, cwd=str(Path(command[0]).parent), creationflags=flags, close_fds=True,
+                         env={**os.environ, **portable.env()},
                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except OSError:
         core.log.exception("Ollama did not start")
@@ -148,7 +168,7 @@ def _has(names: list[str], model: str) -> bool:
 def status() -> dict:
     """For Settings and the order card: is the check on, does Ollama answer, is the model there."""
     out = {**_settings(), "running": False, "version": None, "models": [], "installed": False, "loaded": False,
-           "canStart": bool(_ollama_command())}
+           "canStart": bool(_ollama_command()), "starting": _starting}
     try:
         out["version"] = _call("/api/version", timeout=PROBE_TIMEOUT).get("version")
         out["running"] = True

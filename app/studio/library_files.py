@@ -221,7 +221,7 @@ def agent_guide() -> str:
         "spreads": {str(n): "Текст розвороту {} (сторінки {}–{})".format(n, *spread_pages(n)) for n in SPREAD_NUMBERS},
         "page30": "Текст післяслова (сторінка 30)",
     }, ensure_ascii=False, indent=2)
-    return string.Template(GUIDE.read_text(encoding="utf-8")).substitute(table="\n".join(rows), json=template)
+    return string.Template(GUIDE.read_text(encoding="utf-8")).safe_substitute(table="\n".join(rows), json=template)
 
 
 # ---------------------------------------------------------------- routes

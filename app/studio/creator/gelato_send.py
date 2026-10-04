@@ -130,6 +130,7 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
     session_dir = core.data_path("tmp", "gelato", session)
     session_dir.mkdir(parents=True, exist_ok=True)
     link: tunnel.FileTunnel | None = None
+    kept = False                   # the link and the folder went to the registry (Gelato still fetches the PDFs)
     try:
         for i, book in enumerate(ready, 1):
             book["pdfName"] = "book.pdf" if len(ready) == 1 else f"book-{i}.pdf"
@@ -182,6 +183,7 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
             log["outcome"] = "unknown"
             tunnel.registry.keep(f"unknown-{session}", link, session_dir, keep)
             link = None
+            kept = True
             raise JobError("Зв'язок з Gelato обірвався під час створення чернетки — результат невідомий. НЕ надсилайте "
                            "повторно одразу: спершу перевірте Gelato → Orders → Drafts, чи з'явилась чернетка "
                            f"«{title}». Файли для неї доступні ще {max(1, keep // 60)} хв.") from None
@@ -191,6 +193,7 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
         # first, so nothing that fails after this point can take the files away from it.
         tunnel.registry.keep(order_id or f"unknown-{session}", link, session_dir, keep)
         link = None
+        kept = True
         if not order_id:
             log["outcome"] = "unknown"
             raise JobError("Gelato прийняв чернетку, але не повернув її номер. НЕ надсилайте повторно: спершу "
@@ -217,4 +220,5 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
     finally:
         if link is not None:
             link.stop()
+        if not kept:                    # a failure before the hand-over must not leave a half-built PDF behind
             shutil.rmtree(session_dir, ignore_errors=True)

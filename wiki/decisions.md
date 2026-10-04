@@ -1,7 +1,7 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-03
+updated: 2026-10-04
 code: []
 ---
 # Decisions
@@ -20,6 +20,44 @@ code: []
   only in the editor. The big one is a whole-body card, the six — scalloped frames with the head and shoulders. Old
   schemes get slide 7 recoloured from their own slide 4. In `etsy/` it is `15 Listing 7.png` — **last in the numbering**; the owner
   puts it into the listing himself. The texts are defaults he rewrites in the editor.
+
+## 2026-10-03 — The portable Book Studio is back, in its own folder
+
+- **The owner** took the portable copy up again: a folder `Book Studio Portable` on the Desktop with everything inside (Photoshop,
+  templates, Python, Antigravity, Ollama, Upscayl, ffmpeg, Cent Browser); keys copied as they are; stage by stage, one stage
+  per session (`ROADMAP.md` in its root). The original stays as it is. See [the portable copy](dev/portable.md).
+
+## 2026-10-03 — Text check and upscaling are optional modules
+
+- **The owner:** «давай зробимо ці штучки як модулі»: by default the program has neither Ollama (+ the model, ≈ 9 GB) nor Upscayl; the interface
+  offers to install them where they would be used and the program installs them itself (quietly, from checked official files). A light PC
+  (the colleague's) gets a program of ≈ 3 GB instead of 15. Also decided: Python is shipped with only the packages the program needs, ffmpeg
+  with only `ffmpeg.exe`, Upscayl with its one model. See [optional modules](features/modules.md).
+
+## 2026-10-03 — A copy for a colleague: the owner's rules become settings
+
+- **The owner:** the program should be fit to hand to a colleague who owns a similar business (his own Etsy shop, Printify and Gelato; the
+  Printify shop and defaults in the code are from his print shops the owner once worked on). The Kyiv option stays «only for me»; the
+  colleague connects Etsy directly. Decided: `security.etsyKyivOnly` (default on) and `printify.readOnlyFrom` (default 2026-10-01,
+  null = never) are settings; `make_colleague_copy.py` builds a copy without his data/keys/books/history with both switched off, **with**
+  Photoshop and the mockup templates (the colleague paid for the mockups too; not commercial use).
+
+## 2026-10-03 — Export/import of settings and keys, in both Book Studios
+
+- **The owner:** a function in the ordinary and the portable program alike to move the settings and keys between computers/versions.
+  Decided: only the settings, the keys and the slides' schemes (not books, orders or pictures); one 7-Zip file under the backup
+  password, taken automatically. See [moving the settings](features/settings-transfer.md).
+
+## 2026-10-03 — Edge instead of Cent Browser, and `AGENTS.md` only (the portable copy)
+
+- **The owner:** the portable copy opens Gelato/Canva in the Edge that every Windows has, not in a carried Cent Browser;
+  and the book pipeline's rules file is `AGENTS.md` alone, not a `GEMINI.md` twin, so any agent can use it. Antigravity's own
+  data (`.gemini`) travels in the folder.
+
+## 2026-10-03 — Keys in the portable copy: restored from the backup
+
+- **The owner:** the keys do not travel in `vault.json` (Windows encrypts them for one user); on another PC they are brought back
+  from the password-protected backup (`app/tools/restore_keys.py`), not by a new password vault. The start-up check says so.
 
 ## 2026-10-02 — The portable Book Studio is set aside
 
@@ -744,7 +782,7 @@ decided: **accounting (the "Profit" page) — later, fix everything else**.
   queue refresh is one function shared by Orders and the Order Creator.
 
 **Deferred together with accounting (the owner's decision):** the cost of a second print order
-disappears when the first one is cancelled (`outcomes.apply()` after `_further_orders()`); three
+disappears when the first one is cancelled (`outcomes.apply()`, the `further_orders` it keeps); three
 functions rewrite the same money fields in turn; Gelato orders in CZK are counted as USD (there are 5 of
 them in the data); the cover type in the "Profit" table is guessed from letters in `orderReferenceId`;
 four different sets of rules decide "live / placed order", and the accounting still counts "on hold" and
@@ -1154,3 +1192,11 @@ shows this, but doesn't change the stage itself — left for discussion with the
 ## Related
 
 - [How to work with the owner](owner/working-with-owner.md) · [Known limits](dev/limits.md) · [Log](log.md)
+
+## The safety switches stay on the computer (2026-10-04)
+
+`security.etsyKyivOnly` and Printify's `readOnlyFrom` / `manualApprovalConfirmedAt` never go into an exported settings file and are ignored on import. Why: a file made on a colleague's copy (where they are off) must not switch the owner's rules off. How to apply: new rules of that kind are added to `transfer._computer_bound()`.
+
+## The portable copy has its own private repository (2026-10-04)
+
+The owner: «створи окремий приватний репозиторій, там веди тільки мою версію». `raymanrboy/book-studio-portable` (private, branch `main`, remote `origin`) holds only this copy; the ordinary Book Studio keeps `raymanrboy/book-studio`. Why: the copy has been changed in dozens of ways that must not reach the original, and the history was shared only up to 2026-10-04. How to apply: push only here and only when the owner asks; never add the original's remote; `app/data`, `app/bin`, `pipeline/books`, `.secrets.txt` stay out (`.gitignore`). The colleague build is a different thing — one neutral commit, no remote.

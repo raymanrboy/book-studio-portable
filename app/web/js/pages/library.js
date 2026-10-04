@@ -3,7 +3,7 @@
 // so images are never reloaded and every change glides with intermediate frames.
 import {
   api, post, html, ic, ib, setHtml, on, media, toast, segHtml, syncSeg, setSeg, fadeImages, plural, naturalCompare,
-  flip, debounce, menu, copyText, remembered, remember,
+  flip, debounce, menu, copyText, remembered, remember, galleryKeys, BOOKS,
 } from '../lib.js';
 import { openAddBook } from '../add-book.js';
 import { bookTile, segBar, tickBadge } from '../book-tile.js';
@@ -100,7 +100,7 @@ export async function mount(view, params, { embedded = false, filter } = {}) {
     const activeBooks = state.books.filter((b) => !b.archived);
     const incomplete = activeBooks.filter((b) => !b.completeness.complete).length;
     setHtml(view.querySelector('#lib-sub'), activeBooks.length
-      ? html`<span class="num">${activeBooks.length}</span> ${plural(activeBooks.length, ['книга', 'книги', 'книг'])}${incomplete ? html` · <span class="num">${incomplete}</span> не заповнено` : ' · усі готові'}`
+      ? html`<span class="num">${activeBooks.length}</span> ${plural(activeBooks.length, BOOKS)}${incomplete ? html` · <span class="num">${incomplete}</span> не заповнено` : ' · усі готові'}`
       : 'Еталонні книги ваших лістингів Etsy');
   }
 
@@ -160,11 +160,7 @@ export async function mount(view, params, { embedded = false, filter } = {}) {
     ])),
   ];
   q.addEventListener('input', () => { state.query = q.value; runSearch(); });
-  const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '') || document.querySelector('.modal-root');
-  const onKey = (e) => {
-    if ((e.ctrlKey && e.key.toLowerCase() === 'f') || (e.key === '/' && !typing())) { e.preventDefault(); q.focus(); q.select(); }
-    else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.altKey && !e.metaKey && !typing()) { e.preventDefault(); openAddBook(state.books); }
-  };
+  const onKey = galleryKeys(q, () => openAddBook(state.books));
   document.addEventListener('keydown', onKey);
 
   return {

@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -54,6 +54,12 @@ code:
 | POST | `/api/backup/password` | token | `_password` | settings.js (the archive's password into the vault) |
 | POST | `/api/backup/run` | token | `_run_now` | settings.js «Зробити копію зараз» (a background job) |
 | POST | `/api/backup/open` | token | `_open` | settings.js (the copies' folder in Explorer) |
+| POST | `/api/transfer/export` | token | `_export` | settings.js «Експорт у файл» (save dialog, then the settings and keys in one 7-Zip) |
+| GET | `/api/modules` | token | `_list` | settings.js, modules-ui.js (the optional modules and whether each is installed) |
+| POST | `/api/modules/(\w+)/install` | token | `_install` | modules-ui.js (a background job: download, check, unpack, the model) |
+| POST | `/api/modules/(\w+)/install-from-file` | token | `_install_from_file` | settings.js «з файлу» (a ZIP picked in the Windows dialog) |
+| POST | `/api/modules/(\w+)/remove` | token | `_remove` | settings.js (the module's folder under `runtime/`) |
+| POST | `/api/transfer/import` | token | `_import` | settings.js «Імпорт із файлу» (open dialog; body `password`) |
 
 ## Orders — [orders.py](../../app/studio/orders.py)
 
@@ -124,6 +130,7 @@ The books in development (the Workshop) — the book pipeline's folders ([featur
 | POST | `/api/workshop/books/([^/]+)/adopt` | token | `_adopt` | workshop-book.js «Підхопити з папки» (`{variant}` — the pictures put into `originals/` by hand, the usual way → `{jobId}`; nothing new → an error) |
 | POST | `/api/workshop/books/([^/]+)/flip` | token | `_flip` | workshop-book.js ⇄ (`{key, variant}`) |
 | POST | `/api/workshop/books/([^/]+)/remove` | token | `_remove` | workshop-book.js (`{key, variant}` — into `.replaced/`) |
+| POST | `/api/workshop/books/([^/]+)/restore` | token | `_restore` | workshop-book.js «Скасувати» after «Прибрати» (`{undo}` as `/remove` handed it out) |
 | POST | `/api/workshop/books/([^/]+)/no-margins` | token | `_no_margins` | workshop-book.js «Без полів» |
 | POST | `/api/workshop/books/([^/]+)/copy-picture` | token | `_copy_picture` | workshop-book.js «Копіювати картинку» (`{key}`) |
 | POST | `/api/workshop/books/([^/]+)/copy-hero` | token | `_copy_hero` | workshop-book.js «Героя в буфер» (`{variant}`) |

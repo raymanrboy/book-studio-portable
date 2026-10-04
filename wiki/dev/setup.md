@@ -1,7 +1,7 @@
 ---
 title: Setup, launch, GitHub
 type: dev
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/tools/make_shortcut.py
   - app/requirements.txt
@@ -35,7 +35,7 @@ code:
 
 ## GitHub
 
-- The private repository **raymanrboy/book-studio**, branch `main`, remote `origin`.
+- The private repository of **this (portable) copy**: **raymanrboy/book-studio-portable**, branch `main`, remote `origin`. (The ordinary Book Studio has its own, `raymanrboy/book-studio` — never push this copy there: the history is shared up to 2026-10-04, then they part.)
 - The GitHub CLI on the Wrocław PC was unpacked without an installer and **is not on PATH**:
   `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe` (sign-in — `raymanrboy`).
 - Git isn't configured globally for gh; push from Git Bash:
@@ -65,3 +65,9 @@ pages and the graph work; Obsidian doesn't open links to code (`../app/...`) —
 ## Related
 
 - [Launch](../architecture/runtime.md) · [Tests](testing.md) · [Data](../architecture/data.md)
+
+## The portable copy
+
+In `Book Studio Portable/` the program is `Book Studio/` and everything it runs on is `runtime/` (Python, Photoshop, the mockup
+templates, ffmpeg, Antigravity, the optional modules). Start it with the `Book Studio` shortcut; the Python for commands is
+`../runtime/python/python.exe`. Its GitHub repository is `raymanrboy/book-studio-portable` (private); no system Python is needed. Details — [portable](portable.md).

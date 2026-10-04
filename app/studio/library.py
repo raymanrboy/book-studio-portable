@@ -175,6 +175,23 @@ def all_books() -> list[dict]:
     return books
 
 
+def counts() -> dict:
+    """How many books are active and archived — read straight from the book files, without `follow()`: the shell asks this at
+    every start, and following the Workshop's files (stat of every page, a new record for a changed one) is not what it needs."""
+    active = archived = 0
+    if BOOKS_DIR.exists():
+        for folder in BOOKS_DIR.iterdir():
+            if folder.is_dir() and re.fullmatch(r"[0-9a-f]{32}", folder.name):
+                try:
+                    if _read(folder.name).get("archived"):
+                        archived += 1
+                    else:
+                        active += 1
+                except ApiError:
+                    pass
+    return {"active": active, "archived": archived}
+
+
 def _find_by_listing(listing_id: str) -> dict | None:
     for book in all_books():
         if str((book.get("listing") or {}).get("id")) == str(listing_id):
@@ -618,7 +635,11 @@ def _patch(req: Request):
     body = req.json or {}
     with _lock:
         book = load(req.groups[0])
-        if body.get("rev") is not None and int(body["rev"]) != int(book.get("rev") or 0):
+        try:
+            asked_rev = None if body.get("rev") is None else int(body["rev"])
+        except (TypeError, ValueError):
+            raise ApiError("Некоректна версія книги.") from None
+        if asked_rev is not None and asked_rev != int(book.get("rev") or 0):
             raise ApiError("Книгу змінено в іншому вікні. Оновіть сторінку.", 409)
         for key in ("title", "canvaUrl"):
             if key in body and isinstance(body[key], str):
@@ -697,13 +718,23 @@ def _refresh_listing(req: Request):
     return _book_response(book)
 
 
+LISTING_IMAGE_MAX = 25 * 1024 * 1024      # a listing photo is a few MB; more is not one
+
+
 def _download_listing_image(book: dict, url: str) -> None:
     if not re.match(r"^https://i\.etsystatic\.com/", url or ""):
         raise ApiError("Некоректне посилання на фото Etsy.")
     tmp = core.data_path("tmp", f"listing-{core.new_id()}.jpg")
     req = urllib.request.Request(url, headers={"User-Agent": "BookStudio"})
-    with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "wb") as f:
-        shutil.copyfileobj(resp, f)
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = resp.read(LISTING_IMAGE_MAX + 1)
+        if len(data) > LISTING_IMAGE_MAX:
+            raise ApiError("Фото лістингу завелике.")
+        tmp.write_bytes(data)
+    except OSError as err:
+        tmp.unlink(missing_ok=True)
+        raise ApiError(f"Не вдалося завантажити фото лістингу: {err}") from err
     try:
         _put_asset(book["id"], "thumbnail", _store_asset(book["id"], tmp, "etsy-listing.jpg", move=True))
     finally:

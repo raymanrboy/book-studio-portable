@@ -79,6 +79,7 @@ SECRET_NAMES = ("etsy_keystring", "etsy_shared_secret", "printify_token", "gelat
 class Vault:
     def __init__(self) -> None:
         self._lock = threading.RLock()
+        self._warned: set[str] = set()
         self._path = core.data_path("vault.json")
         self._cache: dict[str, str] = {}
         self._loaded = False
@@ -95,8 +96,10 @@ class Vault:
                 return None
             try:
                 value = unprotect(base64.b64decode(stored)).decode("utf-8")
-            except OSError:
-                core.log.warning("Secret %s cannot be decrypted by this Windows user", name)
+            except (OSError, ValueError):                 # Windows cannot open it for this user, or the stored text is damaged
+                if name not in self._warned:           # once per key: every page asks for them
+                    self._warned.add(name)
+                    core.log.warning("Secret %s cannot be decrypted by this Windows user", name)
                 return None
             self._cache[name] = value
             return value

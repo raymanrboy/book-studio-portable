@@ -1,7 +1,7 @@
 // The green card of a Gelato draft just made — drawn by the Order Creator and, while the temporary link to its PDF is
 // up, by the order's own card too (owner, 01.10.2026: "щоб він лишався поки живе посилання"). One markup, one timer,
 // one set of buttons for both.
-import { post, html, ic, ib, toast, copyText, openExternal } from '../lib.js';
+import { post, html, ic, ib, toast, copyText, openExternal, attr } from '../lib.js';
 
 const ORDERS_URL = 'https://dashboard.gelato.com/orders/list';
 
@@ -24,7 +24,7 @@ export function gelatoResultHtml(r) {
     </dl>
     ${(r.warnings || []).map((w) => html`<div class="notice notice-warn" style="margin-top:10px">${ic('alert')}<div>${w}</div></div>`)}
     ${linkNotice(r)}
-    <div class="row" style="margin-top:12px"><button class="btn btn-primary grow" data-act="open-gelato">${ic('external', 'icon-s')}Замовлення в Gelato</button>${ib('copy', 'Копіювати Order ID', 'data-act="copy-order"')}${ib('sendLog', 'Журнал відправки', `data-act="open-sendlog" data-file="${r.sendLog || ''}"`)}</div>
+    <div class="row" style="margin-top:12px"><button class="btn btn-primary grow" data-act="open-gelato">${ic('external', 'icon-s')}Замовлення в Gelato</button>${ib('copy', 'Копіювати Order ID', 'data-act="copy-order"')}${ib('sendLog', 'Журнал відправки', `data-act="open-sendlog" ${attr('data-file', r.sendLog || '')}`)}</div>
   </div>`;
 }
 
@@ -59,7 +59,8 @@ export async function resultAction(act, r, t) {
   else if (act === 'copy-order') copyText(r.orderId || '', 'Order ID скопійовано');
   else if (act === 'open-sendlog') post('/api/sends/open', { file: t.dataset.file || '' }).catch((er) => toast(er.message, 'error'));
   else if (act === 'close-tunnel') {
-    try { await post('/api/creator/gelato/close-tunnel', { orderId: r.orderId }); } catch {}
+    try { await post('/api/creator/gelato/close-tunnel', { orderId: r.orderId }); }
+    catch (er) { toast(`Посилання не закрилося: ${er.message}`, 'error'); return true; }     // never say «закрито» when it is not
     r._closed = true;
   } else return false;
   return true;

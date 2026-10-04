@@ -151,6 +151,22 @@ def coverage() -> dict[str, list[str]]:
     return out
 
 
+_ALL_CODE: list[str] = []
+
+
+def _anywhere(ident: str) -> bool:
+    """The name is in some code file (a looser check than `defined_in`: for names the page does not link to a file)."""
+    if not _ALL_CODE:
+        _ALL_CODE.append(chr(10).join(p.read_text(encoding="utf-8", errors="replace") for p in code_files()))
+    return re.search(r"\b" + re.escape(ident) + r"\b", _ALL_CODE[0]) is not None or ident in BUILTIN_NAMES
+
+
+# Names of the language and its library that the pages mention in passing.
+BUILTIN_NAMES = {"open", "print", "len", "str", "int", "dict", "list", "set", "sorted", "iterdir", "glob", "rglob", "is_file", "is_dir",
+                 "exists", "rmtree", "replace", "fsync", "unlink", "mkdir", "read_text", "write_text", "stat", "resolve", "sleep",
+                 "urlopen", "Popen", "run", "fetch", "push", "pull", "clear", "get", "set", "post", "add", "start", "stop"}
+
+
 def check() -> list[str]:
     problems: list[str] = []
     if not (WIKI / "index.md").exists():
@@ -204,6 +220,11 @@ def check() -> list[str]:
                     index_links.add(target)
                 if target.is_file() and target.suffix.lower() in CODE_SUFFIXES and APP in target.parents:
                     marks.append((m.end(), target))
+            for s in (_SPAN.finditer(line) if name != "log.md" else ()):     # (the log is history: its names may be gone) a function named in prose must exist somewhere in the code (2026-10-04 audit:
+                token = s.group(1).strip()                # `_upgrade()` and four more were long gone and nothing noticed)
+                func = _FUNC.match(token)
+                if func and not _anywhere(token[:-2].rpartition(".")[2]):
+                    problems.append(f"{name}:{no}: `{token}` is not in the code at all")
             if not marks:
                 continue
             for s in _SPAN.finditer(line):

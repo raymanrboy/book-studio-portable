@@ -1,7 +1,7 @@
 ---
 title: Book library and a book's passport
 type: feature
-updated: 2026-09-30
+updated: 2026-10-04
 code:
   - app/web/js/pages/books.js
   - app/studio/library.py
@@ -80,7 +80,7 @@ and its check as here, «Передати в бібліотеку» → `POST /a
   several files** (dropped, or via "Add files") → a copy into the program → the same "Import from
   folder" dialog and the same server rules (`scan_folder()`) as the "Import from folder" button
   (`importDropped()`). Before 2026-09-23, dropping had its own copy of the rules in the page
-  (`mapFiles()`) and laid things out differently: it took whichever `.json` came last, and pictures from
+  (the page's own file mapping, since replaced by the shared import rules) and laid things out differently: it took whichever `.json` came last, and pictures from
   any subfolder (the 2026-09-22 audit).
 - **A partial set** is normal: whatever's there goes into place; whatever's missing stays empty
   (pictures with no text, only some of the pages, Upscayl tails in file names).

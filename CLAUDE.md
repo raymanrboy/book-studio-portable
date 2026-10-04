@@ -15,7 +15,9 @@
   rAF for `setTimeout`; after `resize_window`, set it back to `preset: "desktop"`; finish with
   `preview_stop`. Details — `wiki/dev/preview.md`.
 - **GitHub CLI** on this PC is not on PATH: `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe`
-  (account `raymanrboy`, repository `raymanrboy/book-studio`). Push — the command in `wiki/dev/setup.md`.
+  (account `raymanrboy`; this copy's repository is `raymanrboy/book-studio-portable`, **not** the original's `book-studio`). Push — the command in `wiki/dev/setup.md`.
 - **Shells**: in Bash, prefer absolute paths (`cd` changes the session's working folder); Cyrillic in
   Python output needs `PYTHONIOENCODING=utf-8`; tests need `PYTHONDONTWRITEBYTECODE=1`.
 - **Agent memory** — personal notes only; everything about the project lives in the wiki.
+- **Portable copy** (this folder sits next to `runtime/`): its own private repository is `book-studio-portable` (the original's `book-studio` is never touched from here); Python is
+  `../runtime/python/python.exe`; the dev server and the tests run with it. See `wiki/dev/portable.md` and `MANUAL.md`.

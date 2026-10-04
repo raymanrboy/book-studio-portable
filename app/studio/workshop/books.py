@@ -25,7 +25,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-from .. import core, desktop, library
+from .. import core, desktop, library, portable
 from ..jobs import jobs
 from ..server import ApiError
 
@@ -119,7 +119,15 @@ def update_state(path: Path, change) -> dict:
     """Reads book.json, lets `change(data)` edit it, writes it back — one writer at a time (the page and the
     Downloads watcher may both write)."""
     with _state_lock:
-        data = state(path)
+        try:
+            data = json.loads((path / STATE).read_text(encoding="utf-8-sig"))
+            data = data if isinstance(data, dict) else {}
+        except FileNotFoundError:
+            data = {}
+        except ValueError:
+            data = {}
+        except OSError as err:             # a read that failed for a moment must never turn into a book.json with the marks and rows gone
+            raise ApiError(f"Не вдалося прочитати стан книги ({err}) — спробуйте ще раз.") from err
         change(data)
         core.write_json(path / STATE, data, backup=False)
         return data
@@ -472,6 +480,8 @@ def open_in_windows(book_id: str | None, what: str, name: str = "", variant: str
 
 
 def antigravity() -> Path | None:
+    if portable.antigravity():
+        return portable.antigravity()
     base = os.environ.get("LOCALAPPDATA")
     exe = Path(base) / "Programs" / "antigravity" / "Antigravity.exe" if base else None
     return exe if exe and exe.is_file() else None
@@ -482,7 +492,7 @@ def agent_words(book_id: str | None) -> str:
     ignores a folder given at its start: a new chat runs in the project last picked in it, and once that was the
     prototype's `Book Console`, so the agent wrote the book there (2026-09-26). The words name the rules and the
     books' folder themselves, whatever project the chat is in."""
-    rules = core.PIPELINE_DIR / "GEMINI.md"
+    rules = core.PIPELINE_DIR / "AGENTS.md"
     if book_id:
         return f"Продовжуємо книгу {book_path(book_id)} (правила — {rules}; інших папок книг не чіпай)"
     return f"Нова книга. Спершу прочитай {rules}; книгу пиши тільки в {books_dir()}"
@@ -495,8 +505,11 @@ def open_agent(book_id: str | None) -> str:
     if not core.SANDBOX:
         exe = antigravity()
         if not exe:
-            raise ApiError("Antigravity не знайдено (очікувався %LOCALAPPDATA%\\Programs\\antigravity\\Antigravity.exe).")
-        subprocess.Popen([str(exe)], cwd=str(core.PIPELINE_DIR),
+            raise ApiError("Antigravity не знайдено — він має лежати в теці runtime\\Antigravity\\app поруч із програмою."
+                           if portable.root() else
+                           "Antigravity не знайдено (очікувався %LOCALAPPDATA%\\Programs\\antigravity\\Antigravity.exe).")
+        args, env = portable.antigravity_launch() or ([str(exe)], {})
+        subprocess.Popen(args, cwd=str(core.PIPELINE_DIR), env={**os.environ, **env},
                          creationflags=desktop.CREATE_NO_WINDOW if os.name == "nt" else 0)
     from .. import clipboard
     clipboard.set_text(say)

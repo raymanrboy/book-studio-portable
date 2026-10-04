@@ -1,6 +1,6 @@
 # Book Anatomy
 
-> **Single source of truth for book structure.** Every other file (GEMINI.md, README, formulas,
+> **Single source of truth for book structure.** Every other file (AGENTS.md, README, formulas,
 > templates, agents) only POINTS here — none keeps its own page/spread count. If a count is
 > needed elsewhere, restate it to match this file exactly.
 

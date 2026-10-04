@@ -2,7 +2,7 @@
 // the next step; I press it and they are made by themselves; then a button offers to go into our editor"). Above it,
 // how far the pictures without background are (cut while Photoshop works — studio/slides/cutout.py). The six are
 // made from the template (studio/slides/work.py); the editor is its own page, loaded only when opened (#/slides/…).
-import { api, post, html, ic, ib, setHtml, media, toast, runJob, fadeImages, plural, confirmBox, menu } from '../lib.js';
+import { api, post, html, ic, ib, setHtml, media, toast, runJob, fadeImages, plural, confirmBox, menu, attr } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 
 const SHOT_W = 480;
@@ -21,7 +21,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     scheme: '',       // the scheme the six start from — chosen here, before they are made; '' = the default for new books
     schemes: null,    // the schemes to choose from [{key, name, default}]
   };
-  let gone = false, timer = 0;
+  let gone = false, timer = 0, polling = false;
   const $ = (sel) => view.querySelector(sel);
   const box = () => $('#mk-s5');
   const ready = () => !!st.result && !st.result.cancelled && st.result.saved.length > 0;
@@ -32,11 +32,13 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   // ---------------------------------------------------------------- the cut-outs (polled while any is on its way)
   async function pollCuts() {
     clearTimeout(timer);
-    if (gone || !folder()) return;
+    if (gone || !folder() || polling) return; // one chain only: a call while a request is out joins it
+    polling = true;
     try {
       sl.cuts = await api(`/api/slides/cutouts?${target()}`);
       sl.folder = folder();
     } catch { /* the folder went: nothing to say */ }
+    polling = false;
     if (gone) return;
     paintCuts();
     const running = !!st.run || sl.cuts?.busy;
@@ -54,7 +56,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     return html`<div class="sl-cuts ${going ? 'going' : 'ok'}">
       ${going ? html`<span class="spinner"></span>` : ic('check', 'icon-s')}
       <span class="grow">Без фону · <span class="num">${done}/${files.length}</span>${going ? ' — вирізаю, поки Photoshop працює' : ''}</span>
-      ${done ? ib('folderOpen', 'Відкрити папку «Без фону»', `data-act="open-nobg" data-path="${sl.cuts.noBg}"`, { cls: 'sm' }) : ''}
+      ${done ? ib('folderOpen', 'Відкрити папку «Без фону»', `data-act="open-nobg" ${attr('data-path', sl.cuts.noBg)}`, { cls: 'sm' }) : ''}
     </div>${failed.length ? html`<div class="notice notice-warn">${ic('alert')}<div>Не вирізались: ${failed.join(', ')}</div></div>` : ''}`;
   }
   function paintCuts() {

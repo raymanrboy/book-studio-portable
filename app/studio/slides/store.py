@@ -52,7 +52,6 @@ BOOK_PRESET = "book:"                       # a Workshop book's slides offered a
 BOOK_SLOTS = ["open1:1", "open1:2", "open1:3", "open1:4", "open2:1", "open2:2", "cover"]
 PICTURE_SLOTS = ["dedication", "page30"]
 HERO_SLOTS = [f"hero:{n}" for n in range(1, 8)]   # the hero's looks on slide 7, in the order of their names
-SLOT_KIND = {"open1": "open1", "open2": "open2", "cover": "cover1"}
 SLOT_LABEL = {"open1:1": "Open 1 · 1", "open1:2": "Open 1 · 2", "open1:3": "Open 1 · 3", "open1:4": "Open 1 · 4",
               "open2:1": "Open 2 · 1", "open2:2": "Open 2 · 2", "cover": "Cover 1",
               "dedication": "Dedication", "page30": "Сторінка 30", **{s: f"Герой {s[5:]}" for s in HERO_SLOTS}}

@@ -40,6 +40,24 @@ class Listing(list):
 _NOT_SENT = (ConnectionRefusedError, socket.gaierror)
 
 
+class _SafeRedirects(urllib.request.HTTPRedirectHandler):
+    """A redirect to ANOTHER host never carries the keys along (urllib would re-send Authorization and x-api-key there)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and urllib.parse.urlsplit(newurl).netloc.lower() != urllib.parse.urlsplit(req.full_url).netloc.lower():
+            for name in list(new.headers):
+                if name.lower() in ("authorization", "x-api-key"):
+                    del new.headers[name]
+            for name in list(new.unredirected_hdrs):
+                if name.lower() in ("authorization", "x-api-key"):
+                    del new.unredirected_hdrs[name]
+        return new
+
+
+urllib.request.install_opener(urllib.request.build_opener(_SafeRedirects))
+
+
 _audit_ready = threading.Lock()
 
 

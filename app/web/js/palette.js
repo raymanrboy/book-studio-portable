@@ -30,12 +30,14 @@ export async function openPalette() {
   let orders = [];
   let books = [];
   let doers = []; // verbs with an object: «Мокапи · №41» goes straight to that book's mockups
+  let failed = false; // none of the three lists came: «nothing found» would be a lie
   let pick = 0;
   let shown = [];
 
   const load = async () => {
     const [o, lib, ws] = await Promise.all([
       api('/api/orders').catch(() => null), api('/api/library/books').catch(() => null), api('/api/workshop/books').catch(() => null)]);
+    failed = !o && !lib && !ws;
     orders = (o?.orders || []).map((x) => ({
       group: 'Замовлення', icon: 'inbox', hash: `#/orders/${x.receiptId}`,
       label: x.name, sub: [`#${x.receiptId}`, x.childName, STAGE_WORD[x.stage], relTime(x.createdAt)].filter(Boolean).join(' · '),
@@ -86,7 +88,9 @@ export async function openPalette() {
     shown = results();
     pick = Math.min(pick, Math.max(0, shown.length - 1));
     if (!shown.length) {
-      setHtml(list, html`<div class="pal-empty">${ic('search')}<span>Нічого не знайдено — спробуйте ім’я покупця, номер чека чи назву книги</span></div>`);
+      setHtml(list, html`<div class="pal-empty">${ic(failed ? 'alertCircle' : 'search')}<span>${failed
+        ? 'Не вдалося завантажити замовлення й книги для пошуку — перевірте зв’язок із програмою'
+        : 'Нічого не знайдено — спробуйте ім’я покупця, номер чека чи назву книги'}</span></div>`);
       return;
     }
     let group = '';

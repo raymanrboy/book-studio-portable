@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -32,7 +32,7 @@ code:
 
 ```
 Book Studio/pipeline/            the book pipeline — Antigravity's project folder (in git: the agents' rules, playbook)
-  GEMINI.md = AGENTS.md          the book agents' rules; CLAUDE.md — the fork for coding agents
+  AGENTS.md                      the book agents' rules (any agent); CLAUDE.md — the fork for coding agents
   check_book.py                  the book check the agents run before GO (the Workshop's own rules, check.py)
   books/                         NOT in git — the Workshop's books:
     25.some-book/
@@ -123,6 +123,7 @@ then the [upscaling](#upscaling):
   byte the row's original replaces nothing — its pages are only cut again (`_same_as_original()`).
 - **`originals/` is a store, not a way in**: files put there by hand with the right names show «Підхопити з папки (N)»
   above the rows (`left_behind()`, `adopt()`) — each goes the usual way.
+- **«Прибрати» acts at once and offers «Скасувати»** (2026-10-04, the owner's rule of 2026-09-30: a question only for what cannot be taken back): `pictures.remove()` hands back `undo` — where each file waits in `.replaced/`, where it belongs and the row's marks as they were; `pictures.restore()` (`POST …/restore`) puts them back, never over a picture put there meanwhile (409), only from `.replaced/`, only inside the book. The book photo's «Прибрати» (`photos.remove`) still asks: its removal also re-places the scenes in `etsy/`.
 - **Whatever is replaced or removed goes to `.replaced/`** (`_retire()`). When another program holds the old file, the
   Workshop waits ~5 s and names that program (`desktop.file_holders()`); nothing is changed.
 - «Зберегти як…» on any picture (the folder remembered in `workshop.saveDir`), «Копіювати картинку», «Зберегти
@@ -192,7 +193,7 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `AREAS`, `ETSY`, `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `mockups_state()`, `MOCKUPS`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
 - [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
-- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`, `_same_as_original()`
+- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `restore()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`, `_same_as_original()`
 - [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session` (`start_photo()`, `_open()`), `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`
 - [app/studio/workshop/upscale.py](../../app/studio/workshop/upscale.py) — `MODEL`, `SCALE`, `KEYS`, `BIG`, `sides()`, `side()`, `slots()`, `split()`, `engine()`, `upscale_row()`, `todo()`, `Upscaler`, `status()`, `after_place()`, `set_on()`, `start()`, `forget()`, `_size()`
 - [app/studio/workshop/check.py](../../app/studio/workshop/check.py) — `run()`, `RULES`, `main()`
@@ -208,7 +209,7 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `patch()`
 - [app/web/js/book-tile.js](../../app/web/js/book-tile.js) — `bookTile()`, `segBar()`, `tickBadge()`
 - [app/web/css/listings.css](../../app/web/css/listings.css) — `.ws-card-wait`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-cover`, `.ws-tpl`
-- [pipeline/GEMINI.md](../../pipeline/GEMINI.md) — the book agents' rules; [pipeline/check_book.py](../../pipeline/check_book.py) — their start of the check
+- [pipeline/AGENTS.md](../../pipeline/AGENTS.md) — the book agents' rules; [pipeline/check_book.py](../../pipeline/check_book.py) — their start of the check
 - [app/tools/sample_books.py](../../app/tools/sample_books.py) — `make_books()`
 - Tests: [app/tests/test_workshop.py](../../app/tests/test_workshop.py) (`TheSandbox`, `TheBookList`, `ThePathStrip`, `OnlyInsideTheBook`, `TheSignature`, `TheRows`, `TheBookCheck`, `APictureIntoItsRow`, `CatchingDownloads`, `PassingToTheLibrary`)
 

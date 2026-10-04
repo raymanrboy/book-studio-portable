@@ -135,7 +135,7 @@ every book of a receipt; `books_of()` checks them, `joint_title()` gives a share
    (`_printify_setup()`).
    (The page: its step cards and the book's structure are redrawn in place — an unchanged card stays, no card
    replays its entrance on every click, and after a replaced page only that page's pictures load; since 2026-09-26.)
-2. A full file check for **every book** (`_printify_files()` → `validate("printify")`): exactly
+2. A full file check for **every book** (`creator/sending.checked_files()` → `printfolder.validate("printify")`): exactly
    `Cover.png` at 4672×2464 and `1…24.png` at 4000×4000, real PNGs, fully decoded, no animation;
    duplicates — a warning. No book is created while another one's files are wrong. Each file is read once per
    version of it (`images.check_png()`, `images.digest()`): after one page is replaced only that page is read

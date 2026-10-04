@@ -135,7 +135,7 @@ function drawLines(parent, L, cx, cy, filterId, color = '#fff') {
 // the shadow a die-cut piece casts, and the soft shadow under white letters (one, offset down: the owner wanted flat
 // letters with a shadow, not "embossed" ones — 29.09.2026)
 const letterShadow = (id, ts) => `<filter id="${id}ts" x="-20%" y="-20%" width="140%" height="140%">
-    <feDropShadow dx="1" dy="4" stdDeviation="3.5" flood-color="#4a2e18" flood-opacity="${ts}"/></filter>`;
+    <feDropShadow dx="1" dy="4" stdDeviation="3.5" flood-color="#4a2e18" flood-opacity="${Number(ts) || 0}"/></filter>`; // numbers from the scene are coerced before they reach innerHTML
 const SHADOW_DEFS = (id, ts = TSHADOW) => `<filter id="${id}s" x="-30%" y="-30%" width="160%" height="160%">
     <feGaussianBlur in="SourceAlpha" stdDeviation="9"/><feOffset dx="6" dy="11" result="b"/>
     <feComponentTransfer in="b" result="s"><feFuncA type="linear" slope=".34"/></feComponentTransfer>
@@ -303,7 +303,7 @@ export const DRAW = {
     const defs = mk('defs', {}, svg);
     defs.innerHTML = `<filter id="${id}b"><feGaussianBlur stdDeviation="3.5"/></filter>
       <radialGradient id="${id}f" cx="100%" cy="0%" r="100%"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#fff" stop-opacity=".6"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-      <mask id="${id}m"><rect width="${e.w}" height="${e.h}" fill="url(#${id}f)"/></mask>`;
+      <mask id="${id}m"><rect width="${Number(e.w) || 0}" height="${Number(e.h) || 0}" fill="url(#${id}f)"/></mask>`;
     const g = mk('g', { fill: '#6b4a33', filter: `url(#${id}b)`, mask: `url(#${id}m)` }, svg);
     const inner = mk('g', { transform: `scale(${sx})` }, g);
     const branch = (x, y, len, ang, n) => {
@@ -379,7 +379,7 @@ export const DRAW = {
     const svg = padSvg(el, e.w, e.h, 80), sw = e.sw || 7, color = e.color || '#6b3a3a';
     const ts = e.tshadow ?? 0.45;
     mk('defs', {}, svg).innerHTML = `<filter id="${id}as" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="1" dy="3" stdDeviation="2.5" flood-color="#4a2e18" flood-opacity="${ts}"/></filter>`;
+      <feDropShadow dx="1" dy="3" stdDeviation="2.5" flood-color="#4a2e18" flood-opacity="${Number(ts) || 0}"/></filter>`;
     const g = mk('g', ts ? { filter: `url(#${id}as)` } : {}, svg);
     const line = { fill: 'none', stroke: color, 'stroke-width': sw, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' };
     const [x, y] = p[p.length - 1], [px, py] = p[Math.max(0, p.length - 4)];

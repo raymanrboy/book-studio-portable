@@ -304,6 +304,7 @@ class FindingUpscayl(unittest.TestCase):
             models.mkdir()
             exe.write_bytes(b"")
             (models / "upscayl-standard-4x.param").write_text("")
+            (models / "upscayl-standard-4x.bin").write_text("")
             logs = root / "appdata" / "Upscayl" / "logs"
             logs.mkdir(parents=True)
             (logs / "main.log").write_text(f"[info]  UPSCAYL EXEC PATH:  {exe.with_suffix('')}\n", encoding="utf-8")

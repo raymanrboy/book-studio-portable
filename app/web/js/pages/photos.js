@@ -4,7 +4,7 @@
 // himself. Nothing is caught here: in a Workshop book the same photos go through its «Фото» step, with the book's cover
 // and its photo caught into the book. The templates live inside Book Studio (app/data/photo-mockups): a photo dropped
 // onto a category joins it, one taken out goes to the Recycle Bin.
-import { api, post, html, ic, ib, setHtml, on, toast, confirmBox, upload, fadeImages, patch, media, plural, backToTools } from '../lib.js';
+import { api, post, html, ic, ib, setHtml, on, toast, confirmBox, upload, fadeImages, patch, media, plural, backToTools, attr } from '../lib.js';
 import { store } from '../info.js';
 import { openLightbox } from '../lightbox.js';
 import { watch, refresh, act, paintGenBar, genAction, genState, startPhoto } from '../workshop-live.js';
@@ -61,8 +61,8 @@ export async function mount(view) {
         <span class="spacer"></span>
         ${busy ? html`<span class="chip chip-accent"><span class="ws-pulse"></span>додаю ${busy}</span>` : ''}
         <div class="tools">
-          ${ib('prompt', 'Промпт цієї категорії — у буфер', `data-act="prompt" data-cat="${c.key}"`)}
-          ${ib('folderOpen', 'Папка цієї категорії', `data-act="open" data-cat="${c.key}"`)}
+          ${ib('prompt', 'Промпт цієї категорії — у буфер', `data-act="prompt" ${attr('data-cat', c.key)}`)}
+          ${ib('folderOpen', 'Папка цієї категорії', `data-act="open" ${attr('data-cat', c.key)}`)}
         </div>
       </div>
       <div class="ph-tiles">
@@ -71,7 +71,7 @@ export async function mount(view) {
             data-tip="У буфер: це фото, далі Ctrl+V у Chrome — промпт">
             <img data-fade alt="${t.name}" src="${thumb(c.key, t, 520)}" loading="lazy"></button>
           ${now(c.key, t.name) ? html`<span class="chip chip-accent ph-now"><span class="ws-pulse"></span>у буфері</span>` : ''}
-          <div class="img-actions">${ib('expand', 'Переглянути', `data-act="zoom" data-cat="${c.key}" data-name="${t.name}"`, { cls: 'sm' })}${ib('trash', 'Прибрати заготовку — у Кошик Windows', `data-act="remove" data-cat="${c.key}" data-name="${t.name}"`, { cls: 'sm danger' })}</div>
+          <div class="img-actions">${ib('expand', 'Переглянути', `data-act="zoom" ${attr('data-cat', c.key)} ${attr('data-name', t.name)}`, { cls: 'sm' })}${ib('trash', 'Прибрати заготовку — у Кошик Windows', `data-act="remove" ${attr('data-cat', c.key)} ${attr('data-name', t.name)}`, { cls: 'sm danger' })}</div>
         </div>`)}
         <button type="button" class="ph-add" data-act="add" data-cat="${c.key}" data-tip="Нова заготовка в «${c.label}» — або перетягніть фото сюди">
           <span class="drop-ico">${ic('plus')}</span><span>Додати фото</span></button>

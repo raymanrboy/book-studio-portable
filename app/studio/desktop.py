@@ -26,7 +26,10 @@ if kind == 'folder':
 elif kind == 'save':
     ext = name[name.rfind('.'):] if '.' in name else '.png'
     path = filedialog.asksaveasfilename(parent=root, title=title, initialdir=initial, initialfile=name,
-                                        defaultextension=ext, filetypes=[('Картинка', '*' + ext)])
+                                        defaultextension=ext, filetypes=[('Файл ' + ext, '*' + ext)])
+elif kind == '7z':
+    path = filedialog.askopenfilename(parent=root, title=title, initialdir=initial,
+                                      filetypes=[('Налаштування Book Studio', '*.7z')])
 elif kind == 'zip':
     path = filedialog.askopenfilename(parent=root, title=title, initialdir=initial,
                                       filetypes=[('ZIP-архів', '*.zip')])
@@ -50,7 +53,7 @@ def _console_python() -> str:
 def _dialog(kind: str, title: str, initial: str, name: str = "") -> str | None:
     folder = initial if initial and Path(initial).is_dir() else ""
     result = subprocess.run(
-        [_console_python(), "-B", "-c", _DIALOG_SCRIPT, kind, title, folder, name],  # -B: no .pyc written anywhere
+        [_console_python(), "-B", "-X", "utf8", "-c", _DIALOG_SCRIPT, kind, title, folder, name],  # -B: no .pyc written anywhere
         capture_output=True, text=True, encoding="utf-8",
         creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
         timeout=3600,
@@ -71,6 +74,11 @@ def pick_file(title: str, initial: str = "") -> str | None:
 def pick_zip(title: str, initial: str = "") -> str | None:
     """A ZIP archive (a demo book exported from Canva), in the usual Windows dialog."""
     return _dialog("zip", title, initial)
+
+
+def pick_7z(title: str, initial: str = "") -> str | None:
+    """A 7-Zip file (the exported settings), in the usual Windows dialog."""
+    return _dialog("7z", title, initial)
 
 
 def save_file(title: str, name: str, initial: str = "") -> str | None:
@@ -96,9 +104,9 @@ def to_recycle_bin(path: Path) -> None:
         _fields_ = [("hwnd", wintypes.HWND), ("wFunc", wintypes.UINT), ("pFrom", wintypes.LPCWSTR),
                     ("pTo", wintypes.LPCWSTR), ("fFlags", ctypes.c_uint16), ("fAnyOperationsAborted", wintypes.BOOL),
                     ("hNameMappings", ctypes.c_void_p), ("lpszProgressTitle", wintypes.LPCWSTR)]
-    FO_DELETE, FOF_SILENT, FOF_NOCONFIRMATION, FOF_ALLOWUNDO, FOF_NOERRORUI = 3, 0x4, 0x10, 0x40, 0x400
+    FO_DELETE, FOF_SILENT, FOF_ALLOWUNDO, FOF_NOERRORUI, FOF_WANTNUKEWARNING = 3, 0x4, 0x40, 0x400, 0x4000
     op = SHFILEOPSTRUCTW(None, FO_DELETE, str(path.resolve()) + "\0", None,
-                         FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI, False, None, None)
+                         FOF_ALLOWUNDO | FOF_SILENT | FOF_NOERRORUI | FOF_WANTNUKEWARNING, False, None, None)
     result = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
     if result != 0 or op.fAnyOperationsAborted or path.exists():
         raise OSError(f"Windows не дав перенести «{path.name}» у Кошик (код {result}) — можливо, якийсь файл відкритий "
@@ -247,7 +255,12 @@ def open_app_window(url: str) -> subprocess.Popen | None:
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-sync",
-            "--disable-features=Translate,msEdgeSidebarV2,msHubApps,EdgeCollections",
+            # No throttling of a window that another program covers or that is in the background: its page's heartbeat (every 20 s)
+            # must keep coming, or the program takes a covered window for a closed one and shuts down (04.10.2026).
+            "--disable-features=Translate,msEdgeSidebarV2,msHubApps,EdgeCollections,CalculateNativeWinOcclusion",
+            "--disable-background-timer-throttling",
+            "--disable-renderer-backgrounding",
+            "--disable-backgrounding-occluded-windows",
             "--window-size=1480,940",
         ]
         try:

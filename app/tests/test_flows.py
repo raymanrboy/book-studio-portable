@@ -767,7 +767,9 @@ class OpenUrlGuard(unittest.TestCase):
     def test_chosen_sites_open_in_their_browser_profile(self):
         from studio import settings_api
         open_url = lambda url: settings_api._open_url(SimpleNamespace(json={"url": url}))
-        exe = Path(tempfile.mkdtemp()) / "Chrome.exe"
+        scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, scratch, True)
+        exe = scratch / "Chrome.exe"
         exe.write_bytes(b"")
         before = core.settings.section("browser")
         core.settings.replace_section("browser", {"exe": str(exe), "profile": "Profile 6",

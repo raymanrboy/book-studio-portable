@@ -1,7 +1,7 @@
 // Profit: Etsy Net − Printify/Gelato cost for every Etsy order (analogue of Etsy Profit Calculator),
 // plus order states: cancelled, full / partial refund, replacement reprint.
 import {
-  api, post, html, ic, ib, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, menu, dateTime, relTime,
+  api, post, html, raw, ic, ib, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, menu, dateTime, relTime,
   plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember, setProgress, glide,
 } from '../lib.js';
 import { refreshInfo, store } from '../info.js';
@@ -184,7 +184,8 @@ export async function mount(view) {
       }
       if (t < 1) kpiRaf = requestAnimationFrame(step);
     };
-    kpiRaf = requestAnimationFrame(step);
+    if (dur === 0) step(start); // no tween: the numbers are written now (a frame callback may never run, e.g. in a hidden window)
+    else kpiRaf = requestAnimationFrame(step);
   }
 
   function renderTable() {
@@ -192,6 +193,10 @@ export async function mount(view) {
     $('#pf-count').textContent = rows.length;
     const box = $('#pf-table');
     const d = st.data;
+    // A custom period that ends before it begins matches nothing: the two dates light up and the empty list says why.
+    const badRange = st.period === 'custom' && !!st.start && !!st.end && st.start > st.end;
+    $('#pf-start').classList.toggle('is-missing', badRange);
+    $('#pf-end').classList.toggle('is-missing', badRange);
     if (!d) return;
     if (d.mode === 'empty') {
       const integ = store.info?.integrations || {};
@@ -210,6 +215,7 @@ export async function mount(view) {
       const none = !(d.rows || []).length && d.accountingFrom;
       setHtml(box, html`<div class="empty"><div class="empty-icon">${ic(none ? 'calendar' : 'package')}</div><h3>${none
         ? `Продажів від ${new Date(`${d.accountingFrom}T00:00:00`).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' })} ще немає`
+        : badRange ? 'Дата «Від» пізніша за «До» — поміняйте їх місцями'
         : st.filter === 'issues' ? 'Проблемних замовлень немає' : 'Замовлень не знайдено'}</h3></div>`);
       return;
     }
@@ -359,9 +365,19 @@ export async function mount(view) {
     });
     return saving;
   }
+  // «12,5», «12.50», «1,234.56» and «1.234,56» all read as a number: the last separator is the decimal point, unless it is
+  // the only one and stands before exactly three digits (a thousands mark: «1,234»).
   const parseMoney = (v) => {
-    const t = String(v || '').replace(',', '.').replace(/[^\d.]/g, '');
-    return t === '' ? '' : Number(t);
+    let t = String(v || '').replace(/[^\d.,]/g, '');
+    if (t === '') return '';
+    const dot = t.lastIndexOf('.'), comma = t.lastIndexOf(',');
+    if (dot >= 0 && comma >= 0) {
+      const dec = dot > comma ? '.' : ',';
+      t = t.split(dec === '.' ? ',' : '.').join('').replace(dec, '.');
+    } else if (comma >= 0) t = t.split(',').length > 2 || /^\d{1,3},\d{3}$/.test(t) ? t.split(',').join('') : t.replace(',', '.');
+    else if (dot >= 0 && t.split('.').length > 2) t = `${t.slice(0, dot).split('.').join('')}.${t.slice(dot + 1)}`;
+    const n = Number(t);
+    return Number.isNaN(n) ? '' : n;
   };
 
   // ---------------------------------------------------------------- provider order picker
@@ -384,7 +400,7 @@ export async function mount(view) {
           <div class="input-group grow">${ic('search')}<input class="input" id="mm-q" placeholder="Пошук за ім'ям або номером замовлення…" autofocus></div>
           ${segHtml([{ value: 'all', label: 'Усі' }, { value: 'printify', label: 'Printify' }, { value: 'gelato', label: 'Gelato' }], 'all', { name: 'prov' })}
         </div>
-        <div class="cand-list" id="mm-list"></div>
+        <div class="cand-list" id="mm-list" role="listbox" aria-label="Замовлення друкарні"${multi ? raw(' aria-multiselectable="true"') : ''}></div>
       </div>`,
       foot,
     });
@@ -408,7 +424,7 @@ export async function mount(view) {
       const more = all.length - shown.length;
       setHtml(list, shown.length ? [...shown.map((c) => {
         const key = `${c.provider}:${c.id}`;
-        return html`<div class="cand ${sel.has(key) ? 'sel' : ''}" data-key="${key}">
+        return html`<div class="cand ${sel.has(key) ? 'sel' : ''}" data-key="${key}" role="option" aria-selected="${String(sel.has(key))}" tabindex="0" data-press>
           <span class="${multi ? 'box' : 'radio'}"></span>
           <div class="cand-main"><div class="cand-name"><b class="truncate">${c.name}</b>${c.score ? html`<span class="chip chip-green">схоже</span>` : ''}
             ${c.dead ? html`<span class="chip">${DEAD_SHORT[c.dead]}</span>` : ''}</div>
@@ -426,8 +442,8 @@ export async function mount(view) {
       const c = e.target.closest('.cand');
       if (c) {
         const key = c.dataset.key;
-        if (multi) { if (sel.has(key)) sel.delete(key); else sel.add(key); c.classList.toggle('sel', sel.has(key)); }
-        else { sel.clear(); sel.add(key); list.querySelectorAll('.cand').forEach((x) => x.classList.toggle('sel', x === c)); }
+        if (multi) { if (sel.has(key)) sel.delete(key); else sel.add(key); c.classList.toggle('sel', sel.has(key)); c.setAttribute('aria-selected', String(sel.has(key))); }
+        else { sel.clear(); sel.add(key); list.querySelectorAll('.cand').forEach((x) => { x.classList.toggle('sel', x === c); x.setAttribute('aria-selected', String(x === c)); }); }
         syncSave();
       }
       const segB = e.target.closest('[data-seg="prov"] button');

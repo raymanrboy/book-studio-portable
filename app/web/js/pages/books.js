@@ -1,7 +1,7 @@
 // «Книги» (2026-09-30, wiki/decisions.md): every book in one place — the ones being made (the Workshop), the
 // finished ones of the shop's listings (the library) and the archive — the owner's own words as the tabs — instead of two galleries in two modes. The galleries themselves
 // are the Workshop's and the library's own pages, drawn here without their heads (`embedded`); a tab only swaps them.
-import { api, html, setHtml, on, segHtml, setSeg, syncSeg, plural, remembered, remember } from '../lib.js';
+import { api, html, ic, setHtml, on, segHtml, setSeg, syncSeg, plural, remembered, remember, toast, BOOKS } from '../lib.js';
 
 const TAB_KEY = 'bs-books-tab';
 const TABS = [
@@ -9,7 +9,6 @@ const TABS = [
   { value: 'shop', label: 'Бібліотека', icon: 'shelf', tip: 'Бібліотека — готові книги лістингів' },
   { value: 'archive', label: 'Архів', icon: 'archive', tip: 'Архів книг' },
 ];
-const BOOKS = ['книга', 'книги', 'книг'];
 
 export async function mount(view, [tabParam]) {
   let tab = TABS.some((t) => t.value === tabParam) ? tabParam : remembered(TAB_KEY, 'work');
@@ -38,9 +37,11 @@ export async function mount(view, [tabParam]) {
       });
       setSeg(box.querySelector('.seg'), tab);
     }
-    const sub = view.querySelector('#bk-sub');
-    const n = (x) => x ?? 0;
-    setHtml(sub, html`<span class="num">${n(counts.work)}</span> у Майстерні · <span class="num">${n(counts.shop)}</span> ${plural(n(counts.shop), BOOKS)} у бібліотеці`);
+    // A count that has not arrived is left out, never shown as a false zero.
+    const parts = [];
+    if (counts.work !== null) parts.push(html`<span class="num">${counts.work}</span> у Майстерні`);
+    if (counts.shop !== null) parts.push(html`<span class="num">${counts.shop}</span> ${plural(counts.shop, BOOKS)} у бібліотеці`);
+    setHtml(view.querySelector('#bk-sub'), parts.length ? parts.flatMap((p, i) => (i ? [' · ', p] : [p])) : '\u00a0');
   };
 
   const readCounts = async () => {
@@ -60,8 +61,18 @@ export async function mount(view, [tabParam]) {
     try { child?.unmount?.(); } catch (err) { console.error(err); }
     child = null;
     const box = document.createElement('div');
-    const mod = tab === 'work' ? await import('./workshop.js') : await import('./library.js');
-    const ctrl = await mod.mount(box, [], { embedded: true, filter: tab === 'archive' ? 'archived' : 'active' });
+    let ctrl;
+    try {
+      const mod = tab === 'work' ? await import('./workshop.js') : await import('./library.js');
+      ctrl = await mod.mount(box, [], { embedded: true, filter: tab === 'archive' ? 'archived' : 'active' });
+    } catch (err) {
+      if (my !== seq) return;
+      // The old tab's pictures must not stay under the new tab's highlight.
+      console.error(err);
+      toast(err.message || 'Не вдалося відкрити вкладку', 'error');
+      setHtml(body, html`<div class="notice notice-error">${ic('alertCircle')}<div>Не вдалося відкрити цю вкладку: ${err.message || 'помилка'}</div></div>`);
+      return;
+    }
     if (my !== seq) { try { ctrl?.unmount?.(); } catch {} return; }
     body.replaceChildren(box);
     child = ctrl;

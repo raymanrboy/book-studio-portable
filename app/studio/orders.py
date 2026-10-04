@@ -134,12 +134,13 @@ def ranges(numbers: list[int]) -> str:
     return ", ".join(parts)
 
 
-def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
+def arrange_pages(folder: Path, counts: int | list[int], precheck=None) -> dict:
     """The cover plus exactly one of `counts` pages, whatever Canva or Upscayl called them.
 
     The file with "cover" in its name is the cover (else the one wide picture among square pages);
     the rest are ordered by the number in their names and become 1..N. Returns the folder to print
     from (the original one when it is already named that way), N and a note on what was renumbered.
+    `precheck(count)` may refuse the page count (an ApiError text) BEFORE anything is moved: the dropped files stay where they were.
     """
     counts = sorted([counts] if isinstance(counts, int) else counts)
     cover, numbered = drops.export_files(folder)
@@ -150,6 +151,10 @@ def arrange_pages(folder: Path, counts: int | list[int]) -> dict:
         raise ApiError(f"Потрібно {need} {pages_word(counts[-1])}, а тут {count}"
                        + (f" (сторінки {ranges(source)})." if source else "."))
 
+    if precheck:
+        problem = precheck(count)
+        if problem:
+            raise ApiError(problem)
     plan = [(cover, "Cover.png")] + [(p, f"{i}.png") for i, (_, p) in enumerate(numbered, 1)]
     renumbered = source != list(range(1, count + 1))
     pngs = [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == ".png" and not p.name.startswith(".")]
@@ -212,12 +217,14 @@ def _files(req: Request):
             provider = "gelato"  # a card opened before 1 October: only Gelato's lengths now
     # "files": a hardcover whose printer the downloaded files decide (plan_for's `choice`).
     counts = sorted({*page_options("printify"), *page_options("gelato")}) if provider == "files" else page_options(provider)
-    res = arrange_pages(Path(str(body.get("folder") or "").strip().strip('"')), counts)
+    def gelato_says(count: int) -> str | None:
+        # Told at once when Gelato does not print this length in the order's format (its catalog decides) — before the dropped
+        # files are moved into a new folder, so a refusal leaves them where they were.
+        chosen = provider_by_pages(count) if provider == "files" else provider
+        return creator.gelato_pages_problem(str(body.get("format") or ""), count) if chosen == "gelato" else None
+
+    res = arrange_pages(Path(str(body.get("folder") or "").strip().strip('"')), counts, precheck=gelato_says)
     if provider == "files":
         provider = provider_by_pages(res["pageCount"])
     res["provider"] = provider
-    # Told at once when Gelato does not print this length in the order's format (its catalog decides).
-    problem = creator.gelato_pages_problem(str(body.get("format") or ""), res["pageCount"]) if provider == "gelato" else None
-    if problem:
-        raise ApiError(problem)
     return res

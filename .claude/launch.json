@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "book-studio-dev",
-      "runtimeExecutable": "python",
+      "runtimeExecutable": "../runtime/python/python.exe",
       "runtimeArgs": [
         "-B",
         "app/tools/dev_server.py",

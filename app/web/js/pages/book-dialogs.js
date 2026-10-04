@@ -1,9 +1,10 @@
 // The book passport's dialogs: «Імпорт з папки» (a folder, or a dropped ZIP — laid out by library.scan_folder),
 // the book's text as JSON, the Canva link; the whole text in one piece; the slots' layout the page shares (out of
 // book.js on 27.09.2026).
-import { api, post, html, ic, modal, toast, runJob, setProgress } from '../lib.js';
+import { api, post, html, ic, modal, toast, runJob, setProgress, plural, markMissing } from '../lib.js';
 import { refreshInfo } from '../info.js';
 
+const IMAGES = ['зображення', 'зображення', 'зображень'];
 const SPREADS = Array.from({ length: 14 }, (_, i) => i + 2);
 export const SLOT_KEYS = ['page1', ...SPREADS.map((n) => `spread${n}`), 'page30'];
 export const pagesOf = (n) => [2 * n - 2, 2 * n - 1];
@@ -48,7 +49,7 @@ export async function importFolder(path, { id, current, onBook }) {
     body: html`<div class="stack">
       <div class="row-wrap">
         ${scan.mapping.cover ? html`<span class="chip chip-green">${ic('check', 'icon-s')}Обкладинка</span>` : html`<span class="chip">без обкладинки</span>`}
-        <span class="chip ${slots.length ? 'chip-green' : ''}"><span class="num">${slots.length}</span> ${slots.length === 1 ? 'зображення' : 'зображень'}</span>
+        <span class="chip ${slots.length ? 'chip-green' : ''}"><span class="num">${slots.length}</span> ${plural(slots.length, IMAGES)}</span>
         ${scan.text ? html`<span class="chip chip-green">${ic('check', 'icon-s')}Текст ${scan.text.name}</span>` : html`<span class="chip">без тексту</span>`}
       </div>
       ${slots.length ? html`<div class="card-soft" style="max-height:300px;overflow:auto;padding:4px 12px">${slots.map((s) => html`<div class="row" style="padding:7px 0;border-bottom:1px solid var(--border)">
@@ -81,7 +82,7 @@ export async function importFolder(path, { id, current, onBook }) {
       onBook(await api(`/api/library/books/${id}`));
       refreshInfo();
       if (res.errors?.length) toast(`Імпорт із зауваженнями:\n${res.errors.slice(0, 4).join('\n')}`, 'error', 9000);
-      else toast(`Імпортовано ${res.images} зображень${res.text ? ' і текст' : ''}`, 'success');
+      else toast(`Імпортовано ${res.images} ${plural(res.images, IMAGES)}${res.text ? ' і текст' : ''}`, 'success');
     } catch (err) {
       toast(err.message, 'error');
       m.foot.querySelectorAll('button').forEach((b) => { b.disabled = false; });
@@ -90,13 +91,15 @@ export async function importFolder(path, { id, current, onBook }) {
 }
 
 // ---------------------------------------------------------------- text JSON
+/** Reads the book's text from JSON; true when it was taken (a dialog closes only then, a bad paste stays to be fixed). */
 export async function importTextJson(id, text, onBook) {
   try {
     const res = await post(`/api/library/books/${id}/text`, { json: text });
     onBook(res.book);
     // Missing texts are fine: those places simply stay empty.
     toast(res.problems.length ? `Імпортовано ${res.imported} з ${res.imported + res.problems.length} текстів` : 'Текст книги імпортовано повністю', 'success');
-  } catch (err) { toast(err.message, 'error', 8000); }
+    return true;
+  } catch (err) { toast(err.message, 'error', 8000); return false; }
 }
 export function pasteJsonDialog(id, onBook) {
   const m = modal({
@@ -107,7 +110,14 @@ export function pasteJsonDialog(id, onBook) {
     foot: html`<button class="btn btn-ghost" data-c>Скасувати</button><button class="btn btn-primary" data-go>Імпортувати</button>`,
   });
   m.foot.querySelector('[data-c]').onclick = () => m.close();
-  m.foot.querySelector('[data-go]').onclick = async () => { const v = m.el.querySelector('#pj').value; m.close(); await importTextJson(id, v, onBook); };
+  const go = m.foot.querySelector('[data-go]');
+  go.onclick = async () => {
+    const field = m.el.querySelector('#pj');
+    if (!field.value.trim()) { toast('Вставте текст книги у форматі JSON', 'info'); markMissing([field]); return; }
+    go.disabled = true;
+    const ok = await importTextJson(id, field.value, onBook);
+    if (ok) m.close(); else { go.disabled = false; field.focus(); } // an invalid paste stays in the box to be fixed
+  };
 }
 export function canvaDialog(book, saveBook) {
   const m = modal({

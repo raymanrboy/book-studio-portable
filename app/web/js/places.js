@@ -32,6 +32,7 @@ export const SETTINGS = [
   { label: 'Etsy', sub: 'Налаштування · ключі й вхід', icon: 'etsy', hash: '#/settings/etsy' },
   { label: 'Printify', sub: 'Налаштування · токен', icon: 'printify', hash: '#/settings/printify' },
   { label: 'Gelato', sub: 'Налаштування · ключ і акаунт', icon: 'gelato', hash: '#/settings/gelato' },
-  { label: 'Перевірка тексту', sub: 'Налаштування · модель Gemma', icon: 'textScan', hash: '#/settings/textcheck' },
+  { label: 'Модулі', sub: 'Налаштування · вичитка тексту, апскейл', icon: 'package', hash: '#/settings/modules' },
+  { label: 'Перевірка тексту', sub: 'Налаштування · Модулі · модель Gemma', icon: 'textScan', hash: '#/settings/modules' },
   { label: 'Резервна копія', sub: 'Налаштування · Google Drive', icon: 'database', hash: '#/settings/backup' },
 ];

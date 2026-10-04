@@ -95,13 +95,13 @@ class TheSandbox(Base):
         say = books.open_agent(S)                     # no Antigravity window: only the words, in the fake clipboard
         self.assertEqual(self.clip(), say)
         self.assertTrue(say.startswith(f"Продовжуємо книгу {core.WORKSHOP_BOOKS / S} "), say)
-        self.assertIn(str(core.PIPELINE_DIR / "GEMINI.md"), say)
+        self.assertIn(str(core.PIPELINE_DIR / "AGENTS.md"), say)
 
     def test_the_agent_is_told_the_full_paths_whatever_project_antigravity_has(self):
         # Antigravity 2 ignores the folder it is started with: the words carry the rules and the books' folder
         say = books.open_agent(None)
         self.assertTrue(say.startswith("Нова книга."), say)
-        self.assertIn(str(core.PIPELINE_DIR / "GEMINI.md"), say)
+        self.assertIn(str(core.PIPELINE_DIR / "AGENTS.md"), say)
         self.assertTrue(say.endswith(str(core.WORKSHOP_BOOKS)), say)
         self.assertNotIn("Book Console", say)
 
@@ -440,6 +440,41 @@ class APictureIntoItsRow(Base):
         self.assertFalse((self.dir / H / "pictures" / "2.png").exists())
         self.assertEqual(len(list((self.dir / H / ".replaced").iterdir())), 6)
         self.assertNotIn("spread2", books.state(self.dir / H).get("rows", {}))
+
+    def test_a_removed_picture_comes_back_with_its_marks(self):
+        """«Прибрати» acts at once and offers «Скасувати»: the files return from .replaced and the row's marks are as they were."""
+        pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
+        marks_before = books.state(self.dir / H)["rows"]["spread2"]
+        page = self.dir / H / "pictures" / "2.png"
+        original_bytes = page.read_bytes()
+        done = pictures.remove(H, "spread2")
+        self.assertFalse(page.exists())
+        self.assertNotIn("spread2", books.state(self.dir / H).get("rows", {}))
+        back = pictures.restore(H, done["undo"])
+        self.assertGreaterEqual(back["restored"], 2)
+        self.assertEqual(page.read_bytes(), original_bytes)
+        self.assertEqual(books.state(self.dir / H)["rows"]["spread2"], marks_before)
+
+    def test_a_restore_never_overwrites_a_picture_put_there_meanwhile(self):
+        pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
+        done = pictures.remove(H, "spread2")
+        pictures.place(H, "spread2", spread_png(self.tmp / "b.png", (2000, 1000)), "b.png")
+        newer = (self.dir / H / "pictures" / "2.png").read_bytes()
+        with self.assertRaises(ApiError) as caught:
+            pictures.restore(H, done["undo"])
+        self.assertEqual(caught.exception.status, 409)
+        self.assertEqual((self.dir / H / "pictures" / "2.png").read_bytes(), newer)
+
+    def test_a_restore_takes_only_files_that_are_in_replaced_and_inside_the_book(self):
+        for bad in ({"files": [{"kept": "../book.json", "to": "pictures/2.png"}]},
+                    {"files": [{"kept": "nothing.png", "to": "pictures/2.png"}]}):
+            with self.assertRaises(ApiError):
+                pictures.restore(H, bad)
+        (self.dir / H / ".replaced").mkdir(exist_ok=True)
+        (self.dir / H / ".replaced" / "x.png").write_bytes(b"x")
+        with self.assertRaises(ApiError):
+            pictures.restore(H, {"files": [{"kept": "x.png", "to": "../../outside.png"}]})
+        self.assertFalse((self.dir.parent / "outside.png").exists())
 
     def test_an_old_picture_held_by_another_program_is_named_and_nothing_changes(self):
         """28.09.2026, the owner's book 41: «WinError 32» as an internal error, over and over — now the error says

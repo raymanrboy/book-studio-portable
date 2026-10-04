@@ -1,5 +1,5 @@
 // «Нова книга» and the Workshop's «Передати в бібліотеку»: one dialog. A Listings page opens it without loading the Library page (27.09.2026).
-import { api, post, html, ic, ib, setHtml, modal, toast, raw, markMissing } from './lib.js';
+import { api, post, html, ic, ib, setHtml, modal, toast, raw, markMissing, listingState } from './lib.js';
 import { store, refreshInfo } from './info.js';
 
 // ------------------------------------------------------------------ add book dialog
@@ -74,8 +74,11 @@ export function openAddBook(existing = [], transfer = null) {
     const btn = $('#nb-verify');
     btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
     listing = null;
+    const asked = ref.value;
     try {
-      listing = await api(`/api/etsy/listing?ref=${encodeURIComponent(ref.value)}`);
+      const got = await api(`/api/etsy/listing?ref=${encodeURIComponent(asked)}`);
+      if (ref.value !== asked) return;               // the field changed meanwhile: this answer is for a link no longer there
+      listing = got;
       unverified = false;
       $('#nb-manual').hidden = true;
       const shopId = store.info?.integrations?.etsy?.shopId;
@@ -84,7 +87,7 @@ export function openAddBook(existing = [], transfer = null) {
         ${listing.imageUrl ? html`<img src="${listing.imageUrl}" alt="" style="width:64px;height:64px;border-radius: var(--r-grp);object-fit:cover;flex:none">` : ''}
         <div class="grow"><div style="font-weight:650;line-height:1.35">${listing.title}</div>
           <div class="row-wrap" style="margin-top:6px">
-            <span class="chip ${listing.state === 'active' ? 'chip-green' : 'chip-amber'}">${listing.state || 'невідомо'}</span>
+            <span class="chip ${listing.state === 'active' ? 'chip-green' : 'chip-amber'}">${listing.state ? listingState(listing.state) : 'невідомо'}</span>
             <span class="chip chip-mono">#${listing.id}</span>
             ${listing.shopId ? html`<span class="chip chip-mono">магазин ${listing.shopId}</span>` : ''}
           </div></div></div>

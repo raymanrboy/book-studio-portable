@@ -31,7 +31,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from .. import core, desktop
+from .. import core, desktop, portable
 from ..server import ApiError
 from . import books, rows
 
@@ -51,9 +51,13 @@ _PERCENT = re.compile(r"(\d{1,3}(?:\.\d+)?)%")
 def _candidates():
     """Where Upscayl may be: the place remembered, the place Upscayl's own log names (it writes the engine's path
     on every start — the owner's is on drive D), its usual installs. Looked at one by one, the logs only when needed."""
+    if portable.root():          # the portable copy uses its own module only, never an Upscayl the PC has
+        if portable.upscayl_exe():
+            yield portable.upscayl_exe()
+        return
     saved = core.settings.section("workshop").get("upscayl")
     if saved:
-        yield Path(saved)
+        yield portable.relocate(saved)
     appdata = os.environ.get("APPDATA")
     logs = Path(appdata) / "Upscayl" / "logs" if appdata else None
     if logs and logs.is_dir():
@@ -80,7 +84,7 @@ def engine() -> tuple[Path, Path] | None:
     for c in _candidates():
         exe = c if c.suffix.lower() == ".exe" else c.with_name(c.name + ".exe")
         models = exe.parent.parent / "models"
-        if exe.is_file() and (models / f"{MODEL}.param").is_file():
+        if exe.is_file() and (models / f"{MODEL}.param").is_file() and (models / f"{MODEL}.bin").is_file():   # both halves: a cut-short install is not an install
             if core.settings.section("workshop").get("upscayl") != str(exe):
                 core.settings.update({"workshop": {"upscayl": str(exe)}})
             return exe, models
@@ -355,7 +359,9 @@ class Upscaler:
         try:
             upscale_row(book_id, key, self._progress)
             core.log.info("Workshop: upscaled %s %s", book_id, key)
-        except (ApiError, OSError, Image.DecompressionBombError) as exc:
+        except Exception as exc:       # any failure ends this picture only: the queue's thread must never die
+            if not isinstance(exc, (ApiError, OSError, Image.DecompressionBombError)):
+                core.log.exception("Workshop: upscaling %s %s crashed", book_id, key)
             core.log.warning("Workshop: upscaling %s %s failed: %s", book_id, key, exc)
             with self.lock:
                 self.errors[(book_id, key)] = str(exc) or "не вдалося"
@@ -384,6 +390,16 @@ def upscaler() -> Upscaler:
         if _upscaler is None:
             _upscaler = Upscaler()
         return _upscaler
+
+
+def busy() -> bool:
+    """A picture is being upscaled or waits in the queue — the window closing must wait for it (upscayl-bin would be left running)."""
+    with _lock:
+        up = _upscaler
+    if up is None:
+        return False
+    with up.lock:
+        return bool(up.queue or up.current)
 
 
 def version() -> int:

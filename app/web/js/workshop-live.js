@@ -5,7 +5,7 @@
 // the rail's dot and the window's title (app.js).
 import { api, post, html, ic, ib, toast, tellBusy, patch } from './lib.js';
 
-const FAST = 1500, SLOW = 4000;
+const FAST = 1500, SLOW = 4000, OFFLINE = 10000; // OFFLINE: while the «no connection» overlay is up it is asked rarely
 let gen = null;              // the generation mode: generate.Session.status() on the server
 let page = null;             // the Workshop page on screen: { book, sig, sigUrl, onChange }
 let primed = false, seenAt = 0, seenError = '', said = undefined;
@@ -33,7 +33,8 @@ document.addEventListener('visibilitychange', () => schedule(document.visibility
 
 function schedule(ms) {
   clearTimeout(timer);
-  const wait = ms ?? (page && document.visibilityState === 'visible' ? FAST : gen?.active ? SLOW : null);
+  let wait = ms ?? (page && document.visibilityState === 'visible' ? FAST : gen?.active ? SLOW : null);
+  if (wait !== null && document.getElementById('offline')?.hidden === false) wait = Math.max(wait, OFFLINE);
   if (wait !== null) timer = setTimeout(ask, wait);
 }
 
@@ -47,8 +48,10 @@ async function ask() {
       : await api(watching.sigUrl || `/api/workshop/sig${watching.book ? `?book=${encodeURIComponent(watching.book)}` : ''}`);
     take(data.gen);
     if (watching && watching === page && data.sig !== watching.sig) {
+      const was = watching.sig;
       watching.sig = data.sig;
-      await watching.onChange();
+      try { await watching.onChange(); }
+      catch (err) { watching.sig = was; throw err; }          // the page did not redraw: the next tick tries again
     }
   } catch { /* the program closed or restarted: the window's own offline notice says so */ }
   asking = false;

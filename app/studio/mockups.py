@@ -24,14 +24,14 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from . import core, desktop, drops, images
+from . import core, desktop, drops, images, portable
 from .jobs import Job, UserError, jobs
 from .server import ApiError, Request, file_response, route
 from .slides import cutout as slide_cutout
 
 # Where things are on the owner's PC; places.json overrides them when he points somewhere else.
-TEMPLATES_DIR = Path(r"D:\Roman\Desktop\Трафарети мастхев")      # read-only: only ever read and copied
-PHOTOSHOP_DIR = Path(r"D:\Programs\Portable\Photoshop_Portable")  # Photoshop CC 2019, portable
+TEMPLATES_DIR = core.ROOT.parent.parent / "runtime" / "Templates"    # read-only: only ever read and copied
+PHOTOSHOP_DIR = core.ROOT.parent.parent / "runtime" / "Photoshop"    # Photoshop CC 2019, portable
 # app/data/mockups — the same files the separate utility kept (its data folder), so they carry over.
 PLACES = core.data_path("mockups", "places.json")
 WORK = core.data_path("mockups", "work")   # one folder per run: template copies, prepared pictures, the script
@@ -91,10 +91,15 @@ _results: dict[str, list[Path]] = {}  # job id -> the pictures it saved (the pag
 
 # ---------------------------------------------------------------- where the templates and Photoshop are
 
+def _saved_or_runtime(saved: str | None, runtime_name: str, default: Path) -> Path:
+    """In the portable copy the program's own `runtime/` folder; else a place remembered in the settings, else the default."""
+    return portable.runtime(runtime_name) or (portable.relocate(saved) if saved else default)
+
+
 def places() -> dict:
     saved = core.read_json(PLACES, {}) or {}
-    return {"templates": Path(saved.get("templates") or TEMPLATES_DIR),
-            "photoshop": Path(saved.get("photoshop") or PHOTOSHOP_DIR),
+    return {"templates": _saved_or_runtime(saved.get("templates"), "Templates", TEMPLATES_DIR),
+            "photoshop": _saved_or_runtime(saved.get("photoshop"), "Photoshop", PHOTOSHOP_DIR),
             "lastOut": saved.get("lastOut") or "", "lastZip": saved.get("lastZip") or ""}
 
 

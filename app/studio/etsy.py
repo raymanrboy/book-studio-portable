@@ -167,6 +167,7 @@ def complete_oauth(code: str, oauth_state: str) -> dict:
             raise EtsyError("Etsy не прийняв код авторизації: код уже використано або він застарів (діє кілька хвилин), "
                             "чи Callback URL не збігається із зареєстрованим. Почніть підключення заново.", 400,
                             {"code": "etsy_auth"}) from None
+        _pending[oauth_state] = pending            # the network failed, not Etsy's answer: the same link may be tried again
         raise _human(err, "Обмін коду Etsy") from None
     access = data.get("access_token") or ""
     record = {
@@ -206,7 +207,8 @@ def refresh_tokens(force: bool = False) -> dict:
                 raise EtsyError(
                     "Сесія Etsy більше не дійсна. Etsy видає одноразові ключі оновлення: якщо цю саму сесію "
                     "оновила інша програма (наприклад, Profit Calculator), тут вона перестає працювати. "
-                    "Перенесіть сесію знову (Налаштування → Etsy) або авторизуйтесь з київського ПК.",
+                    "Перенесіть сесію знову (Налаштування → Etsy) або авторизуйтесь "
+                    + ("з київського ПК." if core.etsy_kyiv_only() else "в Etsy знову."),
                     400, {"code": "etsy_auth"}) from None
             raise _human(err, "Оновлення доступу Etsy") from None
         access = data.get("access_token") or t["access_token"]

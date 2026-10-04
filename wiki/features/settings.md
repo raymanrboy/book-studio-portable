@@ -1,7 +1,7 @@
 ---
 title: Settings
 type: feature
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/settings_api.py
   - app/studio/gelato_accounts.py
@@ -34,7 +34,7 @@ code:
   becomes «Старий акаунт · лише читання» with its hint, «Ще N замовлень в роботі» / «Його замовлення завершено», its
   own connection check and a bin to remove it (since 2026-09-29, [gelato](../integrations/gelato.md#his-own-account--two-keys-during-the-move)).
   While the old one is kept, the new key has the usual «Замінити ключ» (to fix a mistyped one).
-- **Text check** (since 2026-09-19): a "Check page text in the order card" switch, a "First take a quick
+- **Text check** (since 2026-09-19; since 2026-10-03 inside «Модулі», under the module — [optional modules](modules.md)): a "Check page text in the order card" switch, a "First take a quick
   look at which pages even have text" switch (since 2026-09-20 — the program decides on its own which
   pages to show the model; can be turned off if something seems to be getting skipped), the model (a
   picker icon — when Ollama has more than one that can see pictures), "on the GPU", "Check connection";
@@ -83,7 +83,7 @@ ever read.
 
 ## Where in the code
 
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`, `dataCard()`, `textcheckCard()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`, `dataCard()`, `modulesCard()`, `textcheckSettings()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `backupCard()`, `watchBackup()`, `redrawBackup()`
 - [app/web/js/pages/settings-dialogs.js](../../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`, `pickMaster()`
 - [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_open_in_profile()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
