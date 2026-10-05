@@ -1,7 +1,7 @@
 ---
 title: Book Studio overview
 type: overview
-updated: 2026-10-03
+updated: 2026-10-05
 code:
   - app/studio/main.py
   - app/studio/core.py

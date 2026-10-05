@@ -1,6 +1,7 @@
 // An object's path (2026-09-30, wiki/decisions.md): where an order or a book is and what comes next, drawn
-// the one way — a strip of squares, ✓ done, half-filled started, dashed skipped, the next one breathing, red where
-// something is wrong. A step is `{key, label, state: 'done'|'part'|'todo'|'skip', icon?, thumb?, count?, tip?, nogo?}`;
+// the one way — a strip of squares, ✓ done, started (an accent edge on white — and, when the progress can really be measured,
+// filled in proportion to it: `p`, 0…1), dashed skipped, the next one breathing, red where something is wrong. A step is
+// `{key, label, state: 'done'|'part'|'todo'|'skip', p?, icon?, thumb?, count?, tip?, nogo?}`. Never half-filled as a guess (the owner, 2026-10-06);
 // the first step not done is the next. With `icon` the square shows the step's picture instead of its number and the
 // word goes to the tooltip — a path is shown, not told (the owner, 2026-09-30: "minimum captions, maximum icons").
 // The Workshop's book page draws the same steps one by one (`pathStep`) so its keyed patching keeps the strip smooth.
@@ -13,6 +14,7 @@ export function pathStep(s, i, steps, { act = 'path', active = '', tabs = false 
   const next = steps.findIndex((x) => x.state !== 'done' && x.state !== 'skip');
   const pictured = steps.every((x) => x.icon);
   const prev = steps[i - 1];
+  const measured = s.state === 'part' && typeof s.p === 'number';
   const cls = [s.state, i === next && 'next', prev && ['done', 'skip'].includes(prev.state) && 'after-done',
     active === s.key && 'sel', s.nogo && 'nogo'].filter(Boolean).join(' ');
   const tip = [s.tip || `${s.label}: ${WORDS[s.state]}`, s.tip ? '' : s.count].filter(Boolean).join(' · ');
@@ -21,7 +23,7 @@ export function pathStep(s, i, steps, { act = 'path', active = '', tabs = false 
   const role = tabs ? html`role="tab" aria-selected="${active === s.key}"` : html`role="listitem"`;
   return html`<button type="button" class="ws-step ${cls}" ${role} data-act="${act}" data-step="${s.key}" data-tip="${tip}"
     aria-label="${tip}" ${i === next ? html`aria-current="step"` : ''}>
-    <span class="ws-dot ${s.thumb ? 'photo' : ''}">${face}</span>
+    <span class="ws-dot ${s.thumb ? 'photo' : ''} ${measured ? 'fill' : ''}" ${measured ? html`style="--fill:${Math.round(Math.max(0, Math.min(1, s.p)) * 100)}%"` : ''}>${face}</span>
     ${pictured ? '' : html`<span class="ws-step-label">${s.label}</span>${s.count ? html`<span class="ws-step-count ${s.nogo ? 'nogo' : ''}">${s.count}</span>` : ''}`}</button>`;
 }
 

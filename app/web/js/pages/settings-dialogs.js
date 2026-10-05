@@ -1,7 +1,7 @@
 // Settings' two dialogs of their own: the Etsy sign-in (from the Kyiv PC only) and the choice of the Printify Master
 // — out of the page's mount() since 27.09.2026; the page passes what they need.
 import {
-  api, post, html, ic, setHtml, modal, toast, confirmBox, copyText, openExternal, sleep, confirmChecked,
+  api, post, html, ic, setHtml, modal, toast, confirmBox, copyText, openExternal, sleep, confirmChecked, glide, fadeImages, reducedMotion,
 } from '../lib.js';
 
 // ---------------------------------------------------------------- Etsy OAuth flow
@@ -101,16 +101,22 @@ export async function pickMaster(printify, done) {
     foot: html`<button class="btn btn-ghost" data-x="close">Скасувати</button><button class="btn" data-x="analyze">${ic('search', 'icon-s')}Проаналізувати</button><button class="btn btn-primary" data-x="save" disabled>${ic('check', 'icon-s')}Зробити Master</button>`,
   });
   const list = m.el.querySelector('#mp-list');
+  // The dialog's body grows and shrinks with what is shown in it: it glides, it does not jump.
+  const setAnalysis = (content) => {
+    const put = () => setHtml(m.el.querySelector('#mp-analysis'), content);
+    if (reducedMotion()) put(); else glide(m.body, put);
+  };
   let page = 1, last = 1;
   async function loadProducts(reset = true) {
-    if (reset) { page = 1; setHtml(list, html`<div class="faint" style="padding:20px">Завантаження продуктів…</div>`); }
+    if (reset) { page = 1; setHtml(list, html`<div class="row faint" style="padding:20px"><span class="spinner"></span>Завантаження продуктів…</div>`); }
     try {
       const res = await api(`/api/printify/products?shop=${shopId}&page=${page}`);
       last = res.lastPage || 1;
       const cards = res.products.map((p) => html`<button class="prod ${p.id === selected ? 'sel' : ''}" data-pid="${p.id}">
-        ${p.image ? html`<img src="${p.image}" alt="" loading="lazy">` : html`<div class="prod-ph"></div>`}
+        ${p.image ? html`<img src="${p.image}" alt="" loading="lazy" data-fade="">` : html`<div class="prod-ph"></div>`}
         <div><b style="display:block" class="truncate">${p.title}</b><span class="faint mono" style="font-size: var(--fs-s)">bp ${p.blueprintId} · ${p.id.slice(-6)}</span></div></button>`);
       if (reset) setHtml(list, cards); else list.insertAdjacentHTML('beforeend', String(html`${cards}`));
+      fadeImages(list);
       setHtml(m.el.querySelector('#mp-more'), page < last ? html`<button class="btn btn-sm" data-x="more">Завантажити ще</button>` : '');
     } catch (err) { setHtml(list, html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`); }
   }
@@ -118,11 +124,11 @@ export async function pickMaster(printify, done) {
     const idInput = m.el.querySelector('#mp-id').value.trim();
     const productId = idInput || selected;
     if (!productId) { toast('Оберіть продукт', 'info'); return; }
-    setHtml(m.el.querySelector('#mp-analysis'), html`<div class="row faint"><span class="spinner"></span>Аналіз продукту…</div>`);
+    setAnalysis(html`<div class="row faint"><span class="spinner"></span>Аналіз продукту…</div>`);
     try {
       analysis = await post('/api/printify/master/analyze', { shopId, productId });
       const bad = analysis.pageCount !== 24;
-      setHtml(m.el.querySelector('#mp-analysis'), html`<div class="card-soft" style="padding:14px">
+      setAnalysis(html`<div class="card-soft" style="padding:14px">
         <div style="font-weight:650;margin-bottom:8px">${analysis.title}</div>
         <dl class="master-card">
           <dt>Тип виробу / друкарня (Blueprint / Print Provider)</dt><dd>${analysis.blueprintId} / ${analysis.printProviderId}</dd>
@@ -135,7 +141,7 @@ export async function pickMaster(printify, done) {
       </div>`);
       m.foot.querySelector('[data-x="save"]').disabled = false;
     } catch (err) {
-      setHtml(m.el.querySelector('#mp-analysis'), html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`);
+      setAnalysis(html`<div class="notice notice-error">${ic('alertCircle')}<div>${err.message}</div></div>`);
     }
   }
   m.el.querySelector('#mp-shop').addEventListener('change', (e) => { shopId = +e.target.value; selected = null; analysis = null; loadProducts(); });

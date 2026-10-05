@@ -5,7 +5,7 @@
 // Every change is saved at once with the version it was made on; what an agent changes in the files meanwhile shows
 // up by itself (the signature is asked every 1.5 s) — the owner may work on the slides through an LLM too.
 import {
-  api, post, html, ic, ib, setHtml, on, toast, runJob, menu, modal, confirmBox, segHtml, notFound, tellBusy, attr,
+  api, post, html, ic, ib, setHtml, on, toast, runJob, menu, modal, confirmBox, segHtml, notFound, tellBusy, attr, reducedMotion,
 } from '../lib.js';
 import { store } from '../info.js';
 import {
@@ -19,7 +19,7 @@ let origin = '';
 const sessions = new Map();
 
 const CSS = '/css/slides.css';
-const SIG_EVERY = 1500;
+const SIG_EVERY = 1500, SIG_CALM = 4000, CALM_AFTER = 30000;   // asked less often once nothing has happened here for 30 s (05.10.2026)
 const SAVE_AFTER = 450;
 const HISTORY = 200;
 
@@ -177,6 +177,7 @@ export async function mount(view, [whereParam, nParam]) {
     st.S = Math.max(0.2, Math.min((box.width - 36) / 1000, (box.height - 48) / 1000));
     wrap.style.width = wrap.style.height = `${1000 * st.S}px`;
     stage.style.transform = over.style.transform = `scale(${st.S})`;
+    if (st.drag) st.drag.rect = wrap.getBoundingClientRect();
     drawSel();
   }
   const ro = new ResizeObserver(fit);
@@ -187,21 +188,29 @@ export async function mount(view, [whereParam, nParam]) {
     const old = stage.querySelector(`.el[data-idx="${i}"]`);
     if (!old) { redrawAll(); return; }
     old.replaceWith(drawElement(items()[i], i, 'se'));
-    markLocks(); drawSel();
+    markLocks(i); drawSel();
   }
   function place(i) {   // move / turn / mirror only: no drawing again
     const e = items()[i], el = stage.querySelector(`.el[data-idx="${i}"]`);
     if (!el) return;
     el.style.left = `${e.x}px`; el.style.top = `${e.y}px`; el.style.transform = elTransform(e);
+    el.style.translate = '';   // a drag moves by `translate` (compositor); here the real position takes over
     drawSel();
   }
-  function markLocks() {
-    items().forEach((e, i) => {
+  function markLocks(only) {
+    const mark = (e, i) => {
       const el = stage.querySelector(`.el[data-idx="${i}"]`);
       if (!el) return;
       if (THROUGH.includes(e.type)) el.dataset.lock = '1';
       else if (isLocked(e)) el.dataset.fixed = '1';
-    });
+    };
+    if (only != null) { if (items()[only]) mark(items()[only], only); return; }
+    items().forEach(mark);
+  }
+  // A short fade over the stage when the whole slide changes at once (a scheme laid on, a reload from disk).
+  function fadeStage() {
+    if (reducedMotion()) return;
+    stage.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: 220, easing: 'cubic-bezier(.2,.7,.2,1)' });
   }
 
   // ---------------------------------------------------------------- the layers (the top one is in front)
@@ -228,40 +237,65 @@ export async function mount(view, [whereParam, nParam]) {
   }
 
   // ---------------------------------------------------------------- the selection and its handles
-  function drawSel() {
+  // One box with its handles lives while the same element stays selected (same kind, same lock): a drag only moves
+  // them (no rebuilding per event); a new selection builds them once and they fade in.
+  let selBox = null, selKey = '', selHs = [], selStem = null, selLay = '';
+  function buildSel(e, locked) {
     over.replaceChildren();
-    const e = cur();
-    if (!e || e.hidden) return;
-    const [w, h] = boxOf(e), S = st.S, hs = 12 / S;
+    selHs = []; selStem = null; selLay = '';
     const b = document.createElement('div');
-    b.className = `se-selbox ${isLocked(e) ? 'fixed' : ''}`;
-    Object.assign(b.style, { left: `${e.x - w / 2}px`, top: `${e.y - h / 2}px`, width: `${w}px`, height: `${h}px`,
-      transform: `rotate(${e.rot || 0}deg)`, outlineWidth: `${1.5 / S}px` });
-    const handle = (cls, x, y, cursor) => {
+    b.className = `se-selbox ${locked ? 'fixed' : ''}`;
+    const handle = (cls, fx, fy, cursor) => {
       const d = document.createElement('div');
       d.className = `se-h h-${cls}`;
       d.dataset.h = cls;
-      Object.assign(d.style, { width: `${hs}px`, height: `${hs}px`, left: `${x - hs / 2}px`, top: `${y - hs / 2}px`, cursor, borderWidth: `${1.5 / S}px` });
+      d.style.cursor = cursor;
       b.appendChild(d);
+      selHs.push({ d, fx, fy });
     };
-    if (!isLocked(e) && e.type !== 'grain') {
-      ['nw', 'ne', 'sw', 'se'].forEach((c) => handle(c, c[1] === 'w' ? 0 : w, c[0] === 'n' ? 0 : h, c === 'nw' || c === 'se' ? 'nwse-resize' : 'nesw-resize'));
+    if (!locked && e.type !== 'grain') {
+      [['nw', 0, 0], ['ne', 1, 0], ['sw', 0, 1], ['se', 1, 1]].forEach(([c, fx, fy]) => handle(c, fx, fy, c === 'nw' || c === 'se' ? 'nwse-resize' : 'nesw-resize'));
       if (STRETCHES.includes(e.type)) {
-        handle('e', w, h / 2, 'ew-resize'); handle('w', 0, h / 2, 'ew-resize');
-        handle('n', w / 2, 0, 'ns-resize'); handle('s', w / 2, h, 'ns-resize');
+        handle('e', 1, 0.5, 'ew-resize'); handle('w', 0, 0.5, 'ew-resize');
+        handle('n', 0.5, 0, 'ns-resize'); handle('s', 0.5, 1, 'ns-resize');
       }
-      const stem = document.createElement('div');
-      stem.className = 'se-stem';
-      Object.assign(stem.style, { top: `${-28 / S}px`, height: `${28 / S}px`, width: `${1.5 / S}px` });
-      b.appendChild(stem);
-      handle('rot', w / 2, -28 / S, 'grab');
+      selStem = document.createElement('div');
+      selStem.className = 'se-stem';
+      b.appendChild(selStem);
+      handle('rot', 0.5, null, 'grab');
     }
     over.appendChild(b);
+    selBox = b;
+  }
+  function drawSel() {
+    const e = cur();
+    if (!e || e.hidden) { if (selBox) { over.replaceChildren(); selBox = null; selKey = ''; } return; }
+    const locked = isLocked(e);
+    const key = `${st.sel}|${e.type}|${locked}|${STRETCHES.includes(e.type)}`;
+    if (!selBox || key !== selKey || !selBox.isConnected) { buildSel(e, locked); selKey = key; }
+    const [w, h] = boxOf(e), S = st.S;
+    Object.assign(selBox.style, { left: `${e.x - w / 2}px`, top: `${e.y - h / 2}px`, transform: `rotate(${e.rot || 0}deg)` });
+    const lay = `${w}|${h}|${S}`;
+    if (lay === selLay) return;   // only moved or turned: the rest of the box is as it was
+    selLay = lay;
+    const hs = 12 / S;
+    Object.assign(selBox.style, { width: `${w}px`, height: `${h}px`, outlineWidth: `${1.5 / S}px` });
+    for (const { d, fx, fy } of selHs) {
+      const x = w * fx, y = fy === null ? -28 / S : h * fy;
+      Object.assign(d.style, { width: `${hs}px`, height: `${hs}px`, left: `${x - hs / 2}px`, top: `${y - hs / 2}px`, borderWidth: `${1.5 / S}px` });
+    }
+    if (selStem) Object.assign(selStem.style, { top: `${-28 / S}px`, height: `${28 / S}px`, width: `${1.5 / S}px` });
   }
   function select(i) {
     st.bg = i === 'bg';
     st.sel = st.bg ? -1 : i;
-    drawLayers(); drawSel(); drawProps();
+    const list = $('#se-layers');
+    const rows = list ? [...list.querySelectorAll('.se-layer')] : [];
+    if (rows.length === items().length + 1) {   // the rows are there: only the mark moves, so its transition plays
+      rows.forEach((r) => r.classList.toggle('sel', r.dataset.i === 'bg' ? st.bg : +r.dataset.i === st.sel));
+      list.querySelector('.se-layer.sel')?.scrollIntoView({ block: 'nearest' });
+    } else drawLayers();
+    drawSel(); drawProps(true);
   }
 
   // ---------------------------------------------------------------- the properties
@@ -336,8 +370,15 @@ export async function mount(view, [whereParam, nParam]) {
     return '';
   }
 
-  function drawProps() {
+  let propsRaf = 0;
+  function queueProps() {   // several changes in one frame (a held arrow key) redraw the panel once
+    if (propsRaf) return;
+    propsRaf = requestAnimationFrame(() => { propsRaf = 0; if (!gone) drawProps(); });
+  }
+  function drawProps(fade = false) {
+    if (propsRaf) { cancelAnimationFrame(propsRaf); propsRaf = 0; }
     const box = $('#se-props');
+    if (fade && !reducedMotion()) box.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
     const e = cur();
     if (!e) { setHtml(box, slideProps()); return; }
     const [kind] = KIND[e.type] || [e.type];
@@ -378,11 +419,20 @@ export async function mount(view, [whereParam, nParam]) {
     st.future = [];
     save();
   }
-  function paintSaved(state, text) {
+  // A real percent (the bake) fills a thin bar; none known (a save) — the neutral spinner, never a half-filled one.
+  function paintSaved(state, text, pct = null) {
     const chip = $('#se-saved');
     if (!chip) return;
+    const bar = chip.querySelector('.se-bake > i');
+    if (state === 'busy' && pct != null && bar) {   // the same bar moves on: its fill glides
+      bar.style.transform = `scaleX(${Math.max(0, Math.min(100, pct)) / 100})`;
+      chip.querySelector('.se-saved-text').textContent = text;
+      return;
+    }
     chip.className = `se-saved ${state}`;
-    setHtml(chip, state === 'busy' ? html`<span class="spinner"></span>${text}` : state === 'bad' ? html`${ic('alertCircle', 'icon-s')}${text}` : html`${ic('check', 'icon-s')}${text}`);
+    const lead = state === 'busy' ? (pct != null ? html`<span class="progress progress-thin live se-bake"><i style="transform:scaleX(${Math.max(0, Math.min(100, pct)) / 100})"></i></span>` : html`<span class="spinner"></span>`)
+      : state === 'bad' ? ic('alertCircle', 'icon-s') : ic('check', 'icon-s');
+    setHtml(chip, html`${lead}<span class="se-saved-text">${text}</span>`);
   }
   function save() {
     st.dirty = true;
@@ -419,7 +469,7 @@ export async function mount(view, [whereParam, nParam]) {
     scene = theirs;
     version = v;
     if (st.sel >= items().length) st.sel = -1;
-    redrawAll();
+    redrawAll(); fadeStage();
     paintSaved('ok', 'Оновлено');
     toast(text, 'info', 3200);
   }
@@ -439,6 +489,10 @@ export async function mount(view, [whereParam, nParam]) {
   }
 
   // ---------------------------------------------------------------- what the agent changed shows up by itself
+  let lastActive = Date.now();
+  const stir = () => { lastActive = Date.now(); };
+  view.addEventListener('pointerdown', stir, true);
+  view.addEventListener('keydown', stir, true);
   async function watch() {
     clearTimeout(sigTimer);
     if (gone) return;
@@ -448,7 +502,8 @@ export async function mount(view, [whereParam, nParam]) {
         if (sig !== st.sig && !gone) {
           const [{ scene: theirs, version: v }, a, i] = await Promise.all([api(q('/api/slides/scene')),
             api(`/api/slides/assets?w=${encodeURIComponent(where)}`), api(`/api/slides/state?w=${encodeURIComponent(where)}`)]);
-          if (gone) return;
+          if (gone || st.drag) return;   // a hand is on the slide: asked again next time
+          lastActive = Date.now();
           st.sig = sig; // remembered only once the three answers are in: a failed round asks again next time
           const assetsChanged = JSON.stringify(a) !== JSON.stringify(assets);
           assets = a; info = i; setAssets(a);
@@ -458,45 +513,55 @@ export async function mount(view, [whereParam, nParam]) {
         }
       } catch { /* the program is restarting: asked again next time */ }
     }
-    sigTimer = setTimeout(watch, SIG_EVERY);
+    sigTimer = setTimeout(watch, Date.now() - lastActive > CALM_AFTER ? SIG_CALM : SIG_EVERY);
   }
 
   // ---------------------------------------------------------------- mouse: move, turn, resize
-  const toStage = (ev) => { const r = wrap.getBoundingClientRect(); return [(ev.clientX - r.left) / st.S, (ev.clientY - r.top) / st.S]; };
+  // A pointer move is only noted; the newest sample is applied once per frame (at 170 Hz events outrun frames), and the
+  // last one at once on release. The slide's rectangle is measured on press, not on every event.
+  const toStage = (ev, r) => [(ev.clientX - r.left) / st.S, (ev.clientY - r.top) / st.S];
+  let dragRaf = 0, dragSample = null;
   offs.push(on(wrap, 'pointerdown', '*', (ev) => {
     if (ev.button !== 0) return;
     const hEl = ev.target.closest('.se-h');
-    const [px, py] = toStage(ev);
+    const rect = wrap.getBoundingClientRect();
+    const [px, py] = toStage(ev, rect);
     if (hEl && cur()) {
-      st.drag = { mode: hEl.dataset.h, px, py, e0: JSON.parse(JSON.stringify(cur())), before: snapshot() };
+      st.drag = { mode: hEl.dataset.h, px, py, rect, e0: JSON.parse(JSON.stringify(cur())), before: snapshot() };
     } else {
       const el = ev.target.closest('#se-stage .el');
       if (!el) { if (st.sel >= 0 || st.bg) select(-1); return; }
       const i = +el.dataset.idx;
       if (i !== st.sel) select(i);
       if (isLocked(items()[i])) { st.pressed = { x: ev.clientX, y: ev.clientY, told: false }; return; }
-      st.drag = { mode: 'move', px, py, e0: JSON.parse(JSON.stringify(items()[i])), before: snapshot() };
+      st.drag = { mode: 'move', px, py, rect, e0: JSON.parse(JSON.stringify(items()[i])), before: snapshot() };
+    }
+    if (st.drag.mode === 'move' || st.drag.mode === 'rot') {   // its own layer while it travels
+      st.drag.el = stage.querySelector(`.el[data-idx="${st.sel}"]`);
+      if (st.drag.el) st.drag.el.style.willChange = 'transform';
     }
     wrap.setPointerCapture(ev.pointerId);
     ev.preventDefault();
   }));
   const lockedToast = () => toast('Закріплено — зніміть замок у шарах (або вгорі праворуч), щоб рухати мишкою', 'info', 2600);
-  const onMove = (ev) => {
-    const p0 = st.pressed;
-    if (p0 && !p0.told && ev.buttons && Math.hypot(ev.clientX - p0.x, ev.clientY - p0.y) > 6) { p0.told = true; lockedToast(); }
-    const d = st.drag;
-    if (!d) return;
-    const e = cur(), e0 = d.e0;
-    const [px, py] = toStage(ev);
+  function applyDrag(sample) {
+    const d = st.drag, e = cur();
+    if (!d || !e) return;
+    const e0 = d.e0;
+    const [px, py] = toStage(sample, d.rect);
     if (d.mode === 'move') {
       e.x = Math.round((e0.x + px - d.px) * 10) / 10; e.y = Math.round((e0.y + py - d.py) * 10) / 10;
-      place(st.sel); return;
+      // the element stays where it was drawn (left/top); only a compositor `translate` carries it
+      if (d.el) d.el.style.translate = `${e.x - e0.x}px ${e.y - e0.y}px`; else place(st.sel);
+      drawSel(); return;
     }
     if (d.mode === 'rot') {
       let a = Math.atan2(py - e0.y, px - e0.x) * 180 / Math.PI + 90;
-      a = ev.shiftKey ? Math.round(a / 15) * 15 : Math.round(a * 10) / 10;
+      a = sample.shiftKey ? Math.round(a / 15) * 15 : Math.round(a * 10) / 10;
       if (a > 180) a -= 360;
-      e.rot = a; place(st.sel); return;
+      e.rot = a;
+      if (d.el) { d.el.style.transform = elTransform(e); drawSel(); } else place(st.sel);
+      return;
     }
     // resize: in the element's own (turned) axes
     const rad = (e0.rot || 0) * Math.PI / 180, cos = Math.cos(-rad), sin = Math.sin(-rad);
@@ -511,25 +576,50 @@ export async function mount(view, [whereParam, nParam]) {
     } else if (m === 'e' || m === 'w') e.w = Math.max(10, Math.round(e0.w * Math.abs(lx) / Math.max(1, Math.abs(lx0))));
     else if (e0.h != null) e.h = Math.max(4, Math.round(e0.h * Math.abs(ly) / Math.max(1, Math.abs(ly0))));
     redrawOne(st.sel);
+  }
+  const onMove = (ev) => {
+    const p0 = st.pressed;
+    if (p0 && !p0.told && ev.buttons && Math.hypot(ev.clientX - p0.x, ev.clientY - p0.y) > 6) { p0.told = true; lockedToast(); }
+    if (!st.drag) return;
+    dragSample = { clientX: ev.clientX, clientY: ev.clientY, shiftKey: ev.shiftKey };
+    if (!dragRaf) dragRaf = requestAnimationFrame(() => { dragRaf = 0; if (st.drag && dragSample) applyDrag(dragSample); });
   };
-  const onUp = () => {
+  const endDrag = () => {
+    if (dragRaf) { cancelAnimationFrame(dragRaf); dragRaf = 0; }
+    const d = st.drag;
+    if (d?.el) d.el.style.willChange = '';
+    return d;
+  };
+  const onUp = (ev) => {
     st.pressed = null;
     if (!st.drag) return;
-    const before = st.drag.before;
+    if (dragRaf) applyDrag({ clientX: ev.clientX, clientY: ev.clientY, shiftKey: ev.shiftKey });   // the frame not yet drawn
+    const d = endDrag();
+    dragSample = null;
     st.drag = null;
-    commit(before);
+    if (d.mode === 'move' || d.mode === 'rot') place(st.sel);   // the real position replaces the carrying translate
+    commit(d.before);
+    drawProps();
+  };
+  const onCancel = () => {   // the system took the pointer: the element goes back as it was
+    st.pressed = null;
+    if (!st.drag) return;
+    const d = endDrag();
+    dragSample = null;
+    st.drag = null;
+    if (items()[st.sel]) { items()[st.sel] = d.e0; redrawOne(st.sel); }
     drawProps();
   };
   wrap.addEventListener('pointermove', onMove);
   wrap.addEventListener('pointerup', onUp);
-  wrap.addEventListener('pointercancel', onUp);
+  wrap.addEventListener('pointercancel', onCancel);
 
   // ---------------------------------------------------------------- the panels' events
   function change(fn, { redraw = true, props = false } = {}) {
     const before = snapshot();
     fn();
     if (redraw === 'place') place(st.sel); else if (redraw) redrawOne(st.sel);
-    if (props) drawProps();
+    if (props) queueProps();
     commit(before);
   }
   function duplicate() {
@@ -608,6 +698,10 @@ export async function mount(view, [whereParam, nParam]) {
   }));
 
   // fields: numbers and texts on change (one step of history), sliders and colours live
+  let liveRaf = 0;
+  function queueRedraw() {   // a slider fires faster than frames: the element is drawn once per frame
+    if (!liveRaf) liveRaf = requestAnimationFrame(() => { liveRaf = 0; if (!gone && cur()) redrawOne(st.sel); });
+  }
   offs.push(on(view, 'input', '#se-props [data-kind]', (ev, t) => {
     const kind = t.dataset.kind, e = cur();
     if (kind === 'range' || kind === 'color') {
@@ -615,7 +709,7 @@ export async function mount(view, [whereParam, nParam]) {
       const v = kind === 'range' ? +t.value : t.value;
       if (e) {
         e[t.dataset.k] = v;
-        redrawOne(st.sel);
+        queueRedraw();
       } else if (kind === 'color') { scene.bg = v; stage.style.background = v; view.querySelector('.se-bg-chip')?.style.setProperty('--c', v); }
       const twin = t.parentElement.querySelector(`input[data-kind="num"][data-k="${t.dataset.k}"]`);
       if (twin) twin.value = +(+v).toFixed(2);
@@ -625,6 +719,7 @@ export async function mount(view, [whereParam, nParam]) {
   offs.push(on(view, 'change', '#se-props [data-kind]', (ev, t) => {
     const kind = t.dataset.kind, e = cur();
     if (kind === 'range' || kind === 'color') {
+      if (liveRaf) { cancelAnimationFrame(liveRaf); liveRaf = 0; if (e) redrawOne(st.sel); }
       const before = st.live || snapshot();
       st.live = null;
       commit(before);
@@ -690,7 +785,7 @@ export async function mount(view, [whereParam, nParam]) {
       info = i; scene = fresh; version = v; st.sel = -1; st.bg = false; st.past = []; st.future = [];
       const btn = $('#se-scheme .truncate');
       if (btn) btn.textContent = schemeLabel();
-      redrawAll(); loadOthers();
+      redrawAll(); fadeStage(); loadOthers();
       paintSaved('ok', `Схема «${x.name}»`);
     } catch (err) { toast(err.message, 'error'); }
   }
@@ -755,10 +850,10 @@ export async function mount(view, [whereParam, nParam]) {
     const btn = $('[data-act="bake"]');
     st.baking = true;
     if (btn) btn.disabled = true;
-    paintSaved('busy', 'Малюю…');
+    paintSaved('busy', 'Малюю…', 0);
     tellBusy({ mockups: true });
     try {
-      const res = await runJob(post('/api/slides/bake', { w: where }), (job) => { if (!gone) paintSaved('busy', job.step || 'Малюю…'); }, 500, () => !gone);
+      const res = await runJob(post('/api/slides/bake', { w: where }), (job) => { if (!gone) paintSaved('busy', job.step || 'Малюю…', job.percent); }, 500, () => !gone);
       if (gone) return;
       paintSaved('ok', `Збережено ${res.pictures.length} картинок`);
       toast(`Картинки збережено · ${res.pictures.length} — у папці книги, поверх попередніх`, 'success', 3600);
@@ -824,7 +919,7 @@ export async function mount(view, [whereParam, nParam]) {
   };
   document.addEventListener('keydown', onKey);
   // back from another window (the agent's): asked at once, not in 1.5 s
-  const onVisible = () => { if (document.visibilityState === 'visible') watch(); };
+  const onVisible = () => { if (document.visibilityState === 'visible') { stir(); watch(); } };
   document.addEventListener('visibilitychange', onVisible);
 
   redrawAll();
@@ -846,7 +941,8 @@ export async function mount(view, [whereParam, nParam]) {
       document.removeEventListener('visibilitychange', onVisible);
       wrap.removeEventListener('pointermove', onMove);
       wrap.removeEventListener('pointerup', onUp);
-      wrap.removeEventListener('pointercancel', onUp);
+      wrap.removeEventListener('pointercancel', onCancel);
+      cancelAnimationFrame(dragRaf); cancelAnimationFrame(propsRaf); cancelAnimationFrame(liveRaf);
       offs.forEach((off) => off());
     },
   };

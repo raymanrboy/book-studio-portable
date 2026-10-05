@@ -184,8 +184,34 @@ class _State:
 state = _State()
 
 
+_ASSET_LINK = re.compile(r'(href|src)="(/(?:css|js)/[^"?]+)"')
+
+
+def _versions() -> dict[str, str]:
+    """"/js/…" and "/css/…" -> the tag of the file now (its time and size). A page that asks for a file by an address with this tag
+    may keep it for good: the address changes when the file does (05.10.2026)."""
+    out: dict[str, str] = {}
+    for sub in ("js", "css"):
+        folder = core.WEB_DIR / sub
+        for path in folder.rglob("*") if folder.is_dir() else []:
+            if path.suffix in (".js", ".css"):
+                try:
+                    st = path.stat()
+                except OSError:
+                    continue
+                out["/" + path.relative_to(core.WEB_DIR).as_posix()] = f"{st.st_mtime_ns:x}{st.st_size:x}"
+    return out
+
+
 def _index_html() -> bytes:
+    """index.html with the session's tokens, and every script and style asked for by its versioned address: the window then keeps
+    them from one start to the next without asking the server fifty times whether they changed. The import map gives the modules'
+    own imports (`./lib.js`) the same versioned addresses."""
     text = (core.WEB_DIR / "index.html").read_text(encoding="utf-8")
+    versions = _versions()
+    text = _ASSET_LINK.sub(lambda m: f'{m.group(1)}="{m.group(2)}?v={versions[m.group(2)]}"' if m.group(2) in versions else m.group(0), text)
+    imports = {url: f"{url}?v={v}" for url, v in versions.items() if url.endswith(".js")}
+    text = text.replace("<head>", '<head><script type="importmap">' + json.dumps({"imports": imports}) + "</script>", 1)
     return text.replace("__STUDIO_TOKEN__", SESSION_TOKEN).replace("__MEDIA_TOKEN__", MEDIA_TOKEN).encode("utf-8")
 
 
@@ -253,7 +279,7 @@ class _Handler(BaseHTTPRequestHandler):
         if method == "GET" and path in ("/", "/index.html"):
             return Response(200, _index_html(), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
         if method == "GET" and re.match(r"^/(css|js|img|fonts|slides)/", path):
-            return self._static(path)
+            return self._static(path, query)
         if method == "GET" and path == "/favicon.ico":
             return self._static("/img/icon.ico")
 
@@ -277,10 +303,12 @@ class _Handler(BaseHTTPRequestHandler):
             raise ApiError("Метод не підтримується.", 405)
         raise ApiError("Не знайдено.", 404)
 
-    def _static(self, path: str) -> Response:
+    def _static(self, path: str, query: dict | None = None) -> Response:
         target = (core.WEB_DIR / path.lstrip("/")).resolve()
         if not core.inside(target, core.WEB_DIR) or not target.is_file():
             raise ApiError("Не знайдено.", 404)
+        if "v" in (query or {}):      # an address with the file's tag: that file for good (see _versions)
+            return file_response(target, cache="private, max-age=31536000, immutable")
         return file_response(target, cache="no-cache")
 
     # ------------------------------------------------------------ output

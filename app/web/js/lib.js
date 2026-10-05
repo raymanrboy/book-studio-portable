@@ -88,9 +88,23 @@ document.addEventListener('focusin', (e) => {
 document.addEventListener('focusout', () => hideTip());
 document.addEventListener('pointerdown', () => hideTip(), true);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tipState.target) hideTip(); }, true);
-document.addEventListener('scroll', () => hideTip(), true);
+document.addEventListener('scroll', () => hideTip(), { capture: true, passive: true });
 
 export function setHtml(el, content) { el.innerHTML = render(content); return el; }
+/** setHtml with a short fade of the new content (a region that was visible and is swapped whole). */
+export function setHtmlFade(el, content, ms = 140) {
+  setHtml(el, content);
+  if (!reducedMotion()) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: 'ease-out' });
+  return el;
+}
+/** Removes `node` once its exit animation (a `-out` keyframe from a `.closing` class) has ended — `animationend` with a
+ *  timeout as the fallback, so no CSS duration is copied into the script. `then` runs just before the removal. */
+export function removeAfterExit(node, then = null, fallback = 400) {
+  let done = false;
+  const go = () => { if (done) return; done = true; then?.(); node.remove(); };
+  node.addEventListener('animationend', (e) => { if (e.target === node && /out$/.test(e.animationName)) go(); });
+  setTimeout(go, fallback);
+}
 export function el(content) {
   const t = document.createElement('template');
   t.innerHTML = render(content).trim();
@@ -265,8 +279,16 @@ export function toast(message, type = 'info', ms = 3800, { undo = null } = {}) {
   const box = document.getElementById('toasts');
   const name = type === 'success' ? 'checkCircle' : type === 'error' ? 'alertCircle' : 'info';
   const t = el(html`<div class="toast toast-${type}">${ic(name)}<div>${message}</div>${undo ? html`<button type="button" class="toast-undo">${undo.label || 'Скасувати'}</button>` : ''}</div>`);
-  box.appendChild(t);
-  const close = () => { t.classList.add('out'); setTimeout(() => t.remove(), 220); };
+  stackFlip(box, () => box.appendChild(t));
+  // The others in the stack glide into their new places (as the toast leaves, too) instead of jumping.
+  const close = () => {
+    if (t.classList.contains('out')) return;
+    t.classList.add('out');
+    let gone = false;
+    const leave = () => { if (gone) return; gone = true; stackFlip(box, () => t.remove()); };
+    t.addEventListener('animationend', (e) => { if (e.target === t && e.animationName === 'toast-out') leave(); });
+    setTimeout(leave, 320);
+  };
   t.addEventListener('click', close);
   if (undo) t.querySelector('.toast-undo').addEventListener('click', async (e) => {
     e.stopPropagation();
@@ -275,6 +297,17 @@ export function toast(message, type = 'info', ms = 3800, { undo = null } = {}) {
     close();
   });
   setTimeout(close, type === 'error' ? Math.max(ms, 6500) : undo ? Math.max(ms, 9000) : ms);
+}
+
+/** The children of a vertical stack glide to their new places after `mutate()` added or removed one (FLIP, transform only). */
+function stackFlip(box, mutate) {
+  const before = [...box.children].map((n) => [n, n.getBoundingClientRect().top]);
+  mutate();
+  if (reducedMotion()) return;
+  const moves = before.filter(([n]) => n.isConnected).map(([n, top]) => [n, top - n.getBoundingClientRect().top]);
+  for (const [n, d] of moves) {
+    if (Math.abs(d) > 0.5) n.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: 260, easing: EASE });
+  }
 }
 
 /** A press that cannot go on yet lights up what is missing (the owner, 23.09.2026: "a button never ignores a press in
@@ -342,7 +375,7 @@ export function modal({ title, sub = '', body = '', foot = null, size = '', dism
       if (closed) return; closed = true;
       const i = modalStack.indexOf(api_); if (i >= 0) modalStack.splice(i, 1);
       root.classList.add('closing');
-      setTimeout(() => root.remove(), 190);
+      removeAfterExit(root);
       onClose?.(result);
       if (opener && opener !== document.body && document.contains(opener) && root.contains(document.activeElement)) opener.focus({ preventScroll: true });
     },
@@ -362,7 +395,7 @@ export function modal({ title, sub = '', body = '', foot = null, size = '', dism
 export function escBack(hash, { fields = false } = {}) {
   const onKey = (e) => {
     if (e.key !== 'Escape' || e.defaultPrevented) return;
-    if (document.querySelector('.modal-root, .lightbox, .menu')) return;
+    if (document.querySelector('.modal-root:not(.closing), .lightbox:not(.closing), .menu:not(.closing)')) return;
     if (fields && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;
     location.hash = hash;
   };
@@ -451,7 +484,8 @@ export function menu(anchor, items, { side = 'below' } = {}) {
   const close = (restore = false) => {
     if (closed) return; closed = true; // the listeners below may not even have been added yet (the timeout)
     const hadFocus = m.contains(document.activeElement);
-    m.remove(); document.removeEventListener('mousedown', outside, true); document.removeEventListener('keydown', key, true);
+    m.classList.add('closing'); m.inert = true; removeAfterExit(m, null, 300);
+    document.removeEventListener('mousedown', outside, true); document.removeEventListener('keydown', key, true);
     if (closeOpenMenu === closeThis) closeOpenMenu = null;
     if (restore && (hadFocus || document.activeElement === document.body) && anchor.isConnected) anchor.focus({ preventScroll: true });
   };
@@ -504,6 +538,10 @@ export function syncSeg(seg) {
   const active = seg.querySelector('button.active');
   // One Tab stop for the group, arrows inside it (the tabs pattern): the chosen tab is the stop.
   seg.querySelectorAll('button').forEach((b) => { b.tabIndex = !active || b === active ? 0 : -1; b.setAttribute('aria-selected', String(b === active)); });
+  placePill(seg);
+}
+function placePill(seg) {
+  const active = seg.querySelector('button.active');
   const pill = seg.querySelector('.seg-pill');
   if (!active || !pill) return;
   pill.style.width = `${active.offsetWidth}px`;
@@ -513,7 +551,15 @@ export function setSeg(seg, value) {
   seg.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.value === value));
   syncSeg(seg);
 }
-new ResizeObserver(() => document.querySelectorAll('.seg').forEach(syncSeg)).observe(document.documentElement);
+// On a window resize: every measurement first, then every write (no layout between the segments).
+new ResizeObserver(() => {
+  const m = [];
+  document.querySelectorAll('.seg').forEach((seg) => {
+    const a = seg.querySelector('button.active'), p = seg.querySelector('.seg-pill');
+    if (a && p) m.push([p, a.offsetWidth, a.offsetLeft]);
+  });
+  for (const [p, w, l] of m) { p.style.width = `${w}px`; p.style.transform = `translateX(${l - 3}px)`; }
+}).observe(document.documentElement);
 document.addEventListener('keydown', (e) => {
   const tab = e.target.closest?.('.seg [role="tab"]');
   if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
@@ -536,7 +582,7 @@ document.addEventListener('keydown', (e) => {
 
 /** True while the keyboard belongs to a field or a dialog: a page's single-key shortcuts stay quiet then. */
 export const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')
-  || !!document.activeElement?.isContentEditable || !!document.querySelector('.modal-root, .lightbox');
+  || !!document.activeElement?.isContentEditable || !!document.querySelector('.modal-root:not(.closing), .lightbox:not(.closing)');
 
 /** The gallery pages' keys (the Workshop, the library): Ctrl+F or «/» goes to the search `q`; a lone «N» runs `onNew`.
  *  Keys are told by their place on the keyboard (`code`), so the Ukrainian layout works as well as the Latin one;
@@ -607,7 +653,7 @@ export function highlightTokens(text) {
 // ------------------------------------------------------------------ smooth motion helpers
 export const reducedMotion = () => document.documentElement.dataset.motion === 'reduce'
   || matchMedia('(prefers-reduced-motion: reduce)').matches;
-const EASE = 'cubic-bezier(.22, 1, .36, 1)';
+const EASE = 'cubic-bezier(.2, .9, .25, 1)'; // the same as the CSS --ease-out
 
 // Images fade in only after they are decoded off the main thread (no decode stall on first paint).
 export function fadeImages(root) {
@@ -642,9 +688,10 @@ export function glide(el, mutate, duration = 260) {
 // FLIP: children with data-key glide from their old to their new position after a DOM change.
 export function flip(container, mutate, duration = 380) {
   const before = new Map();
+  const nodes = new Map();
   if (!reducedMotion()) {
     container.querySelectorAll(':scope > [data-key]').forEach((node) => {
-      if (!node.hidden) before.set(node.dataset.key, node.getBoundingClientRect());
+      if (!node.hidden) { before.set(node.dataset.key, node.getBoundingClientRect()); nodes.set(node.dataset.key, node); }
     });
   }
   mutate();
@@ -653,6 +700,23 @@ export function flip(container, mutate, duration = 380) {
   // the browser lay the page out again for each card.
   const moves = [...container.querySelectorAll(':scope > [data-key]')].filter((node) => !node.hidden)
     .map((node) => [node, before.get(node.dataset.key), node.getBoundingClientRect()]);
+  // A child that left fades out where it stood (a ghost clone, out of the layout) while the others glide into its place.
+  const still = new Set(moves.map(([node]) => node.dataset.key));
+  for (const [key, node] of nodes) {
+    if (still.has(key) || node.isConnected) continue;
+    try {
+      const r = before.get(key);
+      const ghost = node.cloneNode(true);
+      ghost.removeAttribute('data-key'); ghost.removeAttribute('id');
+      ghost.setAttribute('aria-hidden', 'true'); ghost.inert = true;
+      Object.assign(ghost.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
+        margin: '0', pointerEvents: 'none', zIndex: '5' });
+      container.appendChild(ghost);
+      const rm = () => ghost.remove();
+      ghost.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.96)' }], { duration: 160, easing: EASE, fill: 'forwards' }).finished.then(rm, rm);
+      setTimeout(rm, 600);
+    } catch { /* no ghost: the card simply goes */ }
+  }
   for (const [node, old, now] of moves) {
     if (!old) {
       node.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: EASE });
@@ -684,6 +748,17 @@ export function patch(container, items, redraw = null) {
     old.delete(key);
     if (!node || drawnFrom.get(node) !== text || redraw?.has(key)) { // `redraw`: keys changed by hand meanwhile
       const next = el(raw(text));
+      // A changed child is updated in place (same element, new attributes and content), so a class that flips plays its CSS
+      // transition instead of being drawn already in its end state. Any failure falls back to the old replace below.
+      if (node && !redraw?.has(key) && canMorph(node, next) && tryMorph(node, next)) {
+        drawnFrom.set(node, text);
+        drawn.push(node);
+        if (node.querySelector('img[data-fade=""]')) fadeImages(node);
+        if (node === cursor) cursor = node.nextElementSibling;
+        else if (container.moveBefore && node.isConnected) container.moveBefore(node, cursor);
+        else container.insertBefore(node, cursor);
+        continue;
+      }
       next.dataset.key = key;
       drawnFrom.set(next, text);
       if (node) {
@@ -698,7 +773,82 @@ export function patch(container, items, redraw = null) {
     else if (container.moveBefore && node.isConnected) container.moveBefore(node, cursor); // keeps focus and state
     else container.insertBefore(node, cursor);
   }
+  // A class was taken off somewhere: the style is settled once here, so a caller that puts it back (a one-shot animation
+  // class) really restarts the animation instead of finding the class never left.
+  if (morphDirty) { morphDirty = false; void container.offsetWidth; }
   return drawn;
+}
+
+// ---- the in-place update behind patch(): the old element becomes the new one without being replaced.
+let morphDirty = false;
+const FORM_TAG = /^(INPUT|TEXTAREA|SELECT)$/;
+const KEEP_ATTRS = new Set(['style', 'data-key', 'aria-describedby', 'tabindex']); // set from script, not by the markup
+const noMorph = (n) => n.nodeType === 1 && n.hasAttribute('data-nomorph');
+const canMorph = (o, n) => !!n && o.tagName === n.tagName && !FORM_TAG.test(o.tagName) && !noMorph(o) && !noMorph(n);
+function tryMorph(o, n) {
+  try { morphAttrs(o, n); morphChildren(o, n); return true; }
+  catch (err) { console.error('patch: in-place update failed, replacing', err); return false; }
+}
+function morphAttrs(o, n, skip = null) {
+  for (const { name, value } of [...n.attributes]) {
+    if (skip?.has(name)) continue;
+    if (name === 'class') {
+      const next = new Set(value.split(/\s+/).filter(Boolean));
+      if (o.classList.contains('enter')) next.add('enter');    // an entrance still playing is not cut short
+      for (const c of o.classList) if (!next.has(c)) morphDirty = true;
+      const v = [...next].join(' ');
+      if (o.getAttribute('class') !== v) o.setAttribute('class', v);
+    } else if (o.getAttribute(name) !== value) o.setAttribute(name, value);
+  }
+  for (const { name } of [...o.attributes]) {
+    if (n.hasAttribute(name) || KEEP_ATTRS.has(name) || skip?.has(name)) continue;
+    if (name === 'class') { morphDirty = true; if (o.classList.contains('enter')) { o.setAttribute('class', 'enter'); continue; } }
+    o.removeAttribute(name);
+  }
+}
+function swapNode(o, n) {
+  if (o.nodeType === 1 && n.nodeType === 1) carryPictures(o, n);
+  o.replaceWith(n);
+}
+function morphChildren(o, n) {
+  const oc = [...o.childNodes], nc = [...n.childNodes];
+  const k = Math.min(oc.length, nc.length);
+  for (let i = 0; i < k; i++) morphNode(oc[i], nc[i]);
+  for (let i = k; i < oc.length; i++) oc[i].remove();
+  for (let i = k; i < nc.length; i++) o.appendChild(nc[i]);
+}
+function morphNode(o, n) {
+  if (o.nodeType !== n.nodeType || (o.nodeType === 1 && (o.tagName !== n.tagName || noMorph(o) || noMorph(n)))) return swapNode(o, n);
+  if (o.nodeType !== 1) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; return undefined; }
+  const active = document.activeElement;
+  if (FORM_TAG.test(o.tagName)) {
+    // A field being typed in is never touched (value, selection, focus stay); an idle one with the same value keeps what was typed;
+    // an idle one with another value is drawn anew.
+    const skip = new Set(['value', 'checked', 'selected']);
+    if (o === active) return morphAttrs(o, n, skip);
+    if (o.tagName === 'INPUT' && (o.getAttribute('value') ?? '') === (n.getAttribute('value') ?? '') && o.hasAttribute('checked') === n.hasAttribute('checked')) return morphAttrs(o, n, skip);
+    if (o.outerHTML === n.outerHTML) return undefined;
+    return swapNode(o, n);
+  }
+  if (o.isContentEditable && (o === active || o.contains(active))) return morphAttrs(o, n); // text being edited stays
+  if (o.tagName === 'IMG') return morphImg(o, n);
+  morphAttrs(o, n);
+  morphChildren(o, n);
+  return undefined;
+}
+// A picture whose address changed keeps showing the old one until the new one is decoded — no blank frame between.
+function morphImg(o, n) {
+  const was = o.getAttribute('src'), now = n.getAttribute('src');
+  morphAttrs(o, n, new Set(['src', 'srcset', 'data-fade']));
+  if (!o.hasAttribute('data-fade') && n.hasAttribute('data-fade')) o.setAttribute('data-fade', n.getAttribute('data-fade'));
+  if (was === now) return;
+  if (!now || !was) { if (now) o.setAttribute('src', now); else o.removeAttribute('src'); return; }
+  o._morphSrc = now;
+  const pre = new Image();
+  pre.decoding = 'async';
+  pre.src = now;
+  const go = () => { if (o._morphSrc === now) { o._morphSrc = null; o.setAttribute('src', now); } };
+  (pre.decode ? pre.decode() : Promise.reject()).then(go, go);
 }
 /** One keyed child redrawn by hand (not through patch()) keeps its `data-key` and what it was drawn from, so the next patch()
  *  finds it unchanged instead of making a new one. Returns the new node. */
@@ -722,9 +872,30 @@ function carryPictures(from, to) {
 }
 
 /** A progress bar (`.progress > i`) at `percent`: drawn by a transform, not its width — no layout on every step. */
-export function setProgress(bar, percent) {
-  if (bar) bar.style.transform = `scaleX(${Math.max(0, Math.min(100, percent)) / 100})`;
+export function setProgress(bar, percent, { reset = false } = {}) {
+  if (!bar) return;
+  const p = Math.max(0, Math.min(100, Number(percent) || 0));
+  const track = bar.closest('.progress');
+  track?.classList.remove('indet');
+  if (reset) {              // a new run starts at the value at once — the bar never slides backwards
+    bar.style.transition = 'none';
+    bar.style.transform = `scaleX(${p / 100})`;
+    void bar.offsetWidth;
+    bar.style.transition = '';
+  } else bar.style.transform = `scaleX(${p / 100})`;
+  track?.classList.toggle('full', p >= 100);       // a finished bar stops its glint
 }
+
+// A copy button answers with a small pop and a green icon for a moment (`.copied`): any [data-copy] / [data-copy-text] button.
+document.addEventListener('click', (e) => {
+  const b = e.target.closest?.('[data-copy], [data-copy-text]');
+  if (!b) return;
+  b.classList.remove('copied');
+  void b.offsetWidth;
+  b.classList.add('copied');
+  clearTimeout(b._copiedTimer);
+  b._copiedTimer = setTimeout(() => b.classList.remove('copied'), 1300);
+});
 
 /** A row new to a list comes in with the page's entrance (`.enter`, `delay` ms late) — once: the class goes when it
  *  has played, so a later move of the row (patch()) never replays it. */

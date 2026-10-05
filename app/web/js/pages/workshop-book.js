@@ -7,7 +7,7 @@
 // file changes (workshop-live.js, patch()): what stayed, stays — pictures, scroll, an opened prompt.
 import {
   api, post, html, ic, ib, raw, setHtml, on, toast, menu, confirmBox, upload, copyText, fadeImages, highlightTokens,
-  plural, patch, syncSeg, runJob, topLayer, notFound, remember, media, attr,
+  plural, patch, syncSeg, runJob, topLayer, notFound, remember, media, attr, reducedMotion,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
 import { openAddBook } from '../add-book.js';
@@ -15,7 +15,7 @@ import { offerModule } from '../modules-ui.js';
 import { picture, checkWord, ERRORS, STATE_TEXT } from '../workshop-bits.js';
 import { pathStep } from '../path.js';
 import { watch, refresh, act, startGen, startPhoto, genAction, paintGenBar, genState, waitingFor } from '../workshop-live.js';
-import { rowTemplates, waitChip, slot } from './workshop-rows.js';
+import { rowTemplates, waitChip, chipFill, slot } from './workshop-rows.js';
 
 const IMG_RE = /\.(png|jpe?g|webp)$/i;
 const VIDEO_RE = /\.(mp4|mov|webm)$/i;
@@ -57,6 +57,9 @@ export async function mount(view, [rawId]) {
   let waitSeen = '';            // the row waited for at the last draw: the page follows the queue
   let lb = null;
   const lbItems = [];
+  let panelKey = null;          // the step + file shown in the panel: its content fades only when this changes, not on a live redraw
+  let shownVariant;             // the tab shown at the last draw: a switch fades the rows
+  const filled = new Map();     // row key → had a picture at the last draw: a picture that arrives into an empty frame fades in once
 
   setHtml(view, html`
     <div class="page-head ws-head" id="ws-head"></div>
@@ -297,7 +300,7 @@ export async function mount(view, [rawId]) {
     const panel = $('#ws-panel');
     const s = step(mem.step);
     const my = ++panelSeq;
-    if (!s) { panel.hidden = true; patch(panel, []); return; }
+    if (!s) { panel.hidden = true; panelKey = null; return; }   // closes by its height (css); the content stays until it has gone
     const files = panelFiles(s);
     const file = files.find((f) => f.name === mem.tabs.get(s.key)) || files.find((f) => f.exists) || files[0];
     let body;
@@ -310,6 +313,7 @@ export async function mount(view, [rawId]) {
     let state = s.key === 'pictures' || (s.key === 'photos' && s.state !== 'done') ? `${s.count} з ${s.total}` : STATE_TEXT[s.state];
     if (s.check) state += s.check.go ? ' · GO' : ' · перевірка не пройдена';
     const canOpen = file?.exists && file.area === 'agent';
+    const wasOpen = !panel.hidden;
     panel.hidden = false;
     const drawn = patch(panel, [
       ['head', html`<div class="ws-panel-head">
@@ -319,6 +323,9 @@ export async function mount(view, [rawId]) {
     ]);
     drawn.forEach(fadeImages);
     panel.querySelectorAll('.seg').forEach(syncSeg);
+    const key = `${s.key}|${file?.name || ''}`;
+    if (key !== panelKey && wasOpen && panelKey) appear(panel.querySelector('.ws-panel-body'), 220);
+    panelKey = key;
   }
 
   // ---------------------------------------------------------------- the rows (workshop-rows.js)
@@ -463,7 +470,7 @@ export async function mount(view, [rawId]) {
   let adopting = null; // the variant ('' — the base book) and how far it is, while a pick-up goes on
   function adoptBtn(v) {
     const name = v ? v.name : '';
-    if (adopting && adopting.variant === name) return html`<span class="chip chip-accent"><span class="ws-pulse"></span>${adopting.text}</span>`;
+    if (adopting && adopting.variant === name) return html`<span class="chip chip-accent chip-prog"><span class="ws-pulse"></span>${adopting.text}${chipFill(adopting.p)}</span>`;
     const keys = b.leftBehind?.[name] || [];
     if (!keys.length) return '';
     const folder = v ? `originals\\variants\\${v.name}` : 'originals';
@@ -478,6 +485,7 @@ export async function mount(view, [rawId]) {
     try {
       const res = await runJob(post(url('/adopt'), { variant }), (job) => {
         adopting.text = job.step || 'Підхоплюю…';
+        adopting.p = job.percent / 100;
         paintRows();
       });
       const n = res.done.length;
@@ -520,6 +528,13 @@ export async function mount(view, [rawId]) {
       : [...rows.map((r) => [r.key, rowCard(r)]), ['cover', coverCard()]];
     const drawn = patch($('#ws-rows'), cards);
     drawn.forEach(fadeImages);
+    if (shownVariant !== undefined && shownVariant !== mem.variant) appear($('#ws-rows'), 220);   // another tab: its rows come in
+    shownVariant = mem.variant;
+    for (const row of $('#ws-rows').children) {   // a picture that has just arrived into an empty frame fades in once
+      const now = !!row.querySelector('.ws-art'), was = filled.get(row.dataset.key);
+      if (was === false && now) row.querySelectorAll('.ws-art').forEach((a) => appear(a, 300));
+      filled.set(row.dataset.key, now);
+    }
     // One-shot animations go on after the redraw, not into the markup: written there, the next redraw found the markup
     // changed (the class gone) and drew the part once more, losing its hover and tip (26.09.2026).
     const body = coverSlide && $('#ws-rows .ws-cv-body');
@@ -531,7 +546,17 @@ export async function mount(view, [rawId]) {
 
   function paintProgress(key) {
     const bar = view.querySelector(`[data-up="${CSS.escape(key)}"]`);
-    if (bar) bar.style.transform = `scaleX(${uploading.get(key) || 0})`;
+    if (!bar) return;
+    const p = uploading.get(key) || 0;
+    // The upload's share is real; once it is all sent the server still cuts, flips and upscales for a time nobody can know — a neutral sweep, not a full-looking bar.
+    bar.parentElement.classList.toggle('proc', p >= 1);
+    bar.style.transform = p >= 1 ? '' : `scaleX(${p})`;
+  }
+
+  /** A node comes in once (opacity, a hair of scale) — for what arrives, not for what is redrawn. */
+  function appear(node, ms = 260) {
+    if (!node || reducedMotion()) return;
+    node.animate([{ opacity: 0, transform: 'scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: ms, easing: 'cubic-bezier(.2, .9, .25, 1)' });
   }
 
   /** A class that plays its animation once and goes. */
@@ -791,7 +816,10 @@ export async function mount(view, [rawId]) {
 
   // A picture dragged in from Explorer lands in the frame it is dropped on — one picture per frame.
   const files = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+  let hotNow = null;
   const mark = (target) => {
+    if (target === hotNow) return;   // dragover fires ~20 times a second: nothing to do while it is the same frame
+    hotNow = target;
     view.querySelectorAll('.drop-hot').forEach((x) => x.classList.remove('drop-hot'));
     target?.classList.add('drop-hot');
   };

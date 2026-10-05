@@ -4,16 +4,16 @@
 import { html, ic } from './lib.js';
 
 /** A bar of segments — the one way a book's progress is drawn (library: 4 parts, Workshop: 11 steps).
- *  `parts`: [{v: 0…1, skip?, nogo?, tip?}] */
+ *  `parts`: [{v: 0…1, skip?, nogo?, unk? (started, how far unknown), tip?}] */
 export function segBar(parts, tip = '') {
-  return html`<span class="segbar" ${tip ? html`data-tip="${tip}"` : ''}>${parts.map((p) => html`<i class="${p.skip ? 'skip' : ''} ${p.nogo ? 'nogo' : ''}" ${p.tip ? html`data-tip="${p.tip}"` : ''}><b style="transform:scaleX(${p.v})"></b></i>`)}</span>`;
+  return html`<span class="segbar" ${tip ? html`data-tip="${tip}"` : ''}>${parts.map((p) => html`<i class="${p.skip ? 'skip' : ''} ${p.nogo ? 'nogo' : ''} ${p.unk ? 'unk' : ''}" ${p.tip ? html`data-tip="${p.tip}"` : ''}><b style="transform:scaleX(${p.v})"></b></i>`)}</span>`;
 }
 
 /** A tile. `cover`: {src, lqip, front, cls, letter}; `sub`: the quiet line (html); `bar`: html from segBar();
  *  `meta`: html for the last line (or ''); `over`: html laid over the cover (a badge, a waiting mark). */
 export function bookTile({ key, title, number, sub = '', cover, over = '', bar = '', meta = '', i = 0, enter = false }) {
   const bg = cover.lqip ? html`style="background-image:url(${cover.lqip});background-position:${cover.front ? '100% 50%' : 'center'}"` : '';
-  return html`<button class="book-card ${enter ? 'enter' : ''}" type="button" data-key="${key}" data-open="${key}" aria-label="${title}" style="animation-delay:${Math.min(i * 22, 400)}ms">
+  return html`<button class="book-card ${enter ? 'enter' : ''}" type="button" data-key="${key}" data-open="${key}" aria-label="${title}" style="animation-delay:${Math.min(i * 16, 240)}ms">
     <div class="book-frame">
       <div class="book-cover ${cover.lqip ? 'lqip' : ''}" ${bg}>
         ${cover.src ? html`<img data-fade loading="lazy" decoding="async" alt="" class="${cover.cls || ''}" src="${cover.src}">`

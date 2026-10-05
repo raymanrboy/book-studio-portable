@@ -4,13 +4,13 @@
 // to another tab and comes back as it was left (keep.js). The queue — orders.js.
 import {
   api, post, html, ic, ib, raw, esc, setHtml, on, media, toast, segHtml, syncSeg, setSeg, relTime, dateTime, copyText,
-  openExternal, runJob, fadeImages, plural, confirmBox, patch, escBack, notFound, stickyFit, replaceKeyed, BOOKS,
+  openExternal, runJob, fadeImages, plural, confirmBox, patch, escBack, notFound, stickyFit, replaceKeyed, BOOKS, enterOnce, reducedMotion,
 } from '../lib.js';
 import { openFolderViewer, pageNo } from '../folder-viewer.js';
 import {
   STAGE_LABEL, providerName, planText, pagesText, addressFromEtsy, smoothWheel, trackChips, statusChip, receiptCopy,
   copyChip, restorable, alsoSentChip, pageVersion, proofHtml, filesBadge, checkNotices, fieldsHtml, addressHtml,
-  etsyAddressLines, svcChip, bookImage,
+  etsyAddressLines, svcChip, bookImage, paintBadge, ringHtml,
 } from '../order-bits.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { give } from '../handoff.js';
@@ -147,9 +147,9 @@ export async function mountCard(view, rid) {
     return [
       { key: 'canva', label: 'Canva', icon: 'canva', state: printed || f.folder || f.busy ? 'done' : 'todo',
         tip: item().book?.canvaUrl ? 'Canva: відкрити шаблон книги' : 'Canva: у паспорті книги немає посилання' },
-      { key: 'files', label: 'Файли', icon: 'folderIn', state: printed || filesOk ? 'done' : f.busy ? 'part' : 'todo', nogo: bad,
-        count: bad ? 'помилка' : f.busy ? `${Math.round(f.busy)}%` : filesOk ? `${f.pages} стор.` : '' },
-      { key: 'proof', label: 'Вичитка', icon: 'textScan', state: proof, nogo: !printed && errors > 0,
+      { key: 'files', label: 'Файли', icon: 'folderIn', state: printed || filesOk ? 'done' : f.busy ? 'part' : 'todo', nogo: bad, p: f.busy > 0 ? f.busy / 100 : undefined,
+        count: bad ? 'помилка' : f.busy > 0 ? `${Math.round(f.busy)}%` : filesOk ? `${f.pages} стор.` : '' },
+      { key: 'proof', label: 'Вичитка', icon: 'textScan', state: proof, nogo: !printed && errors > 0, p: c?.state === 'run' && c.percent > 0 ? c.percent / 100 : undefined,
         count: printed ? '' : c?.state === 'run' ? 'перевірка' : errors ? `${errors} ${plural(errors, LEVEL_WORDS.error)}` : c?.state === 'done' ? 'текст збігся' : '' },
       { key: 'print', label: 'Друк', icon: 'printer', state: printed ? 'done' : drafted ? 'part' : 'todo',
         count: printed ? providerName(o.provider) : drafted ? 'підтвердіть' : '',
@@ -158,6 +158,8 @@ export async function mountCard(view, rid) {
         count: o.stage === 'sent' ? 'позначте в Etsy' : o.stage === 'work' ? 'друкується' : '' },
     ];
   }
+  // The step's square fills as the work goes, without drawing the whole strip again.
+  const fillStep = (key, p) => $('#oc-path')?.querySelector(`[data-step="${key}"] .ws-dot.fill`)?.style.setProperty('--fill', `${Math.round(p * 100)}%`);
   const renderPath = () => setHtml($('#oc-path'), pathHtml(pathSteps(), { label: 'Шлях замовлення' }));
   function goStep(key) {
     const to = { files: '#oc-flow', proof: '#oc-proof', print: '#oc-print' }[key];
@@ -262,7 +264,7 @@ export async function mountCard(view, rid) {
     const c = f.check;
     if (!c) return '';
     if (c.state === 'run') {
-      return html`<span class="v-badge run" data-tip="${c.step || 'Перевірка тексту…'}"><span class="spinner"></span>${ic('textScan')}<span class="num">${Math.round(c.percent)}%</span></span>`;
+      return html`<span class="v-badge run" data-tip="${c.step || 'Перевірка тексту…'}">${ringHtml(c.percent)}${ic('textScan')}<span class="num">${c.percent > 0 ? `${Math.round(c.percent)}%` : ''}</span></span>`;
     }
     if (c.state === 'module') return html`<span class="v-badge" data-tip="Розумна вичитка — додатковий модуль, ще не встановлений">${ic('textScan')}Вичитка не встановлена</span>${ib('download', 'Встановити модуль «Розумна вичитка тексту» (≈ 9 ГБ) — тоді текст перевірятиметься сам', 'data-act="install-module"', { cls: 'sm' })}`;
     const again = ib('sync', 'Перевірити текст ще раз', 'data-act="recheck"', { cls: 'sm' });
@@ -415,8 +417,10 @@ export async function mountCard(view, rid) {
         const had = openIssues(w).length;
         Object.assign(w.check, { percent: j.percent || 0, step: j.step || '', partial: j.partial || null });
         if (!showing(w)) return;
+        const known = w.check.percent > 0; // 0 is the model still loading: no number, a neutral arc
+        if (known !== !!w.check.known) { w.check.known = known; renderPath(); } else if (known) fillStep('proof', w.check.percent / 100);
         const badge = view.querySelector('#oc-check-badge .v-badge.run');
-        if (badge) { badge.querySelector('.num').textContent = `${Math.round(w.check.percent)}%`; badge.dataset.tip = w.check.step; }
+        if (badge) { paintBadge(badge, w.check.percent); badge.dataset.tip = w.check.step; }
         if (openIssues(w).length !== had) { setHtml($('#oc-check'), checkBody()); markSeen(w); markPages(); }
       }, 700, live);
       if (!live()) return;
@@ -470,8 +474,10 @@ export async function mountCard(view, rid) {
   // The cross beside the back arrow appears once the draft is made: «робота над цим замовленням
   // завершена» — the card and the Order Creator let go of it and the queue opens (owner, 20.09.2026).
   function renderFinish() {
-    setHtml($('#oc-finish'), sentOf(o.receiptId)
-      ? ib('checkCircle', 'Завершити роботу над замовленням', 'data-act="finish"', { cls: 'sm' }) : '');
+    const slot = $('#oc-finish'), on = !!sentOf(o.receiptId);
+    if (slot.dataset.on === String(on)) return; // the tick comes in once, not again on every redraw
+    slot.dataset.on = String(on);
+    setHtml(slot, on ? ib('checkCircle', 'Завершити роботу над замовленням', 'data-act="finish"', { cls: 'sm' }) : '');
   }
 
   // The temporary link to this order's files for Gelato (a Cloudflare tunnel) is still open: said here, at the top, whatever the step —
@@ -484,11 +490,12 @@ export async function mountCard(view, rid) {
     const slot = $('#oc-link');
     const link = (o.links || [])[0];
     if (!slot) return;
-    if (!link || $('#oc-print .result-card')) { setHtml(slot, ''); return; }
+    if (!link || $('#oc-print .result-card')) { delete slot.dataset.link; setHtml(slot, ''); return; }
     if (!plaqueR || plaqueR.orderId !== link.orderId) plaqueR = { orderId: link.orderId, keepAliveSeconds: link.secondsLeft };
-    setHtml(slot, html`<div class="notice notice-success">${ic('link')}<div class="grow">Тимчасове посилання на файли для Gelato ще працює —
-      <b class="num" data-countdown>--:--</b>. Gelato забирає файли сам, зазвичай за хвилину.</div>
-      ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="link-close"', { cls: 'sm' })}</div>`);
+    if (slot.dataset.link !== String(link.orderId)) { slot.dataset.link = String(link.orderId); setHtml(slot, html`<div class="notice notice-success">${ic('link')}<div class="grow">Тимчасове посилання на файли для Gelato ще працює —
+      <b class="num" data-countdown>--:--</b>. Gelato забирає файли сам, зазвичай за хвилину.
+      <div class="progress progress-thin drain"><i data-drain></i></div></div>
+      ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="link-close"', { cls: 'sm' })}</div>`); }
     stopPlaque = runCountdown(slot, plaqueR, () => { o.links = []; setHtml(slot, ''); });
   }
 
@@ -508,13 +515,19 @@ export async function mountCard(view, rid) {
     linkTimer();
   }
 
+  let flowDrawn = false;
   function renderRight() {
     const ready = !!(f.folder && f.validation?.ok && !f.busy);
     renderFinish();
     renderPath();
     const scrolled = $('#oc-strip')?.scrollLeft || 0;
     view.querySelector('.ord-grid').classList.toggle('ord-solo', !manual); // a printed order: its data alone
-    patch($('#oc-flow'), manual ? [['files', filesCard()], ...(ready ? [['proof', proofCard()], ['print', printCard()]] : [])] : []);
+    const flow = $('#oc-flow');
+    const had = new Set([...flow.children].map((n) => n.dataset.key));
+    patch(flow, manual ? [['files', filesCard()], ...(ready ? [['proof', proofCard()], ['print', printCard()]] : [])] : []);
+    // a card new to the flow (the proof and the print once the files pass, the files card of «send again») comes in; the first draw does not
+    if (flowDrawn) [...flow.children].filter((n) => !had.has(n.dataset.key)).forEach((n) => enterOnce(n));
+    flowDrawn = true;
     fadeImages($('#oc-flow'));
     linkTimer();
     renderLink();
@@ -528,21 +541,24 @@ export async function mountCard(view, rid) {
     markPages();
   }
 
+  // A real percent fills the ring; a phase with none (the arranging, the first moment) is -1: a neutral arc, no number, no fake floor.
   const setBusy = (pct) => {
-    f.busy = Math.max(1, Math.min(99, pct));
-    const num = view.querySelector('#oc-flow .v-badge.run .num');
-    if (num) num.textContent = `${Math.round(f.busy)}%`;
+    const was = f.busy > 0;
+    f.busy = pct > 0 ? Math.min(99, pct) : -1;
+    paintBadge(view.querySelector('#oc-flow .v-badge.run'), f.busy);
+    if ((f.busy > 0) !== was) renderPath(); else if (f.busy > 0) fillStep('files', f.busy / 100);
   };
 
   // Put the export in page order (Cover.png + 1..N.png), then run the same full check as the Order Creator.
   async function arrange(path, w, my) {
     const i = work.indexOf(w);
+    if (showing(w)) setBusy(0); // the upload is over, the arranging has no percent
     const res = await post(`/api/orders/${o.receiptId}/files`, { folder: path, provider: byFiles(i) ? 'files' : providerOf(i), format: plan(i).format || null });
     if (my !== w.seq) return;
     Object.assign(w, { folder: res.path, note: res.note, pages: res.pageCount, decided: byFiles(i) ? res.provider : null });
     if (showing(w)) renderPlan();
     const v = await runJob(post('/api/creator/validate', { mode: providerOf(i), folder: w.folder }),
-      (j) => { if (my === w.seq && showing(w)) setBusy(60 + (j.percent || 0) * 0.4); }, 300, () => my === w.seq);
+      (j) => { if (my === w.seq && showing(w)) setBusy(j.percent || 0); }, 300, () => my === w.seq);
     if (my !== w.seq) return;
     Object.assign(w, { validation: v, busy: 0, check: null, replaced: restorable(v) });
     if (showing(w)) renderRight();
@@ -571,11 +587,11 @@ export async function mountCard(view, rid) {
     dropCheck(w);
     warmModel();
     const my = ++w.seq;
-    Object.assign(w, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
+    Object.assign(w, { folder: '', label: dropLabel(dropped), note: '', pages: 0, validation: null, busy: -1, error: '', check: null,
       decided: null, versions: {}, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
-      const path = await receiveDrop(dropped, (pct) => { if (my === w.seq && showing(w)) setBusy(pct * 0.6); });
+      const path = await receiveDrop(dropped, (pct) => { if (my === w.seq && showing(w)) setBusy(pct); });
       if (my === w.seq) await arrange(path, w, my);
     } catch (err) { failed(w, my, err); }
   }
@@ -589,7 +605,7 @@ export async function mountCard(view, rid) {
     const w = f;
     dropCheck(w);
     const my = ++w.seq;
-    Object.assign(w, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
+    Object.assign(w, { folder: '', label: path.split(/[\\/]/).pop(), note: '', pages: 0, validation: null, busy: -1, error: '', check: null,
       decided: null, versions: {}, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try { await arrange(path, w, my); } catch (err) { failed(w, my, err); }
@@ -602,7 +618,7 @@ export async function mountCard(view, rid) {
     dropCheck(w);
     warmModel();
     const my = ++w.seq;
-    Object.assign(w, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: 1, error: '', check: null,
+    Object.assign(w, { folder: '', label: `Минула відправка · ${relTime(e.sentAt)}`, note: '', pages: 0, validation: null, busy: -1, error: '', check: null,
       decided: null, versions: {}, replaced: new Set(), dismissed: new Set() });
     renderPlan(); renderRight();
     try {
@@ -721,7 +737,13 @@ export async function mountCard(view, rid) {
     }),
     on(view, 'click', '[data-href]', (e, b) => { location.hash = b.dataset.href; }),
     on(view, 'click', '[data-copy]', (e, b) => copyText(item().variations?.[+b.dataset.copy]?.value || '', 'Скопійовано')),
-    on(view, 'click', '[data-dismiss]', (e, b) => { f.dismissed.add(b.dataset.dismiss); keepMark(f, b.dataset.dismiss); paintCheck(); }),
+    on(view, 'click', '[data-dismiss]', (e, b) => {
+      const id = b.dataset.dismiss, row = b.closest('.tc-issue');
+      f.dismissed.add(id); keepMark(f, id);
+      // the finding fades out (150 ms) before the list closes over it
+      if (row && !reducedMotion()) row.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateX(8px)' }], { duration: 150, easing: 'ease-out', fill: 'forwards' }).finished.then(paintCheck, paintCheck);
+      else paintCheck();
+    }),
     on(view, 'click', '[data-lb]', (e, c) => {
       if (e.target.closest('[data-dismiss]') || !f.folder || !f.pages) return;
       openViewer(+c.dataset.lb);

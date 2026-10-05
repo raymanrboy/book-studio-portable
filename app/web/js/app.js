@@ -76,12 +76,12 @@ function buildSidebar() {
       <span class="nav-pill" id="nav-pill" style="opacity:0"></span>
       ${PLACES.map((n) => n.gap ? html`<span class="nav-gap" aria-hidden="true"></span>`
         : html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}" aria-label="${n.label}" data-tip="${n.label}" data-kbd="Alt+${n.key}" data-tip-side="right">
-        ${ic(n.icon)}${n.busy ? html`<span class="badge busy" data-busy="${n.busy}" hidden></span>` : ''}</a>`)}
+        ${ic(n.icon)}${n.busy ? html`<span class="badge busy" data-busy="${n.busy}" data-fx hidden></span>` : ''}</a>`)}
       <span class="nav-gap" aria-hidden="true"></span>
       <button class="nav-item nav-search" id="search-btn" type="button" aria-label="Пошук" data-tip="Пошук по всій програмі" data-kbd="Ctrl+K" data-tip-side="right">${ic('search')}</button>
     </nav>
     <div class="sidebar-foot">
-      <a class="nav-item nav-small" href="#/settings" data-nav="#/settings" aria-label="Налаштування" data-tip="Налаштування" data-tip-side="right">${ic('sliders')}<span class="badge" id="nav-badge" hidden></span></a>
+      <a class="nav-item nav-small" href="#/settings" data-nav="#/settings" aria-label="Налаштування" data-tip="Налаштування" data-tip-side="right">${ic('sliders')}<span class="badge" id="nav-badge" data-fx hidden></span></a>
       <button class="nav-item nav-small" id="theme-btn" type="button" aria-label="Вигляд" data-tip="Вигляд" data-tip-side="right"></button>
     </div>`);
   document.documentElement.dataset.mode = mode;
@@ -185,11 +185,11 @@ function wireSidebar() {
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      if (!document.querySelector('.modal-root, .lightbox')) openSearch();
+      if (!document.querySelector('.modal-root:not(.closing), .lightbox:not(.closing)')) openSearch();
       return;
     }
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
-    if (document.querySelector('.modal-root, .lightbox')) return; // a dialog or the viewer first; the page stays under it
+    if (document.querySelector('.modal-root:not(.closing), .lightbox:not(.closing)')) return; // a dialog or the viewer first; the page stays under it
     const p = places().find((x) => x.key === e.key);
     if (p) { e.preventDefault(); location.hash = entryOf(p, placeOf(location.hash || HOME) === p); }
   });
@@ -409,10 +409,11 @@ async function boot() {
   }
   // Warm up the other pages' code while the user looks at the first one; a picture the Workshop may be waiting for
   // since before a reload is noticed (the rail's dot, the title).
-  idle(() => {
-    ROUTES.forEach(([, load, , lazy]) => { if (!lazy) load().catch(() => {}); });
-    import('./workshop-live.js').then((live) => live.wake()).catch(() => {});
-  });
+  // One module per idle moment: evaluating them all in one go would hold the main thread for a few frames.
+  const warm = ROUTES.filter(([, , , lazy]) => !lazy).map(([, load]) => () => load().catch(() => {}));
+  warm.push(() => import('./workshop-live.js').then((live) => live.wake()).catch(() => {}));
+  const next = () => { const job = warm.shift(); if (job) { job(); idle(next); } };
+  idle(next);
 }
 
 boot();

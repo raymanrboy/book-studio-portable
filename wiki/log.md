@@ -3,6 +3,29 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-06] update | Progress shown only as far as known; smooth motion for a 170–180 Hz screen
+
+- Fix the same day, the real cause (owner: «the hitch was only where the word «Відправлені» appears»): a compact segmented control opened its chosen word by animating `max-width` and the pill followed through a ResizeObserver — layout every frame, the pill's transitions restarting each time, on top of building 86 rows. Now the buttons take their final widths at once, the word fades in (`seg-label-in`), the pill glides once (`app.css`, `lib.js` `syncSeg`).
+- Fix the same day: switching to a tab with many rows (the sent orders) hitched under the tab pill's glide — the tab now draws its first 14 rows at once (only those enter) and the rest ~90 ms later (`orders.js`, `render()`); a redraw no longer measures every row for a glide (`narrow({still})`).
+
+- Path squares: a step's `p` fills it in proportion (`--fill`, animated), unmeasured «started» is white with an accent edge (`path.js`, `listings.css`,
+  `order-card.js` files/proof, the Workshop's pictures/photos/prompts via `p` from `workshop/books.py`); the Workshop card's segment bar no longer shows a made-up half.
+- Foundation (`app.css`, `lib.js`, `app.js`, `palette.js`, `lightbox.js`): tokens, `patch()` morph, `flip()` ghosts, toast/menu/modal exits, `[data-fx]`, `.progress.indet/.live/.full`,
+  `.copied`, checkbox/radio ticks, theme change without the page slide, passive scroll listener, batched `syncSeg`, route warm-up one module per idle.
+- Pages: queue/archive/profit/creator/order card (ring badges, grid-rows reveals, keyed table), Workshop/library, mockups/slides (rAF-coalesced editor drags, keyed run rows,
+  indeterminate bars), Settings (no whole-card redraws). New `motion-mockups.css`, `motion-settings.css`. Decision in `decisions.md`.
+
+## [2026-10-05] update | Speed audit: the wiki check 54 s → 2 s, and what runs only when needed
+
+- `wiki_check.py`: the code's words in one set (was a regex over 3 MB for each of ~2800 names), `code_files()` walks without entering `data` and
+  once. The test run went from ~2 min to about one.
+- `textcheck.run.prime()` removed (and `test_textcheck_prime.py`): no model read at every start; `warm()` stays.
+- `sync._sync()`: Etsy (+ ledger), Printify and Gelato side by side (`_Together` keeps the bar forward).
+- `desktop.py`: `QUIET_EDGE` flags, `trim_profile()` for `window-profile` and `work-browser`; `images.prune_cache()` capped at 800 MB;
+  `workshop-live.js` and `slides-editor.js` ask every 4 s after 30 quiet seconds; `server._index_html()` sends an import map and
+  versioned addresses, `_static()` keeps a file asked for with `?v=` for good.
+- Tests: new `test_speed.py`, plus one each in `test_server_http.py` and `test_archive.py`. Decision recorded in `decisions.md`.
+
 ## [2026-10-05] update | The Profit page checks itself against Etsy's payment ledger
 
 - New `ledger.py` (+ `data/profit/ledger.json`): the sync reads Etsy's payment ledger (read only, scope `transactions_r`); `profit.py`

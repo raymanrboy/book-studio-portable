@@ -243,11 +243,35 @@ def find_browser() -> str | None:
     return None
 
 
+# Edge keeps downloading and storing things the program has no use for: component updates, its shopping, wallet and entity models
+# (~400 MB in each of the two profiles by 05.10.2026). Not asked for any more, and what is already there goes when no window holds the profile.
+QUIET_EDGE = ["--disable-component-update", "--disable-background-networking"]
+_EDGE_JUNK = ("component_crx_cache", "ProvenanceData", "Edge Entity Extraction", "Edge Shopping", "Edge Wallet")
+
+
+def trim_profile(profile: Path) -> int:
+    """Removes what Edge stored in a profile of ours that only it needs (it makes it again when it wants it). Only while no window
+    holds the profile (Edge keeps `lockfile` there then). Returns how many folders went. Never raises."""
+    import shutil
+    removed = 0
+    try:
+        if (profile / "lockfile").exists():
+            return 0
+        for name in _EDGE_JUNK:
+            if (profile / name).is_dir():
+                shutil.rmtree(profile / name, ignore_errors=True)
+                removed += 1
+    except OSError:
+        core.log.warning("Edge profile not trimmed", exc_info=True)
+    return removed
+
+
 def open_app_window(url: str) -> subprocess.Popen | None:
     """Opens the UI as a chromeless app window (Edge/Chrome --app). Falls back to the default browser."""
     browser = find_browser()
     if browser:
         profile = core.data_path("window-profile")
+        trim_profile(profile)
         args = [
             browser,
             f"--app={url}",
@@ -255,6 +279,7 @@ def open_app_window(url: str) -> subprocess.Popen | None:
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-sync",
+            *QUIET_EDGE,
             # No throttling of a window that another program covers or that is in the background: its page's heartbeat (every 20 s)
             # must keep coming, or the program takes a covered window for a closed one and shuts down (04.10.2026).
             "--disable-features=Translate,msEdgeSidebarV2,msHubApps,EdgeCollections,CalculateNativeWinOcclusion",

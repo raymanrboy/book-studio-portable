@@ -1,7 +1,7 @@
 ---
 title: How to run this wiki
 type: dev
-updated: 2026-10-03
+updated: 2026-10-05
 code:
   - app/tools/wiki_check.py
   - app/tests/test_wiki.py
@@ -86,7 +86,7 @@ code:
 ## Checking — `app/tools/wiki_check.py`
 
 ```
-python app/tools/wiki_check.py            # everything fine → exit code 0
+python app/tools/wiki_check.py            # everything fine → exit code 0 (~2 s: the names are looked up in a set of the code's words, and `data` is never walked — it took 54 s)
 python app/tools/wiki_check.py --changed  # which pages describe files changed in git
 python app/tools/wiki_check.py --map      # code file → pages
 ```

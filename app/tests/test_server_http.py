@@ -99,6 +99,22 @@ class HttpLayer(unittest.TestCase):
         open_routes = {p.pattern for m, p, fn, auth in server.ROUTES if auth == "none"}
         self.assertEqual({r.strip("^$") for r in open_routes}, OPEN)
 
+    def test_scripts_and_styles_are_asked_for_by_an_address_with_the_files_tag_and_kept_for_good(self):
+        import re
+        _, _, body = self.get("/")
+        html = body.decode("utf-8")
+        self.assertIn('<script type="importmap">', html)
+        self.assertLess(html.index("importmap"), html.index('rel="modulepreload"'))          # the map comes before any module
+        css = re.search(r'href="(/css/app\.css\?v=[0-9a-f]+)"', html)
+        script = re.search(r'src="(/js/app\.js\?v=[0-9a-f]+)"', html)
+        self.assertTrue(css and script)
+        status, headers, _ = self.get(script.group(1))
+        self.assertEqual(status, 200)
+        self.assertIn("immutable", headers["Cache-Control"])
+        self.assertIn("no-cache", self.get("/js/app.js")[1]["Cache-Control"])               # without the tag: asked again each time
+        imports = json.loads(re.search(r'<script type="importmap">(.*?)</script>', html).group(1))["imports"]
+        self.assertTrue(imports["/js/lib.js"].startswith("/js/lib.js?v="))
+
 
 class StartUp(unittest.TestCase):
     def test_the_program_starts_and_answers(self):

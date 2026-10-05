@@ -4,7 +4,7 @@
 // click away, behind the details toggle, so the page stays quiet. Theme lives only in the rail.
 import {
   api, post, html, ic, ib, setHtml, on, modal, toast, confirmBox, copyText, dateTime, slide, menu, remembered,
-  remember, runJob, setProgress, bytes, relTime, plural, markMissing, attr,
+  remember, runJob, setProgress, bytes, relTime, plural, markMissing, attr, glide, sleep, reducedMotion,
 } from '../lib.js';
 import { refreshInfo } from '../info.js';
 import { oauthFlow, pickMaster } from './settings-dialogs.js';
@@ -278,10 +278,7 @@ export async function mount(view, [rawSection]) {
     </div>`;
   }
 
-  const redrawModules = () => {
-    const old = view.querySelector('#set-modules');
-    if (old && mods) old.outerHTML = String(modulesCard());
-  };
+  const redrawModules = () => { if (mods) morphCard('modules', modulesCard); };
 
   async function loadTextcheck() {
     try { tc = await api('/api/textcheck/status'); } catch { return; } // the block stays as drawn from the settings
@@ -292,7 +289,8 @@ export async function mount(view, [rawSection]) {
   async function saveTextcheck(patch) {
     try { tc = await post('/api/settings/textcheck', patch); }
     catch (err) { toast(err.message, 'error'); }
-    if (tc) redrawModules();
+    // The switches already show the new state: redrawing the card would destroy the thumb mid-glide (and replay the notices).
+    if (tc && !('enabled' in patch || 'prescan' in patch)) redrawModules();
   }
 
   // Every 3 days on launch the whole program folder and the mockup templates go to Google Drive as one 7-Zip archive
@@ -319,17 +317,14 @@ export async function mount(view, [rawSection]) {
         <div class="set-row"><span class="grow">Уся папка програми й трафарети мокапів <span class="faint">· раз на <span class="num">${bk.everyDays}</span> дні, при запуску · ключі всередині · лишаються останні 7 і по одній на місяць за рік</span></span>
           <button class="btn btn-sm" data-act="bk-run">${ic('upload', 'icon-s')}Зробити копію зараз</button></div>
         ${bkJob ? html`<div><div class="row" style="margin-bottom:6px"><span id="bk-step" class="grow" style="font-size: var(--fs)">${bkJob.step}</span><span id="bk-pct" class="mono faint">${Math.round(bkJob.percent)}%</span></div>
-          <div class="progress"><i id="bk-bar" style="transform:scaleX(${bkJob.percent / 100})"></i></div></div>` : ''}
+          <div class="progress live"><i id="bk-bar" style="transform:scaleX(${bkJob.percent / 100})"></i></div></div>` : ''}
         ${bk.last && !bkJob ? html`<div class="faint" style="font-size: var(--fs)">Остання копія: ${dateTime(bk.last.at)} · ${bytes(bk.last.size)} · <span class="mono">${bk.last.file}</span>${bk.last.skippedCount ? ` · пропущено файлів, відкритих іншими програмами: ${bk.last.skippedCount}` : ''}</div>` : ''}
         ${failed && !bkJob ? html`<div class="notice notice-warn">${ic('alert')}<div>${dateTime(bk.error.at)}: ${bk.error.message}</div></div>` : ''}
       </div>`,
     });
   }
 
-  function redrawBackup() {
-    const old = view.querySelector('#set-backup');
-    if (old && bk) old.outerHTML = String(backupCard());
-  }
+  function redrawBackup() { if (bk) morphCard('backup', backupCard); }
 
   /** Follows a copy being made (started here or on launch) and redraws the block when it ends. */
   async function watchBackup(jobId) {
@@ -345,6 +340,7 @@ export async function mount(view, [rawSection]) {
         view.querySelector('#bk-step').textContent = j.step;
         view.querySelector('#bk-pct').textContent = `${Math.round(j.percent)}%`;
       }, 1000, () => view.isConnected);
+      if (view.isConnected && !reducedMotion()) { setProgress(view.querySelector('#bk-bar'), 100); await sleep(450); } // the bar is seen to fill before the block goes
       toast('Резервну копію зроблено — Google Диск завантажить її сам', 'success', 5000);
     } catch (err) {
       stopped = !view.isConnected;
@@ -405,15 +401,26 @@ export async function mount(view, [rawSection]) {
     markMissing(fields.map((f) => (typeof f === 'string' ? view.querySelector(f) : f)));
   }
 
-  /** Redraws one card in place; what was typed into its fields stays (the whole page used to be redrawn, wiping other fields). */
+  /** Redraws one card in place: the head and the body's inside are replaced, the card itself stays (the open state, the chevron,
+   *  the switches' own animations) and an open body glides to its new height. What was typed into its fields stays. */
   const CARD_OF_SECRET = { etsy_keystring: 'etsy', etsy_shared_secret: 'etsy', printify_token: 'printify', gelato_api_key: 'gelato' };
+  function morphCard(id, make) {
+    const old = view.querySelector(`#set-${id}`);
+    const acc = view.querySelector(`[data-body="${id}"]`);
+    if (!old || !acc) return;
+    const typed = [...old.querySelectorAll('input.input')].map((i) => [i.id ? `#${i.id}` : i.dataset.secretInput ? `[data-secret-input="${i.dataset.secretInput}"]` : '', i.value]).filter(([sel, v]) => sel && v);
+    const tpl = document.createElement('template');
+    tpl.innerHTML = String(make());
+    const next = tpl.content.firstElementChild;
+    old.querySelector('.set-head').innerHTML = next.querySelector('.set-head').innerHTML;
+    const body = acc.querySelector('.set-body');
+    const swap = () => { body.innerHTML = next.querySelector('.set-body').innerHTML; };
+    if (acc.classList.contains('open') && !reducedMotion()) glide(acc, swap); else swap();
+    typed.forEach(([sel, v]) => { const i = view.querySelector(sel); if (i) i.value = v; });
+  }
   function redrawCard(id) {
     const cards = { etsy: etsyCard, printify: printifyCard, gelato: gelatoCard, modules: modulesCard, backup: backupCard, transfer: transferCard, data: dataCard };
-    const old = view.querySelector(`#set-${id}`);
-    if (!old || !cards[id]) return;
-    const typed = [...old.querySelectorAll('input.input')].map((i) => [i.id ? `#${i.id}` : i.dataset.secretInput ? `[data-secret-input="${i.dataset.secretInput}"]` : '', i.value]).filter(([sel, v]) => sel && v);
-    old.outerHTML = String(cards[id]());
-    typed.forEach(([sel, v]) => { const i = view.querySelector(sel); if (i) i.value = v; });
+    if (cards[id]) morphCard(id, cards[id]);
   }
 
   // Blocks open and close with real intermediate frames (measured height, Web Animations).
@@ -570,7 +577,7 @@ export async function mount(view, [rawSection]) {
         try {
           const r = await post('/api/transfer/import', { password: view.querySelector('#tr-pw')?.value || '' });
           if (!r.cancelled) { toast(`Взято: ${r.keys} ${plural(r.keys, ['ключ', 'ключі', 'ключів'])} і налаштування`, 'success', 6000); trPassword = false; await reload(); return; }
-        } catch (err) { toast(err.message, 'error', 8000); trPassword = true; view.querySelector('#set-transfer').outerHTML = String(transferCard()); return; }
+        } catch (err) { toast(err.message, 'error', 8000); trPassword = true; redrawCard('transfer'); return; }
         b.disabled = false;
       }
       else if (a === 'mod-install' || a === 'mod-file') {

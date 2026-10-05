@@ -1,7 +1,7 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
@@ -129,7 +129,7 @@ cyan, `ib()` icons with tooltips.
   other five slides' colours, + a picker; opacity; the kind's own knobs), **Тінь** (the book's «З Photoshop» 0.6 and «Додаткова» 0.18; the text's shadow 0.7; an arrow's 0.45);
   ↔ ↕ mirror, copy, remove in its header. Nothing selected: the slide's background and the book's two numbers.
 - **Saving**: every change goes to disk ~0.5 s later with the version it was made on (`POST /api/slides/scene`).
-  **What an agent changes in the files shows up by itself**: the signature is asked every 1.5 s (and at once when the
+  **What an agent changes in the files shows up by itself**: the signature is asked every 1.5 s (every 4 s after 30 s without a click, a key or a change; at once when the
   window comes back) — «Слайд змінено ззовні — показано новий»; a save made on an old version is refused (409) and the
   editor takes the new one («ваша остання зміна не збереглась»); Ctrl+Z still goes back.
 

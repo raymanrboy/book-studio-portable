@@ -18,6 +18,7 @@ Standard library only.
 """
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -46,13 +47,18 @@ def rel(path: Path) -> str:
     return path.resolve().relative_to(REPO).as_posix()
 
 
+_CODE_FILES: list[Path] = []
+
+
 def code_files() -> list[Path]:
-    out = []
-    for path in APP.rglob("*"):
-        parts = set(path.relative_to(APP).parts)
-        if path.is_file() and path.suffix.lower() in CODE_SUFFIXES and not parts & SKIP_DIRS:
-            out.append(path)
-    return sorted(out)
+    """Every code file of the program, found once per run. The walk never enters SKIP_DIRS: `data` holds gigabytes of the owner's files,
+    and listing them only to drop them took ~3 s of every call."""
+    if not _CODE_FILES:
+        for top, dirs, files in os.walk(APP):
+            dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+            _CODE_FILES.extend(Path(top, f) for f in files if Path(f).suffix.lower() in CODE_SUFFIXES)
+        _CODE_FILES.sort()
+    return list(_CODE_FILES)
 
 
 def pages() -> list[Path]:
@@ -151,14 +157,21 @@ def coverage() -> dict[str, list[str]]:
     return out
 
 
-_ALL_CODE: list[str] = []
+_ALL_CODE: list = []        # [the code as one text, the set of every word in it]
 
 
 def _anywhere(ident: str) -> bool:
-    """The name is in some code file (a looser check than `defined_in`: for names the page does not link to a file)."""
+    """The name is in some code file (a looser check than `defined_in`: for names the page does not link to a file).
+    A plain word is looked up in the set of all words, made once — a regex over the whole code for each of ~2800 names
+    took 46 s of the 54 s this check lasted."""
     if not _ALL_CODE:
-        _ALL_CODE.append(chr(10).join(p.read_text(encoding="utf-8", errors="replace") for p in code_files()))
-    return re.search(r"\b" + re.escape(ident) + r"\b", _ALL_CODE[0]) is not None or ident in BUILTIN_NAMES
+        text = chr(10).join(p.read_text(encoding="utf-8", errors="replace") for p in code_files())
+        _ALL_CODE.extend([text, set(re.findall(r"\w+", text))])
+    if ident in BUILTIN_NAMES:
+        return True
+    if re.fullmatch(r"\w+", ident):
+        return ident in _ALL_CODE[1]
+    return re.search(r"\b" + re.escape(ident) + r"\b", _ALL_CODE[0]) is not None
 
 
 # Names of the language and its library that the pages mention in passing.

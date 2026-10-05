@@ -2,8 +2,9 @@
 // plus order states: cancelled, full / partial refund, replacement reprint.
 import {
   api, post, html, raw, ic, ib, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, menu, dateTime, relTime,
-  plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember, setProgress, glide,
+  plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember, setProgress, glide, patch, enterOnce,
 } from '../lib.js';
+import { stopSpin } from '../order-bits.js';
 import { refreshInfo, store } from '../info.js';
 import { DEAD_SHORT, costOf, detailHtml, rowInner } from './profit-rows.js';
 
@@ -42,10 +43,10 @@ export async function mount(view) {
       <div><h1 class="page-title">Прибуток</h1><div class="page-sub" id="pf-sub"></div></div>
       <div class="page-actions"><div class="tools">${ib('sync', 'Оновити замовлення', 'id="pf-sync"')}${ib('more', 'Інші способи оновлення', 'id="pf-more"')}</div></div>
     </div>
-    <div id="pf-progress" class="pf-progress" hidden>
+    <div id="pf-progress" class="pf-progress"><div>
       <div class="row"><b id="pf-step"></b><span class="faint" id="pf-detail"></span><span class="spacer"></span><span class="mono faint" id="pf-pct"></span></div>
-      <div class="progress progress-thin"><i id="pf-bar"></i></div>
-    </div>
+      <div class="progress progress-thin live indet" id="pf-barbox"><i id="pf-bar"></i></div>
+    </div></div>
     <div id="pf-notice" class="pf-notices"></div>
     <div id="pf-kpis" class="kpis"></div>
     <div class="period-bar">
@@ -135,7 +136,7 @@ export async function mount(view) {
     bits.push(st.syncing ? 'оновлення…' : d?.syncedAt ? `оновлено ${relTime(d.syncedAt)}` : 'ще не оновлено');
     $('#pf-sub').textContent = bits.join(' · ');
     $('#pf-sync').disabled = st.syncing;
-    $('#pf-sync').firstElementChild?.classList.toggle('spin', st.syncing);
+    { const ico = $('#pf-sync').firstElementChild; if (st.syncing) ico?.classList.add('spin'); else stopSpin(ico); }
     $('#pf-more').disabled = st.syncing;
   }
 
@@ -255,15 +256,22 @@ export async function mount(view) {
         : st.filter === 'issues' ? 'Проблемних замовлень немає' : 'Замовлень не знайдено'}</h3></div>`);
       return;
     }
-    setHtml(box, html`<div class="olist" role="table">
-      <div class="ohead" role="row"><div>Замовлення Etsy (доставка)</div><div class="r">На руки (Etsy Net)</div><div class="r">Собівартість</div><div class="r">Чистий прибуток</div><div class="c">Зіставлення</div></div>
-      ${slice.map((o) => html`<div class="oitem">
+    // The rows are drawn in place (patch(), keyed by order): a filter, a period or a page keeps the rows that stay, and the ones
+    // new to the table come in one after another; the whole table is no longer replaced (every row flashed).
+    if (!box.querySelector('.olist-rows')) {
+      setHtml(box, html`<div class="olist" role="table">
+        <div class="ohead" role="row"><div>Замовлення Etsy (доставка)</div><div class="r">На руки (Etsy Net)</div><div class="r">Собівартість</div><div class="r">Чистий прибуток</div><div class="c">Зіставлення</div></div>
+        <div class="olist-rows"></div></div><div id="pf-pager"></div>`);
+    }
+    const rowsEl = box.querySelector('.olist-rows');
+    const known = new Set([...rowsEl.children].map((n) => n.dataset.key));
+    patch(rowsEl, slice.map((o) => [o.id, html`<div class="oitem">
         <div class="orow ${st.open === o.id ? 'open' : ''}" role="row" data-row="${o.id}">${rowInner(o, st.data?.mode)}</div>
         <div class="acc ${st.open === o.id && st.details.has(o.id) ? 'open' : ''}" data-acc="${o.id}"><div>${st.open === o.id && st.details.has(o.id) ? detailHtml(st.details.get(o.id), st.data?.mode) : ''}</div></div>
-      </div>`)}
-    </div>
-      ${pages > 1 ? html`<div class="pager"><span><b>${st.page}</b> з <b>${pages}</b></span>
-        <span class="tools">${ib('chevLeft', 'Попередня сторінка', `data-page="-1" ${st.page === 1 ? 'disabled' : ''}`)}${ib('chevRight', 'Наступна сторінка', `data-page="1" ${st.page === pages ? 'disabled' : ''}`)}</span></div>` : ''}`);
+      </div>`]));
+    if (!reducedMotion()) [...rowsEl.children].filter((n) => !known.has(n.dataset.key)).forEach((n, i) => enterOnce(n, Math.min(i * 18, 220)));
+    setHtml(box.querySelector('#pf-pager'), pages > 1 ? html`<div class="pager"><span><b>${st.page}</b> з <b>${pages}</b></span>
+        <span class="tools">${ib('chevLeft', 'Попередня сторінка', `data-page="-1" ${st.page === 1 ? 'disabled' : ''}`)}${ib('chevRight', 'Наступна сторінка', `data-page="1" ${st.page === pages ? 'disabled' : ''}`)}</span></div>` : '');
     requestAnimationFrame(() => view.querySelectorAll('.state-seg .seg').forEach(syncSeg));
   }
 
@@ -330,13 +338,18 @@ export async function mount(view) {
     if (st.syncing) return;
     st.syncing = true; st.notice = null;
     renderHead(); renderNotice();
-    $('#pf-progress').hidden = false;
+    setProgress($('#pf-bar'), 0, { reset: true }); // not from the last run's end
+    $('#pf-barbox').classList.add('indet');
+    $('#pf-pct').textContent = '';
+    $('#pf-progress').classList.add('on');
     try {
       const res = await runJob(post('/api/profit/sync', { full }), (j) => {
         $('#pf-step').textContent = j.step;
         $('#pf-detail').textContent = j.detail ? ` · ${j.detail}` : '';
-        $('#pf-pct').textContent = `${Math.round(j.percent)}%`;
-        setProgress($('#pf-bar'), j.percent);
+        const known = j.percent > 0;
+        $('#pf-pct').textContent = known ? `${Math.round(j.percent)}%` : '';
+        $('#pf-barbox').classList.toggle('indet', !known);
+        setProgress($('#pf-bar'), known ? j.percent : 0);
       }, 420, () => !gone);
       const etsyPart = res.changed === null || res.changed === undefined
         ? `Завантажено ${res.receipts} ${plural(res.receipts, ['замовлення', 'замовлення', 'замовлень'])} Etsy.`
@@ -345,7 +358,13 @@ export async function mount(view) {
         ? { type: 'success', text: `Оновлено. ${etsyPart} Зіставлено з Printify/Gelato: ${res.matched}.` }
         : { type: 'success', text: `Etsy не підключено — завантажено ${res.printify} замовлень Printify.` };
       clearTimeout(noticeTimer);
-      noticeTimer = setTimeout(() => { if (st.notice?.type === 'success') { st.notice = null; renderNotice(); } }, 5000);
+      noticeTimer = setTimeout(() => {
+        if (st.notice?.type !== 'success') return;
+        const gone = () => { if (st.notice?.type === 'success') { st.notice = null; renderNotice(); } };
+        const el = $('#pf-notice').firstElementChild; // fades out (150 ms) before the list closes over it
+        if (el && !reducedMotion()) el.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-4px)' }], { duration: 150, easing: 'ease-out', fill: 'forwards' }).finished.then(gone, gone);
+        else gone();
+      }, 5000);
       st.page = 1;
       await load();
       refreshInfo();
@@ -356,7 +375,7 @@ export async function mount(view) {
       renderNotice();
     } finally {
       st.syncing = false;
-      if (!gone) { $('#pf-progress').hidden = true; renderHead(); }
+      if (!gone) { $('#pf-progress').classList.remove('on'); renderHead(); }
     }
   }
 

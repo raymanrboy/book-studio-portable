@@ -65,7 +65,10 @@
 .econ .pos { color: var(--green); }
 .econ .neg { color: var(--red); }
 .econ .sum { font-weight: 600; color: var(--text); padding-top: 6px; border-top: 1px dashed var(--border-strong); }
-.pf-progress { margin-bottom: 14px; }
+.pf-progress { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--t-slow) var(--ease), opacity var(--t) ease; }
+.pf-progress.on { grid-template-rows: 1fr; opacity: 1; }
+.pf-progress > div { overflow: hidden; min-height: 0; padding-bottom: 0; transition: padding-bottom var(--t-slow) var(--ease); }
+.pf-progress.on > div { padding-bottom: 14px; }
 .pf-progress .row { margin-bottom: 6px; font-size: var(--fs); }
 .pf-notices > .notice { margin-bottom: 12px; }
 .pf-notice-act { margin-top: 8px; }

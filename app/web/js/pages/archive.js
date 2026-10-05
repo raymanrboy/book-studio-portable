@@ -2,7 +2,7 @@
 // back at what was printed and to reprint it in a couple of clicks. The server keeps the files 14 days
 // after the order became "shipped" (studio/archive.py); "Не видаляти" keeps a book until unmarked.
 import {
-  api, post, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural,
+  api, post, html, ic, ib, setHtml, on, media, toast, relTime, dateTime, copyText, fadeImages, openExternal, plural, flip,
   patch, enterOnce, escBack, notFound, backToTools, BOOKS, attr,
 } from '../lib.js';
 import { openLightbox } from '../lightbox.js';
@@ -79,7 +79,10 @@ async function mountList(view) {
     const t = term.trim().toLowerCase();
     shown = data.entries.filter((e) => matches(e, t)).map((e) => e.id);
     const visible = new Set(shown);
-    [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); });
+    flip(list, () => { [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); }); }); // the rest glide, none jump
+    const key = shown.length ? '' : (t ? 'q' : 'none');
+    if (empty.dataset.shown === key) return;  // the same words are not set again per letter (their entrance would replay)
+    empty.dataset.shown = key;
     if (shown.length) { setHtml(empty, ''); return; }
     setHtml(empty, t ? html`<div class="empty">Нічого не знайдено</div>`
       : html`<div class="empty"><div class="empty-icon">${ic('orderArchive')}</div><h3>Архів порожній</h3>

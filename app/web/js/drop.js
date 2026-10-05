@@ -49,7 +49,7 @@ export async function receiveDrop({ entries, files }, onProgress, { withText = f
   const session = crypto.randomUUID().replace(/-/g, '');
   const total = (zip ? zip.size : list.reduce((sum, x) => sum + x.file.size, 0)) || 1;
   let sent = 0;
-  const report = () => onProgress?.(Math.max(1, Math.min(99, (sent / total) * 100)));
+  const report = () => onProgress?.(Math.max(0, Math.min(99, (sent / total) * 100)));
   if (zip) await upload(`/api/drop/zip?${new URLSearchParams({ session, name: zip.name, ...(withText ? { text: '1' } : {}) })}`, zip, (p) => { sent = p * total; report(); });
   else {
     let next = 0, failure = null;

@@ -3,13 +3,14 @@
 // next prompt in the clipboard) — and redraws itself. While a picture is awaited and the owner is elsewhere in Book
 // Studio the link keeps asking every 4 s, so a catch is noticed wherever he is: a notice, and the 'bs:busy' event —
 // the rail's dot and the window's title (app.js).
-import { api, post, html, ic, ib, toast, tellBusy, patch } from './lib.js';
+import { api, post, html, ic, ib, toast, tellBusy, patch, reducedMotion } from './lib.js';
 
 const FAST = 1500, SLOW = 4000, OFFLINE = 10000; // OFFLINE: while the «no connection» overlay is up it is asked rarely
+const CALM_AFTER = 30000;    // nothing changed on the page and nothing is generated for this long: it is asked every SLOW, not FAST (05.10.2026)
 let gen = null;              // the generation mode: generate.Session.status() on the server
 let page = null;             // the Workshop page on screen: { book, sig, sigUrl, onChange }
 let primed = false, seenAt = 0, seenError = '', said = undefined;
-let timer = 0, asking = false;
+let timer = 0, asking = false, lastChange = Date.now();
 
 export const genState = () => gen;
 
@@ -17,6 +18,7 @@ export const genState = () => gen;
  *  a page of its own asks there instead ({sig, gen}: the «Фотомокапи» page, its templates). */
 export function watch({ book = '', sig, gen: g, sigUrl = '' }, onChange) {
   page = { book, sig, sigUrl, onChange };
+  lastChange = Date.now();
   take(g);
   schedule();
   // Leaving the page: one more look, so a wait begun there goes on being followed from anywhere in Book Studio.
@@ -24,16 +26,17 @@ export function watch({ book = '', sig, gen: g, sigUrl = '' }, onChange) {
 }
 
 /** After the page did something itself (a picture dropped, a generation started): look at once. */
-export const refresh = () => schedule(0);
+export const refresh = () => { lastChange = Date.now(); schedule(0); };
 /** Book Studio's start: one look — a generation may be going on from before a reload. */
 export const wake = () => schedule(0);
 
 // The window comes back into view: a look at once — only when there is something to follow.
-document.addEventListener('visibilitychange', () => schedule(document.visibilityState === 'visible' && (page || gen?.active) ? 0 : undefined));
+document.addEventListener('visibilitychange', () => { lastChange = Date.now(); schedule(document.visibilityState === 'visible' && (page || gen?.active) ? 0 : undefined); });
 
 function schedule(ms) {
   clearTimeout(timer);
-  let wait = ms ?? (page && document.visibilityState === 'visible' ? FAST : gen?.active ? SLOW : null);
+  const calm = Date.now() - lastChange > CALM_AFTER && !gen?.active;
+  let wait = ms ?? (page && document.visibilityState === 'visible' ? (calm ? SLOW : FAST) : gen?.active ? SLOW : null);
   if (wait !== null && document.getElementById('offline')?.hidden === false) wait = Math.max(wait, OFFLINE);
   if (wait !== null) timer = setTimeout(ask, wait);
 }
@@ -50,6 +53,7 @@ async function ask() {
     if (watching && watching === page && data.sig !== watching.sig) {
       const was = watching.sig;
       watching.sig = data.sig;
+      lastChange = Date.now();
       try { await watching.onChange(); }
       catch (err) { watching.sig = was; throw err; }          // the page did not redraw: the next tick tries again
     }
@@ -126,6 +130,15 @@ const barSeen = new WeakMap();   // slot → what its bar showed: {row, item}
 export function paintGenBar(slot, book) {
   const bar = genBar(book);
   const had = !!slot.firstElementChild;
+  clearTimeout(slot._gbGone);
+  // The slot is a 0fr/1fr grid: the bar opens the page up and closes it again, instead of the page jumping by its height.
+  // On the way out the old bar stays until the slot has shut.
+  if (!bar && had && !reducedMotion()) {
+    slot.classList.remove('open');
+    slot._gbGone = setTimeout(() => { patch(slot, []); barSeen.delete(slot); }, 300);
+    return;
+  }
+  slot.classList.toggle('open', !!bar);
   const drawn = patch(slot, bar ? [['bar', bar]] : []);
   const a = gen?.active;
   const now = { row: a ? `${a.book}|${a.variant || ''}|${a.key}|${a.step}` : '', item: a?.item };

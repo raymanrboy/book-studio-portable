@@ -26,6 +26,7 @@ code:
 
 ## What a sync does (`_sync()`)
 
+0. **Side by side** (05.10.2026): Etsy (with its payment ledger), Printify and Gelato are read in parallel, each into its own part of the snapshot (`ThreadPoolExecutor` in `_sync()`); the progress bar only moves forward (`_Together`). An Etsy failure still fails the whole sync — once the other two are through.
 1. **Etsy**: only receipts changed since the previous sync (with a 1-hour overlap); a full re-read
    happens on the first sync, once a week, with a different shop, or on request (`full`). An Etsy
    failure = a failure of the whole sync. A full read keeps each receipt once (`merge_receipts()`): Etsy pages

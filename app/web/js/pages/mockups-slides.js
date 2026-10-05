@@ -2,7 +2,8 @@
 // the next step; I press it and they are made by themselves; then a button offers to go into our editor"). Above it,
 // how far the pictures without background are (cut while Photoshop works — studio/slides/cutout.py). The six are
 // made from the template (studio/slides/work.py); the editor is its own page, loaded only when opened (#/slides/…).
-import { api, post, html, ic, ib, setHtml, media, toast, runJob, fadeImages, plural, confirmBox, menu, attr } from '../lib.js';
+import { api, post, html, ic, ib, setHtml, media, toast, runJob, fadeImages, plural, confirmBox, menu, attr, setProgress } from '../lib.js';
+import { morphList, reveal } from './mockups-run.js';
 import { openLightbox } from '../lightbox.js';
 
 const SHOT_W = 480;
@@ -54,14 +55,27 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     const failed = files.filter(([, v]) => v.startsWith('error')).map(([n]) => n);
     const going = files.length - done - failed.length;
     return html`<div class="sl-cuts ${going ? 'going' : 'ok'}">
-      ${going ? html`<span class="spinner"></span>` : ic('check', 'icon-s')}
-      <span class="grow">Без фону · <span class="num">${done}/${files.length}</span>${going ? ' — вирізаю, поки Photoshop працює' : ''}</span>
+      ${going ? html`<span class="progress progress-thin live sl-cuts-bar"><i style="transform:scaleX(${done / files.length})"></i></span>` : ic('check', 'icon-s')}
+      <span class="grow">Без фону · <span class="num sl-cuts-num">${done}/${files.length}</span>${going ? ' — вирізаю, поки Photoshop працює' : ''}</span>
       ${done ? ib('folderOpen', 'Відкрити папку «Без фону»', `data-act="open-nobg" ${attr('data-path', sl.cuts.noBg)}`, { cls: 'sm' }) : ''}
     </div>${failed.length ? html`<div class="notice notice-warn">${ic('alert')}<div>Не вирізались: ${failed.join(', ')}</div></div>` : ''}`;
   }
   function paintCuts() {
     const line = $('#sl-cuts');
-    if (line) setHtml(line, cutsLine());
+    if (!line) return;
+    // still going and the line is already drawn: its bar and count move on (a rebuild would restart the glide)
+    const bar = line.querySelector('.sl-cuts-bar > i');
+    if (bar) {
+      const next = document.createElement('div');
+      setHtml(next, cutsLine());
+      const nb = next.querySelector('.sl-cuts-bar > i');
+      if (nb && next.children.length === line.children.length) {
+        setProgress(bar, Number(nb.style.transform.replace(/[^0-9.]/g, '')) * 100 || 0);
+        line.querySelector('.sl-cuts-num').textContent = next.querySelector('.sl-cuts-num').textContent;
+        return;
+      }
+    }
+    setHtml(line, cutsLine());
   }
 
   // ---------------------------------------------------------------- the scheme (2026-09-30: "a new listing — and I can pick the scheme at once")
@@ -77,7 +91,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     const b = box();
     if (!b) return;
     const show = ready() || !!sl.result || !!sl.run;
-    b.hidden = !show;
+    reveal(b, show);
     if (!show) return;
     if (sl.schemes === null) loadSchemes();
     if (folder() && folder() !== sl.folder) pollCuts();
@@ -109,7 +123,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     return html`<div class="mk-run">
       <div class="row mk-run-now"><span class="spinner"></span><span class="grow truncate" id="sl-step">${r.step}</span>
         <span class="num faint" id="sl-pct">${Math.round(r.percent)}%</span></div>
-      <div class="progress"><i id="sl-bar" style="transform:scaleX(${Math.max(3, r.percent) / 100})"></i></div>
+      <div class="progress live ${r.percent > 0 ? '' : 'indet'}"><i id="sl-bar" style="transform:scaleX(${Math.max(0, Math.min(100, r.percent)) / 100})"></i></div>
       <div class="mk-rows" id="sl-rows">${(r.rows || []).map((row, i) => html`<div class="mk-row ${row.state}"><span class="mk-row-ico">${icon(row.state)}</span>
         <span class="grow truncate"><span class="num faint">${i + 1}</span> · ${row.title}</span></div>`)}</div>
     </div>`;
@@ -171,10 +185,11 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     if (!step) { paint(); return; }
     step.textContent = r.step;
     pct.textContent = `${Math.round(r.percent)}%`;
-    bar.style.transform = `scaleX(${Math.max(3, r.percent) / 100})`;
+    bar.parentElement.classList.toggle('indet', !(r.percent > 0));
+    setProgress(bar, r.percent);
     const rows = $('#sl-rows');
     const icon = (s) => (s === 'done' ? ic('check') : s === 'work' ? html`<span class="spinner"></span>` : html`<i class="mk-dot"></i>`);
-    setHtml(rows, (r.rows || []).map((row, i) => html`<div class="mk-row ${row.state}"><span class="mk-row-ico">${icon(row.state)}</span>
+    morphList(rows, (r.rows || []).map((row, i) => html`<div class="mk-row ${row.state}"><span class="mk-row-ico">${icon(row.state)}</span>
       <span class="grow truncate"><span class="num faint">${i + 1}</span> · ${row.title}</span></div>`));
   }
 

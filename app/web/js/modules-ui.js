@@ -1,6 +1,6 @@
 // Optional modules (studio/modules.py): the heavy parts — the text check and upscaling — that are not in the program until
 // the user asks. Where one would be used the page offers it; this file asks, installs with a progress window, and says when done.
-import { api, post, html, modal, toast, confirmBox, runJob, setProgress } from './lib.js';
+import { api, post, html, modal, toast, confirmBox, runJob, setProgress, sleep, reducedMotion } from './lib.js';
 
 export const listModules = () => api('/api/modules');
 
@@ -32,7 +32,7 @@ export async function installModule(m, fromFile = false) {
     dismissible: false,
     body: html`<div class="stack">
       <div class="row"><span id="mod-step" class="grow">Підготовка…</span><span id="mod-pct" class="mono faint">0%</span></div>
-      <div class="progress"><i id="mod-bar"></i></div>
+      <div class="progress live"><i id="mod-bar"></i></div>
       <div class="faint" id="mod-detail" style="font-size: var(--fs)"></div>
     </div>`,
   });
@@ -41,12 +41,19 @@ export async function installModule(m, fromFile = false) {
     await runJob(Promise.resolve(start), (j) => {
       const bar = q('#mod-bar');
       if (!bar) return;
-      const percent = Number(j.percent) || 0;
-      setProgress(bar, percent);
+      // No percent known for this phase: a neutral sweep, never a bar stuck at 0% or half filled.
+      const known = j.percent !== null && j.percent !== undefined && Number.isFinite(Number(j.percent));
+      bar.parentElement.classList.toggle('indet', !known);
+      if (known) setProgress(bar, Number(j.percent));
       q('#mod-step').textContent = j.step;
-      q('#mod-pct').textContent = `${Math.round(percent)}%`;
+      q('#mod-pct').textContent = known ? `${Math.round(Number(j.percent))}%` : '';
       q('#mod-detail').textContent = j.detail || '';
     }, 1000);
+    if (!reducedMotion()) {
+      q('#mod-bar')?.parentElement.classList.remove('indet');
+      setProgress(q('#mod-bar'), 100);
+      await sleep(450); // the bar is seen to fill before the window goes
+    }
     box.close();
     toast(`«${m.title}» встановлено`, 'success', 5000);
     return true;

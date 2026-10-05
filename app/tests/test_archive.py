@@ -594,6 +594,23 @@ class PreviewCache(unittest.TestCase):
             self.assertTrue(used.exists())
             self.assertFalse(old.exists() or half.exists())
 
+    def test_when_the_previews_pass_the_limit_the_least_recently_used_go_first(self):
+        root = core.data_path("cache", "thumbs", "zz")
+        root.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, root, True)
+        now = time.time()
+        files = []
+        for n in range(4):
+            f = root / f"limit-{n}.jpg"
+            f.write_bytes(b"x" * 1000)
+            os.utime(f, (now - 100 * (4 - n),) * 2)            # limit-0 the oldest
+            files.append(f)
+        before = sum(1 for f in core.data_path("cache", "thumbs").rglob("*") if f.is_file() and f not in files)
+        images.prune_cache(max_bytes=sum(f.stat().st_size for f in core.data_path("cache", "thumbs").rglob("*") if f.is_file()) - 2500)
+        left = [f for f in files if f.exists()]
+        self.assertLess(len(left), 4)
+        self.assertEqual(left, files[len(files) - len(left):])    # what went is the oldest, never a newer one
+
     def test_the_lock_table_forgets_finished_previews(self):
         with tempfile.TemporaryDirectory() as tmp:
             page = Path(tmp) / "2.png"

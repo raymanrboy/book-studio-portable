@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -180,7 +180,7 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 
 ## Live, and smooth
 
-- A Workshop page asks `/api/workshop/sig` every 1.5 s while on screen (a book's page — only its own files, `os.scandir`);
+- A Workshop page asks `/api/workshop/sig` every 1.5 s while on screen (every 4 s after 30 quiet seconds; a change, a drop or the window coming back makes it 1.5 s again) (a book's page — only its own files, `os.scandir`);
   elsewhere, while a picture is awaited, only `/api/workshop/gen`. The generation mode starts only when first used.
 - A change redraws **in place** (`patch()` in `lib.js`): unchanged parts stay, a picture already shown is carried over —
   nothing reloads or blinks; one-shot animations run after the redraw.

@@ -27,9 +27,13 @@
 .ws-head .ws-tier { align-self: flex-start; margin-top: 4px; }
 
 /* The generation bar: what is awaited, what's in the clipboard, how far the queue is — sticky on top. */
-.ws-genbar-slot { position: sticky; top: 0; z-index: 20; }
+.ws-genbar-slot { position: sticky; top: 0; z-index: 20; display: grid; grid-template-rows: 0fr; overflow: hidden; transition: grid-template-rows 280ms var(--ease), margin-bottom 280ms var(--ease); }
+/* A bar there: the slot opens to its height (the page below glides down, no jump); no bar: it shuts again (workshop-live.js paintGenBar()).
+   While open nothing is clipped, so the bar's ring and shadow show whole. */
+.ws-genbar-slot.open { grid-template-rows: 1fr; overflow: visible; margin-bottom: 10px; }
+.ws-genbar-slot > .ws-genbar { min-height: 0; margin: 0; }
 .ws-genbar {
-  position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; margin: -6px 0 16px;
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px;
   border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--accent-line); box-shadow: var(--shadow), 0 0 0 3px var(--accent-soft);
 }
 /* In once, when a wait begins; then only its line changes — the next part glides in (paintGenBar()). */
@@ -76,7 +80,11 @@
 .ws-dot img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
 .ws-step.done .ws-dot { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .ws-step.done .ws-dot.photo { background: var(--paper); }
-.ws-step.part .ws-dot { border-color: var(--accent); color: var(--accent-ink); background: linear-gradient(90deg, var(--accent-soft) 50%, var(--surface) 50%); }
+/* Started: an accent edge on white — never half-filled as a guess. A step whose progress is really known (`.fill`) fills from the bottom in proportion to it. */
+@property --fill { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+.ws-dot { transition: --fill 360ms var(--ease), background-color var(--t-fast) ease, border-color var(--t-fast) ease, color var(--t-fast) ease; }
+.ws-step.part .ws-dot { border-color: var(--accent); color: var(--accent-ink); background: var(--surface); }
+.ws-step.part .ws-dot.fill { background: linear-gradient(0deg, color-mix(in srgb, var(--accent) 30%, var(--surface)) var(--fill), var(--surface) var(--fill)); }
 .ws-step.skip .ws-dot { border-style: dashed; }
 .ws-step.next:not(.done) .ws-dot { border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 0 0 3px var(--accent-soft); overflow: visible; }
 .ws-step.next:not(.done) .ws-dot::after { /* the next step breathes: a ring that fades (opacity only) */
@@ -95,7 +103,9 @@
 .ws-step .ws-step-count.nogo { color: var(--red); }
 
 /* The step's panel: its file (text, picture), the book check, the work the step asks for. */
-.ws-panel { border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); overflow: hidden; }
+.ws-panel { border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); overflow: hidden; interpolate-size: allow-keywords; height: auto; transition: height 300ms var(--ease), opacity var(--t) ease; }
+/* Folded: it stays rendered at no height, so it opens and shuts by its height instead of snapping (the old display:none). */
+.ws-panel[hidden] { display: block; height: 0; opacity: 0; border-width: 0; box-shadow: none; visibility: hidden; pointer-events: none; transition: height 240ms var(--ease), opacity 160ms ease, visibility 0s 240ms; }
 .ws-panel-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .ws-panel-title { font-family: var(--font-display); font-size: var(--fs-m); font-weight: 600; }
 .ws-panel-state { font-size: var(--fs); color: var(--text-3); }
@@ -154,13 +164,14 @@
 #ws-notes .notice { margin-bottom: 14px; }
 .ws-rows { display: flex; flex-direction: column; gap: 18px; }
 .ws-row {
-  display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; scroll-margin-top: 80px;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; scroll-margin-top: 80px; position: relative;
   border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s);
-  transition: border-color var(--t) ease, box-shadow var(--t) ease;
 }
-.ws-row.waiting { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-s); }
-.ws-row.flash { animation: ws-flash 1.2s var(--ease); }
-@keyframes ws-flash { 0%, 35% { box-shadow: 0 0 0 3px var(--accent-line), var(--shadow-s); } }
+/* The ring (waiting for a picture, or «here it is» after a jump) is a layer whose opacity goes — no box-shadow or border repaint of the whole card. */
+.ws-row::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; border: 1px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); opacity: 0; pointer-events: none; transition: opacity var(--t) ease; }
+.ws-row.waiting::after { opacity: 1; }
+.ws-row.flash::after { animation: ws-flash 1.2s var(--ease); }
+@keyframes ws-flash { 0%, 35% { opacity: 1; } 100% { opacity: 0; } }
 .ws-row-head { display: flex; align-items: center; gap: 8px; min-height: 30px; }
 .ws-row-label { font-family: var(--font-display); font-size: var(--fs-m); font-weight: 600; line-height: var(--lh); }
 .ws-row-act { margin-left: auto; display: flex; gap: 6px; align-items: center; }
@@ -171,8 +182,11 @@
 .ws-body { margin: 0; padding-right: 4px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs); line-height: var(--lh-read); color: var(--text); }
 .ws-text .ws-body { font-family: var(--font-book-text); font-size: var(--fs-book); line-height: var(--lh-read); }
 .ws-body.empty-text { color: var(--text-3); font-family: var(--font); font-size: var(--fs); }
-.ws-mono { font-family: var(--font-mono); font-size: var(--fs-s); line-height: var(--lh-read); color: var(--text-2); }
-.ws-mono.clamp { max-height: 4.8em; overflow: hidden; mask-image: linear-gradient(#000 60%, transparent); }
+.ws-mono { font-family: var(--font-mono); font-size: var(--fs-s); line-height: var(--lh-read); color: var(--text-2); position: relative; overflow: hidden; interpolate-size: allow-keywords; height: auto; transition: height 260ms var(--ease); }
+/* A long prompt: three lines, a fade at the foot; «Весь промпт» opens it by its height (the fade is an overlay whose opacity goes, a mask can't). */
+.ws-mono.clamp { height: 4.8em; }
+.ws-mono::after { content: ""; position: absolute; inset: auto 0 0; height: 2em; background: linear-gradient(transparent, var(--surface-2)); opacity: 0; pointer-events: none; transition: opacity var(--t) ease; }
+.ws-mono.clamp::after { opacity: 1; }
 .ws-more { border: 0; background: none; padding: 6px 0 0; font-size: var(--fs-s); font-weight: 600; color: var(--accent-ink); }
 .ws-more:hover { text-decoration: underline; }
 
@@ -207,7 +221,9 @@
 .ws-ph:hover .ws-ph-text b, .drop-hot > .ws-ph .ws-ph-text b { color: var(--accent-ink); }
 .ws-will-flip { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; font-size: var(--fs-s); color: var(--accent-ink); }
 .ws-drop.drop-hot { outline: 0 !important; background: none !important; }
-.drop-hot > .ws-art { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The frame's outline is there, transparent: a hover with a file fades it in. */
+.ws-art { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color var(--t-fast) ease; }
+.drop-hot > .ws-art { outline-color: var(--accent); }
 .ws-art { position: absolute; inset: 0; border-radius: var(--r-art); background: var(--paper); box-shadow: var(--art-shadow); }
 .ws-art:hover .img-actions, .ws-art:focus-within .img-actions { opacity: 1; transform: none; }
 .ws-art img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; cursor: zoom-in; }
@@ -232,6 +248,12 @@
   font-size: var(--fs); font-weight: 600; color: var(--accent-ink); background: color-mix(in srgb, var(--surface) 72%, transparent); animation: fade-in var(--t) ease both;
 }
 .ws-up { width: 56%; height: 4px; border-radius: var(--r-art); background: var(--border); overflow: hidden; }
+/* All sent, the server is working (cuts, flips, upscales): the time is unknown, so a neutral sweep instead of a full bar. */
+.ws-up.proc > i { width: 40%; transform: none; transition: none; animation: ws-sweep 1.1s ease-in-out infinite; }
+@keyframes ws-sweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+/* A chip's own progress: a 2 px line along its foot, shown only for a real fraction (--f: 0…1). */
+.chip-prog { position: relative; }
+.ws-chipfill { position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: var(--r-art); background: var(--accent); transform-origin: left; transform: scaleX(var(--f, 0)); transition: transform 500ms var(--ease); pointer-events: none; }
 .ws-up > i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform 200ms var(--ease); }
 
 /* The cover: ① the picture ② its margins — one card, two stages that slide. */

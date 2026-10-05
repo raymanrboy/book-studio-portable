@@ -1,7 +1,7 @@
 ---
 title: Book library and a book's passport
 type: feature
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/web/js/pages/books.js
   - app/studio/library.py

@@ -1,7 +1,7 @@
 // Pieces shared by the order pipeline page, the order archive and the Order Creator: order stages,
 // countries, the printer's status and tracking chips, the buyer's fields, the Etsy → Gelato address
 // mapping, the sync, dropped folders/ZIPs and the page viewer of a print folder.
-import { api, post, runJob, media, html, raw, ic, ib, copyText, syncSeg } from './lib.js';
+import { api, post, runJob, media, html, raw, ic, ib, copyText, syncSeg, reducedMotion } from './lib.js';
 
 export const COUNTRIES = [
   ['US', 'США'], ['CA', 'Канада'], ['GB', 'Велика Британія'], ['AU', 'Австралія'], ['NZ', 'Нова Зеландія'], ['IE', 'Ірландія'],
@@ -64,7 +64,11 @@ export const statusChip = (o) => (o.printStatus
 export function countStages(seg, orders, term) {
   seg.querySelectorAll('button[data-value]').forEach((b) => {
     const n = orders.filter((o) => o.stage === b.dataset.value && matchesOrder(o, term)).length;
-    b.querySelector('.seg-count').textContent = n;
+    const count = b.querySelector('.seg-count');
+    if (count.textContent !== String(n)) {
+      count.textContent = n;
+      if (!reducedMotion()) count.animate([{ opacity: .3, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.22, 1, .36, 1)' });
+    }
     b.classList.toggle('has', n > 0 && b.dataset.value === 'sent'); // the owner's to-do: its count takes the ink
   });
   syncSeg(seg);
@@ -86,10 +90,23 @@ export const bookImage = (b, w) => media(`/media/book/${b.id}/${b.image}`, { w }
 export const svcChip = (p, { tip = '', text = providerName(p), lg = false } = {}) => html`<span class="chip ${lg ? 'chip-lg ' : ''}svc-${p}"${
   tip ? html` data-tip="${tip}"` : ''}>${ic(p, 'icon-s')}${lg ? html`<span>${text}</span>` : text}</span>`;
 
+/** A progress ring: filled in proportion to `pct` when it is really known (> 0); otherwise a neutral turning arc (never a guess). */
+export const ringHtml = (pct) => html`<span class="v-ring ${pct > 0 ? '' : 'indet'}" style="--p:${pct > 0 ? Math.round(pct) : 25}"></span>`;
+
+/** A running badge's ring and number moved to `pct` in place (no redraw); `pct` <= 0 — unknown, the neutral arc. */
+export function paintBadge(badge, pct) {
+  if (!badge) return;
+  const known = pct > 0;
+  const ring = badge.querySelector('.v-ring'), num = badge.querySelector('.num');
+  ring?.classList.toggle('indet', !known);
+  ring?.style.setProperty('--p', known ? Math.round(pct) : 25);
+  if (num) num.textContent = known ? `${Math.round(pct)}%` : '';
+}
+
 /** A book's file check as a badge: running (`busy` — the percent; `id` lets the progress land on it), passed, or
  *  failed (`failed` — an error before any check result). The order card and the Order Creator show the same one. */
 export function filesBadge(v, { busy = 0, failed = false, id = '' } = {}) {
-  if (busy) return html`<span class="v-badge run"${id ? html` id="${id}"` : ''}><span class="spinner"></span><span class="num">${Math.round(busy)}%</span></span>`;
+  if (busy) return html`<span class="v-badge run"${id ? html` id="${id}"` : ''}>${ringHtml(busy)}<span class="num">${busy > 0 ? `${Math.round(busy)}%` : ''}</span></span>`;
   if (v?.ok) return html`<span class="v-badge ok" data-tip="Усі PNG повністю прочитано й перевірено">${ic('check')}<span class="num">${v.found}/${v.expected}</span></span>`;
   return failed || v ? html`<span class="v-badge bad">${ic('x')}Є проблеми</span>` : '';
 }
@@ -162,7 +179,13 @@ export const receiptCopy = (o, cls) => html`<span class="${cls} ord-copy" role="
 export function copyChip(e, el) {
   e.preventDefault();
   e.stopPropagation();
-  copyText(el.dataset.text, el.dataset.done);
+  copyText(el.dataset.text, el.dataset.done).then((ok) => { if (ok) flash(el); });
+}
+
+/** The copy's own feedback on the thing clicked (a short pop, the icon turns green): the toast alone is far from the eye. */
+export function flash(el) {
+  el.classList.add('copied');
+  setTimeout(() => el.classList.remove('copied'), 900);
 }
 
 // The receipt number in front of a title "4100000001 - Emma", and the child's name after it ('' without a
@@ -236,6 +259,13 @@ export function holdClicks(list) {
   list.holdTimer = setTimeout(() => { list.inert = false; }, 450);
 }
 
+/** A turning icon stops at the end of its turn, not by snapping back to 0°. */
+export function stopSpin(icon) {
+  if (!icon) return;
+  if (reducedMotion() || !icon.getAnimations().length) { icon.classList.remove('spin'); return; }
+  icon.addEventListener('animationiteration', () => { if (!icon.parentElement?.disabled) icon.classList.remove('spin'); }, { once: true });
+}
+
 /** The refresh of an order list (the queue, the Order Creator's picker): the button pulls the latest orders;
  *  a page only follows a sync already running (the program's start-up one) and never starts one itself.
  *  fetch() gives the orders, alive() says the page is still there, onFresh(data) shows them. */
@@ -256,7 +286,7 @@ export function orderSync({ fetch, alive, setSub, syncedText, button, onStart, o
       if (alive()) setSub(`${syncedText()} · не вдалося оновити: ${err.message}`);
     } finally {
       sync.syncing = false;
-      button.disabled = false; button.firstElementChild?.classList.remove('spin');
+      button.disabled = false; stopSpin(button.firstElementChild);
     }
   };
   sync.follow = () => runningSync().then((jobId) => { if (jobId && alive()) sync.refresh(() => watchSync(jobId, setSub)); });

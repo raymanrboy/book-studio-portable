@@ -1,0 +1,15 @@
+/* Settings and its dialogs: entrances for what appears in place (no whole-card redraws replay them). */
+@keyframes ms-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* A connection test's answer: the box fades in when it is shown, and again when the spinner gives way to the result. */
+#printify-test:not([hidden]), #gelato-test:not([hidden]), #tc-test:not([hidden]) { animation: ms-in 220ms var(--ease, cubic-bezier(.2, .9, .25, 1)) both; }
+#printify-test > .row, #gelato-test > .row, #tc-test > .row { animation: ms-in 200ms var(--ease, cubic-bezier(.2, .9, .25, 1)) both; }
+
+/* A key's field and its saved state trade places: the new one fades in. */
+.secret-row { animation: ms-in 220ms var(--ease, cubic-bezier(.2, .9, .25, 1)) both; }
+
+/* The body of a card is redrawn from inside: notices already there must not flash again (the card's height glides instead). */
+.set-body .notice { animation: none; }
+
+/* The Master dialog: the analysis comes in softly. */
+#mp-analysis > * { animation: ms-in 240ms var(--ease, cubic-bezier(.2, .9, .25, 1)) both; }

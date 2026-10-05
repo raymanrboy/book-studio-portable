@@ -113,9 +113,14 @@ export async function openPalette() {
   const move = (d) => {
     if (!shown.length) return;
     pick = (pick + d + shown.length) % shown.length;
-    paint();
+    mark(pick);               // only the highlight moves (it fades between rows); the list is not drawn again
     list.querySelector('.pal-item.on')?.scrollIntoView({ block: 'nearest' });
   };
+  const mark = (i) => list.querySelectorAll('.pal-item').forEach((n) => {
+    const on = Number(n.dataset.i) === i;
+    n.classList.toggle('on', on);
+    n.setAttribute('aria-selected', String(on));
+  });
 
   input.addEventListener('input', () => { pick = 0; paint(); });
   input.addEventListener('keydown', (e) => {
@@ -126,7 +131,7 @@ export async function openPalette() {
   on(list, 'click', '.pal-item', (e, b) => go(Number(b.dataset.i)));
   on(list, 'mousemove', '.pal-item', (e, b) => {
     const i = Number(b.dataset.i);
-    if (i !== pick) { pick = i; list.querySelectorAll('.pal-item').forEach((n) => n.classList.toggle('on', Number(n.dataset.i) === i)); }
+    if (i !== pick) { pick = i; mark(i); }
   });
   paint();
   input.focus();

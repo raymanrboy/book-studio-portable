@@ -126,8 +126,10 @@ def _open_in_profile(url: str, host: str) -> bool:
         return False
     if portable.root():        # the portable copy: Edge (every Windows has it) with a profile of its own in the data folder
         exe = desktop.find_browser()
+        if exe:
+            desktop.trim_profile(core.data_path("work-browser"))
         args = [exe, f"--user-data-dir={core.data_path('work-browser')}", "--no-first-run",
-                "--no-default-browser-check", url] if exe else None
+                "--no-default-browser-check", *desktop.QUIET_EDGE, url] if exe else None
     else:
         exe, profile = cfg.get("exe"), cfg.get("profile")
         args = [exe, f"--profile-directory={profile}", url] if exe and profile and Path(exe).is_file() else None

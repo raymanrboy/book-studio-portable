@@ -67,7 +67,7 @@ export async function mount(view, [id]) {
     const part = (iconName, label, done, n, total) => {
       const p = total ? n / total : done ? 1 : 0;
       const tip = total ? `${label}: ${n} з ${total}` : `${label}: ${done ? 'є' : 'немає'}`;
-      return html`<i class="${p >= 1 ? 'ok' : p > 0 ? 'part' : ''}" style="--p:${Math.round(p * 100)}%" data-tip="${tip}" aria-label="${tip}">${ic(iconName)}</i>`;
+      return html`<i class="${p >= 1 ? 'ok' : p > 0 ? 'part' : ''}" style="--f:${Math.round(p * 1000) / 1000}" data-tip="${tip}" aria-label="${tip}">${ic(iconName)}</i>`;
     };
     return html`<div class="ready" role="list">
       ${part('book', 'Обкладинка', c.cover)}
@@ -215,7 +215,7 @@ export async function mount(view, [id]) {
   function renderSlots(redraw = null) {
     const first = !$('#bk-slots').children.length;
     const drawn = patch($('#bk-slots'), SLOT_KEYS.map((k) => [k, rowHtml(k)]), redraw);
-    if (first) drawn.forEach((row, i) => enterOnce(row, Math.min(i * 30, 300)));
+    if (first) drawn.forEach((row, i) => enterOnce(row, Math.min(i * 16, 240)));
     fadeImages($('#bk-slots'));
   }
   const renderRow = (key) => renderSlots(new Set([key]));

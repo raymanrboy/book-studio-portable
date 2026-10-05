@@ -14,7 +14,7 @@ import { openLightbox } from '../lightbox.js';
 import { store } from '../info.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { take } from '../handoff.js';
-import { PICTURES, runView, rowsHtml, resultCard, turnCard, finishedCard } from './mockups-run.js';
+import { PICTURES, runView, rowsHtml, resultCard, turnCard, finishedCard, runIndet, morphList, reveal } from './mockups-run.js';
 import { slidesStep } from './mockups-slides.js';
 
 const THUMB_H = 360;          // a spread tile (two 180-px pages side by side)
@@ -213,12 +213,21 @@ export async function mount(view) {
   function paintBookState() {
     const box = $('#mk-book-state');
     if (!box) return;
-    const spin = html`<span class="spinner"></span>`;
-    let badge = '';
-    if (st.receiving === 'ask') badge = html`<span class="v-badge run">${spin}Вікно Windows</span>`;
-    else if (st.receiving === 'unzip') badge = html`<span class="v-badge run">${spin}Розпаковую</span>`;
-    else if (st.receiving !== null) badge = html`<span class="v-badge run">${spin}<span class="num">${Math.round(st.receiving)}%</span></span>`;
-    setHtml(box, badge);
+    // an upload has a real percent: a thin bar fills (updated where it stands, so it glides); the Windows window and
+    // the unpacking have none: the neutral sweep
+    const known = typeof st.receiving === 'number';
+    const bar = known ? box.querySelector('.rcv-bar > i') : null;
+    if (bar) {
+      setProgress(bar, st.receiving);
+      box.querySelector('.rcv-num').textContent = `${Math.round(st.receiving)}%`;
+    } else {
+      const neutral = html`<span class="progress progress-thin indet rcv-mini"><i></i></span>`;
+      let badge = '';
+      if (st.receiving === 'ask') badge = html`<span class="v-badge run">${neutral}Вікно Windows</span>`;
+      else if (st.receiving === 'unzip') badge = html`<span class="v-badge run">${neutral}Розпаковую</span>`;
+      else if (known) badge = html`<span class="v-badge run"><span class="progress progress-thin live rcv-mini rcv-bar"><i style="transform:scaleX(${Math.max(0, Math.min(100, st.receiving)) / 100})"></i></span><span class="num rcv-num">${Math.round(st.receiving)}%</span></span>`;
+      setHtml(box, badge);
+    }
     const err = $('#mk-book-error');
     if (err) setHtml(err, st.bookError ? html`<div class="notice notice-error">${ic('alertCircle')}<div>${st.bookError}</div></div>` : '');
   }
@@ -290,8 +299,8 @@ export async function mount(view) {
       ${filled && !st.run ? ib('eraser', 'Прибрати всі розвороти', 'data-act="clear-all"', { cls: 'sm' }) : ''}
       <span class="v-badge ${full ? 'ok' : ''}" data-tip="Заповнено місць у шаблонах">${full ? ic('check') : ''}<span class="num">${filled}/${total}</span></span>`);
     const hint = $('#mk-hint');
-    hint.hidden = !(st.book && left && !st.run);
-    setHtml(hint, html`${ic('info', 'icon-s')}<span>Клацайте розвороти справа — вони стають у шаблони по черзі. Можна й перетягнути розворот на потрібне місце.</span>`);
+    if (!hint.firstChild) setHtml(hint, html`${ic('info', 'icon-s')}<span>Клацайте розвороти справа — вони стають у шаблони по черзі. Можна й перетягнути розворот на потрібне місце.</span>`);
+    reveal(hint, !!(st.book && left && !st.run));
     for (const t of slotted()) {
       const box = view.querySelector(`[data-slots="${t.key}"]`);
       if (!box) continue;
@@ -384,8 +393,8 @@ export async function mount(view) {
     const step = $('#mk-step'), pct = $('#mk-pct'), bar = $('#mk-bar'), rows = $('#mk-rows');
     if (step) step.textContent = r.step;
     if (pct) pct.textContent = `${Math.round(r.percent)}%`;
-    setProgress(bar, Math.max(3, r.percent));
-    if (rows) setHtml(rows, rowsHtml(r.rows || [], r.mode === 'finish'));
+    if (bar) { bar.parentElement.classList.toggle('indet', runIndet(r)); setProgress(bar, r.percent); }
+    if (rows) morphList(rows, rowsHtml(r.rows || [], r.mode === 'finish'));
   }
 
   // ---------------------------------------------------------------- the structure (right)
@@ -394,7 +403,7 @@ export async function mount(view) {
     if (!st.book) {
       const busy = st.receiving !== null;
       const doing = st.receiving === 'ask' ? 'Оберіть архів у вікні Windows'
-        : st.receiving === 'unzip' ? 'Розпаковую архів…' : html`Отримую архів… <span class="num">${Math.round(st.receiving || 0)}%</span>`;
+        : st.receiving === 'unzip' ? 'Розпаковую архів…' : html`Отримую архів… <span class="num rcv-num">${Math.round(st.receiving || 0)}%</span>`;
       setHtml(box, html`
         <div class="row"><h2 class="card-title grow" style="font-size: var(--fs-l)">Структура</h2><span id="mk-book-state"></span></div>
         <div id="mk-book-error"></div>
@@ -407,7 +416,7 @@ export async function mount(view) {
             <div class="spread-grid">${[2, 4, 6, 8, 10, 12].map((n) => html`<div class="spread-card"><div class="spread-view"><div class="half"><span class="ph-num">${n}</span></div>
               <div class="half"><span class="ph-num">${n + 1}</span></div><div class="gutter-s"></div></div><div class="spread-card-head"><span class="spread-no">${pages(n)}</span></div></div>`)}</div>
           </div>
-          <div class="mk-veil">${busy ? html`<div class="spinner spinner-l"></div><b>${doing}</b>`
+          <div class="mk-veil">${busy ? html`<div class="progress mk-veil-bar ${typeof st.receiving === 'number' ? 'live rcv-bar' : 'indet'}"><i style="transform:scaleX(${typeof st.receiving === 'number' ? Math.max(0, Math.min(100, st.receiving)) / 100 : 1})"></i></div><b>${doing}</b>`
             : html`<div class="drop-ico">${ic('upload')}</div><b>Перетягніть сюди ZIP із Canva</b><span>або клацніть, щоб вибрати файл</span>`}</div>
         </div>`);
       paintBookState();
@@ -541,6 +550,14 @@ export async function mount(view) {
   const bookBusy = () => st.receiving !== null || !!st.run;
 
   function paintReceiving() {
+    const bar = !st.book && typeof st.receiving === 'number' ? $('#mk-right .mk-veil .rcv-bar > i') : null;
+    if (bar) {   // the same veil: its bar and number move on (a repaint would restart them every tick)
+      setProgress(bar, st.receiving);
+      const num = $('#mk-right .mk-veil .rcv-num');
+      if (num) num.textContent = `${Math.round(st.receiving)}%`;
+      paintBookState();
+      return;
+    }
     if (!st.book) paintStructure();
     else paintBookState();
   }

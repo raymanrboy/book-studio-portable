@@ -1,0 +1,44 @@
+/* Motion for the mockups, the photo mockups and the listing slides' card (W4, 2026-10-06). Loaded right after
+   listings.css and overriding only what moves: transitions where a state used to jump, entrances where a block
+   used to appear, compositor-only rings. Reduced motion is switched off globally by app.css. */
+
+@keyframes mk-fade { from { opacity: 0; } }
+@keyframes mk-pop { from { opacity: 0; transform: scale(.6); } }
+@keyframes mk-yes-ring { from { opacity: .75; transform: scale(1); } to { opacity: 0; transform: scale(1.5, 1.9); } }
+
+/* a slot: filling, being the next one, being dragged over — all fade instead of jumping */
+.mk-slot {
+  transition: background var(--t-fast) ease, color var(--t-fast) ease, outline-color var(--t-fast) ease,
+    outline-offset var(--t-fast) ease, box-shadow var(--t) ease;
+}
+
+/* step 3 and the result cards come in (the ask and the turn cards already did) */
+.mk-run, .mk-result { animation: notice-in var(--t-slow) var(--ease) both; }
+.mk-hint { overflow: hidden; }
+
+/* the new check of a run row pops in; the row's colour and the bar glide (the rows are updated in place) */
+.mk-row.done .mk-row-ico .icon { animation: mk-pop 260ms var(--ease); }
+.mk-row-note { transition: opacity var(--t-fast) ease; }
+
+/* «Yes» in the pretend Photoshop dialog: a ring that grows and fades (opacity + transform, no box-shadow paint) */
+.mk-ask-btns b { position: relative; animation: none; }
+.mk-ask-btns b::after {
+  content: ""; position: absolute; inset: -1px; border: 2px solid rgba(0, 120, 215, .6); border-radius: var(--r-art);
+  pointer-events: none; animation: mk-yes-ring 1.4s ease-out infinite;
+}
+
+/* percent bars of this page: sizes (the bars themselves come from app.css: .progress, .live, .indet) */
+.v-badge .rcv-mini { width: 36px; flex: none; }
+.mk-veil-bar { width: min(220px, 70%); flex: none; }
+.sl-cuts .sl-cuts-bar { width: 44px; flex: none; }
+.sl-cuts > .icon { animation: mk-pop 260ms var(--ease); }
+
+/* photo mockups: the chosen ring, the badges, the pick panel */
+.ph-card-art { transition: box-shadow var(--t) ease; }
+.ph-card-ph {
+  transition: background var(--t-fast) ease, color var(--t-fast) ease, outline-color var(--t-fast) ease, box-shadow var(--t) ease;
+}
+.ph-tile.used::after { animation: mk-fade var(--t) ease; }
+.ph-used, .ph-now { animation: mk-pop var(--t) var(--ease) both; }
+.ph-pick { animation: notice-in var(--t-slow) var(--ease) both; }
+.ph-ref.ok .ph-ref-text span, .ph-ref.missing .ph-ref-text span { transition: color var(--t-fast) ease; }

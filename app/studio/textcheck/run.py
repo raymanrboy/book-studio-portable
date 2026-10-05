@@ -96,25 +96,6 @@ def warm() -> bool:
     return True
 
 
-def prime(delay: float = 8.0) -> None:
-    """Quietly, a few seconds after the program starts (in its own thread): Ollama is started and the model is read once, so the
-    first check does not wait ~70 s for it to come from the disk. The model is let go at once — the card stays free for the
-    window and Upscayl (the 19.09.2026 decision); the file stays in Windows' memory cache and the next load takes ~4 s.
-    Nothing happens when the check is off or its module is not installed. Never raises."""
-    time.sleep(delay)
-    try:
-        from .. import modules, portable
-        if not _settings()["enabled"] or _active or (portable.root() and not modules.installed("textcheck")):
-            return
-        model = _settings()["model"]
-        ollama._ready(model, lambda step: None)
-        if not _active:
-            ollama._release_model(model)
-        core.log.info("Text check: the model was read in the background")
-    except Exception as err:        # a model that cannot be had is the check's own thing to report
-        core.log.info("Text check: not primed (%s)", err)
-
-
 def picture(path: Path, part: str | None = None) -> str:
     """A page as the model sees it: a 1024-px JPEG cut from the preview the proof already made (no second
     decoding of the 4000-px file). The cover (back and front in one picture) is sent as two halves, each about

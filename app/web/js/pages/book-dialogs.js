@@ -77,6 +77,7 @@ export async function importFolder(path, { id, current, onBook }) {
         m.el.querySelector('#fi-step').textContent = `${j.step} ${j.detail || ''}`;
         m.el.querySelector('#fi-pct').textContent = `${Math.round(j.percent)}%`;
         setProgress(m.el.querySelector('#fi-bar'), j.percent);
+        m.el.querySelector('#fi-bar').classList.toggle('done', j.percent >= 100);   // a finished bar stops shimmering
       });
       m.close();
       onBook(await api(`/api/library/books/${id}`));

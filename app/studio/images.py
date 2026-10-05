@@ -22,6 +22,7 @@ _gen_slots = threading.BoundedSemaphore(3)
 _key_locks_guard = threading.Lock()
 CACHE_DAYS = 21  # a preview nobody asked for in three weeks goes (it is made again when needed)
 FRESH = 86400    # a preview in use gets a new date at most once a day
+CACHE_MAX_BYTES = 800 * 1024 * 1024  # the previews together stay under this: the least recently used go first
 
 
 def _version(path: Path):
@@ -100,17 +101,34 @@ def _hit(out: Path) -> bool:
     return True
 
 
-def prune_cache(days: int = CACHE_DAYS) -> int:
+def prune_cache(days: int = CACHE_DAYS, max_bytes: int = CACHE_MAX_BYTES) -> int:
     """Removes previews not used for `days` (and half-written ones older than an hour): the cache grew for
-    ever — 152 MB in five days (19.09.2026), with previews of temporary copies long gone."""
+    ever — 152 MB in five days (19.09.2026), with previews of temporary copies long gone. Then, while the rest is
+    over `max_bytes` (1.3 GB by 05.10.2026), the least recently used go first: a preview is made again in a moment."""
     root = core.data_path("cache", "thumbs")
     now = time.time()
     removed = 0
+    kept: list[tuple[float, int, Path]] = []
     for f in root.rglob("*") if root.is_dir() else []:
         try:
-            if f.is_file() and now - f.stat().st_mtime > (3600 if f.suffix == ".tmp" else days * 86400):
+            if not f.is_file():
+                continue
+            st = f.stat()
+            if now - st.st_mtime > (3600 if f.suffix == ".tmp" else days * 86400):
                 f.unlink()
                 removed += 1
+            else:
+                kept.append((st.st_mtime, st.st_size, f))
+        except OSError:
+            continue
+    total = sum(size for _, size, _ in kept)
+    for _, size, f in sorted(kept):
+        if total <= max_bytes:
+            break
+        try:
+            f.unlink()
+            total -= size
+            removed += 1
         except OSError:
             continue
     return removed

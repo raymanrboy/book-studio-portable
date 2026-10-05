@@ -1,11 +1,13 @@
 ---
 title: Tests
 type: dev
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/tests/
 ---
 # Tests
+
+> `tests/test_speed.py` (05.10.2026): Edge's leftovers trimmed, the sync's parts read side by side, the bar moving forward only. The import map and the kept-for-good scripts — `test_server_http.py`; the preview cache's size limit — `test_archive.py`. The whole run takes about a minute (the wiki check was half of it before).
 
 > Tests on the standard `unittest` (how many — the runner says). No real requests or accounts: services are faked, data is
 > **always** in a fresh temporary folder (the test suite takes `BOOK_STUDIO_DATA` over for itself,
@@ -116,6 +118,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 | [test_slides.py](../../app/tests/test_slides.py) | `TheCut` (Dedication: the desk and the book stay, the floor goes, its shadow kept; the book opaque, the grey Multiply shadow → a transparent black one, no haze, a wrong size refused, «Без фону» never over a file, the background cutter and what it can't cut, the Mockups hand each saved picture once), `Scenes` (the schemes — Nature first, an old template becomes it, the six saved / put on / reset / the default; a book's set, a stale save refused with the scene as it is now, a wrong scene refused, reset, «Зробити шаблоном», the signature, the first design's slots and numbers), `WorkshopBooks` (a book's slides in its folder, its touches kept, «Зробити заново», a done book's cache gone and its six a preset, the «Мокапи» step ticks itself, the quite temporary goes), `MakingThem` (a Workshop book with its own page 30, its six in `etsy/Listing N.png`; slide 7 — a book's looks each in its frame by their numbers with their names, on their white background, `15 Listing 7.png`, only with two looks, looks made later taken, a scheme made before it gets it in its own colours; (the slots follow the picks, «Зробити слайди» end to end with a pretend browser — six files, its profile gone, a re-bake into the same files — names never over the owner's files, nothing to show said), `CommandLine` |
 | [test_workshop.py](../../app/tests/test_workshop.py) | In the sandbox, on made-up books: `TheSandbox` (the owner's books, clipboard and Downloads never reached; «Відкрити агента» puts the words with the pipeline's full paths — the rules and the books' folder — into the fake clipboard, since Antigravity 2 ignores the folder it is started with), `TheBookList`, `ThePathStrip`, `OnlyInsideTheBook`, `TheSignature`, `TheRows`, `TheBookCheck`, `APictureIntoItsRow`, `CatchingDownloads` (a spread of a book with a hero — the hero, then the prompt; a variant's one cover, brought to the template), `CtrlVInTheBrowser` (Ctrl+V in Chrome counts once, after V is let go; V alone or another program — never), `PassingToTheLibrary`, `OnePlaceForThePages` (a passed book's pages stay the Workshop's: nothing copied, a page changed there, the passport changes only the thumbnail, export, the Workshop book deleted, a book copied before moved over) |
 | [test_backup.py](../../app/tests/test_backup.py) | `Rules` (which copies stay, every 3 days, never by itself in the sandbox), `RealArchive` — **a real 7-Zip run** on a made-up folder: the password, the keys and the instruction inside, Edge's profile and `.tmp` left out (skipped without `app/bin/7za.exe`) |
+| [test_speed.py](../../app/tests/test_speed.py) | `EdgeProfile`, `SideBySide` — Edge's leftovers trimmed only when no window holds the profile; the sync's Etsy and Gelato parts run at the same time; an Etsy failure fails it after the others |
 | [test_server_http.py](../../app/tests/test_server_http.py) | `HttpLayer` — the real server on a free port: no token → 401, another Host → 403, framing headers, the ping's data id, no climbing out of the web folder, only three routes open |
 | [test_scripts.py](../../app/tests/test_scripts.py) | `ScriptsParse` (each script a valid ES module, by Node.js), `ScriptsImport` (a missing or unused import, a name left undeclared) |
 | [test_wiki.py](../../app/tests/test_wiki.py) | `WikiMatchesCode`, `NamedInTheRightFile` |

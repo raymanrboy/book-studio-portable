@@ -1,7 +1,7 @@
 ---
 title: Server — routes, jobs, errors
 type: architecture
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/studio/server.py
   - app/studio/jobs.py
@@ -30,7 +30,7 @@ code:
 - `Request`: `req.json` (up to 25 MB), `req.param(name)`, `req.int_param(name, default, lo, hi)` (a number
   from the query — a preview's width, a page; missing or not a number, it is the default, never an error page;
   since 2026-09-26), `req.body_to_file(path, max)` for uploads.
-- Static files: `/css`, `/js`, `/img`, `/fonts`, `/slides` (the page the listing slides are baked from) from `app/web`, `/` — `index.html`.
+- Static files: `/css`, `/js`, `/img`, `/fonts`, `/slides` (the page the listing slides are baked from) from `app/web`, `/` — `index.html`. `index.html` is served with an import map and every script and style by an address with the file's tag (`?v=<time and size>`, `_versions()`, `_index_html()`): a file asked for with `?v=` is kept for good (`immutable`) — the window no longer asks fifty times per start whether it changed; a file asked for without it is asked again each time (05.10.2026).
 - `_ping()` — what `/api/ping` answers (the app name, the version and `data`: a short id of the data folder, `core.data_id()`), so a second launch recognises the running copy of the **same data** — the ordinary and the portable Book Studio on one PC no longer open each other's window; the HTTP replies also carry `X-Frame-Options: DENY` and `frame-ancestors 'none'`
   and only opens another window. (From 2026-09-23 to 24 the [mockups](../features/mockups.md) were a second
   program on the same server code, with its own `state.page` and answer; now their routes are Book

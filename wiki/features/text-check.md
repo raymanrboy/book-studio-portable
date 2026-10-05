@@ -1,7 +1,7 @@
 ---
 title: Text check (AI validator on a local model)
 type: feature
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/studio/textcheck/
   - app/studio/wording.py
@@ -171,5 +171,5 @@ Ollama is started with `CREATE_NO_WINDOW` (no black windows from its helper proc
 
 ## Quiet start-up and no black windows (2026-10-04)
 
-- `run.prime()` (a thread started by `main()`, 8 s after the start): Ollama is started and the model read once, then let go at once — so the first check does not wait ~70 s for the disk (the file stays in Windows' memory cache; loading it again takes ~4 s) and the graphics card stays free (the 19.09 decision). Nothing happens when the check is off or the module is not installed.
+- No read-in at the program's start any more (05.10.2026): the old start-up read-in (`prime`) started Ollama and read the model at every launch — gigabytes off the disk and the graphics card for a window often open for a minute or two. The model is asked for by `warm()` when the card takes files (every path that starts a check goes through it), as the Warm-up step above says.
 - Ollama is started with `CREATE_NO_WINDOW`. Measured: with the old `DETACHED_PROCESS` its helpers (`llama-server.exe`, `ollama.exe gpu-discover`) each opened a black console at every model load; with the new flag none appeared during a load and an unload. An Ollama started by an earlier version keeps flashing until it is ended (task manager → `ollama.exe`).

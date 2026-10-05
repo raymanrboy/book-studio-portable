@@ -6,7 +6,7 @@ import {
 import { openFolderViewer } from '../folder-viewer.js';
 import {
   COUNTRIES, addressFromEtsy, spreadsOf, pagesText, restorable, childOf, receiptOfTitle, pageVersion, filesBadge,
-  checkNotices,
+  checkNotices, paintBadge,
 } from '../order-bits.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { take } from '../handoff.js';
@@ -160,7 +160,7 @@ export async function mount(view) {
   function checkBadge(b, i) {
     return filesBadge(b.validation, { busy: b.validating, id: `cr-badge-${i}` });
   }
-  const badgeProgress = (i, pct) => { const num = view.querySelector(`#cr-badge-${i} .num`); if (num) num.textContent = `${Math.round(pct)}%`; };
+  const badgeProgress = (i, pct) => paintBadge(view.querySelector(`#cr-badge-${i}`), pct);
 
   /** One book's folder: the path, what the check found, and (with several books) its own name. */
   function folderBlock(i) {
@@ -252,11 +252,11 @@ export async function mount(view) {
         <button class="btn btn-xl create-btn btn-block" id="cr-create" ${s.running ? 'disabled' : ''}>
           ${s.running ? html`<span class="spinner" style="border-color:color-mix(in srgb, currentColor 35%, transparent);border-top-color:currentColor"></span>Створення…` : html`${ic('send', 'icon-l')}<span id="cr-create-label">${createLabel()}</span>`}</button>
       </div>
-      <div id="cr-progress" ${s.running ? '' : 'hidden'}>
-        <div class="row" style="margin-bottom:6px;font-size: var(--fs)"><span id="cr-step" style="font-weight:600" class="grow">Підготовка…</span><span class="num" id="cr-pct" style="color:var(--accent-ink);font-weight:600">0%</span></div>
-        <div class="progress"><i id="cr-bar"></i></div>
+      <div class="cr-prog ${s.running ? 'on' : ''}" id="cr-progress"><div>
+        <div class="row" style="margin-bottom:6px;font-size: var(--fs)"><span id="cr-step" style="font-weight:600" class="grow">Підготовка…</span><span class="num" id="cr-pct" style="color:var(--accent-ink);font-weight:600"></span></div>
+        <div class="progress live indet" id="cr-barbox"><i id="cr-bar"></i></div>
         <div class="faint mono truncate" id="cr-detail" style="font-size: var(--fs-s);margin-top:6px"></div>
-      </div>
+      </div></div>
       <div id="cr-result">${resultHtml()}</div>
     </section>`;
   }
@@ -399,12 +399,12 @@ export async function mount(view) {
     const mode = st.mode;
     if (!b || !b.folder.trim()) { if (b) b.validation = null; renderLeft(); renderRight(); return; }
     const my = ++b.seq;
-    b.validating = 1; s.error = null;
+    b.validating = -1; s.error = null; // no percent yet: a neutral arc, not a fake 1%
     renderLeft();
     try {
       const res = await runJob(post('/api/creator/validate', { mode, folder: b.folder }), (j) => {
         if (my !== b.seq || st.mode !== mode) return;
-        b.validating = Math.max(1, j.percent);
+        b.validating = j.percent > 0 ? j.percent : -1;
         badgeProgress(i, b.validating);
       }, 300, () => my === b.seq && !gone);
       if (my !== b.seq) return;
@@ -457,6 +457,7 @@ export async function mount(view) {
     }
     if (mode === 'printify' && order && !status.printify.manualApproval && !(await confirmManualApproval())) return;
     s.running = true; s.result = null; s.error = null;
+    setProgress($('#cr-bar'), 0, { reset: true }); // a second send starts from empty, not from the last one's end
     renderLeft();
     const reprint = s.reprint;
     const url = mode === 'gelato' ? '/api/creator/gelato/create' : reprint ? '/api/creator/printify/reprint' : '/api/creator/printify/create';
@@ -471,9 +472,11 @@ export async function mount(view) {
         const bar = $('#cr-bar');
         if (!bar) return;
         $('#cr-step').textContent = j.step;
-        $('#cr-pct').textContent = `${Math.round(j.percent)}%`;
+        const known = j.percent > 0; // 0 is «not measured yet»: the neutral sweep, no number
+        $('#cr-pct').textContent = known ? `${Math.round(j.percent)}%` : '';
         $('#cr-detail').textContent = j.detail || '';
-        setProgress(bar, j.percent);
+        $('#cr-barbox')?.classList.toggle('indet', !known);
+        setProgress(bar, known ? j.percent : 0);
       });
       if (mode === 'gelato') linkUntil(s.result);
       if (st.receiptId && !reprint) markSent(st.receiptId, { provider: mode, what: sentText(mode, s.result), result: mode === 'gelato' ? s.result : null });
@@ -548,14 +551,14 @@ export async function mount(view) {
     const my = ++b.seq; // anything still being checked for the old folder is ignored from now on
     s.pick = i;
     s.reprint = null;
-    Object.assign(b, { folder: '', label: dropLabel(dropped), validation: null, validating: 1 });
+    Object.assign(b, { folder: '', label: dropLabel(dropped), validation: null, validating: -1 });
     s.error = null;
     renderLeft(); renderRight();
     try {
       const path = await receiveDrop(dropped, (pct) => {
         if (my !== b.seq || st.mode !== mode) return;
-        b.validating = pct;
-        badgeProgress(i, pct);
+        b.validating = pct > 0 ? pct : -1;
+        badgeProgress(i, b.validating);
       });
       if (my !== b.seq) return;
       b.folder = path;

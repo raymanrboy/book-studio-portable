@@ -218,12 +218,13 @@ def steps(path: Path) -> list[dict]:
                 files = [_file_entry(a, "abc-prompts-json.md")]
             have = sum(f["exists"] for f in files)
             st = "done" if have == len(files) else "part" if have else "todo"
+            extra["p"] = have / len(files)         # how far it is: the files of this step that are there
             check = book_check(path)  # the book check (GO) once any prompt file is there
             if check is not None:
                 extra["check"] = {"go": check["go"], "fails": len(check["fails"]), "warns": len(check["warns"])}
         elif key == "pictures":
             n = rows_filled(p)
-            extra.update(count=n, total=len(ROWS))
+            extra.update(count=n, total=len(ROWS), p=n / len(ROWS))
             st = "done" if n == len(ROWS) else "part" if n else "todo"
         elif key == "cover":
             c = cover_state(path)
@@ -237,7 +238,7 @@ def steps(path: Path) -> list[dict]:
         elif key == "photos":
             from .. import photos
             n = photos.count(path)
-            extra.update(count=n, total=len(photos.CATEGORIES))
+            extra.update(count=n, total=len(photos.CATEGORIES), p=min(1.0, n / len(photos.CATEGORIES)))
             st = "done" if n == len(photos.CATEGORIES) or marks.get(key) else "part" if n else "todo"
         else:
             st = "done" if marks.get(key) else "todo"
@@ -370,7 +371,8 @@ def summary(book_id: str, path: Path | None = None, st: list[dict] | None = None
     passed = library_book(path)
     return {
         "id": book_id, "number": number, "title": title, "coverTitle": cover_title(a, agent), "tier": tier(a, agent),
-        "steps": [{"key": s["key"], "label": s["label"], "state": s["state"], **({"check": s["check"]} if "check" in s else {})}
+        "steps": [{"key": s["key"], "label": s["label"], "state": s["state"], **({"p": s["p"]} if "p" in s else {}),
+                    **({"check": s["check"]} if "check" in s else {})}
                   for s in st],
         "pictures": rows_filled(p), "picturesTotal": len(ROWS), "thumb": thumb, "updated": _updated(path),
         "library": passed,

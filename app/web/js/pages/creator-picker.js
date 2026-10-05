@@ -2,7 +2,7 @@
 // fields unfolded on demand; a picked order goes to `onPick(order)` — the page fills itself in (out of creator.js on
 // 27.09.2026).
 import {
-  api, html, ic, ib, setHtml, modal, toast, segHtml, syncSeg, setSeg, dateTime, relTime, slide, debounce,
+  api, html, ic, ib, setHtml, modal, toast, segHtml, syncSeg, setSeg, dateTime, relTime, slide, debounce, patch,
 } from '../lib.js';
 import {
   STAGES, matchesOrder, variationsOf, holdClicks, orderSync, svcChip, countStages, emptyOrders,
@@ -52,7 +52,8 @@ export async function pickEtsyOrder(onPick) {
     const before = shown;
     shown = rows.map((o) => o.receiptId);
     if (!rows.length) { setHtml(list, emptyOrders(data.orders, t, stage, sync.syncing, 'empty-sm')); return; }
-    setHtml(list, rows.map((o) => rowHtml(o, fresh && !before.includes(o.receiptId))));
+    // in place: a letter in the search or a tab keeps the rows that stay (no flash, no entrance again)
+    patch(list, rows.map((o) => [o.receiptId, rowHtml(o, fresh && !before.includes(o.receiptId))]));
     if (fresh && before.join() !== shown.join()) holdClicks(list);
   };
 

@@ -4,7 +4,9 @@ order — into the snapshot (records.SNAPSHOT), once at start-up and then only b
 from __future__ import annotations
 
 import html
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from . import archive, core, etsy, gelato, ledger, printify, profit, records
@@ -181,6 +183,19 @@ def _gelato_part(job, snap: dict, warnings: list) -> None:
         snap["loaded"]["gelato"] = core.now_iso()
 
 
+class _Together:
+    """The job as the parts of a sync running side by side see it: the bar only ever moves forward, whichever part reports."""
+
+    def __init__(self, job):
+        self._job, self._top, self._lock = job, 0.0, threading.Lock()
+
+    def progress(self, step=None, percent=None, detail=None) -> None:
+        with self._lock:
+            if percent is not None:
+                self._top = percent = max(self._top, percent)
+            self._job.progress(step, percent, detail)
+
+
 def _sync(job, full: bool = False) -> dict:
     prev = records.load_snapshot()
     snap = {key: prev.get(key) for key in ("shopName", "shopId", "printifyShop", "etsyCursor", "etsyFullAt")}
@@ -188,22 +203,38 @@ def _sync(job, full: bool = False) -> dict:
                 gelato=prev.get("gelato") or [], loaded=dict(prev.get("loaded") or {}))
     warnings: list[str] = []
     etsy_connected = bool(etsy.tokens())
-    changed = None
-    if etsy_connected:
-        changed = _etsy_part(job, snap, warnings, full)
+    if not etsy_connected:
+        snap["receipts"] = []
+        warnings.append("Etsy не підключено — показано лише замовлення Printify.")
+    job = _Together(job)
+
+    def etsy_task():
+        got = _etsy_part(job, snap, warnings, full)
         job.progress("Журнал платежів Etsy…", 46, "Баланс і справжні збори")
         try:
             ledger.refresh()
         except ApiError as err:
             warnings.append(f"Журнал платежів Etsy: {err}. Звірка з Etsy — за попередніми даними.")
-    else:
-        snap["receipts"] = []
-        warnings.append("Etsy не підключено — показано лише замовлення Printify.")
-    if vault.get("printify_token"):
-        _printify_part(job, snap, warnings)
+        return got
+
+    # Etsy, Printify and Gelato are three services that do not wait for each other: read side by side, each into its own part of
+    # the snapshot (2026-10-05). An Etsy failure still fails the whole sync, but only once the others are through.
     # No Printify token is not a problem: every order goes through Gelato (the owner, 2026-10-05).
+    tasks = []
+    if etsy_connected:
+        tasks.append(etsy_task)
+    if vault.get("printify_token"):
+        tasks.append(lambda: _printify_part(job, snap, warnings))
     if gelato.accounts():
-        _gelato_part(job, snap, warnings)
+        tasks.append(lambda: _gelato_part(job, snap, warnings))
+    changed = None
+    if tasks:
+        with ThreadPoolExecutor(max_workers=len(tasks)) as pool:
+            results = [pool.submit(t) for t in tasks]
+        if etsy_connected:
+            changed = results[0].result()       # raises what the Etsy part raised
+        for r in results[1:]:
+            r.result()
 
     job.progress("Зіставлення замовлень…", 94, "")
     snap["syncedAt"] = core.now_iso()

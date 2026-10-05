@@ -158,6 +158,8 @@ code:
 | [css/profit.css](../app/web/css/profit.css) | The Profit page | — |
 | [css/listings.css](../app/web/css/listings.css) | The Workshop and the listing mockups (their step 4, the slides) | — |
 | [css/slides.css](../app/web/css/slides.css) | The listing slides' editor — linked by the editor itself | — |
+| [css/motion-mockups.css](../app/web/css/motion-mockups.css) | Motion overrides for the mockup and photo rules of `listings.css` (2026-10-06) | — |
+| [css/motion-settings.css](../app/web/css/motion-settings.css) | Motion for Settings: results fading in, secret rows (2026-10-06) | — |
 | `fonts/` | Comica (`ComicaRegular.otf`) with its SIL OFL licence — the slides' letters | — |
 | `img/` | Program icons (`icon.ico`, `icon.png`, `icon-512.png`) | — |
 

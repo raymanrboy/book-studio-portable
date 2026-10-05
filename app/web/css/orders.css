@@ -75,8 +75,11 @@
 
 /* ================================================================== ORDERS (the pipeline: queue and order card) */
 .ord-list { display: flex; flex-direction: column; gap: 8px; }
-.ord-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); color: inherit; transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast) var(--ease); }
-.ord-row:hover { border-color: var(--border-strong); box-shadow: var(--shadow); text-decoration: none; }
+.ord-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); color: inherit; position: relative; transition: border-color var(--t-fast), transform var(--t-fast) var(--ease); }
+/* the hover shadow is a layer that fades in (opacity), not a box-shadow that repaints the row */
+.ord-row::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity var(--t) ease; }
+.ord-row:hover::after, .ord-row:focus-visible::after { opacity: 1; }
+.ord-row:hover { border-color: var(--border-strong); text-decoration: none; }
 .ord-row:active { transform: scale(var(--press-soft)); }
 .ord-row.enter { animation: card-in 380ms var(--ease) both; }
 .ord-thumb, .ord-book-art { display: grid; place-items: center; overflow: hidden; border-radius: var(--r-art); background: var(--surface-2) center / cover no-repeat; color: var(--text-4); box-shadow: var(--art-shadow); }
@@ -290,3 +293,29 @@
   .ord-history { grid-column: 1; min-height: 0; }
   .oh-card { position: static; max-height: 420px; }
 }
+
+/* ================================================================== motion and progress (the Orders side) */
+/* A running badge: the ring fills in proportion to a really known percent (--p); with none it is a neutral turning arc. */
+@property --p { syntax: '<number>'; inherits: false; initial-value: 0; }
+.v-ring { flex: none; width: 12px; height: 12px; border-radius: 50%; --p: 0;
+  background: conic-gradient(currentColor calc(var(--p) * 1%), color-mix(in srgb, currentColor 20%, transparent) 0);
+  -webkit-mask: radial-gradient(circle, transparent 3px, #000 3.5px); mask: radial-gradient(circle, transparent 3px, #000 3.5px);
+  transition: --p 360ms linear; }
+.v-ring.indet { animation: spin .9s linear infinite; transition: none; }
+.v-badge { transition: background var(--t) ease, color var(--t) ease, border-color var(--t) ease; }
+/* The state a badge reaches (passed, found something) comes in with a small settle — the class change starts it. */
+.v-badge.ok, .v-badge.bad, .v-badge.warn { animation: badge-in 240ms var(--ease) both; }
+@keyframes badge-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+/* A card new to the order's flow (the proof, the print) comes in; the tick and a countdown bar too. */
+#oc-flow > .enter { animation: card-in 320ms var(--ease) both; }
+#oc-finish > .ib { animation: badge-in 240ms var(--ease) both; }
+#or-empty > .empty, #ar-empty > .empty { animation: notice-in var(--t-slow) var(--ease) both; }
+/* The Gelato link's draining bar: its time is known, one linear second per tick; no shimmer on it. */
+.progress.drain { margin-top: 6px; }
+.progress.drain > i { transition: transform 1s linear; }
+.progress.drain > i::after { display: none; }
+/* The Order Creator's send progress opens and closes as a block (grid rows 0fr to 1fr), instead of popping in and pushing the card down. */
+.cr-prog { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--t-slow) var(--ease), opacity var(--t) ease; }
+.cr-prog.on { grid-template-rows: 1fr; opacity: 1; }
+.cr-prog > div { overflow: hidden; min-height: 0; }
+@media (prefers-reduced-motion: reduce) { .v-ring.indet { animation-duration: 2.4s; } }

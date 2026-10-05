@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/studio/printify.py
   - app/studio/gelato.py

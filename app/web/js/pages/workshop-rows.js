@@ -8,6 +8,8 @@ import { waitingFor } from '../workshop-live.js';
 const CUT = { sides: 'обрізано з боків', 'top-bottom': 'обрізано зверху й знизу' };
 /** A row's slot, as the server names it: the key, or «variant/key». */
 export const slot = (key, variant) => (variant ? `${variant}/${key}` : key);
+/** A 2 px fill along a chip's foot: drawn only for a real fraction (0…1), never for a guess. */
+export const chipFill = (f) => (f > 0 ? html`<i class="ws-chipfill" style="--f:${Math.min(1, f)}"></i>` : '');
 export const waitChip = (text) => html`<span class="chip chip-accent"><span class="ws-pulse"></span>${text}</span>`;
 
 /** The rows of one open book: `book()` — the book as it is now, `mem` — what the page remembers of it (the
@@ -24,7 +26,7 @@ export function rowTemplates({ id, book, mem, uploading }) {
   function upChip(key, m = {}) {
     const u = book().upscale;
     if (!u) return '';
-    if (u.current?.key === key) return html`<span class="chip chip-accent ws-mark"><span class="ws-pulse"></span>апскейл ${u.current.pct}%</span>`;
+    if (u.current?.key === key) return html`<span class="chip chip-accent ws-mark chip-prog"><span class="ws-pulse"></span>апскейл ${u.current.pct}%${chipFill(u.current.pct / 100)}</span>`;
     if (u.queue.includes(key)) return html`<span class="chip ws-mark">${ic('hourglass', 'icon-s')}чекає апскейлу</span>`;
     if (u.errors[key]) return html`<span class="chip chip-amber ws-mark" data-tip="${u.errors[key]}">${ic('alert', 'icon-s')}не апскейлено</span>`;
     // Every picture says how big its page is, so it's clear what is upscaled and what isn't (27.09.2026).

@@ -1,7 +1,7 @@
 // Orders: the queue of Etsy orders — by stage, searched by name or receipt, the printer and its status at a
 // glance; a row opens the order's card (order-card.js).
 import {
-  api, html, ic, ib, raw, setHtml, on, segHtml, syncSeg, setSeg, relTime, dateTime, fadeImages, patch, enterOnce,
+  api, html, ic, ib, raw, setHtml, on, segHtml, syncSeg, setSeg, relTime, dateTime, fadeImages, patch, enterOnce, flip,
 } from '../lib.js';
 import {
   STAGES, matchesOrder, providerName, planText, trackChips, statusChip, receiptCopy, copyChip, alsoSentChip,
@@ -69,27 +69,40 @@ async function mountQueue(view) {
   // The tab's rows are drawn once and redrawn in place (patch()): a search only hides rows, so typing never reloads a
   // thumbnail or replays an entrance (every letter redrew every row until 26.09.2026). A row new to the tab comes in
   // with the entrance: all of them on the first look, the new orders after a refresh.
-  let drawnOnce = false;
-  const render = ({ fresh = false } = {}) => {
+  let drawnOnce = false, rest = 0;
+  const FIRST_ROWS = 14;     // what a screen shows; the others are drawn a moment later, so the tab's own animation never waits for them
+  const render = ({ fresh = false, tab = false } = {}) => {
     const before = shown;
+    clearTimeout(rest);
     const known = new Set([...list.children].map((n) => n.dataset.key));
-    const drawn = patch(list, data.orders.filter((o) => o.stage === stage).map((o) => [o.receiptId, rowHtml(o)]));
-    const entering = (!drawnOnce && !returning) || fresh;
-    drawn.filter((n) => entering && !known.has(n.dataset.key))
+    const rows = data.orders.filter((o) => o.stage === stage).map((o) => [o.receiptId, rowHtml(o)]);
+    // A tab with many rows (the sent ones) used to build them all in one go, right under the tab pill's glide: the glide hitched.
+    const split = tab && rows.length > FIRST_ROWS;
+    const drawn = patch(list, split ? rows.slice(0, FIRST_ROWS) : rows);
+    const entering = (!drawnOnce && !returning) || fresh || tab; // a tab's rows come in too, not pop
+    drawn.filter((n, i) => entering && !known.has(n.dataset.key) && i < FIRST_ROWS)    // only rows on screen enter: the rest are out of sight
       .forEach((n, i) => enterOnce(n, drawnOnce ? 0 : Math.min(i * 30, 300)));
     drawnOnce = true;
-    narrow();
+    narrow({ still: true });
     fadeImages(list);
+    if (split) rest = setTimeout(() => {      // after the tab's first frames (a timer, not a frame callback: a window that is not shown still finishes)
+      patch(list, rows);
+      narrow({ still: true });
+      fadeImages(list);
+    }, 90);
     if (fresh && before.join() !== shown.join()) holdClicks(list);
   };
   // What the search hides and shows — typing only runs this: no row is built again for a letter (04.10.2026).
-  const narrow = () => {
+  const narrow = ({ still = false } = {}) => {
     const t = term.trim().toLowerCase();
     countStages(seg, data.orders, t);
     shown = data.orders.filter((o) => o.stage === stage && matchesOrder(o, t)).map((o) => o.receiptId);
     const visible = new Set(shown);
-    [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); });
-    setHtml(empty, shown.length ? '' : emptyOrders(data.orders, t, stage, sync.syncing));
+    // the rows that stay glide to their new places, the ones that come back scale in (flip); typing never rebuilds a row
+    const hide = () => { [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); }); };
+    if (still) hide(); else flip(list, hide);       // a redraw puts rows in place already: nothing to glide, no positions to measure
+    const emptyKey = shown.length ? '' : `${t ? 'q' : stage}|${!data.orders.length && sync.syncing}`;
+    if (empty.dataset.shown !== emptyKey) { empty.dataset.shown = emptyKey; setHtml(empty, shown.length ? '' : emptyOrders(data.orders, t, stage, sync.syncing)); } // not again per letter: its entrance would replay
   };
 
   const sync = orderSync({
@@ -106,7 +119,7 @@ async function mountQueue(view) {
       if (b.dataset.value === stage) return;
       stage = queueState.stage = b.dataset.value;
       setSeg(seg, stage);
-      render();
+      render({ tab: true });
     }),
   ];
   const q = $('#or-q');
@@ -123,6 +136,6 @@ async function mountQueue(view) {
       syncSeg(seg);
       if (returning) main.scrollTo({ top: queueState.scroll, behavior: 'instant' }); // .main scrolls smoothly otherwise
     },
-    unmount() { queueState.scroll = main.scrollTop; offs.forEach((f) => f()); clearTimeout(list.holdTimer); },
+    unmount() { clearTimeout(rest); queueState.scroll = main.scrollTop; offs.forEach((f) => f()); clearTimeout(list.holdTimer); },
   };
 }

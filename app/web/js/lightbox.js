@@ -5,7 +5,7 @@
 // inertia. Images are decoded off the main thread before they are shown and cross-fade.
 // Items may carry `full` — a sharper version fetched once the user zooms past the preview's pixels
 // and swapped in while nothing is moving (same box size, so the picture does not jump).
-import { html, ic, el, setHtml, highlightTokens, reducedMotion, topLayer } from './lib.js';
+import { html, ic, el, setHtml, highlightTokens, reducedMotion, topLayer, removeAfterExit } from './lib.js';
 
 const TAU = 85;           // ms — smoothing time constant for zoom/pan
 const FRICTION = 260;     // ms — inertia decay after a drag
@@ -31,7 +31,7 @@ export function openLightbox(items, start = 0) {
       <button class="lb-btn" data-a="original" aria-label="Відкрити файл-оригінал" data-tip="Відкрити файл-оригінал">${ic('fileOpen')}</button>
       <button class="lb-btn" data-a="close" aria-label="Закрити" data-tip="Закрити" data-kbd="Esc">${ic('x')}</button>
     </div>
-    <div class="lb-stage"><div class="spinner spinner-l lb-spinner" hidden></div><img alt="" draggable="false" decoding="async"><img alt="" draggable="false" decoding="async"><div class="lb-text" hidden></div><div class="lb-error" role="alert" hidden>Не вдалося завантажити зображення</div></div>
+    <div class="lb-stage"><div class="spinner spinner-l lb-spinner" data-fx hidden></div><img alt="" draggable="false" decoding="async"><img alt="" draggable="false" decoding="async"><div class="lb-text" data-fx hidden></div><div class="lb-error" role="alert" data-fx hidden>Не вдалося завантажити зображення</div></div>
     <div class="lb-bottom">
       <button class="lb-btn" data-a="prev" aria-label="Попереднє" data-tip="Попереднє" data-kbd="←">${ic('chevLeft')}</button>
       <span class="lb-counter"></span>
@@ -199,7 +199,7 @@ export function openLightbox(items, start = 0) {
     cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', onResize);
-    setTimeout(() => root.remove(), 170);
+    removeAfterExit(root);
     if (opener && opener !== document.body && document.contains(opener) && (root.contains(document.activeElement) || document.activeElement === document.body)) opener.focus({ preventScroll: true });
   }
   const fitNow = () => { if (active) { fitTarget(); kick(); } };

@@ -1,7 +1,7 @@
 ---
 title: The interface the owner wants
 type: owner
-updated: 2026-10-03
+updated: 2026-10-06
 code:
   - app/web/css/app.css
   - app/web/css/library.css
@@ -42,6 +42,13 @@ An action the program can undo **acts and offers «Скасувати»** (a boo
 a question is for what is gone for good (sending to print; the Windows-Recycle-Bin deletions of the Workshop) — and then
 **one** review with everything noticed, most serious first, not a string of dialogs. A picture removed from a library book is
 set aside, not deleted, so it too comes back with one press (the last wave of 2026-09-30). An undo is offered only when it really restores.
+
+## Progress is shown only as far as it is known (2026-10-06)
+
+- The owner disliked step squares and icons «filled to a half». **Where the percent is really known** — an upload, a check page by page, the pictures of a book
+  (n of 16) — the indicator fills **in proportion** and moves smoothly. **Where it cannot be known** (waiting for a printer, the model loading, a Windows
+  dialog) it is **white / neutral** (an accent edge, a spinner, a sweeping segment) — never half-filled, never a floor of 1–3 %.
+- The 170–180 Hz screen: every change has frames between ([frontend → Motion](../architecture/frontend.md)).
 
 ## The keyboard (2026-09-30, the last wave)
 

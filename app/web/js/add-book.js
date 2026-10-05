@@ -117,6 +117,7 @@ export function openAddBook(existing = [], transfer = null) {
   create.onclick = async () => {
     const why = missing();
     if (why) { toast(why[0], 'info'); markMissing([why[1]]); return; }
+    create.style.minWidth = `${create.offsetWidth}px`;   // the label changes while it works: the button keeps its width
     create.disabled = true;
     create.innerHTML = `<span class="spinner"></span>${transfer ? 'Передаю…' : 'Створення…'}`;
     try {

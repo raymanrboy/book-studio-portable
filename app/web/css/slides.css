@@ -12,7 +12,12 @@
 .se-saved { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-s); color: var(--text-3); white-space: nowrap; min-width: 110px; justify-content: flex-end; }
 .se-saved.ok .icon { color: var(--green); }
 .se-saved.bad { color: var(--red); }
-.se-saved .spinner { width: 12px; height: 12px; border-width: 2px; }
+.se-saved .spinner { width: 12px; height: 12px; border-width: 2px;
+  animation: spin .8s linear infinite, se-in 160ms ease 150ms backwards; }   /* a quick save never flashes a spinner */
+.se-saved .icon { animation: se-in 180ms ease backwards; }
+.se-saved .se-bake { width: 44px; flex: none; }
+@keyframes se-in { from { opacity: 0; } }
+@keyframes se-pop { from { opacity: 0; transform: scale(.92); } }
 
 /* three columns: the layers · the slide · its properties */
 .se-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 236px minmax(0, 1fr) 292px; gap: 14px; }
@@ -25,11 +30,12 @@
 
 /* a layer: its kind's glyph, the name, lock and eye (shown on hover or when set) */
 .se-layer { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 2px 0 8px; border-radius: var(--r-ctl);
-  font-size: var(--fs); color: var(--text-2); cursor: pointer; position: relative; user-select: none; }
+  font-size: var(--fs); color: var(--text-2); cursor: pointer; position: relative; user-select: none; transition: background var(--t-fast) ease, color var(--t-fast) ease, opacity var(--t-fast) ease; }
 .se-layer:hover { background: var(--surface-hover); }
 .se-layer.sel { background: var(--accent-soft); color: var(--text); }
 .se-layer.off > .grow { opacity: .45; text-decoration: line-through; }
 .se-layer.dragging { opacity: .4; }
+.se-layer.drop-above::before, .se-layer.drop-below::after { animation: se-in 140ms ease; }
 .se-layer.drop-above::before, .se-layer.drop-below::after { content: ""; position: absolute; left: 6px; right: 6px; height: 2px; border-radius: var(--r-art); background: var(--accent); }
 .se-layer.drop-above::before { top: -1px; }
 .se-layer.drop-below::after { bottom: -1px; }
@@ -47,9 +53,11 @@
 .se-stage .el { cursor: move; }
 .se-stage .el[data-lock] { pointer-events: none; }
 .se-over { position: absolute; left: 0; top: 0; width: 1000px; height: 1000px; transform-origin: 0 0; pointer-events: none; }
-.se-selbox { position: absolute; outline: 1.5px solid var(--accent); pointer-events: none; }
+.se-selbox { position: absolute; outline: 1.5px solid var(--accent); pointer-events: none; animation: se-in 140ms ease-out; }
 .se-h { position: absolute; background: #fff; border: 1.5px solid var(--accent); border-radius: var(--r-sm); pointer-events: auto; }
 .se-h.h-rot { border-radius: 50%; }
+.se-h { transition: background-color var(--t-fast) ease; }
+.se-h:hover { background: var(--accent-soft); }
 .se-stem { position: absolute; left: 50%; background: var(--accent); pointer-events: none; }
 .se-hint { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: var(--fs-s); pointer-events: none; }
 
@@ -78,7 +86,8 @@
 .se-sw { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--c);
   cursor: pointer; position: relative; box-shadow: inset 0 0 0 2px var(--surface); transition: transform var(--t-fast) var(--ease); }
 .se-sw:hover { transform: scale(1.08); }
-.se-sw.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.se-sw { transition: transform var(--t-fast) var(--ease), outline-color var(--t-fast) ease; outline: 2px solid transparent; outline-offset: 1px; }
+.se-sw.on { outline-color: var(--accent); }
 .se-pick { background: conic-gradient(from 90deg, #e8c59d, #a2a066, #6b3a3a, #eedec7, #7a6650, #e8c59d); overflow: hidden; }
 .se-pick::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--c); border: 1.5px solid var(--surface); }
 .se-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
@@ -88,7 +97,7 @@
 .se-scheme { max-width: 240px; }
 .se-scheme .truncate { min-width: 0; }
 .se-scheme-names { display: flex; flex-wrap: wrap; gap: 6px; }
-.se-scheme-names .chip { cursor: pointer; }
+.se-scheme-names .chip { cursor: pointer; transition: background var(--t-fast) ease, color var(--t-fast) ease, border-color var(--t-fast) ease; }
 .se-bg-row { border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 0; border-radius: 0 0 var(--r-ctl) var(--r-ctl); }
 .se-bg-chip { background: var(--c) !important; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
 .se-layer .ib.xs.free { opacity: 1; color: var(--accent-ink); }

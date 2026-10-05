@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py

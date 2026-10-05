@@ -33,7 +33,9 @@
 /* Progress — one bar for every book: library = four parts (cover, illustrations, text, Canva), Workshop = its eleven steps. */
 .segbar { display: flex; gap: 3px; margin: 2px 0; }
 .segbar i { flex: 1; height: 4px; border-radius: var(--r-art); background: var(--border-strong); position: relative; overflow: hidden; }
-.segbar i > b { position: absolute; inset: 0; background: var(--accent); transform-origin: left; }
+.segbar i > b { position: absolute; inset: 0; background: var(--accent); transform-origin: left; transition: transform 500ms var(--ease); }
+/* Started, but how far is not known: a neutral hatch, never a half-filled guess. */
+.segbar i.unk { background: repeating-linear-gradient(135deg, var(--accent-line) 0 3px, var(--border-strong) 3px 6px); }
 .segbar i.skip { background: var(--surface-3); }
 .segbar i.nogo > b { background: var(--red); }
 /* What is next: a chevron, the step, its count; the prompts check on the right. */
@@ -51,15 +53,18 @@
 .hero-thumb:hover .crops { opacity: 1; transform: none; }
 .hero-thumb .drop-ph { border: 1.5px dashed var(--border-strong); border-radius: var(--r-art); background: var(--surface); cursor: pointer; }
 .hero-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.hero-title-input { font-family: var(--font-book); font-size: var(--fs-book-title); font-weight: 600; line-height: var(--lh-tight); width: 100%; background: transparent; border: 1px solid transparent; border-radius: var(--r-ctl); padding: 2px 8px; margin-left: -9px; color: var(--text); resize: none; overflow: hidden; outline: none; transition: border-color var(--t-fast), background var(--t-fast); field-sizing: content; text-wrap: balance; }
+.hero-title-input { font-family: var(--font-book); font-size: var(--fs-book-title); font-weight: 600; line-height: var(--lh-tight); width: 100%; background: transparent; border: 1px solid transparent; border-radius: var(--r-ctl); padding: 2px 8px; margin-left: -9px; color: var(--text); resize: none; overflow: hidden; outline: 3px solid transparent; transition: border-color var(--t-fast), background var(--t-fast), outline-color var(--t-fast); field-sizing: content; text-wrap: balance; }
 .hero-title-input:hover { border-color: var(--border); }
-.hero-title-input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px var(--accent-soft); }
+.hero-title-input:focus { border-color: var(--accent); background: var(--surface); outline-color: var(--accent-soft); }
 .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: var(--fs); color: var(--text-3); }
 /* Readiness row: the five parts of a finished book as pictograms, lit when done. */
 .ready { display: inline-flex; gap: 4px; padding: 3px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border); }
 .ready i { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--r-ctl); color: var(--text-4); font-style: normal; }
 .ready i.ok { color: var(--accent-ink); background: var(--accent-soft); }
-.ready i.part::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 2px; border-radius: var(--r-art); background: linear-gradient(90deg, var(--accent) var(--p, 0%), var(--border) var(--p, 0%)); }
+.ready i.part::before, .ready i.part::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 2px; border-radius: var(--r-art); }
+.ready i.part::after { background: var(--border); }
+/* A real fraction (--f: 0…1) fills in proportion, by a transform. */
+.ready i.part::before { z-index: 1; background: var(--accent); transform-origin: left; transform: scaleX(var(--f, 0)); transition: transform 500ms var(--ease); }
 
 .section-head { display: flex; align-items: center; gap: 12px; margin: 34px 0 14px; flex-wrap: wrap; }
 .section-title { font-family: var(--font-display); font-size: var(--fs); font-weight: 600; color: var(--text-2); }
@@ -112,3 +117,13 @@
 /* ------------------------------------------------------------------ «Книги» — the Workshop and the library as one (2026-09-30) */
 .bk-tabs { margin: -6px 0 16px; }
 .bk-tabs .seg button { height: 32px; padding: 0 14px; gap: 7px; display: inline-flex; align-items: center; }
+
+/* A text being edited in the passport appears, it doesn't snap in. */
+.slot-text textarea, .slot-text-foot, .text-block .textarea { animation: fade-in var(--t) ease both; }
+/* The shelf switch and the empty states come in (workshop.js). */
+#ws-shelf > .seg, #ws-empty .empty { animation: notice-in var(--t-slow) var(--ease) both; }
+/* The add-book and folder-import dialogs: what shows up inside comes in, it doesn't snap (add-book.js, book-dialogs.js). */
+#nb-manual:not([hidden]), #nb-photo-wrap:not([hidden]), #fi-progress:not([hidden]), #nb-result > .card-soft { animation: notice-in var(--t-slow) var(--ease) both; }
+#nb-create { font-variant-numeric: tabular-nums; }
+/* A finished bar stops shimmering. */
+#fi-bar.done::after { animation: none; opacity: 0; }

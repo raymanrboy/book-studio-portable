@@ -33,7 +33,8 @@ export function gelatoResultHtml(r) {
 function linkNotice(r) {
   if (r._closed) return html`<div class="notice" style="margin-top:12px" data-link>${ic('check')}<div>Тимчасове посилання закрито.</div></div>`;
   return html`<div class="notice notice-warn" style="margin-top:12px" data-link>${ic('clock')}<div class="grow">
-    Тимчасове посилання на файли працює ще <b class="num" data-countdown>--:--</b> — Gelato забирає їх сам, зазвичай за хвилину.</div>
+    Тимчасове посилання на файли працює ще <b class="num" data-countdown>--:--</b> — Gelato забирає їх сам, зазвичай за хвилину.
+    <div class="progress progress-thin drain"><i data-drain></i></div></div>
     ${ib('unlink', 'Файли забрано — закрити посилання', 'data-act="close-tunnel"', { cls: 'sm' })}</div>`;
 }
 
@@ -46,6 +47,9 @@ export function runCountdown(root, r, onEnd) {
     const left = r._closed ? 0 : Math.max(0, Math.round((linkUntil(r) - Date.now()) / 1000));
     const node = root.querySelector('[data-countdown]');
     if (node) node.textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`;
+    // the time left is really known: the bar drains in proportion, one linear second per tick
+    const drain = root.querySelector('[data-drain]'), total = (r.keepAliveSeconds || 0);
+    if (drain && total) drain.style.transform = `scaleX(${Math.max(0, Math.min(1, left / total))})`;
     if (!left) { clearInterval(timer); if (alive && !r._closed) { r._closed = true; onEnd?.(); } }
   };
   tick();

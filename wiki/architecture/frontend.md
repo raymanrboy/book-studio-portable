@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-04
+updated: 2026-10-06
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -22,6 +22,8 @@ code:
   - app/web/css/orders.css
   - app/web/css/profit.css
   - app/web/css/listings.css
+  - app/web/css/motion-mockups.css
+  - app/web/css/motion-settings.css
   - app/web/css/slides.css
   - app/web/js/slides/engine.js
 ---
@@ -130,7 +132,7 @@ filled = done, half = started, empty = not yet, pale/dashed = not needed, red = 
 - [The Workshop](../features/workshop.md) (the book console moved in, 2026-09-26) — `pages/workshop.js` (the gallery
   of the pipeline's books) and `pages/workshop-book.js` (the path strip and its panel, the rows — drawn by `pages/workshop-rows.js` —, the
   cover's two stages, hero variants; its own drag-and-drop — one picture per frame). Both are **live**: `workshop-live.js` asks
-  the server what changed every 1.5 s while a Workshop page is on screen (every 4 s while a picture is awaited
+  the server what changed every 1.5 s while a Workshop page is on screen (every 4 s once 30 s have passed with nothing changed and nothing generated, and while a picture is awaited
   elsewhere) and the page redraws only what changed with `patch()`; it also keeps the generation mode's state, draws
   its bar (`genBar()`) and tells the shell through `bs:busy` (the rail's dot, the window's title). «Передати в
   бібліотеку» is `openAddBook()` (add-book.js — the Library page itself isn't loaded) in its passing-on form (`transfer.send` runs the job).
@@ -262,6 +264,33 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
   («Інструменти»), `.fld` (a field with its name above it), `.is-missing`.
 - The owner's appearance requirements — [owner/ui-principles.md](../owner/ui-principles.md).
 
+## Motion (2026-10-06)
+
+> The owner's screen is 170–180 Hz. Chromium paints at the display's rate by itself, so what makes the app feel smooth is that **every
+> state change has frames between** and that animations are compositor-only (`transform`, `opacity`). Nothing in the Edge launch caps the
+> rate (no `--disable-gpu`, no frame flags — the flags `--disable-frame-rate-limit` / `--disable-gpu-vsync` are deliberately not used);
+> what can still cap it is the PC: the display's refresh rate in Windows, a slower second monitor, «Показувати анімацію» off in Windows
+> (Edge then reports `prefers-reduced-motion` and the app turns its motion off), the app's own «Мінімум анімацій» (`ui.reduceMotion`).
+
+- **Tokens** (`app.css`): `--d-1` 120 · `--d-2` 200 · `--d-3` 320 · `--d-4` 480 ms, `--d-out` 150 ms for every exit, `--ease-out`, `--ease-in`; the old
+  `--t-fast`/`--t`/`--t-slow`/`--ease`/`--spring` are aliases. Enters 200–320 ms, exits 120–170 ms, hover ≥ 120 ms. No `transition: all`.
+- **`patch()` morphs** (`lib.js`): a keyed child whose markup changed is updated **in place** (attributes, text, children, a new picture is shown
+  only once decoded) instead of being replaced — so CSS transitions on state classes (`.waiting`, an active tab, a segment fill, the `.seg-pill`)
+  really run; a focused field is never touched; `data-nomorph` or a key in `redraw` keeps the old replace; any failure falls back to it.
+  `flip()` fades a removed item out as a ghost clone. Toasts, menus (`.menu.closing`) and modals leave with an animation (`removeAfterExit()`).
+- **Hidden elements fade**: `[data-fx]` makes a `hidden` toggle a fade (`--fx-display` for non-block); `:root { interpolate-size: allow-keywords }` lets
+  panels open by `height`; new content uses `notice-in`/`card-in` (stagger capped ≈ 240 ms).
+- **Page changes**: `html.vt-running` is set only by navigation, so the page-slide View Transition does not play on a theme change.
+- **Progress** (the owner, 2026-10-06 — see [ui-principles](../owner/ui-principles.md)): where the percent is **really** known the indicator fills in
+  proportion (`setProgress(bar, pct, {reset})`, `.progress.live` glides 700 ms between polls, `.progress.full` stops the shimmer, a path step's
+  `p`, `.ready i.part` `--f`, the `.v-ring` badge); where it **cannot** be known it is neutral — `.progress.indet` (a sweeping segment), a spinner, a
+  white step — never half-filled and never a made-up floor (1 %, 3 %).
+- **Slide editor drags** (`slides-editor.js`): `pointermove` keeps the newest sample and applies it once per frame (flushed on `pointerup`), the stage
+  rect is measured at `pointerdown`, a moved element is carried by a compositor `translate` (`will-change` only while dragging), the selection box and handles
+  are persistent.
+- **Files**: `motion-mockups.css` (overrides for the mockup/photo rules of `listings.css`), `motion-settings.css`; both linked in `index.html`.
+- Scripts and styles are asked for with their version in the address ([server](server.md)), so the window keeps them for good.
+
 ## Where in the code
 
 - [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
@@ -279,6 +308,7 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 - [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`
 - [app/web/css/app.css](../../app/web/css/app.css) — color tokens at the top of the file; `.lightbox`, `.modal-root`, `.menu`, `.toasts` (layers)
 - [app/web/css/listings.css](../../app/web/css/listings.css) — `.mk-shell`, `.mk-slot`
+- [app/web/css/motion-mockups.css](../../app/web/css/motion-mockups.css), [app/web/css/motion-settings.css](../../app/web/css/motion-settings.css) — the motion overrides
 - [app/web/css/library.css](../../app/web/css/library.css), [orders.css](../../app/web/css/orders.css), [profit.css](../../app/web/css/profit.css) — the sections' own styles
 
 ## Related

@@ -3,7 +3,8 @@
    Artwork lies square-cornered on a neutral proofing ground, the way print is
    judged; one process-cyan ink marks what can be acted on. Bahnschrift (DIN)
    speaks for the tool, Sitka only for the books' own words.
-   Motion: transform/opacity only, no blur anywhere (60 fps on any screen).
+   Motion: transform/opacity only, no blur anywhere - composited, so it runs at the display's own refresh rate
+   (170+ Hz). Timing tokens: --d-1..--d-4, --d-out, --ease-out, --ease-in; the old --t-fast/--t/--t-slow/--ease stay as aliases.
    ===================================================================== */
 
 :root {
@@ -45,10 +46,15 @@
   --r-grp: 10px;
   --r-card: 12px;
 
-  --ease: cubic-bezier(.2, .9, .25, 1);
+  /* Timing: hover/press/colour, fades and menus, panels and entrances, springs, every exit (~0.6 of its enter). */
+  --d-1: 120ms; --d-2: 200ms; --d-3: 320ms; --d-4: 480ms; --d-out: 150ms;
+  --ease-out: cubic-bezier(.2, .9, .25, 1);
+  --ease-in: cubic-bezier(.5, 0, .75, .2);
+  --ease: var(--ease-out);
   --ease-in-out: cubic-bezier(.65, 0, .35, 1);
   --spring: linear(0, .18 4%, .53 11%, .82 18%, .98 25%, 1.05 32%, 1.06 38%, 1.03 48%, 1 60%, .996 74%, 1);
-  --t-fast: 120ms; --t: 200ms; --t-slow: 320ms;
+  --t-fast: var(--d-1); --t: var(--d-2); --t-slow: var(--d-3);
+  interpolate-size: allow-keywords;  /* height: 0 to auto can be transitioned */
   --rail-w: 64px;
   --sidebar-w: var(--rail-w);
 
@@ -193,11 +199,16 @@ a:hover { text-decoration: underline; }
 img { display: block; max-width: 100%; }
 /* A picture drawn with `data-fade` stays hidden until it is decoded, then fades in (lib.js fadeImages(): "" → "wait" →
    "in"). One rule for every page's pictures — they were fifteen pairs, 300–400 ms each. */
-img[data-fade] { opacity: 0; transition: opacity 350ms ease; }
+img[data-fade] { opacity: 0; transition: opacity var(--d-3) var(--ease-out); }
 img[data-fade="in"] { opacity: 1; }
 h1, h2, h3, h4 { margin: 0; font-family: var(--font-display); font-weight: 600; letter-spacing: 0; text-wrap: balance; }
 p { margin: 0; }
 [hidden] { display: none !important; }
+/* Opt-in fade for a `hidden` toggle (a spinner, a panel, a dot): the element stays laid out while it fades, then drops out of
+   the accessibility tree. `--fx-display` is its own display value when it is not a block. */
+[data-fx] { transition: opacity var(--d-2) var(--ease-out), translate var(--d-2) var(--ease-out), scale var(--d-2) var(--ease-out), visibility 0s linear 0s; }
+[data-fx][hidden] { display: var(--fx-display, block) !important; opacity: 0; visibility: hidden; pointer-events: none; translate: 0 6px;
+  transition-delay: 0s, 0s, 0s, var(--d-2); }
 .num { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
 .mono { font-family: var(--font-mono); font-size: .92em; font-variant-numeric: tabular-nums; }
 .serif { font-family: var(--font-book); }
@@ -260,10 +271,10 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
 }
 .nav-item {
   position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--r-grp);
-  background: none; color: var(--text-3); transition: color var(--t-fast) ease, background var(--t-fast) ease;
+  background: none; color: var(--text-3); transition: color var(--t-fast) ease, background var(--t-fast) ease, box-shadow var(--t-fast) ease;
 }
 .nav-item:hover { color: var(--text); background: color-mix(in srgb, var(--surface) 55%, transparent); text-decoration: none; }
-.nav-item.active { color: var(--accent-ink); transition: color var(--t) ease, background var(--t-fast) ease; }
+.nav-item.active { color: var(--accent-ink); transition: color var(--t) ease, background var(--t-fast) ease, box-shadow var(--t-fast) ease; }
 .nav-item.active:hover { background: transparent; }
 .nav-item .icon { width: 22px; height: 22px; }
 .nav-gap { display: block; width: 24px; height: 1px; margin: 6px 0; background: var(--border); }
@@ -272,6 +283,7 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
 /* Something to attend to (a missing key, Etsy not connected): a small dot on the icon, nothing more. */
 .nav-item .badge { position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 2px var(--bg-2); }
 .nav-item .badge.busy { background: var(--ink-c); }
+.nav-item .badge[data-fx][hidden] { translate: none; scale: .3; }  /* the busy dot owns opacity (animation): it shrinks away */
 .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 /* The first Tab stop: invisible until focused. */
 .skip-link { position: absolute; left: 8px; top: 8px; z-index: 30; padding: 8px 12px; border: 0; border-radius: var(--r-ctl);
@@ -285,8 +297,9 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
 .vt-running .nav { view-transition-name: nav; }
 ::view-transition-old(nav) { animation: none; opacity: 0; }
 ::view-transition-new(nav) { animation: none; }
-::view-transition-old(main) { animation: vt-out 130ms var(--ease-in-out) both; }
-::view-transition-new(main) { animation: vt-in 260ms var(--ease) both; }
+/* Only a page change slides; a theme switch (no .vt-running) keeps the default cross-fade of the whole window. */
+html.vt-running::view-transition-old(main) { animation: vt-out 130ms var(--ease-in-out) both; }
+html.vt-running::view-transition-new(main) { animation: vt-in 260ms var(--ease) both; }
 @keyframes vt-out { to { opacity: 0; transform: translateY(-3px); } }
 @keyframes vt-in { from { opacity: 0; transform: translateY(8px); } }
 /* Loading strip: the four process inks, as on a press sheet's colour bar. */
@@ -305,14 +318,14 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
 .page-sub { color: var(--text-3); font-size: var(--fs); margin-top: 3px; }
 .page-sub .num { color: var(--text-2); }
 .page-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.back-link { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-ctl); color: var(--text-3); border: 0; background: none; }
+.back-link { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-ctl); color: var(--text-3); border: 0; background: none; transition: color var(--t-fast) ease, background var(--t-fast) ease; }
 .back-link:hover { color: var(--text); background: var(--surface-3); }
 
 /* ------------------------------------------------------------------ icon buttons, toolbars, tooltip */
 .ib {
   display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0;
   border: 0; border-radius: var(--r-ctl); background: transparent; color: var(--text-2);
-  transition: background var(--t-fast) ease, color var(--t-fast) ease, transform var(--t-fast) var(--ease);
+  transition: background var(--t-fast) ease, color var(--t-fast) ease, box-shadow var(--t-fast) ease, transform var(--t-fast) var(--ease);
 }
 .ib:hover { background: var(--surface-3); color: var(--text); }
 .ib:active:not(:disabled) { transform: scale(var(--press)); }
@@ -338,7 +351,7 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
   font-size: var(--fs-s); font-weight: 500; line-height: var(--lh);
   /* A long tip wraps inside its 320 px (no lone last word) instead of running out of the box — 19.09.2026. */
   text-wrap: pretty; overflow-wrap: break-word;
-  box-shadow: var(--shadow); opacity: 0; translate: 0 3px; transition: opacity 110ms ease, translate 160ms var(--ease);
+  box-shadow: var(--shadow); opacity: 0; translate: 0 3px; transition: opacity var(--d-1) ease, translate 160ms var(--ease);
 }
 .tip[data-side="bottom"] { translate: 0 -3px; }
 .tip[data-side="right"] { translate: -3px 0; }
@@ -392,7 +405,8 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
 .check { display: inline-flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; font-size: var(--fs); }
 .check input { appearance: none; width: 17px; height: 17px; border-radius: var(--r-sm); border: 1.5px solid var(--border-strong); background: var(--surface-2); display: grid; place-items: center; flex: none; margin-top: 1px; transition: background var(--t-fast), border-color var(--t-fast); cursor: pointer; }
 .check input:checked { background: var(--accent); border-color: var(--accent); }
-.check input:checked::after { content: ""; width: 4px; height: 8px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+.check input::after { content: ""; width: 4px; height: 8px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg) scale(0); transition: transform var(--t-fast) var(--ease); }
+.check input:checked::after { transform: translateY(-1px) rotate(45deg) scale(1); }
 .switch { position: relative; width: 36px; height: 20px; flex: none; }
 .switch input { appearance: none; width: 100%; height: 100%; margin: 0; border-radius: 20px; background: var(--surface-3); border: 1px solid var(--border-strong); cursor: pointer; transition: background var(--t); }
 .switch input::after { content: ""; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-s); transition: transform 360ms var(--spring); }
@@ -410,6 +424,7 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
   display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 7px; border-radius: var(--r-sm);
   font-size: var(--fs-s); font-weight: 600; white-space: nowrap;
   background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border);
+  transition: background-color var(--t) ease, color var(--t) ease, border-color var(--t) ease;
 }
 .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .chip .icon { width: 13px; height: 13px; }
@@ -425,7 +440,7 @@ h1[tabindex="-1"]:focus-visible { outline: none; } /* the title takes the focus 
 .chip-lg { height: 26px; padding: 0 9px; font-size: var(--fs); }
 a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--border-strong); }
 
-.notice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-grp); font-size: var(--fs); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); animation: notice-in var(--t-slow) var(--ease) both; }
+.notice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-grp); font-size: var(--fs); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); animation: notice-in var(--t-slow) var(--ease) both; transition: background-color var(--t) ease, color var(--t) ease, border-color var(--t) ease; }
 .notice > .icon { margin-top: 1px; }
 .notice-success { background: var(--green-soft); border-color: var(--green-line); color: var(--green); }
 .notice-error { background: var(--red-soft); border-color: var(--red-line); color: var(--red); }
@@ -438,7 +453,7 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 
 /* segmented control with a sliding pill (concentric: 7 inside 10) */
 .seg { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: auto; padding: 3px; border-radius: var(--r-grp); background: var(--surface-2); border: 1px solid var(--border); isolation: isolate; contain: layout style; }
-.seg-pill { position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px; border-radius: var(--r-ctl); background: var(--surface); box-shadow: var(--shadow-s), 0 0 0 1px var(--border); transition: transform 420ms var(--spring), width 320ms var(--ease); will-change: transform; }
+.seg-pill { position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px; border-radius: var(--r-ctl); background: var(--surface); box-shadow: var(--shadow-s), 0 0 0 1px var(--border); transition: transform 420ms var(--spring), width 320ms var(--ease); }
 [data-theme="dark"] .seg-pill { background: var(--surface-3); box-shadow: none; }
 .seg-accent .seg-pill, [data-theme="dark"] .seg-accent .seg-pill { background: var(--accent); box-shadow: none; }
 .seg button { border: 0; background: transparent; height: 28px; padding: 0 12px; border-radius: var(--r-ctl); font-size: var(--fs); font-weight: 600; color: var(--text-3); transition: color var(--t) ease; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
@@ -453,11 +468,17 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .progress { height: 6px; border-radius: var(--r-sm); background: var(--surface-3); overflow: hidden; contain: layout paint; }
 .progress > i { display: block; height: 100%; width: 100%; transform: scaleX(0); transform-origin: left center; border-radius: inherit; background: var(--accent); transition: transform 420ms var(--ease); position: relative; overflow: hidden; }
 .progress > i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3), transparent); animation: shimmer 1.4s infinite; transform: translateX(-100%); }
+.progress.full > i::after, .progress.indet > i::after { animation: none; }  /* a finished bar stops glinting */
+/* A bar fed by polling every ~0.5-1 s glides between the values instead of stepping. */
+.progress.live > i { transition-duration: 700ms; transition-timing-function: linear; }
+/* Unknown progress: a neutral third of the track sweeping across - never a half-filled bar. */
+.progress.indet > i { width: 32%; transform: none; transition: none; animation: indet 1.3s var(--ease-in-out) infinite; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(313%); } }
 .progress-thin { height: 3px; }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: spin .8s linear infinite; flex: none; }
 .spinner-l { width: 26px; height: 26px; border-width: 2.5px; }
 .skeleton { position: relative; overflow: hidden; background: var(--surface-2); border-radius: var(--r-sm); }
-.skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, var(--surface-3), transparent); animation: shimmer 1.3s ease-in-out infinite; will-change: transform; }
+.skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, var(--surface-3), transparent); animation: shimmer 1.3s ease-in-out infinite; }
 @keyframes shimmer { to { transform: translateX(100%); } }
 .empty { text-align: center; padding: 56px 20px; color: var(--text-3); }
 .empty-icon { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: var(--r-card); display: grid; place-items: center; border: 1px dashed var(--border-strong); color: var(--text-3); }
@@ -483,7 +504,7 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 /* The viewer (.lightbox) and dialogs share z-index 950: the one opened later is on top, so a confirm or an
    error from the viewer's own actions shows over it (22.09.2026 audit). Menus 965, toasts 970. */
 .modal-root { position: fixed; inset: 0; z-index: 950; display: grid; place-items: center; padding: 24px; background: var(--backdrop); animation: fade-in var(--t) ease both; }
-.modal-root.closing { animation: fade-out 170ms ease forwards; }
+.modal-root.closing { animation: fade-out 170ms ease forwards; pointer-events: none; }
 .modal { width: min(560px, 100%); max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-card); box-shadow: var(--shadow-l); animation: modal-in 380ms var(--spring) both; overflow: hidden; }
 .modal-root.closing .modal { animation: modal-out 170ms ease forwards; }
 .modal-l { width: min(820px, 100%); }
@@ -498,14 +519,16 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 @keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes modal-out { to { opacity: 0; transform: translateY(6px) scale(.99); } }
 
+.menu.closing { animation: menu-out var(--d-out) var(--ease-in-out) forwards; pointer-events: none; }
 .menu { position: fixed; z-index: 965; min-width: 220px; padding: 5px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-l); animation: menu-in 200ms var(--ease) both; transform-origin: top right; }
-.menu button { width: 100%; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: none; border-radius: var(--r-ctl); font-size: var(--fs); color: var(--text); text-align: left; }
+.menu button { width: 100%; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: none; border-radius: var(--r-ctl); font-size: var(--fs); color: var(--text); text-align: left; transition: background var(--t-fast) ease, color var(--t-fast) ease; }
 .menu button:hover, .menu button:focus-visible { background: var(--surface-3); }
 .menu button:focus-visible { outline-offset: -2px; }
 .menu button .icon { color: var(--text-3); width: 16px; height: 16px; }
 .menu button.on .icon, .menu button.on { color: var(--accent-ink); }
 .menu button.danger, .menu button.danger .icon { color: var(--red); }
 .menu hr { border: 0; height: 1px; background: var(--border); margin: 4px 6px; }
+@keyframes menu-out { to { opacity: 0; transform: scale(.97); } }
 @keyframes menu-in { from { opacity: 0; transform: scale(.97) translateY(-4px); } to { opacity: 1; transform: none; } }
 
 /* ------------------------------------------------------------------ viewer */
@@ -517,7 +540,7 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .lb-sub { font-size: var(--fs-s); color: var(--text-3); }
 .lb-stage { flex: 1; position: relative; overflow: hidden; cursor: grab; }
 .lb-stage.dragging { cursor: grabbing; }
-.lb-stage img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; will-change: transform, opacity; box-shadow: var(--shadow-l); transition: opacity 240ms ease; background: #fff; opacity: 0; user-select: none; -webkit-user-drag: none; }
+.lb-stage img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; will-change: transform; outline: 1px solid var(--border); transition: opacity 240ms ease; background: #fff; opacity: 0; user-select: none; -webkit-user-drag: none; }
 .lb-stage img.on { opacity: 1; }
 .lb-bottom { display: flex; align-items: center; gap: 6px; padding: 10px 18px 16px; justify-content: center; }
 .lb-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: var(--r-ctl); border: 1px solid var(--border); background: var(--surface); color: var(--text-2); box-shadow: var(--shadow-s); transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast) var(--ease); }
@@ -536,7 +559,9 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .lb-error { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--red); color: var(--red); font-size: var(--fs); }
 
 /* ------------------------------------------------------------------ artwork, drop zones */
-.drop-hot { outline: 2px dashed var(--accent) !important; outline-offset: -5px; background-color: var(--accent-soft) !important; }
+.drop-hot { outline: 2px dashed var(--accent) !important; outline-offset: -5px; background-color: var(--accent-soft) !important;
+  transition: outline-color var(--d-1) ease, background-color var(--d-1) ease; animation: drop-hot-in var(--d-1) var(--ease-out) both; }
+@keyframes drop-hot-in { from { outline-offset: 2px; } }  /* the dashed edge settles inward (the important colours cannot be animated) */
 .busy-overlay { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--surface) 70%, transparent); z-index: 3; border-radius: inherit; animation: fade-in var(--t) ease both; }
 .lqip.lqip { background-size: cover; background-position: center; background-repeat: no-repeat; }
 /* Crop marks: drawn around a picture on hover, like trim marks on a proof. Eight 1px ticks, one layer. */
@@ -590,7 +615,7 @@ button.set-head:hover { background: var(--surface-hover); }
 .set-row > .icon { color: var(--text-3); }
 /* A module's own settings, nested under its row in «Модулі». */
 .mod-sub { margin: -2px 0 8px 12px; padding: 4px 0 2px 16px; border-left: 2px solid var(--border); }
-.state-mark { display: grid; place-items: center; width: 24px; height: 24px; flex: none; }
+.state-mark { display: grid; place-items: center; width: 24px; height: 24px; flex: none; transition: color var(--t) ease; }
 .state-mark.ok { color: var(--green); }
 .state-mark.warn { color: var(--amber); }
 .code-line { font-family: var(--font-mono); font-size: var(--fs-s); padding: 7px 10px; border-radius: var(--r-ctl); background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -618,12 +643,14 @@ button.set-head:hover { background: var(--surface-hover); }
 .cand { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-ctl); cursor: pointer; border: 1px solid transparent; transition: background var(--t-fast); }
 .cand:hover { background: var(--surface-3); }
 .cand.sel { background: var(--accent-soft); border-color: var(--accent-line); }
-.radio { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border-strong); flex: none; display: grid; place-items: center; }
+.radio { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border-strong); flex: none; display: grid; place-items: center; transition: border-color var(--t-fast); }
+.radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: scale(0); transition: transform var(--t-fast) var(--spring); }
 .cand.sel .radio { border-color: var(--accent); }
-.cand.sel .radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.cand.sel .radio::after { transform: scale(1); }
 .cand .box { width: 16px; height: 16px; border-radius: var(--r-sm); border: 1.5px solid var(--border-strong); flex: none; display: grid; place-items: center; transition: background var(--t-fast), border-color var(--t-fast); }
 .cand.sel .box { border-color: var(--accent); background: var(--accent); }
-.cand.sel .box::after { content: ""; width: 8px; height: 4px; border: 2px solid var(--on-accent); border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+.cand .box::after { content: ""; width: 8px; height: 4px; border: 2px solid var(--on-accent); border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg) scale(0); transition: transform var(--t-fast) var(--ease); }
+.cand.sel .box::after { transform: translateY(-1px) rotate(-45deg) scale(1); }
 .cand.enter { animation: card-in 380ms var(--ease) both; }
 .cand > .details-toggle { flex: none; margin: -3px -4px 0 0; }
 .cand .acc { cursor: auto; user-select: text; }
@@ -638,7 +665,7 @@ button.set-head:hover { background: var(--surface-hover); }
 
 /* ------------------------------------------------------------------ offline */
 .offline { position: fixed; inset: 0; z-index: 990; display: grid; place-items: center; background: var(--backdrop); animation: fade-in var(--t) both; }
-.offline-card { width: min(420px, 90vw); text-align: center; padding: 28px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-l); }
+.offline-card { animation: modal-in var(--d-3) var(--spring) both; width: min(420px, 90vw); text-align: center; padding: 28px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-l); }
 .offline-card h2 { font-size: var(--fs-l); margin: 12px 0 8px; }
 .offline-card p { color: var(--text-3); margin-bottom: 18px; }
 .offline-icon { width: 48px; height: 48px; margin: 0 auto; border-radius: var(--r-card); display: grid; place-items: center; background: var(--amber-soft); color: var(--amber); font-weight: 600; font-size: var(--fs-l); }
@@ -655,10 +682,14 @@ button.set-head:hover { background: var(--surface-hover); }
 
 /* ------------------------------------------------------------------ reduced motion */
 [data-motion="reduce"] *, [data-motion="reduce"] *::before, [data-motion="reduce"] *::after {
-  animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important;
+  animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important;
 }
+[data-motion="reduce"] :is(.spinner, .spin) { animation: spin 1.6s linear infinite !important; }
+[data-motion="reduce"] .progress.indet > i { animation: none !important; width: 100%; opacity: .45; }
 @media (prefers-reduced-motion: reduce) {  /* the same as the in-app switch above (22.09.2026 audit) */
-  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+  :is(.spinner, .spin) { animation: spin 1.6s linear infinite !important; }  /* a spinner must still spin */
+  .progress.indet > i { animation: none !important; width: 100%; opacity: .45; }
 }
 
 /* ------------------------------------------------------------------ search everywhere (Ctrl+K, 2026-09-30) */
@@ -669,16 +700,16 @@ button.set-head:hover { background: var(--surface-hover); }
 .pal-field { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; border-bottom: 1px solid var(--border); color: var(--text-3); flex: none; }
 .pal-input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; font-size: var(--fs-m); color: var(--text); }
 .pal-input::placeholder { color: var(--text-3); }
-.pal-list { overflow: auto; max-height: min(460px, 60vh); padding: 6px; }
+.pal-list { overflow: auto; max-height: min(460px, 60vh); padding: 6px; scroll-behavior: smooth; }
 .pal-group { padding: 10px 10px 4px; font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; color: var(--text-3); }
-.pal-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--r-ctl); background: none; text-align: left; color: var(--text-2); }
+.pal-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--r-ctl); background: none; text-align: left; color: var(--text-2); transition: background var(--t-fast) ease, color var(--t-fast) ease; }
 .pal-item.on { background: var(--accent-soft); color: var(--text); }
-.pal-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: var(--r-ctl); background: var(--surface-2); color: var(--text-2); }
+.pal-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: var(--r-ctl); background: var(--surface-2); color: var(--text-2); transition: background var(--t-fast) ease, color var(--t-fast) ease; }
 .pal-item.on .pal-icon { background: var(--accent); color: var(--on-accent); }
 .pal-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .pal-text b { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pal-text small { font-size: var(--fs-s); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pal-enter { color: var(--accent-ink); opacity: 0; }
+.pal-enter { color: var(--accent-ink); opacity: 0; transition: opacity var(--t-fast) ease; }
 .pal-item.on .pal-enter { opacity: 1; }
 .pal-empty { display: flex; align-items: center; gap: 10px; padding: 22px 14px; color: var(--text-3); }
 
@@ -695,14 +726,14 @@ button.set-head:hover { background: var(--surface-hover); }
 .tool-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .tool-text b { font-family: var(--font-display); font-size: var(--fs-m); font-weight: 600; }
 .tool-text small { font-size: var(--fs-s); color: var(--text-3); }
-.tool-go { color: var(--text-3); }
+.tool-go { color: var(--text-3); transition: color var(--t-fast) ease, transform var(--t-fast) var(--ease); }
 .drop-veil { position: fixed; inset: 0; z-index: 980; display: grid; place-items: center; pointer-events: none; opacity: 0; transition: opacity var(--t-fast) ease;
   background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 0 0 0 3px var(--accent-line); color: var(--accent-ink); }
 .drop-veil .icon { width: 72px; height: 72px; stroke-width: 1.4; }
 .drop-any .drop-veil { opacity: 1; }
 .modal-where { width: min(420px, 100%); }
 .where-list { display: grid; gap: 10px; }
-.tool-tile:hover .tool-go { color: var(--accent-ink); }
+.tool-tile:hover .tool-go { color: var(--accent-ink); transform: translateX(2px); }
 
 /* A detail page's place in its section, beside the back arrow (2026-09-30): where the owner is, in words. */
 .crumb { font-family: var(--font-display); font-size: var(--fs); font-weight: 600; color: var(--text-3); }
@@ -714,7 +745,17 @@ button.set-head:hover { background: var(--surface-hover); }
 .secret-row:has(input:placeholder-shown) .ib.primary { background: transparent; color: var(--text-3); box-shadow: inset 0 0 0 1px var(--border-strong); }
 
 /* A compact switch (2026-09-30): icons with their counts; only the chosen one shows its word. */
-.seg-compact button:not(.active) .seg-label { display: none; }
 .seg-compact button { gap: 7px; }
+/* The word of the chosen one appears (a fade) and the others' go: the buttons take their final widths at once, so the pill glides once to
+   where it will stand. (A word that grew by max-width made the layout move every frame — the sent-orders tab hitched, 2026-10-06.) */
+.seg-compact .seg-label { white-space: nowrap; }
+.seg-compact button:not(.active) .seg-label { display: none; }
+.seg-compact button.active .seg-label { animation: seg-label-in var(--d-2) var(--ease-out) both; }
+@keyframes seg-label-in { from { opacity: 0; } }
 .seg-compact button.has .seg-count { color: var(--accent-ink); }
 .seg-compact button.has:not(.active) { color: var(--accent-ink); }
+
+/* ------------------------------------------------------------------ copied: micro-feedback after a copy button (lib.js wires [data-copy], [data-copy-text]) */
+.ib.copied, .ib.copied:hover, .btn.copied { color: var(--green); }
+.copied > .icon { animation: copy-pop 360ms var(--spring) both; }
+@keyframes copy-pop { from { transform: scale(.6); } to { transform: none; } }

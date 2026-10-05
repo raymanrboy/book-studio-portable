@@ -52,7 +52,7 @@ export async function mount(view, params, { embedded = false } = {}) {
   const q = view.querySelector('#ws-q');
   const persist = () => remember(PREF, { sort: state.sort });
   const passed = () => state.books.filter((b) => b.library);
-  const readiness = (b) => b.steps.reduce((sum, s) => sum + (s.state === 'done' || s.state === 'skip' ? 1 : s.state === 'part' ? 0.5 : 0), 0);
+  const readiness = (b) => b.steps.reduce((sum, s) => sum + (s.state === 'done' || s.state === 'skip' ? 1 : s.state === 'part' ? s.p ?? 0.5 : 0), 0); // sorting only: a started step without a measured p counts as half
 
   function listed() {
     const needle = state.query.trim().toLowerCase();
@@ -70,7 +70,7 @@ export async function mount(view, params, { embedded = false } = {}) {
     const next = b.steps.find((s) => s.state === 'todo' || s.state === 'part');
     const check = b.steps.find((s) => s.key === 'prompts')?.check;
     const t = b.thumb;
-    const VALUE = { done: 1, part: 0.5, todo: 0, skip: 0 };
+    const VALUE = { done: 1, part: 0, todo: 0, skip: 0 };       // a started step fills only as far as it is really known (`p`), never by a guess
     const count = next?.key === 'pictures' ? html` <span class="num">${b.pictures}/${b.picturesTotal}</span>` : '';
     return bookTile({
       key: b.id, title: b.title, number: b.number,
@@ -78,7 +78,7 @@ export async function mount(view, params, { embedded = false } = {}) {
       over: html`<span class="ws-card-wait" data-wait="${b.id}" data-tip="Чекаю картинку"><span class="ws-pulse"></span>${ic('images', 'icon-s')}</span>
         ${b.library ? tickBadge('У бібліотеці замовлень') : ''}`,
       sub: html`<span class="serif">${highlightTokens(b.coverTitle)}</span>`,
-      bar: segBar(b.steps.map((s) => ({ v: VALUE[s.state] ?? 0, skip: s.state === 'skip', tip: `${s.label}: ${STATE_WORDS[s.state]}` }))),
+      bar: segBar(b.steps.map((s) => ({ v: s.state === 'part' ? s.p ?? 0 : VALUE[s.state] ?? 0, skip: s.state === 'skip', unk: s.state === 'part' && s.p == null, tip: `${s.label}: ${STATE_WORDS[s.state]}` }))),
       meta: html`${next ? html`<span class="book-go">${ic('chevRight', 'icon-s')}<b>${next.label}</b>${count}</span>` : html`<span class="book-go done">${ic('check', 'icon-s')}</span>`}
         ${check ? html`<span class="${check.go ? 'ws-go' : 'ws-nogo'}" data-tip="Перевірка промптів">${checkWord(check)}</span>` : ''}`,
     });
@@ -102,16 +102,17 @@ export async function mount(view, params, { embedded = false } = {}) {
 
   function paintEmpty(list) {
     const box = view.querySelector('#ws-empty');
+    // patch(), not setHtml: a repaint with the same empty state leaves it alone instead of replaying its entrance.
     if (!state.books.length) {
-      setHtml(box, html`<div class="empty" style="padding:72px 20px">
+      patch(box, [['none', html`<div class="empty" style="padding:72px 20px">
         <div class="empty-icon">${ic('workshop')}</div>
         <h3>Майстерня порожня</h3>
         <p>«Нова книга» відкриє Antigravity, а в буфері буде «Нова книга» з адресою папки книг — вставте в чат агента. Книга з'явиться тут сама, щойно агент почне її писати.</p>
         <button class="btn btn-primary" data-act="add">${ic('agent')}Нова книга</button>
-        <div class="faint mono ws-empty-path">${state.folder}</div></div>`);
+        <div class="faint mono ws-empty-path">${state.folder}</div></div>`]]);
     } else if (!list.length) {
-      setHtml(box, html`<div class="empty"><div class="empty-icon">${ic('search')}</div><h3>Нічого не знайдено</h3><p>Спробуйте іншу назву чи номер.</p></div>`);
-    } else box.innerHTML = '';
+      patch(box, [['found', html`<div class="empty"><div class="empty-icon">${ic('search')}</div><h3>Нічого не знайдено</h3><p>Спробуйте іншу назву чи номер.</p></div>`]]);
+    } else patch(box, []);
   }
 
   let firstDraw = true;
@@ -121,7 +122,7 @@ export async function mount(view, params, { embedded = false } = {}) {
     flip(grid, () => drawn.push(...patch(grid, list.map((b) => [b.id, card(b)]))));
     fadeImages(grid);
     if (firstDraw) {
-      drawn.forEach((n, i) => { n.classList.add('enter'); n.style.animationDelay = `${Math.min(i * 26, 360)}ms`; });
+      drawn.forEach((n, i) => { n.classList.add('enter'); n.style.animationDelay = `${Math.min(i * 16, 240)}ms`; });
       firstDraw = false;
     }
     paintSub();

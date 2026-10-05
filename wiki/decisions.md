@@ -1,7 +1,7 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-04
+updated: 2026-10-06
 code: []
 ---
 # Decisions
@@ -9,6 +9,31 @@ code: []
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top. An entry is a record of its day: where it says
 > "not built yet", the feature page tells what exists now.
+
+## 2026-10-06 — Progress only as far as it is known; motion on a 170–180 Hz screen
+
+- **The owner** did not like step squares «filled to a half» and has a 170–180 Hz monitor: he wants more intermediate frames, nothing jumping.
+- **Decision:** a measured progress fills in proportion, an unmeasured one is neutral (see [ui-principles](owner/ui-principles.md)); `patch()` morphs in place and
+  `flip()` animates removals so state changes have frames; shared timing tokens; hidden toggles fade; the slide editor's drags are frame-synchronised.
+  The Edge launch gets **no** frame-rate flags (they do not help a vsynced 170 Hz panel — they only tear). Five agents audited the areas in parallel, five implemented.
+- **Not done:** `.ws-row` `content-visibility` (clips the waiting ring); the passport upload / export progress toast (needs new UI); the mockup/slides engine
+  keeps `left/top` (a drag uses `translate`) so the baked slide output cannot change; server-side «unknown percent» flag for the Gelato/Printify milestone waits.
+
+## 2026-10-05 — Speed audit: what runs only when it is needed, and what runs side by side
+
+- **The owner** asked for a wide research of what could make the program faster, smaller and better, then said to do everything found.
+  The measured findings: the code itself is quick (imports 0.26 s, 480 profit rows in 0.08 s) — the losses were elsewhere.
+- **Decisions:** (1) the wiki check looks names up in a set of the code's words and never walks `data` (54 s → 2 s); (2) the text check's
+  model is **not** read at every start — `warm()` does it when a card takes files (the earlier «prime» of 19.09 is gone); (3) Etsy,
+  Printify and Gelato are read side by side in a sync; (4) Edge is told to leave components alone and its leftovers are removed from
+  our two profiles when no window holds them; (5) the preview cache is capped at 800 MB (least recently used first); (6) the Workshop's
+  and the slide editor's looking for changes slows to every 4 s after 30 quiet seconds; (7) scripts and styles are asked for by a
+  versioned address and kept for good.
+- **Not done, on purpose:** the 0.7 GB of identical files in the library and the Workshop were not turned into hard links (a page edited in
+  place would change both copies — unlike the archive, which is never edited); folder previews keep `max-age=600` (some of their
+  addresses carry no version, `immutable` would show a replaced page old); PNG pages are not recompressed (their hashes key the archive and
+  Printify's upload cache). **Moving off Edge's `--app` window** (to WebView2, Qt or Electron) was weighed and rejected: same engine, a
+  rewrite for no gain — the program never used WebView2.
 
 ## 2026-10-04 — The printer's history in the order card: asked for when the card opens, never in bulk
 

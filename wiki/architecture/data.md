@@ -1,7 +1,7 @@
 ---
 title: Program data — the app/data folder
 type: architecture
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -30,7 +30,7 @@ code:
 | `profit/print-orders.json` | Which print orders this program itself created for which receipt (a receipt's books can go in two batches, or to two printers) | `profit.remember_print_order()` |
 | `creator/upload-cache.json` | A file's SHA-256 → its Printify image ID (so it isn't uploaded twice); keeps the last 5000 (`UPLOADS_KEPT`), older ones are forgotten | `creator._remember_upload()` |
 | `creator/master-snapshots/` | Snapshots of the Master product before every book creation | `create_printify_draft()` |
-| `cache/thumbs/` | JPEG previews (keyed by path, modified time, size, preview size); unneeded after 21 days — deleted on launch (since 2026-09-19; a preview used while working refreshes its date once a day) | `images.preview()`, `images.prune_cache()` |
+| `cache/thumbs/` | JPEG previews (keyed by path, modified time, size, preview size); unneeded after 21 days, and the least recently used go first while the whole cache is over 800 MB (`CACHE_MAX_BYTES`, 05.10.2026) — deleted on launch (since 2026-09-19; a preview used while working refreshes its date once a day) | `images.preview()`, `images.prune_cache()` |
 | `tmp/dropped/` | Copies of dragged folders and ZIPs; wiped on launch | `drops._drop_file()` |
 | `tmp/gelato/<session>/` | PDFs for Gelato while the temporary link is up | `create_gelato_draft()` |
 | `tmp/system/` | The temp folder of the program and everything it starts (the Edge window, the Windows dialogs, cloudflared) instead of Windows' `%TEMP%` on drive C (since 2026-09-23, the owner keeps C clean); emptied on launch and on close | `core.own_temp()`, `core.clear_own_temp()` |
