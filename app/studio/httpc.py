@@ -10,7 +10,6 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from logging.handlers import RotatingFileHandler
 from typing import Any
 
 from . import core
@@ -66,10 +65,7 @@ def audit_log(name: str, file: str) -> logging.Logger:
     log = logging.getLogger(name)
     with _audit_ready:
         if not log.handlers:
-            core.data_path("logs").mkdir(parents=True, exist_ok=True)
-            h = RotatingFileHandler(core.data_path("logs", file), maxBytes=2_000_000, backupCount=3, encoding="utf-8")
-            h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
-            log.addHandler(h)
+            log.addHandler(core.log_file(file, "[%(asctime)s] %(levelname)s: %(message)s"))    # a file a day, a week kept
     return log
 
 

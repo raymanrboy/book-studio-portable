@@ -16,6 +16,7 @@ import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { give } from '../handoff.js';
 import { offerModule } from '../modules-ui.js';
 import { pathHtml } from '../path.js';
+import { mountHistory } from '../order-history.js';
 import { sentOf, keptOrder, finish, linkOf } from '../keep.js';
 import { gelatoResultHtml, runCountdown, resultAction, linkAlive } from './gelato-result.js';
 
@@ -89,6 +90,7 @@ export async function mountCard(view, rid) {
     </section>`;
   }
 
+  const atGelato = o.stage !== 'new' && o.provider === 'gelato';
   setHtml(view, html`
     <div class="page-head">
       <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
@@ -102,11 +104,14 @@ export async function mountCard(view, rid) {
     <div class="ord-path-slot" id="oc-path"></div>
     <div id="oc-link"></div>
     ${o.stage !== 'new' ? printedHtml() : ''}
-    <div class="ord-grid">
+    <div class="ord-grid${atGelato ? ' ord-hist' : ''}">
       <div class="stack-l" id="oc-flow"></div>
       <div class="stack-l ord-side" id="oc-data"></div>
+      ${atGelato ? html`<div class="ord-history" id="oc-history"></div>` : ''}
     </div>`);
   const $ = (s) => view.querySelector(s);
+  // A placed Gelato order's history, asked for now that the card is open (never for the whole queue).
+  const stopHistory = atGelato ? mountHistory($('#oc-history'), o) : () => {};
 
   // ---------------------------------------------------------------- header: where it is printed
   function renderPlan() {
@@ -759,6 +764,6 @@ export async function mountCard(view, rid) {
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
     idle: () => !(work.some((w) => w.folder || w.busy || w.label) || sentOf(o.receiptId)),
-    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopFit(); listenEsc(false); stopLink(); stopPlaque(); },
+    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopHistory(); stopFit(); listenEsc(false); stopLink(); stopPlaque(); },
   };
 }

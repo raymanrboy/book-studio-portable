@@ -162,8 +162,18 @@ export async function api(path, { method = 'GET', body, headers = {}, signal } =
     const stale = res.status === 403 && data?.error === 'Forbidden';
     throw new ApiError(stale ? 'Це вікно застаріло — натисніть F5, щоб перезавантажити сторінку.' : data?.error || `Помилка ${res.status}`, res.status, data);
   }
+  if (method === 'GET' && KEPT.has(path)) kept.set(path, { at: Date.now(), data });
   return data;
 }
+
+// The heavy lists' last answers: what only needs a glance right after a page fetched them (the Books tabs' counts, the search
+// palette) takes them from here instead of asking the program again (04.10.2026). A page itself always asks.
+const KEPT = new Set(['/api/orders', '/api/library/books', '/api/workshop/books']);
+const kept = new Map();
+export const recent = (path, ms = 5000) => {
+  const k = kept.get(path);
+  return k && Date.now() - k.at < ms ? Promise.resolve(k.data) : api(path);
+};
 
 /** Tells the shell what is going on (the rail's dot, the window's title — app.js): `{ mockups: true }`,
  *  `{ workshop: label }`, `{ done: text }`. */
@@ -174,8 +184,11 @@ export function post(path, body) {
   return api(path, { method: 'POST', body });
 }
 
+// Pictures carry a key of their own that outlives a restart: the same address, so the window shows them from its cache (04.10.2026).
+const MEDIA_TOKEN = document.querySelector('meta[name="media-token"]')?.content || TOKEN;
+
 export const media = (path, params = {}) => {
-  const q = new URLSearchParams({ ...params, t: TOKEN });
+  const q = new URLSearchParams({ ...params, t: MEDIA_TOKEN });
   return `${path}?${q}`;
 };
 

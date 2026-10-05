@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import core
 
-CREATE_NO_WINDOW = 0x08000000
+CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0     # a child process without a console window (0 elsewhere)
 
 # The Windows dialog in a process of its own (Tk wants its own main thread):
 # argv = folder|file|zip|save, title, start folder[, the file name «Зберегти як» suggests].
@@ -55,7 +55,7 @@ def _dialog(kind: str, title: str, initial: str, name: str = "") -> str | None:
     result = subprocess.run(
         [_console_python(), "-B", "-X", "utf8", "-c", _DIALOG_SCRIPT, kind, title, folder, name],  # -B: no .pyc written anywhere
         capture_output=True, text=True, encoding="utf-8",
-        creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
+        creationflags=CREATE_NO_WINDOW,
         timeout=3600,
     )
     path = (result.stdout or "").strip()
@@ -264,7 +264,7 @@ def open_app_window(url: str) -> subprocess.Popen | None:
             "--window-size=1480,940",
         ]
         try:
-            return subprocess.Popen(args, creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0)
+            return subprocess.Popen(args, creationflags=CREATE_NO_WINDOW)
         except OSError:
             core.log.exception("Cannot start app window")
     import webbrowser

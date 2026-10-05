@@ -148,7 +148,7 @@ function updateSidebar() {
   const integ = store.info?.integrations || {};
   // One quiet signal instead of a status list: a dot on Settings when a service still needs a key or login.
   const badge = document.getElementById('nav-badge');
-  if (badge && store.info) badge.hidden = !!(integ.etsy?.connected && integ.printify?.configured && integ.gelato?.configured);
+  if (badge && store.info) badge.hidden = !!(integ.etsy?.connected && integ.gelato?.configured);
   const theme = THEMES.find((t) => t.value === currentTheme()) || THEMES[0];
   setHtml(document.getElementById('theme-btn'), ic(theme.icon));
   paintBusy();                                                // the shop's name may have just arrived
@@ -361,6 +361,13 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 window.addEventListener('pagehide', () => {
   try { navigator.sendBeacon('/api/app/bye', new Blob([JSON.stringify({ t: TOKEN })], { type: 'text/plain' })); } catch {}
 });
+
+// An error nobody caught goes into the program's log (app.log), so what went wrong can be found later (04.10.2026).
+function logPageError(message, where) {
+  post('/api/app/log', { message: String(message || '').slice(0, 600), where: String(where || '').slice(0, 600), page: location.hash }).catch(() => {});
+}
+window.addEventListener('error', (e) => logPageError(e.message, e.error?.stack || `${e.filename}:${e.lineno}:${e.colno}`));
+window.addEventListener('unhandledrejection', (e) => logPageError(e.reason?.message || e.reason, e.reason?.stack));
 
 // Prevent the window from navigating away when a file is dropped outside a drop zone.
 window.addEventListener('dragover', (e) => e.preventDefault());

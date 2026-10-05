@@ -25,7 +25,7 @@ code:
 
 > All the `@route` routes, one to one. The wiki-check script compares this table against the code: a
 > new, changed, or removed route has to be reflected here.
-> Access: `token` — a session header, `media` — `?t=` in the link, `none` — no token.
+> Access: `token` — a session header, `media` — `?t=` in the link (the pictures' key, kept across launches, or the session token), `none` — no token.
 > Pattern — the regular expression from the code (the `|` character is escaped).
 
 ## App — [server.py](../../app/studio/server.py), [settings_api.py](../../app/studio/settings_api.py)
@@ -35,6 +35,7 @@ code:
 | GET | `/api/ping` | none | `_ping` | lib.js ("connection lost" check), main.py (a second copy of the program) |
 | POST | `/api/app/heartbeat` | token | `_heartbeat` | app.js every 20 s |
 | POST | `/api/app/bye` | none | `_bye` | app.js when the window closes (token in the body) |
+| POST | `/api/app/log` | token | `_page_log` | app.js — an error nobody caught in the page, into `app.log` (at most 100 a launch) |
 | GET | `/api/jobs/([0-9a-f]{12})` | token | `_job` | lib.js `runJob` (a job's error also carries `errorExtra` — e.g. a key's `code`) |
 | GET | `/api/app` | token | `_app` | app.js `refreshInfo` |
 | GET | `/api/settings` | token | `_settings` | settings.js |
@@ -67,6 +68,7 @@ code:
 |---|---|---|---|---|
 | GET | `/api/orders` | token | `_list` | orders.js (the queue), creator-picker.js `pickEtsyOrder` (the same list; its own `/api/creator/etsy-orders` went on 2026-09-27) |
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (the card; `earlierSends` — sends of this order that never became a print-shop order) |
+| GET | `/api/orders/(\d{5,20})/history` | token | `_history` | order-history.js `mountHistory` (the card's history of a placed Gelato order, read from Gelato when the card opens; `?fresh=1` asks again) |
 | POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (laying out pages; for Gelato — also whether it prints that many pages in this format; `provider: "files"` — a hardcover, the length picks the printer) |
 
 ## Text check — [textcheck/routes.py](../../app/studio/textcheck/routes.py)

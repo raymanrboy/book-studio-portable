@@ -40,7 +40,6 @@ export async function mount(view, [rawSection]) {
     if (!tc) tc = { ...s.textcheck, models: [], pending: true };
     // A block that needs the user's attention opens by itself.
     if (!s.etsy.connected || s.etsy.portWarning) openCards.add('etsy');
-    if (!s.secrets.printify_token.configured) openCards.add('printify');
     if (!s.secrets.gelato_api_key.configured) openCards.add('gelato');
   }
 
@@ -153,8 +152,8 @@ export async function mount(view, [rawSection]) {
     const ro = !!p.readOnly;
     return card('printify', {
       logo: ic('printify'), logoClass: 'int-printify', title: 'Printify',
-      summary: !has ? 'Потрібен токен' : ro ? `${p.shopTitle || 'Магазин'} · лише читання старих замовлень` : `${p.shopTitle || 'Магазин не обрано'} · ${m.title || 'шаблон не обрано'}`,
-      mark: stateMark(has, has ? 'Підключено' : 'Немає токена'),
+      summary: !has ? 'Не обов’язково · не підключено' : ro ? `${p.shopTitle || 'Магазин'} · лише читання старих замовлень` : `${p.shopTitle || 'Магазин не обрано'} · ${m.title || 'шаблон не обрано'}`,
+      mark: has ? stateMark(true, 'Підключено') : '', // optional since 2026-10-05: every order goes through Gelato, no warning mark
       body: html`<div class="stack">
         ${secretField('printify_token')}
         <div class="set-row">${ic('book')}<span class="grow">${ro ? html`Нові книги друкує Gelato <span class="faint">· з Printify програма лише читає старі замовлення</span>` : html`${m.title || 'Шаблон не обрано'} <span class="faint">· <span class="num">${p.pageCount}</span> стор.</span>`}</span>

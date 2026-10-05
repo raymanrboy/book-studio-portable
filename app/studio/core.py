@@ -10,7 +10,7 @@ import sys
 import threading
 import time
 import uuid
-from logging.handlers import RotatingFileHandler
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any
 
@@ -48,12 +48,6 @@ def data_id() -> str:
     return hashlib.sha1(str(DATA_DIR).casefold().encode("utf-8")).hexdigest()[:12]
 
 
-def data_id() -> str:
-    """Tells which data folder a running Book Studio works on (the ordinary and the portable copy are different ones)."""
-    import hashlib
-    return hashlib.sha1(str(DATA_DIR).casefold().encode("utf-8")).hexdigest()[:12]
-
-
 def ensure_dirs() -> None:
     for sub in (
         "library/books",
@@ -67,15 +61,36 @@ def ensure_dirs() -> None:
         data_path(sub).mkdir(parents=True, exist_ok=True)
 
 
-def setup_logging() -> None:
+LOG_DAYS = 7     # the logs keep a week: a file a day, the eighth day's goes (the owner, 04.10.2026: "collect logs, clean them every 7 days")
+
+
+def log_file(name: str, fmt: str) -> logging.Handler:
+    """A log in logs/<name>: a new file every day (the old one renamed <name>.<date>), the last LOG_DAYS kept."""
     data_path("logs").mkdir(parents=True, exist_ok=True)
+    handler = TimedRotatingFileHandler(data_path("logs", name), when="midnight", backupCount=LOG_DAYS, encoding="utf-8")
+    handler.setFormatter(logging.Formatter(fmt))
+    return handler
+
+
+def prune_logs() -> None:
+    """Old log files a size-rotated log left (app.log.1 …, before 04.10.2026) go after LOG_DAYS too. The send and text-check
+    journals (logs/sends, logs/checks) are records, not logs: never touched here."""
+    cutoff = time.time() - LOG_DAYS * 86400
+    for path in data_path("logs").glob("*.log.*"):
+        try:
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                path.unlink()
+        except OSError:
+            pass
+
+
+def setup_logging() -> None:
     root = logging.getLogger()
-    if any(isinstance(h, RotatingFileHandler) for h in root.handlers):
+    if any(isinstance(h, TimedRotatingFileHandler) for h in root.handlers):
         return
-    handler = RotatingFileHandler(data_path("logs", "app.log"), maxBytes=2_000_000, backupCount=3, encoding="utf-8")
-    handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s"))
-    root.addHandler(handler)
+    root.addHandler(log_file("app.log", "[%(asctime)s] %(levelname)s %(name)s: %(message)s"))
     root.setLevel(logging.INFO)
+    prune_logs()
 
 
 def own_temp() -> Path:

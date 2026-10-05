@@ -10,6 +10,22 @@ code: []
 > deliberate choice by the owner. Newest decisions are at the top. An entry is a record of its day: where it says
 > "not built yet", the feature page tells what exists now.
 
+## 2026-10-04 — The printer's history in the order card: asked for when the card opens, never in bulk
+
+- **The owner** wanted what Gelato's dashboard shows (the status history) in the card's empty right-hand space — a square
+  with a scroll — then: "forget what I said, do it as you think", and **"don't scan every order at launch and hide it
+  everywhere — do it when I open an order, I can wait a couple of seconds."**
+- **Decision:** a card «Історія» beside a placed Gelato order's data ([orders](features/orders.md)); the order is read from Gelato
+  (one read-only `GET`) when its card opens, a skeleton meanwhile; nothing at launch, nothing for the queue. No always-open
+  "expand" box: the column is free, so a click to open it would only cost.
+- **Why not our own journal of status changes** (the alternative): it would have to watch every order at every sync — what the
+  owner declined. So when Gelato's own log is empty, the card shows the few dates the order has and the tracking link.
+- **Not known yet:** what Gelato's `eventLog` holds for a shipped order (the docs weren't readable, every draft had it empty);
+  the card tries the likely field names and `gelato.log` records the real ones. The carrier's own scans (the USPS list in his
+  screenshot) aren't in Gelato's API as far as found — the card links to the carrier's tracking page instead. Gelato's webhooks
+  need a public address; the program has none.
+- Built in the **portable** copy only (the owner, 2026-10-04: "будуй в портативній").
+
 ## 2026-10-02 — Listing slide 7: the hero's looks, each in its own frame, on its white background
 
 - **The owner** asked for a new listing slide for the books with appearance variants, on the basis of slide 4 (his
@@ -1211,3 +1227,32 @@ The owner, after the accident with the made-up data: precautions so that data is
 be restored. Done as layers ([data safety](architecture/data-safety.md)): a history of every write of the important files, a daily snapshot, a guard that keeps the send
 journal add-only, tests and the preview unable to reach the real data, the owner's slide sets to the Recycle Bin, and `tools/data_history.py` to put a version back. How to apply:
 a new file that holds the owner's work gets a rule in `core.HISTORY_RULES`; a new deletion of something he made uses `desktop.to_recycle_bin()`.
+
+## Pictures keep the same address across restarts (2026-10-04)
+
+The owner: the listing covers never change, so the program must not fetch them again after every restart — keep them. Done with a key of the pictures' own
+(`server.MEDIA_TOKEN`, kept in `app/data/media-key.txt`) instead of the per-launch session token in `/media/` addresses: the window's cache keeps what it has shown
+(the library's pictures are `immutable`; the Workshop's revalidate with an ETag). The key opens pictures only, never the API. How to apply: a new picture route is `auth="media"`
+and its links come from `media()` in the page or `MEDIA_TOKEN` on the server.
+
+## Logs: collected by default, kept a week (2026-10-04)
+
+The owner, after the program closed under an open window: collect logs by default and clean them every 7 days, so bugs are caught. `app.log`, `gelato.log` and
+`printify.log` start a new file every day and keep the last 7 (`core.LOG_DAYS`); the window's life (why it counted as closed, gaps between pings) and the page's
+uncaught errors go into `app.log`. The send journal (`logs/sends`) and the text-check journal (`logs/checks`) are records of what was done, not logs: never cleaned by this.
+
+## The order archive keeps the same page once (2026-10-04)
+
+The owner, after the research into duplicate files: store only the pages that are needed. The archive holds each picture once — the same illustration in many
+children's books is one file with a name in each entry (a hard link). A page counts as the same by its picture, not its bytes: Canva writes its own text into every
+export, which is not printed and not kept for the later copies. Each entry stays whole and on its own (its `entry.json`, its file names; removing it leaves the others).
+How to apply: anything that puts files into the archive goes through `archive.store()`; never edit an archived file in place (all its books would change).
+
+- **2026-10-05 — ads and new-listing fees are counted into the Profit totals as a flat $1.38 a day, with no card of their own** (the owner: count it, but keep it out of the main view). Constant `OVERHEAD_PER_DAY` in `app/web/js/pages/profit.js`. Etsy's ledger (read since the same day, scope `transactions_r` the program already has) checks it — the decision below.
+
+- **2026-10-05 — the Profit page checks itself against Etsy's payment ledger** (the owner: "if it all matches, our sums are right"). The
+  first card shows the Etsy balance («Доступно до виводу») with the program's expected sum under it, and a row whose real Etsy money
+  differs gets a mark. The formula stays the source of the numbers until the owner has compared; the ledger only checks it. Read only,
+  with the scope the program already has (`transactions_r`). [features/profit.md](features/profit.md)
+- **2026-10-05 — the Printify token is optional**: no warning, no mark, no Printify in the Profit header without it — every order goes
+  through Gelato.

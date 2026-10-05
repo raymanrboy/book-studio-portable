@@ -85,6 +85,65 @@ def _gelato(rid: int, status: str, carrier: str = "", tracking: str = "") -> dic
             "shipments": [{"carrier": carrier, "number": tracking, "url": ""}] if tracking else []}
 
 
+def _full_gelato_order(order_id: str, account: str = "main") -> dict:
+    """A made-up full Gelato order for the card's history (no network here): an order on its way, with an event log in the
+    shape the card reads. The real log's field names are not known yet — the card tries the likely ones."""
+    now = time.time()
+    stamp = lambda hours: time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(now - hours * 3600))
+    log = [("created", 70, ""), ("passed", 69, "Passed the file check"), ("in_production", 52, ""), ("printed", 30, ""),
+           ("shipped", 22, "Handed to Canada Post"), ("in_transit", 6, "Arriving on time")]
+    return {"id": order_id, "fulfillmentStatus": "in_transit", "createdAt": stamp(70), "orderedAt": stamp(70),
+            "items": [{"eventLog": [{"status": s_, "createdAt": stamp(h), "message": m} for s_, h, m in log]}],
+            "shipment": {"shipmentMethodName": "Canada Post Tracked Packet", "minDeliveryDate": stamp(-48)[:10],
+                         "maxDeliveryDate": stamp(-96)[:10],
+                         "packages": [{"trackingCode": "7023210000000003", "trackingUrl": "https://example.com/track"}]}}
+
+
+def _seed_ledger(receipts: list) -> None:
+    """A made-up Etsy payment ledger (ledger.py) for the receipts: each sale's gross, tax and fees as the formula has them,
+    an Offsite Ads fee on Chris's order (the row the check marks), a payout 8 days ago, the ads every day."""
+    from studio import core, ledger
+    now = int(time.time())
+    entries, payments, n = [], {}, 0
+
+    def add(at: int, kind: str, rtype: str, ref, cents: int, parent: int = 0) -> int:
+        nonlocal n
+        n += 1
+        entries.append({"id": 9000 + n, "seq": n, "at": at, "type": kind, "rtype": rtype, "ref": ref, "amount": cents,
+                        "balance": None, "parent": parent})
+        return 9000 + n
+
+    add(now - 8 * 86400, "DISBURSE2", "disbursement", 1, 0)
+    for day in range(8, 0, -1):
+        fee = add(now - day * 86400 + 60, "prolist", "prolist", 1, -100)
+        add(now - day * 86400 + 60, "vat_seller_services", "etsy", 0, -20, fee)
+    for r in sorted(receipts, key=lambda r: r["create_timestamp"]):
+        fb, at, rid = r["fee_breakdown"], r["create_timestamp"], r["receipt_id"]
+        cents = lambda v: -round(v * 100)  # noqa: E731
+        payments[f"7{rid}"] = rid
+        add(at, "PAYMENT_GROSS", "shop_payment", f"7{rid}", round(fb["gross"] * 100))
+        add(at, "PAYMENT_PROCESSING_FEE", "processing_fee", f"7{rid}", cents(fb["processing_fee"]))
+        add(at, "vat_on_processing_fees", "receipt", rid, cents(fb["vat_processing"]))
+        books = r["items"]
+        for i, it in enumerate(books):  # one fee per book sold, as Etsy posts them
+            share = lambda v: v / len(books) + (v - v / len(books) * len(books) if i == 0 else 0)  # noqa: E731
+            tx = add(at, "transaction", "transaction", it["transaction_id"], cents(share(fb["trans_item_fee"])))
+            add(at, "vat_seller_services", "etsy", 0, cents(share(fb["vat_trans_item"])), tx)
+        ship = add(at, "shipping_transaction", "receipt", rid, cents(fb["trans_ship_fee"]))
+        add(at, "vat_seller_services", "etsy", 0, cents(fb["vat_trans_ship"]), ship)
+        for _ in books:
+            renew = add(at, "renew_sold_auto", "listing", 4100000900, -20)
+            add(at, "vat_seller_services", "etsy", 0, -4, renew)
+        if rid == "4100000105":
+            add(at + 3600, "offsite_ads_fee", "receipt", rid, -599)
+    entries.sort(key=lambda e: (e["at"], e["seq"]))
+    balance = 0
+    for i, e in enumerate(entries, 1):
+        e["seq"], balance = i, (0 if e["type"].startswith("DISBURSE") else balance + e["amount"])
+        e["balance"] = balance
+    core.write_json(ledger.LEDGER, {"shopId": "sample", "readTo": now, "payments": payments, "entries": entries}, backup=False)
+
+
 def seed(data: Path) -> None:
     from studio import core, records, sync  # imported after BOOK_STUDIO_DATA is set
     # The seed writes orders, books and archive entries: never into a data folder that is not this tool's own. `studio.core` fixes its folder
@@ -123,6 +182,9 @@ def seed(data: Path) -> None:
                 "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": [],
                 "loaded": {source: core.now_iso() for source in ("etsy", "printify", "gelato")}}
     core.write_json(records.SNAPSHOT, snapshot, backup=False)
+    _seed_ledger(snapshot["receipts"])
+    from studio import gelato
+    gelato.get_order = _full_gelato_order  # the order card's history reads one full order (sample mode only: seed() refuses otherwise)
     # One receipt with two print orders: what the queue and the profit row look like when the books of an
     # order went in two goes, or to two printers.
     core.write_json(records.SENDS, {"4100000107": [

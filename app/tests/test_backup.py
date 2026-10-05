@@ -57,6 +57,16 @@ class Rules(unittest.TestCase):
         finally:
             shutil.rmtree(folder)
 
+    def test_the_big_program_folder_is_packed_last(self):
+        """Every later addition rewrites the archive: the program (with its books) last, so it is written once."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        program, templates = root / "Book Studio", root / "Трафарети"
+        templates.mkdir()
+        with mock.patch("studio.mockups.places", return_value={"templates": templates}), \
+                mock.patch.object(backup, "PROGRAM_DIR", program):
+            self.assertEqual(backup.sources(), [templates, program])
+
     def test_never_runs_by_itself_in_the_sandbox(self):
         with mock.patch.object(backup, "start") as start:
             backup.start_if_due()

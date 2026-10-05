@@ -24,13 +24,12 @@ def _ask(title: str, text: str) -> bool:
         return False
 
 
-missing = []
-for module, package in (("PIL", "Pillow"), ("img2pdf", "img2pdf"), ("pikepdf", "pikepdf"),
-                         ("cryptography", "cryptography")):
-    try:
-        __import__(module)
-    except ImportError:
-        missing.append(package)
+import importlib.util
+
+# Only found, not imported: the PDF packages are read in when a PDF is made (importing them here cost every start ~0.15 s, 04.10.2026).
+missing = [package for module, package in (("PIL", "Pillow"), ("img2pdf", "img2pdf"), ("pikepdf", "pikepdf"),
+                                           ("cryptography", "cryptography"))
+           if importlib.util.find_spec(module) is None]
 
 if missing:
     _message("Book Studio", "Бракує пакетів Python: " + ", ".join(missing) + "\n\nВстановіть їх командою:\n"

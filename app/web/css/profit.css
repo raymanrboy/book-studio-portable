@@ -136,3 +136,6 @@
 /* No sales in the period (2026-09-30): the zeros in grey, not in the colours of real results. */
 .kpi-none .kpi { --kpi-ink: var(--text-3); }
 .kpi-none .kpi .kpi-ico { opacity: .5; }
+.kpi-foot.warn { color: var(--amber); }
+.o-check { color: var(--amber); display: inline-flex; vertical-align: -2px; margin-right: 4px; }
+.dbox-foot.ledger-foot { display: block; line-height: 1.6; }  /* a long line of Etsy's entries wraps as text */

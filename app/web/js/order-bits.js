@@ -45,7 +45,7 @@ const STATUS_TONE = [
 ];
 const statusTone = (s) => (STATUS_TONE.find(([re]) => re.test(s)) || [0, 'chip-accent'])[1];
 /** "in_transit" / "has-issues" → "In transit" / "Has issues": the printer's word, kept in English, written for people. */
-const statusText = (s) => String(s).replace(/[-_]+/g, ' ').trim().replace(/^./, (c) => c.toUpperCase());
+export const statusText = (s) => String(s).replace(/[-_]+/g, ' ').trim().replace(/^./, (c) => c.toUpperCase());
 
 /** Tracking numbers in the printer's colour, after its chip: carrier | number (one text line, so both sit
  * on the same baseline). A click on the carrier copies the carrier, anywhere else — the number (the owner,

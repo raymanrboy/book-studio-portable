@@ -1,7 +1,7 @@
 ---
 title: Program data — the app/data folder
 type: architecture
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -23,6 +23,7 @@ code:
 | `library/books/<id>/book.json` | The book model ([features/library.md](../features/library.md)); a book passed on from the [Workshop](../features/workshop.md) notes it (`"workshop": "<folder>"`) | `library.save()` |
 | `library/books/<id>/assets/<uuid>.png` | The book's illustrations (originals); a book passed on from the Workshop keeps its cover and pages in the Workshop's `pipeline/books/<folder>/pictures/` instead (`"pagesFrom": "workshop"`, since 2026-09-27) — only its thumbnail is here | `library._store_asset()` |
 | `library/trash/` | Deleted books (can be restored by hand) | `library._delete()` |
+| `profit/ledger.json` | Etsy's payment ledger since 14.09.2026 (slim entries in cents with the balance after each), `payments` — payment → receipt, `readTo` — read up to when. Read again two days back at every sync | `ledger.refresh()` |
 | `profit/snapshot.json` | A snapshot of the last sync: Etsy receipts, Printify and Gelato orders (slim; each Gelato order with `account` — the hash of the key it was read with), the sync cursor, `loaded` — when each of the three lists last loaded in full (the archive only trusts a fresh one). Read from disk once per file change (`load_snapshot()`) | `profit._sync()` |
 | `profit/links.json` | Manual links: "receipt → print order" or "no cost" | `profit._set_link()` |
 | `profit/states.json` | Manual states: cancellation, refund, replacement (reprints from the order archive go here too) | `profit._set_state()`, `profit.mark_reprint()` |
@@ -33,12 +34,14 @@ code:
 | `tmp/dropped/` | Copies of dragged folders and ZIPs; wiped on launch | `drops._drop_file()` |
 | `tmp/gelato/<session>/` | PDFs for Gelato while the temporary link is up | `create_gelato_draft()` |
 | `tmp/system/` | The temp folder of the program and everything it starts (the Edge window, the Windows dialogs, cloudflared) instead of Windows' `%TEMP%` on drive C (since 2026-09-23, the owner keeps C clean); emptied on launch and on close | `core.own_temp()`, `core.clear_own_temp()` |
-| `logs/` | `app.log`, `printify.log`, `gelato.log`, `startup-error.txt` | logs |
+| `archive/pages.json` | Each archived page's key by its stamp — which pages are the same picture, so it is kept once (2026-10-04) | [archive.py](../../app/studio/archive.py) |
+| `logs/` | `app.log`, `printify.log`, `gelato.log` (a file a day, a week kept), `startup-error.txt`; `sends/` and `checks/` — the journals, kept | logs |
 | `logs/sends/` | One JSON per send to Printify/Gelato (last 400; with addresses, no keys) | [send journal](../features/send-journal.md) |
 | `logs/checks/` | One JSON per text check: what the model read, what should have been there, problems (last 400; with children's names) | [text check](../features/text-check.md) |
 | `archive/<id>/` | Order archive: `Cover.png` + the pages that went to print, and `entry.json` (what, where, when, address). **Deletes itself** 14 days after "Sent" (30 if the order can't be tracked), except "Keep" | [order archive](../features/archive.md) |
 | `window-profile/` | The Edge window profile (≈0.5 GB) | Edge |
 | `work-browser/` | The portable copy's Edge profile for Gelato and Canva (the logins; left out of the backup) | Edge |
+| `media-key.txt` | The pictures' key in `/media/` links (`server.MEDIA_TOKEN`): the same across launches, so the window keeps the pictures cached (2026-10-04). Opens pictures only | [server.py](../../app/studio/server.py) |
 | `portable-state.json` | The portable copy's own notes: the computers it has run on, `repo` (where its paths were last rebased), the «no» answers to the system installs | [portable.py](../../app/studio/portable.py) |
 | `rebase-backup/`, `import-backup/` | The data files as they were before a move of the folder / before a settings import | `portable.rebase_paths()`, `transfer._save_current()` |
 | `tmp/modules/` | The module downloads while they are made (`.part`, then checked) | [modules.py](../../app/studio/modules.py) |

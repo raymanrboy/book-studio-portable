@@ -426,11 +426,14 @@ def follow(book_id: str, book: dict | None = None, progress=None) -> dict:
     if not stale:
         return book
     made: dict[str, dict | None] = {}
-    for i, (slot, path, stamp) in enumerate(stale, 1):
-        if path is not None:
-            made[slot] = _workshop_record(path, stamp)
-        if progress:
-            progress(i, len(stale))
+    # Three pages at a time (each a full read and its previews, ~1 s; a 32-page book took up to 48 s one by one, 04.10.2026).
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {pool.submit(_workshop_record, path, stamp): slot for slot, path, stamp in stale if path is not None}
+        for i, fut in enumerate(as_completed(futures), len(stale) - len(futures) + 1):
+            made[futures[fut]] = fut.result()
+            if progress:
+                progress(i, len(stale))
     with _lock:
         fresh = _read(book_id)
         if not from_workshop(fresh):

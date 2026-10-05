@@ -71,21 +71,24 @@ async function mountQueue(view) {
   // with the entrance: all of them on the first look, the new orders after a refresh.
   let drawnOnce = false;
   const render = ({ fresh = false } = {}) => {
-    const t = term.trim().toLowerCase();
-    countStages(seg, data.orders, t);
-    const tab = data.orders.filter((o) => o.stage === stage);
     const before = shown;
     const known = new Set([...list.children].map((n) => n.dataset.key));
-    const drawn = patch(list, tab.map((o) => [o.receiptId, rowHtml(o)]));
+    const drawn = patch(list, data.orders.filter((o) => o.stage === stage).map((o) => [o.receiptId, rowHtml(o)]));
     const entering = (!drawnOnce && !returning) || fresh;
     drawn.filter((n) => entering && !known.has(n.dataset.key))
       .forEach((n, i) => enterOnce(n, drawnOnce ? 0 : Math.min(i * 30, 300)));
     drawnOnce = true;
-    const visible = new Set(tab.filter((o) => matchesOrder(o, t)).map((o) => o.receiptId));
-    [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); });
-    shown = tab.filter((o) => visible.has(o.receiptId)).map((o) => o.receiptId);
+    narrow();
     fadeImages(list);
     if (fresh && before.join() !== shown.join()) holdClicks(list);
+  };
+  // What the search hides and shows — typing only runs this: no row is built again for a letter (04.10.2026).
+  const narrow = () => {
+    const t = term.trim().toLowerCase();
+    countStages(seg, data.orders, t);
+    shown = data.orders.filter((o) => o.stage === stage && matchesOrder(o, t)).map((o) => o.receiptId);
+    const visible = new Set(shown);
+    [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); });
     setHtml(empty, shown.length ? '' : emptyOrders(data.orders, t, stage, sync.syncing));
   };
 
@@ -108,7 +111,7 @@ async function mountQueue(view) {
   ];
   const q = $('#or-q');
   q.value = term;
-  q.addEventListener('input', () => { term = queueState.term = q.value; render(); });
+  q.addEventListener('input', () => { term = queueState.term = q.value; narrow(); });
   q.addEventListener('keydown', (e) => { if (e.key === 'Enter' && shown.length) location.hash = `#/orders/${shown[0]}`; });
 
   setSub(syncedText());

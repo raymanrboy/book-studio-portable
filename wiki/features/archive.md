@@ -1,9 +1,10 @@
 ---
 title: Order archive — what went to print, and reprints
 type: feature
-updated: 2026-10-01
+updated: 2026-10-04
 code:
   - app/studio/archive.py
+  - app/tools/archive_dedupe.py
   - app/web/js/pages/archive.js
 ---
 # Order archive
@@ -23,6 +24,14 @@ code:
 - **Exactly the files that were sent**: `Cover.png` + `1…N.png` (24 for Printify, 28 or 30 for Gelato) —
   a **copy**, not a link: if the files in your own folder change afterward, the archive stays as it went
   to print. A reprint from the archive takes the same files via a hard link (uses no extra space).
+- **The same page is kept once** (2026-10-04): 14 of a book's ~31 pages are the same illustrations in every child's order, and
+  Canva signs each export with its own text (XMP), so they were kept again and again — 5.6 of the archive's 12.2 GB. A page is known
+  by its picture (`page_key()`: the PNG's chunks without the text ones), and a send whose page the archive already holds keeps it as a
+  hard link to that file — one file on the disk, a whole book in every entry; removing one book leaves the others whole. Pixels and
+  print size are the same; only Canva's signature of the later export is not kept. `archive/pages.json` remembers each file's key
+  by its stamp (`_index()`, refreshed on launch and after each sync). What was there before: `app/tools/archive_dedupe.py`
+  (`--apply`; the replaced files go to the Recycle Bin) — run on 04.10.2026: 455 pages of 31 books, 12.2 → 6.7 GB on the disk.
+  The backup still packs every name in full (7-Zip reads a hard link as a file).
 - **Description** (`entry.json`): the printer, the title (`receipt number - name`), the receipt number,
   when, how many pages, the Gelato format, Product ID / Order ID, the shipping address, the send
   journal's record name, whether it's a reprint and of which book, "Keep", when the order became "Sent".
@@ -148,7 +157,7 @@ page itself remembered this).
 
 ## Where in the code
 
-- [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `card_facts()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
+- [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `page_key()`, `_index()`, `dedupe()`, `INDEX`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `card_facts()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
 - [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `_to_archive()`, `_mark_reprint()`, `_journaled()`
 - [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `create_printify_reprint()`, `_printify_reprint()`
 - [app/studio/creator/routes.py](../../app/studio/creator/routes.py) — `_reprint_printify()`, `_create_gelato()`
@@ -158,6 +167,7 @@ page itself remembered this).
 - [app/studio/sync.py](../../app/studio/sync.py) — `_sync()` (`loaded` for each list; after a sync — `archive.refresh_quietly()`)
 - [app/studio/orders.py](../../app/studio/orders.py) — `_one()` (`earlierSends`, `atPrinter`, `printed`); [app/studio/archive.py](../../app/studio/archive.py) — `card_facts()`; [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `earlier()`, `takeEarlier()`
 - [app/studio/main.py](../../app/studio/main.py) — `main()` (checking the archive on launch)
+- [app/tools/archive_dedupe.py](../../app/tools/archive_dedupe.py) — `main()`, `_running()`: the same pages of what is archived kept once
 - [app/web/js/pages/archive.js](../../app/web/js/pages/archive.js) — `mountList()`, `mountBook()`, `clockChip()`, `clockText()`, `proofCard()`, `reprintCard()`, `sendCard()`, `fieldsCard()`, `addressCard()`, `toggleKeep()`, `reprint()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — reprint mode: `withOrder()`, `createLabel()`, `folderCard()`, `create()`
 - [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `ROUTES`; [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`; [app/web/js/icons.js](../../app/web/js/icons.js) — `orderArchive`, `pin`

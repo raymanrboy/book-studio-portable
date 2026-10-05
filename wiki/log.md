@@ -3,9 +3,69 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-05] update | The Profit page checks itself against Etsy's payment ledger
+
+- New `ledger.py` (+ `data/profit/ledger.json`): the sync reads Etsy's payment ledger (read only, scope `transactions_r`); `profit.py`
+  gives each row `etsy_net_actual` / `etsy_check` / `etsy_lines` and the page `etsyBalance`; the first card is «Доступно до виводу»
+  with «за розрахунком $X» under it; a row that differs from Etsy by more than 5 cents gets a mark; the header names only the
+  printers connected now. `OVERHEAD_PER_DAY` moved to `profit.py`. Sync items keep `transaction_id`. Sample data have a made-up ledger.
+- Checked on the owner's real ledger (read only, on a copy of the data): 58 of 70 receipts to the cent, 6 within 4 cents; the
+  differences are Offsite Ads, a state's delivery fee and the listing fee on a cancelled sale; the 5 October payout $606.68 against
+  the program's $606.63. 5 new tests (`test_ledger.py`); the page in the preview on made-up data. Pages: [profit](features/profit.md),
+  [reconciliation](rules/reconciliation.md), [data](architecture/data.md).
+
+## [2026-10-05] update | The Printify token is optional
+
+- Settings: the Printify card says «Не обов’язково · не підключено» with no warning mark and no longer opens by itself; the dot on the
+  Settings icon (`app.js`) waits only for Etsy and Gelato. Checked in the preview on made-up data.
+
+## [2026-10-05] update | Ads and new listings counted quietly into the profit totals
+
+- `profit.js`: `OVERHEAD_PER_DAY` ($1.38, from the owner's Etsy statements of Sept–Oct 2026) × `periodDays()` is taken off the
+  «Чистий прибуток» and the margin; no new card. Checked in the preview on made-up data (5 days → −$6.90). Page: [profit](features/profit.md).
+- The fee formula was also checked against 79 real orders of the statements: 72 match to the cent, the rest are refunds/other shipping.
+
+## [2026-10-05] update | No warning about a missing Printify token
+
+- `sync._sync()` no longer adds «Printify токен не налаштовано…» to the sync warnings: the owner sends everything through
+  Gelato, so a missing Printify token is normal. Page: [sync-policy](rules/sync-policy.md).
+
+## [2026-10-04] update | The printer's history card in a placed Gelato order's card (portable copy)
+
+- New `order-history.js` and the card «Історія» beside the order's data; `gelato.history()` / `cached_history()` /
+  `slot_of()` and `GET /api/orders/<receipt>/history` read **one** full Gelato order when the card opens (a minute's memory,
+  forever for a delivered one). The sample server answers with a made-up order. Page: [orders](features/orders.md);
+  decision — [decisions](decisions.md).
+- Checked: 10 new tests (`test_gelato_history.py`), the card in the preview on made-up data — light and dark, three widths,
+  the error and retry, Printify / new orders without it. **Not checked:** a real Gelato answer — what the real `eventLog` of a
+  shipped order holds is unknown. After the update — restart Book Studio.
+- Same day, the owner's note: the order card's header was too close to the path strip (the tracking chip 20 px above it) —
+  now 32 px, and 4 px more between the name and the grey line (`.page-head:has(.ord-sub)`, `.ord-sub` in `orders.css`).
+- And the green «temporary link» notice under the path strip touched the cards below it: `#oc-link:not(:empty)` now has 6 px above
+  and 18 px below (`orders.css`).
+
 ## [2026-10-03] update | The portable folder shows one shortcut
 
 - `make_shortcut.py` in the portable copy also writes `Book Studio.lnk` into the portable folder itself (and `Book Studio Portable.lnk` on the desktop). The `.bat` files, `ROADMAP.md` and `ПРОЧИТАЙ.md` in the folder's root are hidden (the owner: he only needs a shortcut); `ПРОЧИТАЙ.md` says how to show them and what to do after the folder is moved.
+
+## [2026-10-04] update | The order archive keeps the same page once: 12.2 → 6.7 GB
+
+- The owner chose it from the duplicate-files research. A page is known by its picture (`archive.page_key()`, the PNG without Canva's text chunks); `store()` hard-links a page the archive already holds; `dedupe()` and `tools/archive_dedupe.py` did it for what was there: 455 pages of 31 books, the replaced files to the Recycle Bin. Checked: 12 random pairs identical pixel for pixel before; after — 41 books, 1241 pages, none missing or broken. 592 tests.
+
+## [2026-10-04] fix | The program no longer shuts down under an open window; logs collected and kept a week
+
+- The owner's screenshot: «Зв'язок із програмою втрачено» with the window open. `app.log`: a start at 17:12:53 whose Edge process handed the window over, then «Shutting down» at 17:19:30 — 90 s after the page's last ping. `main.run_until_closed()` now knows such a window by the profile Edge holds (`_profile_open()`, `window-profile/lockfile`, checked with a real Edge), not by the pings; half an hour without a page while Edge runs still counts as closed (`LOST`).
+- Logs (the owner: collect them by default, clean every 7 days): `app.log`, `gelato.log`, `printify.log` a file a day, a week kept (`core.log_file()`, `prune_logs()`); the log says why the window counted as closed, when our Edge process ended, long gaps between pings, and errors in the page (`/api/app/log`). The send and text-check journals are not touched. 589 tests.
+
+## [2026-10-04] update | Faster: the start, the Gelato PDF, the backup, the Workshop, the slides, the mockups; pictures cached across restarts
+
+- Research by four agents (start and server, heavy work, Python code, interface), the findings checked in the code and measured.
+- Start: the one-copy lock is asked first, `/api/ping` only when it is held (a port nobody listens on cost 1.5 s of every start); `Book Studio.pyw` only finds the PDF packages (~0.15 s); `portable.rebase_paths()` never walks the caches and browser profiles.
+- Pictures: a key of their own kept across launches (`server.MEDIA_TOKEN`, `data/media-key.txt`) — the same addresses, so the window shows the gallery and the orders' covers from its cache after a restart (the owner).
+- Gelato PDF: PNG pages are not asked for their turn (~5 s of a 32-page book; the PDF the same). Backup: the program folder last (it was written twice), 7-Zip below normal priority.
+- Workshop: a spread's two pages written at once (all or none); the upscale's progress in steps of 5 % (every percent re-read the open book). Library: a Workshop book's page records three at a time. Mockups: the pictures prepared four at a time. Slides: four bake at once; the cut-out's three pictures written together, «Без фону» at PNG level 4.
+- Interface: the Workshop's pictures load when scrolled to; the orders' search only hides and shows rows; the Order Creator's picker redraws after a pause; the Books counts and the palette reuse a list a page has just read (`lib.recent()`); the first page's modules preloaded together.
+- Tidy: one `desktop.CREATE_NO_WINDOW` (it was in five places), the doubled `core.data_id()` gone. Measured and left alone: Nagle on the server (0.3 ms a request). 585 tests.
 
 ## [2026-10-04] update | Data safety: history of writes, a daily snapshot, guards, the Recycle Bin, a restore tool
 

@@ -21,7 +21,9 @@ code:
 - `auth`:
   - `token` (default) — the `X-Studio-Token` header must equal `SESSION_TOKEN` (new on every launch,
     embedded into `index.html` when it's served);
-  - `media` — the token in the `?t=` parameter (for `<img src>`);
+  - `media` — `?t=` in the link (for `<img src>`): the pictures' key `MEDIA_TOKEN` (`_media_key()`, kept in `data/media-key.txt`
+    across launches — the same address lets the window show a picture from its cache after a restart, the owner 04.10.2026) or the
+    session token; it opens pictures only, never the API;
   - `none` — `/api/ping`, `/api/app/bye`, `/etsy/callback`.
 - The function returns a `dict` (becomes JSON), `None` (becomes `{"ok": true}`), or a `Response`
   (`file_response()`, `html_response()`).
@@ -94,7 +96,9 @@ Rule: the message for the user is in Ukrainian, specific, saying what happened a
 - `read_json()` reads `.bak` only on a **damaged** file; a file that's **missing** stays missing — the
   `.bak` of a deleted file is never read (since 2026-09-23: it used to bring back a state the program or
   a test had cleared).
-- Logs: `data/logs/app.log`, `printify.log`, `gelato.log` (rotated every 2 MB). `setup_logging()` only
+- Logs: `data/logs/app.log`, `printify.log`, `gelato.log` — a file a day, the last 7 kept (`core.log_file()`, `LOG_DAYS`; the owner, 04.10.2026:
+  "collect logs, clean them every 7 days"); older leftovers go at the start (`prune_logs()`). The send and text-check journals (`logs/sends`,
+  `logs/checks`) are records and are never cleaned this way. `setup_logging()` only
   makes the `logs` folder (since 2026-09-23; the other data folders are made by `ensure_dirs()` in
   Book Studio's `main()`), so the mockups' data folder holds nothing of Book Studio's.
 - Two switches from the environment: `core.SAMPLE` (the preview server: no key is stored or offered) and

@@ -1,7 +1,7 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
@@ -230,7 +230,7 @@ real template: the desk and the book kept, the floor gone, the book's soft shado
 - [app/studio/slides/cutout.py](../../app/studio/slides/cutout.py) — `read_psd_desk()`, `DESK_READER`, `kind_of()`, `spread_of()`, `KINDS`, `NO_BG`, `CUTS`, `HAZE`, `MAX_WIDTH`, `read_psd()`, `_near_book()`, `READER`, `template()`, `cut()`, `smaller()`, `combined()`, `ensure()`, `Cutter`, `cutter`
 - [app/studio/slides/store.py](../../app/studio/slides/store.py) — `SLIDES`, `LOOKS_SLIDE`, `HERO_SLOTS`, `shown()`, `_recoloured()`, `_new_slides()`, `FACTORY`, `SCHEMES`, `SETS`, `TEMPLATE`, `BOOK_SLOTS`, `PICTURE_SLOTS`, `SLOT_LABEL`, `NUMBERS`, `KINDS`, `ensure_schemes()`, `list_schemes()`, `default_scheme()`, `save_scheme()`, `set_default()`, `presets()`, `apply_preset()`, `is_book()`, `mockups_dir()`, `load()`, `check()`, `save()`, `reset()`, `sig()`, `new_set()`, `put_book()`, `put_picture()`, `list_sets()`, `workshop_sets()`, `forget_old_sets()`, `clean_temporary()`, `book_done()`
 - [app/studio/slides/work.py](../../app/studio/slides/work.py) — `looks()`, `put_heroes()`, `sync_heroes()`, `_book_page30()`, `_tick()`, `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `title()`
-- [app/studio/slides/bake.py](../../app/studio/slides/bake.py) — `bake()`, `render()`, `outputs()`, `run_browser()`, `NAME`, `AT_ONCE`
+- [app/studio/slides/bake.py](../../app/studio/slides/bake.py) — `bake()`, `render()`, `outputs()`, `run_browser()`, `NAME`, `AT_ONCE` (4: seven slides in two rounds, 04.10.2026)
 - [app/studio/slides/routes.py](../../app/studio/slides/routes.py) — `assets()`, `_slot_label()`, `_make()`, `_bake()`, `_cutouts()`, `_save()`, `_presets()`, `_apply()`, `_save_scheme()`, `_default_scheme()`
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `mockups_state()`, `MOCKUPS`, `_slides_done()` (in `to_library()`)
 - [app/studio/main.py](../../app/studio/main.py) — `slides.store.clean_temporary()` at launch and close

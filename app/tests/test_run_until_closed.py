@@ -58,6 +58,22 @@ class Closing(unittest.TestCase):
         self.assertGreaterEqual(took, 600, "closed while the page was still pinging")
         self.assertLessEqual(took, 600 + main.SILENCE + 25)
 
+    def test_a_window_edge_holds_stays_open_though_its_page_is_silent(self):
+        """04.10.2026: the started process ended at once (Edge took the window), the page stopped pinging for 90 s, and the program
+        closed under the open window. Edge's profile in use is the window open; when Edge lets it go, the program closes."""
+        clock = FakeClock()
+        proc = FakeProc(dies_at=0.0, clock=clock)
+        with mock.patch.object(main, "_profile_open", side_effect=lambda: clock.now < 1000.0 + 900):
+            took = self.run_loop(proc, clock)
+        self.assertGreaterEqual(took, 900, "closed while Edge still had the window")
+        self.assertLessEqual(took, 900 + main.GRACE + 2)
+
+    def test_edge_running_without_a_page_for_half_an_hour_is_a_closed_window(self):
+        clock = FakeClock()
+        with mock.patch.object(main, "_profile_open", return_value=True):
+            took = self.run_loop(FakeProc(dies_at=0.0, clock=clock), clock)
+        self.assertTrue(main.LOST <= took <= main.LOST + 2, took)
+
     def test_a_goodbye_from_a_page_is_not_a_closed_window_while_the_window_process_runs(self):
         clock = FakeClock()
         server.state.last_heartbeat = 0.0

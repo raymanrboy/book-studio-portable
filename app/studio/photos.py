@@ -479,7 +479,7 @@ def trim(source: Path, target: Path, seconds: float = TRIM_SECONDS) -> None:
                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(part)]
     try:
         run = subprocess.run(command, capture_output=True, timeout=600,
-                             creationflags=0x08000000 if os.name == "nt" else 0)   # no console window
+                             creationflags=desktop.CREATE_NO_WINDOW)
     except subprocess.TimeoutExpired:
         part.unlink(missing_ok=True)
         raise ApiError("ffmpeg обрізав відео надто довго — спробуйте ще раз.")

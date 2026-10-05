@@ -13,8 +13,8 @@ from . import core
 
 
 def _running_instance(port: int) -> bool:
-    try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/ping", timeout=1.5) as resp:
+    try:      # straight to this PC, never through a proxy set in Windows
+        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(f"http://127.0.0.1:{port}/api/ping", timeout=1.5) as resp:
             answer = json.loads(resp.read().decode("utf-8"))
         return answer.get("app") == core.APP_NAME and answer.get("data") == core.data_id()
     except Exception:
@@ -37,8 +37,16 @@ def _another_copy_starting() -> bool:
     return ctypes.get_last_error() == 183          # ERROR_ALREADY_EXISTS
 
 
-SILENCE = 90   # seconds without a page's ping before a window handed over to another Edge process counts as closed
-GRACE = 12     # ... and when the window's own process was seen running and then ended
+SILENCE = 90   # seconds without a page's ping before a window nobody sees (no Edge process, no profile in use) counts as closed
+GRACE = 12     # ... and when the window was seen open and then went
+LOST = 1800    # a window held only by Edge's profile, with no page pinging for this long: Edge kept running without one
+
+
+def _profile_open() -> bool:
+    """Edge holds `lockfile` in the window's profile while any window of it is open — also one it took over from the process
+    we started (which then ends at once). Windows deletes it when Edge ends (checked 04.10.2026). Before, such a window was known
+    only by its page's pings, and 90 s without them closed the program under an open window (the owner, 04.10.2026)."""
+    return core.data_path("window-profile", "lockfile").exists()
 
 
 def _stop_ollama() -> None:
@@ -58,28 +66,38 @@ def run_until_closed(proc, busy: Callable[[], bool]) -> None:
     to finish."""
     from . import server
     started = time.time()
-    seen_alive = False        # our own window process was running when looked at: its end is the window closing
+    seen_alive = False        # the window was open when looked at: its end is the window closing
+    told = False
     try:
         while True:
             time.sleep(1.0)
             now = time.time()
             st = server.state
-            window_alive = proc is not None and proc.poll() is None
+            own = proc is not None and proc.poll() is None
+            window_alive = own or (proc is not None and _profile_open())
+            if proc is not None and not own and not told:       # what happened to the window, for the log (the owner, 04.10.2026)
+                told = True
+                core.log.info("Window: the Edge process we started ended after %.0f s; %s", now - started,
+                              "Edge holds the window" if window_alive else "no Edge window is seen")
             seen_alive = seen_alive or window_alive
-            closed = False
-            # The page said goodbye (window closed) and did not come back (reload). Not while our window's process is still
-            # there: a goodbye from a page Edge froze or reloaded is not a closed window (04.10.2026).
+            quiet = now - max(st.last_heartbeat, started)
+            reason = ""
+            # The page said goodbye (window closed) and did not come back (reload). Not while Edge still has the window: a goodbye
+            # from a page Edge froze or reloaded is not a closed window (04.10.2026).
             if st.bye_at and now - st.bye_at > 6 and st.last_heartbeat < st.bye_at and not window_alive:
-                closed = True
-            # Our window process ended and no page has pinged us recently. Edge may hand the window to a process that was
-            # already running and end ours at once (never seen running): a covered window's page then pings slowly, so the silence
-            # must be long. A process seen running that ends is the window closed: 12 s.
-            if proc is not None and not window_alive and now - max(st.last_heartbeat, started) > (GRACE if seen_alive else SILENCE):
-                closed = True
+                reason = "the page said goodbye and Edge has no window"
+            # Edge has no window of ours and no page has pinged recently: 12 s after a window seen open; a long silence when none
+            # was ever seen (a browser that keeps its windows elsewhere).
+            elif proc is not None and not window_alive and quiet > (GRACE if seen_alive else SILENCE):
+                reason = "Edge has no window"
+            elif window_alive and not own and quiet > LOST:
+                reason = "Edge kept running, but no page has pinged for half an hour"
             # Fallback browser without process tracking: stop after a long silence.
-            if proc is None and st.last_heartbeat and now - st.last_heartbeat > 600:
-                closed = True
-            if closed and not busy():
+            elif proc is None and st.last_heartbeat and now - st.last_heartbeat > 600:
+                reason = "the default browser's page has not pinged for 10 minutes"
+            if reason and not busy():
+                core.log.info("Window closed: %s (last ping %.0f s ago; Edge process %s; profile %s)", reason, quiet,
+                              "running" if own else "ended" if proc is not None else "none", "in use" if _profile_open() else "free")
                 break
     except KeyboardInterrupt:
         pass
@@ -99,18 +117,14 @@ def main(argv: list[str] | None = None) -> int:
 
     from . import desktop, server
 
-    if _running_instance(args.port):
-        core.log.info("Instance already running — opening another window")
-        if not args.no_window:
-            desktop.open_app_window(f"http://127.0.0.1:{args.port}/")
-        return 0
-
-    if _another_copy_starting():
-        for _ in range(60):                        # the first one is still starting: wait for it, then only open its window
+    # The lock first: it answers at once. Asking the port when nothing listens there costs 1.5 s of every start (Windows retries a
+    # refused connection), so it is asked only when the lock says another copy on this data is running or starting (04.10.2026).
+    if _another_copy_starting() or (os.name != "nt" and _running_instance(args.port)):
+        for _ in range(60):                        # a copy still starting: wait for it, then only open its window
             if _running_instance(args.port):
                 break
             time.sleep(0.5)
-        core.log.info("Another copy on this data is starting — opening its window")
+        core.log.info("Another copy on this data is running — opening its window")
         if not args.no_window:
             desktop.open_app_window(f"http://127.0.0.1:{args.port}/")
         return 0

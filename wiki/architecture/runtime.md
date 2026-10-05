@@ -16,11 +16,13 @@ code:
 
 ## Launch sequence
 
-1. **`Book Studio.pyw`** (no console, `pythonw.exe`): checks the Pillow, img2pdf, pikepdf, cryptography packages.
+1. **`Book Studio.pyw`** (no console, `pythonw.exe`): checks the Pillow, img2pdf, pikepdf, cryptography packages are there (found, not imported: the PDF ones are read in when a PDF is made — importing them cost every start ~0.15 s).
    Missing one — shows a window with the `pip install` command. A crash during startup is written to
    `app/data/logs/startup-error.txt` and shown in a window.
 2. **`main()`**: creates the data folders, turns on logging (`data/logs/app.log`).
-3. If the program is already running (answers `/api/ping`) — it just opens another window and exits.
+3. If the program is already running on this data — it just opens another window and exits. The named lock is asked first
+   (`_another_copy_starting()`, instant); `/api/ping` only when the lock is held — asking a port nobody listens on cost 1.5 s of
+   every start (Windows retries a refused connection; measured 04.10.2026).
    Otherwise it takes its own temp folder on drive D (`core.own_temp()`, [below](#temporary-files-and-drive-c)).
 4. Imports every module with routes (`archive`, `creator`, `drops`, `etsy`, `gelato`, `images`, `library`,
    `mockups`, `orders`, `printify`, `profit`, `sendlog`, `settings_api`, `textcheck`, `tunnel`, `workshop`) —
@@ -47,7 +49,10 @@ code:
 - The page sends `/api/app/heartbeat` every 20 s, and `sendBeacon` to `/api/app/bye` when it closes.
 - The loop in `main()` considers the window closed when:
   - there was a "bye" and no new heartbeat arrived within 6 s (a page reload isn't a close);
-  - the window process ended and there was no heartbeat for 12 s;
+  - Edge has no window of ours — the process we started ended **and** the window's profile is free (`_profile_open()`: Edge holds
+    `window-profile/lockfile` while any of its windows is open, also one it took over from our process) — and there was no heartbeat
+    for 12 s (`GRACE`; 90 s, `SILENCE`, when no window was ever seen);
+  - Edge still holds the profile but no page has pinged for half an hour (`LOST`: Edge kept running without a window);
   - the fallback browser with no process stays silent for 10 minutes.
 - The loop itself is `run_until_closed(proc, busy)`; `busy()` says what must finish first.
 - Before exiting, it waits for background jobs to finish (`jobs.any_running()` — a mockup run still copying or
@@ -94,7 +99,7 @@ Cyrillic shortcut name is saved under a Latin one and then renamed.
 ## Where in the code
 
 - [app/Book Studio.pyw](<../../app/Book Studio.pyw>) — `_message()`
-- [app/studio/main.py](../../app/studio/main.py) — `main()`, `_running_instance()`, `run_until_closed()`
+- [app/studio/main.py](../../app/studio/main.py) — `main()`, `_another_copy_starting()`, `_running_instance()`, `run_until_closed()`
 - [app/studio/core.py](../../app/studio/core.py) — `own_temp()`, `clear_own_temp()`
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `clear_books()`, `clean_runs()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `open_app_window()`, `find_browser()`, `pick_folder()`, `pick_file()`, `_dialog()`
@@ -115,4 +120,4 @@ Cyrillic shortcut name is saved under a Latin one and then renamed.
 
 ## When the window counts as closed (2026-10-04)
 
-The Edge `--app` window is started with the occlusion/backgrounding throttles off (`CalculateNativeWinOcclusion`, `--disable-background-timer-throttling`, …): a window covered by another program must keep sending its heartbeat. `main.run_until_closed()`: a page's «bye» counts only when our window process is gone; a window process **seen running** that ends = closed after 12 s (`GRACE`); one that ended at once (Edge handed the window to a process that was already running) = closed only after 90 s without a ping (`SILENCE`). Before this a covered window could be taken for a closed one and the program shut down. The server logs every request longer than 1 s («Slow request») — that is where a slow start shows by name. `/api/app` counts books with `library.counts()` (no following of the Workshop's files).
+The Edge `--app` window is started with the occlusion/backgrounding throttles off (`CalculateNativeWinOcclusion`, `--disable-background-timer-throttling`, …): a window covered by another program must keep sending its heartbeat. `main.run_until_closed()`: a page's «bye» counts only when Edge has no window; a window that Edge took over from our process (ours then ends at once) is known by the profile Edge holds, not by its page's pings — on 04.10.2026 such a window's page went quiet for 90 s and the program shut down under it («Зв'язок із програмою втрачено»). The log says why the program decided the window closed (`Window closed: …`), when our Edge process ended, and every gap of more than a minute between pings (`Window: no ping for …`); an error nobody caught in the page goes there too (`Page error: …`, `/api/app/log`). The server logs every request longer than 1 s («Slow request») — that is where a slow start shows by name. `/api/app` counts books with `library.counts()` (no following of the Workshop's files).

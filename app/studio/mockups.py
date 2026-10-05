@@ -300,17 +300,19 @@ def plan(book: dict, picks: dict, out: Path, run: Path, templates_dir: Path) -> 
 def prepare(job: Job, book: dict, work: dict) -> None:
     run = Path(work["run"])
     wanted = sorted(work["pictures"].items())
-    covers: dict[str, dict] = {}
-    for i, (name, (what, kind, page)) in enumerate(wanted):
-        job.progress("Готую картинки", 8 * i / max(1, len(wanted)))
-        size = HARD if kind == "hard" else SOFT
-        if what == "page":
-            im = page_picture(book["pages"][page], size["page"])
-        else:
-            if kind not in covers:
-                covers[kind] = cover_pictures(book["cover"], size)
-            im = covers[kind][what]
+    covers = {kind: cover_pictures(book["cover"], HARD if kind == "hard" else SOFT)
+              for kind in sorted({kind for what, kind, _ in work["pictures"].values() if what != "page"})}
+
+    def make(item) -> None:
+        name, (what, kind, page) = item
+        im = page_picture(book["pages"][page], (HARD if kind == "hard" else SOFT)["page"]) if what == "page" else covers[kind][what]
         _save_png(im, run / "pictures" / name)
+
+    # Four pictures at a time: each is a full read, a resize and a save (04.10.2026).
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(4) as pool:
+        for i, _ in enumerate(pool.map(make, wanted), 1):
+            job.progress("Готую картинки", 8 * i / max(1, len(wanted)))
     if work.get("cover"):
         try:
             shutil.copyfile(work["coverSource"], work["cover"])

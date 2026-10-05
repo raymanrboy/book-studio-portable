@@ -7,7 +7,7 @@ import html
 import time
 from datetime import datetime, timezone
 
-from . import archive, core, etsy, gelato, printify, profit, records
+from . import archive, core, etsy, gelato, ledger, printify, profit, records
 from .fees import calculate_ukrainian_etsy_fees, money, r2
 from .jobs import JobError, jobs
 from .server import ApiError, Request, route
@@ -42,6 +42,7 @@ def normalize_receipt(r: dict) -> dict:
             "variations": variations,
             "sku": t.get("sku") or "",
             "listing_id": t.get("listing_id"),
+            "transaction_id": t.get("transaction_id"),  # the ledger names a sold item by it (ledger.py)
         })
     ts = r.get("create_timestamp") or r.get("created_timestamp") or 0
     created = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
@@ -190,13 +191,17 @@ def _sync(job, full: bool = False) -> dict:
     changed = None
     if etsy_connected:
         changed = _etsy_part(job, snap, warnings, full)
+        job.progress("Журнал платежів Etsy…", 46, "Баланс і справжні збори")
+        try:
+            ledger.refresh()
+        except ApiError as err:
+            warnings.append(f"Журнал платежів Etsy: {err}. Звірка з Etsy — за попередніми даними.")
     else:
         snap["receipts"] = []
         warnings.append("Etsy не підключено — показано лише замовлення Printify.")
     if vault.get("printify_token"):
         _printify_part(job, snap, warnings)
-    else:
-        warnings.append("Printify токен не налаштовано — собівартість Printify недоступна.")
+    # No Printify token is not a problem: every order goes through Gelato (the owner, 2026-10-05).
     if gelato.accounts():
         _gelato_part(job, snap, warnings)
 

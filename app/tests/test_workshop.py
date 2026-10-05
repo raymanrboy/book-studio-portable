@@ -343,6 +343,21 @@ class APictureIntoItsRow(Base):
             pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
         self.assertEqual([p.name for p in (self.dir / H / "pictures").glob("*.tmp")], [])
 
+    def test_a_spreads_pages_are_written_together_or_not_at_all(self):
+        """The two pages are written at once (04.10.2026): one that cannot be written leaves both old pages in place."""
+        pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
+        before = {n: (self.dir / H / "pictures" / n).read_bytes() for n in ("2.png", "3.png")}
+        real_save = Image.Image.save
+
+        def save(im, fp, *a, **kw):
+            if str(fp).endswith("3.png.tmp"):
+                raise OSError("disk full")
+            return real_save(im, fp, *a, **kw)
+        with unittest.mock.patch.object(Image.Image, "save", save), self.assertRaises(OSError):
+            pictures.place(H, "spread2", spread_png(self.tmp / "b.png", (1800, 900)), "b.png")
+        self.assertEqual({n: (self.dir / H / "pictures" / n).read_bytes() for n in before}, before)
+        self.assertEqual([p.name for p in (self.dir / H / "pictures").glob("*.tmp")], [])
+
     def test_a_plain_spread_becomes_its_two_pages(self):
         r = pictures.place(H, "spread2", spread_png(self.tmp / "a.png"), "a.png")
         self.assertEqual(r["note"], "Розворот 2–3: дві сторінки готові")

@@ -1,7 +1,7 @@
 ---
 title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/creator/
   - app/web/js/pages/creator.js
@@ -175,7 +175,8 @@ Before the first such order, the interface shows a "Manual order approval in Pri
 3. A PDF for every book (`build_photobook_pdf()`, `book.pdf` or `book-1.pdf`, `book-2.pdf`…): cover,
    blank endpaper, 28 or 30 pages, blank endpaper — the blank ones are required
    ([integrations/gelato.md](../integrations/gelato.md)); no recompression of images (a Canva PNG gets
-   glued into one IDAT chunk — `_one_idat()`), fitted with edges trimmed; a warning only when the cover
+   glued into one IDAT chunk — `_one_idat()`; PNG pages are not asked for their turn, which made img2pdf unpack every pixel to
+   find none — ~5 s of a 32-page book, the PDF byte for byte the same, 04.10.2026), fitted with edges trimmed; a warning only when the cover
    is trimmed by more than 10 mm. Since 2026-09-26 the PDF is written straight into its file, each page read and
    joined only when the PDF library gets to it (`_Page`) — no temporary copies (~0.9 GB of disk writes), about
    2 GB less memory for a 30-page book, the same bytes; the library's engine is named (pikepdf, in

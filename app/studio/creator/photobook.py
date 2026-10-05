@@ -106,9 +106,12 @@ def build_photobook_pdf(cover: Path, pages: list[Path], out: Path, geo: dict) ->
 
     # Written straight into the file. The engine is named: img2pdf would quietly take another one on a computer
     # without pikepdf, and only this one has made the books Gelato printed (requirements.txt).
+    # PNG pages are not turned: asked to read a PNG's turn, img2pdf unpacks every pixel of it only to find none (Canva writes
+    # none) — ~5 s of a 32-page book, the PDF byte for byte the same without it (04.10.2026). A JPEG keeps its turn.
+    turn = {} if any(p.suffix.lower() != ".png" for p in [cover, *pages]) else {"rotation": img2pdf.Rotation.none}
     with open(out, "wb") as f:
         img2pdf.convert(*(page for page, _ in sequence), layout_fun=layout, outputstream=f,
-                        engine=img2pdf.Engine.pikepdf)
+                        engine=img2pdf.Engine.pikepdf, **turn)
 
     with Image.open(cover) as im:
         img_w, img_h = im.size

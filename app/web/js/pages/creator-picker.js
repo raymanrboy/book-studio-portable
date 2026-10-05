@@ -2,7 +2,7 @@
 // fields unfolded on demand; a picked order goes to `onPick(order)` — the page fills itself in (out of creator.js on
 // 27.09.2026).
 import {
-  api, html, ic, ib, setHtml, modal, toast, segHtml, syncSeg, setSeg, dateTime, relTime, slide,
+  api, html, ic, ib, setHtml, modal, toast, segHtml, syncSeg, setSeg, dateTime, relTime, slide, debounce,
 } from '../lib.js';
 import {
   STAGES, matchesOrder, variationsOf, holdClicks, orderSync, svcChip, countStages, emptyOrders,
@@ -72,7 +72,8 @@ export async function pickEtsyOrder(onPick) {
   render();
   sync.follow();
   requestAnimationFrame(() => syncSeg(seg));
-  m.el.querySelector('#eo-q').addEventListener('input', (e) => { term = e.target.value; render(); });
+  const typed = debounce(() => render(), 90);   // a pause in typing redraws the list, not every letter (04.10.2026)
+  m.el.querySelector('#eo-q').addEventListener('input', (e) => { term = e.target.value; typed(); });
   list.addEventListener('click', (e) => {
     const fold = e.target.closest('[data-vars-toggle]');
     if (fold) {

@@ -1,7 +1,7 @@
 ---
 title: Profit (counts only sales from 1 October 2026)
 type: feature
-updated: 2026-10-03
+updated: 2026-10-05
 code:
   - app/web/js/pages/profit.js
   - app/web/js/pages/profit-rows.js
@@ -10,6 +10,7 @@ code:
   - app/studio/outcomes.py
   - app/studio/fees.py
   - app/studio/records.py
+  - app/studio/ledger.py
 ---
 # Profit
 
@@ -46,6 +47,23 @@ changes — `records.stamp()`) and its routes.
 
 ## What the page can do
 
+- **The check against Etsy's own ledger (since 2026-10-05, the owner: "if it all matches, our sums are right").** The sync also
+  reads Etsy's payment ledger (`ledger.refresh()`, read only, the scope `transactions_r` the program has) — see
+  [rules/reconciliation.md](../rules/reconciliation.md). Two checks, while the owner compares:
+  - **A — the first card is «Доступно до виводу»**: the Etsy balance now (what Etsy pays out next; not tied to the period),
+    under it «за розрахунком $X» — what the program expects there (`profit._balance_check()`: what the last payout left + its
+    own Etsy Net of the receipts since − the ads a day); amber when they differ by more than $1. The tip also gives the last
+    payout beside the program's sum for its days. Without a ledger the card is the period's «На руки (Etsy Net)» as before.
+    The orders count moved under «Собівартість друку».
+  - **B — each row**: an amber mark by the Etsy Net when Etsy's real money for the receipt differs by more than 5 cents
+    (`etsy_check`); the open row says «За журналом Etsy: $X» and, when it differs, Etsy's lines (Offsite Ads, a state's fee…).
+  - The header names only the printers connected now: «Gelato» with a Gelato key, «Printify: shop» only with a Printify token.
+- **Ads and new listings are counted quietly (since 2026-10-05).** Etsy takes money outside any order — Etsy Ads and the
+  fee for each new listing. From the owner's September–October statements: about **$1.38 a day** (`profit.OVERHEAD_PER_DAY`,
+  sent to the page as `overheadPerDay`; ads $0.99 + 20% VAT, a new listing $0.24). The page subtracts it, for the days of the chosen period that are
+  inside the books (`periodDays()`), from the «Чистий прибуток» and the margin — **no card of its own** (the owner didn't want
+  to see it). The table's rows stay per order, so their sum is a little above the card. It is an estimate: if ads change, change the constant.
+
 - Periods (today, 7 days, 30 days, all time, custom), metrics, a table of 50 rows at a time, search.
 - A row expands: a breakdown of fees, cost, state.
 - Manual matching to a Printify/Gelato order, or "no cost".
@@ -68,9 +86,10 @@ changes — `records.stamp()`) and its routes.
 
 ## Where in the code
 
-- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
+- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `periodDays()`, `renderKpis()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
 - [app/web/js/pages/profit-rows.js](../../app/web/js/pages/profit-rows.js) — `rowInner()`, `detailHtml()`, `stateBox()`, `econLines()`, `costOf()`, `DEAD_SHORT`, `STATE_OPTS`
-- [app/studio/profit.py](../../app/studio/profit.py) — `ACCOUNTING_FROM`, `counted()`, `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
+- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `window_net()`, `LABELS`, `SHOP_TYPES`
+- [app/studio/profit.py](../../app/studio/profit.py) — `ACCOUNTING_FROM`, `OVERHEAD_PER_DAY`, `_balance_check()`, `counted()`, `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `mark_reprint()`
 - [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`
@@ -80,7 +99,7 @@ changes — `records.stamp()`) and its routes.
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `rows()`, `apply()`, `order_info()`
 - [app/studio/records.py](../../app/studio/records.py) — `stamp()`, `load_snapshot()`, `load_links()`, `load_states()`, `load_sends()`, `save()`, `lock`
 - [app/studio/fees.py](../../app/studio/fees.py) — `calculate_ukrainian_etsy_fees()`
-- Tests: [app/tests/test_profit.py](../../app/tests/test_profit.py) (`BookkeepingStart`), [app/tests/test_states.py](../../app/tests/test_states.py), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`ReprintMark`)
+- Tests: [app/tests/test_profit.py](../../app/tests/test_profit.py) (`BookkeepingStart`), [app/tests/test_ledger.py](../../app/tests/test_ledger.py), [app/tests/test_states.py](../../app/tests/test_states.py), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`ReprintMark`)
 
 ## Related
 

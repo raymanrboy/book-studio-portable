@@ -24,6 +24,7 @@ code:
 | [app/tools/textcheck_replay.py](../app/tools/textcheck_replay.py) | The text-check journal through today's rules: what the card would show for every past check, next to what it showed, and the owner's "Not an error" marks — for calibrating what the check shows | `replay()`, `rebuild()`, `main()` |
 | [app/tools/wiki_check.py](../app/tools/wiki_check.py) | Checks the wiki against the code: headers, links, named functions, routes, file coverage | `check()`, `coverage()`, `changed_files()` |
 | [app/tools/dev_server.py](../app/tools/dev_server.py) | A server for previewing the interface on temporary data (including a two-book order, a receipt with two print orders, a Workshop book, the mockups' made-up templates and a pretend Photoshop); writes only to its own folder, never takes keys (`BOOK_STUDIO_SAMPLE`) | `main()`, `claim()`, `MARK` |
+| [app/tools/archive_dedupe.py](../app/tools/archive_dedupe.py) | The order archive's same pages kept once (hard links; the replaced files to the Recycle Bin) | `main()`, `_running()` |
 | [app/tools/sample_data.py](../app/tools/sample_data.py) | The preview's made-up orders, print orders, library book and archived books | `seed()`, `_receipt()`, `_seed_archive()`, `_sample_book()`, `SAMPLE_TEXTS` |
 | [app/tools/sample_mockups.py](../app/tools/sample_mockups.py) | The preview's made-up mockup templates, demo book, a pretend Photoshop and a pretend template for the slides' cut-out | `seed_mockups()`, `pretend_photoshop()`, `pretend_template()` |
 | [app/tools/slides.py](../app/tools/slides.py) | The listing slides from the command line — the agent's skill and the tests: list, a scene's file, render one, bake, cut out | `main()` |
@@ -33,7 +34,7 @@ code:
 
 | File | Purpose | Main |
 |---|---|---|
-| [main.py](../app/studio/main.py) | Entry point: server, window, shutdown | `main()`, `_running_instance()`, `run_until_closed()` |
+| [main.py](../app/studio/main.py) | Entry point: server, window, shutdown | `main()`, `_another_copy_starting()`, `_running_instance()`, `run_until_closed()` |
 | [core.py](../app/studio/core.py) | Paths, atomic JSON, settings, logging; what counts as a picture, "inside our folder" | `ROOT`, `DATA_DIR`, `SAMPLE`, `read_json()`, `write_json()`, `Settings`, `DEFAULT_SETTINGS`, `ensure_dirs()`, `IMAGE_EXTS`, `inside()` |
 | [server.py](../app/studio/server.py) | HTTP server, routing, token, static files; which program and page it serves (`state.app`, `state.page`) | `route()`, `Request`, `json_response()`, `file_response()`, `start()`, `SESSION_TOKEN` |
 | [jobs.py](../app/studio/jobs.py) | Background jobs with progress and partial findings | `Jobs`, `Job`, `Job.progress()`, `Job.share()`, `UserError`, `JobError` |
@@ -45,7 +46,7 @@ code:
 | [settings_api.py](../app/studio/settings_api.py) | Settings, keys, opening links, import from old programs | `integrations()`, `_open_url()`, `_legacy_values()`, `legacy_sources()` |
 | [etsy.py](../app/studio/etsy.py) | Etsy API v3: OAuth, session, listings, receipts | `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `fetch_listing()`, `fetch_all_receipts()`, `decode_session_key()` |
 | [printify.py](../app/studio/printify.py) | The safe Printify client; read-only from 1 October 2026 | `retired()`, `_check()`, `call()`, `all_orders()`, `upload_image()`, `create_product()`, `create_order_on_hold()`, `analyze_master()` |
-| [gelato.py](../app/studio/gelato.py) | The safe Gelato client; two keys during the move (the old one only reads) | `_allowed()`, `call()`, `accounts()`, `account_id()`, `check_key()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()` |
+| [gelato.py](../app/studio/gelato.py) | The safe Gelato client; two keys during the move (the old one only reads) | `_allowed()`, `call()`, `accounts()`, `account_id()`, `check_key()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `create_draft_order()`, `slot_of()`, `history()`, `cached_history()` |
 | [gelato_accounts.py](../app/studio/gelato_accounts.py) | The move to the owner's own Gelato account: the switch, the old account's status, removing its key | `_switch()`, `_forget()`, `status()`, `open_orders()` |
 | [tunnel.py](../app/studio/tunnel.py) | A temporary public link to a PDF for Gelato | `FileTunnel`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()` |
 | [sendlog.py](../app/studio/sendlog.py) | The journal of sends to Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
@@ -57,7 +58,7 @@ code:
 | [textcheck/ollama.py](../app/studio/textcheck/ollama.py) | The model on this computer (127.0.0.1 only) | `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_release_model()` |
 | [textcheck/journal.py](../app/studio/textcheck/journal.py) | The journal of every check and the owner's marks | `_journal()`, `mark()`, `CHECKS` |
 | [textcheck/routes.py](../app/studio/textcheck/routes.py) | The routes; a printed page turned back into the passport's text | `_check()`, `_passport()`, `as_template()` |
-| [archive.py](../app/studio/archive.py) | Order archive: files of books that went to print, auto-deletion, "Keep" | `store()`, `refresh()`, `clock()`, `summary()`, `get()` |
+| [archive.py](../app/studio/archive.py) | Order archive: files of books that went to print, auto-deletion, "Keep" | `store()`, `refresh()`, `clock()`, `summary()`, `get()`, `page_key()`, `dedupe()` |
 | [images.py](../app/studio/images.py) | Previews, PNG checking, gluing a spread together, cache cleanup, a quick text scan of a page | `preview()`, `check_png()`, `flat_rgb()`, `compose_spread()`, `lqip()`, `text_score()`, `image_info()`, `prune_cache()` |
 | [library.py](../app/studio/library.py) | Book library: the model, a new book, its pictures, the book routes | `load()`, `save()`, `all_books()`, `summary()`, `completeness()`, `create_book()`, `listing_of()`, `import_pictures()` |
 | [library_files.py](../app/studio/library_files.py) | A book's files in and out: the text JSON, the folder import, the export, the guide (its words in `library_guide.md`, which the owner may edit) | `scan_folder()`, `parse_text_json()`, `export_text_json()`, `agent_guide()`, `export_book()` |
@@ -94,6 +95,7 @@ code:
 | [sync.py](../app/studio/sync.py) | Pulling the orders: Etsy receipts (changed ones, a full read weekly), Printify and Gelato orders, into the snapshot | `_sync()`, `startup_sync()`, `normalize_receipt()`, `merge_receipts()` |
 | [records.py](../app/studio/records.py) | What is kept about orders on disk: the snapshot, manual links and states, the print orders this program sent | `load_snapshot()`, `stamp()`, `remember_print_order()`, `add_replacement()`, `unmark_reprint()`, `SNAPSHOT`, `SENDS` |
 | [printorders.py](../app/studio/printorders.py) | One reading of a Printify / Gelato order: its cost in dollars, dead or placed, name, label, tracking | `facts()`, `all_facts()`, `is_placed()`, `dead()`, `to_usd()`, `rates()`, `carrier_label()` |
+| [ledger.py](../app/studio/ledger.py) | Etsy's payment ledger: the balance, the payouts, each receipt's real money — the check of the program's sums | `refresh()`, `assign()`, `view()`, `window_net()` |
 | [reconcile.py](../app/studio/reconcile.py) | Matching Etsy receipts to print orders (numbers before names), the cover a buyer chose | `match()`, `_find()`, `item_format()`, `cover_label()`, `is_name_match()`, `printify_only_rows()` |
 | [outcomes.py](../app/studio/outcomes.py) | The money of a row, once: cancellations, refunds, replacements, a sale's other print orders, unpaid orders | `rows()`, `apply()`, `auto_state()`, `order_info()`, `reserved_orders()` |
 | [stages.py](../app/studio/stages.py) | Where each Etsy order stands (new / in work / sent / shipped / closed), once per view; a reprint's mark | `facts()`, `order_stage()`, `picker_orders()`, `picker_order()`, `mark_reprint()` |
@@ -120,6 +122,7 @@ code:
 | [js/handoff.js](../app/web/js/handoff.js) | Passing data between pages in memory | `give()`, `take()`, `waiting()` |
 | [js/keep.js](../app/web/js/keep.js) | Saved work on a new order: a hidden card and Order Creator, "draft created" | `stash()`, `unstash()`, `settle()`, `markSent()`, `sentOf()`, `finish()` |
 | [js/order-bits.js](../app/web/js/order-bits.js) | Shared by Orders, the order archive and the Order Creator | `STAGES`, `proofHtml()`, `filesBadge()`, `checkNotices()`, `fieldsHtml()`, `addressHtml()`, `svcChip()`, `countStages()`, `emptyOrders()`, `statusChip()`, `alsoSentChip()`, `restorable()`, `trackChips()`, `receiptCopy()`, `isNameField()`, `planText()`, `pagesText()`, `addressFromEtsy()`, `orderSync()`, `holdClicks()`, `childOf()`, `spreadsOf()`, `smoothWheel()` |
+| [js/order-history.js](../app/web/js/order-history.js) | The printer's history card of a placed Gelato order, asked for when the order card opens | `mountHistory()`, `rows()`, `iconOf()` |
 | [js/drop-anywhere.js](../app/web/js/drop-anywhere.js) | Files dropped anywhere outside a page's own drop field: the page may take them (`bs:dropped`), otherwise one question «Куди?» (the Mockups or the Order Creator) and a hand-over | `installDropAnywhere()` |
 | [js/drop.js](../app/web/js/drop.js) | Files and folders dragged into the window: read in full (a folder's tree, a ZIP) and copied into the program — the order card, the Order Creator, the passport, the mockups | `dropContents()`, `receiveDrop()`, `dropLabel()`, `wireFolderDrop()` |
 | [js/add-book.js](../app/web/js/add-book.js) | «Нова книга» and the Workshop's «Передати в бібліотеку» — one dialog | `openAddBook()` |
@@ -163,8 +166,10 @@ code:
 | File | What it checks |
 |---|---|
 | [\_\_init\_\_.py](../app/tests/__init__.py) | A temporary data folder instead of the real one |
+| [test_ledger.py](../app/tests/test_ledger.py) | Etsy's ledger: each entry to its receipt, a receipt's real money, the balance against the payouts |
 | [test_profit.py](../app/tests/test_profit.py) | Parity with the Profit Calculator (`golden_profit.json`), fees, name matching, the bookkeeping's first day |
 | [test_gelato_accounts.py](../app/tests/test_gelato_accounts.py) | Two made-up Gelato accounts: the switch, the old one only read, no order lost |
+| [test_gelato_history.py](../app/tests/test_gelato_history.py) | The card's history: reading a full order, one read per card (kept a minute), which orders are asked about |
 | [test_states.py](../app/tests/test_states.py) | Order states, stages, incremental sync, the states API |
 | [test_library_creator.py](../app/tests/test_library_creator.py) | Text JSON, folder import, file checking, Printify/Gelato safeguards |
 | [test_flows.py](../app/tests/test_flows.py) | Creating in Printify/Gelato with fakes, drag-and-drop, Etsy protection, OAuth |

@@ -111,6 +111,9 @@
 .ord-title .page-title { min-width: 0; }
 .ord-title .chip { flex: none; }
 .ord-sub .chip { margin: -2.5px 0 0 8px; vertical-align: middle; }  /* the negative top margin puts chip text on the grey text's line */
+/* Room under the header: the tracking chip used to sit 20 px above the path strip and nearly touch it (the owner, 2026-10-04). */
+.page-head:has(.ord-sub) { margin-bottom: 32px; }
+.ord-sub { margin-top: 4px; }
 .ord-go { display: grid; color: var(--text-4); transition: color var(--t-fast), transform var(--t-fast) var(--ease); }
 .ord-row:hover .ord-go { color: var(--text-2); transform: translateX(2px); }
 
@@ -238,6 +241,7 @@
 .path-icons .ws-dot { width: 32px; height: 32px; }
 .path-icons .ws-dot .icon { width: 17px; height: 17px; }
 .ord-path-slot:empty { display: none; }
+#oc-link:not(:empty) { margin: 6px 0 18px; } /* the green «temporary link» notice stuck to the cards below it (the owner, 2026-10-04) */
 .oc-printed { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
 .oc-printed-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: var(--r-grp); background: var(--accent-soft); color: var(--accent-ink); }
 .oc-printed .faint { font-size: var(--fs-s); }
@@ -251,3 +255,38 @@
 /* A printed order: its data alone, not beside an empty work column (the work flow is folded behind an icon). */
 .ord-solo { grid-template-columns: minmax(0, 620px) !important; }
 .ord-solo > #oc-flow { display: none; }
+
+/* ------------------------------------------------------------------ the printer's history (order-history.js, 2026-10-04) */
+/* Beside the data of a placed Gelato order, as tall as that column (the card scrolls its own list when it is longer).
+   Under the data when the work flow is open too (a reprint by hand), and under everything on a narrow window. */
+.ord-history { grid-column: 2; position: relative; align-self: stretch; min-height: 220px; }
+.ord-hist.ord-solo { grid-template-columns: minmax(0, 620px) minmax(300px, 400px) !important; }
+.ord-hist.ord-solo > #oc-data { grid-column: 1; grid-row: 1; }
+.ord-hist.ord-solo > .ord-history { grid-column: 2; grid-row: 1; }
+.oh-card { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.oh-card .row { flex: none; }
+.oh-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; flex: 1; }
+.oh-item { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 0 10px; padding-bottom: 14px; font-size: var(--fs); line-height: var(--lh); }
+.oh-item:not(:last-child)::before { content: ""; position: absolute; left: 10.5px; top: 24px; bottom: 2px; width: 1px; background: var(--border-strong); }
+.oh-dot { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-3); color: var(--text-3); }
+.is-now > .oh-dot { background: var(--text); color: var(--surface); }
+.is-due > .oh-dot { background: transparent; border: 1px dashed var(--border-strong); }
+.oh-what { display: flex; flex-direction: column; min-width: 0; padding-top: 1px; }
+.oh-what b { font-weight: 500; color: var(--text-2); }
+.is-now .oh-what b { font-weight: 600; color: var(--text); }
+.is-due .oh-what b { font-weight: 500; color: var(--text-3); }
+.oh-text { color: var(--text-3); overflow-wrap: anywhere; }
+.oh-time { padding-top: 1px; color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.oh-note { font-size: var(--fs); color: var(--text-3); }
+.oh-fail { color: var(--red); }
+.oh-wait { display: grid; gap: 12px; }
+.oh-sk { height: 30px; }
+@media (max-width: 1279px) {
+  .ord-hist.ord-solo { grid-template-columns: minmax(0, 1fr) minmax(280px, 360px) !important; }
+}
+@media (max-width: 960px) {
+  .ord-hist.ord-solo { grid-template-columns: minmax(0, 1fr) !important; }
+  .ord-hist.ord-solo > #oc-data, .ord-hist.ord-solo > .ord-history { grid-column: 1; grid-row: auto; }
+  .ord-history { grid-column: 1; min-height: 0; }
+  .oh-card { position: static; max-height: 420px; }
+}

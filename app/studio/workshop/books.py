@@ -510,7 +510,7 @@ def open_agent(book_id: str | None) -> str:
                            "Antigravity не знайдено (очікувався %LOCALAPPDATA%\\Programs\\antigravity\\Antigravity.exe).")
         args, env = portable.antigravity_launch() or ([str(exe)], {})
         subprocess.Popen(args, cwd=str(core.PIPELINE_DIR), env={**os.environ, **env},
-                         creationflags=desktop.CREATE_NO_WINDOW if os.name == "nt" else 0)
+                         creationflags=desktop.CREATE_NO_WINDOW)
     from .. import clipboard
     clipboard.set_text(say)
     return say

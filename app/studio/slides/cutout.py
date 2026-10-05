@@ -23,8 +23,10 @@ import hashlib
 import json
 import queue
 import re
+import shutil
 import threading
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from PIL import Image, ImageFilter
@@ -241,17 +243,20 @@ def ensure(png: Path, templates_dir: Path, no_bg: bool = True) -> Path:
         with Image.open(png) as im:
             size = im.size
         book, shadow, info = cut(png, template(Path(templates_dir) / KINDS[kind], size, kind), crop=kind != "dedication")
-        if no_bg and not target.exists():
-            _write_no_bg(target, book, shadow)       # the full size, for the owner
         folder = CUTS / cut_key(png)
         tmp = folder.with_name(folder.name + ".part")
         tmp.mkdir(parents=True, exist_ok=True)
-        smaller(book).save(tmp / "book.png", compress_level=3)
-        smaller(shadow).save(tmp / "shadow.png", compress_level=3)
+        # The three pictures are written at once (each a second or more; 04.10.2026).
+        with ThreadPoolExecutor(3) as pool:
+            writes = [pool.submit(lambda: smaller(book).save(tmp / "book.png", compress_level=3)),
+                      pool.submit(lambda: smaller(shadow).save(tmp / "shadow.png", compress_level=3))]
+            if no_bg and not target.exists():
+                writes.append(pool.submit(_write_no_bg, target, book, shadow))       # the full size, for the owner
+            for w in writes:
+                w.result()
         (tmp / "info.json").write_text(json.dumps({**info, "kind": kind, "source": png.name}, ensure_ascii=False),
                                        encoding="utf-8")
         if folder.exists():
-            import shutil
             shutil.rmtree(folder, ignore_errors=True)
         tmp.replace(folder)
     if no_bg and not target.exists():   # cut before without it: made from the kept copy
@@ -263,7 +268,7 @@ def ensure(png: Path, templates_dir: Path, no_bg: bool = True) -> Path:
 def _write_no_bg(target: Path, book: Image.Image, shadow: Image.Image) -> None:
     target.parent.mkdir(exist_ok=True)
     part = target.with_name(target.stem + ".part.png")
-    combined(book, shadow).save(part, compress_level=6)
+    combined(book, shadow).save(part, compress_level=4)   # the same pixels as at 6, twice as fast, ~3% bigger
     part.replace(target)
 
 

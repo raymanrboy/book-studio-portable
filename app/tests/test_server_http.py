@@ -51,6 +51,25 @@ class HttpLayer(unittest.TestCase):
         status, _, _ = self.get("/api/app", {"X-Studio-Token": server.SESSION_TOKEN})
         self.assertEqual(status, 200)
 
+    def test_pictures_take_their_own_key_that_outlives_a_restart(self):
+        """The pictures' key stays the same across launches (the window's cache keeps them); it opens pictures only."""
+        picture = "/media/photos/none/none.png?t="
+        self.assertEqual(self.get(picture + "wrong")[0], 403)
+        self.assertNotEqual(self.get(picture + server.MEDIA_TOKEN)[0], 403)     # let in (then: no such picture)
+        self.assertNotEqual(self.get(picture + server.SESSION_TOKEN)[0], 403)
+        self.assertEqual(self.get("/api/app", {"X-Studio-Token": server.MEDIA_TOKEN})[0], 401)
+        self.assertEqual(server._media_key(), server.MEDIA_TOKEN)              # the next launch reads the same one
+        self.assertNotEqual(server.MEDIA_TOKEN, server.SESSION_TOKEN)
+
+    def test_an_error_in_the_page_goes_into_the_log(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        body = json.dumps({"message": "x is undefined", "where": "orders.js:12", "page": "#/orders"})
+        with self.assertLogs("studio", "WARNING") as logged:
+            conn.request("POST", "/api/app/log", body, {"X-Studio-Token": server.SESSION_TOKEN, "Content-Type": "application/json"})
+            self.assertEqual(conn.getresponse().status, 200)
+        conn.close()
+        self.assertIn("Page error: x is undefined | orders.js:12 | #/orders", logged.output[0])
+
     def test_another_host_name_is_refused(self):
         """A web page on the internet pointed at 127.0.0.1 by DNS carries its own Host: it must get nothing."""
         status, _, _ = self.get("/api/ping", {"Host": "evil.example"})

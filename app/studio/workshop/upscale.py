@@ -112,7 +112,7 @@ def _run_engine(source: Path, target: Path, progress) -> None:
     exe, models = found
     proc = subprocess.Popen(
         [str(exe), "-i", str(source), "-o", str(target), "-s", str(SCALE), "-m", str(models), "-n", MODEL, "-f", "png"],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, creationflags=desktop.CREATE_NO_WINDOW if os.name == "nt" else 0)
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, creationflags=desktop.CREATE_NO_WINDOW)
     tail = b""
     while True:
         chunk = proc.stdout.read(64)
@@ -290,8 +290,7 @@ def upscale_row(book_id: str, slot: str, progress=lambda pct: None) -> dict | No
             if marks.get("mirrored", int(key[6:]) in rows.MIRRORED):
                 big = ImageOps.mirror(big)
             left, right, _ = pictures.two_squares(big)
-            for page, n in zip((left, right), rows.row(key)["pages"]):
-                pictures._write(page, folder / f"{n}.png")
+            pictures._write_all([(page, folder / f"{n}.png") for page, n in zip((left, right), rows.row(key)["pages"])])
         else:
             pictures._write(pictures.square(big)[0], folder / f"{rows.row(key)['pages'][0]}.png")
         if recut:  # not upscaled — its pages are simply as big as its original now
@@ -344,8 +343,9 @@ class Upscaler:
 
     def _progress(self, pct: float) -> None:
         with self.lock:
-            if self.current and int(pct) != int(self.current["pct"]):
-                self.current["pct"] = int(pct)
+            # In steps of 5 %: every new step makes the open book's page read the whole book again (every percent did, 04.10.2026).
+            if self.current and int(pct) // 5 != int(self.current["pct"]) // 5:
+                self.current["pct"] = int(pct) // 5 * 5
                 self.version += 1
 
     def step(self) -> bool:

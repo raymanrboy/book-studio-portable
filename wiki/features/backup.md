@@ -1,7 +1,7 @@
 ---
 title: Backup to Google Drive
 type: feature
-updated: 2026-09-29
+updated: 2026-10-04
 code:
   - app/studio/backup.py
   - app/tools/restore_keys.py
@@ -36,7 +36,10 @@ code:
   `My Drive\Book Studio — резервні копії\Book Studio YYYY-MM-DD HH-MM.7z`.
 - **7-Zip** `app/bin/7za.exe` (26.03, from the official GitHub release `ip7z/7zip`, hash checked; not in git like
   the rest of `app/bin`). AES-256 with the file names hidden (`-mhe=on`). The archive is written as `.7z.part` and
-  renamed when finished; a `.part` left by a cut-off copy goes on the next run.
+  renamed when finished; a `.part` left by a cut-off copy goes on the next run. The order matters: every later addition
+  rewrites what the archive already holds, so the keys and the instruction go first, then the templates, and the big program
+  folder last (`sources()`; it went first until 04.10.2026 and was written twice). 7-Zip runs below normal priority — the
+  program stays smooth while it packs.
 - **Password**: set by the owner in Settings → «Резервна копія» (at least 8 characters, no quotes), kept in the vault
   as `backup_password`. Can't be recovered — he writes it down. Changing it doesn't touch old copies (they keep the
   old one).

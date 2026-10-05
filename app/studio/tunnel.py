@@ -17,13 +17,12 @@ import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import core
+from . import core, desktop
 
 CLOUDFLARED = core.BIN_DIR / "cloudflared.exe"
 # The tunnel's own address. Not api.trycloudflare.com: cloudflared names that service in its error when a
 # quick tunnel is refused, and on 25.09.2026 that line was taken for the address — Gelato got a dead link.
 _URL_RE = re.compile(r"https://(?!api\.)[a-z0-9-]+\.trycloudflare\.com")
-CREATE_NO_WINDOW = 0x08000000
 
 
 class TunnelError(Exception):
@@ -112,7 +111,7 @@ class FileTunnel:
         self._proc = subprocess.Popen(
             [str(CLOUDFLARED), "tunnel", "--url", local, "--no-autoupdate"],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
-            creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0,
+            creationflags=desktop.CREATE_NO_WINDOW,
         )
         _ends_with_us(self._proc)
         found = threading.Event()

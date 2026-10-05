@@ -1,7 +1,7 @@
 // Search everywhere — Ctrl+K or «Пошук» in the rail (2026-09-30): an order by the buyer, the child or the receipt, a
 // book by its title or number, a place, a tool, a Settings block. Enter opens; ↑ ↓ move; Esc closes. The lists are
 // read when it opens (the orders from the last sync — opening it never starts one).
-import { api, html, ic, setHtml, modal, on, relTime, remember } from './lib.js';
+import { recent, html, ic, setHtml, modal, on, relTime, remember } from './lib.js';
 import { PLACES, TOOLS, SETTINGS } from './places.js';
 
 const STAGE_WORD = { new: 'нове', work: 'друкується', sent: 'позначити в Etsy', shipped: 'відправлене' };
@@ -35,8 +35,9 @@ export async function openPalette() {
   let shown = [];
 
   const load = async () => {
-    const [o, lib, ws] = await Promise.all([
-      api('/api/orders').catch(() => null), api('/api/library/books').catch(() => null), api('/api/workshop/books').catch(() => null)]);
+    const [o, lib, ws] = await Promise.all([   // what a page has just read is not asked for again
+      recent('/api/orders', 15000).catch(() => null), recent('/api/library/books', 15000).catch(() => null),
+      recent('/api/workshop/books', 15000).catch(() => null)]);
     failed = !o && !lib && !ws;
     orders = (o?.orders || []).map((x) => ({
       group: 'Замовлення', icon: 'inbox', hash: `#/orders/${x.receiptId}`,

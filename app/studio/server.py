@@ -1,7 +1,8 @@
 """Local HTTP server: routing, security checks, static files and JSON helpers.
 
 Binds to 127.0.0.1 only. Every /api call must carry the per-launch session
-token (X-Studio-Token header); media URLs carry it as ?t=. The Host header is
+token (X-Studio-Token header); media URLs carry the pictures' key (kept across launches, so the window's
+cache keeps them) or the session token as ?t=. The Host header is
 checked to block DNS-rebinding attacks from web pages.
 """
 from __future__ import annotations
@@ -24,6 +25,29 @@ from .httpc import HttpError
 from .jobs import JobError, UserError, jobs
 
 SESSION_TOKEN = secrets.token_urlsafe(24)
+
+
+def _media_key() -> str:
+    """The pictures' key (the ?t= of /media/ addresses). Unlike the session's, it is kept across launches in the data folder: an
+    address that stays the same lets the window keep the pictures it has shown in its cache, so the gallery and the orders' covers
+    are not fetched again after every start (the owner, 04.10.2026). It opens pictures only, never the API."""
+    path = core.data_path("media-key.txt")
+    try:
+        key = path.read_text(encoding="ascii").strip()
+        if len(key) >= 24:
+            return key
+    except (OSError, UnicodeDecodeError):
+        pass
+    key = secrets.token_urlsafe(24)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(key, encoding="ascii")
+    except OSError:
+        pass            # this launch only, then
+    return key
+
+
+MEDIA_TOKEN = _media_key()
 SLOW_REQUEST = 1.0       # seconds: a longer answer is written to the log
 MAX_JSON_BYTES = 25 * 1024 * 1024
 
@@ -162,7 +186,7 @@ state = _State()
 
 def _index_html() -> bytes:
     text = (core.WEB_DIR / "index.html").read_text(encoding="utf-8")
-    return text.replace("__STUDIO_TOKEN__", SESSION_TOKEN).encode("utf-8")
+    return text.replace("__STUDIO_TOKEN__", SESSION_TOKEN).replace("__MEDIA_TOKEN__", MEDIA_TOKEN).encode("utf-8")
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -243,7 +267,7 @@ class _Handler(BaseHTTPRequestHandler):
                 continue
             if auth == "token" and self.headers.get("X-Studio-Token") != SESSION_TOKEN:
                 raise ApiError("Сесію не підтверджено. Перезапустіть програму.", 401)
-            if auth == "media" and (query.get("t") or [""])[0] != SESSION_TOKEN:
+            if auth == "media" and (query.get("t") or [""])[0] not in (MEDIA_TOKEN, SESSION_TOKEN):
                 raise ApiError("Forbidden", 403)
             result = fn(Request(self, method, path, query, m.groups()))
             if isinstance(result, Response):
@@ -335,8 +359,28 @@ def _ping(req: Request):
 
 @route("POST", "/api/app/heartbeat")
 def _heartbeat(req: Request):
-    state.last_heartbeat = time.time()
+    now = time.time()
+    if state.last_heartbeat and now - state.last_heartbeat > 60:      # the page every 20 s: a long gap is worth knowing (04.10.2026)
+        core.log.info("Window: no ping for %.0f s (the page was asleep, frozen or hidden)", now - state.last_heartbeat)
+    state.last_heartbeat = now
     state.bye_at = 0.0
+    return {"ok": True}
+
+
+_page_errors = 0
+PAGE_ERRORS_MAX = 100       # a page stuck in a loop of errors must not fill the log
+
+
+@route("POST", "/api/app/log")
+def _page_log(req: Request):
+    """An error in the window's page (a script that failed, a promise nobody caught) into app.log — what the owner saw go wrong
+    can be found afterwards (the owner, 04.10.2026)."""
+    global _page_errors
+    body = req.json if isinstance(req.json, dict) else {}
+    if _page_errors < PAGE_ERRORS_MAX:
+        _page_errors += 1
+        text = " | ".join(str(body.get(k) or "")[:600] for k in ("message", "where", "page") if body.get(k))
+        core.log.warning("Page error: %s", text.replace("\n", " ⏎ ") or "(no details)")
     return {"ok": True}
 
 

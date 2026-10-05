@@ -13,10 +13,12 @@ Only books sent after this feature appeared are here; nothing older is imported.
 """
 from __future__ import annotations
 
+import hashlib
 import math
 import os
 import re
 import shutil
+import struct
 import threading
 import time
 import uuid
@@ -90,15 +92,19 @@ def store(provider: str, files: list[tuple[Path, str]], meta: dict) -> str:
     final, tmp = ROOT / eid, ROOT / f".tmp-{eid}"
     tmp.mkdir(parents=True)
     try:
+        with _lock:
+            kept = _index()
         rows = []
         for src, name in files:
             src, dest = Path(src), tmp / name
-            if core.inside(src, ROOT):
-                try:
-                    os.link(src, dest)
-                except OSError:
-                    shutil.copyfile(src, dest)
-            else:
+            # A page the archive already holds (the same illustration in another child's book) is that file again, hard-linked:
+            # the same pixels, no new space (04.10.2026).
+            same = ROOT / kept[key] if (key := _key_or_none(src)) in kept else src if core.inside(src, ROOT) else None
+            try:
+                if same is None:
+                    raise OSError
+                os.link(same, dest)
+            except OSError:
                 shutil.copyfile(src, dest)
             info = images.image_info(dest)
             rows.append({"file": name, "width": info["width"], "height": info["height"], "bytes": dest.stat().st_size})
@@ -115,6 +121,112 @@ def store(provider: str, files: list[tuple[Path, str]], meta: dict) -> str:
     threading.Thread(target=_warm_previews, args=(final, [(Path(src), name) for src, name in files]),
                      daemon=True).start()
     return eid
+
+
+# ---------------------------------------------------------------- the same page kept once
+# 14 of a book's ~31 pages are the same illustrations in every child's order; Canva only signs each export with its own text (an XMP
+# chunk), so the files differ by a few bytes and were all kept: ~6 of the archive's 13 GB (04.10.2026). A page is known by its picture —
+# its PNG chunks without the text ones — and kept once, every other book holding it as a hard link (one file, several names; removing one
+# name leaves the others whole). The archive's files never change, so a link is as good as a copy.
+
+INDEX = ROOT / "pages.json"          # "<id>/<name>" -> [[modified, size], key]: a file is read once
+_TEXT_CHUNKS = {b"tEXt", b"iTXt", b"zTXt", b"tIME"}
+
+
+def page_key(path: Path) -> str:
+    """What a page looks like, not how it was signed: a PNG's chunks without its text ones; any other file — all its bytes."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        head = f.read(8)
+        h.update(head)
+        if head != images.PNG_SIGNATURE:
+            while block := f.read(1 << 20):
+                h.update(block)
+            return "f" + h.hexdigest()
+        while len(top := f.read(8)) == 8:
+            length, kind = struct.unpack(">I4s", top)
+            if kind in _TEXT_CHUNKS:
+                f.seek(length + 4, 1)
+                continue
+            h.update(top)
+            left = length + 4                       # the data and its CRC
+            while left and (block := f.read(min(left, 1 << 20))):
+                h.update(block)
+                left -= len(block)
+            if kind == b"IEND":
+                break
+    return "p" + h.hexdigest()
+
+
+def _key_or_none(path: Path) -> str | None:
+    try:
+        return page_key(path)
+    except OSError:
+        return None
+
+
+def _index() -> dict[str, str]:
+    """key -> the archived file that holds it ("<id>/<name>", the oldest). Kept in pages.json by each file's stamp (call under _lock)."""
+    saved = (core.read_json(INDEX, {}) or {}).get("files") or {}
+    fresh: dict[str, list] = {}
+    for entry_dir in sorted(ROOT.iterdir()) if ROOT.is_dir() else []:
+        if not (entry_dir.is_dir() and _ID.fullmatch(entry_dir.name)):
+            continue
+        for p in sorted(entry_dir.iterdir()):
+            if p.suffix.lower() not in core.IMAGE_EXTS or not p.is_file():
+                continue
+            rel, st = f"{entry_dir.name}/{p.name}", p.stat()
+            stamp = [st.st_mtime_ns, st.st_size]
+            known = saved.get(rel)
+            key = known[1] if known and known[0] == stamp else _key_or_none(p)
+            if key:
+                fresh[rel] = [stamp, key]
+    if fresh != saved:
+        core.write_json(INDEX, {"files": fresh}, backup=False)
+    by_key: dict[str, str] = {}
+    for rel, (_, key) in fresh.items():
+        by_key.setdefault(key, rel)
+    return by_key
+
+
+def _same_file(a: Path, b: Path) -> bool:
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def dedupe(apply: bool = False, aside: Path | None = None) -> dict:
+    """Every archived page another book already holds becomes a hard link to that one. With `apply`, each file it replaces is first
+    linked into `aside` (the same bytes under another name, for the Recycle Bin) — nothing is lost. Returns what is, or was, saved."""
+    found = {"files": 0, "bytes": 0, "books": set(), "skipped": []}
+    with _lock:
+        kept = _index()
+        for rel, (_, key) in sorted(((core.read_json(INDEX, {}) or {}).get("files") or {}).items()):
+            keeper, path = ROOT / kept[key], ROOT / rel
+            if kept[key] == rel or _same_file(keeper, path):
+                continue
+            size = path.stat().st_size
+            if apply:
+                spare, link = aside / rel, path.with_name(path.name + ".link")
+                try:
+                    spare.parent.mkdir(parents=True, exist_ok=True)
+                    link.unlink(missing_ok=True)
+                    os.link(keeper, link)
+                    os.link(path, spare)             # the old bytes stay under the spare name
+                    os.replace(link, path)           # one step: the page is never missing
+                except OSError as err:               # held open by another program: it stays as it is
+                    link.unlink(missing_ok=True)
+                    if path.is_file():
+                        spare.unlink(missing_ok=True)    # only a second name of the page that stays
+                    found["skipped"].append(f"{rel}: {err}")
+                    continue
+            found["files"] += 1
+            found["bytes"] += size
+            found["books"].add(rel.split("/")[0])
+        if apply:
+            _index()
+    return {**found, "books": len(found["books"])}
 
 
 def _warm_previews(path: Path, files: list[tuple[Path, str]]) -> None:
@@ -346,6 +458,8 @@ def _remove(eid: str) -> bool:
 def refresh_quietly() -> None:
     try:
         refresh()
+        with _lock:
+            _index()          # the pages' keys known before a send needs them (the first time, a minute of reading)
     except Exception:
         core.log.exception("Archive refresh failed")
 

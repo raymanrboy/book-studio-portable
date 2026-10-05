@@ -52,7 +52,7 @@ README = """Резервна копія Book Studio.
 """
 
 _WIN = os.name == "nt"
-_NO_WINDOW = 0x08000000 if _WIN else 0
+_QUIET = 0x08000000 | 0x4000 if _WIN else 0      # no window, and below normal priority: the program stays smooth while it packs
 
 
 # ---------------------------------------------------------------- where the copies go
@@ -100,7 +100,9 @@ def target() -> Path | None:
 def sources() -> list[Path]:
     from . import mockups
     templates = mockups.places()["templates"]
-    return [PROGRAM_DIR] + ([templates] if templates.is_dir() and not core.inside(templates, PROGRAM_DIR) else [])
+    # The program (with its books, ~20 GB) last: every later addition rewrites what the archive already holds, and packed first it was
+    # written twice — once more behind the 1.6 GB of templates (04.10.2026).
+    return ([templates] if templates.is_dir() and not core.inside(templates, PROGRAM_DIR) else []) + [PROGRAM_DIR]
 
 
 # ---------------------------------------------------------------- the copies there
@@ -152,7 +154,7 @@ def _seven_zip(args: list[str], password: str, cwd: Path | None = None, stdin: b
     password goes on its command line — seen only by this Windows user's own processes."""
     command = [str(SEVEN_ZIP), *args, f"-p{password}", "-mhe=on", "-t7z", "-y", "-bsp1", "-bso0", "-bse1",
                "-sccUTF-8"]
-    proc = subprocess.Popen(command, cwd=str(cwd) if cwd else None, creationflags=_NO_WINDOW,
+    proc = subprocess.Popen(command, cwd=str(cwd) if cwd else None, creationflags=_QUIET,
                             stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if stdin is not None:

@@ -185,12 +185,20 @@ def startup_report() -> tuple[str, bool] | None:
 
 # ---------------------------------------------------------------- the folder moved: paths inside the data follow it
 
-_SKIP_DATA = ("logs", "tmp", "cache", "window-profile", "import-backup", "rebase-backup", "recycle-bin", "history", "merge-backup")
+_SKIP_DATA = ("logs", "tmp", "cache", "window-profile", "work-browser", "import-backup", "rebase-backup", "recycle-bin", "history", "merge-backup")
 _REPO_PATH = re.compile(r'([A-Za-z]:(?:\\\\[^"\\]+)+?)(?=\\\\(?:pipeline\\\\books|app\\\\data|wiki)\\\\)')   # inside JSON text
 
 
 def _state_path() -> Path:
     return core.data_path("portable-state.json")
+
+
+def _data_json():
+    """The data's JSON files, the skipped folders never walked (the caches and browser profiles are ~90% of the files, 04.10.2026)."""
+    for top, dirs, files in os.walk(core.DATA_DIR):
+        if Path(top) == core.DATA_DIR:
+            dirs[:] = [d for d in dirs if d not in _SKIP_DATA]
+        yield from (Path(top) / f for f in files if f.lower().endswith(".json") and not f.startswith("vault"))
 
 
 def rebase_paths() -> int:
@@ -207,10 +215,8 @@ def rebase_paths() -> int:
         return 0
     new = here.replace("\\", "\\\\")
     stamp, changed = time.strftime("%Y%m%d-%H%M%S"), 0
-    for path in core.DATA_DIR.rglob("*.json"):
+    for path in _data_json():
         rel = path.relative_to(core.DATA_DIR)
-        if rel.parts[0] in _SKIP_DATA or path.name.startswith("vault"):
-            continue
         try:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):

@@ -22,6 +22,7 @@ import functools
 import shutil
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -124,19 +125,32 @@ def _held(target: Path) -> ApiError:
 
 
 def _write(im: Image.Image, target: Path, keep_old_of: Path | None = None) -> None:
-    """A picture written beside its target and swapped in. A page open in a viewer can be locked for a moment on
-    Windows (the swaps try again); a failed write never leaves a half-written `.tmp` among the pages.
+    _write_all([(im, target)], keep_old_of)
+
+
+def _write_all(pages: list[tuple[Image.Image, Path]], keep_old_of: Path | None = None) -> None:
+    """Pictures written beside their targets and swapped in. A page open in a viewer can be locked for a moment on
+    Windows (the swaps try again); a failed write never leaves a half-written `.tmp` among the pages, and none is swapped in.
+    The two pages of a spread are written at once (~0.6 s each; the same bytes, 04.10.2026).
     `keep_old_of`: the book whose .replaced/ keeps what the new picture replaces."""
-    target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_name(target.name + ".tmp")
-    dpi = im.info.get("dpi")
+    tmps = [target.with_name(target.name + ".tmp") for _, target in pages]
+
+    def encode(i: int) -> None:
+        im, target = pages[i]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        dpi = im.info.get("dpi")
+        im.save(tmps[i], "PNG", compress_level=4, **({"dpi": dpi} if dpi else {}))
+
     try:
-        im.save(tmp, "PNG", compress_level=4, **({"dpi": dpi} if dpi else {}))
-        if keep_old_of is not None:
-            _retire(keep_old_of, target)
-        core.replace_file(tmp, target)
+        with ThreadPoolExecutor(len(pages)) as pool:
+            list(pool.map(encode, range(len(pages))))
+        for (_, target), tmp in zip(pages, tmps):
+            if keep_old_of is not None:
+                _retire(keep_old_of, target)
+            core.replace_file(tmp, target)
     finally:
-        tmp.unlink(missing_ok=True)
+        for tmp in tmps:
+            tmp.unlink(missing_ok=True)
 
 
 def _save(book: Path, im: Image.Image, target: Path) -> None:
@@ -279,9 +293,9 @@ def _place(book_id: str, key: str, source: Path, name: str, variant: str | None,
     left, right, cut = two_squares(im)
     if cut and abs(size[0] / size[1] / 2 - 1) <= OFF:
         cut = ""  # a pixel or two isn't worth a mark
-    for page, n in zip((left, right), r["pages"]):
+    for page in (left, right):
         page.info["dpi"] = im.info.get("dpi")
-        _save(book, page, folder / f"{n}.png")
+    _write_all([(page, folder / f"{n}.png") for page, n in zip((left, right), r["pages"])], keep_old_of=book)
     _mark(book, variant, key, {"mirrored": mirrored, "cut": cut, **stamp})
     parts = [p for p in ("віддзеркалено" if mirrored else "", CUT_WORDS.get(cut, "")) if p]
     return {"key": key, "label": r["label"], "mirrored": mirrored, "cut": cut,

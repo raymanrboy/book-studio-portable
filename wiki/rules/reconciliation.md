@@ -1,12 +1,13 @@
 ---
 title: Order matching and computing profit
 type: rule
-updated: 2026-09-27
+updated: 2026-10-05
 code:
   - app/studio/reconcile.py
   - app/studio/fees.py
   - app/studio/outcomes.py
   - app/studio/printorders.py
+  - app/studio/ledger.py
 ---
 # Matching and profit
 
@@ -98,12 +99,28 @@ right order — no link is asked for). If matching by name only finds a cancelle
 for a manual link (`needs_link`). A cancelled first order no longer takes the cost of the sale's other print
 orders with it (until 2026-09-26 it did).
 
+## The check against Etsy's ledger
+
+Since 2026-10-05 the sync reads Etsy's payment ledger (`ledger.py`, `data/profit/ledger.json`): every credit and debit on the
+shop's Etsy balance, in cents, each with the balance after it. An entry finds its receipt by its reference — a receipt, a payment
+(asked once: `ledger-entries/payments` gives the receipt), a sold item (`transaction_id`, kept on each item since then), a listing
+renewed by a sale (the latest sale of that listing still owed one); a VAT line follows the fee it is on (`parent_entry_id`); what is
+left goes to the one receipt posted the same moment. Ads, new listings, Etsy Plus and listing fees given back stay the shop's.
+
+**What it showed on the owner's real data (5 October 2026, 70 receipts of the last 31 days):** the formula is right — 58 receipts
+to the cent, 6 more within 1–4 cents (rounding). What it does not count: **Etsy Offsite Ads** (3 sales in September, −$4.16…−$6.32
+each), a **state's delivery fee** paid by the buyer (Colorado, −$0.31), and on a cancelled sale the **$0.24 listing fee** Etsy
+keeps. The payout of 5 October ($606.68) against the program: $54.61 the payout of 28 September had left on the balance + the
+program's sum for the 21 sales between, less the ads a day = $606.63 — 5 cents off. A payout does not always empty the balance
+(Etsy kept $54.61 and $35.12 back twice), so the check starts from what the last one left.
+
 ## Where in the code
 
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `facts()`, `all_facts()`, `dead()`, `is_placed()`, `to_usd()`, `rates()`, `RATE_KEYS`, `js_round()`, `CANCELLED`, `PRINTIFY_NOT_PLACED`, `GELATO_NOT_PAID`
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `match()`, `_find()`, `_Printer`, `_numbers_named()`, `is_name_match()`, `normalize_name()`, `item_format()`, `cover_label()`, `printify_only_rows()`, `_NameIndex`
 - [app/studio/fees.py](../../app/studio/fees.py) — `calculate_ukrainian_etsy_fees()`, `r2()`, `money()`
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `rows()`, `apply()`, `auto_state()`, `unpaid()`, `order_info()`, `reserved_orders()`, `STATES`
+- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `window_net()`
 - [app/studio/records.py](../../app/studio/records.py) — `remember_print_order()`, `load_sends()`, `SENDS`
 - Tests: [app/tests/test_profit.py](../../app/tests/test_profit.py) (`ProfitParity` against `golden_profit.json`), [app/tests/test_states.py](../../app/tests/test_states.py) (`MatchingOrder`, `MoneyRules`)
 

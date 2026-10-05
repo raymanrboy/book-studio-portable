@@ -204,6 +204,19 @@ def _one(req: Request):
     return enrich(order, books_by_listing())
 
 
+@route("GET", r"/api/orders/(\d{5,20})/history")
+def _history(req: Request):
+    """The printer's history of one order, asked for when its card is opened (never for the whole queue): Gelato's
+    status and events, the tracking. `{available: false}` — no placed Gelato order to ask about (new, or Printify)."""
+    one = stages.facts()["receipts"].get(req.groups[0])
+    shown = (one or {}).get("order") or {}
+    if not one or one["stage"] in ("new", "closed") or shown.get("provider") != "gelato":
+        return {"available": False}
+    from . import gelato
+    data = gelato.cached_history(shown["id"], gelato.slot_of(shown.get("order") or {}), fresh=req.param("fresh") == "1")
+    return {"available": True, **data}
+
+
 @route("POST", r"/api/orders/(\d{5,20})/files")
 def _files(req: Request):
     body = req.json or {}

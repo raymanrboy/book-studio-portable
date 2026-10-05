@@ -1,7 +1,7 @@
 // «Книги» (2026-09-30, wiki/decisions.md): every book in one place — the ones being made (the Workshop), the
 // finished ones of the shop's listings (the library) and the archive — the owner's own words as the tabs — instead of two galleries in two modes. The galleries themselves
 // are the Workshop's and the library's own pages, drawn here without their heads (`embedded`); a tab only swaps them.
-import { api, html, ic, setHtml, on, segHtml, setSeg, syncSeg, plural, remembered, remember, toast, BOOKS } from '../lib.js';
+import { recent, html, ic, setHtml, on, segHtml, setSeg, syncSeg, plural, remembered, remember, toast, BOOKS } from '../lib.js';
 
 const TAB_KEY = 'bs-books-tab';
 const TABS = [
@@ -45,7 +45,7 @@ export async function mount(view, [tabParam]) {
   };
 
   const readCounts = async () => {
-    const [ws, lib] = await Promise.all([api('/api/workshop/books').catch(() => null), api('/api/library/books').catch(() => null)]);
+    const [ws, lib] = await Promise.all([recent('/api/workshop/books').catch(() => null), recent('/api/library/books').catch(() => null)]);
     if (ws) counts.work = ws.books.filter((b) => !b.library).length;
     if (lib) {
       counts.shop = lib.books.filter((b) => !b.archived).length;

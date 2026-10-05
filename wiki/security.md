@@ -213,7 +213,8 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 
 ### Local server
 - Listens only on `127.0.0.1`; every `/api` request carries the session token `SESSION_TOKEN` (header
-  `X-Studio-Token`), media uses the `?t=` parameter.
+  `X-Studio-Token`), media uses the `?t=` parameter — the pictures' key `MEDIA_TOKEN`, kept across launches in `data/media-key.txt` so the
+  window's cache keeps the pictures (04.10.2026); it opens `/media/` routes only, never `/api`, and is never shown outside the program's page.
 - `_host_ok()` checks the Host header (protection against DNS rebinding).
 - A number in a query that isn't one (`?w=abc`) is its default (`Request.int_param()`), never a server error
   with a traceback in the log.

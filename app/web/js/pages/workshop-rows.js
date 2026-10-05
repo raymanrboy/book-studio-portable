@@ -74,7 +74,7 @@ export function rowTemplates({ id, book, mem, uploading }) {
       return html`<div class="ws-frame ws-single">${r.key === 'page1' ? html`${endpaper}${page}` : html`${page}${endpaper}`}</div>`;
     }
     const page = (name, i) => html`<div class="ws-page">
-      <img data-fade alt="${r.label}" src="${pic('pictures', name, 900, variant)}" data-act="zoom" data-key="${r.key}" data-part="${i}">
+      <img data-fade loading="lazy" decoding="async" alt="${r.label}" src="${pic('pictures', name, 900, variant)}" data-act="zoom" data-key="${r.key}" data-part="${i}">
       ${saveBtn('pictures', name, variant, `Зберегти сторінку ${name.replace(/\.\w+$/, '')} як…`)}</div>`;
     const tools = html`<div class="img-actions">
       ${ib('expand', 'Переглянути', `data-act="zoom" ${attr('data-key', r.key)}`, { cls: 'sm' })}

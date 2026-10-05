@@ -95,6 +95,20 @@ export async function mount(view) {
       return (o.search || `${o.customer_name || ''} ${o.id}`.toLowerCase()).includes(term);
     });
   }
+  // How many days of the chosen period are inside the books (not before the clean slate, not after today).
+  function periodDays() {
+    const day = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    const from = st.data?.accountingFrom ? new Date(`${st.data.accountingFrom}T00:00:00`) : null;
+    let start = new Date(day);
+    if (st.period === '7d') start.setDate(start.getDate() - 6);
+    else if (st.period === 'month') start.setDate(start.getDate() - 29);
+    else if (st.period === 'custom') start = new Date(`${st.start}T00:00:00`);
+    else if (st.period === 'all') start = from || day;
+    let end = st.period === 'custom' ? new Date(`${st.end}T00:00:00`) : day;
+    if (end > day) end = day;
+    if (from && start < from) start = from;
+    return Math.max(0, Math.round((end - start) / 86400000) + 1);
+  }
   function kpi(rows) {
     let net = 0, cost = 0, profit = 0, n = 0, impact = 0, issues = 0;
     for (const o of rows) {
@@ -106,6 +120,8 @@ export async function mount(view) {
       if (special) { impact += o.impact || 0; issues++; }
     }
     const r2 = (v) => Math.round(v * 100) / 100;
+    // Ads and new listings a day (profit.OVERHEAD_PER_DAY): counted into the profit and the margin, not shown (2026-10-05).
+    if (n) profit -= periodDays() * (st.data?.overheadPerDay || 0);
     return { net: r2(net), cost: r2(cost), profit: r2(profit), margin: net > 0 ? Math.round((profit / net) * 1000) / 10 : 0, n, impact: r2(impact), issues };
   }
 
@@ -114,6 +130,7 @@ export async function mount(view) {
     const d = st.data;
     const bits = [];
     if (d?.shopName) bits.push(`магазин ${d.shopName}`);
+    if (d?.gelatoConnected) bits.push('Gelato');  // only the printers connected now (2026-10-05)
     if (d?.printifyShop?.title) bits.push(`Printify: ${d.printifyShop.title}`);
     bits.push(st.syncing ? 'оновлення…' : d?.syncedAt ? `оновлено ${relTime(d.syncedAt)}` : 'ще не оновлено');
     $('#pf-sub').textContent = bits.join(' · ');
@@ -149,7 +166,7 @@ export async function mount(view) {
     const box = $('#pf-kpis');
     if (!box.querySelector('[data-k]')) {
       const card = (key, label, iconName, tone) => html`<div class="kpi ${tone}" data-card="${key}">
-        <div class="kpi-label"><span>${label}</span><span class="kpi-ico">${ic(iconName, 'icon-s')}</span></div>
+        <div class="kpi-label"><span data-l="${key}">${label}</span><span class="kpi-ico">${ic(iconName, 'icon-s')}</span></div>
         <div class="kpi-value" data-k="${key}"></div><div class="kpi-foot" data-f="${key}"></div></div>`;
       setHtml(box, [
         card('net', 'На руки (Etsy Net)', 'dollar', 'tone-green'),
@@ -158,7 +175,26 @@ export async function mount(view) {
         card('margin', 'Середня маржа', 'shield', ''), // a number, not an action: no ink of its own (2026-09-30)
       ]);
     }
-    box.querySelector('[data-f="net"]').textContent = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}`;
+    // With Etsy's ledger the first card is the Etsy balance — what Etsy pays out next — and under it what the program
+    // expects there by its own sums: equal means the sums are right (the owner, 2026-10-05). Without it, the period's Etsy Net.
+    const bal = st.data?.etsyBalance;
+    const orders = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}`;
+    const nf = box.querySelector('[data-f="net"]');
+    box.querySelector('[data-l="net"]').textContent = bal ? 'Доступно до виводу' : 'На руки (Etsy Net)';
+    box.querySelector('[data-f="cost"]').textContent = bal ? orders : '';
+    if (bal?.expected) {
+      const off = Math.abs(bal.balance - bal.expected.amount) > 1;
+      const day = (t) => new Date(t * 1000).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
+      const last = bal.lastPayout;
+      nf.textContent = `за розрахунком ${money(bal.expected.amount)}`;
+      nf.dataset.tip = [`Баланс Etsy, не залежить від періоду. Розрахунок програми: що лишилось після виплати ${day(bal.expected.from)} + ${bal.expected.orders} ${plural(bal.expected.orders, ['замовлення', 'замовлення', 'замовлень'])} відтоді − реклама й лістинги`,
+        last ? `Виплата ${day(last.at)}: ${money(last.amount)}, за розрахунком ${money(last.expected.amount)}` : ''].filter(Boolean).join('. ');
+      nf.classList.toggle('warn', off);
+    } else {
+      nf.textContent = bal ? '' : orders;
+      nf.dataset.tip = '';
+      nf.classList.remove('warn');
+    }
     box.classList.toggle('kpi-none', !k.n); // no sales in the period: grey zeros, not green ones that look earned
     const pf = box.querySelector('[data-f="profit"]');
     pf.textContent = k.issues ? `Повернення й заміни: ${money(k.impact)}` : '';
@@ -168,7 +204,7 @@ export async function mount(view) {
     card.classList.toggle('tone-green', k.profit >= 0);
     card.classList.toggle('tone-red', k.profit < 0);
     const from = { ...shownKpi };
-    const to = { net: k.net, cost: k.cost, profit: k.profit, margin: k.margin };
+    const to = { net: bal ? bal.balance : k.net, cost: k.cost, profit: k.profit, margin: k.margin };
     const fmt = { net: money, cost: money, profit: money, margin: (v) => `${(Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '')}%` };
     const start = performance.now();
     // First paint shows final numbers (the page transition is the entrance); later changes count smoothly.

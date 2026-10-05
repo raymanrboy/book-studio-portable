@@ -64,7 +64,9 @@ export function stateChip(o, mode) {
 export function netCell(o, mode) {
   if (o.etsy_net === undefined) return html`<span class="faint">—</span>`;
   const changed = o.state && o.state !== 'normal' && o.etsy_net_original !== undefined && Math.abs(o.etsy_net - o.etsy_net_original) > 0.004;
-  return html`<div class="o-net ${o.etsy_net < 0 ? 'neg' : o.etsy_net === 0 ? 'zero' : ''}">${money(o.etsy_net)}</div>
+  // Etsy's ledger says otherwise (more than rounding): a mark, its real sum in the tip; the open row shows why (2026-10-05).
+  const off = o.etsy_check !== undefined && o.etsy_check !== null && Math.abs(o.etsy_check) > 0.05;
+  return html`<div class="o-net ${o.etsy_net < 0 ? 'neg' : o.etsy_net === 0 ? 'zero' : ''}">${off ? html`<span class="o-check" data-tip="За журналом Etsy ${money(o.etsy_net_actual)} (${o.etsy_check > 0 ? '+' : ''}${money(o.etsy_check)})">${ic('alertCircle', 'icon-s')}</span>` : ''}${money(o.etsy_net)}</div>
     ${changed ? html`<div class="o-was" data-tip="До повернення">${money(o.etsy_net_original)}</div>` : o.etsy_fees > 0 ? html`<div class="o-fees">збори: ${money(-o.etsy_fees)}</div>` : ''}`;
 }
 
@@ -173,6 +175,8 @@ export function detailHtml(o, mode) {
       </div>
       <div class="dbox-foot">З картки покупця: <b class="num">$${fb.gross.toFixed(2)}</b> · товари: $${fb.item_total.toFixed(2)} · доставка: $${fb.shipping_total.toFixed(2)}
         ${fb.sales_tax > 0 ? html` · податок США $${fb.sales_tax.toFixed(2)} (утримує Etsy)` : ''}</div>
+      ${o.etsy_net_actual !== undefined ? html`<div class="dbox-foot ledger-foot">За журналом Etsy: <b class="num">${money(o.etsy_net_actual)}</b>
+        ${Math.abs(o.etsy_check || 0) > 0.05 ? html` · за розрахунком ${money(o.etsy_net)} · ${(o.etsy_lines || []).map((l) => `${l.label} ${money(l.amount)}`).join(' · ')}` : ' · збігається з розрахунком'}</div>` : ''}
     </div>` : ''}
     ${o.pod_provider === 'printify' && (o.pod_cost_original || o.printify_total_cost || 0) > 0 ? html`<div class="dbox">
       <div class="dbox-title"><span class="svc-dot printify"></span>Собівартість Printify

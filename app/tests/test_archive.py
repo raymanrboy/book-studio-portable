@@ -133,6 +133,57 @@ class Storing(ArchiveCase):
         self.assertEqual(listed[0]["folder"], str(archive.folder(newer)))
 
 
+def signed_png(path: Path, color, signature: str) -> Path:
+    """A page as Canva exports it: the picture, and its own text (XMP) that differs in every export."""
+    from PIL.PngImagePlugin import PngInfo
+    info = PngInfo()
+    info.add_itxt("XML:com.adobe.xmp", signature)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (40, 40), color).save(path, pnginfo=info)
+    return path
+
+
+class SamePageOnce(ArchiveCase):
+    """04.10.2026: the same illustration in every child's book was kept again and again (~6 of 13 GB) — Canva signs each export."""
+
+    def send(self, name, color, signature):
+        src = signed_png(self.root / name / "1.png", color, signature)
+        return archive.store("gelato", [(src, "1.png")], {"title": f"4100000001 - {name}"})
+
+    def test_a_page_is_known_by_its_picture_not_its_signature(self):
+        a = signed_png(self.root / "a.png", (10, 20, 30), "export one")
+        b = signed_png(self.root / "b.png", (10, 20, 30), "export two, longer")
+        c = signed_png(self.root / "c.png", (10, 20, 31), "export one")
+        self.assertNotEqual(a.read_bytes(), b.read_bytes())
+        self.assertEqual(archive.page_key(a), archive.page_key(b))
+        self.assertNotEqual(archive.page_key(a), archive.page_key(c))
+
+    def test_a_new_send_holds_a_page_the_archive_has_as_that_file(self):
+        first = self.send("Emma", (10, 20, 30), "one")
+        second = self.send("Mia", (10, 20, 30), "two")
+        other = self.send("Ava", (200, 0, 0), "one")
+        self.assertTrue(os.path.samefile(archive.folder(first) / "1.png", archive.folder(second) / "1.png"))
+        self.assertFalse(os.path.samefile(archive.folder(first) / "1.png", archive.folder(other) / "1.png"))
+        self.assertTrue(archive._remove(first))                                   # one book goes: the other keeps its page
+        with Image.open(archive.folder(second) / "1.png") as im:
+            self.assertEqual(im.getpixel((5, 5)), (10, 20, 30))
+
+    def test_what_is_there_is_kept_once_and_the_old_copies_are_set_aside(self):
+        with mock.patch.object(archive, "_index", return_value={}):              # as before: every send its own copy
+            first, second = sorted([self.send("Emma", (10, 20, 30), "one"), self.send("Mia", (10, 20, 30), "two")])   # the first keeps
+        old = (archive.folder(second) / "1.png").read_bytes()
+        aside = self.root / "aside"
+        seen = archive.dedupe()
+        self.assertEqual((seen["files"], seen["books"]), (1, 1))
+        self.assertFalse(aside.exists())                                          # only counted
+        done = archive.dedupe(apply=True, aside=aside)
+        self.assertEqual((done["files"], done["skipped"]), (1, []))
+        self.assertTrue(os.path.samefile(archive.folder(first) / "1.png", archive.folder(second) / "1.png"))
+        self.assertEqual((aside / second / "1.png").read_bytes(), old)             # the replaced file, for the Recycle Bin
+        self.assertEqual(archive.dedupe()["files"], 0)                              # nothing more to do
+        self.assertEqual([p.name for p in archive.folder(second).iterdir() if p.suffix == ".link"], [])
+
+
 class Removing(ArchiveCase):
     def test_14_days_after_the_order_was_shipped(self):
         eid = self.keep()

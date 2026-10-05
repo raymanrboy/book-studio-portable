@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .. import core, desktop, images
 from ..jobs import jobs
-from ..server import ApiError, Request, SESSION_TOKEN, base_url, file_response, route
+from ..server import ApiError, MEDIA_TOKEN, Request, SESSION_TOKEN, base_url, file_response, route
 from . import cutout, store, work
 
 EXCLUSIVE = "slides"
@@ -27,7 +27,7 @@ def _url(set_id: str, part: str, name: str) -> str:
         v = path.stat().st_mtime_ns
     except OSError:
         v = 0
-    return f"/media/slides/file/{set_id}/{part}/{name}?t={SESSION_TOKEN}&v={v}"
+    return f"/media/slides/file/{set_id}/{part}/{name}?t={MEDIA_TOKEN}&v={v}"
 
 
 def assets(where: str) -> dict:

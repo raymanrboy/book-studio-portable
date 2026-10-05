@@ -10,6 +10,7 @@ is done with; "old" — the account before the switch, only read (its orders, th
 from __future__ import annotations
 
 import hashlib
+import threading
 import time
 from typing import Any
 
@@ -274,6 +275,89 @@ def attach_shipments(orders: list, previous: list, account: str = "main") -> int
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(read, todo[:TRACKING_READS]))
     return len(failed)
+
+
+def slot_of(order: dict) -> str:
+    """Which key reads this order (slim, from the snapshot): "old" for an order of the old account, else "main"."""
+    old = vault.get(KEYS["old"])
+    tag = order.get("account") or untagged_account()
+    return "old" if old and tag == account_id(old) else "main"
+
+
+# What Gelato's own event log may call a time, a status and a text: the log's entries were empty in every draft
+# the program ever read, so only the likely names are tried; the shape found is written to the audit log.
+_EVENT_TIME = ("createdAt", "created", "timestamp", "time", "occurredAt", "date", "at", "updatedAt")
+_EVENT_STATUS = ("fulfillmentStatus", "status", "toStatus", "newStatus", "event", "type", "name", "code")
+_EVENT_TEXT = ("message", "comment", "description", "details", "reason", "text")
+_MILESTONES = (("createdAt", "created"), ("orderedAt", "ordered"), ("shippedAt", "shipped"))  # on the order itself
+
+
+def _first(entry: dict, names: tuple) -> str:
+    for name in names:
+        value = entry.get(name)
+        if isinstance(value, (str, int, float)) and str(value).strip():
+            return str(value).strip()
+    return ""
+
+
+def _moment(text: str) -> float:
+    try:
+        from datetime import datetime, timezone
+        when = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        return (when if when.tzinfo else when.replace(tzinfo=timezone.utc)).timestamp()
+    except ValueError:
+        return 0.0
+
+
+def history(order: dict) -> dict:
+    """What the order card's history shows, from a full order: the printer's status now, its events newest first
+    (each `at`, `status`, `text`; Gelato's own event log of the items, plus the order's own dates for what the log
+    lacks), the tracking, and when Gelato expects it delivered. Read only."""
+    events: list[dict] = []
+    shapes: set[str] = set()
+    for item in order.get("items") or []:
+        for entry in item.get("eventLog") or []:
+            if not isinstance(entry, dict):
+                entry = {"text": str(entry)}
+            shapes.add(",".join(sorted(entry)))
+            at, status = _first(entry, _EVENT_TIME), _first(entry, _EVENT_STATUS)
+            text = _first(entry, _EVENT_TEXT)
+            if text.lower() == status.lower():
+                text = ""
+            if (at or status or text) and {"at": at, "status": status, "text": text} not in events:
+                events.append({"at": at, "status": status, "text": text})
+    if shapes:  # field names only, never their values: they tell what to read next time without exposing a customer
+        _audit_log().info("History: event log entries have %s", " | ".join(sorted(shapes)))
+    seen = {e["status"].lower() for e in events}
+    for field, status in _MILESTONES:
+        at = order.get(field)
+        if at and status not in seen:
+            events.append({"at": str(at), "status": status, "text": ""})
+    events.sort(key=lambda e: _moment(e["at"]), reverse=True)  # without a time — last, as they came
+    ship = order.get("shipment") or {}
+    due = [ship.get(k) for k in ("minDeliveryDate", "maxDeliveryDate") if ship.get(k)]
+    return {"status": order.get("fulfillmentStatus") or "", "events": events, "shipments": shipments_of(order),
+            "due": due}
+
+
+_history: dict[str, tuple[float, dict]] = {}
+_history_lock = threading.Lock()
+HISTORY_FRESH = 60   # seconds a read is kept: leaving the card and coming back is not a new question to Gelato
+HISTORY_DONE = {"delivered", "canceled", "returned"}  # nothing changes after these: kept until the program closes
+
+
+def cached_history(order_id: str, account: str = "main", fresh: bool = False) -> dict:
+    """The history of one order, read from Gelato when the card is opened (never in bulk, never at launch)."""
+    with _history_lock:
+        kept = _history.get(order_id)
+    if kept and not fresh and (kept[1]["status"] in HISTORY_DONE or time.monotonic() - kept[0] < HISTORY_FRESH):
+        return kept[1]
+    data = history(get_order(order_id, account))
+    with _history_lock:
+        if len(_history) > 300:
+            _history.clear()
+        _history[order_id] = (time.monotonic(), data)
+    return data
 
 
 @route("POST", "/api/gelato/test")

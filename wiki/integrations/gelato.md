@@ -1,7 +1,7 @@
 ---
 title: Gelato and the temporary link
 type: integration
-updated: 2026-10-03
+updated: 2026-10-04
 code:
   - app/studio/gelato.py
   - app/studio/gelato_accounts.py
@@ -135,6 +135,13 @@ are no packages, `items[].fulfillments[]` (`shipments_of()`). In the snapshot th
 field (`carrier`, `number`, `url`) and `shipmentsFor` — the status it was read at. Each order is read
 once; read again only while it has no tracking number and its status has changed; up to 60 per refresh
 (`TRACKING_READS`), 4 in parallel.
+**History** (since 2026-10-04, for the order card — [orders](../features/orders.md)): the same full order
+(`GET /v4/orders/{id}`, read-only) read **when the card is opened**, one order, never in bulk: `cached_history()` →
+`history()` — the items' `eventLog`, the order's own dates, `shipment.minDeliveryDate` / `maxDeliveryDate`, the tracking.
+`slot_of()` picks the key (the old account's orders are read with the old key). Gelato's docs weren't readable from here
+(403); the `eventLog` was `[]` in every draft ever read, so its entries' field names are guessed and their shape is logged
+(names only) to `gelato.log`. Gelato also offers webhooks (`order_status_updated`), but they need a public address, which a
+local program doesn't have.
 Documentation: [Get order](https://dashboard.gelato.com/docs/orders/v4/get/),
 [statuses](https://dashboard.gelato.com/docs/orders/order_details/).
 
@@ -177,7 +184,7 @@ draft, this tells apart a refusal from an **unknown result**
 
 ## Where in the code
 
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `KEYS`, `OLD_NAME`, `api_key()`, `account_id()`, `accounts()`, `untagged_account()`, `check_key()`, `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `_human()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `_fresh_catalog()`, `CATALOG_HOURS`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`
+- [app/studio/gelato.py](../../app/studio/gelato.py) — `KEYS`, `OLD_NAME`, `api_key()`, `account_id()`, `accounts()`, `untagged_account()`, `check_key()`, `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `_human()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `_fresh_catalog()`, `CATALOG_HOURS`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`, `slot_of()`, `history()`, `cached_history()`, `HISTORY_FRESH`, `HISTORY_DONE`
 - [app/studio/gelato_accounts.py](../../app/studio/gelato_accounts.py) — `_switch()`, `_forget()`, `status()`, `open_orders()`, `old_id()`, `OPEN_STAGES`, `_resync()`
 - [app/studio/sync.py](../../app/studio/sync.py) — `_gelato_part()`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`
@@ -190,7 +197,7 @@ draft, this tells apart a refusal from an **unknown result**
 - [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
 - [app/studio/orders.py](../../app/studio/orders.py) — `page_options()`, `_files()`
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderTunnels()`, `startCountdown()`, `loadPageCounts()`, `formatProblem()`, `formatCard()`
-- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`GelatoDraftFlow`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`SafetyRails`, `GelatoValidation`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`GelatoTracking`), [app/tests/test_gelato_accounts.py](../../app/tests/test_gelato_accounts.py)
+- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`GelatoDraftFlow`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`SafetyRails`, `GelatoValidation`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`GelatoTracking`), [app/tests/test_gelato_accounts.py](../../app/tests/test_gelato_accounts.py), [app/tests/test_gelato_history.py](../../app/tests/test_gelato_history.py)
 
 ## Related
 

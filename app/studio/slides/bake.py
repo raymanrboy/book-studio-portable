@@ -2,7 +2,7 @@
 (web/js/slides/engine.js), the page web/slides/render.html of Book Studio's own server.
 
 The browser starts only for a bake and goes right after; its profile lives in app/data/tmp (drive D — nothing on
-drive C) and is removed. Three slides are drawn at once (~3 s each).
+drive C) and is removed. Four slides are drawn at once (~3 s each).
 """
 from __future__ import annotations
 
@@ -17,10 +17,9 @@ from ..jobs import UserError
 from . import store
 
 SIZE = 1000        # the stage in CSS pixels; × 2 → 2000×2000
-AT_ONCE = 3
+AT_ONCE = 4        # seven slides in two rounds, not three (04.10.2026)
 NAME = "Listing {n}.png"   # «Listing 1.png … Listing 6.png» (the plan's default, 29.09.2026; a Workshop book's etsy/ too —
                            # the owner's own etsy/ of book 25, 30.09.2026)
-CREATE_NO_WINDOW = 0x08000000
 
 
 def browser() -> str:
@@ -32,8 +31,7 @@ def browser() -> str:
 
 def run_browser(args: list[str], timeout: int) -> None:
     """The one place a browser is started (the tests put a pretend one here)."""
-    subprocess.run(args, capture_output=True, timeout=timeout,
-                   creationflags=CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0)
+    subprocess.run(args, capture_output=True, timeout=timeout, creationflags=desktop.CREATE_NO_WINDOW)
 
 
 def render(where: str, slide: str, out: Path, base: str, token: str, profile: Path) -> Path:

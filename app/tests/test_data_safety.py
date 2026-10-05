@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -129,6 +130,27 @@ class DeletedToTheBin(unittest.TestCase):
             store.delete_set(set_id)
         binned.assert_called_once_with(folder)
         shutil.rmtree(folder, ignore_errors=True)
+
+
+class Logs(unittest.TestCase):
+    def test_logs_keep_a_week_and_the_journals_are_never_touched(self):
+        """The owner, 04.10.2026: collect logs, clean them every 7 days. The send and text-check journals are records."""
+        data = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, data, True)
+        logs = data / "logs"
+        (logs / "sends").mkdir(parents=True)
+        old = time.time() - 9 * 86400
+        for name in ("app.log.1", "gelato.log.2026-09-20", "sends/2026-09-01_1.json"):
+            (logs / name).write_text("x", encoding="utf-8")
+            os.utime(logs / name, (old, old))
+        (logs / "app.log.2026-10-03").write_text("x", encoding="utf-8")       # yesterday's: stays
+        with mock.patch.object(core, "DATA_DIR", data):
+            core.prune_logs()
+            handler = core.log_file("x.log", "%(message)s")
+            handler.close()
+        self.assertEqual(sorted(p.relative_to(logs).as_posix() for p in logs.rglob("*") if p.is_file()),
+                         ["app.log.2026-10-03", "sends/2026-09-01_1.json", "x.log"])
+        self.assertEqual((handler.when, handler.backupCount), ("MIDNIGHT", core.LOG_DAYS))
 
 
 class PuttingBack(unittest.TestCase):

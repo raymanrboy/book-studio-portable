@@ -94,7 +94,8 @@ code:
 |---|---|
 | Safe templates | `` html`…` `` escapes everything except `raw()`; `setHtml()`, `el()` |
 | Icon buttons with a tooltip | `ib(icon, tip, attrs, {cls, kbd})`; the shared tooltip `showTip()` / `hideTip()` (`.tip`: up to 320 px, longer wraps to two lines, never past the panel's edge; 2026-09-19) |
-| Server | `api()` (token, JSON, `ApiError`), `post(path, body)` — a POST (85 calls read `api(…, { method: 'POST', body })` until 2026-09-27), `media()` (a link with a token), `upload()` (XHR with progress), `runJob()` (4th argument `keepGoing()` — stop polling once the result is no longer needed; `job.partial` in `onProgress` — what the job has already found) |
+| Server | `api()` (token, JSON, `ApiError`), `post(path, body)` — a POST (85 calls read `api(…, { method: 'POST', body })` until 2026-09-27), `media()` (a link with the pictures' key — the same after a restart, so the window keeps them cached), `recent(path, ms)` (the last answer of
+the heavy lists — orders, library, Workshop — when a page fetched it moments ago: the Books tabs' counts and the search palette, 04.10.2026), `upload()` (XHR with progress), `runJob()` (4th argument `keepGoing()` — stop polling once the result is no longer needed; `job.partial` in `onProgress` — what the job has already found) |
 | External links | `openExternal()` — through the server, in the regular browser (Etsy is blocked) |
 | A compact switch | `segHtml(options, active, {compact: true})` — icons with counts; only the chosen one shows its word (`.seg-compact`, `.seg-label`); `countStages()` marks the to-do tab `.has` (its count takes the ink) |
 | What's missing | `markMissing(fields)` — a press that can't go on yet lights up the empty fields (an amber edge until typed in) and focuses the first; the button stays pressable and a notice says what's missing (since 2026-09-30) |

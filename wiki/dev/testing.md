@@ -102,6 +102,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 
 | File | Classes |
 |---|---|
+| [test_ledger.py](../../app/tests/test_ledger.py) | `Assign`, `BalanceCheck`, `Refresh` (Etsy's ledger, made-up entries) |
 | [test_profit.py](../../app/tests/test_profit.py) | `ProfitParity`, `FeeRules`, `NameMatching`, `BookkeepingStart` (only sales and print orders from 1 October 2026; the queue keeps every order) |
 | [test_gelato_accounts.py](../../app/tests/test_gelato_accounts.py) | `Accounts` — two made-up Gelato accounts: a switch in the middle of work, an old order shipped after it (tracking read with the old key), the old key removed (its orders and the archive's book stay), a deleted draft still goes, an account that fails or is cut keeps its orders, nothing created with the old key, the new key checked by one read, the switch's refusals (the preview server too); `OpenOrders` (when the old key is no longer needed) |
 | [test_states.py](../../app/tests/test_states.py) | `NormalOrdersUnchanged`, `EtsyStates`, `Replacement`, `ProviderCancellations`, `PickerStages`, `SeveralPrintOrdersForOneReceipt` (a receipt with two print orders), `SentStage`, `GelatoTracking`, `IncrementalSync`, `StateApi` |

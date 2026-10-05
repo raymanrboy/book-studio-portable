@@ -158,7 +158,7 @@ export async function mount(view, [rawId]) {
   function miniRows() {
     // The 16 rows as small frames: a filled one shows its pages; a click scrolls to the row.
     return html`<div class="ws-mini">${inner().map((r) => html`<button class="ws-mini-row ${r.pictures.length ? 'full' : ''}" data-act="goto" data-row="${r.key}" data-tip="${r.label} — показати рядок">
-      <div class="ws-mini-art ${r.kind === 'single' ? 'single' : ''}">${r.pictures.map((p) => html`<img data-fade alt="" src="${pic('pictures', p, 240)}">`)}</div>
+      <div class="ws-mini-art ${r.kind === 'single' ? 'single' : ''}">${r.pictures.map((p) => html`<img data-fade loading="lazy" decoding="async" alt="" src="${pic('pictures', p, 240)}">`)}</div>
       <div class="ws-mini-label num">${shortLabel(r)}</div></button>`)}</div>`;
   }
 
@@ -203,7 +203,7 @@ export async function mount(view, [rawId]) {
     const a = genState()?.active;
     const busy = (key) => (uploading.has(key) ? html`<div class="busy-overlay"><div class="ws-up"><i data-up="${key}"></i></div></div>` : '');
     const refs = html`<div class="ph-refs">${p.refs.map((r) => {
-      const art = r.name ? html`<img data-fade alt="${r.label}" src="${pic('mockups', r.name, 240)}">` : ic(r.key === 'canva-cover' ? 'upload' : 'mockup');
+      const art = r.name ? html`<img data-fade loading="lazy" decoding="async" alt="${r.label}" src="${pic('mockups', r.name, 240)}">` : ic(r.key === 'canva-cover' ? 'upload' : 'mockup');
       const inner = html`<span class="ph-ref-art">${art}</span><span class="ph-ref-text"><b>${r.label}</b><span>${r.name ? 'є в папці мокапів' : r.key === 'canva-cover' ? 'перетягніть сюди' : 'ще немає'}</span></span>`;
       const cls = `ph-ref ${r.name ? 'ok' : 'missing'} ${r.key === sel.ref ? 'used' : ''}`;
       return r.key === 'canva-cover'
@@ -214,7 +214,7 @@ export async function mount(view, [rawId]) {
       const waiting = waitingFor(id, `photo:${c.key}`, null);
       const art = c.omni
         ? html`<video muted loop autoplay playsinline preload="metadata" src="${pic('etsy', c.photo)}"></video>`
-        : html`<img data-fade alt="${c.label}" src="${pic('etsy', c.photo, 480)}">`;
+        : html`<img data-fade loading="lazy" decoding="async" alt="${c.label}" src="${pic('etsy', c.photo, 480)}">`;
       const look = c.omni
         ? ib('external', 'Відкрити відео', `data-act="photo-play" ${attr('data-name', c.photo)}`, { cls: 'sm' })
         : ib('expand', 'Переглянути', `data-act="photo-zoom" ${attr('data-cat', c.key)}`, { cls: 'sm' });
@@ -403,7 +403,7 @@ export async function mount(view, [rawId]) {
           : v.heroPrompt ? html`<button class="btn btn-sm ${v.hero ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-variant="${v.name}">${ic(v.hero ? 'regenerate' : 'generate')}${v.hero ? 'Ще раз' : 'Генерувати'}</button>` : ''}</span></div>
       <div class="ws-vhero">
         <div class="ws-drop ws-hero-shot" data-drop="hero" data-variant="${v.name}">
-          ${v.hero ? html`<div class="ws-art"><img data-fade alt="Герой варіанта ${v.name}" src="${pic('agent', v.hero, 600, v.name)}"></div>`
+          ${v.hero ? html`<div class="ws-art"><img data-fade loading="lazy" decoding="async" alt="Герой варіанта ${v.name}" src="${pic('agent', v.hero, 600, v.name)}"></div>`
             : html`<button type="button" class="ws-ph" data-act="pick" data-key="hero" data-variant="${v.name}"><span class="ws-ph-text"><span class="drop-ico">${ic('hero')}</span><b>Героя ще немає</b><span>згенеруйте або перетягніть</span></span></button>`}
           ${busyCover('hero')}</div>
         <div class="ws-block ws-prompt grow"><div class="ws-block-head"><span class="eyebrow">Промпт героя (правка canonical.png)</span></div>

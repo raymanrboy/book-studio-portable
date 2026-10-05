@@ -8,6 +8,7 @@ code:
   - app/web/js/pages/orders.js
   - app/web/js/pages/order-card.js
   - app/web/js/order-bits.js
+  - app/web/js/order-history.js
   - app/web/js/folder-viewer.js
   - app/web/js/handoff.js
   - app/web/js/keep.js
@@ -130,6 +131,21 @@ one column.
 - **Buyer's message**, if any.
 - **Shipping**: the address from Etsy.
 
+### Beside the data — the printer's history (`#oc-history`, `order-history.js`)
+- **A placed Gelato order's card** (the stage isn't new, `o.provider` is Gelato; Printify's and new orders have none)
+  gets a card **Історія** beside the data, as tall as the data column, its list scrolling inside: Gelato's status
+  and events as a timeline, newest first, the current one filled (an icon per status, the word in English as in the
+  chip, Gelato's own note in grey, the time on the right), and on top «Очікується до …» while Gelato gives a delivery
+  date. Two icons: **track** (the carrier's page — the carrier's own scans are there, Gelato's API doesn't give them) and
+  **refresh** (asks Gelato again). Under the data when the work flow is open too, and under everything on a narrow window.
+- **Asked for when the card opens, one order only** (the owner, 2026-10-04: "не скануй усе при запуску — я можу почекати
+  пару секунд"): a skeleton for a second or two, then the list; never at launch, never for the queue. A failure says so
+  inside the card, the refresh icon retries, the rest of the card works. The server keeps a read for a minute
+  (`HISTORY_FRESH`), a delivered / cancelled / returned order's until the program closes.
+- **What it shows** (`gelato.history()`): the items' `eventLog` (the field names are guessed — time / status / text; the
+  shape found is written to `gelato.log` as names only, to read the real ones next time), plus the order's own
+  `createdAt` / `orderedAt` / `shippedAt` for what the log lacks, so an order whose log is empty still has a few rows.
+
 ### Left — work (`#oc-flow`, `renderRight()`)
 1. **Files from Canva** (`filesCard()`): drag a ZIP/folder, or pick a folder. Dropping one or two loose
    pictures onto an already-prepared book **destroys nothing** — the program suggests replacing one page
@@ -231,6 +247,8 @@ one column.
 - `GET /api/orders/<receipt>` → the same, for one order, plus `buyerMessage`, `earlierSends` (sends
   that never became a print-shop order, whose files are still in the archive), `atPrinter` and `printed` (the sends
   that went to print, newest first — since 2026-09-30) — all from `archive.card_facts()`.
+- `GET /api/orders/<receipt>/history` → `{available, status, events, shipments, due}` — Gelato's history of the placed order
+  (`?fresh=1` skips the minute's memory); `{available: false}` for a new, Printify or unknown one.
 - `POST /api/orders/<receipt>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount, provider}`;
   `provider: "files"` — a card opened before 1 October (the answer's `provider` is Gelato).
 - `POST /api/orders/<receipt>/textcheck` `{folder, pages, pick}` → `{jobId}` (or `{off: true}`, when the
@@ -238,6 +256,8 @@ one column.
 
 ## Where in the code
 
+- [app/web/js/order-history.js](../../app/web/js/order-history.js) — `mountHistory()`, `rows()`, `iconOf()`
+- [app/studio/orders.py](../../app/studio/orders.py) — `_history()`
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `queueState`
 - [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `mountCard()`, `readyBooks()`
 - [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `pathSteps()`, `renderPath()`, `goStep()`, `printedHtml()`, `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `linkTimer()`, `redrawPrint()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`

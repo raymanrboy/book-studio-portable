@@ -1,7 +1,7 @@
 ---
 title: Settings
 type: feature
-updated: 2026-10-04
+updated: 2026-10-05
 code:
   - app/studio/settings_api.py
   - app/studio/gelato_accounts.py
@@ -26,7 +26,7 @@ code:
   Profit Calculator (`…/?sync=…`), or "Sign in to Etsy (Kyiv PC only)" — see
   [integrations/etsy.md](../integrations/etsy.md). Connected → the shop name and "Disconnect".
   "Details": the saved keys, the return address (Callback URL), copying the session key for another PC.
-- **Printify**: the token; the template (Master) and "24 pages"; the template-picker button — only when
+- **Printify** (optional since 2026-10-05 — no token means «Не обов’язково», no warning mark, the card stays closed): the token; the template (Master) and "24 pages"; the template-picker button — only when
   there isn't one yet; a connection check. From 1 October 2026 (`readOnly`): «лише читання старих замовлень»,
   «Нові книги друкує Gelato», no template picker ([printify](../integrations/printify.md)).
 - **Gelato**: the key; three formats and "28 or 30 pages"; a connection check. A saved key has **«Перейти на новий
