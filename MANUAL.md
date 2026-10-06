@@ -96,7 +96,7 @@ Without a module the rest of the program works as usual.
 ## 4. The screens
 
 One icon rail on the left (hover for names): **Замовлення** (Alt+1), **Книги** (Alt+2), **Прибуток** (Alt+3),
-**Інструменти** (Alt+4), **Пошук** (Ctrl+K), and at the bottom **Налаштування** and the theme switch («Вигляд»).
+**Інструменти** (Alt+4), and at the bottom **Налаштування** and the theme switch («Вигляд»).
 
 | Screen | What it is | Wiki |
 |---|---|---|

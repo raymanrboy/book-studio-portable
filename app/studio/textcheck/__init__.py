@@ -27,4 +27,4 @@ from .ollama import DEFAULT_MODEL, ModelError, TimedOut, Unavailable, _NO_PROXY,
 from .routes import _check, _mark, _passport, _save_settings, as_template
 from .rules import _all_issues, _vocabulary, book_issues, findings, has_text, page_issues
 from .run import LOOKS_PICTURE, LOOKS_TEXT, _Run, _cache, _runs, cancel, check_book, check_order, warm
-from .texts import COMMON, assign, diff, fill, personalization, similarity
+from .texts import COMMON, assign, diff, fill, personalization, similarity, split_dedication

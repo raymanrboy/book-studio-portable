@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-10-05
+updated: 2026-10-06
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -70,7 +70,7 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
 - **Header**: back (Esc), `№25 Title`, the cover's title, the Tier chip (H — a child hero on every spread; S — none);
   on the right a group of icons (the agent — Antigravity and «Продовжуємо книгу …» in the clipboard; the pages; the
   originals; the book's folder — it was a labelled button the owner called "important", an icon since the late evening of
-  2026-09-30; «Ще» → delete: the folder into the Recycle Bin) and one more icon, «Передати в бібліотеку» (a shelf; a tick
+  2026-09-30; «Ще» → delete: at once, with «Скасувати» — the folder waits 2 min on the program's shelf, then the Recycle Bin, `aside.py`, 06.10.2026) and one more icon, «Передати в бібліотеку» (a shelf; a tick
   «У бібліотеці» after) — which becomes **the one loud, labelled button** only once every picture and the cover are there.
   A row's prompt shows three lines with a «Весь промпт» link (the JSON is for copying — the copy icon — not for reading).
   The Workshop's own glyph (the tab, the palette) is a hammer and a ruler crossed — the owner's wish, 2026-09-30. «Back» and Esc lead to

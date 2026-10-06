@@ -2,7 +2,7 @@
 
 A local Windows program for a shop selling personalized children's books on Etsy: it carries every order from Etsy
 to print at Gelato, keeps the library of books, and helps make new books and their listing pictures. The rail on the
-left (Alt+1…4; the magnifier or Ctrl+K is the search):
+left (Alt+1…4):
 
 - **Замовлення** (Orders, the start screen) — the queue of Etsy orders and each one's card: the book and its Canva
   template, the buyer's personalization, files from Canva, proofing, sending to print. See the

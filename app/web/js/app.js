@@ -68,7 +68,7 @@ const placeOf = (hash) => (navOwner && places().find((p) => p.hash === navOwner)
 
 function buildSidebar() {
   // Icons only (2026-09-30, the owner: "show, don't tell"): the page's own title says where he is, a tooltip names the
-  // place and its key. Search is the last of the list, not the first.
+  // place and its key. No search (the owner never used it — removed 06.10.2026).
   setHtml(document.getElementById('sidebar'), html`
     <button class="skip-link" id="skip" type="button">Перейти до вмісту</button>
     <div class="brand-mark" id="brand" aria-hidden="true">${ic('spread')}<span class="brand-busy" id="brand-busy" hidden></span></div>
@@ -77,8 +77,6 @@ function buildSidebar() {
       ${PLACES.map((n) => n.gap ? html`<span class="nav-gap" aria-hidden="true"></span>`
         : html`<a class="nav-item" href="${n.hash}" data-nav="${n.hash}" aria-label="${n.label}" data-tip="${n.label}" data-kbd="Alt+${n.key}" data-tip-side="right">
         ${ic(n.icon)}${n.busy ? html`<span class="badge busy" data-busy="${n.busy}" data-fx hidden></span>` : ''}</a>`)}
-      <span class="nav-gap" aria-hidden="true"></span>
-      <button class="nav-item nav-search" id="search-btn" type="button" aria-label="Пошук" data-tip="Пошук по всій програмі" data-kbd="Ctrl+K" data-tip-side="right">${ic('search')}</button>
     </nav>
     <div class="sidebar-foot">
       <a class="nav-item nav-small" href="#/settings" data-nav="#/settings" aria-label="Налаштування" data-tip="Налаштування" data-tip-side="right">${ic('sliders')}<span class="badge" id="nav-badge" data-fx hidden></span></a>
@@ -175,7 +173,6 @@ function openThemeMenu(anchor) {
 function wireSidebar() {
   const side = document.getElementById('sidebar');
   on(side, 'click', '#theme-btn', (e, b) => { hideTip(); openThemeMenu(b); });
-  on(side, 'click', '#search-btn', () => { hideTip(); openSearch(); });
   // The first Tab stop: past the rail, straight to the page (15 presses to the first order before, 2026-09-30).
   on(side, 'click', '#skip', () => {
     const view = document.getElementById('view');
@@ -183,18 +180,12 @@ function wireSidebar() {
     (first || view)?.focus();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      if (!document.querySelector('.modal-root:not(.closing), .lightbox:not(.closing)')) openSearch();
-      return;
-    }
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
     if (document.querySelector('.modal-root:not(.closing), .lightbox:not(.closing)')) return; // a dialog or the viewer first; the page stays under it
     const p = places().find((x) => x.key === e.key);
     if (p) { e.preventDefault(); location.hash = entryOf(p, placeOf(location.hash || HOME) === p); }
   });
 }
-const openSearch = () => import('./palette.js').then((m) => m.openPalette()).catch((err) => { console.error(err); toast('Пошук не відкрився', 'error'); });
 
 // ------------------------------------------------------------------ top progress bar (only for slow page loads)
 const topbar = { el: null, timer: null };

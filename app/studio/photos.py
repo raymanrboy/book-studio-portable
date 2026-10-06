@@ -32,7 +32,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import core, desktop, portable
+from . import aside, core, desktop, portable
 from .server import ApiError
 
 ETSY = "etsy"             # a Workshop book's folder of what goes into its Etsy listing: the slides and these photos
@@ -159,11 +159,12 @@ def add_template(key: str, source: Path, name: str) -> dict:
 
 
 def remove_template(key: str, name: str) -> dict:
-    """A template out of the set — into the Windows Recycle Bin, never deleted for good."""
+    """A template out of the set — into the Windows Recycle Bin, never deleted for good; a few minutes on the shelf
+    first, for «Скасувати» (`aside`, 06.10.2026)."""
     path = template_file(key, name)
-    desktop.to_recycle_bin(path)
-    core.log.info("Photo mockups: template %s went to the Recycle Bin", path.name)
-    return {"removed": path.name}
+    token = aside.put(path, f"photo template {path.name}")
+    core.log.info("Photo mockups: template %s set aside for the Recycle Bin", path.name)
+    return {"removed": path.name, "undo": token}
 
 
 def open_folder(key: str = "") -> None:

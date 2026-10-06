@@ -1,11 +1,18 @@
 ---
 title: Tests
 type: dev
-updated: 2026-10-05
+updated: 2026-10-06
 code:
   - app/tests/
+  - app/tools/ui_smoke.py
 ---
 # Tests
+
+> **The robot that clicks through the interface** (`tools/ui_smoke.py`, `tests/test_ui_smoke.py`, 06.10.2026): `dev_server.py --sample` in its own
+> folder `.tmpsui` on a free port (`BOOK_STUDIO_DEV_PORT`), a hidden Edge (`--headless=new`, a throwaway profile `.tmpsui-edge`) driven over
+> the DevTools protocol (a small WebSocket client of its own — no library), every page of `PAGES` opened and its tabs pressed. A script error, a
+> `console.error`, a red toast, an empty page or a 5xx from the program fails it (checked by breaking a page on purpose: caught). ≈25 s; skipped
+> without Edge or with `BOOKSTUDIO_SKIP_UI=1`. Alone: `python app/tools/ui_smoke.py -v`.
 
 > `tests/test_speed.py` (05.10.2026): Edge's leftovers trimmed, the sync's parts read side by side, the bar moving forward only. The import map and the kept-for-good scripts — `test_server_http.py`; the preview cache's size limit — `test_archive.py`. The whole run takes about a minute (the wiki check was half of it before).
 
@@ -104,6 +111,8 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 
 | File | Classes |
 |---|---|
+| [test_ui_smoke.py](../../app/tests/test_ui_smoke.py) | `EveryPage` — every page in a hidden Edge on made-up data (`tools/ui_smoke.py`) |
+| [test_aside.py](../../app/tests/test_aside.py) | `Shelf` — «Скасувати» before the Recycle Bin: put back whole, the Recycle Bin after its minutes, never over what stands there now, no made-up token |
 | [test_ledger.py](../../app/tests/test_ledger.py) | `Assign`, `BalanceCheck`, `Refresh` (Etsy's ledger, made-up entries) |
 | [test_profit.py](../../app/tests/test_profit.py) | `ProfitParity`, `FeeRules`, `NameMatching`, `BookkeepingStart` (only sales and print orders from 1 October 2026; the queue keeps every order) |
 | [test_gelato_accounts.py](../../app/tests/test_gelato_accounts.py) | `Accounts` — two made-up Gelato accounts: a switch in the middle of work, an old order shipped after it (tracking read with the old key), the old key removed (its orders and the archive's book stay), a deleted draft still goes, an account that fails or is cut keeps its orders, nothing created with the old key, the new key checked by one read, the switch's refusals (the preview server too); `OpenOrders` (when the old key is no longer needed) |
@@ -130,6 +139,7 @@ The wiki check is part of the tests (`test_wiki.py`), but it can also be run on 
 - [app/tests/test_flows.py](../../app/tests/test_flows.py) — `assert_steps()`, `journal()`
 - [app/tests/test_textcheck.py](../../app/tests/test_textcheck.py) — `gemma_answer()`
 - [app/tools/wiki_check.py](../../app/tools/wiki_check.py) — `check()`
+- [app/tools/ui_smoke.py](../../app/tools/ui_smoke.py) — `run()`, `PAGES`, `Socket`, `problems_in()`
 
 ## Related
 

@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from PIL import Image
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder and the sandbox)
-from studio import core, photos
+from studio import aside, core, photos
 from studio.server import ApiError
 from studio.workshop import books, generate, routes
 
@@ -57,7 +57,7 @@ class Base(unittest.TestCase):
         self.templates = photos.templates_dir()
         shutil.rmtree(self.templates, ignore_errors=True)
         sample_books.make_photo_templates(self.templates)
-        for folder in (generate.downloads_folder(), core.data_path("clipboard"), core.data_path("recycle-bin")):
+        for folder in (generate.downloads_folder(), core.data_path("clipboard"), core.data_path("recycle-bin"), core.data_path("aside")):
             shutil.rmtree(folder, ignore_errors=True)
         self.downloads = generate.downloads_folder()
         self.downloads.mkdir(parents=True)
@@ -92,10 +92,14 @@ class TheTemplates(Base):
         self.assertEqual(res["name"], "shelf-03.jpg")
         self.assertTrue((self.templates / "shelf" / "shelf-03.jpg").is_file())
         before = photos.signature()
-        photos.remove_template("shelf", "shelf-03.jpg")
+        token = photos.remove_template("shelf", "shelf-03.jpg")["undo"]
         self.assertFalse((self.templates / "shelf" / "shelf-03.jpg").exists())
-        self.assertTrue(any(core.data_path("recycle-bin").glob("shelf-03.jpg*")))   # never deleted for good
         self.assertNotEqual(photos.signature(), before)
+        aside.restore(token)                                                       # «Скасувати»
+        self.assertTrue((self.templates / "shelf" / "shelf-03.jpg").is_file())
+        photos.remove_template("shelf", "shelf-03.jpg")
+        self.assertEqual(aside.flush(0), 1)                                        # minutes later: the Recycle Bin
+        self.assertTrue(any(core.data_path("recycle-bin").glob("shelf-03.jpg*")))   # never deleted for good
 
     def test_only_a_real_template_and_a_real_category(self):
         with self.assertRaises(ApiError):

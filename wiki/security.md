@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-10-05
+updated: 2026-10-06
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -40,7 +40,7 @@ code:
    read, print, commit, change, or delete it unless the owner directly asks for exactly that. Never ask
    the owner to paste keys into chat.
 7. **Never permanently delete the owner's data.** A deleted book goes to `app/data/library/trash`; a deleted
-   Workshop book's folder — to the Windows Recycle Bin. The
+   Workshop book's folder — to the Windows Recycle Bin (after 2 min on the program's «Скасувати» shelf, `aside.py`). The
    one deliberate exception is the [order archive](features/archive.md): the program deletes its files
    itself 14 days after "Sent" (the owner's decision, 2026-09-18, except "Keep").
 8. **Git**: commit and push only when the owner asks. `app/data/`, `app/bin/`, and real customer data
@@ -188,12 +188,12 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 
 ### The Workshop (the book console, since 2026-09-26)
 - **Nothing of the owner's is deleted for good**: a picture a new one replaces, or a removal takes, goes to the
-  book's `.replaced/`; a deleted book's whole folder goes to the **Windows Recycle Bin** (`to_recycle_bin()`).
+  book's `.replaced/`; a deleted book's whole folder goes to the **Windows Recycle Bin** (`to_recycle_bin()`) — first 2 min on the shelf `data/aside`, for «Скасувати».
 - **Downloads**: only the first new PNG/JPEG/WEBP that appears *after* «Генерувати» and has finished downloading is
   taken (moved into the book — the owner's wish); files that were there before, and anything else, are never touched.
   A photo mockup without a book (the «Фотомокапи» page) takes nothing from Downloads at all.
 - **The photo mockups' templates** (`app/data/photo-mockups`) are copies; the owner's own folder on the desktop was
-  only read, once. A template taken out goes to the Recycle Bin; a book's photo replaced or removed — to `.replaced/`.
+  only read, once. A template taken out goes to the Recycle Bin (via the same shelf); a book's photo replaced or removed — to `.replaced/`.
 - **Only inside the book**: a variant a request names is an existing folder in `agent/variants/`, checked before
   anything is written (`_variant()`, the 2026-09-26 audit: «../..» wrote outside the book).
 - **A book's `agent/` is the agents'**: the Workshop only reads it, except the hero it catches (`canonical.png`, a

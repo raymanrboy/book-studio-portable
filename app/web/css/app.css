@@ -692,27 +692,6 @@ button.set-head:hover { background: var(--surface-hover); }
   .progress.indet > i { animation: none !important; width: 100%; opacity: .45; }
 }
 
-/* ------------------------------------------------------------------ search everywhere (Ctrl+K, 2026-09-30) */
-.modal-root:has(.modal-palette) { place-items: start center; padding-top: 12vh; }
-.modal-palette { width: min(640px, 100%); }
-.modal-palette .modal-head { display: none; }
-.modal-palette .modal-body { padding: 0; display: flex; flex-direction: column; min-height: 0; }
-.pal-field { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; border-bottom: 1px solid var(--border); color: var(--text-3); flex: none; }
-.pal-input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; font-size: var(--fs-m); color: var(--text); }
-.pal-input::placeholder { color: var(--text-3); }
-.pal-list { overflow: auto; max-height: min(460px, 60vh); padding: 6px; scroll-behavior: smooth; }
-.pal-group { padding: 10px 10px 4px; font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; color: var(--text-3); }
-.pal-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--r-ctl); background: none; text-align: left; color: var(--text-2); transition: background var(--t-fast) ease, color var(--t-fast) ease; }
-.pal-item.on { background: var(--accent-soft); color: var(--text); }
-.pal-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: var(--r-ctl); background: var(--surface-2); color: var(--text-2); transition: background var(--t-fast) ease, color var(--t-fast) ease; }
-.pal-item.on .pal-icon { background: var(--accent); color: var(--on-accent); }
-.pal-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.pal-text b { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pal-text small { font-size: var(--fs-s); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pal-enter { color: var(--accent-ink); opacity: 0; transition: opacity var(--t-fast) ease; }
-.pal-item.on .pal-enter { opacity: 1; }
-.pal-empty { display: flex; align-items: center; gap: 10px; padding: 22px 14px; color: var(--text-3); }
-
 /* ------------------------------------------------------------------ «Інструменти» (2026-09-30) */
 .tool-group { margin-bottom: 28px; }
 .tool-group-title { font-size: var(--fs-m); font-weight: 600; color: var(--text-2); margin-bottom: 10px; }

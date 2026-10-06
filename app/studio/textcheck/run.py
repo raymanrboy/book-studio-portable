@@ -169,16 +169,37 @@ def _strict(child: str, expected: str) -> str:
     return STRICT_PROMPT.format(name_line=name_line, expected=expected)
 
 
+_UNREAD = "модель не змогла прочитати сторінку"
+_TRANSCRIPT = re.compile(r'"transcript"\s*:\s*"((?:[^"\\]|\\.)*)"', re.S)
+
+
 def _parse(content: str) -> dict:
-    """The check pass's answer; a cut-off or broken one (the model ran on and on) is a failure."""
+    """The check pass's answer; a cut-off or broken one (the model ran on and on) is a failure — unless its copy
+    of the page came through whole (`_salvage`)."""
     try:
         data = json.loads(content)
     except json.JSONDecodeError:
-        return {"failed": "модель не змогла прочитати сторінку"}
+        return _salvage(content)
     if not isinstance(data, dict):
-        return {"failed": "модель не змогла прочитати сторінку"}
+        return {"failed": _UNREAD}
     data["transcript"] = re.sub(r"\n{3,}", "\n\n", str(data.get("transcript") or "")).strip()
     return data
+
+
+def _salvage(content: str) -> dict:
+    """gemma4 with a JSON schema sometimes copies a correct page word for word, then invents a mistake and apologises
+    until JUDGE_TOKENS cuts it (ollama#15502). The copy is whole and its closing quote came before the loop: it is
+    kept, with no verdict, and the program's own comparison decides (06.10.2026). A copy that is itself cut stays a
+    failure."""
+    found = _TRANSCRIPT.search(content or "")
+    try:
+        text = json.loads(f'"{found.group(1)}"') if found else ""
+    except json.JSONDecodeError:
+        text = ""
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    if not text:
+        return {"failed": _UNREAD}
+    return {"transcript": text, "verdict": None, "problems": [], "only_punctuation": None, "salvaged": True}
 
 
 def run_key(receipt_id: str, pick: int = 0) -> str:
@@ -497,7 +518,7 @@ class _Run:
                     raise UserError("Перевірку перервано.") from None
                 answer = ollama._chat(self.model, prompt, image, schema, max_tokens)  # once more
             # A broken answer (cut off, not JSON) is not kept: ↻ asks that page again instead of repeating the failure.
-            if schema is None or "failed" not in _parse(answer):
+            if schema is None or not {"failed", "salvaged"} & _parse(answer).keys():
                 with _cache_lock:
                     if len(_cache) > 3000:
                         _cache.clear()

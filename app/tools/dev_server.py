@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 APP = Path(__file__).resolve().parents[1]
-PORT = 47890
+PORT = int(os.environ.get("BOOK_STUDIO_DEV_PORT") or 47890)   # tools/ui_smoke.py runs its own beside the preview
 
 
 MARK = ".book-studio-sample"    # this folder was made by this tool and may be written over

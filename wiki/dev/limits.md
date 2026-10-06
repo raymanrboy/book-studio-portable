@@ -1,7 +1,7 @@
 ---
 title: Known limits and what was not seen live
 type: dev
-updated: 2026-10-03
+updated: 2026-10-06
 code: []
 ---
 # Known limits
@@ -42,9 +42,9 @@ code: []
 
 - **The text check: the model can loop on a correct page.** Since Ollama 0.35.1, `gemma4` sometimes copies a page's text
   word for word (it matches the passport), then invents «a mistake in the name» and repeats an apology until
-  `JUDGE_TOKENS` cuts the answer. The card shows «модель не змогла прочитати сторінку»; ↻ asks again. A known gemma4
-  problem with a JSON schema (ollama#15502); it was seen on one page of one book and not in the ~990 pages journaled
-  before. If it recurs, the fix is in the program: take the transcript from a cut-off answer and let `diff()` decide
+  `JUDGE_TOKENS` cuts the answer. A known gemma4 problem with a JSON schema (ollama#15502), seen on one page of one book
+  (03.10.2026). **Handled since 06.10.2026**: the transcript that came through whole is taken from the cut-off answer and
+  `diff()` decides (`_salvage()`); «модель не змогла прочитати сторінку» only when the copy itself is cut
   ([text check](../features/text-check.md#why-this-model-and-this-design)).
 - **Drafts could be closed sooner.** Gelato fetches the PDF about a minute after a draft is created, and the program
   waits 15 minutes before letting its temporary link go; the send journal's statistics will show whether that can be

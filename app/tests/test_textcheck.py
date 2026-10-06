@@ -131,6 +131,22 @@ class BuyerFields(unittest.TestCase):
         self.assertTrue(tc.fill(page1, "Olivia", "With Love, Aunt Kate & Uncle Tom").endswith("just for you.\n\nWith Love, Aunt Kate & Uncle Tom"))
         self.assertIsNone(tc.fill(page1, "Olivia", ""))       # «from» unknown: nothing exact to compare with
         self.assertIsNone(tc.fill("{Name} and {Pet}", "Olivia", "x"))
+        # 06.10.2026 calibration: a «from whom» that signs off further in («… boy! Love, Mama & Dada») too
+        self.assertTrue(tc.fill(page1, "Olivia", "We love you baby girl! Love, Mama & Dada").endswith(
+            "just for you.\n\nWe love you baby girl! Love, Mama & Dada"))
+
+    def test_the_buyers_headings_as_they_type_them(self):
+        """06.10.2026 calibration: «Dedication -» … «Closing» alone on a line, «dedicati:» … «close:» (Etsy cut the
+        word), a note to the seller before «DEDICATION:» — each once flagged its heading or note as missing words."""
+        split = tc.split_dedication
+        self.assertEqual(split("Dedication -\nTo our sweet Mia girl,\nWe love you!\n\nClosing\nKeep smiling!"),
+                         ("To our sweet Mia girl,\nWe love you!", "Keep smiling!"))
+        self.assertEqual(split("dedicati: To my precious Goddaughter,\nBe blessed.\n\nclose:I promise to guide you."),
+                         ("To my precious Goddaughter,\nBe blessed.", "I promise to guide you."))
+        self.assertEqual(split("Note: Please center the text to match the default.\n\nDEDICATION: \nDear Mia,\nWith Love, D"),
+                         ("Dear Mia,\nWith Love, D", None))
+        self.assertEqual(split("Dedicated to the little one who closed our hearts to sadness."),
+                         ("Dedicated to the little one who closed our hearts to sadness.", None))
 
 
 class NameRules(unittest.TestCase):
@@ -275,6 +291,36 @@ class PageIssues(unittest.TestCase):
         self.assertEqual([(i["level"], i["text"]) for i in found], [("error", "«Ollivia» замість «Olivia»")])
         edited = self.issues(self.target("personal", "Dear Olivia, with love, Grandma", 1), "Dear Olivia, love, Grandma")
         self.assertEqual([i["level"] for i in edited], ["warn"])  # the owner's edit of the greeting: worth a look
+
+    def test_the_owners_marks_of_the_sixth_of_october(self):
+        """06.10.2026 calibration on 71 journaled checks: 22 rows the owner marked «not a mistake» → 1 (a page the
+        model could not read — `_salvage`). Each kind once, and what must still show beside it."""
+        loose1 = {**self.target("loose", None, 1), "own": "Dear Ava, May you always know how loved you are."}
+        printed = "Dear Ava,\nMay you always know how loved you are."
+        pers = {**self.pers, "child": "Ava Rose"}
+
+        def said(target, text, problems, who=pers):
+            return [i["text"] for i in tc.page_issues(target, {"transcript": text, "verdict": "error", "problems": problems},
+                                                       who, set(tc.COMMON), set())]
+        self.assertEqual(said(loose1, printed, ["Ім'я дитини вказано як 'Ava', хоча в завданні зазначено 'Ava Rose'."]), [])
+        cut = ["Ім'я 'Ava Ros' обрізане краєм сторінки, має бути 'Ava Rose'"]
+        self.assertEqual(said(loose1, printed, cut), cut)
+        story = self.target(expected="Amen, sweet Olivia.")
+        self.assertEqual(said(story, "Amen, sweet Olivia.", ["Слово 'Amen.' знаходиться на новому рядку, тоді як в "
+                                                             "очікуваному тексті воно у тому ж рядку після імені Olivia."]), [])
+        self.assertEqual(said(story, "Amen, sweet Olivia.", ["Насправді написано 'Olivia'. Текст повністю збігається."]), [])
+        self.assertEqual(len(said(story, "Amen, sweet Olivia.", ["Слово 'Olivia' обрізане краєм сторінки"])), 1)
+        # A whole signed message from the buyer: the template's last wish above it may go, and the model's «a line is
+        # missing» goes with it — but the line kept is never «extra».
+        gifter = "God bless you and keep you always, our sweet grandson! Love, Pop-pop and Nonna"
+        page1 = self.target("personal", tc.fill("Dear {Name},\nWishing you God's love.\n\nCongratulations on your Baptism!"
+                                                "\n\nWith love,\n{Gifter}", "Olivia", gifter), 1)
+        who = {**self.pers, "gifter": gifter}
+        dropped = "Dear Olivia,\nWishing you God's love.\n\n" + gifter
+        self.assertEqual(said(page1, dropped, ["Відсутній рядок тексту: 'Congratulations on your Baptism!'"], who), [])
+        self.assertEqual(said(page1, dropped.replace("God's ", ""), [], who), ["Пропущено «God's»"])
+        kept = "Dear Olivia,\nWishing you God's love.\nCongratulations on your Baptism!\n" + gifter
+        self.assertEqual(said(page1, kept, [], who), [])
 
 
 class WholeCheck(unittest.TestCase):
@@ -430,6 +476,19 @@ class WholeCheck(unittest.TestCase):
         res = self.run_check(item(gifter="Grandma & Grandpa", book_id=self.book_id))
         self.assertEqual(self.calls, before + 1)                   # only that page is asked again …
         self.assertEqual(failed(res), [])                            # … and now it is read
+
+    def test_a_copy_that_came_through_whole_is_kept_from_a_runaway_answer(self):
+        """ollama#15502: the model copies a correct page, then apologises until JUDGE_TOKENS cuts it. The copy is kept
+        and the program's comparison decides (06.10.2026); a copy cut inside stays «не вдалося перевірити»."""
+        runaway = '{"transcript": "Wave hello,\\nsweet \\"Olivia\\".", "verdict": "error", "problems": ["Вибачте, ' + "вибачте, " * 50
+        self.assertEqual(tc.run._parse(runaway), {"transcript": 'Wave hello,\nsweet "Olivia".', "verdict": None,
+                                                  "problems": [], "only_punctuation": None, "salvaged": True})
+        self.assertIn("failed", tc.run._parse('{"transcript": "Wave hello, sweet Oli'))
+        self.assertIn("failed", tc.run._parse('{"verdict": "error", "problems": ["x'))
+        target = {"page": 5, "part": None, "file": "5.png", "label": "Стор. 5", "count": 24, "mode": "strict",
+                  "expected": 'Wave hello, sweet "Olivia".'}
+        pers = {"child": "Olivia", "gifter": "", "dedication": None, "closing": None}
+        self.assertEqual(tc.page_issues(target, tc.run._parse(runaway), pers, set(tc.COMMON), set()), [])
 
     def test_a_page_that_timed_out_is_not_asked_twice(self):
         asked = []

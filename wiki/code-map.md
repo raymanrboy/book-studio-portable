@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-10-03
+updated: 2026-10-06
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -23,6 +23,7 @@ code:
 | [app/tools/make_colleague_copy.py](../app/tools/make_colleague_copy.py) | A clean copy of the portable folder for someone else: no data, keys, books or history; two personal rules off | `main()`, `tracked_files()`, `scrub()` |
 | [app/tools/textcheck_replay.py](../app/tools/textcheck_replay.py) | The text-check journal through today's rules: what the card would show for every past check, next to what it showed, and the owner's "Not an error" marks — for calibrating what the check shows | `replay()`, `rebuild()`, `main()` |
 | [app/tools/wiki_check.py](../app/tools/wiki_check.py) | Checks the wiki against the code: headers, links, named functions, routes, file coverage | `check()`, `coverage()`, `changed_files()` |
+| [app/tools/ui_smoke.py](../app/tools/ui_smoke.py) | The robot that clicks through the interface: made-up data, a hidden Edge, every page and its tabs; reports script errors, red messages, empty pages | `run()`, `main()`, `PAGES` |
 | [app/tools/dev_server.py](../app/tools/dev_server.py) | A server for previewing the interface on temporary data (including a two-book order, a receipt with two print orders, a Workshop book, the mockups' made-up templates and a pretend Photoshop); writes only to its own folder, never takes keys (`BOOK_STUDIO_SAMPLE`) | `main()`, `claim()`, `MARK` |
 | [app/tools/archive_dedupe.py](../app/tools/archive_dedupe.py) | The order archive's same pages kept once (hard links; the replaced files to the Recycle Bin) | `main()`, `_running()` |
 | [app/tools/sample_data.py](../app/tools/sample_data.py) | The preview's made-up orders, print orders, library book and archived books | `seed()`, `_receipt()`, `_seed_archive()`, `_sample_book()`, `SAMPLE_TEXTS` |
@@ -58,6 +59,7 @@ code:
 | [textcheck/ollama.py](../app/studio/textcheck/ollama.py) | The model on this computer (127.0.0.1 only) | `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_release_model()` |
 | [textcheck/journal.py](../app/studio/textcheck/journal.py) | The journal of every check and the owner's marks | `_journal()`, `mark()`, `CHECKS` |
 | [textcheck/routes.py](../app/studio/textcheck/routes.py) | The routes; a printed page turned back into the passport's text | `_check()`, `_passport()`, `as_template()` |
+| [aside.py](../app/studio/aside.py) | «Скасувати» for what goes to the Recycle Bin: a few minutes on a shelf in the data folder first | `put()`, `restore()`, `flush()` |
 | [archive.py](../app/studio/archive.py) | Order archive: files of books that went to print, auto-deletion, "Keep" | `store()`, `refresh()`, `clock()`, `summary()`, `get()`, `page_key()`, `dedupe()` |
 | [images.py](../app/studio/images.py) | Previews, PNG checking, gluing a spread together, cache cleanup, a quick text scan of a page | `preview()`, `check_png()`, `flat_rgb()`, `compose_spread()`, `lqip()`, `text_score()`, `image_info()`, `prune_cache()` |
 | [library.py](../app/studio/library.py) | Book library: the model, a new book, its pictures, the book routes | `load()`, `save()`, `all_books()`, `summary()`, `completeness()`, `create_book()`, `listing_of()`, `import_pictures()` |
@@ -109,8 +111,7 @@ code:
 |---|---|---|
 | [index.html](../app/web/index.html) | The shell: the session token, the theme before the first frame, the "connection lost" placeholder | — |
 | [js/app.js](../app/web/js/app.js) | The labelled [rail of places and tools](features/modes.md), page routing, the ink of the area, theme, heartbeat | `PLACES`, `ROUTES`, `ALIASES`, `navigate()`, `placeNavPill()`, `applyTheme()` |
-| [js/places.js](../app/web/js/places.js) | Where things are: the places, the tools, Settings' blocks — for «Інструменти» and the search | `PLACES`, `TOOLS`, `SETTINGS` |
-| [js/palette.js](../app/web/js/palette.js) | Search everywhere (Ctrl+K): orders, books, places, tools | `openPalette()` |
+| [js/places.js](../app/web/js/places.js) | The tools that also work on their own — the «Інструменти» page's list | `TOOLS` |
 | [js/path.js](../app/web/js/path.js) | An object's path strip (an order's Canva → … → Відправка; a Workshop book's eleven steps) | `pathHtml()`, `pathStep()` |
 | [js/book-tile.js](../app/web/js/book-tile.js) | One book on a shelf — the library's and the Workshop's tile, one progress bar | `bookTile()`, `segBar()`, `tickBadge()` |
 | [js/pages/tools.js](../app/web/js/pages/tools.js) | «Інструменти» — every tool that works on its own | `mount()` |
@@ -175,6 +176,8 @@ code:
 | [test_states.py](../app/tests/test_states.py) | Order states, stages, incremental sync, the states API |
 | [test_library_creator.py](../app/tests/test_library_creator.py) | Text JSON, folder import, file checking, Printify/Gelato safeguards |
 | [test_flows.py](../app/tests/test_flows.py) | Creating in Printify/Gelato with fakes, drag-and-drop, Etsy protection, OAuth |
+| [test_aside.py](../app/tests/test_aside.py) | «Скасувати» before the Recycle Bin (the shelf) |
+| [test_ui_smoke.py](../app/tests/test_ui_smoke.py) | Every page in a hidden Edge on made-up data |
 | [test_archive.py](../app/tests/test_archive.py) | Order archive: file copies, 14/30 days, "Keep", Printify/Gelato reprints, the replacement mark |
 | [test_textcheck.py](../app/tests/test_textcheck.py) | Text check: comparison, name rules, matching pages (24 and 30), a full check with a fake model, updating the passport, 127.0.0.1 only |
 | [test_orders.py](../app/tests/test_orders.py) | The printer rule, laying out pages, Gelato book length, the guide, partial import, the sync rule |

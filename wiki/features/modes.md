@@ -1,15 +1,14 @@
 ---
-title: The rail — places, tools and search
+title: The rail — places and tools
 type: feature
-updated: 2026-10-03
+updated: 2026-10-06
 code:
   - app/web/js/app.js
   - app/web/js/places.js
-  - app/web/js/palette.js
   - app/web/js/pages/tools.js
   - app/web/js/pages/books.js
 ---
-# The rail: places, tools and search
+# The rail: places and tools
 
 > One rail of **places** and **tools** (the owner got lost among two hidden sets of icons, so the two modes — Orders and
 > Listings, switched by the brand icon — were replaced on 2026-09-30, [decisions](../decisions.md)). **Places** hold the
@@ -20,8 +19,7 @@ code:
 
 - **The rail, top to bottom** (**icons only** since the evening of 2026-09-30 — the owner: "show, don't tell"; the
   words under the icons were tried for a few hours): the brand mark (only the logo) · **Замовлення** (Alt+1) ·
-  **Книги** (Alt+2) · **Прибуток** (Alt+3) · a gap · **Інструменти** (Alt+4) · a gap · **Пошук** (Ctrl+K — the *last* of the
-  list, the owner's wish) · at the bottom **Налаштування** (the dot when a service misses a key or a sign-in) and the
+  **Книги** (Alt+2) · **Прибуток** (Alt+3) · a gap · **Інструменти** (Alt+4) · at the bottom **Налаштування** (the dot when a service misses a key or a sign-in) and the
   theme. A tooltip names the place and its key; the page's title says where he is.
 - **A click on a place** goes back to where the owner was under it (the order card while it's kept, the book he
   had open); a second click on the place he is in goes to its start (the queue, the gallery); **«Інструменти» always opens the list**, never the tool last
@@ -35,12 +33,8 @@ code:
 - **«Інструменти»** (`#/tools`; a tile is the name and the picture — what the tool does is its tooltip): every tool that works on its own, in the ink of what it serves — «Для замовлень»:
   the Order Creator, the print archive; «Для книг»: the Mockups, the photo mockups, the listing slides (the scheme for
   new books). The owner's thought: "sometimes I'd like to use each tool on its own".
-- **Search everywhere** (Ctrl+K or the magnifier): an order by the buyer, the child or the receipt, a book by its title or
-  number (the Workshop's and the library's), a place, a tool, a Settings block; ↑ ↓, Enter, Esc. Empty, it shows the
-  new orders and the places. The lists are read when it opens — the orders from the last sync (it never starts one).
-  **It also does** (since 2026-09-30, night): «Мокапи · №41», «Слайди · №41» for every book still in the Workshop — the
-  verb and the object in a few letters ("мокапи 41" → Enter: the Mockups open with that book chosen). Only ways in: nothing
-  is sent, changed or written from here.
+- **No search everywhere** (removed 2026-10-06, the owner: "I don't need search at all"): Ctrl+K and the magnifier
+  are gone with `palette.js`. The pages' own filters (the queue, the galleries, the archive, profit) stay.
 - **The first Tab** is «Перейти до вмісту»: past the rail straight to the page (15 presses to the first order before).
 - **Work going on elsewhere is never missed**: a mockups run in Photoshop puts a cyan dot on «Інструменти», a picture
   the Workshop waits for — on «Книги» (hidden while he is on that page); the window's title says what is awaited
@@ -55,16 +49,14 @@ code:
 - `navigate()` → `swap()`: sets `html[data-mode]`, asks the page's controller `navFor()`, remembers the address under
   its place (`lastIn`, `entryOf()`), keeps `store.here` / `store.from` (info.js — where the owner came from, for the
   pages' «back»), then `placeNavPill()` glides the pill.
-- `places.js` — `PLACES` (for the search), `TOOLS`, `SETTINGS`: one list for the tools page and the search.
-- `palette.js` — `openPalette()` (a `modal()` of its own size, `modal-palette`).
+- `places.js` — `TOOLS`: the tools page's list.
 - The busy dots: the Mockups page sends `bs:busy` when a run starts and ends, `workshop-live.js` — while a picture is
   awaited; `paintBusy()` shows them and writes the title.
 
 ## Where in the code
 
-- [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `buildSidebar()`, `entryOf()`, `placeOf()`, `placeNavPill()`, `paintBusy()`, `navigate()`, `openSearch`
-- [app/web/js/places.js](../../app/web/js/places.js) — `PLACES`, `TOOLS`, `SETTINGS`
-- [app/web/js/palette.js](../../app/web/js/palette.js) — `openPalette()`
+- [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `buildSidebar()`, `entryOf()`, `placeOf()`, `placeNavPill()`, `paintBusy()`, `navigate()`
+- [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`
 - [app/web/js/pages/tools.js](../../app/web/js/pages/tools.js) — `mount()`
 - [app/web/js/pages/books.js](../../app/web/js/pages/books.js) — «Книги» ([library](library.md), [workshop](workshop.md))
 - [app/web/js/info.js](../../app/web/js/info.js) — `store` (`here`, `from`)

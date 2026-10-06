@@ -17,7 +17,7 @@ from types import SimpleNamespace
 from PIL import Image, ImageDraw
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder and the sandbox)
-from studio import core, library, library_files
+from studio import aside, core, library, library_files
 from studio.jobs import jobs
 from studio.server import ApiError
 from studio.workshop import books, generate, pictures, routes, rows, upscale
@@ -59,7 +59,7 @@ class Base(unittest.TestCase):
         self.dir = sample_books.make_books(core.WORKSHOP_BOOKS)
         self.tmp = core.data_path("workshop-test")
         for folder in (self.tmp, generate.downloads_folder(), core.data_path("clipboard"),
-                       core.data_path("recycle-bin"), core.data_path("saved")):
+                       core.data_path("recycle-bin"), core.data_path("saved"), core.data_path("aside")):
             shutil.rmtree(folder, ignore_errors=True)
         self.tmp.mkdir(parents=True)
         self.downloads = generate.downloads_folder()
@@ -434,6 +434,10 @@ class APictureIntoItsRow(Base):
         self.assertEqual((r["number"], r["title"]), (40, "Moonlit garden lullaby"))
         self.assertFalse((self.dir / H).exists())
         self.assertNotIn(H, [b["id"] for b in books.all_books()])
+        aside.restore(r["undo"])                                              # «Скасувати» brings it back whole
+        self.assertTrue((self.dir / H / "pictures" / "2.png").exists())
+        r = routes._delete(request(H))
+        aside.flush(0)                                                        # minutes later
         kept = list(core.data_path("recycle-bin").iterdir())                 # the sandbox's Recycle Bin
         self.assertEqual(len(kept), 1)
         self.assertTrue((kept[0] / "pictures" / "2.png").exists())

@@ -720,16 +720,19 @@ export async function mount(view, [rawId]) {
     });
   }
 
+  // No question any more (06.10.2026): the folder waits a few minutes on the program's shelf before the Recycle Bin,
+  // so «Скасувати» really brings the book back (studio/aside.py).
   async function deleteBook(btn) {
     const name = `${b.number != null ? `№${b.number} ` : ''}${b.title}`;
-    const ok = await confirmBox({
-      title: `Видалити книгу «${name}»?`,
-      text: `Книга зникне з Майстерні, а її папка з усіма файлами — тексти й промпти агентів, сторінки, оригінали, обкладинка — піде в Кошик Windows. Звідти її ще можна відновити, поки Кошик не очищено.${b.library ? ' Книга в бібліотеці збереже обкладинку й сторінки: програма спершу скопіює їх туди.' : ''}`,
-      confirm: 'Видалити книгу', danger: true,
-    });
-    if (!ok) return;
-    const res = await act(btn, () => api(url(), { method: 'DELETE' }), `Книгу «${name}» видалено — папка в Кошику Windows`);
-    if (res) { memory.delete(id); location.hash = '#/books/work'; }
+    const res = await act(btn, () => api(url(), { method: 'DELETE' }));
+    if (!res) return;
+    memory.delete(id);
+    location.hash = '#/books/work';
+    toast(`Книгу «${name}» видалено`, 'success', 9000, { undo: { run: async () => {
+      await post('/api/aside/restore', { token: res.undo });
+      toast(`«${name}» повернуто`, 'success', 2000);
+      location.hash = `#/workshop/${encodeURIComponent(id)}`;
+    } } });
   }
 
   // ---------------------------------------------------------------- events

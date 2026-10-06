@@ -29,6 +29,9 @@ def rebuild(journal: dict) -> tuple:
     pages = journal.get("pages") or []
     count = max((p["page"] for p in pages), default=0)
     pers = {"child": "", "gifter": "", "dedication": None, "closing": None, **(journal.get("personalization") or {})}
+    if pers["dedication"]:  # the box read again by today's headings («close:», «Closing», a note before them)
+        dedication, closing = tc.split_dedication(pers["dedication"])
+        pers["dedication"], pers["closing"] = dedication, pers["closing"] or closing
     child = tc.clean_name(pers.get("child") or "")
     try:
         texts = library.load(journal["bookId"])["text"] if journal.get("bookId") else {}
@@ -41,13 +44,19 @@ def rebuild(journal: dict) -> tuple:
     for n, p in enumerate(pages):
         t = {k: p.get(k) for k in ("page", "part", "file", "label", "key", "mode", "expected")}
         t["count"] = count
+        own = (pers.get("dedication") if p["page"] == 1 else pers.get("closing")) if p["page"] in (1, count) else None
+        answers[n] = _answer(p, placed.get((p["page"], p.get("part")), []))
+        if own and t["mode"] == "personal" and p.get("part") is None:
+            # Today the buyer's own words are found where the passport text was asked for: the model was asked
+            # another question then, so its remarks are left out (it is not asked again).
+            t.update(mode="loose", key=None, expected=None)
+            answers[n] = {**answers[n], "verdict": "ok", "problems": []}
         if t["mode"] == "loose" and p["page"] in (1, count):
-            t["own"] = pers.get("dedication") if p["page"] == 1 else pers.get("closing")
+            t["own"] = own
         if t["expected"] is not None and t["key"] and texts.get(t["key"]):
             t["expected"] = tc.fill(texts[t["key"]], child, pers.get("gifter") or "") or t["expected"]
         elif t["expected"] and child != pers.get("child"):
             t["expected"] = t["expected"].replace(pers["child"], child)  # the name read right since
-        answers[n] = _answer(p, placed.get((p["page"], p.get("part")), []))
         if t["expected"] != p.get("expected") and _same_words(t["expected"] or "", answers[n].get("transcript") or ""):
             answers[n].update(verdict="ok", problems=[])  # the model spoke of a text the page no longer has to be
         targets.append(t)

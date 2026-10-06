@@ -132,9 +132,10 @@ def main(argv: list[str] | None = None) -> int:
     core.own_temp()  # the window, the dialogs and cloudflared keep their temp files on drive D, not C
 
     # Register all API routes.
-    from . import archive, backup, creator, drops, etsy, gelato, gelato_accounts, images, library, library_files, mockups, modules, orders, printify, profit, sendlog, settings_api, slides, sync, textcheck, transfer, tunnel, workshop  # noqa: F401
+    from . import archive, aside, backup, creator, drops, etsy, gelato, gelato_accounts, images, library, library_files, mockups, modules, orders, printify, profit, sendlog, settings_api, slides, sync, textcheck, transfer, tunnel, workshop  # noqa: F401
 
     core.sweep_tmp()          # uploads, upscale copies and an import's opened keys that a crash left in data/tmp
+    aside.flush(0)            # what waited for «Скасувати» when the program closed goes on to the Recycle Bin
     transfer.sweep()
     tunnel.cleanup_stale()
     drops.clear_drops()

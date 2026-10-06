@@ -1,7 +1,7 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-10-05
+updated: 2026-10-06
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -29,7 +29,7 @@ code:
    the import itself registers the routes. (`workshop` is a package, its routes in `workshop/routes.py`; its generation
    mode starts its Downloads watcher and the F8 thread the first time it's asked for.)
 5. Cleanup: old Gelato temp folders (`cleanup_stale()`), dropped files from the previous session
-   (`drops.clear_drops()`), the mockups' unpacked demo book (`mockups.clear_books()`). (The one-time cleanings —
+   (`drops.clear_drops()`), the mockups' unpacked demo book (`mockups.clear_books()`); what still waited on the «Скасувати» shelf when the program closed goes on to the Recycle Bin (`aside.flush(0)`, 06.10.2026). (The one-time cleanings —
    the old Order Creator form, what the separate «Мокапи» left in `data/mockups` — did their work on the owner's PC
    and were removed on 2026-09-27.)
 6. **Server** on port 47821 (`DEFAULT_PORT`). Port taken → a random free port and a warning in Etsy

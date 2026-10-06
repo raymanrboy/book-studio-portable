@@ -180,9 +180,9 @@ export async function api(path, { method = 'GET', body, headers = {}, signal } =
   return data;
 }
 
-// The heavy lists' last answers: what only needs a glance right after a page fetched them (the Books tabs' counts, the search
-// palette) takes them from here instead of asking the program again (04.10.2026). A page itself always asks.
-const KEPT = new Set(['/api/orders', '/api/library/books', '/api/workshop/books']);
+// The heavy lists' last answers: what only needs a glance right after a page fetched them (the Books tabs' counts) takes
+// them from here instead of asking the program again (04.10.2026). A page itself always asks.
+const KEPT = new Set(['/api/library/books', '/api/workshop/books']);
 const kept = new Map();
 export const recent = (path, ms = 5000) => {
   const k = kept.get(path);

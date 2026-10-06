@@ -10,6 +10,23 @@ code: []
 > deliberate choice by the owner. Newest decisions are at the top. An entry is a record of its day: where it says
 > "not built yet", the feature page tells what exists now.
 
+## 2026-10-06 — What not to build next (the owner's answer to «what else could be better»)
+
+- **Not wanted:** order deadlines / Windows notifications, sales analytics «what to make next», a morning summary on the start
+  screen, a smarter search (the owner says he does not use search at all).
+- **Not now:** the program rendering the personalised pages itself instead of Canva — too much work, and the owner wants to keep
+  control; the cover stays in Canva in any case.
+- **Liked, then done the same day** ("Все що придумав — роби"): «Скасувати» instead of a question for a Workshop book and a photo
+  template — they wait 2 min on the program's shelf (`aside.py`) before the Recycle Bin, so the undo is real (the 2026-09-30 rule «an
+  undo the program cannot keep is a lie» still holds: the shelf is what keeps it). Still asking, on purpose: removing a Workshop book's
+  Etsy photo (its scenes are rebuilt), keys and Etsy sign-out, a module, re-making slides, putting a scheme over six slides, the send.
+- **Search removed from the code** (the owner: "can be removed completely"): Ctrl+K, the magnifier and `palette.js`. The pages' own
+  filters stay — they were not asked about.
+- **The text check calibrated again** on 71 journaled checks (the owner: "more data has gathered") — see
+  [text check](features/text-check.md#why-the-rules-are-what-they-are); the gemma4 loop is handled by keeping the whole transcript.
+- **A robot clicks every page** before a change is called done (`tools/ui_smoke.py`, in the test run) — the owner asked what «automatic
+  interface checks» are and said do it.
+
 ## 2026-10-06 — Progress only as far as it is known; motion on a 170–180 Hz screen
 
 - **The owner** did not like step squares «filled to a half» and has a 170–180 Hz monitor: he wants more intermediate frames, nothing jumping.

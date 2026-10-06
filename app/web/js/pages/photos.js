@@ -4,7 +4,7 @@
 // himself. Nothing is caught here: in a Workshop book the same photos go through its «Фото» step, with the book's cover
 // and its photo caught into the book. The templates live inside Book Studio (app/data/photo-mockups): a photo dropped
 // onto a category joins it, one taken out goes to the Recycle Bin.
-import { api, post, html, ic, ib, setHtml, on, toast, confirmBox, upload, fadeImages, patch, media, plural, backToTools, attr } from '../lib.js';
+import { api, post, html, ic, ib, setHtml, on, toast, upload, fadeImages, patch, media, plural, backToTools, attr } from '../lib.js';
 import { store } from '../info.js';
 import { openLightbox } from '../lightbox.js';
 import { watch, refresh, act, paintGenBar, genAction, genState, startPhoto } from '../workshop-live.js';
@@ -112,9 +112,15 @@ export async function mount(view) {
     refresh();
   }
 
+  // At once, with «Скасувати» (06.10.2026): the file waits on the program's shelf before the Recycle Bin (studio/aside.py).
   async function remove(btn, cat, name) {
-    const ok = await confirmBox({ title: 'Прибрати заготовку?', text: `${name} піде в Кошик Windows — звідти її можна відновити.`, confirm: 'Прибрати', danger: true });
-    if (ok) act(btn, () => post('/api/photos/remove', { category: cat, name }), 'Заготовку прибрано — вона в Кошику');
+    const res = await act(btn, () => post('/api/photos/remove', { category: cat, name }));
+    if (!res?.undo) return;
+    toast('Заготовку прибрано', 'success', 9000, { undo: { run: async () => {
+      await post('/api/aside/restore', { token: res.undo });
+      toast('Заготовку повернуто', 'success', 2000);
+      refresh();
+    } } });
   }
 
   function zoom(cat, name) {

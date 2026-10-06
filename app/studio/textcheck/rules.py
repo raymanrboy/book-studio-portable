@@ -8,7 +8,7 @@ from collections import Counter
 
 from .. import library, orders
 from ..wording import META as _META, words
-from .texts import COMMON, MATCH, _NAME_SLOT, _base_word, _distance, _plain, _same, diff, fill, similarity
+from .texts import COMMON, MATCH, _NAME_SLOT, _base_word, _distance, _plain, _same, diff, fill, signs_off, similarity
 
 
 def findings(printed: list[str], child: str, vocab: set[str], others: set[str]) -> list[dict]:
@@ -166,6 +166,9 @@ def page_issues(target: dict, answer: dict, pers: dict, vocab: set[str], others:
         sure = f["kind"] in ("placeholder", "case", "name") or expected is not None
         out.append(_issue(target, "error" if sure else "warn", FINDING_TEXT[f["kind"]].format(**f), kind="rule"))
         covered.add(f["printed"])
+    if expected is not None and mode == "personal":
+        expected = _without_wish(expected, text, pers["gifter"])
+    ops = None
     if expected is not None:
         ops = [op for op in diff(expected, text) if not set(op["printed"].split()) & covered and not _case_only(op, names)]
         changed = sum(len(op["expected"].split()) + len(op["printed"].split()) for op in ops)
@@ -188,23 +191,64 @@ def page_issues(target: dict, answer: dict, pers: dict, vocab: set[str], others:
             out[0]["note"] = " ".join(problems[:3])
         else:  # the model saw what the words alone do not show — a word cut off at the edge, say
             flagged = answer.get("only_punctuation") is True
-            intact = _buyer_intact(target.get("own"), text)
+            # Every word the page must carry is in the model's own copy (or every word of the buyer's message):
+            # its «a line is missing» contradicts that copy (Rocco, 06.10.2026: the lines the owner may drop).
+            intact = _buyer_intact(target.get("own"), text) or ops == []
             out += [_issue(target, "warn", p, kind="model") for p in problems[:3]
                     if not _only_punctuation(p, flagged) and not _NO_PROBLEM.search(p)
+                    and not _name_part(p, pers["child"])
+                    and not (_LINES.search(p) and not _LINES_SUBSTANCE.search(p))
                     and not (intact and _CLAIM.search(p) and not _SEEN.search(p))]
     return out
 
 
+def _changed(expected: str, text: str) -> int:
+    return sum(len(op["expected"].split()) + len(op["printed"].split()) for op in diff(expected, text))
+
+
+def _without_wish(expected: str, text: str, gifter: str) -> str:
+    """«Congratulations on your Baptism!» right above a buyer's whole signed message («God bless you… Love, Pop-pop
+    and Nonna»): the owner drops the template's last wish then (06.10.2026). The page is compared with the text
+    without it only when that fits the page better — a kept line is never «extra»."""
+    if not signs_off(gifter) or len(words(gifter)) < 8 or (at := expected.rfind(gifter)) <= 0:
+        return expected
+    paragraphs = re.split(r"\n[ \t]*\n", expected[:at].rstrip())
+    if len(paragraphs) < 2 or len(words(paragraphs[-1])) > 8:
+        return expected
+    shorter = "\n\n".join(paragraphs[:-1]) + "\n\n" + expected[at:]
+    return shorter if _changed(shorter, text) < _changed(expected, text) else expected
+
+
+# Where a line breaks is the owner's: «'Amen.' на окремому рядку», «у тому ж рядку», «додаткові порожні рядки»
+# (06.10.2026 calibration — four of his «not a mistake» on one book). `_LINES` alone decides when the remark
+# claims nothing else — «на новому рядку після імені Sophie» names the name only to say where.
+_LINES = re.compile(r"окрем\w* рядк|нов\w* рядк|тому ж рядку|одному рядку|порожн\w* рядк|абзац|перенос|line break", re.I)
+_LINES_SUBSTANCE = re.compile(r"обріз|обірв|зрізан|за кра|злит|злип|пропущ|відсутн|зайв|замість|повтор|двічі|дублю|"
+                              r"\{|cut|missing|repeat|extra", re.I)
 _PUNCTUATION = re.compile(r"лапк|ком[аиуою]\b|крапк|пробіл|розділов|пунктуац|апостроф|тире|дефіс|перенес|"
-                          r"нов\w* рядк|кінці рядк|двокрапк|знак оклику|велик\S* літер|мал\S* літер|регістр|"
-                          r"quote|comma|punctuation|capital|uppercase|lowercase", re.I)
-_SUBSTANCE = re.compile(r"обріз|обірв|зрізан|за кра|злит|злип|між|разом|ім'я|імені|шаблон|плейсхолдер|\{|"
+                          r"нов\w* рядк|кінці рядк|окрем\w* рядк|одному рядку|тому ж рядку|порожн\w* рядк|"
+                          r"двокрапк|знак оклику|велик\S* літер|мал\S* літер|регістр|"
+                          r"quote|comma|punctuation|capital|uppercase|lowercase|line break", re.I)
+_SUBSTANCE = re.compile(r"обріз|обірв|зрізан|за кра|злит|злип|між(?!\s+рядк)|разом|ім'я|імені|шаблон|плейсхолдер|\{|"
                         r"пропущ|відсутн\S* слов|зайв\S* слов|повтор|двічі|дублю|cut|missing word|repeat", re.I)
-# «…помилки у словах немає. Перевірка показує повну відповідність» — the model's verdict said error anyway.
-_NO_PROBLEM = re.compile(r"помил\w*[^.]{0,30}\bнема|нема\w* помил|повн\w* відповідн", re.I)
+# «…помилки у словах немає. Перевірка показує повну відповідність», «Текст повністю збігається» — the model's
+# verdict said error anyway.
+_NO_PROBLEM = re.compile(r"помил\w*[^.]{0,30}\bнема|нема\w* помил|повн\w* відповідн|(?<!не )повністю збіга|"
+                         r"збігається повністю", re.I)
 # The model says a word is missing or changed; on a page where the program finds every word of the buyer's
 # message, that is the model «correcting» it — a Bible verse quoted the buyer's way (25.09.2026).
-_CLAIM = re.compile(r"пропущ|відсутн|замість|змін|має бути|не вистача", re.I)
+_CLAIM = re.compile(r"пропущ|відсутн|замість|змін|має бути|не вистача|missing|absent|instead", re.I)
+# A name the model quotes: 'Ava' (not the apostrophe inside «Ім'я»).
+_QUOTED = re.compile(r"(?:(?<=\s)|^|(?<=\())['‘\"«“]([^'’\"»”\n]{1,60})['’\"»”](?=[\s,.;:)!?]|$)")
+
+
+def _name_part(problem: str, child: str) -> bool:
+    """«Ім'я вказано як 'Ava', хоча в завданні 'Ava Rose'», «'Chloe Jane Robinson', хоча … 'Chloe'»: the page
+    carries the child's name shorter or fuller than Etsy's field — the owner's choice, not a slip (06.10.2026)."""
+    own = {w.casefold() for w in words(child)}
+    quoted = [{w.casefold() for w in words(q)} for q in _QUOTED.findall(problem)]
+    return bool(own) and any(a and b and a < b and (a <= own or own <= b) and (a & own)
+                             for a in quoted for b in quoted)
 _SEEN = re.compile(r"повтор|двічі|обріз|обірв|за кра", re.I)  # what only the eye can tell stays
 
 

@@ -3,6 +3,17 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-06] update | Text-check calibration, no search, «Скасувати» before the Recycle Bin, a robot that clicks every page
+
+- Calibration on 71 journaled checks: the owner's «not a mistake» rows still shown 22 → 1, real catches kept (`texts.split_dedication()`,
+  `signs_off()`; `rules._name_part()`, `_without_wish()`, `_LINES`, wider `_NO_PROBLEM`/`_CLAIM`; `run._salvage()` for the gemma4 loop);
+  `textcheck_replay.py` reads the buyer's box by today's headings and leaves out the model's remarks to a question it was not asked.
+- Search everywhere removed (`palette.js`, the rail's magnifier, Ctrl+K, `places.js` `PLACES`/`SETTINGS`, `/api/orders` out of `recent()`).
+- `aside.py` + `POST /api/aside/restore`: a Workshop book and a photo template are removed at once with «Скасувати» — 2 min on a shelf in
+  `data/aside`, then the Recycle Bin (`main.py` flushes leftovers at start); the two questions went (`workshop-book.js`, `photos.js`).
+- `tools/ui_smoke.py` + `tests/test_ui_smoke.py`: every page in a hidden Edge on made-up data, tabs pressed; `dev_server.py` takes
+  `BOOK_STUDIO_DEV_PORT`. Tests: `test_aside.py`, new cases in `test_textcheck.py`, `test_photos.py`, `test_workshop.py`.
+
 ## [2026-10-06] update | Progress shown only as far as known; smooth motion for a 170–180 Hz screen
 
 - Fix the same day, the real cause (owner: «the hitch was only where the word «Відправлені» appears»): a compact segmented control opened its chosen word by animating `max-width` and the pill followed through a ResizeObserver — layout every frame, the pill's transitions restarting each time, on top of building 86 rows. Now the buttons take their final widths at once, the word fades in (`seg-label-in`), the pill glides once (`app.css`, `lib.js` `syncSeg`).

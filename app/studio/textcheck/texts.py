@@ -77,8 +77,12 @@ upon us very want was way we well went were what when where which while who whol
 year years yes yet you young your yours""".split())
 
 _GIFTER = re.compile(r"\bfrom\b|від кого|gift", re.I)
-_CLOSING = re.compile(r"\bclosing(?:\s+message)?\s*:", re.I)
-_DEDICATION_HEAD = re.compile(r"^\s*dedication(?:\s+message)?\s*:\s*", re.I)
+# The buyer's headings, as typed into Etsy's box: «Closing:», «close:», «Closing» alone on its line; «Dedication -»,
+# «DEDICATION:», «dedicati:» (Etsy's field cut the word). A text before a dedication heading is a note to the
+# seller («Note: please center the text…») — not printed (06.10.2026 calibration).
+_CLOSING = re.compile(r"\bclos(?:ing|e)(?:\s+message)?\s*:|^[ \t]*closing(?:\s+message)?[ \t]*(?:[-–—][ \t]*)?$",
+                      re.I | re.M)
+_DEDICATION_HEAD = re.compile(r"^[ \t]*dedicat\w*(?:\s+message)?[ \t]*(?:[:\-–—]|$)[ \t]*\n?", re.I | re.M)
 _NAME_SLOT = re.compile(r"\{\s*name\s*\}", re.I)
 _GIFTER_SLOT = re.compile(r"\{\s*gifter\s*\}", re.I)
 # «With Love, Aunt Kate & Uncle Tom»: the buyer's own greeting — the template's «With love,» line then goes.
@@ -100,21 +104,35 @@ def personalization(item: dict) -> dict:
     # «"With love ,Anna and Mark"» → «With love, Anna and Mark»: the owner does not print the buyer's slips
     gifter = re.sub(r"\s+([,.!])", r"\1", gifter.strip().strip("\"'“”‘’«»").strip())
     gifter = re.sub(r",(?=[^\s\d])", ", ", gifter)
-    dedication = closing = None
-    if not is_default(raw):
-        parts = _CLOSING.split(raw, maxsplit=1)
-        dedication = _DEDICATION_HEAD.sub("", parts[0]).strip() or None
-        if dedication and is_default(dedication):
-            dedication = None
-        if len(parts) > 1 and "default" not in {w.casefold() for w in words(parts[1])}:
-            closing = parts[1].strip() or None
+    dedication, closing = split_dedication(raw)
     return {"child": child, "gifter": gifter, "dedication": dedication, "closing": closing}
+
+
+def split_dedication(raw: str) -> tuple[str | None, str | None]:
+    """The buyer's own box: (dedication, closing), each None when it is the book's default."""
+    if not raw or is_default(raw):
+        return None, None
+    parts = _CLOSING.split(raw, maxsplit=1)
+    head = _DEDICATION_HEAD.search(parts[0])
+    dedication = (parts[0][head.end():] if head else parts[0]).strip() or None
+    if dedication and is_default(dedication):
+        dedication = None
+    closing = None
+    if len(parts) > 1 and "default" not in {w.casefold() for w in words(parts[1])}:
+        closing = parts[1].strip() or None
+    return dedication, closing
+
+
+def signs_off(gifter: str) -> bool:
+    """«God bless you… Love, Pop-pop and Nonna», «We love you baby boy! Love, Mama & Dada»: the buyer's «from whom»
+    carries its own «Love,» — the template's «With love,» line goes, as when it starts with one."""
+    return any(_GREETING.match(s.lstrip(" \"'“”‘’«»")) for s in re.split(r"[.!?\n]+", gifter or "") if s.strip())
 
 
 def fill(template: str, child: str, gifter: str) -> str | None:
     """A library text as it must be printed for this order; None when a placeholder cannot be filled."""
     text = template or ""
-    if gifter and _GREETING.match(gifter.lstrip(" \"'“”‘’«»")):
+    if gifter and signs_off(gifter):
         text = _TEMPLATE_GREETING.sub("", text)
     if (_NAME_SLOT.search(text) and not child) or (_GIFTER_SLOT.search(text) and not gifter):
         return None

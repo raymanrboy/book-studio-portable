@@ -40,7 +40,7 @@ def _raw(answer: dict) -> dict:
     if answer.get("failed"):
         return {"failed": answer["failed"]}
     return {"verdict": answer.get("verdict"), "problems": list(answer.get("problems") or []),
-            "onlyPunctuation": answer.get("only_punctuation")}
+            "onlyPunctuation": answer.get("only_punctuation"), **({"salvaged": True} if answer.get("salvaged") else {})}
 
 
 _JOURNAL_NAME = re.compile(r"\d{4}-\d{2}-\d{2}_\d{6}_\d{5,20}-\d{1,3}\.json")

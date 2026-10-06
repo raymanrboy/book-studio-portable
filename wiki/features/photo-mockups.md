@@ -1,7 +1,7 @@
 ---
 title: Photo mockups — lifestyle photos with our book (the Workshop's «Фото» step and the «Фотомокапи» page)
 type: feature
-updated: 2026-10-03
+updated: 2026-10-06
 code:
   - app/studio/photos.py
   - app/web/js/pages/photos.js
@@ -30,7 +30,7 @@ code:
   template puts **the template, then (Ctrl+V) the prompt** into the clipboard and the wait ends; the owner adds the cover
   himself (the owner: "just the blank and the prompt, I'll add the pictures myself"). Nothing is caught. A section per
   category: the prompt alone into the clipboard, the category's folder, **a photo dragged onto a section becomes a new
-  template** (named `shelf-06.png` — the category's next number), × — a template into the Recycle Bin.
+  template** (named `shelf-06.png` — the category's next number), × — a template into the Recycle Bin, at once with «Скасувати» (it waits 2 min on the program's shelf first, 06.10.2026).
 
 ## Categories — and what goes into the clipboard second
 

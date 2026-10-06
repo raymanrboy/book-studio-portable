@@ -1,7 +1,7 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-10-04
+updated: 2026-10-06
 code:
   - app/tools/dev_server.py
   - app/tools/sample_data.py
@@ -17,7 +17,8 @@ code:
 
 - **Claude Code (built-in browser)**: the `book-studio-dev` configuration in `.claude/launch.json` →
   `preview_start("book-studio-dev")`. It runs `python -B app/tools/dev_server.py --sample`.
-- By hand: `python app/tools/dev_server.py --sample` → http://127.0.0.1:47890/
+- By hand: `python app/tools/dev_server.py --sample` → http://127.0.0.1:47890/ (another port: `BOOK_STUDIO_DEV_PORT`; the robot
+  `tools/ui_smoke.py` runs its own copy that way, in `.tmpsui` — [tests](testing.md))
 - `--sample` puts made-up orders, one library book (listing `4100000900`, no illustrations), one
   [Workshop](../features/workshop.md) book and the mockups' made-up templates (below) into
   `.tmp\bsdev` in the repository — on drive D (until 2026-09-23 `%TEMP%\bsdev` on drive C, which the owner

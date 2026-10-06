@@ -1,9 +1,11 @@
 ---
 title: Data safety — how the owner's data is kept from being lost
 type: architecture
-updated: 2026-10-04
+updated: 2026-10-06
 code:
   - app/studio/core.py
+  - app/studio/aside.py
+  - app/tests/test_aside.py
   - app/studio/records.py
   - app/tools/data_history.py
   - app/tests/test_data_safety.py
@@ -30,6 +32,10 @@ code:
 5. **Deleted only to the Recycle Bin**: what the owner made — a Workshop book, a library book, a photo template, a slide set — goes through
    `desktop.to_recycle_bin()` (warns instead of deleting for good when Windows cannot recycle). What is deleted for good is derived or temporary
    (caches, previews, runs, the opened keys of an import), the archive after its 14 days (the owner's decision) and a module's own folder.
+   **The shelf before the Recycle Bin** (`aside.py`, 06.10.2026): a Workshop book and a photo template first wait `KEEP_SECONDS` (2 min) in
+   `data/aside/<token>/` with a note of where they were, so the toast's «Скасувати» (`POST /api/aside/restore`) really puts them back — never over
+   something standing there now; then `flush()` sends them on to the Recycle Bin, and whatever the shelf still held when the program closed goes
+   there at the next start. That is why these removals no longer ask first.
 6. **Putting a version back**: `python app/tools/data_history.py list` / `restore <path> [--version V | --daily DATE]`. A restore first keeps the
    file it replaces as a version of its own.
 
@@ -45,9 +51,10 @@ code:
 ## Where in the code
 
 - [app/studio/core.py](../../app/studio/core.py) — `HISTORY_RULES`, `keep_history()`, `daily_snapshot()`, `write_json()`, the `unittest` guard on `DATA_DIR`
+- [app/studio/aside.py](../../app/studio/aside.py) — `put()`, `restore()`, `flush()`, `SHELF`, `KEEP_SECONDS`
 - [app/studio/records.py](../../app/studio/records.py) — `DataGuard`, `_guard()`, `save()`
 - [app/tools/data_history.py](../../app/tools/data_history.py) — `versions()`, `dailies()`, `restore()`
-- [app/tests/test_data_safety.py](../../app/tests/test_data_safety.py), [app/tests/test_sample_guard.py](../../app/tests/test_sample_guard.py)
+- [app/tests/test_data_safety.py](../../app/tests/test_data_safety.py), [app/tests/test_sample_guard.py](../../app/tests/test_sample_guard.py), [app/tests/test_aside.py](../../app/tests/test_aside.py)
 
 ## Related
 

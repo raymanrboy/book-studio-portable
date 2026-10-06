@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-05
+updated: 2026-10-06
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -122,7 +122,7 @@ The books in development (the Workshop) — the book pipeline's folders ([featur
 | GET | `/api/workshop/books` | token | `_list` | workshop.js (the gallery: `{books, folder, sig, gen}`) |
 | GET | `/api/workshop/sig` | token | `_sig` | workshop-live.js (`?book=` — one book's files only; `{sig, gen}` — what changed, the generation mode's state) |
 | GET | `/api/workshop/books/([^/]+)` | token | `_get` | workshop-book.js (`{book, sig, gen}` — the strip, the rows, the cover, the variants, the check, every picture's version, `book.upscale` — the switch, the queue, the picture in work, what failed, what's left; `book.leftBehind` — the pictures put into `originals/` by hand, not cut yet, by variant) |
-| DELETE | `/api/workshop/books/([^/]+)` | token | `_delete` | workshop-book.js «Видалити книгу» (the folder into the Recycle Bin; a wait for its picture stops) |
+| DELETE | `/api/workshop/books/([^/]+)` | token | `_delete` | workshop-book.js «Видалити книгу» (the folder onto the shelf, then the Recycle Bin, `undo` for «Скасувати»; a wait for its picture stops) |
 | GET | `/api/workshop/books/([^/]+)/file` | token | `_file` | workshop-book.js (`?name=` — one of the agent's text files, for the step's panel) |
 | POST | `/api/workshop/books/([^/]+)/mark` | token | `_mark` | workshop-book.js (`{step, on}` — Canva, the mockups, the photo mockups with a category skipped) |
 | POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|mockups\|etsy\|agent, name, variant}` — Explorer, or one file in its program; `variant` — a hero variant's picture) |
@@ -151,7 +151,8 @@ The books in development (the Workshop) — the book pipeline's folders ([featur
 | GET | `/api/photos/sig` | token | `_photos_sig` | workshop-live.js for photos.js (`{sig, gen}` — the templates' folders and the generation mode) |
 | GET | `/media/photos/([^/]+)/([^/]+)` | media | `_photo_media` | photos.js, workshop-book.js (`?w=&v=` — a template's preview) |
 | POST | `/api/photos/add` | token | `_photo_add` | photos.js (`?category=&name=`, body — a photo → a new template `<category>-NN`) |
-| POST | `/api/photos/remove` | token | `_photo_remove` | photos.js × (`{category, name}` — into the Recycle Bin) |
+| POST | `/api/photos/remove` | token | `_photo_remove` | photos.js × (`{category, name}` — onto the shelf, then the Recycle Bin; `undo` — the token for «Скасувати») |
+| POST | `/api/aside/restore` | token | `_restore` | photos.js, workshop-book.js — the toast's «Скасувати» (`{token}`: a Workshop book or a photo template back from the shelf, `aside.py`) |
 | POST | `/api/photos/open` | token | `_photo_open` | photos.js (`{category}` — its folder; none — all templates) |
 | POST | `/api/photos/prompt` | token | `_photo_prompt` | photos.js, workshop-book.js (`{category}` — its JSON prompt into the clipboard) |
 

@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-10-03
+updated: 2026-10-06
 code: []
 ---
 # Glossary
@@ -105,7 +105,6 @@ Code paths below are relative to the repository root.
 | Перемикач по кліку на головну іконку Бук Студіо | Gone on 2026-09-30: the brand icon is a mark in the area's ink; the places are labelled in the rail | [app.js](../app/web/js/app.js) `buildSidebar()`, `entryOf()` |
 | Книги (розділ) | «Книги»: the Workshop's books and the library's as the tabs «Майстерня · Бібліотека · Архів» | [pages/books.js](../app/web/js/pages/books.js) `mount()` |
 | Інструменти; «кожен інструмент юзати окремо» | «Інструменти»: the tools that also work on their own (the Order Creator, the print archive, the Mockups, the photo mockups, the listing slides); inside an order or a book they open from its step | [pages/tools.js](../app/web/js/pages/tools.js) `mount()`; [places.js](../app/web/js/places.js) `TOOLS` |
-| Пошук (по всій програмі) | Ctrl+K: an order, a book, a place, a tool | [palette.js](../app/web/js/palette.js) `openPalette()` |
 | Шлях (замовлення, книги); що далі | The path strip: an order's Canva · Файли · Вичитка · Друк · Відправка, a Workshop book's 11 steps | [path.js](../app/web/js/path.js) `pathHtml()` |
 | Архів друку (архів замовлень) | The print archive — among «Інструменти»; a printed order's card links to its entry | [features/archive.md](features/archive.md) |
 | Кольори режимів: студія — оранжева, «як у Etsy і Claude»; майстерня — як була студія (блакитна) | The `--accent*` tokens: orange by default (Orders), cyan under `[data-mode="listings"]`; magenta for a few hours before the owner swapped them | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |

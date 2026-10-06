@@ -78,7 +78,7 @@ handed the decisions over ("you're the expert, you're the boss") ([decisions](..
   books cyan). The icon-only rule below stays for a page's secondary actions, not for the places.
 - **The queue is a to-do list**: its tabs in words («Позначити в Etsy» is a task, not a filter), each row says what's
   next.
-- **Search everywhere** (Ctrl+K) — an order, a book, a tool, by any word the owner remembers.
+- ~~Search everywhere (Ctrl+K)~~ — removed 2026-10-06: the owner never used it.
 - **One loud button per screen** — the next step; the rest are quiet (a labelled button, an icon with its tooltip).
 - **Numbers that mean nothing yet look like nothing**: before the first sale the Profit's zeros are grey, not green.
 - **Three widths**: a half screen beside Photoshop keeps the work and the book's structure side by side.

@@ -25,7 +25,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-from .. import core, desktop, library, portable
+from .. import aside, core, desktop, library, portable
 from ..jobs import jobs
 from ..server import ApiError
 
@@ -520,16 +520,17 @@ def open_agent(book_id: str | None) -> str:
 
 def delete_book(book_id: str) -> dict:
     """The book out of the Workshop: its whole folder (the agents' files, the pages, the originals) into the
-    Windows Recycle Bin — restorable until it is emptied (the owner, 2026-09-26: "the book and all its files").
+    Windows Recycle Bin — restorable until it is emptied (the owner, 2026-09-26: "the book and all its files"),
+    after a few minutes on the shelf, where «Скасувати» takes it back from (`aside`, 06.10.2026).
     A book already in the library takes its pages from here: they are copied there first, so it keeps them."""
     path = book_path(book_id)
     number, title = _title(book_id)
     passed = library_book(path)
     if passed:
         library.keep_pages(passed["id"])
-    desktop.to_recycle_bin(path)
-    core.log.info("Workshop: book %s went to the Recycle Bin", book_id)
-    return {"deleted": book_id, "title": title, "number": number}
+    token = aside.put(path, f"Workshop book {book_id}")
+    core.log.info("Workshop: book %s set aside for the Recycle Bin", book_id)
+    return {"deleted": book_id, "title": title, "number": number, "undo": token}
 
 
 # ---------------------------------------------------------------- into the library

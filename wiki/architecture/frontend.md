@@ -6,7 +6,6 @@ code:
   - app/web/index.html
   - app/web/js/app.js
   - app/web/js/places.js
-  - app/web/js/palette.js
   - app/web/js/path.js
   - app/web/js/book-tile.js
   - app/web/js/info.js
@@ -37,7 +36,7 @@ code:
 ## Shell and routing — `app.js`
 
 - **The rail** (`PLACES`, since 2026-09-30 — [features/modes.md](../features/modes.md)): **Замовлення** `#/orders` (Alt+1), **Книги** `#/books` (Alt+2), **Прибуток**
-  `#/profit` (Alt+3), **Інструменти** `#/tools` (Alt+4), «Пошук» (Ctrl+K, last of the list), at the bottom Settings
+  `#/profit` (Alt+3), **Інструменти** `#/tools` (Alt+4) (no search since 2026-10-06), at the bottom Settings
   `#/settings` and the theme menu (dark / light / follow Windows, "reduce motion"). Icons only (tooltips); a click goes back to where the owner
   was under it (`lastIn`, `entryOf()`) — only while that page still belongs to it (`placeAt`: the Mockups opened
   from a book and later as a tool must not keep pulling «Книги» into them), a second click to its start. The ink is the area of the page's route
@@ -297,7 +296,7 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 - [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `navigate()`, `ordersTarget()`, `entryOf()`, `placeOf()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
 - [app/web/js/path.js](../../app/web/js/path.js) — `pathHtml()`, `pathStep()`
 - [app/web/js/book-tile.js](../../app/web/js/book-tile.js) — `bookTile()`, `segBar()`, `tickBadge()`
-- [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`; [app/web/js/palette.js](../../app/web/js/palette.js) — `openPalette()`
+- [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `markMissing()`, `attr()`, `typing()`, `galleryKeys()`, `replaceKeyed()`, `listingState()`, `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`, `paintGenBar()`, `startPhoto()`

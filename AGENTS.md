@@ -7,8 +7,8 @@
 A local Windows program for the owner of an Etsy shop selling personalized children's books. One icon rail (since
 2026-09-30; before, two modes switched by the brand icon): **Orders** — the order queue and each order's path to print
 (the Order Creator is its print step); **Books** — the Workshop (new books in development), the library, the archive;
-**Profit**; **Tools** — the Order Creator, the print archive, the Photoshop mockups, the photo mockups, the listing slides;
-Search (Ctrl+K). The owner is not a programmer, writes in Ukrainian, and **uses the light theme** —
+**Profit**; **Tools** — the Order Creator, the print archive, the Photoshop mockups, the photo mockups, the listing slides.
+The owner is not a programmer, writes in Ukrainian, and **uses the light theme** —
 design and check in light first ([ui-principles](wiki/owner/ui-principles.md)).
 
 ## 0. This is the portable copy

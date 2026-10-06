@@ -7,7 +7,7 @@
 A local Windows program for the owner of an Etsy shop selling personalized children's books. One icon rail:
 **Orders** — the order queue and each order's path to print (the Order Creator is its print step); **Books** — the
 Workshop (new books in development), the library, the archive; **Profit**; **Tools** — the Order Creator, the print
-archive, the Photoshop mockups, the photo mockups, the listing slides; Search (Ctrl+K). The user is the shop's owner,
+archive, the Photoshop mockups, the photo mockups, the listing slides. The user is the shop's owner,
 not necessarily a programmer; the program's interface is in Ukrainian. Design and check in the **light** theme first
 ([ui-principles](wiki/owner/ui-principles.md)).
 
