@@ -3,6 +3,13 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-06] update | Profit: «Доступно до виводу» taken off, the first card is «На руки (Etsy Net)» again
+
+- The owner: remove the withdrawal card completely, return it as it was. `profit._balance_check()`, `etsyBalance`, `ledger.window_net()` and the
+  ledger's balance and payouts in `view()` removed; `profit.js` — the first card is the period's Etsy Net with its orders count again, nothing under
+  «Собівартість друку»; `.kpi-foot.warn` gone. Kept: each row's check against Etsy's ledger, the ads a day in the net profit, the connected printers
+  in the header. 617 tests.
+
 ## [2026-10-06] update | Text-check calibration, no search, «Скасувати» before the Recycle Bin, a robot that clicks every page
 
 - Calibration on 71 journaled checks: the owner's «not a mistake» rows still shown 22 → 1, real catches kept (`texts.split_dedication()`,

@@ -97,7 +97,7 @@ code:
 | [sync.py](../app/studio/sync.py) | Pulling the orders: Etsy receipts (changed ones, a full read weekly), Printify and Gelato orders, into the snapshot | `_sync()`, `startup_sync()`, `normalize_receipt()`, `merge_receipts()` |
 | [records.py](../app/studio/records.py) | What is kept about orders on disk: the snapshot, manual links and states, the print orders this program sent | `load_snapshot()`, `stamp()`, `remember_print_order()`, `add_replacement()`, `unmark_reprint()`, `SNAPSHOT`, `SENDS` |
 | [printorders.py](../app/studio/printorders.py) | One reading of a Printify / Gelato order: its cost in dollars, dead or placed, name, label, tracking | `facts()`, `all_facts()`, `is_placed()`, `dead()`, `to_usd()`, `rates()`, `carrier_label()` |
-| [ledger.py](../app/studio/ledger.py) | Etsy's payment ledger: the balance, the payouts, each receipt's real money — the check of the program's sums | `refresh()`, `assign()`, `view()`, `window_net()` |
+| [ledger.py](../app/studio/ledger.py) | Etsy's payment ledger: each receipt's real money — the check of the program's sums | `refresh()`, `assign()`, `view()` |
 | [reconcile.py](../app/studio/reconcile.py) | Matching Etsy receipts to print orders (numbers before names), the cover a buyer chose | `match()`, `_find()`, `item_format()`, `cover_label()`, `is_name_match()`, `printify_only_rows()` |
 | [outcomes.py](../app/studio/outcomes.py) | The money of a row, once: cancellations, refunds, replacements, a sale's other print orders, unpaid orders | `rows()`, `apply()`, `auto_state()`, `order_info()`, `reserved_orders()` |
 | [stages.py](../app/studio/stages.py) | Where each Etsy order stands (new / in work / sent / shipped / closed), once per view; a reprint's mark | `facts()`, `order_stage()`, `picker_orders()`, `picker_order()`, `mark_reprint()` |
@@ -169,7 +169,7 @@ code:
 | File | What it checks |
 |---|---|
 | [\_\_init\_\_.py](../app/tests/__init__.py) | A temporary data folder instead of the real one |
-| [test_ledger.py](../app/tests/test_ledger.py) | Etsy's ledger: each entry to its receipt, a receipt's real money, the balance against the payouts |
+| [test_ledger.py](../app/tests/test_ledger.py) | Etsy's ledger: each entry to its receipt, a receipt's real money |
 | [test_profit.py](../app/tests/test_profit.py) | Parity with the Profit Calculator (`golden_profit.json`), fees, name matching, the bookkeeping's first day |
 | [test_gelato_accounts.py](../app/tests/test_gelato_accounts.py) | Two made-up Gelato accounts: the switch, the old one only read, no order lost |
 | [test_gelato_history.py](../app/tests/test_gelato_history.py) | The card's history: reading a full order, one read per card (kept a minute), which orders are asked about |

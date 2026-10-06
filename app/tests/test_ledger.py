@@ -1,10 +1,10 @@
-"""Etsy's payment ledger (ledger.py): each entry finds its receipt, a receipt's real money against the fee formula, the
-balance against what the program expects since the last payout. Made-up entries in the shape the API returns."""
+"""Etsy's payment ledger (ledger.py): each entry finds its receipt, and a receipt's real money against the fee formula.
+Made-up entries in the shape the API returns."""
 import unittest
 from unittest import mock
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
-from studio import core, etsy, ledger, profit
+from studio import core, etsy, ledger
 
 
 def entry(eid, kind, rtype, ref, cents, at, parent=0, balance=0, seq=None):
@@ -42,21 +42,9 @@ class Assign(unittest.TestCase):
         self.assertEqual(sorted(own.values()), ["201", "202"])
 
 
-class BalanceCheck(unittest.TestCase):
+class ReceiptCheck(unittest.TestCase):
     def setUp(self):
         self.addCleanup(lambda: ledger.LEDGER.unlink(missing_ok=True))
-
-    def test_the_payout_is_what_was_left_plus_the_sales_between(self):
-        real = {"balance": 30.0, "at": 900, "payouts": [{"at": 100, "amount": 50.0, "left": 10.0},
-                                                        {"at": 500, "amount": 90.0, "left": 0.0}]}
-        rows = [{"id": "a", "created_at": "1970-01-01T00:05:00Z", "etsy_net": 40.0},
-                {"id": "b", "created_at": "1970-01-01T00:06:40Z", "etsy_net": 41.0},  # 400 s: before the second payout
-                {"id": "c", "created_at": "1970-01-01T00:10:00Z", "etsy_net": 30.0}]  # 600 s: after it
-        with mock.patch.object(profit, "OVERHEAD_PER_DAY", 0), mock.patch.object(profit.time, "time", return_value=900):
-            out = profit._balance_check(real, rows)
-        self.assertEqual(out["lastPayout"]["expected"]["amount"], 91.0)  # 10 left + 40 + 41
-        self.assertEqual(out["expected"]["amount"], 30.0)
-        self.assertEqual(out["expected"]["orders"], 1)
 
     def test_a_receipt_gets_its_real_money_and_the_difference(self):
         core.write_json(ledger.LEDGER, {"payments": {"700": "301"}, "entries": [ledger._slim(e) for e in [
@@ -67,7 +55,6 @@ class BalanceCheck(unittest.TestCase):
         got = view["receipts"]["301"]
         self.assertEqual(got["net"], 25.5)
         self.assertIn({"type": "offsite_ads_fee", "label": "Offsite Ads", "amount": -4.5}, got["lines"])
-        self.assertEqual(view["balance"], 25.5)
 
 
 class Refresh(unittest.TestCase):

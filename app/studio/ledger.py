@@ -1,7 +1,7 @@
 """Etsy's payment-account ledger: every credit and debit on the shop's Etsy balance — a sale, its tax and fees, a refund,
-the ads, a listing, a payout (read only; the scope transactions_r the program already has). It gives two checks of the
-program's own sums (the owner, 2026-10-05): the balance Etsy will pay out next against what the program expects since the
-last payout, and each receipt's real money against the fee formula. Pulled with the orders (sync.py), kept in
+the ads, a listing, a payout (read only; the scope transactions_r the program already has). It checks the program's own
+sums (the owner, 2026-10-05): each receipt's real money against the fee formula. (The Etsy balance beside the program's
+expected sum — «Доступно до виводу» — was taken off again by the owner on 2026-10-06.) Pulled with the orders (sync.py), kept in
 data/profit/ledger.json; matched to receipts here, when the Profit view is built."""
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import time
 from collections import defaultdict
 from datetime import datetime
 
-from . import core, etsy, reconcile
+from . import core, etsy
 
 LEDGER = core.data_path("profit", "ledger.json")
 START = datetime(2026, 9, 14)  # two weeks before the bookkeeping: the payout that covers 1 October starts before it
@@ -150,7 +150,7 @@ def assign(entries: list, payments: dict, receipts: list) -> dict:
 
 def view(receipts: list) -> dict:
     """What the Profit view needs from the ledger: each receipt's real money (only receipts whose payment is in the
-    ledger), the balance now and the last payouts. {} — no ledger yet."""
+    ledger). {} — no ledger yet."""
     data = load()
     entries = data.get("entries") or []
     if not entries:
@@ -174,28 +174,10 @@ def view(receipts: list) -> dict:
         p["cents"] += e["amount"]
         p["lines"][kind] += e["amount"]
         p["paid"] = p["paid"] or e["type"] == "PAYMENT_GROSS"
-    newest = entries[-1]
-    payouts = [e for e in entries if e["type"].startswith(PAYOUT)]
     return {
         "receipts": {rid: {"net": p["cents"] / 100,
                            "lines": [{"type": t, "label": LABELS.get(t, t), "amount": c / 100}
                                      for t, c in p["lines"].items() if c]}
                      for rid, p in per.items() if p["paid"]},
-        "balance": (newest.get("balance") or 0) / 100,
-        "at": newest["at"],
-        # A payout does not always empty the balance: Etsy may keep a part back (54.61 after the 28.09.2026 one) — `left`.
-        "payouts": [{"at": e["at"], "amount": -e["amount"] / 100, "left": (e.get("balance") or 0) / 100} for e in payouts[-2:]],
         "readTo": data.get("readTo"),
     }
-
-
-def window_net(rows: dict, start: float, end: float) -> tuple[float, int]:
-    """The program's own Etsy Net of the receipts made in (start, end] (epoch seconds) and how many there were — what
-    the program expects Etsy to have put on the balance, before the ads and new listings."""
-    total, n = 0.0, 0
-    for r in rows.values():
-        at = (reconcile.parse_time(r.get("created_at")) or 0) / 1000
-        if start < at <= end and r.get("etsy_net") is not None:
-            total += r["etsy_net"]
-            n += 1
-    return total, n

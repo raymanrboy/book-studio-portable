@@ -1,7 +1,7 @@
 ---
 title: Profit (counts only sales from 1 October 2026)
 type: feature
-updated: 2026-10-05
+updated: 2026-10-06
 code:
   - app/web/js/pages/profit.js
   - app/web/js/pages/profit-rows.js
@@ -49,13 +49,11 @@ changes — `records.stamp()`) and its routes.
 
 - **The check against Etsy's own ledger (since 2026-10-05, the owner: "if it all matches, our sums are right").** The sync also
   reads Etsy's payment ledger (`ledger.refresh()`, read only, the scope `transactions_r` the program has) — see
-  [rules/reconciliation.md](../rules/reconciliation.md). Two checks, while the owner compares:
-  - **A — the first card is «Доступно до виводу»**: the Etsy balance now (what Etsy pays out next; not tied to the period),
-    under it «за розрахунком $X» — what the program expects there (`profit._balance_check()`: what the last payout left + its
-    own Etsy Net of the receipts since − the ads a day); amber when they differ by more than $1. The tip also gives the last
-    payout beside the program's sum for its days. Without a ledger the card is the period's «На руки (Etsy Net)» as before.
-    The orders count moved under «Собівартість друку».
-  - **B — each row**: an amber mark by the Etsy Net when Etsy's real money for the receipt differs by more than 5 cents
+  [rules/reconciliation.md](../rules/reconciliation.md).
+  - **The cards are the period's own** — «На руки (Etsy Net)» with the orders count under it, «Собівартість друку», «Чистий прибуток»,
+    «Середня маржа». (From 2026-10-05 to 2026-10-06 the first card was the Etsy balance, «Доступно до виводу», with the program's
+    expected sum under it; the owner had it taken off: "return it as it was".)
+  - **Each row**: an amber mark by the Etsy Net when Etsy's real money for the receipt differs by more than 5 cents
     (`etsy_check`); the open row says «За журналом Etsy: $X» and, when it differs, Etsy's lines (Offsite Ads, a state's fee…).
   - The header names only the printers connected now: «Gelato» with a Gelato key, «Printify: shop» only with a Printify token.
 - **Ads and new listings are counted quietly (since 2026-10-05).** Etsy takes money outside any order — Etsy Ads and the
@@ -88,8 +86,8 @@ changes — `records.stamp()`) and its routes.
 
 - [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `periodDays()`, `renderKpis()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
 - [app/web/js/pages/profit-rows.js](../../app/web/js/pages/profit-rows.js) — `rowInner()`, `detailHtml()`, `stateBox()`, `econLines()`, `costOf()`, `DEAD_SHORT`, `STATE_OPTS`
-- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `window_net()`, `LABELS`, `SHOP_TYPES`
-- [app/studio/profit.py](../../app/studio/profit.py) — `ACCOUNTING_FROM`, `OVERHEAD_PER_DAY`, `_balance_check()`, `counted()`, `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
+- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `LABELS`, `SHOP_TYPES`
+- [app/studio/profit.py](../../app/studio/profit.py) — `ACCOUNTING_FROM`, `OVERHEAD_PER_DAY`, `counted()`, `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `mark_reprint()`
 - [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `is_placed()`

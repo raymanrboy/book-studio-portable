@@ -1,7 +1,7 @@
 ---
 title: Order matching and computing profit
 type: rule
-updated: 2026-10-05
+updated: 2026-10-06
 code:
   - app/studio/reconcile.py
   - app/studio/fees.py
@@ -111,8 +111,8 @@ left goes to the one receipt posted the same moment. Ads, new listings, Etsy Plu
 to the cent, 6 more within 1–4 cents (rounding). What it does not count: **Etsy Offsite Ads** (3 sales in September, −$4.16…−$6.32
 each), a **state's delivery fee** paid by the buyer (Colorado, −$0.31), and on a cancelled sale the **$0.24 listing fee** Etsy
 keeps. The payout of 5 October ($606.68) against the program: $54.61 the payout of 28 September had left on the balance + the
-program's sum for the 21 sales between, less the ads a day = $606.63 — 5 cents off. A payout does not always empty the balance
-(Etsy kept $54.61 and $35.12 back twice), so the check starts from what the last one left.
+program's sum for the 21 sales between, less the ads a day = $606.63 — 5 cents off. (That balance check was shown on the page from
+2026-10-05 to 2026-10-06 as «Доступно до виводу»; the owner had it taken off — only each receipt's check stays.)
 
 ## Where in the code
 
@@ -120,7 +120,7 @@ program's sum for the 21 sales between, less the ads a day = $606.63 — 5 cents
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `match()`, `_find()`, `_Printer`, `_numbers_named()`, `is_name_match()`, `normalize_name()`, `item_format()`, `cover_label()`, `printify_only_rows()`, `_NameIndex`
 - [app/studio/fees.py](../../app/studio/fees.py) — `calculate_ukrainian_etsy_fees()`, `r2()`, `money()`
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `rows()`, `apply()`, `auto_state()`, `unpaid()`, `order_info()`, `reserved_orders()`, `STATES`
-- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `window_net()`
+- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`
 - [app/studio/records.py](../../app/studio/records.py) — `remember_print_order()`, `load_sends()`, `SENDS`
 - Tests: [app/tests/test_profit.py](../../app/tests/test_profit.py) (`ProfitParity` against `golden_profit.json`), [app/tests/test_states.py](../../app/tests/test_states.py) (`MatchingOrder`, `MoneyRules`)
 

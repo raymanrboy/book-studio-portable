@@ -1293,8 +1293,9 @@ How to apply: anything that puts files into the archive goes through `archive.st
 - **2026-10-05 — ads and new-listing fees are counted into the Profit totals as a flat $1.38 a day, with no card of their own** (the owner: count it, but keep it out of the main view). Constant `OVERHEAD_PER_DAY` in `app/web/js/pages/profit.js`. Etsy's ledger (read since the same day, scope `transactions_r` the program already has) checks it — the decision below.
 
 - **2026-10-05 — the Profit page checks itself against Etsy's payment ledger** (the owner: "if it all matches, our sums are right"). The
-  first card shows the Etsy balance («Доступно до виводу») with the program's expected sum under it, and a row whose real Etsy money
-  differs gets a mark. The formula stays the source of the numbers until the owner has compared; the ledger only checks it. Read only,
+  first card showed the Etsy balance («Доступно до виводу») with the program's expected sum under it — **taken off on 2026-10-06** (the
+  owner: "remove it completely, return it as it was": the first card is the period's «На руки (Etsy Net)» again) — and a row whose real Etsy money
+  differs gets a mark (stays). The formula stays the source of the numbers until the owner has compared; the ledger only checks it. Read only,
   with the scope the program already has (`transactions_r`). [features/profit.md](features/profit.md)
 - **2026-10-05 — the Printify token is optional**: no warning, no mark, no Printify in the Profit header without it — every order goes
   through Gelato.

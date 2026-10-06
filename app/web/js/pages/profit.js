@@ -167,7 +167,7 @@ export async function mount(view) {
     const box = $('#pf-kpis');
     if (!box.querySelector('[data-k]')) {
       const card = (key, label, iconName, tone) => html`<div class="kpi ${tone}" data-card="${key}">
-        <div class="kpi-label"><span data-l="${key}">${label}</span><span class="kpi-ico">${ic(iconName, 'icon-s')}</span></div>
+        <div class="kpi-label"><span>${label}</span><span class="kpi-ico">${ic(iconName, 'icon-s')}</span></div>
         <div class="kpi-value" data-k="${key}"></div><div class="kpi-foot" data-f="${key}"></div></div>`;
       setHtml(box, [
         card('net', 'На руки (Etsy Net)', 'dollar', 'tone-green'),
@@ -176,26 +176,7 @@ export async function mount(view) {
         card('margin', 'Середня маржа', 'shield', ''), // a number, not an action: no ink of its own (2026-09-30)
       ]);
     }
-    // With Etsy's ledger the first card is the Etsy balance — what Etsy pays out next — and under it what the program
-    // expects there by its own sums: equal means the sums are right (the owner, 2026-10-05). Without it, the period's Etsy Net.
-    const bal = st.data?.etsyBalance;
-    const orders = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}`;
-    const nf = box.querySelector('[data-f="net"]');
-    box.querySelector('[data-l="net"]').textContent = bal ? 'Доступно до виводу' : 'На руки (Etsy Net)';
-    box.querySelector('[data-f="cost"]').textContent = bal ? orders : '';
-    if (bal?.expected) {
-      const off = Math.abs(bal.balance - bal.expected.amount) > 1;
-      const day = (t) => new Date(t * 1000).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
-      const last = bal.lastPayout;
-      nf.textContent = `за розрахунком ${money(bal.expected.amount)}`;
-      nf.dataset.tip = [`Баланс Etsy, не залежить від періоду. Розрахунок програми: що лишилось після виплати ${day(bal.expected.from)} + ${bal.expected.orders} ${plural(bal.expected.orders, ['замовлення', 'замовлення', 'замовлень'])} відтоді − реклама й лістинги`,
-        last ? `Виплата ${day(last.at)}: ${money(last.amount)}, за розрахунком ${money(last.expected.amount)}` : ''].filter(Boolean).join('. ');
-      nf.classList.toggle('warn', off);
-    } else {
-      nf.textContent = bal ? '' : orders;
-      nf.dataset.tip = '';
-      nf.classList.remove('warn');
-    }
+    box.querySelector('[data-f="net"]').textContent = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}`;
     box.classList.toggle('kpi-none', !k.n); // no sales in the period: grey zeros, not green ones that look earned
     const pf = box.querySelector('[data-f="profit"]');
     pf.textContent = k.issues ? `Повернення й заміни: ${money(k.impact)}` : '';
@@ -205,7 +186,7 @@ export async function mount(view) {
     card.classList.toggle('tone-green', k.profit >= 0);
     card.classList.toggle('tone-red', k.profit < 0);
     const from = { ...shownKpi };
-    const to = { net: bal ? bal.balance : k.net, cost: k.cost, profit: k.profit, margin: k.margin };
+    const to = { net: k.net, cost: k.cost, profit: k.profit, margin: k.margin };
     const fmt = { net: money, cost: money, profit: money, margin: (v) => `${(Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '')}%` };
     const start = performance.now();
     // First paint shows final numbers (the page transition is the entrance); later changes count smoothly.

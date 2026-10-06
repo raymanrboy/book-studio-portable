@@ -4,7 +4,6 @@ manual state. Pulling the orders is sync.py's; the files are records.py's."""
 from __future__ import annotations
 
 import threading
-import time
 from datetime import datetime
 
 from . import core, etsy, gelato, ledger, outcomes, printorders, reconcile, records
@@ -18,7 +17,7 @@ from .vault import vault
 ACCOUNTING_FROM = datetime(2026, 10, 1)  # midnight on this computer's clock
 # What Etsy takes outside any order — Etsy Ads ($0.99 + 20% VAT a day) and new listings ($0.24 each) — from the owner's
 # statements of September–October 2026: about $1.38 a day. The page takes it off the net profit quietly, no card of its
-# own (2026-10-05); the ledger check below counts it into what the program expects on the Etsy balance.
+# own (2026-10-05).
 OVERHEAD_PER_DAY = 1.38
 
 
@@ -77,32 +76,7 @@ def build_view() -> dict:
         "rows": rows,
         "candidates": candidates,
         "etsyConnected": bool(etsy.tokens()),
-        "etsyBalance": _balance_check(real, rows),
     }
-
-
-def _balance_check(real: dict, rows: list) -> dict | None:
-    """The Etsy balance (what Etsy pays out next) beside what the program expects on it: what the last payout left on the
-    balance, plus its own Etsy Net of the receipts made since, less the ads and new listings a day. And the last payout
-    beside the same sum for the days it covered. None — no ledger."""
-    if not real:
-        return None
-    full = {r["id"]: r for r in rows}
-
-    def expected(start: float, end: float, left: float) -> dict:
-        net, n = ledger.window_net(full, start, end)
-        return {"amount": r2(left + net - OVERHEAD_PER_DAY * (end - start) / 86400), "orders": n, "from": start, "to": end}
-
-    payouts = real.get("payouts") or []
-    if not payouts:
-        return {"balance": r2(real["balance"]), "at": real["at"]}
-    last = payouts[-1]
-    out = {"balance": r2(real["balance"]), "at": real["at"], "expected": expected(last["at"], time.time(), last["left"])}
-    if len(payouts) >= 2:
-        before = payouts[-2]
-        out["lastPayout"] = {"at": last["at"], "amount": r2(last["amount"]),
-                             "expected": expected(before["at"], last["at"], before["left"] - last["left"])}
-    return out
 
 
 # Fields the table needs; the heavy rest (fees, address, items) is fetched when a row is opened.
