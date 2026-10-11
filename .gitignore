@@ -49,3 +49,5 @@ pipeline/books/
 .env
 .env.*
 *.dpapi
+# The SEO studio's local data: the keyword database, eRank JSON, candidate lists (seo/README.md)
+/seo/data/

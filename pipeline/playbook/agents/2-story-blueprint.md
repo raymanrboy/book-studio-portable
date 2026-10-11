@@ -8,7 +8,7 @@ This is the narrative architect + the continuity gate.
 ## Inputs
 - Formula + Tier + occasion (Agent 0)
 - `visual-world-bible.md` + the occasion → the per-book **visual header** (Medium + palette accent / mood / motif / must-NOT) — this absorbs the old Visual World step; the global bible stays the style source
-- `knowledge/media-presets.md` — pick the **Medium** (W watercolor default / G gouache / RW rich watercolor); it locks the `style{}` block downstream
+- `knowledge/media-presets.md` — pick the **Medium** (W watercolor default / G gouache / RW rich watercolor / CG cozy glow / FG festive gouache); it locks the `style{}` block downstream
 - `knowledge/formulas/[chosen].md` — the proven scene skeleton
 - `knowledge/book-anatomy.md` — spread structure, rhythm (active/quiet), dedication/finale
 - Character Lock Card (Tier H) for who is on the page; or per-scene figures (Tier S)

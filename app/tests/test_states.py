@@ -506,6 +506,15 @@ class MatchingOrder(unittest.TestCase):
         row = view([receipt(1, "Ann Lee")], [by_name])["1"]
         self.assertEqual(row["printify_order_id"], "a" * 24)
 
+    def test_a_repeat_buyers_old_order_is_not_taken_by_her_new_receipt(self):
+        """Diane's receipt of 8 Oct found her Gelato order of 5 Sep by name, and the two receipts split its cost."""
+        old = self.gorder("g1", "G-260905174108", "Diane", "Lord", created="2025-09-05T15:41:09Z")
+        rows = view([receipt(4164660299, "Diane Lord", ts=1757036000), receipt(4197522316, "Diane Lord", ts=1757036000 + 33 * 86400)],
+                    g_orders=[old])
+        self.assertEqual(rows["4164660299"]["gelato_order_id"], "g1")
+        self.assertFalse(rows["4164660299"]["is_bundle"])
+        self.assertEqual(rows["4197522316"]["match_type"], "unmatched")
+
     def test_a_manual_link_to_an_order_the_sync_does_not_have_falls_back_to_the_rules(self):
         own = self.gorder("g1", "1 - Emma", "Ann", "Lee")
         row = view([receipt(1, "Ann Lee")], g_orders=[own], links={"1": {"provider": "printify", "orderId": "gone"}})["1"]

@@ -6,6 +6,7 @@
   - `/wiki-update` — bring the wiki up to date after code changes (run at the end of every task);
   - `/wiki-ingest` — add material from the owner into the wiki (text, screenshot, document);
   - `/wiki-lint` — wiki health check.
+  - `/etsy-seo` — a book's Etsy SEO: long title, 13 tags, description (`seo/`; eRank in the browser pane, never Etsy).
   - `/listing-slides` — change, look at and bake the six Etsy listing slides through their files (when the owner
     asks in words instead of the editor).
   - `book-studio-ui-logic` — the owner's interface rules as a checklist; **apply it before writing any UI**

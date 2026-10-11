@@ -1,7 +1,7 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-10-05
+updated: 2026-10-09
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
@@ -48,6 +48,14 @@ code:
    5/6» (a spinner while cutting, the folder button when some are ready), the two numbers **Сторінок** (24) and
    **Віршів** (11), six numbered outlines, and **«Зробити слайди»**. The button always answers: while Cover 1 and
    Dedication still wait in Photoshop it says slides 2 and 3 need them and blinks «Зберегти відкриті».
+2a. **A part of the six** (09.10.2026, the owner: "if I made only Dedication, I redo only that slide"): each of the six outlines is a
+   **tick**; the ones on the run's ticked templates are ticked by themselves (Open 1 → slides 1 and 4, Open 2 → 5 and 6, Cover 1 → 2,
+   Dedication → 3; Cover & Open 1 and All & Open 1 are on no slide), all six after a whole run; the owner can tick any. The button says
+   «Зробити слайди: 1 з 6». The page sends `slides` to `/api/slides/make`; `work.make(only=…)` cuts and puts in **only the mockups
+   of those slides** (`store.SLIDE_SLOTS`), keeps the other slides' mockups and scenes in the set (`new_set(partial=True)`),
+   bakes only them (the other files in `etsy/` are not touched), reports only their missing slots and **does not tick** the Workshop's
+   «Мокапи» step. Slides 2 and 3 wait for «Зберегти відкриті» only when ticked and their template is still open. The step shows after a run
+   of Dedication alone once it is saved (it saves nothing by itself).
 3. **Made by themselves** (~10 s): the rows 1–6 (waiting / drawing / ✓) and a bar; then the card **«Готово · 6 слайдів»**
    with the pictures (a click → the viewer, whose «Правити» opens that slide in the editor; the original opens the file),
    a ✎ on each, the folder button, **«Відкрити в редакторі»**, and ↻ «Зробити заново» (from the scheme again — asks

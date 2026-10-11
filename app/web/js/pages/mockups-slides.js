@@ -8,6 +8,10 @@ import { openLightbox } from '../lightbox.js';
 
 const SHOT_W = 480;
 const SLIDES = ['слайд', 'слайди', 'слайдів'];
+// The slides each template is on (09.10.2026): a part of the mockups made alone offers just those slides.
+const SLIDES_OF = { open1: ['slide1', 'slide4'], open2: ['slide5', 'slide6'], cover1: ['slide2'], dedication: ['slide3'] };
+const ALL = ['slide1', 'slide2', 'slide3', 'slide4', 'slide5', 'slide6'];
+const NEEDS = { slide2: 'Cover 1', slide3: 'Dedication' };   // made in Photoshop by hand first: «Зберегти відкриті»
 const TITLES = ['Made just for them', 'Choose your format', 'Dedication & afterword', 'Unique little poems',
   'Personalization made simple', 'Thank you'];
 
@@ -19,13 +23,16 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
     error: '',
     cuts: null,       // {files: {name: state}, busy, noBg}
     folder: '',       // the folder the cuts are asked for
+    pick: null,       // the ticked slides (a Set); null — the ones the run's ticked templates are on, else all six
     scheme: '',       // the scheme the six start from — chosen here, before they are made; '' = the default for new books
     schemes: null,    // the schemes to choose from [{key, name, default}]
   };
   let gone = false, timer = 0, polling = false;
   const $ = (sel) => view.querySelector(sel);
   const box = () => $('#mk-s5');
-  const ready = () => !!st.result && !st.result.cancelled && st.result.saved.length > 0;
+  // saved by the run, or later by «Зберегти відкриті» (a run of Dedication alone saves nothing by itself)
+  const ready = () => !!st.result && !st.result.cancelled && (st.result.saved.length + (st.finished?.saved.length || 0)) > 0;
+  const picked = () => sl.pick || new Set(st.only ? st.only.flatMap((k) => SLIDES_OF[k] || []) : ALL);
   const folder = () => st.result?.folder || '';
   const book = () => st.result?.workshop || '';   // the Workshop book the run was for
   const target = () => (book() ? `workshop=${encodeURIComponent(book())}` : `folder=${encodeURIComponent(folder())}`);
@@ -113,8 +120,10 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
         <label class="field"><span class="field-label">Сторінок</span><input class="input num" type="number" min="1" max="999" data-num="pages" value="${sl.numbers.pages}"></label>
         <label class="field"><span class="field-label">Віршів</span><input class="input num" type="number" min="1" max="999" data-num="poems" value="${sl.numbers.poems}"></label>
       </div>
-      <div class="sl-ghosts" aria-hidden="true">${TITLES.map((t, i) => html`<div class="sl-ghost"><span class="num">${i + 1}</span><small>${t}</small></div>`)}</div>
-      <button type="button" class="btn btn-primary btn-block" data-act="sl-make">${ic('images')}Зробити слайди</button>`;
+      <div class="sl-ghosts">${TITLES.map((t, i) => html`<label class="sl-ghost check ${picked().has(ALL[i]) ? 'on' : ''}" data-tip="Робити цей слайд">
+        <input type="checkbox" data-act="sl-pick" data-slide="${ALL[i]}" ${picked().has(ALL[i]) ? 'checked' : ''} aria-label="Робити слайд ${i + 1}">
+        <span class="num">${i + 1}</span><small>${t}</small></label>`)}</div>
+      <button type="button" class="btn btn-primary btn-block" data-act="sl-make">${ic('images')}${picked().size === ALL.length ? 'Зробити слайди' : picked().size ? `Зробити слайди: ${picked().size} з ${ALL.length}` : 'Оберіть слайди'}</button>`;
   }
 
   function runHtml() {
@@ -149,18 +158,22 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   // ---------------------------------------------------------------- making them
   async function make(fresh = false) {
     if (sl.run || st.run) return;
-    if (st.pending) {  // Cover 1 and Dedication are still open in Photoshop: slides 2 and 3 need them
-      toast('Спершу «Зберегти відкриті»: Cover 1 і Dedication потрібні для слайдів 2 і 3', 'info');
+    const slides = ALL.filter((s) => picked().has(s));
+    if (!slides.length) { toast('Позначте хоча б один слайд', 'info'); return; }
+    const waiting = slides.filter((s) => NEEDS[s] && st.pending?.open?.includes(NEEDS[s]));
+    if (waiting.length) {  // Cover 1 / Dedication are still open in Photoshop: the slides with them have to wait
+      toast(`Спершу «Зберегти відкриті»: ${waiting.map((s) => NEEDS[s]).join(' і ')} потрібн${waiting.length > 1 ? 'і' : 'ий'} для слайд${waiting.length > 1 ? 'ів' : 'а'} ${waiting.map((s) => s.slice(5)).join(' і ')}`, 'info');
       blinkFinish();
       return;
     }
+    const whole = slides.length === ALL.length;
     sl.error = '';
-    sl.run = { step: 'Починаю…', percent: 0, rows: TITLES.map((title, i) => ({ slide: `slide${i + 1}`, title, state: 'wait' })) };
+    sl.run = { step: 'Починаю…', percent: 0, rows: slides.map((s) => ({ slide: s, title: TITLES[ALL.indexOf(s)], state: 'wait' })) };
     paint();
     busy(true);
     const order = [...(st.result?.saved || []), ...(st.finished?.saved || [])];
     try {
-      const res = await runJob(post('/api/slides/make', { folder: folder(), workshop: book(), order, book: st.book?.id || '', numbers: sl.numbers, fresh, scheme: sl.scheme || undefined }), (job) => {
+      const res = await runJob(post('/api/slides/make', { folder: folder(), workshop: book(), order, book: st.book?.id || '', numbers: sl.numbers, fresh: fresh && whole, scheme: sl.scheme || undefined, ...(whole ? {} : { slides }) }), (job) => {
         if (gone || !sl.run) return;
         Object.assign(sl.run, { step: job.step, percent: job.percent, rows: job.partial?.rows || sl.run.rows });
         patchRun();
@@ -222,6 +235,13 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   // ---------------------------------------------------------------- events (from mockups.js's one listener)
   async function act(a, t) {
     if (a === 'sl-make') { make(); return true; }
+    if (a === 'sl-pick') {
+      const next = new Set(picked());
+      next[t.checked ? 'add' : 'delete'](t.dataset.slide);
+      sl.pick = next;
+      paint();
+      return true;
+    }
     if (a === 'sl-scheme') {
       menu(t, (sl.schemes || []).map((x) => ({ label: `${x.name}${x.default ? ' · для нових книг' : ''}`, icon: 'template', on: x.key === schemeNow()?.key,
         onClick: () => { sl.scheme = x.default ? '' : x.key; paint(); } })));
@@ -247,10 +267,10 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   return {
     paint, act, input, refresh,
     wake() { refresh(); if (folder()) pollCuts(); },
-    runStarted() { sl.folder = ''; },   // a new Photoshop run: its pictures' cut-outs are followed again
+    runStarted() { sl.folder = ''; sl.pick = null; },   // a new Photoshop run: its pictures' cut-outs are followed again
     keep: () => !!(sl.run || sl.result),
     running: () => !!sl.run,
-    reset() { Object.assign(sl, { run: null, result: null, error: '', cuts: null, folder: '' }); clearTimeout(timer); paint(); },
+    reset() { Object.assign(sl, { run: null, result: null, error: '', cuts: null, folder: '', pick: null }); clearTimeout(timer); paint(); },
     stop() { gone = true; clearTimeout(timer); },
   };
 }

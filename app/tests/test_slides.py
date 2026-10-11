@@ -401,8 +401,8 @@ class MakingThem(Base):
             res = work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book)
         self.assertEqual(res["set"], book)
         etsy = core.WORKSHOP_BOOKS / book / "etsy"   # a Workshop book's slides: in its etsy/ folder (30.09.2026)
-        numbered = ["05 Listing 1.png", "10 Listing 2.png", "07 Listing 3.png", "08 Listing 4.png", "12 Listing 5.png",
-                    "13 Listing 6.png"]                     # each with its number in the listing's order
+        numbered = ["06 Listing 1.png", "11 Listing 2.png", "08 Listing 3.png", "09 Listing 4.png", "13 Listing 5.png",
+                    "14 Listing 6.png"]                     # each with its number in the listing's order
         self.assertEqual(sorted(p.name for p in etsy.glob("*.png")), sorted(numbered))
         self.assertFalse(list(out.glob("Listing*.png")))
         self.assertEqual([p["name"] for p in res["pictures"]], numbered)
@@ -412,6 +412,45 @@ class MakingThem(Base):
         self.assertEqual(res["folder"], str(etsy))
         self.assertIn("page30", store.read_set(book)["pictures"])
         self.assertTrue(workshop.state(core.WORKSHOP_BOOKS / book)["marks"]["mockups"])   # the step ticked itself
+
+    def test_one_slide_alone_leaves_the_other_slides_as_they_were(self):
+        """The owner, 09.10.2026: only Dedication was redone — only slide 3 is made again; the other five, their mockups
+        in the set and the Workshop's «Мокапи» step stay as they are."""
+        book = self.workshop_book()
+        out = store.mockups_dir(book)
+        for n in (2, 6, 10, 14):
+            mockup(out / f"2. Open 1 ({n}-{n + 1}).png")
+        mockup(out / "1. Cover 1.png")
+        mockup(out / "4. Dedication.png", (60, 60, 200))
+        Image.new("RGB", (400, 400), "white").save(core.WORKSHOP_BOOKS / book / "pictures" / "30.png")
+        with mock.patch.object(bake, "run_browser", pretend_browser([])), mock.patch.object(bake, "browser", lambda: "x"):
+            work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book)
+        etsy = core.WORKSHOP_BOOKS / book / "etsy"
+        before = {p.name: p.stat().st_mtime_ns for p in etsy.glob("*.png")}
+        self.assertEqual(len(before), 6)
+        workshop.set_mark(book, "mockups", False)
+        old_books = dict(store.read_set(book)["books"])
+        time.sleep(0.05)
+        calls = []
+        mockup(out / "4. Dedication (2).png", (30, 200, 30))                   # the redone one
+        with mock.patch.object(bake, "run_browser", pretend_browser(calls)), mock.patch.object(bake, "browser", lambda: "x"):
+            res = work.make(quiet_job(), out, "x", ["4. Dedication (2).png"], None, {}, self.root, "http://127.0.0.1:1",
+                            "tok", book=book, only=["slide3"])
+        self.assertEqual(len(calls), 1)                                         # one slide drawn
+        self.assertTrue(any("s=slide3" in a for a in calls[0]))
+        rec = store.read_set(book)
+        self.assertEqual(rec["books"], old_books)                               # the other slides' mockups are kept
+        self.assertEqual(rec["pictures"]["dedication"]["source"], "4. Dedication (2).png")
+        self.assertIn("page30", rec["pictures"])
+        after = {p.name: p.stat().st_mtime_ns for p in etsy.glob("*.png")}
+        self.assertEqual(set(after), set(before))
+        self.assertEqual([n for n in after if after[n] != before[n]], ["08 Listing 3.png"])
+        self.assertEqual(len(res["pictures"]), 6)                               # the card still shows all six
+        self.assertEqual(res["missing"], [])
+        self.assertFalse(workshop.state(core.WORKSHOP_BOOKS / book)["marks"].get("mockups"))   # a partial run ticks nothing
+        with self.assertRaises(UserError):                                      # nothing for slide 5 in the folder
+            work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book,
+                      only=["slide5"])
 
     def looks(self, book: str, *names: str) -> None:
         for i, name in enumerate(names):
@@ -431,7 +470,7 @@ class MakingThem(Base):
         with mock.patch.object(bake, "run_browser", pretend_browser(calls)), mock.patch.object(bake, "browser", lambda: "x"):
             res = work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book)
         self.assertEqual(len(calls), 7)
-        self.assertEqual(res["pictures"][-1]["name"], "15 Listing 7.png")      # the listing's place: last for now
+        self.assertEqual(res["pictures"][-1]["name"], "16 Listing 7.png")      # the listing's place: last for now
         rec = store.read_set(book)
         self.assertEqual([rec["pictures"][s]["label"] for s in store.HERO_SLOTS if s in rec["pictures"]],
                          ["B1", "B2", "B3", "B10"])                            # by their numbers

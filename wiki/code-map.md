@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-10-06
+updated: 2026-10-09
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -194,6 +194,31 @@ code:
 | [test_wiki.py](../app/tests/test_wiki.py) | The wiki matches the code |
 
 More detail — [dev/testing.md](dev/testing.md).
+
+## The Canva extension: `canva-extension/`
+
+Not part of the server — a Chrome extension the owner loads unpacked ([Canva extension](features/canva-extension.md)).
+
+| File | What it does | Main names |
+|---|---|---|
+| [manifest.json](../canva-extension/manifest.json) | Manifest V3: the three scripts in Canva's page world, the icons | — |
+| [book.js](../canva-extension/book.js) | A book folder → the plan of pages (no Canva), tested in node | textSections, textPageOf, buildPlan, parsePages, uploadName |
+| [canva.js](../canva-extension/canva.js) | Drives the Canva editor: pages, frames, the upload, the sphere, the text, its font and size | UI, STYLE, openPage, putPicture, addSphere, addText, styleText, run |
+| [panel.js](../canva-extension/panel.js) | The panel: the book folder, the shelf of spreads, the reader, «Розкласти» | readFolder, drawShelf, focus |
+| [README.md](../canva-extension/README.md) | Install and use, in Ukrainian, for the owner | — |
+| `icons/` | Book Studio's icon at 16–128 px | — |
+
+## The Etsy SEO studio: `seo/`
+
+| File | Purpose | Main |
+|---|---|---|
+| [seo/seo.py](../seo/seo.py) | The keyword database and the SEO checks behind `/etsy-seo`: imports (eRank tag reports, old competitor listings, eRank text), numbers per phrase, the 13-tag picker, the title/tag lint | `evaluate()`, `group_key()`, `parse_compact()`, `import_payload()`, `cmd_pick()`, `cmd_lint()`, `title_phrases()`, `blocked()` |
+| [seo/README.md](../seo/README.md) | What is where in `seo/` | — |
+| [seo/knowledge/rules.md](../seo/knowledge/rules.md) | What is known about Etsy search and eRank, with evidence levels and sources | — |
+| [seo/knowledge/erank-browser.md](../seo/knowledge/erank-browser.md) | How the agent reads eRank in the browser pane: pages, costs, the JS snippets | — |
+| [seo/knowledge/description-template.md](../seo/knowledge/description-template.md) | The owner's listing description with the parts that change per book | — |
+| [seo/knowledge/blocklist.tsv](../seo/knowledge/blocklist.tsv) | Phrases never to use, with the reason | — |
+| [.claude/skills/etsy-seo/SKILL.md](../.claude/skills/etsy-seo/SKILL.md) | The agent's steps for a book's SEO | — |
 
 ## Related
 

@@ -59,20 +59,26 @@ def rows(states: dict[str, str]) -> list[dict]:
 
 def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Path | None, numbers: dict,
          templates_dir: Path, base: str, token: str, book: str | None = None, fresh: bool = False,
-         scheme: str | None = None) -> dict:
+         scheme: str | None = None, only: list[str] | None = None) -> dict:
     """`book` — the Workshop book the mockups are for: its slides live in its folder, a second time keeps the owner's
-    six scenes (only the pictures are new) unless `fresh`; page 30 is the book's own; its «Мокапи» step ticks."""
+    six scenes (only the pictures are new) unless `fresh`; page 30 is the book's own; its «Мокапи» step ticks.
+    `only` — the slides to make (09.10.2026: one slide not prepared is redone alone): only their mockups are cut and
+    put in, only they are baked, the other slides stay as they were; the «Мокапи» step is not ticked by it."""
     started = time.time()
     if not folder.is_dir():
         raise UserError("Папку з мокапами не знайдено.")
+    only = [s for s in store.SLIDES if s in (only or [])] or None
+    wanted = {slot for s in (only or store.SLIDES) for slot in store.SLIDE_SLOTS[s]}
     found = mockups_in(folder, order)
-    slots = slots_of(found)
-    if not slots:
-        raise UserError("У папці немає мокапів Open 1, Open 2 чи Cover 1 — слайдам нема що показати.")
+    slots = {k: v for k, v in slots_of(found).items() if k in wanted}
+    use_dedication = bool(found["dedication"]) and "dedication" in wanted
+    if not slots and not (only and use_dedication):
+        raise UserError("У папці немає мокапів для цих слайдів — слайдам нема що показати." if only else
+                        "У папці немає мокапів Open 1, Open 2 чи Cover 1 — слайдам нема що показати.")
     states: dict[str, str] = {}
     job.share({"phase": "cut", "rows": rows(states)})
     cuts: dict[str, Path] = {}
-    todo = list(slots.items()) + ([("dedication", found["dedication"][0])] if found["dedication"] else [])
+    todo = list(slots.items()) + ([("dedication", found["dedication"][0])] if use_dedication else [])
     for i, (slot, png) in enumerate(todo):
         job.progress(f"Вирізаю без фону · {i + 1} з {len(todo)}", 40 * i / len(todo))
         while cutout.cutter.status(folder).get(png.name) in ("wait", "work"):   # the background cutter has it
@@ -84,7 +90,8 @@ def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Pat
                 raise
             core.log.warning("Slides: Dedication not cut (%s) — used whole", err)
     job.progress("Складаю слайди", 42)
-    rec = store.new_set(name, str(folder), numbers, book=book, fresh=fresh, scheme=scheme)
+    rec = store.new_set(name, str(folder), numbers, book=book, fresh=fresh and not only, scheme=scheme,
+                        partial=bool(only))
     for slot, cut_folder in cuts.items():
         if slot != "dedication":
             store.put_book(rec, slot, cut_folder, slots[slot].name)
@@ -92,20 +99,21 @@ def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Pat
         with Image.open(cuts["dedication"] / "book.png") as b_, Image.open(cuts["dedication"] / "shadow.png") as s_:
             store.put_picture(rec, "dedication", cutout.combined(b_.convert("RGBA"), s_.convert("RGBA")),
                               name=found["dedication"][0].name, cut=True)
-    elif found["dedication"]:
+    elif use_dedication:
         store.put_picture(rec, "dedication", found["dedication"][0])
     page30 = page30 if page30 and page30.is_file() else _book_page30(book)
-    if page30:
+    if page30 and "page30" in wanted:
         store.put_picture(rec, "page30", page30)
-    if book:
+    if book and (not only or "slide7" in only):
         put_heroes(rec, book)
     store.write_set(rec)
     store.forget_old_sets()
-    baked = bake_set(job, rec, store.shown(rec["id"], rec), base, token, states)
-    if book:
+    shown = [s for s in store.shown(rec["id"], rec) if not only or s in only]
+    baked = bake_set(job, rec, shown, base, token, states)
+    if book and not only:
         _tick(book)
     missing = [store.SLOT_LABEL[s] for s in store.BOOK_SLOTS + store.PICTURE_SLOTS
-               if s not in rec["books"] and s not in rec["pictures"]]
+               if s in wanted and s not in rec["books"] and s not in rec["pictures"]]
     return {"set": rec["id"], "folder": str(store.out_dir(rec)), "pictures": baked, "missing": missing,
             "seconds": round(time.time() - started)}
 

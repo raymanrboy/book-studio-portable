@@ -249,9 +249,14 @@ def _make(req: Request):
     base, token = base_url(), SESSION_TOKEN
     fresh = bool(body.get("fresh"))
     scheme = str(body.get("scheme") or "") or None
-    core.log.info("Slides: making the six for «%s» from %s", name, folder)
+    only = body.get("slides")
+    if only is not None:
+        if not isinstance(only, list) or not only or any(s not in store.SLIDES for s in only):
+            raise ApiError("Некоректний перелік слайдів.")
+        only = [str(s) for s in only]
+    core.log.info("Slides: making %s for «%s» from %s", ", ".join(only) if only else "the six", name, folder)
     job = jobs.start("slides", lambda j: work.make(j, folder, name, order, page30, numbers, templates_dir, base, token,
-                                                   book=workshop or None, fresh=fresh, scheme=scheme),
+                                                   book=workshop or None, fresh=fresh, scheme=scheme, only=only),
                      exclusive=EXCLUSIVE)
     return {"jobId": job.id}
 

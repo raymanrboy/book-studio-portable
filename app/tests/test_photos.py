@@ -38,7 +38,7 @@ def seconds(path: Path) -> float:
     return int(h) * 3600 + int(m) * 60 + float(s)
 
 
-def video(path: Path, length: int = 5) -> Path:
+def video(path: Path, length: float = 5) -> Path:
     """A made-up video with sound (ffmpeg's test pattern) — as Gemini Omni would give one."""
     path.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run([photos.ffmpeg(), "-hide_banner", "-loglevel", "error", "-y",
@@ -80,7 +80,7 @@ class TheTemplates(Base):
     def test_five_categories_in_the_pages_order_with_their_templates(self):
         cats = photos.templates()
         self.assertEqual([c["key"] for c in cats],
-                         ["main", "open-book", "grandma", "child", "shelf", "video", "hands", "size"])
+                         ["main", "product", "grandma", "child", "shelf", "video", "size"])
         self.assertEqual([t["name"] for t in cats[0]["templates"]],
                          ["main-01-pink-roses.png", "main-02-leaf-shadows.png", "main-03-fairy-lights.png"])
         (self.templates / "main" / "notes.txt").write_text("x")   # only pictures count
@@ -118,16 +118,16 @@ class ThePrompts(Base):
             self.assertIn("no white surface", p["no_blank_left"])
             self.assertIn("never mirrored", " ".join(p["cover_fidelity"]))
         texts = {c["key"]: photos.prompt(c["key"]) for c in photos.PHOTOS}
-        self.assertEqual(len(set(texts.values())), 7)                       # each its own scene
+        self.assertEqual(len(set(texts.values())), 6)                       # each its own scene
         self.assertIn("spine", json.loads(texts["grandma"])["inputs"]["image_2"])   # the flat Canva cover
-        self.assertIn("open spread", " ".join(json.loads(texts["open-book"])["book_placement"]))
+        self.assertIn("callout", " ".join(json.loads(texts["product"])["book_placement"]))
 
 
 class InABook(Base):
     def test_the_clipboard_goes_template_then_the_categorys_reference_then_the_prompt(self):
         refs = {"main": "1. Cover 1.png", "child": "1. Cover 1.png", "shelf": "1. Cover 1.png",
-                "open-book": "Cover & Open 1 (6-7).png", "grandma": "canva-cover.png", "video": "1. Cover 1.png",
-                "hands": "1. Cover 1.png", "size": "1. Cover 1.png"}
+                "product": "1. Cover 1.png", "grandma": "canva-cover.png", "video": "1. Cover 1.png",
+                "size": "1. Cover 1.png"}
         for c in photos.CATEGORIES:
             template = photos.templates()[[x["key"] for x in photos.CATEGORIES].index(c["key"])]["templates"][0]["name"]
             label, items = photos.items(H, c["key"], template)
@@ -171,7 +171,7 @@ class InABook(Base):
         card = next(c for c in state["cards"] if c["key"] == "grandma")
         self.assertEqual((card["photo"], card["template"]), ("03 photo-grandma.png", "grandma-02-baby-evening.png"))
         step = next(s for s in books.detail(H)["steps"] if s["key"] == "photos")
-        self.assertEqual((step["state"], step["count"], step["total"]), ("part", 1, 8))
+        self.assertEqual((step["state"], step["count"], step["total"]), ("part", 1, 7))
         # again: the new one in its place, the old one in .replaced
         self.s.start_photo(H, "grandma", "grandma-01-baby-daylight.png")
         photo(self.downloads / "Gemini_2.jpg", (10, 200, 10))
@@ -186,7 +186,7 @@ class InABook(Base):
         for c in photos.PHOTOS:
             photos.place(H, c["key"], photo(core.data_path("tmp", "p.png")), "p.png")
         self.assertEqual(next(s for s in books.detail(H)["steps"] if s["key"] == "photos")["state"], "part")
-        (self.dir / H / "etsy" / "video-hands.mp4").write_bytes(b"a video")   # the video category counts too
+        (self.dir / H / "etsy" / "video-video.mp4").write_bytes(b"a video")   # the video category counts too
         self.assertEqual(next(s for s in books.detail(H)["steps"] if s["key"] == "photos")["state"], "done")
         books.set_mark(S, "photos", True)                           # a category skipped: ticked by hand
         self.assertEqual(next(s for s in books.detail(S)["steps"] if s["key"] == "photos")["state"], "done")
@@ -200,60 +200,67 @@ class InABook(Base):
                                   body_to_file=lambda tmp, limit: shutil.copyfile(src, tmp))
             return routes._place(req)
         self.assertEqual(drop("photo:shelf")["note"], "Фото «На полиці» на місці")
-        self.assertTrue((self.dir / S / "etsy" / "14 photo-shelf.png").is_file())
+        self.assertTrue((self.dir / S / "etsy" / "15 photo-shelf.png").is_file())
         drop("canva-cover", "Cover.png")
         self.assertTrue((self.dir / S / "mockups" / "canva-cover.png").is_file())
         self.assertEqual(photos.references(self.dir / S)["canva-cover"], "canva-cover.png")
         self.assertEqual(books.mockups_state(self.dir / S)["mockups"], 0)   # the Canva cover is no mockup
-        self.assertIn("etsy/14 photo-shelf.png", books.detail(S)["v"])     # the page redraws when a photo comes
+        self.assertIn("etsy/15 photo-shelf.png", books.detail(S)["v"])     # the page redraws when a photo comes
 
 
 class TheOmniVideo(Base):
     def test_the_owners_video_prompt_goes_in_as_it_is(self):
-        text = photos.prompt("hands")
+        text = photos.prompt("video")
         self.assertTrue(text.startswith("Animate this exact scene."))           # plain text, not a JSON object
-        self.assertIn("the same size relative to her hands", text)
+        self.assertIn("pushes in towards the small book with confident momentum", text)   # the camera comes in
+        self.assertIn("A woman's right hand and forearm enter from the right side", text)   # the right hand, from the right
+        self.assertIn("grips the small book firmly by its lower right corner", text)        # a corner, not the page edge
+        self.assertIn("tilts it back gently, about 10 degrees", text)                      # a little tilt, a number
+        self.assertIn("carries the small book out of the frame", text)                     # every second has its motion
+        self.assertIn("handheld phone shot", text)                                          # the handheld feel
+        for word in ("open", "page", "flip", "turn"):                       # what a generator must not be given the idea of
+            self.assertNotIn(word, text.lower())
         self.assertIn("small book", text)
-        st = self.s.start_photo(H, "hands", "hands-01-living-room.png")
+        st = self.s.start_photo(H, "video", "video-01-sofa.png")
         self.assertEqual(st["active"]["items"], ["фото-заготовка", "Cover 1", "промпт"])
         self.assertTrue(st["active"]["catch"] and st["active"]["video"])
         self.s.next_item()
         self.s.next_item()
         self.assertEqual(self.clip(), text)
-        self.assertTrue(next(c for c in books.detail(H)["photos"]["cards"] if c["key"] == "hands")["omni"])
+        self.assertTrue(next(c for c in books.detail(H)["photos"]["cards"] if c["key"] == "video")["omni"])
         with self.assertRaises(ApiError):                                        # a picture is no video
-            photos.place(H, "hands", photo(core.data_path("tmp", "p.png")), "p.png")
+            photos.place(H, "video", photo(core.data_path("tmp", "p.png")), "p.png")
 
     @unittest.skipUnless(HAS_FFMPEG, "no ffmpeg on this PC")
-    def test_the_video_is_caught_its_first_2_seconds_cut_and_the_uncut_kept(self):
-        self.s.start_photo(H, "hands", "hands-01-living-room.png")
+    def test_the_video_is_caught_its_first_half_second_cut_and_the_uncut_kept(self):
+        self.s.start_photo(H, "video", "video-01-sofa.png")
         photo(self.downloads / "Gemini.png")                  # a picture is not what this category waits for
         video(self.downloads / "Gemini_Omni.mp4", length=5)
         self.look()
         etsy, originals = self.dir / H / "etsy", self.dir / H / "originals"
         self.assertTrue((self.downloads / "Gemini.png").exists())
         self.assertFalse((self.downloads / "Gemini_Omni.mp4").exists())          # moved out of Downloads
-        self.assertAlmostEqual(seconds(etsy / "02 video-hands.mp4"), 3, delta=0.2)   # 5 s − the first 2
-        self.assertAlmostEqual(seconds(originals / "video-hands.mp4"), 5, delta=0.2)
+        self.assertAlmostEqual(seconds(etsy / "02 video-video.mp4"), 4.5, delta=0.2)   # 5 s − the first 0.5
+        self.assertAlmostEqual(seconds(originals / "video-video.mp4"), 5, delta=0.2)
         self.assertIsNone(self.s.status()["active"])
-        self.assertIn("перші 2 с обрізано", self.s.status()["last"]["note"])
-        card = next(c for c in books.detail(H)["photos"]["cards"] if c["key"] == "hands")
-        self.assertEqual((card["photo"], card["template"]), ("02 video-hands.mp4", "hands-01-living-room.png"))
-        self.assertEqual(books.media_file(H, "etsy", "02 video-hands.mp4").name, "02 video-hands.mp4")
+        self.assertIn("перші 0,5 с обрізано", self.s.status()["last"]["note"])
+        card = next(c for c in books.detail(H)["photos"]["cards"] if c["key"] == "video")
+        self.assertEqual((card["photo"], card["template"]), ("02 video-video.mp4", "video-01-sofa.png"))
+        self.assertEqual(books.media_file(H, "etsy", "02 video-video.mp4").name, "02 video-video.mp4")
         # again, dropped by hand: the new one in its place, both old ones in .replaced
-        photos.place(H, "hands", video(core.data_path("tmp", "v.mov"), length=4), "v.mov")
-        self.assertEqual(sorted(p.name for p in etsy.iterdir()), ["02 video-hands.mp4"])
-        self.assertAlmostEqual(seconds(etsy / "02 video-hands.mp4"), 2, delta=0.2)
-        self.assertTrue((originals / "video-hands.mov").is_file())
-        self.assertEqual(len(list((self.dir / H / ".replaced").glob("*video-hands.mp4"))), 2)
-        photos.remove(H, "hands")
+        photos.place(H, "video", video(core.data_path("tmp", "v.mov"), length=4), "v.mov")
+        self.assertEqual(sorted(p.name for p in etsy.iterdir()), ["02 video-video.mp4"])
+        self.assertAlmostEqual(seconds(etsy / "02 video-video.mp4"), 3.5, delta=0.2)
+        self.assertTrue((originals / "video-video.mov").is_file())
+        self.assertEqual(len(list((self.dir / H / ".replaced").glob("*video-video.mp4"))), 2)
+        photos.remove(H, "video")
         self.assertFalse(list(etsy.iterdir()))
 
     @unittest.skipUnless(HAS_FFMPEG, "no ffmpeg on this PC")
     def test_a_video_too_short_to_cut_is_said_and_nothing_changes(self):
         with self.assertRaises(ApiError) as e:
-            photos.place(H, "hands", video(core.data_path("tmp", "short.mp4"), length=1), "short.mp4")
-        self.assertIn("2 с", str(e.exception))
+            photos.place(H, "video", video(core.data_path("tmp", "short.mp4"), length=0.3), "short.mp4")
+        self.assertIn("0,5 с", str(e.exception))
         self.assertFalse((self.dir / H / "etsy").exists() and list((self.dir / H / "etsy").iterdir()))
 
 
@@ -278,15 +285,15 @@ class TheEtsyFolder(Base):
         m, etsy = self.dir / H / "mockups", self.dir / H / "etsy"
         photo(m / "All & Open 1 (8-9).png")
         mockups._to_etsy({"folder": str(m)})
-        self.assertEqual(sorted(p.name for p in etsy.iterdir()), ["04 All & Open 1 (8-9).png", "06 Cover & Open 1 (6-7).png"])
+        self.assertEqual(sorted(p.name for p in etsy.iterdir()), ["04 All & Open 1 (8-9).png", "07 Cover & Open 1 (6-7).png"])
         self.assertTrue((m / "All & Open 1 (8-9).png").is_file())            # copied, the mockup stays
         self.assertEqual(photos.scenes_to_etsy(self.dir / H), [])           # the same ones: nothing again
         import os
         newer = photo(m / "Cover & Open 1 (12-13).png")
         os.utime(newer, (newer.stat().st_mtime + 60,) * 2)
         self.assertEqual(photos.scenes_to_etsy(self.dir / H), ["Cover & Open 1 (12-13).png"])
-        self.assertFalse((etsy / "06 Cover & Open 1 (6-7).png").exists())
-        self.assertTrue((etsy / "06 Cover & Open 1 (12-13).png").is_file())
+        self.assertFalse((etsy / "07 Cover & Open 1 (6-7).png").exists())
+        self.assertTrue((etsy / "07 Cover & Open 1 (12-13).png").is_file())
         self.assertTrue(any((self.dir / H / ".replaced").glob("*Cover & Open 1 (6-7).png")))
         mockups._to_etsy({"folder": str(core.data_path("somewhere", "mockups"))})   # not a Workshop book: nothing
 
@@ -298,28 +305,24 @@ class TheEtsyFolder(Base):
         photos.scenes_to_etsy(book)                                  # 04 and 06 (Cover & Open 1 (6-7) — sample)
         for n in range(1, 7):                                       # the slides as a bake leaves them, then put in order
             photo(etsy / f"Listing {n}.png")
-        for key in ("main", "grandma", "child", "size", "shelf", "video"):
+        for key in ("main", "grandma", "child", "size", "shelf"):
             photos.place(H, key, photo(core.data_path("tmp", "p.png")), "p.png")
-        (etsy / "video-hands.mp4").write_bytes(b"a video")
+        (etsy / "video-video.mp4").write_bytes(b"a video")
         photo(etsy / "my own extra.png")                            # the owner's own: no number, after the rest
         photos.tidy_etsy(book)
         self.assertEqual(sorted(p.name for p in etsy.iterdir()), [
-            "01 photo-main.png", "02 video-hands.mp4", "03 photo-grandma.png", "04 All & Open 1 (8-9).png",
-            "05 Listing 1.png", "06 Cover & Open 1 (6-7).png", "07 Listing 3.png", "08 Listing 4.png",
-            "09 photo-child.png", "10 Listing 2.png", "11 photo-size.png", "12 Listing 5.png", "13 Listing 6.png",
-            "14 photo-shelf.png", "my own extra.png", "photo-video.png"])
+            "01 photo-main.png", "02 video-video.mp4", "03 photo-grandma.png", "04 All & Open 1 (8-9).png",
+            "06 Listing 1.png", "07 Cover & Open 1 (6-7).png", "08 Listing 3.png", "09 Listing 4.png",
+            "10 photo-child.png", "11 Listing 2.png", "12 photo-size.png", "13 Listing 5.png", "14 Listing 6.png",
+            "15 photo-shelf.png", "my own extra.png"])
         self.assertEqual(photos.tidy_etsy(book), [])                # already in order: nothing moves
         self.assertEqual(photos.scenes_to_etsy(book), [])           # a numbered copy is the same one
         self.assertEqual(books.mockups_state(book)["slides"], 6)
-        self.assertEqual(store._baked_file(book, "Listing 3.png").name, "07 Listing 3.png")
-        # the open-book photo takes Cover & Open 1's place; without it, the mockup comes back
-        photos.place(H, "open-book", photo(core.data_path("tmp", "o.png")), "o.png")
-        self.assertTrue((etsy / "06 photo-open-book.png").is_file())
-        self.assertFalse(any(p.name.endswith("Cover & Open 1 (6-7).png") for p in etsy.iterdir()))
-        self.assertTrue((m / "Cover & Open 1 (6-7).png").is_file())   # the mockup itself stays in mockups/
-        self.assertEqual(photos.scenes_to_etsy(book), [])           # not copied back while the photo is there
-        photos.remove(H, "open-book")
-        self.assertTrue((etsy / "06 Cover & Open 1 (6-7).png").is_file())
+        self.assertEqual(store._baked_file(book, "Listing 3.png").name, "08 Listing 3.png")
+        # the product demonstration goes last and leaves Cover & Open 1 where it is
+        photos.place(H, "product", photo(core.data_path("tmp", "o.png")), "o.png")
+        self.assertTrue((etsy / "05 photo-product.png").is_file())
+        self.assertTrue((etsy / "07 Cover & Open 1 (6-7).png").is_file())
 
 
 class TheMockupsKeepTheCanvaCover(Base):

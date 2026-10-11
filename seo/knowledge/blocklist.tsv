@@ -1,0 +1,16 @@
+# phrase<TAB>reason — never suggested, never passes lint. A leading ~ also blocks longer phrases that contain it.
+# Add with: seo.py block "<phrase>" --reason "<why>" [--contains]  (that goes to the database; put lasting ones here too)
+~angel baby	on Etsy "angel baby" means a baby who died (baby-loss, miscarriage gifts) — research 2026-10-08
+~memorial	our books are not memorial or sympathy gifts
+~in loving memory	our books are not memorial or sympathy gifts
+~sympathy	our books are not memorial or sympathy gifts
+~miscarriage	our books are not memorial or sympathy gifts
+baby memory book	our books have no pages to fill in (milestones, photos) — only for a book that really has them
+~photo book	we don't print the buyer's photos
+~digital download	we sell printed books only
+~printable	we sell printed books only
+~pdf	we sell printed books only
+~coloring book	not our product
+trick or threat	a misspelling (competitor tag)
+baby announcement	not our product (unless a book is made for that)
+pregnancy reveal	not our product (unless a book is made for that)

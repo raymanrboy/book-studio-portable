@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-10-06
+updated: 2026-10-08
 code: []
 ---
 # Glossary
@@ -104,6 +104,8 @@ Code paths below are relative to the repository root.
 | Два режими; режим роботи з замовленнями / режим створення лістингів | Until 2026-09-30 Orders and Listings, each its rail; now one labelled rail — the inks stay, following the area (orders orange, books cyan) | [features/modes.md](features/modes.md); [app.js](../app/web/js/app.js) `PLACES` |
 | Перемикач по кліку на головну іконку Бук Студіо | Gone on 2026-09-30: the brand icon is a mark in the area's ink; the places are labelled in the rail | [app.js](../app/web/js/app.js) `buildSidebar()`, `entryOf()` |
 | Книги (розділ) | «Книги»: the Workshop's books and the library's as the tabs «Майстерня · Бібліотека · Архів» | [pages/books.js](../app/web/js/pages/books.js) `mount()` |
+| Розширення для Canva, «Книга → Canva», «Розкласти», трафарет / шаблон Canva | The Chrome extension that lays a Workshop book into its Canva template (pictures, the sphere, the text); «трафарет» — the owner's word for that template | [features/canva-extension.md](features/canva-extension.md); [canva-extension/](../canva-extension/) |
+| Yellow gradient sphere, «бімба», світіння під текстом | The Canva element put under every page's text, the owner aligns it | [features/canva-extension.md](features/canva-extension.md) |
 | Інструменти; «кожен інструмент юзати окремо» | «Інструменти»: the tools that also work on their own (the Order Creator, the print archive, the Mockups, the photo mockups, the listing slides); inside an order or a book they open from its step | [pages/tools.js](../app/web/js/pages/tools.js) `mount()`; [places.js](../app/web/js/places.js) `TOOLS` |
 | Шлях (замовлення, книги); що далі | The path strip: an order's Canva · Файли · Вичитка · Друк · Відправка, a Workshop book's 11 steps | [path.js](../app/web/js/path.js) `pathHtml()` |
 | Архів друку (архів замовлень) | The print archive — among «Інструменти»; a printed order's card links to its entry | [features/archive.md](features/archive.md) |
@@ -132,8 +134,8 @@ Code paths below are relative to the repository root.
 | Фотомокапи, фото-мокап, фото з книгою | Lifestyle photos with a blank white book (grandmother, child, shelf, open book, the main flat lay) in which the generator puts our book; a Workshop book's step «Фото» and the «Фотомокапи» page | [features/photo-mockups.md](features/photo-mockups.md); [photos.py](../app/studio/photos.py) |
 | Заготовки (обкладинок), пустишка | A photo mockup's template — the photo with the blank white book; «пустишка» — the template without a book's cover (the page «Фотомокапи») | [features/photo-mockups.md](features/photo-mockups.md) `photos.templates()` |
 | Ковер (з Canva), обкладинка з архіву Canva | The book's flat cover as Canva exports it (back · spine · front) — the photo mockups' reference for the grandmother, kept as `mockups/canva-cover.png` | [features/photo-mockups.md](features/photo-mockups.md); `mockups._keep_canva_cover()` |
-| Книга в руках у людини | The photo mockups' video category: a woman holding the book, animated in Gemini Omni with the owner's prompt | [features/photo-mockups.md](features/photo-mockups.md) `photos.OMNI_PROMPTS` |
-| Omni, Gemini Omni | Google's video generator the owner animates the photo mockups in | [features/photo-mockups.md](features/photo-mockups.md) |
+| Для відео | The photo mockups' only video category: the closed book on a surface, animated in Gemini Omni / Google Flow (the camera glides in, a hand takes the book away) — the videos with people («Книга в руках у людини») were taken out 2026-10-07 | [features/photo-mockups.md](features/photo-mockups.md) `photos.OMNI_PROMPTS` |
+| Omni, Gemini Omni | Google's video generator the owner animates the photo mockups in (Google Flow does the same job) | [features/photo-mockups.md](features/photo-mockups.md) |
 | Папка etsy | A Workshop book's folder of what goes into its Etsy listing: the slides and the photo mockups | [features/workshop.md](features/workshop.md) |
 | Мокапи, мокапи для лістингу | Etsy listing pictures: the demo book dropped into Photoshop templates; also the utility's shortcut name | [features/mockups.md](features/mockups.md) `mockups.py` |
 | Трафарети (мастхев), шаблони мокапів | The PSD templates in `D:\Roman\Desktop\Трафарети мастхев` — **read-only** | [features/mockups.md](features/mockups.md#the-templates); [security.md](security.md) |
@@ -156,6 +158,10 @@ Code paths below are relative to the repository root.
 | Редактор (слайдів) | The Canva-like editor of the listing slides: layers, move, turn, resize, mirror, arc text | [pages/slides-editor.js](../app/web/js/pages/slides-editor.js) |
 | Зберегти відкриті (й закрити) | The button after a run: the templates left open, with the front cover fitted, saved as PNG next to the rest and closed | [mockups.py](../app/studio/mockups.py) `finish()`; [mockups.jsx](../app/studio/mockups.jsx) `finishOpen()` |
 | Тимчасові файли, «чистити за собою» | What a run leaves (template copies, prepared pictures, the unpacked book) and when it goes | [features/mockups.md](features/mockups.md#temporary-files) |
+
+| SEO, теги, назва лістингу, опис лістингу | A book's Etsy title (long, phrase blocks), 13 tags and description — made by the agent | [.claude/skills/etsy-seo/SKILL.md](../.claude/skills/etsy-seo/SKILL.md); [seo/seo.py](../seo/seo.py); [features/seo.md](features/seo.md) |
+| eRank, ліміт пошуків | The keyword tool the owner is signed in to in the browser pane (Pro, 200 searches a day) | [seo/knowledge/erank-browser.md](../seo/knowledge/erank-browser.md) |
+| База SEO, SEO Intelligence | The keyword database `seo/data/seo.sqlite` (the old `Etsy-Book-Pipeline/seo-intelligence` is an archive) | [seo/seo.py](../seo/seo.py) |
 
 ## The program in general
 

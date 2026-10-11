@@ -1,7 +1,7 @@
 ---
 title: Order matching and computing profit
 type: rule
-updated: 2026-10-06
+updated: 2026-10-08
 code:
   - app/studio/reconcile.py
   - app/studio/fees.py
@@ -31,7 +31,9 @@ of 2026-09-26).
 2. **By receipt number** — first Printify (`metadata.shop_order_id`, or a product's title), then Gelato
    (`orderReferenceId`). The first order that names the receipt wins, a live one before a dead one.
 3. **By the recipient's name** — first Printify, then Gelato (`is_name_match()`: identical, the same first and
-   last word, or one contains the other from 4 characters on); with several — the closest in time, live ones first.
+   last word, or one contains the other from 4 characters on) **and made from 1 day before to 30 days after the receipt**
+   (since 2026-10-08: a repeat buyer's old order was taken by her new receipt and the cost split); with several — the closest in
+   time, live ones first.
 4. One print order found by several receipts = a **bundled parcel**, the cost is split evenly.
 
 **Both number rules come before either name rule (since 2026-09-26).** Before, Printify-by-name ran before

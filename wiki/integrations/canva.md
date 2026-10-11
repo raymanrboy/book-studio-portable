@@ -1,13 +1,14 @@
 ---
 title: Canva — book templates
 type: integration
-updated: 2026-10-03
+updated: 2026-10-08
 code: []
 ---
 # Canva
 
 > The program doesn't work with Canva through an API: a book's passport only keeps a **link to the
-> template** (`canvaUrl`), and the order card opens it with a button.
+> template** (`canvaUrl`), and the order card opens it with a button. Filling a new book's template — the pictures, the
+> sphere and the text — is done by the separate Chrome extension ([Canva extension](../features/canva-extension.md), 2026-10-08).
 
 ## How the owner works in Canva
 

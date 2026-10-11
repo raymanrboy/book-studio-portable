@@ -54,9 +54,10 @@ def code_files() -> list[Path]:
     """Every code file of the program, found once per run. The walk never enters SKIP_DIRS: `data` holds gigabytes of the owner's files,
     and listing them only to drop them took ~3 s of every call."""
     if not _CODE_FILES:
-        for top, dirs, files in os.walk(APP):
-            dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-            _CODE_FILES.extend(Path(top, f) for f in files if Path(f).suffix.lower() in CODE_SUFFIXES)
+        for root in (APP, REPO / "seo"):        # seo/ — the Etsy SEO studio beside the program (2026-10-09)
+            for top, dirs, files in os.walk(root):
+                dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+                _CODE_FILES.extend(Path(top, f) for f in files if Path(f).suffix.lower() in CODE_SUFFIXES)
         _CODE_FILES.sort()
     return list(_CODE_FILES)
 

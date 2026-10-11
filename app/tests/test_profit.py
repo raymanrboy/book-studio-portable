@@ -13,6 +13,10 @@ RATES = {"EUR": 1.085, "GBP": 1.325}
 # The Profit Calculator counted an order billed in pounds as dollars; converted since 26.09.2026 (the rows below keep
 # every other number of it).
 IN_POUNDS = {"4100002931": 27.48, "4100034195": 22.23}
+# The Calculator matched by name with no time limit: one buyer's receipts months apart shared one print order (the cost
+# split between them, a July sale holding a September order). Since 2026-10-08 a name finds only an order made within a
+# month of the receipt; these rows keep the Calculator's Etsy money, their print-order part is whatever matching now says.
+NAME_ACROSS_MONTHS = {"4100014655", "4100021494", "4100023448", "4100026379", "4100042988", "4100044942"}
 
 
 class ProfitParity(unittest.TestCase):
@@ -33,11 +37,27 @@ class ProfitParity(unittest.TestCase):
                 self.assertEqual(row["pod_total_cost"], fees.r2(pounds * RATES["GBP"]))
                 self.assertEqual(row["profit"], fees.r2(row["etsy_net"] - row["pod_total_cost"]))
 
+    def test_a_print_order_found_by_name_is_never_shared_across_months(self):
+        by_order = {}
+        for row in self.rows.values():
+            order = row.get("printify_order_id") or row.get("gelato_order_id")
+            if order and row["match_type"] == "auto":
+                by_order.setdefault(order, []).append(reconcile.parse_time(row["created_at"]))
+        for order, times in by_order.items():
+            with self.subTest(order=order):
+                self.assertLessEqual(max(times) - min(times), 31 * reconcile.DAY_MS)
+
     def test_every_receipt(self):
         for exp in GOLDEN["expected"]:
             row = self.rows[exp["id"]]
             if exp["id"] in IN_POUNDS:
                 exp = {**exp, "cost": row["pod_total_cost"], "profit": row["profit"], "margin": row["profit_margin"]}
+            if exp["id"] in NAME_ACROSS_MONTHS:
+                exp = {**exp, "status": STATUS[row["match_type"]], "provider": row["pod_provider"],
+                       "p": row.get("printify_order_id"), "g": row.get("gelato_order_id"),
+                       "cost": row["pod_total_cost"], "prod": row["printify_production_cost"],
+                       "ship": row["printify_shipping_cost"], "profit": row["profit"],
+                       "margin": row["profit_margin"], "bundle": row.get("bundle_count")}
             with self.subTest(receipt=exp["id"]):
                 self.assertAlmostEqual(row["etsy_net"], exp["net"], places=9)
                 self.assertAlmostEqual(row["etsy_fees"], exp["fees"], places=9)

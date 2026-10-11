@@ -3,6 +3,187 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-11] update | Three Christmas animal books put through the pipeline into the Workshop
+- Books 38 (Night Before Christmas, foxes), 39 (Christmas Eve Goodnight, woodland animals) and 40 (Christmas with Grandma, bears) made by agents 0, 2, 3, 4, 5
+  in `pipeline/books/<n>.<slug>/agent/` (input, formula, story-blueprint, book-text, spread and end-page prompts, text-critic and preflight reports), style `CG`,
+  Tier S, no people (Santa never has a face). The book check: GO, 0 FAIL, 0 WARN for all three; the Workshop reads them (formula · story · text · prompts done,
+  17 rows). Not done: the pictures, the wide image (Agent 6), listing SEO. `wiki/owner/christmas-books.md` has a Workshop section. The `FG` preset's word
+  `storybook` (a generator trigger word) was replaced.
+
+## [2026-10-11] decision | Christmas focus: five books and the two competitor styles as presets
+- The owner picked the Christmas season: five books (Night Before Christmas family, First Christmas as Mom/Dad/…, Goodnight Christmas Eve, Christmas
+  with Grandma, Christmas Search & Find) in the new `owner/christmas-books.md`, and asked to copy the visual style of TheChildhoodKeeper and LunaBooksUS as
+  exactly as possible. Read from the pictures and written as two locked presets in `pipeline/playbook/knowledge/media-presets.md`: `CG` (Cozy Glow) and `FG`
+  (Festive Gouache); the style lists in `build-book.md`, `agents/2-story-blueprint.md`, `onboarding.md` now name them. Not yet tested by generating
+  a frame — the page says how to compare. More Christmas pictures added to `raw/2026-10-11-lunabooksus-book-pages/` (Dad version, flight over the cities).
+
+## [2026-10-11] ingest | Shop TheChildhoodKeeper + the owner's own shop compared; the listing-ideas backlog
+- The owner's five earlier links turned out to be one shop, TheChildhoodKeeper (20 books, 10 guest books, 16 greeting cards, 191 sales). Studied it
+  and the owner's MoonMeadowStories (35 books) as a signed-out visitor; the three shops compared, and new ideas collected into the new
+  `owner/listing-ideas.md` (40 ideas, ~90 listings, seasonal order) — the stock for two posts a day. Pictures: `raw/2026-10-11-thechildhoodkeeper-book-pages/`
+  (38 interior pages of 13 listings) and `raw/2026-10-11-thechildhoodkeeper-lifestyle-photos/` (13 cozy scenes), each with `SOURCE.md`. `owner/book-ideas.md`
+  now names the shop behind its first five entries and the source of the 16-face chart.
+
+## [2026-10-11] ingest | LunaBooksUS: lifestyle photos with a child and the book
+- At the owner's request, 11 marketing photos where a child or a parent holds/reads the book (one per scene — the shop reuses the same shoots) in
+  `raw/2026-10-11-lunabooksus-lifestyle-photos/` (+ `SOURCE.md`, ~2 MB); linked from `owner/book-ideas.md`.
+
+## [2026-10-11] ingest | LunaBooksUS: pictures of what is inside their books
+- At the owner's request, 102 listing photos of the book interiors (spreads, dedication pages, "pick a look" charts) from 22 listings, saved as
+  `raw/2026-10-11-lunabooksus-book-pages/` (+ `SOURCE.md`, ~14 MB, the images are the listings' own 794 px size, the CDN files rather than screen
+  captures); no marketing slides. Linked from `owner/book-ideas.md` with a reading of them (the art is not the soft style; common mechanics).
+
+## [2026-10-11] query | Competitor shop LunaBooksUS studied (signed-out, browser pane)
+- Read the shop's 75 personalized-book listing titles and compared them with the library; the gaps (family line for adults, big sister/brother,
+  ring bearer, birth-month, search-and-find, ABC, 2nd/3rd birthday, emotions, pets, newborn bedtime, Night Before Christmas, graduation)
+  are in `owner/book-ideas.md`. Per-listing sales not checked.
+
+## [2026-10-11] decision | Agents may browse Etsy as a visitor (never signed in)
+- The owner changed the Etsy rule: an agent may open etsy.com from the Wrocław PC to search listings and shops and analyse them, but never
+  signs in to his account. Updated `security.md` (rule 1), `AGENTS.md`, `/etsy-seo` skill, `seo/knowledge/rules.md`, `overview.md`,
+  `owner/working-with-owner.md`; reason in `decisions.md`. The program's own `etsyKyivOnly` setting and `_open_url()` guard are unchanged.
+
+## [2026-10-11] ingest | Idea: one character template for many children
+- A screenshot of a 16-face character chart (`raw/2026-10-11-character-chart-16-kids.webp`); the owner's idea — one template of children
+  for all later books and personalization — added to `owner/book-ideas.md`.
+
+## [2026-10-11] ingest | Book idea: Dream Big (for boys and girls)
+- Fifth listing + six screenshots (`raw/2026-10-11-dream-big-listing/`); added to `owner/book-ideas.md`. The owner noted it is for both boys and girls.
+
+## [2026-10-11] ingest | Book idea: Welcome to the World (woodland animals)
+- Fourth listing + five screenshots (`raw/2026-10-11-welcome-to-the-world-listing/`); added to `owner/book-ideas.md`. The owner: the same shop
+  and author as the previous three; "Patterns" now says all four are from one shop.
+
+## [2026-10-11] ingest | Book idea: big sister / big brother (same style, both genders)
+- Third Etsy listing + four screenshots (`raw/2026-10-11-big-sister-brother-listing/`); added to `owner/book-ideas.md`; the shared style
+  across the three listings recorded under "Patterns" (the owner said it is "absolutely the same" as the previous ones).
+
+## [2026-10-11] ingest | Book idea: Day with Daddy foxes (visual style, other activity)
+- Second Etsy listing + five screenshots (`raw/2026-10-11-day-with-daddy-listing/`); added to `owner/book-ideas.md`: the owner likes the
+  style, not the golf (too common) — fishing or mushroom picking instead.
+
+## [2026-10-11] ingest | Book idea: grandma & grandchild bears (visual style)
+- The owner sent an Etsy listing and five screenshots (`raw/2026-10-11-grandma-bear-listing/`); recorded as the first entry in
+  `owner/book-ideas.md` (he likes the drawing style and wants it copied; the style analysis is left for later).
+
+## [2026-10-11] update | New page: book ideas
+- `owner/book-ideas.md`: an empty shelf for the owner's book ideas (link, what he likes, status) with the entry template; added to `index.md`.
+
+## [2026-10-10] update | SEO for books 35–37, new titles and tags for 25–30 and 33
+- `/etsy-seo` for 35 (train), 36 (dinosaurs), 37 (first Christmas): `agent/listing-seo.md` with title, tags, description (30-page).
+- Books 25, 26, 27, 29, 30, 33 (published weeks ago, no sales yet): the owner chose to rework them now; title and tags only, each with its own
+  angle so the shop's listings don't share the same searches (29 = baptism prayer gift beside 20/21; 30 = religious Christmas beside 37; 33 off
+  the RankHero numbers). Halloween books 24 and 28 left until next season. 7 eRank searches (140 phrases).
+
+## [2026-10-10] update | SEO: new titles and tags for 9 old listings that don't sell
+- Folders 6, 8, 11, 13, 18, 19, 20, 21, 23 (0–1 sales Aug–Oct, the owner confirmed all are old): each got its own angle (e.g. 21 →
+  Catholic prayers, 13 → "one silly goose", 18 → baby shower) instead of tags shared with a selling listing; 80 phrases looked up
+  in eRank (4 searches). Saved as `old-<n>-…` in `my_listing` (2026-10-10) — check sales again mid-November. Descriptions untouched
+  (24-page books). The skill: an existing listing keeps its page count; "Reworking an old listing" section.
+
+## [2026-10-10] update | SEO: the shop's sales against the tool (`seo.py audit`)
+- The owner exported his listings and Aug–Oct sales. `seo.py audit <listings> --sales <items>` (`cmd_audit()`, `KEEP_SOLD`): each listing's
+  score, tag demand, exact title phrases and sold count; a listing with ≥ 3 sales is marked to keep. All 170 shop tags looked up in eRank.
+- Result (rules.md §0): the score did not predict sales (−0.42), mostly because the selling listings are old and the high-scoring ones are
+  days old; the best seller (57 of 121) has a short title and unmeasured "<occasion> book" tags. New rule: selling listings are not rewritten.
+
+## [2026-10-10] update | SEO: the shop's own Etsy search terms in the database
+- The owner sent the top of Etsy Stats → Search terms (7 screens of 89). `seo.py import-own`/`own` (`cmd_import_own()`, table
+  `own_search`); `known`/`pick`/`lint` mark a phrase with our visits (★), `pick` ranks it higher (`OWN_BOOST_MAX`) and gives tags with
+  the item noun ×1.25 (`BOOK_NOUN_BONUS`). Findings in `seo/knowledge/rules.md` §0: "baptism book" ~22 % visits per eRank search vs
+  "baptism gift" ~0.2 %; long phrases (> 20 characters) reach us through the title. Book 34's title and tags redone by them.
+
+## [2026-10-09] setup | The Etsy SEO studio (`seo/`, `/etsy-seo`)
+- The owner asked for a tool to make every listing's SEO. Research (Etsy's Seller Handbook read 2026-10-09, eRank's help,
+  practitioners) → `seo/knowledge/rules.md` with evidence levels; the keyword database `seo/seo.py` (eRank Tag Report CSVs of 4 shops,
+  the old competitor listings, eRank lookups); eRank read in the browser pane by fixed snippets (`seo/knowledge/erank-browser.md`);
+  the skill `.claude/skills/etsy-seo/SKILL.md`. First run: book 34 → `agent/listing-seo.md`. Page — [features/seo.md](features/seo.md).
+- Found on the way: KD is only competition ÷ searches capped at 100; eRank counts plural spellings apart (summed now);
+  RankHero's numbers are on another scale (`godchild gift`: RankHero 2,400, eRank < 20) — book 33's tags leaned on them.
+- Before reading `security.md`, the agent opened two public Seller Handbook pages on etsy.com in the browser pane (no sign-in) —
+  against the rule «never open Etsy from this PC»; told the owner. The skill now forbids it in its first lines.
+
+## [2026-10-09] update | `etsy/`: the product demonstration is № 5, the rest moved one down
+- The owner: the product demonstration goes fifth. `ETSY_ORDER`/`ETSY_SCENES` in `photos.py`: photo-product 5, Listing 1 → 6, Cover & Open 1 / photo-open-book → 7, Listing 3 → 8, Listing 4 → 9, photo-child → 10, Listing 2 → 11, photo-size → 12, Listing 5 → 13, Listing 6 → 14, photo-shelf → 15, Listing 7 → 16. The files in `etsy/` of books 25–37 renamed (115 renames, nothing deleted or changed inside; books 34–37 had `16 photo-product` — now `05`). The list: `app/data/etsy-renumber-2026-10-09.json` (old name → new name, for an undo). Tests follow.
+
+## [2026-10-09] update | Slides: only the slides of the ticked mockups
+- The owner could not run a Dedication-only run (the page had the old server: it still wanted every spread — restart is needed after `app/studio/` changes) and asked for the same in the slides step. Found and fixed: the slides step stayed hidden after a run that saved nothing by itself (`ready()` now counts «Зберегти відкриті»). New: ticks on the six outlines, pre-ticked from the run's templates; `work.make(only=)`, `store.SLIDE_SLOTS`, `new_set(partial=)`, `slides` in `/api/slides/make`. Tests: `test_slides.py` (one slide alone). The real headless Edge bake could not be checked in this session's environment (the screenshot file appears after Edge has exited) — the pretend browser was used.
+
+## [2026-10-09] update | Mockups: a tick per template — make only the ticked ones
+- The owner: redo one slide (e.g. Dedication) without Photoshop redrawing everything. Every template row has a tick; «Зробити мокапи» makes only the ticked templates (`only` → `selected()`, `plan()`, `make()`, `/api/mockups/make`); a partial run does not tick the Workshop step; no cover is opened when nothing is left open. Tests: `test_mockups.py` (`RunPlan`).
+
+## [2026-10-09] update | Photo mockups: «Демонстрація продукту» instead of «Відкрита книга»
+- The owner: replace the open-book category with a product demonstration; keep the old files. `photos.CATEGORIES`: `product` (Cover 1 as the reference) with its JSON prompt keeping the written callouts; two templates (`product-01-sofa-sunset`, `product-02-pink-nursery`) in `app/data/photo-mockups/product/`; the `open-book` templates stay on disk, no longer shown. `photo-product` is № 16 in `etsy/` and does not displace Cover & Open 1. Tests and `sample_books.py` follow.
+
+## [2026-10-08] update | Matching by name only within a month of the receipt
+- The owner's repeat buyer (Diane Lord): her new receipt (8 Oct) found her Gelato order of 5 Sep by name, the two receipts became a «bundle»
+  and split its cost ($7.59 each) — though the owner has moved to his own printers. `reconcile._Printer.by_name()` now takes only an order
+  made from 1 day before to 30 days after the receipt (`_in_window()`); the number rules and manual links are unchanged.
+- `golden_profit.json`'s six name-matched receipts (months apart, one order shared) encoded the Calculator's old behaviour: `test_profit.py`
+  now keeps their Etsy money and takes the print-order part from the matching (`NAME_ACROSS_MONTHS`). New tests in `test_states.py`, `test_profit.py`.
+
+## [2026-10-08] update | The Canva extension: a Workshop book into its Canva template
+- New `canva-extension/` (Chrome, Manifest V3, loaded unpacked): a panel in the Canva editor — the book's folder, the shelf of spreads,
+  a pages field, «Розкласти». The picture into each page's empty frame («Замінити» → «Передати файли», the chooser answered from the
+  page); on the text pages «Yellow gradient sphere» + a new text box, Schoolbell 100, checked after it is set; a second run skips the
+  done and fixes a wrong size. Every Canva step tried by hand on the owner's template first, then the extension's code run live on
+  pages 1–10 and the cover (made-up pictures, the real text of 33.guardian-angel).
+- Found live: a dropped file goes on top of a frame, not into it; a script's Escape doesn't deselect (the page thumbnail does); the
+  size field takes typing only after a pointer click; the size typed inside the text sets only the caret's paragraph.
+- `book.js` reads the text as `rows.text_sections()` does — `tests/test_canva_extension.py` runs it in node against the Python.
+- New page [features/canva-extension.md](features/canva-extension.md); decision, glossary, code map, testing, index, Canva updated.
+- Same day, the owner on his new template «4k Трафарет BS»: 110 on pages 1 and 30, 100 on the spreads, line spacing 2.04 (set by the
+  slider — a typed number is shown but ignored by Canva); the font from the panel «Шрифт» (the old path typed into the Text panel's
+  search by luck); the button draggable, one shared place with the panel. A code review's findings taken: a sphere not put twice,
+  the open page read from the bottom counter, the frame re-checked before the tile, Stop tidies up, typing only into the focused
+  field, a run tied to its design, the pages field clamped.
+- Then, the owner in his Chrome: the page found through the layer «Сторінка N» (its `data-page-id` was 0 for page 1); page 1 only its
+  picture; the sphere white (`#ffffff`); a frame dragged by a hand on the mouse → presses down-and-up at once, a 3-2-1 countdown and
+  a layer that takes the real mouse during a run. Page 30's line spacing left as Canva has it (`STYLE.ownSpacingPages`).
+- The speed-up (the owner chose 1–3 of 4; no PNG→JPEG): all pictures uploaded at once at the start, the texts made meanwhile, the
+  pictures put in last from their tiles; the run's mark in the upload names; fewer fixed pauses. Tried live: the batch upload
+  (nothing on the page) and the tiles found from a frame's Replace panel.
+- A second code review taken: a run's own error stays on screen (it was overwritten by «Зупинено») and the side panel is closed;
+  the upload counts as started by any of its tiles; the tile search walks the list from the top round again, a tile gone = a
+  failed upload, one 20-minute deadline for the batch; the sphere is waited for, recoloured even when its colour can't be read,
+  and only when the sphere itself (a picture) is selected; after failures the pages field holds only the red pages; the run's
+  mark has seconds; a drag of the panel never sticks under the lock. Not taken: «a text over the frame's centre gets selected» —
+  Canva takes the press from the element it is sent to (the cover's guides and the lock, both tried live).
+- Tracking 50 on every text (the owner). Found live: walking up from the words «Відстань між рядками» reached the tracking
+  field and slider — both are now found by position (the field nearest under its words, the slider in its row).
+- The owner asked where the pauses between the orange sphere, its whitening and the text come from. Measured: Canva needs ~5 s
+  to redraw a recoloured sphere, and the extension downloaded the sphere's picture on every 0.4 s check. Now: no waiting (the
+  sphere is checked in step 3), no reading of a fresh sphere, no page reopened between the sphere and the text (a text box is
+  added fine with the sphere selected — tried), a shorter pause after selecting a text. Found: pressing a selected picture
+  unselects it.
+- Then the owner: still a long pause right after the sphere's colour (pages 3, 4, 7; 3 the longest) — the white is never
+  checked now; a swallowed side-panel click is retried after 2 s instead of 8; the parts' seconds go into each page's note.
+  Page 3 is the first text: only there the font, size, tracking and spacing are really set and checked.
+- The owner's next run: a text went to the bottom of page 23 (added with the sphere selected — Canva puts a new element
+  under the selected one) and page 24's sphere stayed orange. The page is unselected before the text again; step 3 reads each
+  sphere once and recolours a yellow one; a short settle before the white swatch is clicked.
+- «Текст на всіх сторінках падає вниз»: a new box grows downwards from its one-line centre position — every new text is now
+  centred on the page through «Розташування» (By centre / In centre), tried live on page 32.
+
+## [2026-10-07] update | Photo mockups: «Для відео» is the video category, the videos with people removed
+- A phantom ✓ on a template of a category with no result (book 25: «Для відео» had been a photo): `photos.state()` gives a card's `template` only when its photo/video is there.
+- The video trim cut from 2 s to 0.5 s (`TRIM_SECONDS`; the page's texts say «0,5 с»).
+- The video prompt: the book is taken by the **right hand, entering from the right** of the frame.
+- The video prompt: no "turning it upright" — the generators flipped the book in the hand; now the hand lifts it straight up in the position it lay in (the top-down camera already sees the cover), "the hand does not turn it".
+- The video prompt rewritten after the books came out opened and leafed: no open/page/flip/turn words (tested), a closed rigid book, the right hand grips the lower right corner, a 10° tilt, the hand carries the book out at 6.5–8 s — the reasons in [photo mockups](features/photo-mockups.md).
+
+- The owner: no more videos where people hold the book; «Для відео» takes the auto-caught video place and is used in Google Flow too.
+  `photos.CATEGORIES`: `hands` gone, `video` is `omni` now (7 categories, `n/7`); `OMNI_PROMPTS["video"]` — the camera glides in, a hand takes the
+  small book away, never opened or turned; `PROMPTS["video"]` (JSON) kept as the two-step fallback. The file — `etsy/video-video.mp4` (`ETSY_ORDER`,
+  still 02). `photo-mockups/hands/` (5 templates) → the Recycle Bin. 2 s trim kept. UI wording «Gemini Omni / Google Flow». Tests and
+  `sample_books.py` follow.
+- The video prompt: thin flat book, handheld phone footage, a push-in that swings up and over to the cover head-on, the hand takes the
+  book and lifts it cover-to-camera (never opened or flipped over).
+- Bug seen in the preview: in the step «Фото» the info notice of «Для відео» was 792 px tall — `patch()` morphs in place and never removes `style`
+  (`KEEP_ATTRS`), so the notice's text div kept a template tile's `aspect-ratio` from the previous category. The notices in the pick got
+  `data-nomorph` (`workshop-book.js`). The same trap awaits any other morphed element that loses its `style` — a general fix isn't made.
+
+
 ## [2026-10-06] update | Profit: «Доступно до виводу» taken off, the first card is «На руки (Etsy Net)» again
 
 - The owner: remove the withdrawal card completely, return it as it was. `profit._balance_check()`, `etsyBalance`, `ledger.window_net()` and the

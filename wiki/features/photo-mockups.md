@@ -1,7 +1,7 @@
 ---
 title: Photo mockups — lifestyle photos with our book (the Workshop's «Фото» step and the «Фотомокапи» page)
 type: feature
-updated: 2026-10-06
+updated: 2026-10-09
 code:
   - app/studio/photos.py
   - app/web/js/pages/photos.js
@@ -16,7 +16,7 @@ code:
 
 ## Two places
 
-- **A Workshop book's step «Фото»** (between «Мокапи» and «Бібліотека», `n/8`): the book's references on top
+- **A Workshop book's step «Фото»** (between «Мокапи» and «Бібліотека», `n/7`): the book's references on top
   (Cover 1 · Cover & Open 1 · the Canva cover — ✓ there / what to do), **a card per category** (its photo, or
   an empty frame with a camera; the video category — its video playing silently, or a frame with a film icon), and
   under them **the chosen category's templates**. A click on a template: the
@@ -24,7 +24,7 @@ code:
   as the Workshop's other several-part pastes — `PasteWatch`); the generation bar says what's next. The photo the owner
   downloads is caught from Downloads into `etsy/photo-<category>.<ext>` (the one before → `.replaced/`). A finished card:
   view, «Зберегти як…», remove (to `.replaced/`); a photo dropped onto a card is taken as it is; the template used last is
-  marked ✓ (`book.json` → `photos`). **Categories may be skipped** (the owner): the step is done with every category's photo
+  marked ✓ (`book.json` → `photos`; only in a category that has its result). **Categories may be skipped** (the owner): the step is done with every category's photo
   (and the video), or ticked by hand («Позначити зробленим»).
 - **The «Фотомокапи» page** (`#/photos`, among [«Інструменти»](modes.md) since 2026-09-30, a camera): no book — a click on a
   template puts **the template, then (Ctrl+V) the prompt** into the clipboard and the wait ends; the owner adds the cover
@@ -37,30 +37,47 @@ code:
 | Key | Shown as | The book's reference (2nd Ctrl+V) |
 |---|---|---|
 | `main` | Головне фото | `mockups/1. Cover 1*.png` — the Photoshop mockup of the front |
-| `open-book` | Відкрита книга | `mockups/Cover & Open 1*.png` (the newest) — the book closed and open, as in the template |
+| `product` | Демонстрація продукту | Cover 1 — hands hold the closed square hardcover, white callouts written on the photo (Hardcover, Premium materials, Your name on the cover, 30 pages); two templates from the owner, 09.10.2026. **Took the place of «Відкрита книга»** (`open-book`): that category is gone from the interface, its templates are left untouched in `app/data/photo-mockups/open-book/` |
 | `grandma` | Бабуся читає | `mockups/canva-cover.*` — **the flat cover from the Canva ZIP** (back · spine · front): the grandmother holds the book open towards herself, the camera sees its outside (the owner: take the Canva cover, not a piece of «All & Open 1») |
 | `child` | У руках дитини | Cover 1 |
 | `shelf` | На полиці | Cover 1 |
-| `video` | Для відео | Cover 1 — 9:16 phone photos, the closed book on a sofa, a counter, a table (for the listing's video) |
-| `hands` | Книга в руках у людини | Cover 1 — **a video, not a photo** (see below): a woman, face out of frame, holds the blank book (9:16) |
+| `video` | Для відео | Cover 1 — **a video, not a photo** (see below): 9:16 phone photos of the closed blank book on a sofa, a counter, a table |
 | `size` | Розмір | Cover 1 — on both books: two hands hold the small softcover and the large hardcover side by side (the owner's `Трафарети мастхев\Size.jpg`, copied; "a very important mockup"; five more of his — a woman holds both books at home, `size-02-nursery` … `size-06-terrace`) |
 
-«Для відео» joined the same evening (the owner: "there are only three photos, without the women" — he took the others out).
-
-**«Книга в руках у людини» — a video in Gemini Omni** (`"omni": True`, the seventh card). The owner animates the template
-(a woman holding the blank book) with the book's Cover 1 in **Gemini Omni**. The clipboard goes as for any category —
-template → Cover 1 → the prompt — and then **a video is awaited** in Downloads (MP4, MOV, WEBM; pictures there are
-ignored): **its first 2 seconds are cut off** (the owner; `TRIM_SECONDS`) by **ffmpeg** — encoded again (H.264 + AAC,
-CRF 16) so the cut is exact, MP4 that plays at once — into `etsy/video-<category>.mp4`; **the download as it came**
-goes into the book's `originals/video-<category>.<ext>`; the ones before → `.replaced/` (`place_video()`, `trim()`).
-A video dropped onto the card goes the same way; one shorter than 2 s is refused and nothing changes. ffmpeg is the
-one Windows finds (installed on the Wrocław PC), else `app/bin/ffmpeg.exe` (`ffmpeg()`); without it — a clear error.
-The card plays the video muted and in a loop; ↗ opens it in Windows' player.
-Its prompt is **the owner's own, tested in Omni, word for word** (`OMNI_PROMPTS`) — plain text, not JSON: "Animate this
-exact scene…", the book held flat and facing the camera, a step closer, a slight steering-wheel rock, never turned,
-flipped or opened, the face never seen; **"small book" on every mention** — without it the book grew as it came closer.
-Don't rewrite it into the JSON frame. The templates — the owner's `Desktop\Книга в руках у людини` (five 9:16 photos,
-copied as `hands-01-living-room` … `hands-05-workspace`).
+**«Для відео» — a video in Gemini Omni or Google Flow** (`"omni": True`, the only video card; since 2026-10-07 — before it
+the photo category `video` and a second video category «Книга в руках у людини», a woman holding the book, were here; the
+second one is gone with its five templates, the owner: "refuse the videos where people hold the book"). The owner animates
+the template (the closed blank book on a surface) with the book's Cover 1 — **one step**: the generator swaps the book and
+animates in one go. The clipboard goes as for any category — template → Cover 1 → the prompt — and then **a video is
+awaited** in Downloads (MP4, MOV, WEBM; pictures there are ignored): **its first 0.5 s are cut off** (`TRIM_SECONDS`: 2 s from
+30.09.2026, **0.5 s since 07.10.2026**, the owner) by **ffmpeg** — encoded again (H.264 + AAC, CRF 16) so the cut is exact, MP4
+that plays at once — into `etsy/video-video.mp4`; **the download as it came** goes into the book's
+`originals/video-video.<ext>`; the ones before → `.replaced/` (`place_video()`, `trim()`). A video dropped onto the card
+goes the same way; one shorter than 0.5 s is refused and nothing changes. ffmpeg is the one Windows finds (installed on the
+Wrocław PC), else `app/bin/ffmpeg.exe` (`ffmpeg()`); without it — a clear error. The card plays the video muted and in a
+loop; ↗ opens it in Windows' player.
+Its prompt (`OMNI_PROMPTS["video"]`) is plain text in the form of the owner's tested Omni prompt: "Animate this exact
+scene…", the book **a thin closed book with stiff covers, pressed shut like one rigid board**, **one continuous 8-second
+handheld phone shot** (gentle sway, small organic shake, never jerky), then by seconds — **0–3 s** the camera pushes in with
+momentum and rises over the book until it looks straight down, the front cover head-on (the templates show the book at an
+angle; the book lies still); **3–4 s** **a woman's right hand and forearm enter from the right** and **grip the book by its
+lower right corner** — thumb on the cover at the corner, fingers under, clamping the covers together; **4–6.5 s** it lifts the
+book towards the camera, the cover still to it, and **tilts it back about 10°** so light glides over the cover, then levels
+it; **6.5–8 s** it carries the book **out of the frame to the right**; only the hand and forearm are ever seen; **"small
+book" on every mention** — without it the book grew as it came closer.
+**What made the generators open and leaf through the book, and the rules kept since (the owner, 07.10.2026):**
+(1) **the words name it**: "never opened", "pages never visible", "never flipped" put the very idea into the prompt —
+video models follow negations poorly, so **the prompt never says open, page, flip or turn** (a test holds it); the book is
+described by what it is (closed, rigid, pressed shut); (2) **the grip**: a right hand from the right meets the book's
+fore-edge, where a book is opened — so it takes **the corner**, thumb clamping the covers; (3) **no idle seconds**: a hand
+"holding" a book for 3 s is filled by the model with what hands do with books — every second has a motion, and the shot ends
+with the book carried out; (4) **a turn without a way**: "turning it upright" flipped it — the life goes into the hand and
+the camera, the book only gets a **numbered** tilt (about 10°).
+Don't
+rewrite it into the JSON frame. `PROMPTS["video"]` (the JSON «swap the book» prompt) stays as the **two-step fallback**:
+a photo with our book first, then that photo as Flow's first frame — if the one step spoils the cover; no button reaches
+it yet. The old books' `video-hands.mp4` files are not touched (the owner replaces them in the Workshop himself; the card
+does not show them — another name).
 
 **The Canva cover** is kept by the Mockups: a run for a Workshop book copies the demo book's cover (as Canva exported
 it) into the book's `mockups/canva-cover.*` (`mockups._keep_canva_cover()`); for a book whose mockups were made before,
@@ -82,7 +99,7 @@ Change a prompt there — nothing else holds a copy.
 app/data/photo-mockups/<category>/<category>-NN-<what>.png   the templates (copies of the owner's set; in the backup)
 pipeline/books/<book>/mockups/canva-cover.png                the grandmother's reference
 pipeline/books/<book>/etsy/                                  what goes into the listing, numbered (below)
-pipeline/books/<book>/originals/video-hands.mp4              the Omni video as it was downloaded
+pipeline/books/<book>/originals/video-video.mp4              the video as it was downloaded
 ```
 
 **`etsy/` in the listing's order** (the owner, 30.09.2026): every file of the program's there has its number in front
@@ -90,19 +107,22 @@ pipeline/books/<book>/originals/video-hands.mp4              the Omni video as i
 
 | № | File | № | File |
 |---|---|---|---|
-| 01 | `photo-main` | 08 | `Listing 4` |
-| 02 | `video-hands.mp4` — the Omni video, its first 2 s cut | 09 | `photo-child` |
-| 03 | `photo-grandma` | 10 | `Listing 2` |
-| 04 | `All & Open 1 (…)` — a copy from `mockups/` | 11 | `photo-size` |
-| 05 | `Listing 1` | 12 | `Listing 5` |
-| 06 | `photo-open-book` when there is one, else `Cover & Open 1 (…)` | 13 | `Listing 6` |
-| 07 | `Listing 3` | 14 | `photo-shelf` |
-|  |  | 15 | `Listing 7` — the hero's looks (only a book with them; last in the numbering) |
+| 01 | `photo-main` | 09 | `Listing 4` |
+| 02 | `video-video.mp4` — the video, its first 0.5 s cut | 10 | `photo-child` |
+| 03 | `photo-grandma` | 11 | `Listing 2` |
+| 04 | `All & Open 1 (…)` — a copy from `mockups/` | 12 | `photo-size` |
+| 05 | `photo-product` — the product demonstration | 13 | `Listing 5` |
+| 06 | `Listing 1` | 14 | `Listing 6` |
+| 07 | `Cover & Open 1 (…)` (a legacy `photo-open-book` of an older book takes its place) | 15 | `photo-shelf` |
+| 08 | `Listing 3` | 16 | `Listing 7` — the hero's looks (only a book with them; last in the numbering) |
+
+(Since 09.10.2026 the product demonstration is № 5 — the owner's request; everything from the old 5 on moved one down, and the files of the
+books made until then (25–37) were renamed the same way, the list of renames is `app/data/etsy-renumber-2026-10-09.json`.)
 
 - A number belongs to its file (`ETSY_ORDER`, `ETSY_SCENES`): a missing one leaves a gap — nothing moves up.
-- **The open-book photo takes Cover & Open 1's place**: that copy leaves `etsy/` (to `.replaced/`; the mockup itself stays
+- **A legacy open-book photo (before 09.10.2026) takes Cover & Open 1's place**: that copy leaves `etsy/` (to `.replaced/`; the mockup itself stays
   in `mockups/`) and isn't copied again; the photo removed — it comes back.
-- Anything else there (`photo-video`, the owner's own files) keeps its name, so it sorts after the numbered ones; the
+- Anything else there (an old `video-hands.mp4`, the owner's own files) keeps its name, so it sorts after the numbered ones; the
   owner's own numbered files are never renamed.
 - Everything finds its file by the name without the number (`bare()`): the step's cards, the slides' re-bake
   (`slides.store._baked_file()`), the scenes' copy.

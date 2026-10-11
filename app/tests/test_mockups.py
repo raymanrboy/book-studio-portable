@@ -208,6 +208,29 @@ class RunPlan(unittest.TestCase):
             with self.subTest(picks=picks), self.assertRaises(ApiError):
                 self.plan(picks)
 
+    def test_one_template_alone_plans_only_its_own_work(self):
+        """«Зробити лише цей» (09.10.2026): the other templates' spreads are not asked for, copied or drawn."""
+        work = mockups.plan(book(), {"dedication": []}, self.out, self.root / "run", self.templates, ["dedication"])
+        self.assertEqual([t["key"] for t in work["templates"]], ["dedication"])
+        self.assertTrue(work["cover"])                                    # it stays open, so the cover goes beside it
+        self.assertEqual(sorted(work["pictures"]), ["hard-back.png", "hard-front.png", "hard-page-1.png", "hard-spine.png"])
+        work = mockups.plan(book(), {"open2": [8, 12]}, self.out, self.root / "run", self.templates, ["open2"])
+        self.assertEqual([t["key"] for t in work["templates"]], ["open2"])
+        self.assertEqual(len(work["templates"][0]["shots"]), 2)
+        self.assertIsNone(work["cover"])                                  # nothing is left open — nothing to fit by hand
+        with self.assertRaises(ApiError):                                 # its own spreads are still needed
+            mockups.plan(book(), {}, self.out, self.root / "run", self.templates, ["open2"])
+        for only in (["nope"], [], 5):
+            with self.subTest(only=only), self.assertRaises(ApiError):
+                mockups.plan(book(), PICKS, self.out, self.root / "run", self.templates, only)
+
+    def test_a_partial_run_does_not_tick_the_workshops_step(self):
+        with mock.patch("studio.workshop.books.set_mark") as mark:
+            mockups._ticked({"saved": ["a.png"]}, "book-1", whole=False)
+            mark.assert_not_called()
+            mockups._ticked({"saved": ["a.png"]}, "book-1")
+            mark.assert_called_once()
+
     def test_nothing_is_opened_or_saved_in_the_templates_folder(self):
         work = self.plan()
         text = mockups.script(work)

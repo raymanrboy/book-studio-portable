@@ -169,7 +169,7 @@ Details: `wiki/features/workshop.md`, `wiki/flows/book-import.md`, `pipeline/AGE
 - **Listing slides**: after the mockups, **«Зробити слайди»** builds the book's slides — six, or seven when the hero has two or more looks
   (slide 7 shows them on white); a *scheme* such as Nature or Night sets the look; «Відкрити в редакторі» is for touches. An agent can
   change them through files: skill `/listing-slides`.
-- **Photo mockups** (Фотомокапи; categories «Головне фото», «Відкрита книга», «Бабуся читає», «У руках дитини», «На полиці», «Для відео»):
+- **Photo mockups** (Фотомокапи; categories «Головне фото», «Демонстрація продукту», «Бабуся читає», «У руках дитини», «На полиці», «Для відео»):
   add the book's cover where asked, click a template — the clipboard gets the photo, then **Ctrl+V in Chrome** (or F8) puts in the prompt — the
   generator makes the picture, and the program catches the finished photo into the book's `etsy/` folder.
 Photoshop, the templates and the cut-out use `runtime/Photoshop` and `runtime/Templates` (the templates are **read-only** —

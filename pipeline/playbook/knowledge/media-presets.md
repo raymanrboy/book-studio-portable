@@ -29,6 +29,8 @@ Only these production styles are available:
 - **GW** - Glowing Watercolor
 - **LO** - Luminous Oil
 - **HR** - High-Fidelity Realism (scenic, nature & sacred keepsakes)
+- **CG** - Cozy Glow (a soft polished digital painting with golden light; the look of the cozy bedtime books of TheChildhoodKeeper)
+- **FG** - Festive Gouache (bold saturated gouache with crayon texture; the look of LunaBooksUS's Christmas books)
 
 ---
 
@@ -167,6 +169,58 @@ Only these production styles are available:
 }
 ```
 `negative+`: `["3D render","vector","anime","photorealism","AI-art look","glossy AI render","harsh black outlines","chibi","cartoon","oversaturated colors","flat digital fill","blurry details","plastic texture"]`
+
+---
+
+## CG - Cozy Glow
+`task` tag: `... in a soft, polished, glowing painted children's illustration style with golden light and cozy dressed animal characters`
+Added 2026-10-11 from the cozy bedtime books of the competitor TheChildhoodKeeper (reference pictures and the reading of them:
+`wiki/owner/christmas-books.md`). Differs from `GW`: smoother and more polished, fine pencil strokes only inside fur and fabric, characters with
+large glossy eyes and pink blush, animals dressed in knit and floral clothes, calm text areas that are a colour wash with drifting sparkles.
+```json
+"style": {
+  "medium": "premium soft digital painting that imitates luminous watercolor, gouache and fine colored pencil, polished and seamless, children's illustration",
+  "paint_quality": "seamless soft gradient glazes, blended pigment layers, gently softened painted edges, subtle brush variation, no hard digital banding",
+  "washes": "large smooth atmospheric gradients: peach-to-lavender dusk, honey-gold afternoon haze, luminous deep indigo-violet night, soft cloud-like blooms",
+  "linework": "no outlines; forms are defined by changes of color and value; fine hand-drawn pencil-like strokes only inside fur, hair, knitted fabric and foliage",
+  "forms": "cute rounded characters with big heads, large dark glossy eyes with one small highlight, tiny button nose, soft pink blush on the cheeks, gentle small smiles; animals dressed like people in knit cardigans, scarves, floral aprons, round glasses and hats",
+  "detail": "medium-rich cozy detail: wooden tables, glass jars, lanterns, acorns, fallen leaves, patterned fabrics, tiny flowers, fur drawn with fine soft strokes; every prop charming and inspectable but never busy",
+  "texture": "soft matte painted surface with faint paper grain and delicate light speckle; sparkles, dust motes and firefly dots floating in the air",
+  "color": "warm amber, peach, apricot, dusty rose, lavender, sage and eucalyptus green, chestnut brown, deep twilight violet-blue; one saturated warm accent color on the main character against softly muted surroundings",
+  "light": "warm golden-hour backlight, window glow, soft rays through trees, glowing lanterns and fireflies, a gentle rim glow on the characters; evening scenes in luminous twilight, never harsh",
+  "depth_feel": "soft atmospheric layering with warm haze, gently blurred background, crisp readable focal characters",
+  "overlay_behavior": "the calm text area is a softly painted continuation of the scene: a smooth color wash in the scene's own palette with a few drifting leaves, petals, snow sparkles or dandelion seeds and no objects; twilight scenes keep a deep luminous wash where light text will sit",
+  "mood": "cozy, tender, magical, safe, sleepy, full of love",
+  "finish": "polished soft-focus painterly finish, rich but gentle"
+}
+```
+`negative+`: `["3D render","vector","anime","photorealism","hard black outlines","flat cel shading","neon colors","harsh contrast","glossy plastic texture","gritty dark horror mood","busy cluttered scene","hyper-detailed texture noise"]`
+
+---
+
+## FG - Festive Gouache
+`task` tag: `... in a bold, saturated festive gouache children's illustration style with crayon and dry-brush texture`
+Added 2026-10-11 from the Christmas books of the competitor LunaBooksUS (reference pictures and the reading of them:
+`wiki/owner/christmas-books.md`). Differs from `G`: far more saturated and festive, stylised big-headed characters with large black oval eyes and
+wide open smiles, chalky crayon texture, gold stars on warm gradient grounds, bold patterned props.
+```json
+"style": {
+  "medium": "premium hand-painted-looking digital gouache children's illustration, bold festive illustration style with textured crayon and dry-brush marks",
+  "paint_quality": "opaque matte gouache shapes with soft gradients inside them, chalky pastel and dry-brush texture on foliage, fur and snow, painterly rough edges, visible handmade marks",
+  "washes": "warm gradient backdrops — peach to butter yellow, blush pink, pale sky blue, deep indigo night — sprinkled with small gold four-point stars, crescent moons and tiny sparkles",
+  "linework": "no black outlines; shapes are separated by color and thin light rim highlights, with occasional rough colored crayon strokes",
+  "forms": "stylised children with big round heads, large oval black eyes with a white highlight, round pink cheek blush, wide open smiles, simplified noses and small bodies; chunky rounded props; characters of many hair and skin tones",
+  "detail": "festive rich detail: fir branches drawn with crayon-like needle strokes, garlands with red berries and gold beads, string lights, ornaments, stockings, wreaths with red bows, wrapped gifts with bold patterns (polka dots, waves, stripes), trays of cookies",
+  "texture": "chalky pastel grain, visible paper tooth, rough painted vignette edges where the picture rests on a pale ground",
+  "color": "saturated festive palette: deep fir green, cranberry red, mustard and gold, teal, violet, cream, peach, powder blue, with warm confident contrast",
+  "light": "warm glowing fireplace, candlelight and oven light with orange-red halos against cool blue-violet snowy night; shapes clearly lit and readable",
+  "depth_feel": "clear stage-like layers: large simple foreground shapes, readable midground, soft stylised background",
+  "overlay_behavior": "the calm text area is a pale or softly graded field with scattered gold stars, snowflakes, ornaments and garlands at the edges, low contrast and finished, never blank",
+  "mood": "joyful, warm, celebratory, playful, full of family love",
+  "finish": "matte gouache with crayon texture, rich and bold but friendly"
+}
+```
+`negative+`: `["3D render","glossy vector clip art","anime","photorealism","hard black outlines","only pale washed-out pastels","horror","muddy colors","plastic AI sheen","thin lifeless lines"]`
 
 ---
 

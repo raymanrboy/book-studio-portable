@@ -35,7 +35,9 @@ If the wiki contradicts the code — the code is the truth; fix the wiki within 
 ## 2. Security — always
 
 In full — [`wiki/security.md`](wiki/security.md). Briefly:
-- **Never open Etsy from this (Wrocław) PC**, in any browser; sign in to Etsy only on the Kyiv PC.
+- **Etsy: look, but never sign in** (2026-10-11). Opening etsy.com in the browser pane to search listings and shops and
+  analyse them is fine — as a visitor, never signed in. Never sign in to the owner's Etsy account from this (Wrocław) PC;
+  signing in is only on the Kyiv PC. No clicks that change anything (favourite, follow, buy, message); a CAPTCHA — stop and ask.
 - Etsy — **read-only**. Gelato — **drafts only** (the old account after the move to the owner's own one — read
   only). Printify — **read-only from 1 October 2026**; before: only image uploads, an unpublished
   product, and "On hold" orders after manual-approval confirmation; never send to production, cancel,
@@ -75,6 +77,7 @@ portable/              the launchers (.bat) and the note for people — laid out
 README.md               short intro for people
 app/                    the program: studio/ (Python server), web/ (interface), tests/, tools/
                         data/ and bin/ — local only, not in git
+seo/                    the Etsy SEO studio (`/etsy-seo`): seo.py, knowledge/; data/ — local only, not in git
 pipeline/               the book pipeline — the book agents' rules and playbook (Antigravity opens this folder);
                         its books/ (the Workshop's books, every picture) — local only, not in git
 wiki/                   knowledge base (index.md — entry point, log.md — change log, raw/ — owner's sources)

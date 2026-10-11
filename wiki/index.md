@@ -1,7 +1,7 @@
 ---
 title: Book Studio wiki — index
 type: index
-updated: 2026-10-04
+updated: 2026-10-08
 code: []
 ---
 # Book Studio wiki
@@ -45,6 +45,10 @@ code: []
   fits the front cover by hand); the templates' structure.
 - [Listing slides](features/slides.md) — the Mockups' last step: the pictures without background, the six Etsy
   slides made by themselves, a Canva-like editor loaded only when opened; the skill `/listing-slides`.
+- [Etsy SEO studio](features/seo.md) — a book's long title, 13 tags and description from its files, the keyword database and
+  eRank read in the browser pane; the skill `/etsy-seo` (`seo/`).
+- [Canva extension](features/canva-extension.md) — a Chrome extension (`canva-extension/`): a Workshop book's folder → its Canva
+  template — the pictures into the frames, the sphere and the text (Schoolbell 100) on the text pages; a second run skips what is done.
 
 ## Domain rules
 
@@ -83,6 +87,9 @@ code: []
 
 - [Working with the owner](owner/working-with-owner.md)
 - [The interface the owner wants](owner/ui-principles.md)
+- [Book ideas](owner/book-ideas.md) — the owner's shelf: links to books he finds and the key ideas he likes in them.
+- [Listing ideas backlog](owner/listing-ideas.md) — the stock of listing ideas for two posts a day, the owner's shop compared with two others.
+- [Five Christmas books and the two styles](owner/christmas-books.md) — the owner's Christmas focus: five books, and the looks of TheChildhoodKeeper and LunaBooksUS as pipeline style presets (`CG`, `FG`).
 
 ## Development
 

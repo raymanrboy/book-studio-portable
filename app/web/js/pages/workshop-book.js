@@ -187,7 +187,7 @@ export async function mount(view, [rawId]) {
   // or an empty frame); a click shows the category's templates, and a click on one puts it into the clipboard, then the
   // book's reference (Cover 1, Cover & Open 1 or the Canva cover — shown on top), then the prompt; the photo the owner
   // downloads lands in the book's etsy/ folder. A category may be skipped: the step is ticked by all seven, or by hand.
-  // «Книга в руках у людини» is a video made in Gemini Omni: the same clipboard; the video is caught (its first 2 seconds
+  // «Книга в руках у людини» is a video made in Gemini Omni: the same clipboard; the video is caught (its first half second
   // cut off by the server) and its card plays it.
   let photoTemplates = null, photoTemplatesAt = 0;
   async function templatesOf(key) {
@@ -236,8 +236,8 @@ export async function mount(view, [rawId]) {
     const pick = html`<div class="ph-pick">
       <div class="ph-pick-head"><b>${sel.label}</b><span class="ph-flow">фото ${ic('chevRight', 'icon-s')} ${ref.label} ${ic('chevRight', 'icon-s')} промпт</span>
         <span class="spacer"></span>${ib('prompt', 'Промпт цієї категорії — у буфер', `data-act="photo-prompt" ${attr('data-cat', sel.key)}`)}</div>
-      ${ref.name ? '' : html`<div class="notice notice-warn">${ic('alert')}<div>${ref.missing}</div></div>`}
-      ${sel.omni ? html`<div class="notice notice-info">${ic('video')}<div>Це відео для Gemini Omni: фото, ${ref.label} і промпт ідуть у буфер як завжди. Завантажене відео Book Studio зловить сам, обріже перші 2 секунди й покладе в папку Etsy книги.</div></div>` : ''}
+      ${ref.name ? '' : html`<div class="notice notice-warn" data-nomorph>${ic('alert')}<div>${ref.missing}</div></div>`}
+      ${sel.omni ? html`<div class="notice notice-info" data-nomorph>${ic('video')}<div>Це відео для Gemini Omni або Google Flow: фото, ${ref.label} і промпт ідуть у буфер як завжди. Завантажене відео Book Studio зловить сам, обріже перші півсекунди й покладе в папку Etsy книги.</div></div>` : ''}
       ${tpl.length ? html`<div class="ph-tiles sm">${tpl.map((t) => html`<div class="ph-tile ${t.name === sel.template ? 'used' : ''} ${nowTpl(t.name) ? 'now' : ''}" style="aspect-ratio:${t.size ? `${t.size[0]} / ${t.size[1]}` : '1 / 1'}">
           <button type="button" class="ph-shot" data-act="photo-start" data-cat="${sel.key}" data-name="${t.name}" data-tip="${`У буфер: це фото, далі Ctrl+V у Chrome — ${ref.label}, ще раз — промпт${t.name === sel.template ? ' · цю заготовку брали востаннє' : ''}`}">
             <img data-fade alt="${t.name}" src="${media(`/media/photos/${encodeURIComponent(sel.key)}/${encodeURIComponent(t.name)}`, { w: 360, v: t.v })}" loading="lazy"></button>

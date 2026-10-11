@@ -17,7 +17,7 @@ the base cover and the variant's hero go into the clipboard, if they are there.
 A photo mockup (photos.py, 30.09.2026) goes the same way: the template, the book's reference, the prompt — and the photo
 lands in the book's etsy/ folder. Without a book (the «Фотомокапи» page) only the template and the prompt go in, and
 nothing is caught: the wait ends once the prompt is in the clipboard. For a video category («Книга в руках у людини»,
-made in Gemini Omni) a video is awaited instead of a picture — its first 2 seconds cut off (photos.place_video()).
+made in Gemini Omni) a video is awaited instead of a picture — its first half second cut off (photos.place_video()).
 """
 from __future__ import annotations
 

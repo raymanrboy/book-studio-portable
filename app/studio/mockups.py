@@ -246,11 +246,23 @@ def _free_name(out: Path, name: str, taken: set[str]) -> Path:
     return out / candidate
 
 
-def plan(book: dict, picks: dict, out: Path, run: Path, templates_dir: Path) -> dict:
+def selected(only) -> list[dict]:
+    """The templates a run covers: all of them, or only the ones asked for (a single one — «Зробити лише цей»,
+    09.10.2026: a slide not made right is redone without Photoshop redrawing everything). In the page's order."""
+    if only is None:
+        return list(TEMPLATES)
+    keys = [only] if isinstance(only, str) else only
+    if not isinstance(keys, (list, tuple)) or not keys or any(k not in {t["key"] for t in TEMPLATES} for k in keys):
+        raise ApiError("Невідомий шаблон мокапів.")
+    return [t for t in TEMPLATES if t["key"] in keys]
+
+
+def plan(book: dict, picks: dict, out: Path, run: Path, templates_dir: Path, only=None) -> dict:
     """Everything a run does, decided before anything is written: the pictures to make, the template copies,
-    what goes into which layer, and the file each picture is saved as."""
+    what goes into which layer, and the file each picture is saved as. `only` — the templates to make (all when None)."""
     starts = {n for n in range(2, len(book["pages"]), 2)}
-    for t in TEMPLATES:
+    wanted = selected(only)
+    for t in wanted:
         chosen = picks.get(t["key"]) or []
         if len(chosen) != t["slots"] or any(not isinstance(n, int) or n not in starts for n in chosen):
             raise ApiError(f"Оберіть {t['slots']} розвороти для «{t['label']}»." if t["slots"] > 1
@@ -266,7 +278,7 @@ def plan(book: dict, picks: dict, out: Path, run: Path, templates_dir: Path) -> 
     taken: set[str] = set()
     steps = []
     by_key = {t["key"]: t for t in TEMPLATES}
-    for key in RUN_ORDER:
+    for key in (k for k in RUN_ORDER if by_key[k] in wanted):
         t = by_key[key]
         stem, layers, size = Path(t["file"]).stem, t["layers"], t["size"]
         fills = [{"layer": list(layers[role]), "image": picture(role, size)}
@@ -290,7 +302,7 @@ def plan(book: dict, picks: dict, out: Path, run: Path, templates_dir: Path) -> 
     # The book's cover as Canva exported it, opened in Photoshop beside the templates left open: the owner fits the
     # front cover from it (26.09.2026: "open the Cover image too, so I can work with it at once"). A copy in the run's
     # folder — the demo book's own folder goes when another book comes in.
-    source = book.get("cover")
+    source = book.get("cover") if any(s["keepOpen"] for s in steps) else None   # nothing left open — no cover to fit
     cover = (run / f"Cover{Path(source).suffix.lower()}").as_posix() if source else None
     return {"run": str(run), "out": str(out), "pictures": pictures, "templates": steps,
             "cover": cover, "coverSource": str(source) if source else None,
@@ -534,12 +546,12 @@ def clean_runs(keep: str = "", older_than: float = KEEP_RUNS) -> int:
     return removed
 
 
-def make(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event) -> dict:
+def make(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event, only=None) -> dict:
     where = places()
     ps = find_photoshop(where["photoshop"])
     if not ps:
         raise UserError("Не знайшов Photoshop — вкажіть його папку.")
-    missing = [t["file"] for t in TEMPLATES if not (where["templates"] / t["file"]).is_file()]
+    missing = [t["file"] for t in selected(only) if not (where["templates"] / t["file"]).is_file()]
     if missing:
         raise UserError(f"У папці з трафаретами немає: {', '.join(missing)}.")
     if not out.is_dir():
@@ -549,7 +561,7 @@ def make(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event) 
     stamp = time.strftime("%Y%m%d-%H%M%S")
     run = WORK / f"{stamp}-{core.new_id()[:6]}"
     clean_runs(keep=run.name)
-    work = plan(book, picks, out, run, where["templates"])
+    work = plan(book, picks, out, run, where["templates"], only)
     job.share(progress_view(work, None, "prepare"))
     started = time.time()
     prepare(job, book, work)
@@ -750,15 +762,17 @@ def _make(req: Request):
         out = Path(str(body.get("folder") or ""))
         if not str(body.get("folder") or "") or not out.is_dir():
             raise ApiError("Оберіть папку для мокапів.")
-    plan(book, picks, out, WORK / "check", places()["templates"])  # a wrong pick is said at once, not in the job
+    only = body.get("only") or None                  # a list of template keys: make just these (None — all)
+    plan(book, picks, out, WORK / "check", places()["templates"], only)  # a wrong pick is said at once, not in the job
     if workshop:
         _keep_canva_cover(workshop, book)
     else:
         _remember(lastOut=str(out))
     cancel = threading.Event()
-    core.log.info("Mockups: a run for «%s» into %s, spreads %s", book["name"], out, picks)
-    job = jobs.start("mockups", lambda j: _to_etsy(_ticked(_logged(make, j, book, picks, out, cancel), workshop)),
-                     exclusive="mockups")
+    core.log.info("Mockups: a run for «%s» into %s, spreads %s, templates %s", book["name"], out, picks,
+                  only or "all")
+    job = jobs.start("mockups", lambda j: _to_etsy(_ticked(_logged(make, j, book, picks, out, cancel, only), workshop,
+                                                          whole=not only)), exclusive="mockups")
     _run_stop = cancel
     return {"jobId": job.id}
 
@@ -805,9 +819,10 @@ def _keep_canva_cover(workshop: str, book: dict) -> None:
         core.log.warning("Mockups: the Canva cover of %s not kept", workshop, exc_info=True)
 
 
-def _ticked(result: dict, workshop: str) -> dict:
-    """The Workshop book's «Мокапи» step ticks itself once its mockups are saved (the owner, 29.09.2026)."""
-    if workshop and result.get("saved"):
+def _ticked(result: dict, workshop: str, whole: bool = True) -> dict:
+    """The Workshop book's «Мокапи» step ticks itself once its mockups are saved (the owner, 29.09.2026) — not after a
+    run of some templates only (`whole`): it is the owner's touch-up, not the book's mockups."""
+    if workshop and whole and result.get("saved"):
         try:
             from .workshop.books import set_mark
             set_mark(workshop, "mockups", True)

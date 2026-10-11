@@ -99,9 +99,11 @@ export async function mount(view) {
   // ---------------------------------------------------------------- the picks
   function resetPicks(from = null) {
     st.picks = from || Object.fromEntries(slotted().map((t) => [t.key, Array(t.slots).fill(null)]));
+    st.skip = new Set();   // templates without a tick: not made this time
     st.active = firstEmpty();
   }
-  function slotsInOrder() { return slotted().flatMap((t) => st.picks[t.key].map((_, i) => ({ key: t.key, i }))); }
+  const ticked = () => st.meta.templates.filter((t) => !st.skip.has(t.key));
+  function slotsInOrder() { return slotted().filter((t) => !st.skip.has(t.key)).flatMap((t) => st.picks[t.key].map((_, i) => ({ key: t.key, i }))); }
   function firstEmpty(after = null) {
     const all = slotsInOrder();
     const from = after ? all.findIndex((s) => s.key === after.key && s.i === after.i) + 1 : 0;
@@ -253,12 +255,13 @@ export async function mount(view) {
     const note = !t.found ? html`<span class="mk-note bad">немає файлу</span>`
       : auto ? html`<span class="mk-note">${t.key === 'cover1' ? 'обкладинка' : 'сторінка 1'} · сама</span>`
         : html`<span class="mk-count num" data-count="${t.key}"></span>`;
-    return html`<div class="mk-tpl" data-tpl="${t.key}">
+    const on = !st.skip.has(t.key);
+    return html`<div class="mk-tpl ${on ? '' : 'off'}" data-tpl="${t.key}">
       <button type="button" class="mk-tpl-pic ${t.found ? '' : 'none'}" data-act="tpl-view" data-key="${t.key}" aria-label="Роздивитися шаблон ${t.label}" data-tip="${t.file}">
         ${t.found ? html`<img data-fade alt="" draggable="false" src="${media(`/media/mockups/template/${t.key}`, { w: TPL_W })}">` : ''}${ic('image')}
       </button>
       <div class="mk-tpl-main">
-        <div class="mk-tpl-head"><span class="mk-tpl-name">${t.label}</span>${t.hand || t.keep ? handMark(t) : ''}<span class="spacer"></span>${note}</div>
+        <div class="mk-tpl-head"><label class="check mk-tpl-on" data-tip="Робити цей шаблон"><input type="checkbox" data-act="tpl-on" data-key="${t.key}" ${on ? 'checked' : ''} ${t.found ? '' : raw('disabled')} aria-label="Робити шаблон ${t.label}"><span class="mk-tpl-name">${t.label}</span></label>${t.hand || t.keep ? handMark(t) : ''}<span class="spacer"></span>${note}</div>
         <div class="mk-slots" data-slots="${t.key}">${auto ? autoSlot(t) : ''}</div>
       </div>
     </div>`;
@@ -375,9 +378,10 @@ export async function mount(view) {
     const box = $('#mk-make');
     if (!box) return;
     const m = st.meta;
-    const saves = m.templates.filter((t) => !t.hand && !t.keep).reduce((sum, t) => sum + t.slots, 0);
-    const hands = m.templates.filter((t) => t.hand || t.keep).length;
-    const ready = m.templatesFound && m.photoshopFound && m.templates.every((t) => t.found);
+    const on = ticked();
+    const saves = on.filter((t) => !t.hand && !t.keep).reduce((sum, t) => sum + t.slots, 0);
+    const hands = on.filter((t) => t.hand || t.keep).length;
+    const ready = m.templatesFound && m.photoshopFound && on.length > 0 && on.every((t) => t.found);
     const left = st.book ? missing() : 0;
     const need = !st.book ? 'Ще: демо-книга' : left ? `Ще ${left} ${plural(left, SPREADS)}` : '';
     setHtml(box, html`
@@ -618,6 +622,8 @@ export async function mount(view) {
   // "nothing happens"): what is missing lights up, and the wait for the Windows dialog is shown.
   async function make() {
     if (st.run || st.asking) return;
+    const only = ticked().length < st.meta.templates.length ? ticked().map((t) => t.key) : null;   // all ticked — everything
+    st.only = only;   // the listing slides' step starts from the slides these templates are in
     if (!st.book) {
       toast('Спершу додайте демо-книгу: перетягніть ZIP із Canva у «Структуру» або клацніть там', 'info');
       blink([$('.mk-ghost')].filter(Boolean));
@@ -633,12 +639,12 @@ export async function mount(view) {
       return;
     }
     if (!st.out && st.workshop) {
-      start('make', post('/api/mockups/make', { book: st.book.id, picks: st.picks, workshop: st.workshop.id }));
+      start('make', post('/api/mockups/make', { book: st.book.id, picks: st.picks, workshop: st.workshop.id, ...(only && { only }) }));
       return;
     }
     const folder = st.out || await askFolder(true);
     if (!folder || gone) return;
-    start('make', post('/api/mockups/make', { book: st.book.id, picks: st.picks, folder }));
+    start('make', post('/api/mockups/make', { book: st.book.id, picks: st.picks, folder, ...(only && { only }) }));
   }
 
   async function askFolder(forRun) {
@@ -783,6 +789,13 @@ export async function mount(view) {
     if (act === 'close') { finishPage(); return; }
     if (act === 'place') { place(t.dataset.what); return; }
     if (act === 'make') { make(); return; }
+    if (act === 'tpl-on') {   // the tick of a template: «Зробити мокапи» makes only the ticked ones
+      if (st.run) { t.checked = !t.checked; return; }
+      st.skip[t.checked ? 'delete' : 'add'](t.dataset.key);
+      if (st.active && st.skip.has(st.active.key)) st.active = firstEmpty();
+      paintTemplates(); paintTiles(); paintMake();
+      return;
+    }
     if (act === 'finish') { if (!st.run && st.pending) start('finish', post('/api/mockups/finish', { run: st.pending.run })); return; }
     if (act === 'stop') {
       t.disabled = true;

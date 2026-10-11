@@ -198,7 +198,7 @@ them) — see [features/mockups.md](../features/mockups.md).
 | POST | `/api/mockups/open-zip` | token | `_open_zip` | mockups.js `pickZip` (`{path}` of a `.zip` → unpacked into `mockups/book/`, the ZIP itself only read → the book) |
 | POST | `/api/mockups/place` | token | `_place` | mockups.js (the sliders window or the yellow line: where the templates / Photoshop are) |
 | POST | `/api/mockups/pick-folder` | token | `_pick_out` | mockups.js `askFolder` (where to save; never the templates folder) |
-| POST | `/api/mockups/make` | token | `_make` | mockups.js `make` (background job `mockups`; `{book, picks, folder}`; the job shares every template's progress; with `workshop` — the demo book's cover kept as the book's `mockups/canva-cover.*`) |
+| POST | `/api/mockups/make` | token | `_make` | mockups.js `make` (background job `mockups`; `{book, picks, folder, only?}` — `only`: the ticked templates; the job shares every template's progress; with `workshop` — the demo book's cover kept as the book's `mockups/canva-cover.*`) |
 | POST | `/api/mockups/finish` | token | `_finish` | mockups.js «Зберегти відкриті й закрити» (`{run}` → background job `mockups`: the second script saves and closes the templates left open) |
 | POST | `/api/mockups/cancel` | token | `_stop` | mockups.js (the × while it runs) |
 | POST | `/api/mockups/close` | token | `_close` | mockups.js «×» in the header — «Завершити» (`{run}`: the demo book goes, a run waiting for «Зберегти відкриті» is no longer offered; refused while a run goes on) |
@@ -211,7 +211,7 @@ them) — see [features/mockups.md](../features/mockups.md).
 
 ## Listing slides — [slides/routes.py](../../app/studio/slides/routes.py)
 
-Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a Workshop book's folder name, an older set's id or `template` (the default scheme), `s` — `slide1…7` (7 — the hero's looks, only for a book that has two or more, 2026-10-02). `/api/slides/make` and `/api/slides/cutouts` take `workshop` (a book) instead of `folder`; `/api/mockups/make` takes `workshop` too.
+Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a Workshop book's folder name, an older set's id or `template` (the default scheme), `s` — `slide1…7` (7 — the hero's looks, only for a book that has two or more, 2026-10-02). `/api/slides/make` and `/api/slides/cutouts` take `workshop` (a book) instead of `folder`; `/api/slides/make` also takes `slides` (only these slides, 09.10.2026); `/api/mockups/make` takes `workshop` too.
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|

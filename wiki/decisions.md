@@ -1,14 +1,78 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-06
+updated: 2026-10-11
 code: []
 ---
 # Decisions
 
+## 2026-10-11 — Agents may browse Etsy as a visitor (never signed in)
+
+- **The owner:** "you may open Etsy from this computer; you just must not log in to My Account. Using Etsy to search listings
+  or shops and to do analysis is allowed." (He wanted competitor shops researched for new listing ideas — see
+  [book ideas](owner/book-ideas.md).)
+- **Why the old rule (never open Etsy from Wrocław) existed:** a foreign IP signing in to the shop's account could get the shop
+  blocked. A signed-out visit has no account to block, so the risk it guarded against isn't there.
+- **Kept:** no sign-in to the owner's Etsy from here (sign-in only on the Kyiv PC); Etsy stays read-only; no clicks that change
+  anything; a CAPTCHA or bot check is never bypassed. **Unchanged:** the program's own `security.etsyKyivOnly` setting and
+  `_open_url()` guard — they govern the program, not agents. Pages updated: [security](security.md), `AGENTS.md`, `/etsy-seo`,
+  `seo/knowledge/rules.md`, [overview](overview.md).
+
+## 2026-10-09 — Etsy SEO: an agent's tool with long titles, eRank in the browser pane, unmeasured tags welcome
+
+- **The owner:** "build an ultimate tool for my listings' SEO", used through Claude Code — a skill in Book Studio
+  (`/etsy-seo`), not a part of the interface. Its data and rules live in `seo/`; the old `seo-intelligence` stays an archive.
+- **Long titles only** (110–140 characters, no tests of short ones): Etsy's own guidance (27 Apr 2026) asks for under 15
+  words, but the owner sees short titles index worse and the niche's leaders all use long ones. The title is built of
+  exact buyer phrases, nothing untrue or irrelevant in it.
+- **eRank is read in the browser pane** where he is signed in; the agent may use the whole daily limit. Etsy is never
+  opened (the security rule).
+- **No eRank data ≠ a bad tag** ("books sell anyway; we may be the first with this product") — such exact tags are
+  judged by their competition, up to 5 per listing.
+- **The shop's own Etsy Stats are not collected for now** (2026-10-10: the owner sent the top search terms after all — they
+  go in as screens, the strongest evidence). Details — [features/seo.md](features/seo.md).
+
+## 2026-10-08 — A name finds a print order only within a month of the receipt
+
+- **The owner**: a repeat buyer's new receipt was shown as a bundle with her old one and the cost split — "the orders are on very different days".
+- **Decided**: matching by the recipient's name (not by number, not manual) takes only a print order made from 1 day before to 30 days after
+  the receipt. Otherwise a new receipt takes the buyer's old order and the two split its cost. Not to be "fixed" back to match the old
+  Profit Calculator (its name rule had no time limit); a sale whose print order is older than a month is linked by hand.
+
 > What was decided, when, and why. Before "fixing" something odd in the code — check whether it's a
 > deliberate choice by the owner. Newest decisions are at the top. An entry is a record of its day: where it says
 > "not built yet", the feature page tells what exists now.
+
+## 2026-10-08 — A Chrome extension fills the Canva template
+
+- **The owner:** Canva could not be automated "the standard ways" — so a Chrome extension: drop the book in, the pictures lay
+  themselves out by the template, the text too. He chose: the book is picked as its **folder** (not a list from Book Studio — works
+  without the program running); the code lives **in this repository** (`canva-extension/`); a second run **skips what is done**;
+  a **pages field** for a part of the book; the cover gets **only its picture** — the title he sets himself.
+- **The text's look (the owner):** each text page gets the element «Yellow gradient sphere» and on top of it a new text box,
+  **Schoolbell, 100 — 110 on pages 1 and 30 — line spacing 2.04** (the sizes and spacing added the same day; then: **page 1 gets only its picture**, no sphere or text) — he aligns both by hand and removes the template's old placeholders («той білий я потім приберу»).
+  The text is `book-text.md` without the `## Spread NN — …` heading, `{Name}` / `{Gifter}` left for the order.
+- **Why the editor and not an API:** the Canva Apps SDK / Connect API were not taken — the owner had tried "the standard ways";
+  the extension does a person's clicks, found by Canva's accessibility labels, every step tried by hand on his template first.
+- **The look:** the owner asked for it to be beautiful — the panel is Book Studio's light look with its icon, and shows the book
+  the way it is printed (the cover, the spreads), each page lit by its state.
+- Details — [Canva extension](features/canva-extension.md).
+
+## 2026-10-07 — «Для відео» is the video category; the videos with people are gone
+
+- **The owner:** refuse the videos where people hold the book; the auto-caught video category becomes «Для відео»
+  (the closed book on a sofa, a counter, a table), and the five templates with people are removed. The same templates
+  he will use in Google Flow, so the prompt says: the camera glides in on the book, a hand appears and takes it, the book
+  is never opened or turned.
+- **One step** (the one that worked with Omni): template → Cover 1 → the prompt, the generator swaps the book and animates.
+  The JSON «swap the book» prompt stays in `PROMPTS["video"]` as a two-step fallback (a photo first, then Flow's first
+  frame) if the cover comes out spoiled. **The trim stays** — 2 s at first, cut down to **0.5 s** the same day (the owner).
+- The file is `etsy/video-video.mp4` (still the second in the listing); old `video-hands.mp4` are left alone, the owner
+  replaces them himself. The folder `photo-mockups/hands` went to the Recycle Bin (his originals are untouched).
+- **The video prompt never names opening** (the same day, after the generators opened and leafed through the book): no
+  "open / page / flip / turn" at all, the book is "closed, stiff covers, one rigid board", the right hand grips **the
+  corner**, a tilt is given in degrees (about 10°), and every second has its motion — the hand carries the book out at the end.
+  [Photo mockups](features/photo-mockups.md).
 
 ## 2026-10-06 — What not to build next (the owner's answer to «what else could be better»)
 
@@ -257,7 +321,7 @@ code: []
   Omni video (`video-hands`, always second), 03 photo-grandma, 04 All & Open 1, 05 Listing 1, 06 Cover & Open 1, 07
   Listing 3, 08 Listing 4, 09 photo-child, 10 Listing 2, 11 photo-size, 12 Listing 5, 13 Listing 6, 14 photo-shelf.
   Anything else — no number, at the end.
-- **The open-book photo, when made, takes Cover & Open 1's place (06)**; that mockup then stays in `mockups/` only.
+- **The open-book photo, when made, takes Cover & Open 1's place (now 07, since 09.10.2026; was 06)**; that mockup then stays in `mockups/` only.
 - **A number belongs to its file**: a missing one leaves a gap (his "так"). The form «01 photo-main.png».
 - How it works — [photo mockups](features/photo-mockups.md#where-things-are). Book 25's folder was put in order once.
 

@@ -168,7 +168,7 @@ export function genBar(book) {
   // Ctrl+V in Chrome puts the next part in by itself (27.09.2026); «Далі» and F8 stay for another browser or a miss.
   const hint = more ? (gen.paste ? `вставте в Chrome (Ctrl+V) — одразу за ним у буфер ляже ${a.items[a.item + 1]}`
     : `вставте в чат, далі — ${a.items[a.item + 1]}: «Далі»${gen.f8 ? ' або F8 у будь-якому вікні' : ''}`)
-    : a.video ? 'вставте в чат і завантажте відео — Book Studio обріже перші 2 с і покладе його в папку Etsy'
+    : a.video ? 'вставте в чат і завантажте відео — Book Studio обріже перші 0,5 с і покладе його в папку Etsy'
     : `вставте в ${a.items.length > 1 ? 'чат' : 'Gemini'} і завантажте картинку — вона сама стане на місце`;
   // A photo mockup without a book: nothing is awaited in Downloads — the parts only go into the clipboard.
   const title = a.catch === false ? html`<b>У буфер по черзі</b> · ${a.label}` : html`<b>${a.video ? 'Чекаю відео' : 'Чекаю картинку'}</b> · ${a.label}`;

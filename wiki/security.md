@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-10-06
+updated: 2026-10-11
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -22,9 +22,14 @@ code:
 
 ## Rules for agents (strict)
 
-1. *(A setting since 2026-10-03: `security.etsyKyivOnly`, on unless switched off — a copy for someone else has it off.)* **Never open Etsy from the Wrocław PC** — not in a browser, not any other way. Signing in to Etsy
-   (OAuth) is done only on the Kyiv computer where the shop is registered: otherwise Etsy might block
-   the shop over a foreign IP address.
+1. **Etsy as a visitor — allowed; signed in — never** (the owner, 2026-10-11). An agent may open etsy.com from the Wrocław PC
+   (the browser pane) **without signing in** to look up listings and shops and to analyse them (titles, tags, pictures,
+   prices, reviews). **Never sign in to the owner's Etsy account** ("Мій акаунт", the seller side, Shop Manager, Stats) from
+   here, never ask him for a password for it, and never press anything that changes something (favourite, follow, buy, message,
+   review). If Etsy shows a CAPTCHA or a bot check, stop and tell the owner — don't get past it. Signing in to Etsy (OAuth) is
+   done only on the Kyiv computer where the shop is registered: otherwise Etsy might block the shop over a foreign IP address.
+   *(The program itself is unchanged: `security.etsyKyivOnly` — on unless switched off, a copy for someone else has it off —
+   still makes the server refuse to open an etsy.com link other than the sign-in page; this rule is about agents.)*
 2. **Etsy — read-only.** No changes in the shop at all.
 3. **Printify is read-only since 1 October 2026** — nothing is written there at all (the owner moved every new book to
    Gelato). Before that date it allowed only image uploads, an unpublished product, and "On hold" orders (only after

@@ -55,6 +55,10 @@ HERO_SLOTS = [f"hero:{n}" for n in range(1, 8)]   # the hero's looks on slide 7,
 SLOT_LABEL = {"open1:1": "Open 1 · 1", "open1:2": "Open 1 · 2", "open1:3": "Open 1 · 3", "open1:4": "Open 1 · 4",
               "open2:1": "Open 2 · 1", "open2:2": "Open 2 · 2", "cover": "Cover 1",
               "dedication": "Dedication", "page30": "Сторінка 30", **{s: f"Герой {s[5:]}" for s in HERO_SLOTS}}
+# What each slide shows: a part of the six can be made alone (09.10.2026) — «Зробити лише ці слайди»
+SLIDE_SLOTS = {"slide1": ["open1:1", "open1:2"], "slide2": ["cover"], "slide3": ["dedication", "page30"],
+               "slide4": ["open1:3", "open1:4"], "slide5": ["open2:1"], "slide6": ["open2:2"],
+               "slide7": HERO_SLOTS}
 NUMBERS = {"pages": 24, "poems": 11}        # «24 unique pages», «11 unique little poems» (the owner, 29.09.2026)
 
 KINDS = ("blob", "grain", "band", "book", "dashes", "leaves", "sticker", "sparkle", "text", "arrow", "image",
@@ -463,22 +467,25 @@ def slot_file(slot: str) -> str:
 
 
 def new_set(name: str, folder: str, numbers: dict | None = None, book: str | None = None,
-            scheme: str | None = None, fresh: bool = False) -> dict:
+            scheme: str | None = None, fresh: bool = False, partial: bool = False) -> dict:
     """A book's slides. For a Workshop book: in its folder, one set; made again, its pictures are new and its six
-    scenes stay as the owner left them — unless `fresh` («Зробити заново»: from the scheme again)."""
+    scenes stay as the owner left them — unless `fresh` («Зробити заново»: from the scheme again). `partial` — only some
+    slides are being made: the other slides' mockups stay in the set as they were."""
     if book:
         set_id = book
         folder_path = set_dir(book)
         old = read_set(book) if (folder_path / "set.json").is_file() else None
-        for part in ("books", "pictures"):
+        partial = partial and old is not None and not fresh
+        for part in () if partial else ("books", "pictures"):
             shutil.rmtree(folder_path / part, ignore_errors=True)
     else:
-        set_id, old = f"{time.strftime('%Y%m%d-%H%M%S')}-{core.new_id()[:6]}", None
+        set_id, old, partial = f"{time.strftime('%Y%m%d-%H%M%S')}-{core.new_id()[:6]}", None, False
     keep_scenes = bool(old) and not fresh
     key = scheme or (old or {}).get("scheme") if keep_scenes else scheme or default_scheme()
     rec = {"id": set_id, "name": name, "folder": folder, "created": (old or {}).get("created") or core.now_iso(),
            "numbers": {**NUMBERS, **((old or {}).get("numbers") or {}), **(numbers or {})},
-           "books": {}, "pictures": {}, "baked": (old or {}).get("baked") or {}, "scheme": key}
+           "books": dict(old.get("books") or {}) if partial else {},
+           "pictures": dict(old.get("pictures") or {}) if partial else {}, "baked": (old or {}).get("baked") or {}, "scheme": key}
     if not keep_scenes:
         for slide in SLIDES:  # every slide starts as the scheme
             try:

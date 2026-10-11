@@ -1,7 +1,7 @@
 ---
 title: Working with the owner
 type: owner
-updated: 2026-10-03
+updated: 2026-10-11
 code: []
 ---
 # Working with the owner
@@ -32,7 +32,7 @@ code: []
 
 ## Mandatory rules
 
-- Security — [security.md](../security.md) (Etsy only from Kyiv, read-only; Printify/Gelato — only what's
+- Security — [security.md](../security.md) (Etsy: browse as a visitor, never sign in here — sign-in only from Kyiv; read-only; Printify/Gelato — only what's
   allowed; never touch keys).
 - Commit and push only when asked — and then everything together, with no splitting by branch or "whose
   change it is" ([dev/setup.md](../dev/setup.md)). Explain git in plain words, with no jargon.

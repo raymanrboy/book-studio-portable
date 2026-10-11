@@ -16,9 +16,10 @@ template and the prompt go into the clipboard — he adds the cover himself, not
                                                                  each with its number in the listing («01 photo-main.png»
                                                                  … — ETSY_ORDER, tidy_etsy())
 
-«Книга в руках у людини» (the owner, 30.09.2026) is no photo but a short video made in Gemini Omni: the same clipboard
-(a woman holding a blank book, Cover 1, then the owner's own tested video prompt — `OMNI_PROMPTS`); the video he
-downloads is caught, its first 2 seconds cut off (ffmpeg), into `etsy/video-<category>.mp4` — the uncut download kept
+«Для відео» (the owner, 07.10.2026; before — the category «Книга в руках у людини», with people, taken out) is no photo
+but a short video made in Gemini Omni or Google Flow: the same clipboard (a blank book on a surface, Cover 1, then the
+video prompt — `OMNI_PROMPTS`: the camera glides in and rises over the thin book to show its cover head-on, a right hand coming from the right grips it by the corner, lifts it with a slight tilt and carries it out; handheld feel; the book a closed rigid board, its opening never named); the video he
+downloads is caught, its first half second cut off (ffmpeg, `TRIM_SECONDS`), into `etsy/video-<category>.mp4` — the uncut download kept
 in the book's `originals/`.
 
 Every name inside Book Studio is English; the page says it in Ukrainian (the owner, 30.09.2026).
@@ -39,19 +40,21 @@ ETSY = "etsy"             # a Workshop book's folder of what goes into its Etsy 
 MOCKUPS = "mockups"
 CANVA_COVER = "canva-cover"
 RESULT = "photo-{key}"    # etsy/photo-main.png …
-VIDEO_RESULT = "video-{key}"   # etsy/video-hands.mp4 — a video category's, its start cut off
-TRIM_SECONDS = 2          # the owner: cut the first 2 seconds of the Omni video (30.09.2026)
+VIDEO_RESULT = "video-{key}"   # etsy/video-video.mp4 — a video category's, its start cut off
+TRIM_SECONDS = 0.5        # the owner: cut the start of the video — 2 s (30.09.2026), 0.5 s (07.10.2026)
 
 # The categories, in the page's order; `ref` — which of the book's pictures goes into the clipboard second.
 CATEGORIES = [
     {"key": "main", "label": "Головне фото", "ref": "cover1"},
-    {"key": "open-book", "label": "Відкрита книга", "ref": "cover-open"},
+    # «Демонстрація продукту» (2026-10-09) took the place of «Відкрита книга»: hands hold the closed hardcover, with the
+    # callouts (Hardcover, Premium materials …) written on the photo. The old category's templates stay in data/photo-mockups/open-book/.
+    {"key": "product", "label": "Демонстрація продукту", "ref": "cover1"},
     {"key": "grandma", "label": "Бабуся читає", "ref": "canva-cover"},
     {"key": "child", "label": "У руках дитини", "ref": "cover1"},
     {"key": "shelf", "label": "На полиці", "ref": "cover1"},
-    {"key": "video", "label": "Для відео", "ref": "cover1"},   # 9:16 phone photos for the listing's video
-    # A video, not a photo: animated in Gemini Omni with the owner's prompt (see OMNI_PROMPTS), caught and trimmed.
-    {"key": "hands", "label": "Книга в руках у людини", "ref": "cover1", "omni": True},
+    # A video, not a photo (since 2026-10-07 the only one): 9:16 phone photos of the closed book on a sofa, a counter, a
+    # table, animated in Gemini Omni / Google Flow with the owner's prompt (see OMNI_PROMPTS), caught and trimmed.
+    {"key": "video", "label": "Для відео", "ref": "cover1", "omni": True},
     {"key": "size", "label": "Розмір", "ref": "cover1"},       # the two formats side by side: softcover and hardcover
 ]
 BY_KEY = {c["key"]: c for c in CATEGORIES}
@@ -218,13 +221,18 @@ PROMPTS = {
         "a top-down flat lay: the closed book lies on a soft blanket among toys, flowers and nursery decor",
         ["our front cover on the top face of the book, edge to edge",
          "the visible spine and cover edges in our book's colours, as in Image 2 — no white strip left"]),
-    "open-book": _prompt(
-        "a photo of our book twice: closed, showing its front cover, and lying open on a spread",
-        "a top-down view of two blank white books: one closed, one lying open",
-        ["the closed blank book gets the front cover from Image 2",
-         "the open blank book gets the open spread from Image 2 — both pages, their pictures and text copied exactly",
-         "the open pages keep their curve toward the gutter and the soft shadow in the fold"],
-        ["pages or text of your own on the open book"]),
+    "product": _prompt(
+        FRONT,
+        "a square photo of a product demonstration: two hands hold the closed blank square hardcover in front of "
+        "the camera, its front cover facing it, in a cosy room; white hand-drawn callouts with curved arrows are "
+        "written on the photo (Hardcover, Premium materials, Your name on the cover, 30 pages)",
+        ["our front cover on the front of the book, edge to edge, in the photo's perspective",
+         "the visible spine, the cover edges and the pages' edge in our book's colours and paper — no white strip of "
+         "the blank book left",
+         "the fingers and thumbs over the book stay on top, exactly as they are",
+         "the callout texts and their arrows stay exactly as they are, letter for letter, and are not covered by "
+         "the cover"],
+        ["changing, moving or re-spelling the callout texts and arrows", "adding callouts of your own"]),
     "grandma": _prompt(
         "our book's flat printed cover: the left half is the back cover, the narrow strip in the middle is the spine, "
         "the right half is the front cover with the title; the thin margin along its edges is trim — leave it out",
@@ -266,31 +274,41 @@ PROMPTS = {
 }
 
 
-# A video category's prompt: plain text for Gemini Omni, word for word as the owner tested it (30.09.2026) — it animates
-# the woman holding the book; "small" on every mention keeps the book from growing as she brings it closer.
+# A video category's prompt: plain text for Gemini Omni / Google Flow (the owner, 07.10.2026; the form is that of his
+# tested Omni prompt) — the camera pushes in on the closed book, a hand takes it away; "small" on every mention keeps
+# the book from growing as the camera comes closer. The JSON in PROMPTS["video"] is the two-step fallback: a photo with
+# our book first, then that photo as the first frame in Flow.
 OMNI_PROMPTS = {
-    "hands": """Animate this exact scene. Keep the woman, the book, the cover and the background
-exactly as they are; do not redraw or change anything.
+    "video": """Animate this exact scene. Keep the room, the surface, the light, the props and the
+small book — its cover artwork, title and colours — exactly as they are; do not redraw anything.
 
-[0-2s] The woman holds the small book in both hands in front of her chest,
-cover facing the camera straight on. Her fingers rest only on the side edges
-of the small book and never cover the cover artwork.
+The small book is a thin closed book with stiff covers, pressed shut like one solid
+rigid board. It stays closed in every frame and only ever moves as one rigid piece.
 
-[2-5s] She takes one calm step towards the camera and leans forward slightly,
-bringing the small book closer to the camera. The small book moves straight
-towards the camera, staying flat and parallel to it. It stays a small book
-the same size relative to her hands; it only looks a bit closer.
-As she leans in, her head stays above the top of the frame.
+One continuous 8-second handheld phone shot with a lively, natural handheld feel:
+gentle sway, small organic shake and micro-corrections, smooth and never jerky.
 
-[5-8s] She holds the small book close to the camera and gently rocks it a few
-degrees clockwise and back, like a slow steering-wheel motion, showing the cover
-artwork like a picture. The cover stays fully visible, sharp and facing the camera.
+[0-3s] The camera pushes in towards the small book with confident momentum and rises
+over it, ending up looking straight down at it: the front cover faces the camera
+head-on, centred, sharp and fully visible. The small book lies still.
 
-The small book is never turned sideways, flipped, tilted towards or away from the
-camera, or opened. Its spine, pages and thickness are never visible.
-The small book's size, the cover artwork and the text stay exactly the same in
-every frame. Her face is never visible. Static camera, one unbroken shot, no cuts,
-no camera zoom. Quiet room ambience, no music, no dialogue.""",
+[3-4s] A woman's right hand and forearm enter from the right side of the frame. The
+hand grips the small book firmly by its lower right corner: the thumb on top of the
+front cover right at the corner, the fingers underneath, clamping the covers together.
+The cover artwork stays uncovered.
+
+[4-6.5s] The hand lifts the small book up towards the camera, the front cover still
+facing the camera, and tilts it back gently, about 10 degrees, so a soft glint of
+light slides across the cover, then levels it again. The hand and wrist move
+naturally, a slight relaxed sway, while the small book stays one closed rigid board
+held in the same grip.
+
+[6.5-8s] The hand carries the small book out of the frame to the right, the front cover
+facing the camera until it leaves. The surface and the props stay as they are.
+
+Only the hand and forearm are ever in the frame. The small book's size, its thinness,
+the cover artwork and the title stay exactly the same in every frame.
+Quiet room ambience, no music, no dialogue.""",
 }
 
 
@@ -332,7 +350,9 @@ def count(book: Path) -> int:
 
 
 def state(book: Path) -> dict:
-    """What the book's «Фото» step shows: the references, a card per category, how many are done."""
+    """What the book's «Фото» step shows: the references, a card per category, how many are done. The template used last
+    is marked only for a category that has its result — a record left from a removed photo (or from the time the category
+    was a photo, 07.10.2026) is no ✓."""
     from .workshop import books
     refs = references(book)
     done = results(book)
@@ -340,7 +360,7 @@ def state(book: Path) -> dict:
     return {
         "refs": [{"key": k, "label": r["label"], "name": refs[k], "missing": r["missing"]} for k, r in REFS.items()],
         "cards": [{"key": c["key"], "label": c["label"], "ref": c["ref"], "refLabel": REFS[c["ref"]]["label"],
-                   "photo": done.get(c["key"]), "template": (record.get(c["key"]) or {}).get("template"),
+                   "photo": done.get(c["key"]), "template": (record.get(c["key"]) or {}).get("template") if c["key"] in done else None,
                    "omni": bool(c.get("omni"))}
                   for c in CATEGORIES],
         "count": len(done), "total": len(CATEGORIES),
@@ -374,10 +394,12 @@ def _retire_all(book: Path, folder: Path, stem: str, exts: tuple[str, ...] = cor
 # The owner's order of a listing's files (30.09.2026): a number in front of the name, so Explorer shows them in the
 # order they go into the listing. By the name without its number; a file that isn't here keeps its name and so comes
 # after the numbered ones. A number belongs to its file — a missing one leaves a gap, nothing moves up.
-ETSY_ORDER = {"photo-main": 1, "video-hands": 2, "photo-grandma": 3, "listing 1": 5, "photo-open-book": 6,
-              "listing 3": 7, "listing 4": 8, "photo-child": 9, "listing 2": 10, "photo-size": 11, "listing 5": 12,
-              "listing 6": 13, "photo-shelf": 14, "listing 7": 15}   # 7 — the hero's looks (2026-10-02), last for now
-ETSY_SCENES = {"all & open 1": 4, "cover & open 1": 6}   # by the start of the name: «All & Open 1 (8-9).png»
+ETSY_ORDER = {"photo-main": 1, "video-video": 2, "photo-grandma": 3, "photo-product": 5, "listing 1": 6,
+              "photo-open-book": 7, "listing 3": 8, "listing 4": 9, "photo-child": 10, "listing 2": 11, "photo-size": 12,
+              "listing 5": 13, "listing 6": 14, "photo-shelf": 15, "listing 7": 16}
+# 5 — the product demonstration (the owner, 09.10.2026: "the fifth"; everything from the old 5 on moved one down);
+# 16 — the hero's looks (2026-10-02), last for now
+ETSY_SCENES = {"all & open 1": 4, "cover & open 1": 7}   # by the start of the name: «All & Open 1 (8-9).png»
 OPEN_BOOK = "photo-open-book"   # when there is one, it takes Cover & Open 1's place: that mockup stays in mockups/ only
 _NUMBERED = re.compile(r"^(\d{2}) (.+)$")
 
@@ -471,6 +493,10 @@ def ffmpeg() -> str:
     return found
 
 
+def _sec(seconds: float) -> str:
+    return f"{seconds:g}".replace(".", ",")   # «0,5»
+
+
 def trim(source: Path, target: Path, seconds: float = TRIM_SECONDS) -> None:
     """The video without its first `seconds`: cut exactly (encoded again — H.264 + AAC, the quality kept), the MP4 ready
     to play at once (faststart). Written beside the target first, so a failure leaves nothing half-made."""
@@ -487,14 +513,14 @@ def trim(source: Path, target: Path, seconds: float = TRIM_SECONDS) -> None:
     if run.returncode != 0 or not part.is_file() or part.stat().st_size < 1024:
         part.unlink(missing_ok=True)
         said = run.stderr.decode("utf-8", "replace").strip().splitlines()[-1:] if run.stderr else []
-        raise ApiError(f"Не вдалося обрізати відео (воно коротше за {seconds:g} с або пошкоджене)."
+        raise ApiError(f"Не вдалося обрізати відео (воно коротше за {_sec(seconds)} с або пошкоджене)."
                        + (f" ffmpeg: {said[0]}" if said else ""))
     core.replace_file(part, target)
 
 
 def place_video(book_id: str, key: str, source: Path, name: str, template: str | None = None,
                 take: bool = False) -> dict:
-    """A video category's video: its first 2 seconds cut off into etsy/video-<category>.mp4, the download as it came
+    """A video category's video: its start (`TRIM_SECONDS`) cut off into etsy/video-<category>.mp4, the download as it came
     into the book's originals/ (`take` moves it out of Downloads); the ones before go to .replaced/."""
     from .workshop import books
     from .workshop.pictures import _move
@@ -526,7 +552,7 @@ def place_video(book_id: str, key: str, source: Path, name: str, template: str |
     tidy_etsy(book)
     core.log.info("Photo mockups: video %s → %s/%s (first %ss cut)", name, book_id, stem, TRIM_SECONDS)
     return {"key": f"photo:{c['key']}", "label": c["label"],
-            "note": f"Відео «{c['label']}» на місці — перші {TRIM_SECONDS} с обрізано"}
+            "note": f"Відео «{c['label']}» на місці — перші {_sec(TRIM_SECONDS)} с обрізано"}
 
 
 def remove(book_id: str, key: str) -> dict:
@@ -537,8 +563,6 @@ def remove(book_id: str, key: str) -> dict:
     stem, exts = _result(c)
     _retire_all(book, book / ETSY, stem, exts)
     books.update_state(book, lambda d: (d.get("photos") or {}).pop(c["key"], None))
-    if c["key"] == "open-book":
-        scenes_to_etsy(book)   # its place goes back to Cover & Open 1
     tidy_etsy(book)
     return {"removed": c["key"]}
 

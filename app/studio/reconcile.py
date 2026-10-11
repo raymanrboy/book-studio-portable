@@ -186,6 +186,19 @@ def _numbers_named(provider: str, order: dict, rid_set: set[str], lengths: set[i
     return hits
 
 
+DAY_MS = 86_400_000
+NAME_WINDOW_BEFORE = 1 * DAY_MS   # a print order made a day before its receipt still fits (clocks, time zones)
+NAME_WINDOW_AFTER = 30 * DAY_MS   # ...and one made up to 30 days after it
+
+
+def _in_window(order_time: float | None, receipt_time: float | None) -> bool:
+    """A name alone is weak evidence: a repeat buyer's old print order must not be taken by her new receipt (2026-10-08).
+    Unknown times don't exclude anything."""
+    if order_time is None or receipt_time is None:
+        return True
+    return -NAME_WINDOW_BEFORE <= order_time - receipt_time <= NAME_WINDOW_AFTER
+
+
 class _Printer:
     """One printer's orders as matching reads them: by the receipt number they name (the first order that names it,
     a live one before a cancelled one or a draft) and by the recipient's name."""
@@ -207,10 +220,10 @@ class _Printer:
     def by_name(self, name: str, created) -> dict | None:
         if len(name.strip()) < MIN_NAME:
             return None
-        found = [i for i in self.names.candidates(name) if self.free[i]]
+        t = parse_time(created)
+        found = [i for i in self.names.candidates(name) if self.free[i] and _in_window(self.times[i], t)]
         if not found:
             return None
-        t = parse_time(created)
         return self.orders[min(found, key=lambda i: (bool(self.orders[i]["dead"]), _distance(self.times[i], t)))]
 
 

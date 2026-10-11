@@ -1,7 +1,7 @@
 ---
 title: Book Studio overview
 type: overview
-updated: 2026-10-06
+updated: 2026-10-11
 code:
   - app/studio/main.py
   - app/studio/core.py
@@ -23,8 +23,8 @@ pages or 28 without one spread); before, **Printify** printed US hardcovers (24 
 
 The owner is not a programmer, writes in Ukrainian, and works from two computers: the **Wrocław** one
 (day-to-day work, where the program runs) and a **remote Kyiv** one, where the Etsy shop is registered.
-Etsy pages are only opened on the Kyiv one — see [security](security.md). The program itself is not run
-on the Kyiv PC.
+Signing in to Etsy is only on the Kyiv one; from the Wrocław one an agent may open Etsy as a signed-out visitor to research
+listings and shops — see [security](security.md). The program itself is not run on the Kyiv PC.
 
 ## Parts of the program
 

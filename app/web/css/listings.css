@@ -329,6 +329,8 @@
 .mk-tpl-pic.none > img { display: none; }
 .mk-tpl-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .mk-tpl-head { display: flex; align-items: baseline; gap: 6px; min-height: 20px; }
+.mk-tpl.off .mk-tpl-pic, .mk-tpl.off .mk-slots { opacity: .45; }   /* not ticked: not made this time */
+.mk-tpl-on { align-items: center; gap: 8px; }
 .mk-tpl-name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs); }
 .mk-hand { display: inline-flex; align-self: center; color: var(--text-3); }
 .mk-count, .mk-note { font-size: var(--fs-s); color: var(--text-3); }
@@ -480,6 +482,9 @@
 .sl-ghosts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .sl-ghost { aspect-ratio: 1; border-radius: var(--r-sm); border: 1.5px dashed var(--border-strong); display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px; padding: 8px; text-align: center; color: var(--text-4); }
+.sl-ghost { position: relative; cursor: pointer; }
+.sl-ghost:not(.on) { opacity: .5; }
+.sl-ghost input { position: absolute; top: 6px; left: 6px; }
 .sl-ghost .num { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; color: var(--text-3); }
 .sl-ghost small { font-size: var(--fs-s); line-height: var(--lh); }
 .sl-shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
