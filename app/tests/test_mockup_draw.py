@@ -184,7 +184,12 @@ class DrawnRun(unittest.TestCase):
         self.out = self.root / "Мокапи"
         self.out.mkdir()
         self.book = mockups.read_book(demo_book(self.root / "Goose"))
-        self.drawn, self.cut = [], []
+        self.drawn, self.cut, self.cut_only = [], [], []
+
+        def cut_drawn(im, target, templates, kind):
+            self.cut_only.append(target.name)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            im.save(target, dpi=(300, 300))
 
         def render(key, pictures, colours=None):
             self.drawn.append((key, sorted(pictures), colours))
@@ -203,6 +208,7 @@ class DrawnRun(unittest.TestCase):
                                                                          render=render, forget=lambda: None)),
             mock.patch.object(mockups, "launch", lambda script: self.fail("Photoshop must not be asked")),
             mock.patch.object(mockups.slide_cutout.cutter, "add", lambda png, folder, again=False: self.cut.append((Path(png).name, again))),
+            mock.patch.object(mockups.slide_cutout, "cut_drawn", cut_drawn),
             mock.patch.object(mockups, "_to_etsy", lambda result: result),
             mock.patch.dict(mockups.HARD, {"page": (40, 40), "board": (44, 46), "spine": (4, 46)}),
             mock.patch.dict(mockups.SOFT, {"page": (40, 40), "board": (40, 40), "spine": (6, 40)}),
@@ -224,10 +230,19 @@ class DrawnRun(unittest.TestCase):
         self.assertEqual(len(res["saved"]), 10)          # 4 + 2 + 1 + 1 + Dedication + Cover 1: nothing left open
         self.assertEqual(res["open"], [])
         self.assertEqual(res["run"], "")                 # no «Зберегти відкриті» for the page to offer
+        nobg = self.out / mockups.slide_cutout.NO_BG
         for name in res["saved"]:
-            with Image.open(self.out / name) as im:
+            with Image.open(self.out / name if (self.out / name).exists() else nobg / name) as im:
                 self.assertEqual(tuple(round(v) for v in im.info.get("dpi")), (300, 300))
-        self.assertIn(("2. Open 1 (2-3).png", False), self.cut)
+        # Open 1, Open 2, Dedication only without their background (the owner, 13.10.2026), cut at once
+        self.assertEqual(sorted(p.name for p in self.out.glob("*.png")),
+                         ["1. Cover 1.png", "All & Open 1 (16-17).png", "Cover & Open 1 (4-5).png"])
+        self.assertEqual(len(self.cut_only), 7)
+        self.assertTrue((nobg / "2. Open 1 (2-3).png").is_file() and (nobg / "4. Dedication.png").is_file())
+        self.assertIn(("1. Cover 1.png", False), self.cut)              # Cover 1 keeps both: the photo mockups' reference
+        self.assertFalse([n for n, _ in self.cut if "Open 1 (" in n and "&" not in n or "Dedication" in n])
+        again = mockups.draw_plan(self.book, PICKS, self.out)            # a second run never lands on them
+        self.assertEqual(again[0]["save"], str(self.out / "2. Open 1 (2-3) (2).png"))
         self.assertEqual(res["edits"], {"1. Cover 1.png": "cover1", "Cover & Open 1 (4-5).png": "coverOpen",
                                         "All & Open 1 (16-17).png": "allOpen"})
         scenes = [c for k, _, c in self.drawn if k in mockups.SCENES]

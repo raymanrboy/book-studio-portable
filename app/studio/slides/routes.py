@@ -233,6 +233,8 @@ def _cutouts(req: Request):
     for p in folder.glob("*.png"):
         if cutout.kind_of(p.name) in cutout.KINDS and p.name not in states and (folder / cutout.NO_BG / p.name).is_file():
             states[p.name] = "done"
+    for p in cutout.alone(folder):        # drawn by Book Studio and kept only without their background: done at once
+        states.setdefault(p.name, "done")
     return {"files": states, "busy": cutout.cutter.busy(folder), "noBg": str(folder / cutout.NO_BG)}
 
 

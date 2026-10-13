@@ -20,6 +20,9 @@ templates (calibration renders in Photoshop) and drew real books equal to Photos
   pastel would be nice" → pastel suggestions from the cover's hues, the first used by a run; **one background for both
   scenes** (my suggestion, he agreed — the listing looks one set). **Dedication needs no colours**: its desk colour is fixed
   in the template, its floor is cut away.
+- **Open 1, Open 2 and Dedication are kept only without their background** (the owner: "if the ones with the background
+  aren't needed, don't save them"); Cover 1 keeps both (the photo mockups' reference — the owner agreed), the scenes stay
+  whole.
 - **Photoshop stays** for a template not baked or changed since (the stamp), and to bake: `app/tools/mockup_bake/`.
 - The owner allowed installing any tools; an agent may answer Photoshop's "run this script?" by itself while he is away
   (13.10.2026) — `WarnRunningScripts` is still his alone.

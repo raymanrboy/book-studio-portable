@@ -139,6 +139,16 @@ shadow, place). 10 pictures: ~30 s with the cut-outs (Photoshop: ~45 s and a cli
 (Book Studio draws N pictures), no ✋ and no «Ваша черга»; the rows say «Малюю …». The Photoshop warning shows only while
 some template is not baked.
 
+**Kept only without the background** (the owner, the same evening: "you save two versions again, with the background
+and without — if it isn't needed, don't save it"): a drawn **Open 1, Open 2 and Dedication** is cut straight from the
+drawing (`slide_cutout.cut_drawn()`) and kept **only in `no-background\`** (`CUT_ONLY`); the book's `mockups\` keeps
+**Cover 1** (both versions — the photo mockups take it with its background as their reference, `photos.REFS`) and the two
+scenes. A «Без фону» file kept alone carries a note of where it lay in the template (a PNG text chunk), so the slides tell
+its book and shadow apart again any day (`cutout._split()`; the cut cache goes with every launch) — checked on book 36: the
+visible shadow the same, the whole cut 0.02 of 255 on average. The slides, the book's card «У папці книги», the
+Workshop's counts take such files as the book's mockups (`cutout.alone()`); names stay free in both folders
+(`_free_name()`).
+
 **The crop window** (`mockups-edit.js`; the owner, 13.10.2026: "a mini editor just for cropping — the program puts the right half
 of the 2:1 picture in; if it looks right I touch nothing, if so-so I move it"). On a drawn result **Cover 1, Cover & Open 1 and
 All & Open 1** carry the crop button «Поправити обкладинку»:
@@ -298,7 +308,7 @@ takes the demo book. Nothing goes to drive C (`core.own_temp()`, [runtime](../ar
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
 - [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `arrived()`, `paintBack()`, `takeWorkshopBook()`, `existingNow()`, `loadExisting()`, `FOR_BOOK`, `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `ticked()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
 - [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — step 4, the listing slides: `slidesStep()` ([slides](slides.md))
-- [app/studio/mockups.py](../../app/studio/mockups.py) — drawn: `EDITABLE`, `SCENES`, `FRONT_X`, `min_zoom()`, `drawn()`, `draw_plan()`, `draw()`, `_pictures_for()`, `_fills()`, `_draw_one()`, `_save_drawn()`, `_crop_values()`, `MAX_ZOOM`, `_edit()`, `_edit_state()`, `_edit_preview()`, `_edit_save()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — drawn: `EDITABLE`, `CUT_ONLY`, `SCENES`, `FRONT_X`, `min_zoom()`, `drawn()`, `draw_plan()`, `draw()`, `_pictures_for()`, `_fills()`, `_draw_one()`, `_save_drawn()`, `_crop_values()`, `MAX_ZOOM`, `_edit()`, `_edit_state()`, `_edit_preview()`, `_edit_save()`
 - [app/studio/mockup_render.py](../../app/studio/mockup_render.py) — `BAKED`, `stamp()`, `ready()`, `render()`, `slots()`, `fills()`, `forget()`, `_render_linear()`, `_render_multiply()`, `_recolour()`
 - [app/studio/mockup_colours.py](../../app/studio/mockup_colours.py) — `edges()`, `pastels()`, `hex_of()`, `rgb_of()`
 - [app/tools/mockup_bake/bake.py](../../app/tools/mockup_bake/bake.py) — `prepare()`, `build_linear()`, `build_multiply()`; [engine.py](../../app/tools/mockup_bake/engine.py) — `passes()`, `bake()`, `tune()`; [mult.py](../../app/tools/mockup_bake/mult.py) — `bake()`, `register()`; [bake.jsx](../../app/tools/mockup_bake/bake.jsx) — the Photoshop script; [install.py](../../app/tools/mockup_bake/install.py) — `read_fills()`, `main()`

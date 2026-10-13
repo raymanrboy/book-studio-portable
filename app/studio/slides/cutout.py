@@ -12,6 +12,11 @@ desk («BACKGROUND_desk color» — the colour the owner picks for the table) st
 owner, 29.09.2026: "the table stays, the background goes, without losing the shadows"). Cover & Open 1 and All & Open 1
 are whole scenes (no book mask): they are kept whole.
 
+Since 13.10.2026 Book Studio draws the mockups itself, and Open 1, Open 2 and Dedication are kept **only without their
+background** (the owner: "if the ones with the background aren't needed, don't save them"): cut straight from the drawn
+picture (`cut_drawn()`), the «Без фону» file carries where it lay in the template (a PNG text chunk), so its book and
+shadow can be told apart again any day (`ensure()` of such a file → `_split()`) — the cut cache goes with every launch.
+
     kind_of(name)       which template a mockup picture comes from (by its file name)
     cut(png, template)  the book and its shadow as two pictures, and where the book sits in them
     combined(...)       the two as one picture — the «Без фону» file
@@ -162,16 +167,21 @@ def forget_templates() -> None:
 
 # ---------------------------------------------------------------- the cut
 
-def cut(png: Path, tmpl, crop: bool = True) -> tuple[Image.Image, Image.Image, dict]:
+def cut(png, tmpl, crop: bool = True) -> tuple[Image.Image, Image.Image, dict]:
     """The book alone and its shadow alone (so a slide can make the shadow lighter), both cropped to the pair, and
-    where the book sits in them: cx, cy, w — shares of the picture; aspect — the book's height / width. Full size."""
+    where the book sits in them: cx, cy, w — shares of the picture; aspect — the book's height / width; box — where
+    the pictures lie on the template's canvas. Full size. `png` — a file, or the picture itself (a drawn mockup)."""
     import numpy as np
     alpha, effects = tmpl
-    with Image.open(png) as im:
-        src = np.asarray(im.convert("RGB"), np.float32) / 255
+    if isinstance(png, Image.Image):
+        src, label = np.asarray(png.convert("RGB"), np.float32) / 255, "мокап"
+    else:
+        with Image.open(png) as im:
+            src = np.asarray(im.convert("RGB"), np.float32) / 255
+        label = png.name
     H, W = alpha.shape
     if src.shape[:2] != (H, W):
-        raise _fail(f"«{png.name}»: розмір {src.shape[1]}×{src.shape[0]}, а шаблон {W}×{H}.")
+        raise _fail(f"«{label}»: розмір {src.shape[1]}×{src.shape[0]}, а шаблон {W}×{H}.")
     color = np.zeros((H, W, 3), np.float32)   # premultiplied
     a = np.zeros((H, W), np.float32)
     for c, fa in effects:
@@ -189,15 +199,16 @@ def cut(png: Path, tmpl, crop: bool = True) -> tuple[Image.Image, Image.Image, d
     ys, xs = np.where(both > 0.01)
     by, bx = np.where(alpha > 0.5)
     if not len(bx):
-        raise _fail(f"«{png.name}»: у шаблоні не знайшлося обрису книги.")
+        raise _fail(f"«{label}»: у шаблоні не знайшлося обрису книги.")
     box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
     pw, ph = box[2] - box[0], box[3] - box[1]
     bw, bh = max(1, int(bx.max()) - int(bx.min())), int(by.max()) - int(by.min())
     info = {"cx": ((bx.min() + bx.max()) / 2 - box[0]) / pw, "cy": ((by.min() + by.max()) / 2 - box[1]) / ph,
             "w": bw / pw, "aspect": bh / bw}
+    info = {k: round(float(v), 5) for k, v in info.items()}
     if not crop:   # Dedication keeps the mockup's own frame: it lies on the slide where the whole mockup lay
-        return book_im, shadow_im, {k: round(float(v), 5) for k, v in info.items()}
-    return book_im.crop(box), shadow_im.crop(box), {k: round(float(v), 5) for k, v in info.items()}
+        return book_im, shadow_im, {**info, "box": [0, 0, W, H]}
+    return book_im.crop(box), shadow_im.crop(box), {**info, "box": list(box)}
 
 
 def smaller(im: Image.Image) -> Image.Image:
@@ -238,6 +249,8 @@ def ensure(png: Path, templates_dir: Path, no_bg: bool = True, replace: bool = F
     kind = kind_of(png.name)
     if kind not in KINDS:
         raise _fail(f"«{png.name}» — не Open 1, Open 2, Cover 1 чи Dedication: без фону не вирізається.")
+    if png.parent.name == NO_BG:      # kept only without its background (drawn here): told apart from itself
+        return cached(png) or _split(png, Path(templates_dir), kind)
     key = cut_key(png)          # taken before the picture is read: one drawn over it meanwhile is not cached as it
     folder = cached(png)
     target = png.parent / NO_BG / png.name
@@ -268,6 +281,93 @@ def ensure(png: Path, templates_dir: Path, no_bg: bool = True, replace: bool = F
     if no_bg and not target.exists():   # cut before without it: made from the kept copy
         _write_no_bg_from(folder, target)
     return folder
+
+
+CUT_TEXT = "book-studio-cut"     # the PNG text chunk of a «Без фону» file kept alone: where it lay in the template
+
+
+def cut_drawn(im: Image.Image, target: Path, templates_dir: Path, kind: str) -> Path:
+    """A mockup Book Studio drew, kept only without its background: cut straight from the picture, the «Без фону»
+    file written (with where it lay in the template) and the cut cached for the slides. Returns the cut's folder."""
+    from PIL.PngImagePlugin import PngInfo
+    book, shadow, info = cut(im, template(Path(templates_dir) / KINDS[kind], im.size, kind), crop=kind != "dedication")
+    meta = PngInfo()
+    meta.add_text(CUT_TEXT, json.dumps({"kind": kind, "box": info["box"], "canvas": list(im.size)}))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    part = target.with_name(target.stem + ".part.png")
+    try:
+        combined(book, shadow).save(part, compress_level=4, pnginfo=meta, dpi=(300, 300))
+        part.replace(target)
+    finally:
+        part.unlink(missing_ok=True)
+    return _cache(target, book, shadow, info, kind)
+
+
+def _cache(png: Path, book: Image.Image, shadow: Image.Image, info: dict, kind: str) -> Path:
+    folder = CUTS / cut_key(png)
+    tmp = folder.with_name(folder.name + ".part")
+    tmp.mkdir(parents=True, exist_ok=True)
+    with ThreadPoolExecutor(2) as pool:
+        for w in [pool.submit(lambda: smaller(book).save(tmp / "book.png", compress_level=3)),
+                  pool.submit(lambda: smaller(shadow).save(tmp / "shadow.png", compress_level=3))]:
+            w.result()
+    (tmp / "info.json").write_text(json.dumps({**info, "kind": kind, "source": png.name}, ensure_ascii=False),
+                                   encoding="utf-8")
+    if folder.exists():
+        shutil.rmtree(folder, ignore_errors=True)
+    tmp.replace(folder)
+    return folder
+
+
+def _split(png: Path, templates_dir: Path, kind: str) -> Path:
+    """A «Без фону» file kept alone, its book and its shadow told apart again: the template's book outline, where the
+    file says it lay, is the book (opaque in the template); the rest is the shadow. A file without that note (made
+    elsewhere) — taken whole as the book, without a shadow of its own."""
+    import numpy as np
+    with Image.open(png) as im:
+        note = (getattr(im, "text", None) or {}).get(CUT_TEXT)
+        rgba = np.asarray(im.convert("RGBA"), np.float32) / 255
+    h, w = rgba.shape[:2]
+    a_b = None
+    if note:
+        try:
+            spec = json.loads(note)
+            x0, y0, x1, y1 = spec["box"]
+            alpha = template(templates_dir / KINDS[kind], tuple(spec["canvas"]), kind)[0]
+            a_b = alpha[y0:y1, x0:x1] if (y1 - y0, x1 - x0) == (h, w) else None
+        except Exception:
+            core.log.warning("Slides: the note of %s not read", png, exc_info=True)
+    if a_b is None:
+        a_b = rgba[..., 3]
+    A, C = rgba[..., 3], rgba[..., :3]
+    shadow_a = np.where(a_b < 1, np.clip((A - a_b) / np.maximum(1 - a_b, 1e-6), 0, 1), 0)
+    shadow_c = np.where((a_b <= 0)[..., None], C, 0)
+
+    def to_image(rgb, al):
+        return Image.fromarray((np.dstack([rgb, al]) * 255 + .5).clip(0, 255).astype(np.uint8), "RGBA")
+    book, shadow = to_image(C, a_b), to_image(shadow_c, shadow_a)
+    both = np.maximum(a_b, shadow_a)
+    by, bx = np.where(a_b > 0.5)
+    if not len(bx):
+        raise _fail(f"«{png.name}»: книги в ньому не знайшлося.")
+    ys, xs = np.where(both > 0.01)
+    box = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1) if kind != "dedication" else (0, 0, w, h)
+    pw, ph = box[2] - box[0], box[3] - box[1]
+    bw, bh = max(1, int(bx.max()) - int(bx.min())), int(by.max()) - int(by.min())
+    info = {k: round(float(v), 5) for k, v in {"cx": ((bx.min() + bx.max()) / 2 - box[0]) / pw,
+                                               "cy": ((by.min() + by.max()) / 2 - box[1]) / ph,
+                                               "w": bw / pw, "aspect": bh / bw}.items()}
+    return _cache(png, book.crop(box), shadow.crop(box), info, kind)
+
+
+def alone(folder: Path) -> list[Path]:
+    """The mockups of a folder kept only without their background (drawn by Book Studio): their «Без фону» files with
+    no picture of the same name beside them."""
+    nb = Path(folder) / NO_BG
+    if not nb.is_dir():
+        return []
+    return [p for p in nb.glob("*.png") if p.is_file() and kind_of(p.name) in KINDS and not (Path(folder) / p.name).exists()
+            and not p.name.endswith(".part.png")]
 
 
 def _write_no_bg_from(folder: Path, target: Path) -> None:

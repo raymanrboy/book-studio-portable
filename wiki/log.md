@@ -3,6 +3,16 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-13] update | Drawn Open 1, Open 2, Dedication kept only without their background
+- The owner saw both versions in the folder again: "if it isn't needed, don't save it". It was needed by the slides (they
+  cut book and shadow from the picture with its background) and Cover 1 by the photo mockups. Now `cutout.cut_drawn()`
+  cuts the drawing itself into `no-background\` with a note of where it lay; `_split()` tells book and shadow apart again
+  from that file; `alone()` — such files count as mockups (slides, the card «У папці книги», `/api/slides/cutouts`,
+  the Workshop's counts); `_free_name()` looks in both folders. Cover 1 keeps both (the owner: "так").
+- Checked: the tests (new ones in `test_slides.py`, `test_mockup_draw.py`), book 36 end to end: the folder holds Cover 1
+  and the two scenes, «Без фону» the eight; the re-cut after the cache went — the visible shadow the same, the whole cut
+  0.02 of 255 on average (max 20 at a few edge pixels).
+
 ## [2026-10-13] update | The crop window: the frame over the whole cover, resized by its corners
 - The owner tried it: "perfect", but the front must move over the whole picture (left-right most of all) and be resized by
   its edges like Ctrl+T, the proportions kept, instead of a slider. `cover_pictures(crop)`: the window anywhere on the wide

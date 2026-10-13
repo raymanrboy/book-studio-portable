@@ -194,7 +194,11 @@ templates themselves are in it); the program never reads it, the Mockups use `D:
   black / white with alpha (a grey `v` in Multiply = black with alpha 1 − v), kept near the book (a soft falloff), the
   whole-canvas haze (3.5 %) cut — `read_psd()` (psd_tools, imported inside the call), `cut()`, `combined()`, `ensure()`
   (the cache, the full-size «Без фону» never over a file that is there — except `replace=True`: the mockup was drawn
-  again over itself in the Mockups' crop window, 13.10.2026, and `Cutter.add(again=True)` cuts it once more), `Cutter` (one background thread, a queue,
+  again over itself in the Mockups' crop window, 13.10.2026, and `Cutter.add(again=True)` cuts it once more), `Cutter`.
+  **A drawn Open 1 / Open 2 / Dedication is kept only in «Без фону»** (13.10.2026): `cut_drawn()` cuts the drawing itself
+  and notes in the file where it lay (`CUT_TEXT`, a PNG text chunk); `ensure()` of such a file tells its book and shadow
+  apart again (`_split()` — the template's book outline is the book); `alone()` lists them, and `work.mockups_in()`, the
+  cut-outs' count and the Workshop's counts take them as mockups (one background thread, a queue,
   every picture's state per folder; the template's arrays go when the queue is empty). `READER` — the preview server
   and the tests put a pretend template there.
 - **The drawing** (`web/js/slides/engine.js`): a scene = `{id, title, bg, items[]}` on a 1000×1000 stage; each element
@@ -248,7 +252,7 @@ real template: the desk and the book kept, the floor gone, the book's soft shado
 
 ## Where in the code
 
-- [app/studio/slides/cutout.py](../../app/studio/slides/cutout.py) — `read_psd_desk()`, `DESK_READER`, `kind_of()`, `spread_of()`, `KINDS`, `NO_BG`, `CUTS`, `HAZE`, `MAX_WIDTH`, `read_psd()`, `_near_book()`, `READER`, `template()`, `cut()`, `smaller()`, `combined()`, `ensure()`, `Cutter`, `cutter`
+- [app/studio/slides/cutout.py](../../app/studio/slides/cutout.py) — `read_psd_desk()`, `DESK_READER`, `kind_of()`, `spread_of()`, `KINDS`, `NO_BG`, `CUTS`, `HAZE`, `MAX_WIDTH`, `read_psd()`, `_near_book()`, `READER`, `template()`, `cut()`, `smaller()`, `combined()`, `ensure()`, `cut_drawn()`, `_split()`, `alone()`, `CUT_TEXT`, `Cutter`, `cutter`
 - [app/studio/slides/store.py](../../app/studio/slides/store.py) — `SLIDES`, `LOOKS_SLIDE`, `HERO_SLOTS`, `shown()`, `_recoloured()`, `_new_slides()`, `FACTORY`, `SCHEMES`, `SETS`, `TEMPLATE`, `BOOK_SLOTS`, `PICTURE_SLOTS`, `SLOT_LABEL`, `NUMBERS`, `KINDS`, `ensure_schemes()`, `list_schemes()`, `default_scheme()`, `save_scheme()`, `set_default()`, `presets()`, `apply_preset()`, `is_book()`, `mockups_dir()`, `load()`, `check()`, `save()`, `reset()`, `sig()`, `new_set()`, `put_book()`, `put_picture()`, `list_sets()`, `workshop_sets()`, `forget_old_sets()`, `clean_temporary()`, `book_done()`
 - [app/studio/slides/work.py](../../app/studio/slides/work.py) — `looks()`, `put_heroes()`, `sync_heroes()`, `not_baked()`, `_book_page30()`, `_tick()`, `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `title()`
 - [app/studio/slides/bake.py](../../app/studio/slides/bake.py) — `bake()`, `render()`, `outputs()`, `run_browser()`, `NAME`, `AT_ONCE` (4: seven slides in two rounds, 04.10.2026)

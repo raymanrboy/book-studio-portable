@@ -179,7 +179,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - **Drawn without Photoshop** (13.10.2026): the templates are only read for their stamp (`mockup_render.stamp()`, the
   first and last 4 MB); the baked files live in `app/data/mockups/baked`; a drawn picture is saved under a free name like
   Photoshop's, and **only the crop window draws over a file — the very picture its run saved** (and that picture's
-  «Без фону»). The bake tool (`app/tools/mockup_bake/`) copies the templates into its own work folder and Photoshop opens
+  «Без фону»). Open 1, Open 2 and Dedication are written only into `no-background\` (a name free in both folders). The bake tool (`app/tools/mockup_bake/`) copies the templates into its own work folder and Photoshop opens
   only those copies.
 - A Workshop book's mockups already there (11.10.2026) are **only read** and shown (`existing()`, `_existing_file()`):
   a name must be a file right inside that book's `mockups\` and of a known template — anything else is refused; reading

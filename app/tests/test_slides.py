@@ -136,6 +136,29 @@ class TheCut(Base):
         cutout.ensure(png, self.root)                                        # cut again: the cache, and no overwrite
         self.assertEqual(target.read_bytes(), b"the owner's own file")
 
+    def test_a_drawn_mockup_kept_only_without_its_background_still_gives_book_and_shadow(self):
+        # 13.10.2026: Book Studio draws Open 1 / Open 2 / Dedication and keeps them only in «Без фону»; the slides
+        # cut them again any day (the cache goes with every launch) from the file's own note
+        out = self.root / "out"
+        src = mockup(self.root / "drawn.png")
+        with Image.open(src) as im:
+            drawn = im.convert("RGB")
+        target = out / cutout.NO_BG / "2. Open 1 (2-3).png"
+        first = cutout.cut_drawn(drawn, target, self.root, "open1")
+        self.assertFalse((out / "2. Open 1 (2-3).png").exists())
+        with Image.open(first / "book.png") as b, Image.open(first / "shadow.png") as s:
+            book_a, shadow_a = b.copy(), s.copy()
+        shutil.rmtree(cutout.CUTS, ignore_errors=True)                       # the program restarted
+        self.assertEqual(work.mockups_in(out)["open1"], [target])
+        again = cutout.ensure(target, self.root)
+        with Image.open(again / "book.png") as b, Image.open(again / "shadow.png") as s:
+            self.assertEqual(b.size, book_a.size)
+            self.assertEqual(b.getpixel((50, 50)), book_a.getpixel((50, 50)))     # the book, opaque
+            self.assertEqual(b.getpixel((105, 105))[3], 0)                         # the shadow is not the book
+            self.assertAlmostEqual(s.getpixel((105, 105))[3], shadow_a.getpixel((105, 105))[3], delta=2)
+        info = json.loads((again / "info.json").read_text(encoding="utf-8"))
+        self.assertAlmostEqual(info["cx"], 0.45, delta=0.02)
+
     def test_a_mockup_drawn_again_replaces_its_own_cut_out(self):
         # the owner moved the front cover in the crop window (13.10.2026): the picture is drawn over itself, and
         # its «Без фону» file follows it

@@ -261,7 +261,8 @@ def mockups_state(path: Path) -> dict:
     from ..photos import bare
     slides = [n for n in _names(path / ETSY) if bare(n).lower().startswith("listing") and n.lower().endswith(".png")]
     old = [n for n in pictures if n.lower().startswith("listing ")]
-    return {"mockups": len(pictures) - len(old), "noBg": len(_names(folder / NO_BG)),
+    from ..slides.cutout import alone
+    return {"mockups": len(pictures) - len(old) + len(alone(folder)), "noBg": len(_names(folder / NO_BG)),
             "slides": len(slides) + len(old), "editable": (folder / "slides" / "set.json").is_file()}
 
 

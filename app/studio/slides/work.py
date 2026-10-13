@@ -36,6 +36,7 @@ def mockups_in(folder: Path, order: list[str] | None = None) -> dict[str, list[P
     never over it): outside the picks only the newest of a kind and spread is taken (11.10.2026 — slides made from the
     book's folder alone would show the same spread twice)."""
     files = [(p, p.stat().st_mtime) for p in folder.glob("*.png") if p.is_file() and cutout.kind_of(p.name)]
+    files += [(p, p.stat().st_mtime) for p in cutout.alone(folder)]       # kept only without their background
     rank = {name.lower(): i for i, name in enumerate(order or [])}
     files.sort(key=lambda f: (rank.get(f[0].name.lower(), 10 ** 6), cutout.spread_of(f[0].name), -f[1], f[0].name.lower()))
     out: dict[str, list[Path]] = {"open1": [], "open2": [], "cover1": [], "dedication": []}

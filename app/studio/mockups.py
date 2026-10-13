@@ -275,10 +275,11 @@ def _save_png(im: Image.Image, path: Path) -> None:
 # ---------------------------------------------------------------- one run
 
 def _free_name(out: Path, name: str, taken: set[str]) -> Path:
-    """A file name in `out` that is neither there already nor planned: an earlier picture is never overwritten."""
+    """A file name in `out` that is neither there already nor planned: an earlier picture is never overwritten (nor
+    its «Без фону» — a drawn Open 1, Open 2, Dedication is kept only there)."""
     stem, suffix = name[: -len(".png")], ".png"
     candidate, n = name, 1
-    while candidate.lower() in taken or (out / candidate).exists():
+    while candidate.lower() in taken or (out / candidate).exists() or (out / slide_cutout.NO_BG / candidate).exists():
         n += 1
         candidate = f"{stem} ({n}){suffix}"
     taken.add(candidate.lower())
@@ -594,6 +595,10 @@ def clean_runs(keep: str = "", older_than: float = KEEP_RUNS) -> int:
 # its desk colour is the template's, its floor is cut away.
 
 EDITABLE = ("cover1", "coverOpen", "allOpen")       # the front cover shows: «Поправити» opens the crop window
+# Kept only without their background (the owner, 13.10.2026: "if the ones with the background aren't needed, don't
+# save them"): cut straight from the drawing into «Без фону». Cover 1 keeps both — the photo mockups take it with its
+# background as their reference; the two scenes have no cut-out.
+CUT_ONLY = ("open1", "open2", "dedication")
 SCENES = ("coverOpen", "allOpen")                    # the background and the edges: one choice for the book's two
 PREVIEW_W = 1400
 _drawing = threading.Lock()                          # one picture drawn at a time (each holds a few hundred MB)
@@ -674,6 +679,9 @@ def draw(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event, 
     run = WORK / f"{time.strftime('%Y%m%d-%H%M%S')}-{core.new_id()[:6]}"
     clean_runs(keep=run.name)
     items = draw_plan(book, picks, out, only)
+    for item in items:
+        if item["key"] in CUT_ONLY:
+            item["save"] = str(Path(item["save"]).parent / slide_cutout.NO_BG / Path(item["save"]).name)
     edit = {"book": book["id"], "out": str(out), "templates": str(where["templates"]), "crops": {}, "items": {},
             "colours": {}}
     if any(i["key"] in SCENES for i in items):
@@ -694,7 +702,10 @@ def draw(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event, 
         """Saved (and handed to the cutter) while the next picture is drawn: a 4000×3000 PNG takes a second or two."""
         item = items[n]
         try:
-            _save_drawn(im, Path(item["save"]))
+            if item["key"] in CUT_ONLY:     # cut at once, kept only without the background
+                slide_cutout.cut_drawn(im, Path(item["save"]), where["templates"], item["key"])
+            else:
+                _save_drawn(im, Path(item["save"]))
         except Exception as err:
             core.log.warning("Mockups: %s not saved", item["title"], exc_info=True)
             problems.append(f"«{item['title']}» не збережено: {err}")
@@ -705,6 +716,8 @@ def draw(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event, 
         if item["key"] in SCENES:
             item["colours"] = dict(edit["colours"])
         rows[n].update(state="done", saved=1)
+        if item["key"] in CUT_ONLY:
+            return
         try:
             slide_cutout.cutter.add(Path(item["save"]), where["templates"])
         except Exception:
@@ -997,7 +1010,7 @@ def existing(workshop: str) -> dict:
     folder = slide_store.book_folder(workshop) / "mockups"
     rank = {t["key"]: i for i, t in enumerate(TEMPLATES)}
     files = []
-    for p in folder.glob("*.png") if folder.is_dir() else []:
+    for p in [*folder.glob("*.png"), *slide_cutout.alone(folder)] if folder.is_dir() else []:
         key = _template_of(p.name)
         if key and p.is_file():
             files.append({"name": p.name, "template": key, "v": p.stat().st_mtime_ns})
@@ -1018,6 +1031,8 @@ def _existing_file(workshop: str, name: str) -> Path:
     from .slides import store as slide_store
     folder = slide_store.book_folder(workshop) / "mockups"
     path = folder / name
+    if not path.is_file():     # a mockup kept only without its background
+        path = folder / slide_cutout.NO_BG / name
     if not name or Path(name).name != name or not name.lower().endswith(".png") or not _template_of(name) \
             or not path.is_file():
         raise ApiError("Не знайдено.", 404)
