@@ -208,6 +208,9 @@ them) — see [features/mockups.md](../features/mockups.md).
 | GET | `/media/mockups/existing` | media | `_existing_media` | mockups-run.js `existingCard()`, the viewer (`?workshop=&name=&w=` — only a mockup of a known template in that book's `mockups/`) |
 | POST | `/api/mockups/open-existing` | token | `_open_existing` | mockups.js, the viewer's "original" button for those (`{workshop, name}`) |
 | POST | `/api/mockups/attention` | token | `_attention` | mockups.js `tellDone` (a run ended while Book Studio's window was behind: the taskbar button flashes, Windows' sound) |
+| GET | `/api/mockups/edit` | token | `_edit_state` | mockups-edit.js `openEditor()` (`?job=&key=` — a drawn run's picture of Cover 1 / Cover & Open 1 / All & Open 1: the cover's size, the board, the crop; for a scene its colours, the pastel suggestions, the cover's edge colours, the other scene; 13.10.2026) |
+| GET | `/media/mockups/edit` | media | `_edit_preview` | mockups-edit.js (`?job=&key=&x=&y=&zoom=&background=&front=&back=&w=` — the mockup drawn with that crop and those colours, a JPEG; nothing saved) |
+| POST | `/api/mockups/edit` | token | `_edit_save` | mockups-edit.js «Зберегти» (`{job, key, crop, background?, front?, back?}` — drawn over the run's own picture, its cut-out again, the other scene too when the colours changed → `{saved, v}`) |
 | GET | `/media/mockups/template/([a-zA-Z0-9]+)` | media | `_template_media` | mockups.js (`?w=` — a template's own preview, read from the PSD) |
 | GET | `/media/mockups/out/([0-9a-f]{12})/([0-9]+)` | media | `_out_media` | mockups.js (`?w=` — a picture a job saved, by its number) |
 | GET | `/media/mockups/([0-9a-f]{16})/(cover\|page\|spread)` | media | `_media` | mockups.js (`?n=&w=` / `?n=&h=` — a page, the cover, a spread glued together) |

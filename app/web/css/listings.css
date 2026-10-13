@@ -592,3 +592,39 @@ button.ph-ref:hover, .drop-hot > .ph-ref { border-color: var(--accent); backgrou
 .ph-pick .notice { margin-bottom: 10px; }
 .ph-foot { margin-top: 16px; }
 @media (max-width: 900px) { .ph-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* ------------------------------------------------------------------ the crop window (13.10.2026): mockups drawn by Book Studio */
+.mk-shot-wrap { position: relative; }
+.mk-shot-wrap > .mk-shot { width: 100%; display: block; }
+.mk-shot-edit { position: absolute; right: 6px; bottom: 6px; box-shadow: var(--shadow); background: var(--surface); }
+.mk-ed { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; align-items: start; }
+.mk-ed-cover { position: relative; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); cursor: grab; touch-action: none; user-select: none; }
+.mk-ed-cover.dragging { cursor: grabbing; }
+.mk-ed-cover.picking { cursor: crosshair; }
+.mk-ed-cover > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.mk-ed-back { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--surface) 55%, transparent); pointer-events: none; }
+.mk-ed-frame { position: absolute; outline: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(20, 20, 20, .38); border-radius: 2px; pointer-events: none;
+  transition: box-shadow var(--t-fast) ease; }
+.mk-ed-cover.picking .mk-ed-frame { box-shadow: none; outline-style: dashed; }
+.mk-ed-zoom { gap: 8px; color: var(--text-3); }
+.mk-ed-zoom input[type="range"] { flex: 1; accent-color: var(--accent); }
+.mk-ed-view { position: relative; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); min-height: 260px; }
+.mk-ed-view > img { display: block; width: 100%; height: auto; }
+.mk-ed-busy { position: absolute; top: 10px; right: 10px; padding: 6px; border-radius: 50%; background: var(--surface); opacity: 0; transition: opacity var(--t) ease; pointer-events: none; }
+.mk-ed-busy.on { opacity: 1; }
+.mk-ed-label { margin-top: 4px; }
+.mk-sws { display: flex; flex-wrap: wrap; gap: 8px; }
+.mk-sw { width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--c); cursor: pointer; position: relative;
+  box-shadow: inset 0 0 0 2px var(--surface); outline: 2px solid transparent; outline-offset: 1px; transition: transform var(--t-fast) var(--ease), outline-color var(--t-fast) ease; }
+.mk-sw:hover { transform: scale(1.08); }
+.mk-sw.on { outline-color: var(--accent); }
+.mk-pick { background: conic-gradient(from 90deg, #f3c9b0, #f1e6b8, #c7e6d1, #c8dcf5, #e3cdf0, #f3c9b0); overflow: hidden; }
+.mk-pick::after { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--c); border: 1.5px solid var(--surface); }
+.mk-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.mk-edges { gap: 8px; flex-wrap: wrap; }
+.mk-edge { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; border-radius: var(--r-ctl); border: 1px solid var(--border); background: var(--surface);
+  font: inherit; font-size: var(--fs); color: var(--text-2); cursor: pointer; transition: border-color var(--t-fast) ease, background var(--t-fast) ease; }
+.mk-edge > i { width: 18px; height: 18px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); }
+.mk-edge:hover { border-color: var(--border-strong); }
+.mk-edge.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+@media (max-width: 960px) { .mk-ed { grid-template-columns: minmax(0, 1fr); } }

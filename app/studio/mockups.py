@@ -24,9 +24,9 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from . import core, desktop, drops, images, portable
+from . import core, desktop, drops, images, mockup_colours, mockup_render, portable
 from .jobs import Job, UserError, jobs
-from .server import ApiError, Request, file_response, route
+from .server import ApiError, Request, Response, file_response, route
 from .slides import cutout as slide_cutout
 
 # Where things are on the owner's PC; places.json overrides them when he points somewhere else.
@@ -214,18 +214,36 @@ def page_picture(path: Path, size: tuple[int, int]) -> Image.Image:
         return _fill(_rgb(im), size)
 
 
-def cover_pictures(path: Path, size: dict) -> dict[str, Image.Image]:
+def cover_pictures(path: Path, size: dict, crop: dict | None = None) -> dict[str, Image.Image]:
     """From the wide Canva cover (back on the left, front on the right): the back — its left half, the front —
     its right half, each scaled to fill its board and centred; the spine — the strip from the exact middle, at
-    the halves' scale (what the owner did by hand)."""
+    the halves' scale (what the owner did by hand). `crop` moves the front only (the owner's touch in the editor,
+    13.10.2026): {"x", "y"} — the centre as shares of the front half, "zoom" ≥ 1 — closer than filling."""
     with Image.open(path) as im:
         im = _rgb(im)
         w, h = im.size
         bw, bh = size["board"]
         scale = max(bw / (w / 2), bh / h)
+        front = im.crop((w - w // 2, 0, w, h))
+        x, y, zoom = _crop_values(crop)
         return {"back": _fill(im.crop((0, 0, w // 2, h)), size["board"], scale=scale),
-                "front": _fill(im.crop((w - w // 2, 0, w, h)), size["board"], scale=scale),
+                "front": _fill(front, size["board"], centre=(x * front.width, y * front.height), scale=scale * zoom),
                 "spine": _fill(im, size["spine"], centre=(w / 2, h / 2), scale=scale)}
+
+
+MAX_ZOOM = 3.0
+
+
+def _crop_values(crop) -> tuple[float, float, float]:
+    """The front's crop as (x, y, zoom), each kept in its range; None or a wrong value — the centre, filling."""
+    def num(v, default, lo, hi):
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return default
+        return min(hi, max(lo, v)) if v == v else default
+    crop = crop if isinstance(crop, dict) else {}
+    return num(crop.get("x"), 0.5, 0, 1), num(crop.get("y"), 0.5, 0, 1), num(crop.get("zoom"), 1.0, 1.0, MAX_ZOOM)
 
 
 def _save_png(im: Image.Image, path: Path) -> None:
@@ -546,8 +564,270 @@ def clean_runs(keep: str = "", older_than: float = KEEP_RUNS) -> int:
     return removed
 
 
+# ---------------------------------------------------------------- drawn by Book Studio itself (no Photoshop)
+# Since 13.10.2026 every template baked once (studio/mockup_render.py) is drawn here: no "run this script?", seconds
+# instead of ~45 s, nothing left open. The owner's touch moved into the program: in the three templates where the
+# front cover shows he may move it (the crop window), and the two softcover scenes take the open book's edge colours
+# from the cover and a background he picks (the owner, 13.10.2026: "a mini editor just for cropping"; "the edge colour
+# taken from the cover's edges, as with an eyedropper; the background I pick myself"). Dedication needs no colours:
+# its desk colour is the template's, its floor is cut away.
+
+EDITABLE = ("cover1", "coverOpen", "allOpen")       # the front cover shows: «Поправити» opens the crop window
+SCENES = ("coverOpen", "allOpen")                    # the background and the edges: one choice for the book's two
+PREVIEW_W = 1400
+_drawing = threading.Lock()                          # one picture drawn at a time (each holds a few hundred MB)
+_edit_runs: dict[str, str] = {}                      # job id -> its run folder (edit.json: what the crop window redraws)
+
+
+def drawn(templates_dir: Path, wanted: list[dict]) -> bool:
+    """Every template of the run is baked from the very file in the templates folder: no Photoshop needed."""
+    return bool(wanted) and all(mockup_render.ready(t["key"], templates_dir / t["file"]) for t in wanted)
+
+
+def draw_plan(book: dict, picks: dict, out: Path, only=None) -> list[dict]:
+    """The pictures of a drawn run, in the page's order: template, its spread, the file it is saved as."""
+    by_key, wanted, taken, items = {t["key"]: t for t in TEMPLATES}, selected(only), set(), []
+    for key in (k for k in RUN_ORDER if by_key[k] in wanted):
+        t = by_key[key]
+        stem = Path(t["file"]).stem
+        for n in picks.get(key) or [None]:
+            name = f"{stem} ({n}-{n + 1}).png" if n else f"{stem}.png"
+            items.append({"key": key, "title": f"{t['label']} · {n}–{n + 1}" if n else t["label"], "spread": n,
+                          "save": str(_free_name(out, name, taken))})
+    return items
+
+
+def _pictures_for(key: str, book: dict, spread: int | None, crop: dict | None) -> dict[str, Image.Image]:
+    """The pictures a baked template takes, cut as the Photoshop run cuts them (pages, back, spine, front)."""
+    t = next(t for t in TEMPLATES if t["key"] == key)
+    size, need = t["size"], set(mockup_render.slots(key))
+    pics: dict[str, Image.Image] = {}
+    if need & {"front", "back", "spine"}:
+        if not book.get("cover"):
+            raise UserError("У демо-книзі немає обкладинки.")
+        cover = cover_pictures(book["cover"], size, crop)
+        pics.update({s: cover[s] for s in ("front", "back", "spine") if s in need})
+    pages = {"left": spread, "right": spread + 1 if spread else None, "page1": 1}
+    for slot in need & set(pages):
+        n = pages[slot]
+        if n not in book["pages"]:
+            raise UserError(f"У демо-книзі немає сторінки {n}.")
+        pics[slot] = page_picture(book["pages"][n], size["page"])
+    return pics
+
+
+def _fills(colours: dict) -> dict:
+    """The scene's colour fills from the book's choice: the background is the fill itself (as «Change Color» in
+    Photoshop — the scene burns it into its grey, so it looks deeper than the swatch), the edges the cover's own."""
+    names = {"background": "Change Color", "front": "Front Color", "back": "Back Color"}
+    return {fill: rgb for what, fill in names.items() if (rgb := mockup_colours.rgb_of(colours.get(what)))}
+
+
+def _draw_one(edit: dict, book: dict, key: str, crop: dict | None = None) -> Image.Image:
+    item = edit["items"][key]
+    colours = _fills(edit.get("colours") or {}) if key in SCENES else None
+    with _drawing:
+        return mockup_render.render(key, _pictures_for(key, book, item.get("spread"), crop), colours)
+
+
+def _save_drawn(im: Image.Image, path: Path) -> None:
+    """Saved like Photoshop's: PNG at 300 dpi, compression 3; written beside and put in place at once."""
+    part = path.with_name(path.stem + ".part.png")
+    try:
+        im.save(part, "PNG", dpi=(DPI, DPI), compress_level=PNG_COMPRESSION)
+        for attempt in range(10):  # the cutter or a preview may be reading the old one this very moment (Windows)
+            try:
+                part.replace(path)
+                return
+            except PermissionError:
+                if attempt == 9:
+                    raise UserError(f"«{path.name}» зараз відкритий іншою програмою — спробуйте ще раз.") from None
+                time.sleep(0.3)
+    finally:
+        part.unlink(missing_ok=True)   # never a half-written picture left beside the mockups
+
+
+def draw(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event, only=None) -> dict:
+    """A run without Photoshop: every picture drawn and saved, each handed to the cutter at once."""
+    where = places()
+    run = WORK / f"{time.strftime('%Y%m%d-%H%M%S')}-{core.new_id()[:6]}"
+    clean_runs(keep=run.name)
+    items = draw_plan(book, picks, out, only)
+    edit = {"book": book["id"], "out": str(out), "templates": str(where["templates"]), "crops": {}, "items": {},
+            "colours": {}}
+    if any(i["key"] in SCENES for i in items):
+        try:
+            edit["colours"] = {"background": mockup_colours.pastels(book["cover"])[0], **mockup_colours.edges(book["cover"])}
+        except Exception:
+            core.log.warning("Mockups: the scenes' colours not read from the cover", exc_info=True)
+    started, done, problems = time.time(), {}, []
+    rows = [{"key": i["key"], "title": i["title"], "state": "wait", "keepOpen": False, "shots": 1, "saved": 0}
+            for i in items]
+    def saved_now() -> list[str]:          # in the page's order
+        return [items[n]["save"] for n in sorted(done)]
+
+    def share():
+        job.share({"mode": "make", "phase": "work", "rows": rows, "saved": [Path(p).name for p in saved_now()]})
+
+    def store(n: int, im: Image.Image) -> None:
+        """Saved (and handed to the cutter) while the next picture is drawn: a 4000×3000 PNG takes a second or two."""
+        item = items[n]
+        try:
+            _save_drawn(im, Path(item["save"]))
+        except Exception as err:
+            core.log.warning("Mockups: %s not saved", item["title"], exc_info=True)
+            problems.append(f"«{item['title']}» не збережено: {err}")
+            rows[n]["state"] = "wait"
+            return
+        done[n] = True
+        item["drawn"] = True
+        if item["key"] in SCENES:
+            item["colours"] = dict(edit["colours"])
+        rows[n].update(state="done", saved=1)
+        try:
+            slide_cutout.cutter.add(Path(item["save"]), where["templates"])
+        except Exception:
+            core.log.warning("Mockups: %s not handed to the cutter", item["save"], exc_info=True)
+
+    from concurrent.futures import ThreadPoolExecutor
+    try:
+        with ThreadPoolExecutor(1) as saving:
+            for n, item in enumerate(items):
+                if cancel.is_set():
+                    break
+                rows[n]["state"] = "work"
+                share()
+                job.progress(f"Малюю {item['title']}", 100 * n / max(1, len(items)))
+                edit["items"][item["key"]] = item
+                try:
+                    im = _draw_one(edit, book, item["key"])
+                except Exception as err:
+                    core.log.warning("Mockups: %s not drawn", item["title"], exc_info=True)
+                    problems.append(f"«{item['title']}» не намальовано: {err}")
+                    rows[n]["state"] = "wait"
+                    continue
+                saving.submit(store, n, im)
+        share()
+    finally:
+        mockup_render.forget()
+    saved = saved_now()
+    run.mkdir(parents=True, exist_ok=True)
+    core.write_json(run / "edit.json", edit, backup=False)
+    paths = [Path(p) for p in saved]
+    _results[job.id] = paths
+    _edit_runs[job.id] = run.name
+    edits = {Path(i["save"]).name: i["key"] for i in items if i["key"] in EDITABLE and i["save"] in saved}
+    return {"folder": str(out), "saved": [p.name for p in paths], "open": [], "run": "", "drawn": True,
+            "edits": edits, "cancelled": cancel.is_set(), "seconds": round(time.time() - started), "problems": problems}
+
+
+def _edit(job_id: str) -> tuple[Path, dict, dict]:
+    """A drawn run's state for the crop window, and its demo book — still the one on the page."""
+    run_name = _edit_runs.get(job_id)
+    edit = core.read_json(WORK / run_name / "edit.json", None) if run_name else None
+    if not isinstance(edit, dict):
+        raise ApiError("Цей запуск уже прибрано — зробіть мокапи ще раз.", 404)
+    with _lock:
+        book = _shown
+    if not book or book["id"] != edit.get("book"):
+        raise ApiError("Демо-книгу вже закрито — відкрийте її й зробіть мокапи ще раз.", 409)
+    return WORK / run_name, edit, book
+
+
+def _edit_key(edit: dict, key: str) -> str:
+    if key not in EDITABLE or key not in edit.get("items", {}):
+        raise ApiError("Цей мокап не підправляється.", 404)
+    return key
+
+
+def _edit_colours(edit: dict, sent: dict) -> dict:
+    """The colours sent by the window — each a "#rrggbb" — over the book's own."""
+    out = dict(edit.get("colours") or {})
+    for what in ("background", "front", "back"):
+        rgb = mockup_colours.rgb_of(sent.get(what))
+        if rgb:
+            out[what] = mockup_colours.hex_of(rgb)
+    return out
+
+
+@route("GET", "/api/mockups/edit")
+def _edit_state(req: Request):
+    run, edit, book = _edit(str(req.param("job") or ""))
+    key = _edit_key(edit, str(req.param("key") or ""))
+    t = next(t for t in TEMPLATES if t["key"] == key)
+    with Image.open(book["cover"]) as im:
+        size = ImageOps.exif_transpose(im).size       # as cover_pictures() sees it
+    x, y, zoom = _crop_values(edit["crops"].get(key))
+    out = {"key": key, "title": t["label"], "name": Path(edit["items"][key]["save"]).name, "book": book["id"],
+           "cover": list(size), "board": list(t["size"]["board"]), "crop": {"x": x, "y": y, "zoom": zoom},
+           "maxZoom": MAX_ZOOM, "scene": key in SCENES}
+    if key in SCENES:
+        cover = Path(book["cover"])
+        out["colours"] = edit.get("colours") or {}
+        out["suggest"] = {"background": mockup_colours.pastels(cover), "edges": mockup_colours.edges(cover)}
+        out["others"] = [o["label"] for o in TEMPLATES if o["key"] in SCENES and o["key"] != key and o["key"] in edit["items"]]
+    return out
+
+
+@route("GET", "/media/mockups/edit", auth="media")
+def _edit_preview(req: Request):
+    """The mockup as the window's choice would make it — saved nowhere, a JPEG for the window."""
+    import io
+    run, edit, book = _edit(str(req.param("job") or ""))
+    key = _edit_key(edit, str(req.param("key") or ""))
+    crop = {"x": req.param("x"), "y": req.param("y"), "zoom": req.param("zoom")}
+    edit["colours"] = _edit_colours(edit, {k: req.param(k) for k in ("background", "front", "back")})
+    im = _draw_one(edit, book, key, crop)
+    side = req.int_param("w", PREVIEW_W, 200, 2400)
+    im.thumbnail((side, side), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=88)
+    return Response(200, buf.getvalue(), "image/jpeg", {"Cache-Control": "no-store"})
+
+
+@route("POST", "/api/mockups/edit")
+def _edit_save(req: Request):
+    """«Зберегти»: the picture drawn again with the owner's crop over the file this run saved (the book's colours
+    changed — its other scene too), its cut-out made again, the Workshop book's etsy/ copy refreshed."""
+    body = req.json or {}
+    job_id = str(body.get("job") or "")
+    run, edit, book = _edit(job_id)
+    key = _edit_key(edit, str(body.get("key") or ""))
+    crop = dict(zip(("x", "y", "zoom"), _crop_values(body.get("crop"))))
+    colours = _edit_colours(edit, body)
+    # The other scene too when it was drawn with other colours (one background for the book's two scenes) — read from
+    # what each picture really has, so a save that failed halfway is made good by the next one.
+    again = [key] + ([k for k in SCENES if k != key and edit["items"].get(k, {}).get("drawn")
+                      and edit["items"][k].get("colours") != colours] if key in SCENES else [])
+    trial = {**edit, "colours": colours, "crops": {**edit["crops"], key: crop}}
+    saved = []
+    try:
+        for k in again:
+            item = edit["items"][k]
+            path = Path(item["save"])
+            _save_drawn(_draw_one(trial, book, k, trial["crops"].get(k)), path)
+            saved.append(path.name)
+            if k == key:
+                edit["crops"][key] = crop
+            if k in SCENES:
+                item["colours"] = dict(colours)
+            slide_cutout.cutter.add(path, Path(edit["templates"]), again=True)
+        edit["colours"] = colours
+    finally:
+        mockup_render.forget()
+        core.write_json(run / "edit.json", edit, backup=False)
+    _to_etsy({"folder": edit["out"]})
+    core.log.info("Mockups: %s redrawn by the owner", ", ".join(saved))
+    files = _results.get(job_id) or []
+    return {"saved": saved, "v": {p.name: p.stat().st_mtime_ns for p in files if p.name in saved and p.is_file()}}
+
+
 def make(job: Job, book: dict, picks: dict, out: Path, cancel: threading.Event, only=None) -> dict:
     where = places()
+    present = all((where["templates"] / t["file"]).is_file() for t in selected(only))
+    if present and out.is_dir() and not core.inside(out, where["templates"], or_same=True) \
+            and drawn(where["templates"], selected(only)):
+        return draw(job, book, picks, out, cancel, only)
     ps = find_photoshop(where["photoshop"])
     if not ps:
         raise UserError("Не знайшов Photoshop — вкажіть його папку.")
@@ -633,8 +913,8 @@ def finish(job: Job, run_name: str, cancel: threading.Event) -> dict:
 def pending() -> dict | None:
     """The newest run whose templates are still waiting for the owner's front cover (their copies are there):
     after a reload of the window «Зберегти відкриті» is offered again."""
-    runs = sorted((p for p in WORK.glob("*") if p.is_dir() and re.fullmatch(_RUN_NAME, p.name)), reverse=True) \
-        if WORK.is_dir() else []
+    runs = sorted((p for p in WORK.glob("*") if p.is_dir() and re.fullmatch(_RUN_NAME, p.name)
+                   and (p / "job.json").is_file()), reverse=True) if WORK.is_dir() else []   # drawn runs have none
     if not runs:
         return None
     run = runs[0]
@@ -656,7 +936,8 @@ def state() -> dict:
     return {
         "templates": [{"key": t["key"], "label": t["label"], "file": t["file"], "slots": t["slots"],
                        "hand": bool(t.get("hand")), "keep": t.get("keep") or "",
-                       "found": (where["templates"] / t["file"]).is_file()}
+                       "found": (where["templates"] / t["file"]).is_file(),
+                       "drawn": (where["templates"] / t["file"]).is_file() and drawn(where["templates"], [t])}
                       for t in TEMPLATES],
         "templatesDir": str(where["templates"]), "templatesFound": where["templates"].is_dir(),
         "photoshopDir": str(where["photoshop"]), "photoshopFound": bool(ps),

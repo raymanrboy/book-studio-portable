@@ -79,15 +79,21 @@ export function rowsHtml(rows, finishing) {
     let note = '';
     if (finishing) note = r.state === 'done' ? 'збережено й закрито' : '';
     else if (r.keepOpen) note = html`${ic('hand', 'icon-s')}${r.state === 'done' ? 'відкрито для вас' : 'лишиться відкритим'}`;
-    else note = html`<span class="num">${r.saved}/${r.shots}</span>`;
+    else if (r.shots > 1) note = html`<span class="num">${r.saved}/${r.shots}</span>`;
     return html`<div class="mk-row ${r.state}"><span class="mk-row-ico">${icon}</span><span class="grow truncate">${r.title}</span><span class="mk-row-note">${note}</span></div>`;
   });
 }
 
+// A picture Book Studio drew where the front cover shows carries the crop button (r.edits: name -> template key);
+// r.v — its version once redrawn, so the new one is shown.
 function shotsGrid(r, which) {
   if (!r.saved.length) return '';
-  return html`<div class="mk-shots">${r.saved.map((name, i) => html`<button type="button" class="mk-shot" data-act="shot" data-which="${which}" data-i="${i}"
-    aria-label="${name}" data-tip="${name}"><img data-fade alt="" draggable="false" src="${media(`/media/mockups/out/${r.job}/${i}`, { w: SHOT_W })}"></button>`)}</div>`;
+  return html`<div class="mk-shots">${r.saved.map((name, i) => {
+    const shot = html`<button type="button" class="mk-shot" data-act="shot" data-which="${which}" data-i="${i}"
+      aria-label="${name}" data-tip="${name}"><img data-fade alt="" draggable="false" src="${media(`/media/mockups/out/${r.job}/${i}`, { w: SHOT_W, ...(r.v?.[name] && { v: r.v[name] }) })}"></button>`;
+    const key = r.edits?.[name];
+    return key ? html`<div class="mk-shot-wrap">${shot}${ib('crop', 'Поправити обкладинку', `data-act="edit-shot" ${attr('data-key', key)}`, { cls: 'sm mk-shot-edit' })}</div>` : shot;
+  })}</div>`;
 }
 
 const problemsHtml = (list) => (list?.length ? html`<div class="notice notice-warn">${ic('alert')}<div><ul>${list.map((p) => html`<li>${p}</li>`)}</ul></div></div>` : '');

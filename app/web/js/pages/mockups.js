@@ -3,6 +3,8 @@
 // the three templates left open, and «Зберегти відкриті» saves those too (wiki/features/mockups.md).
 // Laid out like Book Studio's Order Creator: numbered steps on the left, the book's structure on the right — the
 // demo book comes in there (a drop or a click; its own step «Демо-книга з Canva» doubled it and went, 29.09.2026).
+// Since 13.10.2026 the templates baked once are drawn by Book Studio itself (no Photoshop, nothing left open): the
+// front cover is put in by itself and moved, where needed, in the crop window (mockups-edit.js).
 // A page of the Listings mode (#/mockups; until 24.09.2026 a window of its own). It is kept when the owner steps
 // away (keep()): the book, the picks and a run going on in Photoshop wait for him; a small dot on the rail says a
 // run is on, and a notice says when it ends.
@@ -16,6 +18,7 @@ import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { take } from '../handoff.js';
 import { PICTURES, runView, rowsHtml, resultCard, existingCard, turnCard, finishedCard, runIndet, morphList, reveal } from './mockups-run.js';
 import { slidesStep } from './mockups-slides.js';
+import { openEditor } from './mockups-edit.js';
 
 const THUMB_H = 360;          // a spread tile (two 180-px pages side by side)
 const SLOT_H = 120;           // a spread in a template slot
@@ -95,6 +98,7 @@ export async function mount(view) {
   const pages = (n) => `${n}–${n + 1}`;
   const bookName = () => (st.book.name === 'Файли' ? '' : st.book.name); // loose pictures have no name of their own
   const folderName = (p) => String(p).split(/[\\/]/).filter(Boolean).pop() || String(p);
+  const coverByHand = () => st.meta.templates.some((t) => t.hand && !t.drawn);
   const stepNo = (n, done) => html`<span class="step-no ${done ? 'done' : ''}">${done ? ic('check') : n}</span>`;
 
   // ---------------------------------------------------------------- the picks
@@ -104,6 +108,8 @@ export async function mount(view) {
     st.active = firstEmpty();
   }
   const ticked = () => st.meta.templates.filter((t) => !st.skip.has(t.key));
+  // The run is drawn by Book Studio itself when every ticked template is baked (13.10.2026): no Photoshop then.
+  const drawnRun = () => ticked().length > 0 && ticked().every((t) => t.drawn);
   function slotsInOrder() { return slotted().filter((t) => !st.skip.has(t.key)).flatMap((t) => st.picks[t.key].map((_, i) => ({ key: t.key, i }))); }
   function firstEmpty(after = null) {
     const all = slotsInOrder();
@@ -205,7 +211,7 @@ export async function mount(view) {
     const lost = [
       !m.templatesFound || absent.length
         ? { what: 'templates', text: m.templatesFound ? `У папці з трафаретами немає: ${absent.join(', ')}` : `Не знайшов папку з трафаретами: ${m.templatesDir}` } : null,
-      !m.photoshopFound ? { what: 'photoshop', text: `Не знайшов Photoshop у ${m.photoshopDir}` } : null,
+      !m.photoshopFound && !m.templates.every((t) => t.drawn) ? { what: 'photoshop', text: `Не знайшов Photoshop у ${m.photoshopDir}` } : null,
     ].filter(Boolean);
     setHtml($('#mk-lost'), lost.map((x) => html`<div class="notice notice-warn mk-lost">${ic('alert')}<div class="grow">${x.text}</div>
       ${ib('folderPick', x.what === 'templates' ? 'Вказати папку з трафаретами' : 'Вказати папку з Photoshop', `data-act="place" ${attr('data-what', x.what)}`, { cls: 'sm' })}</div>`));
@@ -263,7 +269,7 @@ export async function mount(view) {
         ${t.found ? html`<img data-fade alt="" draggable="false" src="${media(`/media/mockups/template/${t.key}`, { w: TPL_W })}">` : ''}${ic('image')}
       </button>
       <div class="mk-tpl-main">
-        <div class="mk-tpl-head"><label class="check mk-tpl-on" data-tip="Робити цей шаблон"><input type="checkbox" data-act="tpl-on" data-key="${t.key}" ${on ? 'checked' : ''} ${t.found ? '' : raw('disabled')} aria-label="Робити шаблон ${t.label}"><span class="mk-tpl-name">${t.label}</span></label>${t.hand || t.keep ? handMark(t) : ''}<span class="spacer"></span>${note}</div>
+        <div class="mk-tpl-head"><label class="check mk-tpl-on" data-tip="Робити цей шаблон"><input type="checkbox" data-act="tpl-on" data-key="${t.key}" ${on ? 'checked' : ''} ${t.found ? '' : raw('disabled')} aria-label="Робити шаблон ${t.label}"><span class="mk-tpl-name">${t.label}</span></label>${(t.hand || t.keep) && !drawnRun() ? handMark(t) : ''}<span class="spacer"></span>${note}</div>
         <div class="mk-slots" data-slots="${t.key}">${auto ? autoSlot(t) : ''}</div>
       </div>
     </div>`;
@@ -377,7 +383,7 @@ export async function mount(view) {
   function paintAction() {
     const box = $('#mk-s4');
     if (!box) return;
-    const head = html`<div class="row">${stepNo(3, !!st.result && !st.run && !st.result.cancelled)}<h3 class="card-title grow">Photoshop</h3>
+    const head = html`<div class="row">${stepNo(3, !!st.result && !st.run && !st.result.cancelled)}<h3 class="card-title grow">${drawnRun() ? 'Картинки' : 'Photoshop'}</h3>
       ${st.run ? ib('x', 'Зупинити', 'data-act="stop"', { cls: 'sm' }) : ''}</div>`;
     if (st.asking) {
       setHtml(box, html`${head}<div class="mk-waiting"><span class="spinner"></span><span>Оберіть папку у вікні Windows «Куди зберегти мокапи»</span></div>`);
@@ -402,15 +408,19 @@ export async function mount(view) {
     if (!box) return;
     const m = st.meta;
     const on = ticked();
-    const saves = on.filter((t) => !t.hand && !t.keep).reduce((sum, t) => sum + t.slots, 0);
-    const hands = on.filter((t) => t.hand || t.keep).length;
-    const ready = m.templatesFound && m.photoshopFound && on.length > 0 && on.every((t) => t.found);
+    const drawnNow = drawnRun();
+    // Drawn here: every ticked template's pictures (one for a template without spreads); through Photoshop: the ones it
+    // saves itself, and the ones it leaves open for the owner.
+    const saves = drawnNow ? on.reduce((sum, t) => sum + Math.max(1, t.slots), 0)
+      : on.filter((t) => !t.hand && !t.keep).reduce((sum, t) => sum + t.slots, 0);
+    const hands = drawnNow ? 0 : on.filter((t) => t.hand || t.keep).length;
+    const ready = m.templatesFound && (m.photoshopFound || drawnNow) && on.length > 0 && on.every((t) => t.found);
     const left = st.book ? missing() : 0;
     const need = !st.book ? 'Ще: демо-книга' : left ? `Ще ${left} ${plural(left, SPREADS)}` : '';
     setHtml(box, html`
       <div class="mk-plan">
-        <span class="chip" data-tip="Photoshop сам збереже ${saves} ${plural(saves, PICTURES)}">${ic('image', 'icon-s')}<b class="num">${saves}</b></span>
-        <span class="chip" data-tip="${hands} ${plural(hands, TEMPLATES)} Photoshop залишить відкритими — передню обкладинку й кольори Dedication підганяєте ви">${ic('hand', 'icon-s')}<b class="num">${hands}</b></span></div>
+        <span class="chip" data-tip="${drawnNow ? `Book Studio намалює ${saves} ${plural(saves, PICTURES)} сам, без Photoshop` : `Photoshop сам збереже ${saves} ${plural(saves, PICTURES)}`}">${ic('image', 'icon-s')}<b class="num">${saves}</b></span>
+        ${hands ? html`<span class="chip" data-tip="${hands} ${plural(hands, TEMPLATES)} Photoshop залишить відкритими — передню обкладинку й кольори Dedication підганяєте ви">${ic('hand', 'icon-s')}<b class="num">${hands}</b></span>` : ''}</div>
       <button type="button" class="btn btn-primary btn-block mk-make ${need ? 'waiting' : ''}" data-act="make" ${st.book && !st.out && !st.workshop ? 'data-tip="Папку для результату спитаю, коли натиснете"' : ''} ${ready ? '' : 'disabled'} ${need ? 'aria-disabled="true" aria-describedby="mk-left"' : ''}>${ic('mockup')}Зробити мокапи</button>
       ${need ? html`<div class="mk-left" id="mk-left">${need}</div>` : ''}`);
   }
@@ -463,7 +473,7 @@ export async function mount(view) {
           <div class="row"><span class="eyebrow grow">Обкладинка</span><span class="mk-to">задня й корінець → у шаблони</span></div>
           <div class="structure-cover mk-cover" data-act="cover" style="aspect-ratio:${b.cover ? `${b.cover[0]} / ${b.cover[1]}` : '1.9'}">
             <img data-fade decoding="async" draggable="false" src="${src('cover', { w: BIG })}" alt="Обкладинка">
-            <div class="mk-zones" aria-hidden="true"><span>Задня<small>у всі шаблони</small></span><span class="spine"></span><span>Передня<small>підганяєте ви</small></span></div>
+            <div class="mk-zones" aria-hidden="true"><span>Задня<small>у всі шаблони</small></span><span class="spine"></span><span>Передня<small>${coverByHand() ? 'підганяєте ви' : 'у шаблони сама'}</small></span></div>
             <i class="crops"></i>
           </div>
         </div>
@@ -577,8 +587,9 @@ export async function mount(view) {
       return;
     }
     const r = which === 'finished' ? st.finished : st.result;
+    const v = (name) => (r.v?.[name] ? { v: r.v[name] } : {});   // a picture redrawn in the crop window: its new version
     viewer(r.saved.map((name, n) => ({
-      src: media(`/media/mockups/out/${r.job}/${n}`, { w: BIG }), full: media(`/media/mockups/out/${r.job}/${n}`, { w: SHARP }),
+      src: media(`/media/mockups/out/${r.job}/${n}`, { w: BIG, ...v(name) }), full: media(`/media/mockups/out/${r.job}/${n}`, { w: SHARP, ...v(name) }),
       title: name, sub: folderName(r.folder),
       onOriginal: () => post('/api/mockups/open-picture', { job: r.job, i: n }).catch((err) => toast(err.message, 'error')),
     })), i);
@@ -839,8 +850,20 @@ export async function mount(view) {
     }
     if (act === 'open-out') { post('/api/mockups/open-folder', { path: t.dataset.path }).catch((err) => toast(err.message, 'error')); return; }
     if (act === 'shot') { openShots(t.dataset.which, +t.dataset.i); return; }
+    if (act === 'edit-shot') {
+      const r = st.result;
+      if (!r || st.run) return;
+      openEditor({ job: r.job, key: t.dataset.key, onSaved: (res) => {
+        if (gone || st.result !== r) return;
+        r.v = { ...(r.v || {}), ...res.v };
+        paintAction();
+        slides.runStarted();   // the cut-outs are made again: the slides' step follows them
+        loadExisting();
+      } });
+      return;
+    }
     if (act === 'tpl-view') { openTemplates(t.dataset.key); return; }
-    if (act === 'cover') { viewer([{ src: src('cover', { w: BIG }), full: src('cover', { w: SHARP }), title: 'Обкладинка', sub: 'задня й корінець — у шаблони самі, передню підганяєте ви' }]); return; }
+    if (act === 'cover') { viewer([{ src: src('cover', { w: BIG }), full: src('cover', { w: SHARP }), title: 'Обкладинка', sub: coverByHand() ? 'задня й корінець — у шаблони самі, передню підганяєте ви' : 'уся — у шаблони сама; передню можна підправити в готовому мокапі' }]); return; }
     if (act === 'dedication') { viewer([{ src: src('page', { n: 1, w: BIG }), full: src('page', { n: 1, w: SHARP }), title: 'Присвята · сторінка 1', sub: 'іде в шаблон Dedication сама' }]); return; }
     if (t.classList.contains('mk-spread')) { put(+t.dataset.spread); return; }
     if (t.dataset.slot) {

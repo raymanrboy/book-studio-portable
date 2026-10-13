@@ -231,26 +231,32 @@ def cached(png: Path) -> Path | None:
     return folder if (folder / "info.json").is_file() else None
 
 
-def ensure(png: Path, templates_dir: Path, no_bg: bool = True) -> Path:
+def ensure(png: Path, templates_dir: Path, no_bg: bool = True, replace: bool = False) -> Path:
     """Cuts a mockup picture once: its folder in the cache (book.png, shadow.png, info.json); with `no_bg` the combined
-    picture lands in «Без фону» beside it too (never over a file that is there)."""
+    picture lands in «Без фону» beside it too (never over a file that is there — unless `replace`: the mockup itself
+    was just drawn again, the owner's crop, and its cut-out goes with it)."""
     kind = kind_of(png.name)
     if kind not in KINDS:
         raise _fail(f"«{png.name}» — не Open 1, Open 2, Cover 1 чи Dedication: без фону не вирізається.")
+    key = cut_key(png)          # taken before the picture is read: one drawn over it meanwhile is not cached as it
     folder = cached(png)
     target = png.parent / NO_BG / png.name
+    if folder is not None and replace and no_bg:   # cut already (by someone else): its «Без фону» follows anyway
+        _write_no_bg_from(folder, target)
     if folder is None:
         with Image.open(png) as im:
             size = im.size
         book, shadow, info = cut(png, template(Path(templates_dir) / KINDS[kind], size, kind), crop=kind != "dedication")
-        folder = CUTS / cut_key(png)
+        if cut_key(png) != key:
+            return ensure(png, templates_dir, no_bg, replace)
+        folder = CUTS / key
         tmp = folder.with_name(folder.name + ".part")
         tmp.mkdir(parents=True, exist_ok=True)
         # The three pictures are written at once (each a second or more; 04.10.2026).
         with ThreadPoolExecutor(3) as pool:
             writes = [pool.submit(lambda: smaller(book).save(tmp / "book.png", compress_level=3)),
                       pool.submit(lambda: smaller(shadow).save(tmp / "shadow.png", compress_level=3))]
-            if no_bg and not target.exists():
+            if no_bg and (replace or not target.exists()):
                 writes.append(pool.submit(_write_no_bg, target, book, shadow))       # the full size, for the owner
             for w in writes:
                 w.result()
@@ -260,9 +266,13 @@ def ensure(png: Path, templates_dir: Path, no_bg: bool = True) -> Path:
             shutil.rmtree(folder, ignore_errors=True)
         tmp.replace(folder)
     if no_bg and not target.exists():   # cut before without it: made from the kept copy
-        with Image.open(folder / "book.png") as b, Image.open(folder / "shadow.png") as s:
-            _write_no_bg(target, b.convert("RGBA"), s.convert("RGBA"))
+        _write_no_bg_from(folder, target)
     return folder
+
+
+def _write_no_bg_from(folder: Path, target: Path) -> None:
+    with Image.open(folder / "book.png") as b, Image.open(folder / "shadow.png") as s:
+        _write_no_bg(target, b.convert("RGBA"), s.convert("RGBA"))
 
 
 def _write_no_bg(target: Path, book: Image.Image, shadow: Image.Image) -> None:
@@ -285,16 +295,17 @@ class Cutter:
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
 
-    def add(self, png: Path, templates_dir: Path) -> bool:
+    def add(self, png: Path, templates_dir: Path, again: bool = False) -> bool:
+        """`again` — the picture was drawn anew over itself: cut once more, its «Без фону» file replaced."""
         png = Path(png)
         if kind_of(png.name) not in KINDS:
             return False
         with self._lock:
             files = self._state.setdefault(str(png.parent), {})
-            if files.get(png.name) in ("wait", "work", "done"):
+            if files.get(png.name) in ("wait", "work", "done") and not again:
                 return True
             files[png.name] = "wait"
-            self._q.put((png, Path(templates_dir)))       # in the lock: a thread that is just timing out cannot miss it
+            self._q.put((png, Path(templates_dir), again))  # in the lock: a thread that is just timing out cannot miss it
             if not self._thread or not self._thread.is_alive():
                 self._thread = threading.Thread(target=self._run, name="slides-cutter", daemon=True)
                 self._thread.start()
@@ -307,7 +318,7 @@ class Cutter:
     def _run(self) -> None:
         while True:
             try:
-                png, templates_dir = self._q.get(timeout=30)
+                png, templates_dir, again = self._q.get(timeout=30)
             except queue.Empty:
                 forget_templates()      # nothing more to cut: the template's arrays go
                 with self._lock:
@@ -317,11 +328,18 @@ class Cutter:
                 continue
             self._set(png, "work")
             try:
-                ensure(png, templates_dir)
-                self._set(png, "done")
+                ensure(png, templates_dir, replace=again)
+                self._finished(png, "done")
             except Exception as err:  # one picture failing never stops the rest
                 core.log.warning("Slides: cutting %s failed: %s", png, err)
-                self._set(png, f"error:{err}")
+                self._finished(png, f"error:{err}")
+
+    def _finished(self, png: Path, value: str) -> None:
+        """A pass's end — unless the picture was queued again meanwhile (drawn over itself): it stays waiting."""
+        with self._lock:
+            files = self._state.setdefault(str(png.parent), {})
+            if files.get(png.name) == "work":
+                files[png.name] = value
 
     def status(self, folder: Path) -> dict[str, str]:
         with self._lock:

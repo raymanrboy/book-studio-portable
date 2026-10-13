@@ -1,7 +1,7 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-10-06
+updated: 2026-10-13
 code:
   - app/tools/dev_server.py
   - app/tools/sample_data.py
@@ -77,7 +77,9 @@ code:
   «Зберегти відкриті» (`finish.jsx`) it "saves and closes" the templates it was given), and **no Windows dialog,
   flash or sound for the mockups** — the book field's button answers with `Goose demo.zip`, "where to save" with
   `sample-mockups\out`, `attention()` does nothing (only the mockups' own `desktop` is swapped: the rest of the
-  program keeps its dialogs).
+  program keeps its dialogs). Since 13.10.2026 **every made-up template counts as baked**: the run is drawn by
+  `pretend_render()` (the template's scene, its background tinted by a scene's colour, the pages or the front laid on it)
+  — the crop window works on it; the pretend Photoshop is there for a template that is not.
 - **The listing slides** (since 2026-09-29): the slides' cut-out gets a pretend template (`pretend_template()` — the
   book is where the pretend Photoshop lays the pages, a soft shadow down-right), so a run fills «Без фону», and
   «Зробити слайди» bakes the six with the real headless Edge into `sample-mockups\out`. The editor's live pick-up of an

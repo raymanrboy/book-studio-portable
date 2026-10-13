@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-10-08
+updated: 2026-10-13
 code: []
 ---
 # Glossary
@@ -141,7 +141,11 @@ Code paths below are relative to the repository root.
 | Трафарети (мастхев), шаблони мокапів | The PSD templates in `D:\Roman\Desktop\Трафарети мастхев` — **read-only** | [features/mockups.md](features/mockups.md#the-templates); [security.md](security.md) |
 | Смарт-об'єкт | A layer that's a "container": the picture inside is bent by the template | [features/mockups.md](features/mockups.md#the-templates) |
 | Папка Main | Hidden linked copies of the layers to fill, at the bottom of templates 1–4 | [features/mockups.md](features/mockups.md#the-templates) |
-| Ковер, обкладинка (у мокапі) | The front cover — the owner fits it by hand (`COVER_` / `Cover` / `Front Cover`) | [features/mockups.md](features/mockups.md#the-templates) |
+| Ковер, обкладинка (у мокапі) | The front cover (`COVER_` / `Cover` / `Front Cover`) — the program puts the right half of the cover in; the owner fitted it by hand in Photoshop until 13.10.2026, now moves it in the crop window when needed | [features/mockups.md](features/mockups.md#the-templates) |
+| Міні-редактор для кадрування, поправити обкладинку, посунути | The Mockups' crop window: the front cover moved and brought closer in its frame, the mockup drawn again beside it (13.10.2026) | [features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026); [pages/mockups-edit.js](../app/web/js/pages/mockups-edit.js) |
+| Без фотошопу, «запечений» шаблон | The Mockups drawn by Book Studio itself from a template baked once in Photoshop (its calibration renders) | [features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026); [mockup_render.py](../app/studio/mockup_render.py) |
+| Колір корінців, краї (розкритої книги), піпетка | In the two softcover scenes: the thin edge lines of the open book (`Back Color` / `Front Color`), coloured from the cover's own edges "as with an eyedropper" | [mockup_colours.py](../app/studio/mockup_colours.py) `edges()` |
+| Синій фон, мокапи з довгими назвами, пастельний відтінок | The background of Cover & Open 1 and All & Open 1 (`Change Color`, blue at the vendor's) — the owner picks it; the program suggests pastel shades of the cover's hues | [mockup_colours.py](../app/studio/mockup_colours.py) `pastels()`; [features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026) |
 | Корінець | The spine: the middle strip of the wide cover (`Rige` / `Spine`, files `RIDGE*.psb`) | [mockups.py](../app/studio/mockups.py) `cover_pictures()` |
 | Задня частина (обкладинки) | The back cover — the left half of the wide cover (`Back Cover`) | [mockups.py](../app/studio/mockups.py) `cover_pictures()` |
 | Презентабельні розвороти | The spreads the owner picks for the mockups, different for every book | [pages/mockups.js](../app/web/js/pages/mockups.js) `put()`; [features/mockups.md](features/mockups.md) |

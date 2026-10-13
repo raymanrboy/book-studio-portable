@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-11
+updated: 2026-10-13
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -161,7 +161,8 @@ filled = done, half = started, empty = not yet, pale/dashed = not needed, red = 
   `truck` — "the printer has shipped it" (the tab and the tracking chip; since 2026-09-17 its own
   picture, not an alias for the `package` box icon, which means "shipped on Etsy"); `plus` — "another
   book" in the Order Creator; `mockup` — the Mockups (a book in a picture frame); `hand` — "the
-  owner fits this by hand" (the front cover in a mockup template); since 2026-09-24 `listing` — the Listings
+  owner fits this by hand" (the front cover in a mockup template, the Photoshop way); since 2026-10-13 `crop` — the
+  Mockups' crop window (the front cover moved in its frame), `eyedropper` — a colour taken from a picture with a click; since 2026-09-24 `listing` — the Listings
   mode (an Etsy listing's tag, its brand icon), `workshop` — the Workshop (a hammer and a ruler crossed, the owner's wish of 2026-09-30),
   `mirror` — ⇄, a Workshop spread mirrored left to right (not `swap`, which trades a spread's two pages in the
   passport); since 2026-09-26 `agent` — the book agents in Antigravity (a chat bubble, the agent typing), `hero` — a

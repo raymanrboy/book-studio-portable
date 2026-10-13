@@ -5,3 +5,4 @@ pikepdf>=8     # the engine the Gelato PDFs are written with (creator.build_phot
 cryptography>=41
 psd-tools>=1.9  # the listing slides' cut-out reads the templates' book mask and shadows (only read; numpy comes with it)
 numpy>=1.24
+opencv-python>=4.8  # the Mockups drawn without Photoshop: the baked templates bend the pictures (studio/mockup_render.py)

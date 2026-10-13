@@ -1,13 +1,21 @@
 ---
 title: Mockups — listing pictures from a demo book (a tool, and a Workshop book's step)
 type: feature
-updated: 2026-10-11
+updated: 2026-10-13
 code:
   - app/studio/mockups.py
+  - app/studio/mockup_render.py
+  - app/studio/mockup_colours.py
+  - app/tools/mockup_bake/bake.py
+  - app/tools/mockup_bake/engine.py
+  - app/tools/mockup_bake/mult.py
+  - app/tools/mockup_bake/bake.jsx
+  - app/tools/mockup_bake/install.py
   - app/studio/mockups.jsx
   - app/web/js/pages/mockups.js
   - app/web/js/pages/mockups-run.js
   - app/web/js/pages/mockups-slides.js
+  - app/web/js/pages/mockups-edit.js
 ---
 # Mockups (Мокапи)
 
@@ -20,6 +28,12 @@ code:
 > **Dedication**, whose background and table colours he picks), and **«Зберегти відкриті»** saves them too. Every saved
 > picture is cut out without its background, and step 4 makes the [listing slides](slides.md). The templates' structure
 > and what was learned about scripting Photoshop — below.
+>
+> **Since 13.10.2026 Book Studio draws the mockups itself** — no Photoshop, no "run this script?", nothing left open:
+> every template was "baked" once, and a run takes seconds. The front cover is put in by itself; where it shows, a crop
+> button on the picture opens **the crop window**, and the two softcover scenes take their colours from the cover — see
+> [Drawn without Photoshop](#drawn-without-photoshop-since-13102026). The Photoshop way below stays for a template that is
+> not baked (or has changed since).
 
 ## How the owner uses it
 
@@ -84,6 +98,62 @@ is the dedication; the spreads `2–3`, `4–5`, …; page 30 is not offered.
 
 The sliders button: where the templates and Photoshop are (a missing folder — a yellow line above the steps).
 A whole run takes ~45 s on the owner's PC: ~3 s the pictures, <1 s copying the templates, the rest Photoshop.
+
+## Drawn without Photoshop (since 13.10.2026)
+
+The owner asked whether Photoshop could go (13.10.2026, "just a discussion", then "let's try"); a pilot showed it can, and
+the six templates are drawn by Book Studio now — equal to Photoshop by eye (against Photoshop's own mockups of two real
+books: on average under 1 of 255 for the hardcovers; 1–2 as the eye sees it for the softcover scenes, where only the tiniest
+highlights differ).
+
+**Baking** (once per template, `app/tools/mockup_bake/`, Photoshop needed — one "Yes"): every smart object is filled with
+calibration pictures — black, white, flat levels, a coordinate ramp (red = x, green = y), each on its own, 16-bit at 300 dpi
+(the dpi decides the placed size) — and Photoshop's renders tell, for every pixel of the template, which point of which
+picture lands there and how the template's light changes it. Photoshop's mockups of two real books are the check.
+- **Hardcovers** (Open 1, Open 2, Cover 1, Dedication — "linear"): `out = black + Σ gain × picture(uv)`; a board's corner folds
+  come from the picture's four edge strips (only where neighbours jump between two strips); per smart object bilinear or
+  bicubic, whichever is closer to Photoshop. Dedication's desk and floor are flat-colour smart objects, kept at the
+  template's colours.
+- **Softcover scenes** (Cover & Open 1, All & Open 1 — "multiply"): their smart objects lie over each other in Multiply and the
+  layers above bend the tones (Soft Light, Colour/Linear Burn): `P = Π(1 − a + a × picture(uv))`, `out = F(P)`, `F` a tone curve
+  per pixel from 9 flat levels; each smart object measured with the others white (neutral for Multiply). Their pictures are
+  shrunk first by the smart object's own squeeze, as Photoshop does (without it — "steps"); the positions are smoothed (one
+  slot comes through at 8 bits) and moved by a small per-slot shift fitted to the check mockups (a steady 0.3–1 px offset;
+  its cause not found; a shift fitted on one book improves the other).
+- **The softcover scenes' colour fills** sit over everything: `Change Color` (Linear Burn, its mask — the background),
+  `Back Color` / `Front Color` (Multiply, masks — the thin edge lines of the open book's right / left half). Baked at the
+  vendor's colours, they are taken off with the PSD's own masks and put back in the chosen ones — checked against Photoshop
+  in other colours: the same accuracy as the rest.
+- The six baked files: 222 MB in `app/data/mockups/baked/` (the PSDs: 2.3 GB), and `baked.json` — the stamp of the template
+  file each was baked from (`mockup_render.stamp()`: the size and the first and last 4 MB). **A changed template is no
+  longer drawn**: its runs go the Photoshop way until it is baked again (`bake.py prepare` → Photoshop → `bake.py build` →
+  `install.py`; close Photoshop before `build` — it holds 10+ GB).
+- Found on the way: Photoshop renames a smart object named like its old file on Replace Contents (`COVER_` in Cover 1 — the
+  bake script puts the name back); 8- and 16-bit documents place the pictures the same.
+
+**A run** (`make()` → `draw()` when every ticked template is baked — `drawn()`): the pictures are cut as for Photoshop
+(`cover_pictures()`, `page_picture()`), each mockup drawn (`mockup_render.render()`: 0.2–0.4 s a hardcover, ~3 s a scene; one
+baked template in memory at a time, let go 2 minutes after its last use), saved as PNG at 300 dpi (compression 3, the same
+names as before) and handed to the cutter at once — its cut-out is the same as from Photoshop's picture (checked: outline,
+shadow, place). 10 pictures: ~30 s with the cut-outs (Photoshop: ~45 s and a click). On the page step 3 is «Картинки», one chip
+(Book Studio draws N pictures), no ✋ and no «Ваша черга»; the rows say «Малюю …». The Photoshop warning shows only while
+some template is not baked.
+
+**The crop window** (`mockups-edit.js`; the owner, 13.10.2026: "a mini editor just for cropping — the program puts the right half
+of the 2:1 picture in; if it looks right I touch nothing, if so-so I move it"). On a drawn result **Cover 1, Cover & Open 1 and
+All & Open 1** carry the crop button «Поправити обкладинку»:
+- left — the whole cover, the front's frame on its right half (the window the board takes, kept inside the half as the
+  server's `_fill()` keeps it): drag to move, the wheel or the slider to bring it closer (×1–×3), ↶ — as the program put it.
+  The crop is per template (the hardcover's board is not the softcover's square);
+- right — the mockup as it will be, drawn by the server a moment after each change (nothing saved);
+- in the scenes also **«Фон»** — pastel shades of the cover's own leading hues (OKLCH, light and soft; the first is what a run
+  uses), a warm off-white, any colour. **One background for the book's two scenes** — saving redraws the other one too. The
+  swatch is the fill itself, as `Change Color` in Photoshop: the scene burns it into its grey, so it looks deeper there. And
+  **«Краї розкритої книги»** — each half's colour from the cover's outer edges (top, bottom, the outer side), "as with an
+  eyedropper" (the owner); a click on the chip and then on the cover takes another;
+- «Зберегти» draws the picture over the file this run saved, makes its «Без фону» again (`cutter.add(again=True)` →
+  `ensure(replace=True)`) and refreshes the Workshop book's `etsy/` copy. It needs the demo book still open on the page.
+- **Dedication needs no colours** (the owner, 13.10.2026): its desk colour is the template's own, its floor is cut away.
 
 ## What goes where
 
@@ -222,11 +292,16 @@ takes the demo book. Nothing goes to drive C (`core.own_temp()`, [runtime](../ar
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
 - [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `arrived()`, `paintBack()`, `takeWorkshopBook()`, `existingNow()`, `loadExisting()`, `FOR_BOOK`, `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `ticked()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
 - [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — step 4, the listing slides: `slidesStep()` ([slides](slides.md))
+- [app/studio/mockups.py](../../app/studio/mockups.py) — drawn: `EDITABLE`, `SCENES`, `drawn()`, `draw_plan()`, `draw()`, `_pictures_for()`, `_fills()`, `_draw_one()`, `_save_drawn()`, `_crop_values()`, `MAX_ZOOM`, `_edit()`, `_edit_state()`, `_edit_preview()`, `_edit_save()`
+- [app/studio/mockup_render.py](../../app/studio/mockup_render.py) — `BAKED`, `stamp()`, `ready()`, `render()`, `slots()`, `fills()`, `forget()`, `_render_linear()`, `_render_multiply()`, `_recolour()`
+- [app/studio/mockup_colours.py](../../app/studio/mockup_colours.py) — `edges()`, `pastels()`, `hex_of()`, `rgb_of()`
+- [app/tools/mockup_bake/bake.py](../../app/tools/mockup_bake/bake.py) — `prepare()`, `build_linear()`, `build_multiply()`; [engine.py](../../app/tools/mockup_bake/engine.py) — `passes()`, `bake()`, `tune()`; [mult.py](../../app/tools/mockup_bake/mult.py) — `bake()`, `register()`; [bake.jsx](../../app/tools/mockup_bake/bake.jsx) — the Photoshop script; [install.py](../../app/tools/mockup_bake/install.py) — `read_fills()`, `main()`
+- [app/web/js/pages/mockups-edit.js](../../app/web/js/pages/mockups-edit.js) — `openEditor()`: the crop window
 - [app/web/js/pages/mockups-run.js](../../app/web/js/pages/mockups-run.js) — step 3 drawn: `runView()`, `rowsHtml()`, `resultCard()`, `existingCard()`, `turnCard()`, `finishedCard()`
 - [app/web/js/app.js](../../app/web/js/app.js) — the route `#/mockups`, `paintBusy()` (the rail's dot)
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_zip()`, `downloads_folder()`, `attention()`
 - [app/studio/drops.py](../../app/studio/drops.py) — `export_files()` (the same naming rules as the print folder), `archive_folder()`
-- Tests: [app/tests/test_mockups.py](../../app/tests/test_mockups.py) (`ReadingTheDemoBook`, `Pictures`, `RunPlan`, `Run`, `SaidInTheLog`, `Cleaning`, `SaveTheOpenOnes`, `Progress`, `PhotoshopScript` — the script itself run by Node.js against a pretend Photoshop)
+- Tests: [app/tests/test_mockup_draw.py](../../app/tests/test_mockup_draw.py) (`Baked`, `Colours`, `TheFrontsCrop`, `DrawnRun`), [app/tests/test_mockups.py](../../app/tests/test_mockups.py) (`ReadingTheDemoBook`, `Pictures`, `RunPlan`, `Run`, `SaidInTheLog`, `Cleaning`, `SaveTheOpenOnes`, `Progress`, `PhotoshopScript` — the script itself run by Node.js against a pretend Photoshop)
 
 ## Related
 

@@ -1,7 +1,7 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-10-11
+updated: 2026-10-13
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
@@ -193,7 +193,8 @@ templates themselves are in it); the program never reads it, the Mockups use `D:
   book and everything but the floor; `DESK_READER`; `cut(crop=False)` keeps its frame); its Multiply / Screen shadow layers become
   black / white with alpha (a grey `v` in Multiply = black with alpha 1 − v), kept near the book (a soft falloff), the
   whole-canvas haze (3.5 %) cut — `read_psd()` (psd_tools, imported inside the call), `cut()`, `combined()`, `ensure()`
-  (the cache, the full-size «Без фону» never over a file that is there), `Cutter` (one background thread, a queue,
+  (the cache, the full-size «Без фону» never over a file that is there — except `replace=True`: the mockup was drawn
+  again over itself in the Mockups' crop window, 13.10.2026, and `Cutter.add(again=True)` cuts it once more), `Cutter` (one background thread, a queue,
   every picture's state per folder; the template's arrays go when the queue is empty). `READER` — the preview server
   and the tests put a pretend template there.
 - **The drawing** (`web/js/slides/engine.js`): a scene = `{id, title, bg, items[]}` on a 1000×1000 stage; each element

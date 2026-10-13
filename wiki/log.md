@@ -3,6 +3,22 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-13] decision | The Mockups drawn without Photoshop, the crop window, the scenes' colours
+- The pilot (`.tmp/mockup-pilot`, NOTES.md) baked the six templates; Book Studio draws them now: `mockup_render.py` (linear —
+  the hardcovers; multiply — the softcover scenes, their colour fills swapped with the PSD's masks, checked against Photoshop
+  in other colours), `mockups.draw()` when every ticked template is baked (`drawn()`, the template's stamp), the PNGs and the
+  cut-outs as before. Accuracy against Photoshop's own mockups of books 36 and 40: hardcovers 0.4–0.6 of 255 on the whole
+  picture, the scenes 1.4–2.0 (the eye: ~1–2). Ten pictures of book 36 in ~30 s.
+- The crop window (`mockups-edit.js`, routes `/api/mockups/edit`, `/media/mockups/edit`): the front moved / zoomed per
+  template, the scenes' background (pastels from the cover, `mockup_colours.pastels()`) for both scenes, the edges from the
+  cover (`edges()`, an eyedropper); «Зберегти» draws over the run's own picture, its «Без фону» again
+  (`cutout.ensure(replace=True)`, `Cutter.add(again=True)`), `etsy/` refreshed.
+- The bake tool `app/tools/mockup_bake/` (`bake.py prepare|build`, `install.py`); `opencv-python` in the requirements; the
+  preview server draws with `pretend_render()`. Icons `crop`, `eyedropper`.
+- Checked: the tests (new `test_mockup_draw.py`), the preview in light and dark (the run, the window: drag, zoom, a swatch, the
+  eyedropper, save — both scenes), a real book drawn through the program's code on a copy of the data. **Not checked live:**
+  the real program with the owner's click-through; the baked files are installed into `app/data/mockups/baked`.
+
 ## [2026-10-13] decision | The Profit page takes the Etsy money from Etsy's ledger
 - The owner: why compute what the ledger says. Research on a copy of his data (14.09–13.10): the chain whole, every sale in the
   ledger, the formula right to the cent except Offsite Ads / a state's fee / a cancellation; the ads at the $5 budget of 11.10 (+20% VAT)
@@ -55,6 +71,13 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
   pictures as `undefined` after choosing another book fixed (`refresh()`); after an independent review: the step follows the
   book chosen now, «Доробити слайд 7», older copies of a redone mockup left out. Tests: three new in `test_slides.py`, 631 pass; the
   preview checked the whole path on made-up data. Pages: mockups, slides, api-routes, security, testing, modes, frontend, decisions.
+
+## [2026-10-13] update | Five more Christmas books put through the pipeline (41–45) + the CP preset
+- At the owner's "CP, CG and FG — choose the fittest": CP (colored pencil and glowing pastel) was added to `pipeline/playbook/knowledge/media-presets.md` as a general preset (from the style block of `24.spooky-stories`) and named in `build-book.md`, `2-story-blueprint.md`, `onboarding.md`.
+- Books 42 (snowman, FG), 43 (Letter from Santa, CP), 44 (Santa's Workshop, FG), 45 (Little Reindeer, CG): agents 0, 2, 3, 4, 5 done, check GO 0 FAIL 0 WARN, the Workshop reads them. Book 41 (the child and Santa, Tier H, CG): stopped at the first hard stop with `canonical-prompt.md` and `character-card.md`, waiting for the owner's `canonical.png`. `owner/christmas-books.md` has the table.
+
+## [2026-10-13] query | Five more Christmas books, from the shops that sell
+- Etsy searched as a visitor (Christmas, Santa letter, snowman) and the shops behind the results (EveryGiftShop, BlueTrunkBooks, LUFgifts, Tinybound, StoryBloomie, WhimsyNestCorner, …). The five picks, with the evidence, are in a new section of `owner/christmas-books.md` (#6–#10). The owner also sent four search-result screenshots of the bestsellers (not saved: no file path). Nothing built yet.
 
 ## [2026-10-11] update | Book 39 wide-image prompt; more open space above in 39 and 40
 - (Revised the same evening: a first try with a far-away camera made the generator draw tiny animals, so both prompts now use a medium-wide view, the animals about three quarters of their size in the frame, and the **upper quarter** of the image left open for the title.)

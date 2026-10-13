@@ -38,6 +38,10 @@ def seed_mockups(data: Path) -> None:
     fake.pick_zip = lambda title, initial="": str(data / "Goose demo.zip")
     fake.attention = lambda title_part: False
     mockups.desktop = fake
+    # Book Studio's own drawing (13.10.2026): every made-up template counts as baked, drawn by pretend_render below
+    mockups.mockup_render = types.SimpleNamespace(ready=lambda key, psd: True, slots=lambda key: PRETEND_SLOTS[key],
+                                                  render=lambda key, pictures, colours=None: pretend_render(data, key, pictures, colours),
+                                                  forget=lambda: None)
     from studio.slides import cutout
     cutout.READER = pretend_template  # the made-up templates are plain pictures: the book's outline is known
     cutout.DESK_READER = pretend_desk  # Dedication: the pretend floor (the lower left) goes, the rest stays
@@ -62,6 +66,34 @@ def seed_mockups(data: Path) -> None:
                 page = Image.new("RGB", (700, 700), ((n * 53) % 200 + 40, (n * 97) % 160 + 60, (n * 31) % 180 + 60))
                 ImageDraw.Draw(page).text((350, 350), str(n), font=font, fill=(250, 250, 245), anchor="mm")
                 zf.writestr(f"{n + 1}.png", _png(page))
+
+
+PRETEND_SLOTS = {"open1": ["left", "right", "front", "back", "spine"], "open2": ["left", "right", "front", "back", "spine"],
+                 "cover1": ["front"], "dedication": ["page1", "front", "back", "spine"],
+                 "coverOpen": ["left", "right", "front"], "allOpen": ["left", "right", "front", "back", "spine"]}
+
+
+def pretend_render(data: Path, key: str, pictures: dict, colours: dict | None):
+    """A made-up drawn mockup: the template's made-up scene (its background tinted by the scene's colour) with the
+    pages — or the front cover — laid where the pretend book is (so the slides' pretend cut finds it)."""
+    from PIL import Image
+    from studio import mockups
+    time.sleep(0.3)
+    t = next(t for t in mockups.TEMPLATES if t["key"] == key)
+    with Image.open(data / "templates" / t["file"]) as scene:
+        sheet = scene.convert("RGB").resize((1500, 1000))
+    tint = (colours or {}).get("Change Color")
+    if tint:
+        sheet = Image.blend(sheet, Image.new("RGB", sheet.size, tuple(round(v) for v in tint)), 0.6)
+    laid = [pictures[s] for s in ("left", "right") if s in pictures] or [pictures.get("page1") or pictures["front"]]
+    if "front" in pictures and key in ("cover1", "coverOpen", "allOpen"):
+        laid = [pictures["front"]] + laid[1:]
+    for i, im in enumerate(laid[:2]):
+        sheet.paste(im.convert("RGB").resize((460, 460)), (290 + i * 460, 270))
+    edge = (colours or {}).get("Front Color")
+    if edge:
+        sheet.paste(Image.new("RGB", (920, 8), tuple(round(v) for v in edge)), (290, 730))
+    return sheet
 
 
 def pretend_template(path: Path, size: tuple[int, int]):

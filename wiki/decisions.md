@@ -6,6 +6,28 @@ code: []
 ---
 # Decisions
 
+## 2026-10-13 — The Mockups are drawn by Book Studio; Photoshop only bakes a template once
+
+The owner asked whether Photoshop could go from the Mockups ("just a discussion"), then "let's try". A pilot baked the six
+templates (calibration renders in Photoshop) and drew real books equal to Photoshop by eye — the sheet of six was shown.
+- **A run draws every baked template itself** (`mockup_render.py`): no "run this script?", nothing left open, ~30 s for ten
+  pictures with their cut-outs; the PNGs are named and sized as before, so the slides, the cut-outs and `etsy/` go on unchanged.
+- **The owner's touch moves into the program** (the owner: "a mini editor just for cropping, like the Canva one, but only
+  cropping — the program already puts the right half of the 2:1 picture where it belongs; if it looks right I edit nothing"):
+  a crop window on Cover 1, Cover & Open 1 and All & Open 1, the crop per template.
+- **Colours** (the owner): the open book's edges take the cover's edge colours "as with an eyedropper"; the background he
+  picks himself — only in the two softcover scenes ("the blue background, the two with long names"); "an automatic best
+  pastel would be nice" → pastel suggestions from the cover's hues, the first used by a run; **one background for both
+  scenes** (my suggestion, he agreed — the listing looks one set). **Dedication needs no colours**: its desk colour is fixed
+  in the template, its floor is cut away.
+- **Photoshop stays** for a template not baked or changed since (the stamp), and to bake: `app/tools/mockup_bake/`.
+- The owner allowed installing any tools; an agent may answer Photoshop's "run this script?" by itself while he is away
+  (13.10.2026) — `WarnRunningScripts` is still his alone.
+
+How to apply: a new or changed template is baked (`bake.py`) before it is drawn; the owner's choices in the crop window
+belong to that run's pictures only.
+[features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026)
+
 ## 2026-10-13 — Etsy's ledger is the source of the Etsy money; the formula only forecasts
 
 The owner, on learning the page computed what Etsy's ledger already says: «навіщо ми рахуємо самі, коли є точні цифри».

@@ -88,6 +88,10 @@ const P = {
   hourglass:'<path d="M6.5 3.5h11M6.5 20.5h11"/><path d="M8 3.5v2.4a3.6 3.6 0 0 0 1.5 2.9L12 10.6l2.5-1.8A3.6 3.6 0 0 0 16 5.9V3.5M8 20.5v-2.4a3.6 3.6 0 0 1 1.5-2.9l2.5-1.8 2.5 1.8a3.6 3.6 0 0 1 1.5 2.9v2.4"/>',
 
   // ---- viewer
+  // the mockup's front cover moved in its frame (the crop window, 13.10.2026)
+  crop: '<path d="M6.5 2.5v13.5a1.5 1.5 0 0 0 1.5 1.5h13.5"/><path d="M2.5 6.5h13.5a1.5 1.5 0 0 1 1.5 1.5v13.5"/>',
+  // a colour taken from a picture with a click
+  eyedropper: '<path d="M16.8 3.2a1.9 1.9 0 0 1 2.7 0l1.3 1.3a1.9 1.9 0 0 1 0 2.7l-2.6 2.6-4-4z"/><path d="M13.6 7.4l-8.3 8.3a1.8 1.8 0 0 0-.5 1l-.4 2.6 2.6-.4a1.8 1.8 0 0 0 1-.5l8.3-8.3"/>',
   zoomIn: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.4-4.4M11 8.2v5.6M8.2 11h5.6"/>',
   zoomOut: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.4-4.4M8.2 11h5.6"/>',
   fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',

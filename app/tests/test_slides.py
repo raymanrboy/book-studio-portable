@@ -3,6 +3,7 @@ while Photoshop works, the schemes (Nature, Night, the owner's own, other books'
 slides in its own folder, a stale save refused (the agent's change is never overwritten), «Зробити слайди» with a
 pretend browser, the names in the owner's folder, the cleaning, the command line. Made-up pictures only."""
 import json
+import os
 import shutil
 import tempfile
 import time
@@ -134,6 +135,18 @@ class TheCut(Base):
         target.write_bytes(b"the owner's own file")
         cutout.ensure(png, self.root)                                        # cut again: the cache, and no overwrite
         self.assertEqual(target.read_bytes(), b"the owner's own file")
+
+    def test_a_mockup_drawn_again_replaces_its_own_cut_out(self):
+        # the owner moved the front cover in the crop window (13.10.2026): the picture is drawn over itself, and
+        # its «Без фону» file follows it
+        png = mockup(self.root / "out" / "1. Cover 1.png")
+        cutout.ensure(png, self.root)
+        target = png.parent / cutout.NO_BG / png.name
+        mockup(png, colour=(30, 90, 200))
+        os.utime(png, ns=(png.stat().st_atime_ns, png.stat().st_mtime_ns + 10_000_000))
+        cutout.ensure(png, self.root, replace=True)
+        with Image.open(target) as im:
+            self.assertEqual(im.getpixel((50, 50))[:3], (30, 90, 200))
 
     def test_the_background_cutter_takes_the_pictures_as_photoshop_saves_them(self):
         out = self.root / "out"
