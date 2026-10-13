@@ -29,6 +29,7 @@ Only these production styles are available:
 - **GW** - Glowing Watercolor
 - **LO** - Luminous Oil
 - **HR** - High-Fidelity Realism (scenic, nature & sacred keepsakes)
+- **CP** - Colored Pencil & Glowing Pastel (colored pencil and chalk pastel on deep midnight paper, glowing lanterns; the look of 24.spooky-stories, made general 2026-10-13)
 - **CG** - Cozy Glow (a soft polished digital painting with golden light; the look of the cozy bedtime books of TheChildhoodKeeper)
 - **FG** - Festive Gouache (bold saturated gouache with crayon texture; the look of LunaBooksUS's Christmas books)
 
@@ -169,6 +170,30 @@ Only these production styles are available:
 }
 ```
 `negative+`: `["3D render","vector","anime","photorealism","AI-art look","glossy AI render","harsh black outlines","chibi","cartoon","oversaturated colors","flat digital fill","blurry details","plastic texture"]`
+
+---
+
+## CP - Colored Pencil & Glowing Pastel
+`task` tag: `... in colored pencil and glowing chalk pastel on deep textured paper`
+Made general on 2026-10-13 from the style block of `24.spooky-stories` (the Halloween colors taken out). `28.first-halloween-costumes` keeps its own chibi variant of colored pencil in its `input.md`.
+```json
+"style": {
+  "medium": "luxury hand-drawn colored pencil and glowing chalk pastel children's illustration on deep textured paper",
+  "paint_quality": "tactile colored pencil shading with rich wax crayon depth, velvety chalk pastel gradients, luminous volumetric layering, and handmade tooth",
+  "washes": "deep twilight navy and velvety plum gradients with warm glowing amber light pools, creamy honey highlights, and soft atmospheric transitions",
+  "linework": "delicate warm-brown colored pencil contours, visible fine pencil grain, soft scumbled edges, no harsh digital vector outlines",
+  "forms": "chubby rounded friendly silhouettes, cute expressive toddler-safe proportions, plush toy softness, tangible three-dimensional volume",
+  "detail": "medium-high tactile detail with inspectable charm: visible colored pencil cross-hatching, glowing lanterns, tiny stars, soft fur and knitted textures",
+  "texture": "visible tooth of dark colored heavyweight fine-art paper, velvety colored pencil grain, subtle chalk dust speckles, warm handmade craftsmanship",
+  "color": "rich nocturnal palette: midnight violet, twilight indigo, warm lantern gold, cranberry red, pine green, dusty peach, warm butter yellow",
+  "light": "cozy illumination from within lanterns, windows and candles, soft moonlight, glowing halos, warm ambient bedtime radiance",
+  "depth_feel": "rich volumetric depth with rounded three-dimensional forms, soft cast shadows, luminous foreground focal points, gently softened atmospheric distance",
+  "overlay_behavior": "calm illustrated overlay areas keep deep velvety paper texture, quiet night sky, distant soft hilltops or faint floating stars with low contrast",
+  "mood": "cozy, friendly, magical, bedtime-safe, warm and wondrous",
+  "finish": "matte heavyweight colored paper with rich colored pencil and chalk pastel texture"
+}
+```
+`negative+`: `["3D render","vector","anime","photorealism","AI-art look","glossy AI render","harsh black outlines","harsh digital gradient","pitch dark unreadable background","frightening or gloomy mood"]`
 
 ---
 

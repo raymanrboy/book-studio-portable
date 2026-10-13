@@ -1,7 +1,7 @@
 ---
 title: Five Christmas books and the two styles to copy
 type: owner
-updated: 2026-10-11
+updated: 2026-10-13
 code: []
 ---
 # Five Christmas books and the two styles to copy
@@ -61,6 +61,33 @@ book check says GO (0 FAIL, 0 WARN); the steps from «Картинки» on are 
   family) hold together only by a fixed written description, so a drifting picture is regenerated or the best frame is attached as a reference; (3) the
   text was written and checked by one agent (syllables counted by a script, no second reader) — worth a native-English read; (4) no listing SEO yet
   (`/etsy-seo` when the owner asks).
+
+## Five more Christmas books (2026-10-13) — taken from the shops that sell
+
+The owner asked for five more, looking actively at the competitors ("we copy successful shops"). Searched Etsy as a visitor (search "personalized christmas book for kids",
+"letter from santa", "snowman", and the shops behind the results). **What sells** (shop sales / shop rating counts as Etsy shows them; per-listing sales are not public):
+
+- **Night Before Christmas with a child and Santa** — the strongest: EveryGiftShop (61.9k sales, 11.8k reviews) "Oliver's Night Before Christmas", Bestseller; LUFgifts (6.3k sales),
+  MoonlightStoriesCo, onceuponyoustudio and others have the same. The cover: a child with Santa and reindeer on a snowy roof; badges "Skin & hair colour options" and "Boy & girl version".
+- **Snowman adventure** — BlueTrunkBooks (7k sales, on Etsy since 2026) "Olivia's Christmas" (a child flying with a snowman), Bestseller; also RootBranchBooks "Build a Snowman" (694 sales, 94 reviews),
+  StoryBloomie, Katy99Design, Damian20Art.
+- **Letter from Santa** — in almost every shop: LUFgifts, BlueTrunkBooks (two listings), Tinybound, StoryBloomie, StorySproutClub, LittleDarlingStudios, WinstonStores.
+- **Santa's North Pole workshop / "Santa needs your help"** — WhimsyNestCorner (343 sales), TheCraftyOwlGoods (278), RosalieStudioFindsUS; **snow-globe adventure** — Tinybound.
+- **Lost reindeer** — LUFgifts; **Baby's First Christmas** (a baby in a Santa hat) — BlueTrunkBooks, StoryBloomie, CustomLifeStory ×8 listings.
+- **Presentation:** a baby or toddler holding the book beside a Christmas tree (the owner's photo mockups); a price of about PLN 58–90 with a 50% "sale".
+
+| # | Workshop | Book | Character | Style | Tier | Seen at |
+|---|---|---|---|---|---|---|
+| 6 | **41** | **{Name}'s Night Before Christmas — the child, Santa and the reindeer** (boy/girl, skin and hair options) | a human child | CG (Cozy Glow) | H | EveryGiftShop, LUFgifts, MoonlightStoriesCo |
+| 7 | **42** | **{Name} and the Christmas Snowman** — a snowman comes alive on Christmas Eve; {Name} is in the text | a snowman and a robin | FG (Festive Gouache) | S | BlueTrunkBooks, RootBranchBooks |
+| 8 | **43** | **A Letter from Santa for {Name}** — Santa's rhymed letter; the pictures are the North Pole (workshop, elves, the glowing list, reindeer) | elves and reindeer; Santa never a face | CP (Colored Pencil & Glowing Pastel) | S | LUFgifts, BlueTrunkBooks, Tinybound |
+| 9 | **44** | **{Name}'s Toy from Santa's Workshop** — the little elf Pip builds a star-shaped music box for {Name} | Pip the elf, toys | FG | S | WhimsyNestCorner, TheCraftyOwlGoods |
+| 10 | **45** | **{Name}'s Wish Star and the Little Reindeer** — a lost reindeer calf follows {Name}'s wish star home | a reindeer calf, a hare, a fox, an owl | CG | S | LUFgifts |
+
+**Where they stand (2026-10-13):** books 42–45 went through the pipeline's agents 0, 2, 3, 4, 5 and wait in the Workshop with the check at GO, 0 FAIL, 0 WARN; the pictures are the owner's to generate.
+**41 stops at the pipeline's first hard stop** (Agent 1): `formula.md`, `input.md`, `canonical-prompt.md` and `character-card.md` are made; nothing more until the owner generates `canonical.png`
+(the child is a recurring hero that must look like the buyer's child). Santa has a face in this one (a written description in the card). The style choice: the owner said "CP, CG and FG — choose the fittest"; `CP` was added to
+`media-presets.md` as a general preset (from the owner's 24.spooky-stories); the picks are the agent's.
 
 ## Style A — TheChildhoodKeeper (the cozy glow)
 
