@@ -597,19 +597,26 @@ button.ph-ref:hover, .drop-hot > .ph-ref { border-color: var(--accent); backgrou
 .mk-shot-wrap { position: relative; }
 .mk-shot-wrap > .mk-shot { width: 100%; display: block; }
 .mk-shot-edit { position: absolute; right: 6px; bottom: 6px; box-shadow: var(--shadow); background: var(--surface); }
-.mk-ed { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; align-items: start; }
-.mk-ed-cover { position: relative; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); cursor: grab; touch-action: none; user-select: none; }
-.mk-ed-cover.dragging { cursor: grabbing; }
-.mk-ed-cover.picking { cursor: crosshair; }
+.mk-ed { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.mk-ed-cover { position: relative; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); cursor: default; touch-action: none; user-select: none; }
+.mk-ed-cover.dragging, .mk-ed-cover.dragging .mk-ed-frame { cursor: grabbing; }
+.mk-ed-cover.picking, .mk-ed-cover.picking .mk-ed-frame, .mk-ed-cover.picking .mk-ed-h { cursor: crosshair; }
 .mk-ed-cover > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
-.mk-ed-back { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--surface) 55%, transparent); pointer-events: none; }
-.mk-ed-frame { position: absolute; outline: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(20, 20, 20, .38); border-radius: 2px; pointer-events: none;
+/* the middle of the wide cover: the spine — where the back ends and the front begins */
+.mk-ed-spine { position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px dashed rgba(255, 255, 255, .7); box-shadow: -1px 0 0 rgba(0, 0, 0, .25); pointer-events: none; }
+/* the front's window: what is outside it goes dark; four corner handles inside it (they stay seen at the cover's edges) */
+.mk-ed-frame { position: absolute; outline: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(20, 20, 20, .45); cursor: move;
   transition: box-shadow var(--t-fast) ease; }
 .mk-ed-cover.picking .mk-ed-frame { box-shadow: none; outline-style: dashed; }
-.mk-ed-zoom { gap: 8px; color: var(--text-3); }
-.mk-ed-zoom input[type="range"] { flex: 1; accent-color: var(--accent); }
+.mk-ed-h { position: absolute; width: 14px; height: 14px; background: var(--surface); border: 2px solid var(--accent); border-radius: 3px; box-shadow: var(--shadow-s); }
+.mk-ed-h.nw { left: 0; top: 0; cursor: nwse-resize; }
+.mk-ed-h.ne { right: 0; top: 0; cursor: nesw-resize; }
+.mk-ed-h.sw { left: 0; bottom: 0; cursor: nesw-resize; }
+.mk-ed-h.se { right: 0; bottom: 0; cursor: nwse-resize; }
+.mk-ed-cover.picking .mk-ed-h { display: none; }
+.mk-ed-tools { gap: 8px; margin-top: -4px; }
 .mk-ed-view { position: relative; border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); min-height: 260px; }
-.mk-ed-view > img { display: block; width: 100%; height: auto; }
+.mk-ed-view > img { display: block; width: 100%; height: auto; max-height: calc(100vh - 230px); object-fit: contain; }   /* a square Cover 1 fits a low screen too */
 .mk-ed-busy { position: absolute; top: 10px; right: 10px; padding: 6px; border-radius: 50%; background: var(--surface); opacity: 0; transition: opacity var(--t) ease; pointer-events: none; }
 .mk-ed-busy.on { opacity: 1; }
 .mk-ed-label { margin-top: 4px; }

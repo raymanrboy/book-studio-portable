@@ -142,9 +142,15 @@ some template is not baked.
 **The crop window** (`mockups-edit.js`; the owner, 13.10.2026: "a mini editor just for cropping — the program puts the right half
 of the 2:1 picture in; if it looks right I touch nothing, if so-so I move it"). On a drawn result **Cover 1, Cover & Open 1 and
 All & Open 1** carry the crop button «Поправити обкладинку»:
-- left — the whole cover, the front's frame on its right half (the window the board takes, kept inside the half as the
-  server's `_fill()` keeps it): drag to move, the wheel or the slider to bring it closer (×1–×3), ↶ — as the program put it.
-  The crop is per template (the hardcover's board is not the softcover's square);
+- left — the whole cover with the front's frame, the spine's middle dashed. **The frame goes anywhere on the whole cover**
+  (the owner, the same evening: "the whole picture's spare — moving left and right is what happens most"): drag inside it to
+  move, a press beside it brings it there; **its four corners resize it like Ctrl+T in Photoshop** — the opposite corner
+  stays, the board's proportions always kept (no stretching; the slider went, the wheel still works). It never leaves the
+  picture: at the cover's edge it grows on and slides back inside; it can't be taller than the cover (`min_zoom()`) or
+  closer than ×3. ↶ — as the program put it. The crop is per template (the hardcover's board is not the softcover's square);
+  the server cuts the picture to the window before resizing, so nothing beyond it bleeds in (`cover_pictures()`; a run
+  without a crop keeps the right half exactly as before);
+- the window fits 1024×640 and up without scrolling (the preview's height kept to the screen: a square Cover 1 too);
 - right — the mockup as it will be, drawn by the server a moment after each change (nothing saved);
 - in the scenes also **«Фон»** — pastel shades of the cover's own leading hues (OKLCH, light and soft; the first is what a run
   uses), a warm off-white, any colour. **One background for the book's two scenes** — saving redraws the other one too. The
@@ -292,7 +298,7 @@ takes the demo book. Nothing goes to drive C (`core.own_temp()`, [runtime](../ar
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
 - [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `arrived()`, `paintBack()`, `takeWorkshopBook()`, `existingNow()`, `loadExisting()`, `FOR_BOOK`, `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `ticked()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
 - [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — step 4, the listing slides: `slidesStep()` ([slides](slides.md))
-- [app/studio/mockups.py](../../app/studio/mockups.py) — drawn: `EDITABLE`, `SCENES`, `drawn()`, `draw_plan()`, `draw()`, `_pictures_for()`, `_fills()`, `_draw_one()`, `_save_drawn()`, `_crop_values()`, `MAX_ZOOM`, `_edit()`, `_edit_state()`, `_edit_preview()`, `_edit_save()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — drawn: `EDITABLE`, `SCENES`, `FRONT_X`, `min_zoom()`, `drawn()`, `draw_plan()`, `draw()`, `_pictures_for()`, `_fills()`, `_draw_one()`, `_save_drawn()`, `_crop_values()`, `MAX_ZOOM`, `_edit()`, `_edit_state()`, `_edit_preview()`, `_edit_save()`
 - [app/studio/mockup_render.py](../../app/studio/mockup_render.py) — `BAKED`, `stamp()`, `ready()`, `render()`, `slots()`, `fills()`, `forget()`, `_render_linear()`, `_render_multiply()`, `_recolour()`
 - [app/studio/mockup_colours.py](../../app/studio/mockup_colours.py) — `edges()`, `pastels()`, `hex_of()`, `rgb_of()`
 - [app/tools/mockup_bake/bake.py](../../app/tools/mockup_bake/bake.py) — `prepare()`, `build_linear()`, `build_multiply()`; [engine.py](../../app/tools/mockup_bake/engine.py) — `passes()`, `bake()`, `tune()`; [mult.py](../../app/tools/mockup_bake/mult.py) — `bake()`, `register()`; [bake.jsx](../../app/tools/mockup_bake/bake.jsx) — the Photoshop script; [install.py](../../app/tools/mockup_bake/install.py) — `read_fills()`, `main()`

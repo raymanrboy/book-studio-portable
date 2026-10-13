@@ -14,6 +14,7 @@ the files dropped for orders. The templates' structure and how it works: wiki/fe
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import shutil
@@ -217,25 +218,44 @@ def page_picture(path: Path, size: tuple[int, int]) -> Image.Image:
 def cover_pictures(path: Path, size: dict, crop: dict | None = None) -> dict[str, Image.Image]:
     """From the wide Canva cover (back on the left, front on the right): the back — its left half, the front —
     its right half, each scaled to fill its board and centred; the spine — the strip from the exact middle, at
-    the halves' scale (what the owner did by hand). `crop` moves the front only (the owner's touch in the editor,
-    13.10.2026): {"x", "y"} — the centre as shares of the front half, "zoom" ≥ 1 — closer than filling."""
+    the halves' scale (what the owner did by hand). `crop` places the front's window anywhere on the whole cover
+    (the owner's touch in the crop window, 13.10.2026: "the whole picture's spare, as with Ctrl+T in Photoshop"):
+    {"x", "y"} — its centre as shares of the whole cover, "zoom" — its scale against filling the half (1), never
+    smaller than the cover lets (the window stays inside the picture: no empty edges, never stretched)."""
     with Image.open(path) as im:
         im = _rgb(im)
         w, h = im.size
         bw, bh = size["board"]
         scale = max(bw / (w / 2), bh / h)
-        front = im.crop((w - w // 2, 0, w, h))
-        x, y, zoom = _crop_values(crop)
-        return {"back": _fill(im.crop((0, 0, w // 2, h)), size["board"], scale=scale),
-                "front": _fill(front, size["board"], centre=(x * front.width, y * front.height), scale=scale * zoom),
+        if crop is None:
+            front = _fill(im.crop((w - w // 2, 0, w, h)), size["board"], scale=scale)
+        else:
+            x, y, zoom = _crop_values(crop, smallest=min_zoom((w, h), size["board"]))
+            cw, ch = min(bw / (scale * zoom), w), min(bh / (scale * zoom), h)
+            x0 = min(max(x * w - cw / 2, 0), w - cw)
+            y0 = min(max(y * h - ch / 2, 0), h - ch)
+            # cut to the window first: the resize never takes in what lies beyond it (the back, over the spine)
+            left, top = math.floor(x0), math.floor(y0)
+            part = im.crop((left, top, min(w, math.ceil(x0 + cw)), min(h, math.ceil(y0 + ch))))
+            front = part.resize(size["board"], Image.Resampling.LANCZOS,
+                                box=(x0 - left, y0 - top, x0 - left + cw, y0 - top + ch))
+        return {"back": _fill(im.crop((0, 0, w // 2, h)), size["board"], scale=scale), "front": front,
                 "spine": _fill(im, size["spine"], centre=(w / 2, h / 2), scale=scale)}
 
 
 MAX_ZOOM = 3.0
+FRONT_X = 0.75       # the crop's centre by default: the middle of the right half — where the program puts the front
 
 
-def _crop_values(crop) -> tuple[float, float, float]:
-    """The front's crop as (x, y, zoom), each kept in its range; None or a wrong value — the centre, filling."""
+def min_zoom(cover: tuple[int, int], board: tuple[int, int]) -> float:
+    """The farthest the front's window may go: as big as the cover allows with the board's proportions."""
+    (w, h), (bw, bh) = cover, board
+    scale = max(bw / (w / 2), bh / h)
+    return max(bw / (scale * w), bh / (scale * h))
+
+
+def _crop_values(crop, smallest: float = 1.0) -> tuple[float, float, float]:
+    """The front's crop as (x, y, zoom), each kept in its range; None or a wrong value — the program's own place."""
     def num(v, default, lo, hi):
         try:
             v = float(v)
@@ -243,7 +263,8 @@ def _crop_values(crop) -> tuple[float, float, float]:
             return default
         return min(hi, max(lo, v)) if v == v else default
     crop = crop if isinstance(crop, dict) else {}
-    return num(crop.get("x"), 0.5, 0, 1), num(crop.get("y"), 0.5, 0, 1), num(crop.get("zoom"), 1.0, 1.0, MAX_ZOOM)
+    return (num(crop.get("x"), FRONT_X, 0, 1), num(crop.get("y"), 0.5, 0, 1),
+            max(smallest, num(crop.get("zoom"), 1.0, min(smallest, 1.0), MAX_ZOOM)))
 
 
 def _save_png(im: Image.Image, path: Path) -> None:
@@ -757,10 +778,11 @@ def _edit_state(req: Request):
     t = next(t for t in TEMPLATES if t["key"] == key)
     with Image.open(book["cover"]) as im:
         size = ImageOps.exif_transpose(im).size       # as cover_pictures() sees it
-    x, y, zoom = _crop_values(edit["crops"].get(key))
+    smallest = min_zoom(size, t["size"]["board"])
+    x, y, zoom = _crop_values(edit["crops"].get(key), smallest)
     out = {"key": key, "title": t["label"], "name": Path(edit["items"][key]["save"]).name, "book": book["id"],
            "cover": list(size), "board": list(t["size"]["board"]), "crop": {"x": x, "y": y, "zoom": zoom},
-           "maxZoom": MAX_ZOOM, "scene": key in SCENES}
+           "minZoom": smallest, "maxZoom": MAX_ZOOM, "scene": key in SCENES}
     if key in SCENES:
         cover = Path(book["cover"])
         out["colours"] = edit.get("colours") or {}
@@ -793,7 +815,8 @@ def _edit_save(req: Request):
     job_id = str(body.get("job") or "")
     run, edit, book = _edit(job_id)
     key = _edit_key(edit, str(body.get("key") or ""))
-    crop = dict(zip(("x", "y", "zoom"), _crop_values(body.get("crop"))))
+    crop = body.get("crop") if isinstance(body.get("crop"), dict) else {}
+    crop = dict(zip(("x", "y", "zoom"), _crop_values(crop, smallest=0.0)))    # kept to the cover when drawn
     colours = _edit_colours(edit, body)
     # The other scene too when it was drawn with other colours (one background for the book's two scenes) — read from
     # what each picture really has, so a save that failed halfway is made good by the next one.

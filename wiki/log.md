@@ -3,6 +3,16 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-13] update | The crop window: the frame over the whole cover, resized by its corners
+- The owner tried it: "perfect", but the front must move over the whole picture (left-right most of all) and be resized by
+  its edges like Ctrl+T, the proportions kept, instead of a slider. `cover_pictures(crop)`: the window anywhere on the wide
+  cover (`FRONT_X` — the right half's middle by default, `min_zoom()` — as big as the cover lets), cut to the window before
+  resizing; no crop — exactly as before. `mockups-edit.js`: four corner handles (the opposite corner stays; at the edge
+  it slides back inside), a press beside the frame brings it there, the slider gone, the spine's middle dashed; the
+  preview's height kept to the screen.
+- Checked: the tests, the preview at 1440×900, 1280×720, 1024×640 (no overlap, no scrolling, a square preview too);
+  real covers: the default crop equals the old placement within 6 of 255 at the very edge.
+
 ## [2026-10-13] decision | The Mockups drawn without Photoshop, the crop window, the scenes' colours
 - The pilot (`.tmp/mockup-pilot`, NOTES.md) baked the six templates; Book Studio draws them now: `mockup_render.py` (linear —
   the hardcovers; multiply — the softcover scenes, their colour fills swapped with the PSD's masks, checked against Photoshop

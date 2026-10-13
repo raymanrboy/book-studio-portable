@@ -134,20 +134,33 @@ class Colours(unittest.TestCase):
 
 
 class TheFrontsCrop(unittest.TestCase):
-    def test_the_owners_crop_moves_and_zooms_the_front_only(self):
+    def test_the_owners_crop_moves_the_front_over_the_whole_cover(self):
+        # 13.10.2026, the owner: "the whole picture's spare — moving left and right is what happens most"
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "cover.png"
-            im = Image.new("RGB", (200, 100), (0, 0, 0))
-            ImageDraw.Draw(im).rectangle([100, 0, 149, 49], fill=(255, 0, 0))     # the front's top-left quarter
+            im = Image.new("RGB", (200, 100), (0, 0, 255))                        # a blue back
+            ImageDraw.Draw(im).rectangle([100, 0, 199, 99], fill=(0, 0, 0))       # a black front
+            ImageDraw.Draw(im).rectangle([100, 0, 149, 49], fill=(255, 0, 0))     # its top-left quarter red
             im.save(path)
             size = {"board": (40, 40), "spine": (4, 40)}
             plain = mockups.cover_pictures(path, size)
-            near = mockups.cover_pictures(path, size, {"x": 0, "y": 0, "zoom": 2})
             self.assertEqual(plain["front"].getpixel((5, 5)), (255, 0, 0))
             self.assertEqual(plain["front"].getpixel((35, 35)), (0, 0, 0))
-            self.assertEqual(near["front"].getpixel((35, 35)), (255, 0, 0))   # only the red quarter now
-            self.assertEqual(near["back"].tobytes(), plain["back"].tobytes())
-            self.assertEqual(mockups._crop_values({"x": "nan", "y": 7, "zoom": 99}), (0.5, 1.0, mockups.MAX_ZOOM))
+            same = mockups.cover_pictures(path, size, {"x": mockups.FRONT_X, "y": 0.5, "zoom": 1})
+            self.assertEqual(same["front"].tobytes(), plain["front"].tobytes())     # the program's own place
+            near = mockups.cover_pictures(path, size, {"x": 0.625, "y": 0.25, "zoom": 2})
+            self.assertEqual(near["front"].getpixel((35, 35)), (255, 0, 0))        # only the red quarter now
+            left = mockups.cover_pictures(path, size, {"x": 0.5, "y": 0.5, "zoom": 1})
+            self.assertEqual(left["front"].getpixel((5, 20)), (0, 0, 255))         # over the spine: the back shows
+            self.assertEqual(left["front"].getpixel((35, 30)), (0, 0, 0))
+            self.assertEqual(left["back"].tobytes(), plain["back"].tobytes())       # the back stays as it was
+            far = mockups.cover_pictures(path, size, {"x": 0.75, "y": 0.5, "zoom": 0.2})
+            self.assertEqual(far["front"].size, (40, 40))                           # never bigger than the cover lets
+            self.assertEqual(far["front"].tobytes(), plain["front"].tobytes())
+            self.assertEqual(mockups._crop_values({"x": "nan", "y": 7, "zoom": 99}), (mockups.FRONT_X, 1.0, mockups.MAX_ZOOM))
+            self.assertEqual(mockups.min_zoom((200, 100), (40, 40)), 1.0)
+            self.assertEqual(mockups.min_zoom((400, 100), (40, 40)), 1.0)
+            self.assertAlmostEqual(mockups.min_zoom((200, 100), (30, 40)), 1.0)
 
 
 class Req(SimpleNamespace):
@@ -235,7 +248,7 @@ class DrawnRun(unittest.TestCase):
         cover = self.out / "1. Cover 1.png"
         before = cover.read_bytes()
         state = mockups._edit_state(Req(query={"job": job.id, "key": "cover1"}))
-        self.assertEqual(state["crop"], {"x": 0.5, "y": 0.5, "zoom": 1.0})
+        self.assertEqual(state["crop"], {"x": mockups.FRONT_X, "y": 0.5, "zoom": 1.0})
         self.assertFalse(state["scene"])
         preview = mockups._edit_preview(Req(query={"job": job.id, "key": "cover1", "x": "0", "y": "0", "zoom": "2", "w": "300"}))
         self.assertIsInstance(preview, Response)
