@@ -14,8 +14,9 @@ const ALL = ['slide1', 'slide2', 'slide3', 'slide4', 'slide5', 'slide6'];
 const NEEDS = { slide2: 'Cover 1', slide3: 'Dedication' };   // made in Photoshop by hand first: «Зберегти відкриті»
 const TITLES = ['Made just for them', 'Choose your format', 'Dedication & afterword', 'Unique little poems',
   'Personalization made simple', 'Thank you'];
+const titleOf = (s) => TITLES[ALL.indexOf(s)] || 'Appearance options';   // slide 7 — the hero's looks
 
-export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
+export function slidesStep({ view, st, existing, stepNo, tellDone, busy, blinkFinish, paintBook }) {
   const sl = {
     numbers: { pages: 24, poems: 11 },
     run: null,        // {step, percent, rows}
@@ -30,11 +31,23 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   let gone = false, timer = 0, polling = false;
   const $ = (sel) => view.querySelector(sel);
   const box = () => $('#mk-s5');
+  // The Workshop book's folder as it is (11.10.2026): its mockups made another day or by an earlier run, its slides — the
+  // step is there whenever the book has something to make slides from, not only after a run on this page.
+  const ex = existing;
+  const onDisk = () => !!(ex()?.files.some((f) => SLIDES_OF[f.template]) || ex()?.slides);
+  // The page's Photoshop run — only while it is for where the pictures go now: another book chosen after it, the step is that book's.
+  const run = () => {
+    const r = st.result;
+    if (!r) return null;
+    if (st.out) return !r.workshop && r.folder === st.out ? r : null;
+    return !st.workshop || r.workshop === st.workshop.id ? r : null;
+  };
+  const finished = () => (run() ? st.finished : null);
   // saved by the run, or later by «Зберегти відкриті» (a run of Dedication alone saves nothing by itself)
-  const ready = () => !!st.result && !st.result.cancelled && (st.result.saved.length + (st.finished?.saved.length || 0)) > 0;
-  const picked = () => sl.pick || new Set(st.only ? st.only.flatMap((k) => SLIDES_OF[k] || []) : ALL);
-  const folder = () => st.result?.folder || '';
-  const book = () => st.result?.workshop || '';   // the Workshop book the run was for
+  const ready = () => (!!run() && !run().cancelled && (run().saved.length + (finished()?.saved.length || 0)) > 0) || onDisk();
+  const picked = () => sl.pick || new Set(run() && st.only ? st.only.flatMap((k) => SLIDES_OF[k] || []) : ALL);
+  const folder = () => run()?.folder || ex()?.folder || '';
+  const book = () => (run() ? run().workshop || '' : ex()?.id || '');   // the Workshop book the run was for
   const target = () => (book() ? `workshop=${encodeURIComponent(book())}` : `folder=${encodeURIComponent(folder())}`);
 
   // ---------------------------------------------------------------- the cut-outs (polled while any is on its way)
@@ -54,8 +67,8 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   }
 
   function cutsLine() {
-    // this book's pictures only (a folder may hold an earlier book's too)
-    const mine = new Set([...(st.result?.saved || []), ...(st.finished?.saved || [])]);
+    // this book's pictures only (a folder may hold an earlier book's too); a Workshop book's folder is all its own
+    const mine = new Set(book() ? [] : [...(run()?.saved || []), ...(finished()?.saved || [])]);
     const files = Object.entries(sl.cuts?.files || {}).filter(([name]) => !mine.size || mine.has(name));
     if (!files.length) return '';
     const done = files.filter(([, v]) => v === 'done').length;
@@ -140,9 +153,9 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
 
   function resultHtml() {
     const r = sl.result;
-    const count = r.pictures.length;
+    const count = r.pictures.length, todo = r.todo || [];
     return html`<div class="result-card mk-result">
-      <h4>${ic('checkCircle')}<span class="grow">Готово · <span class="num">${count}</span> ${plural(count, SLIDES)}</span>
+      <h4>${ic('checkCircle')}<span class="grow">${todo.length ? html`Зроблено <span class="num">${count}</span> з <span class="num">${count + todo.length}</span> ${plural(count + todo.length, SLIDES)}` : html`Готово · <span class="num">${count}</span> ${plural(count, SLIDES)}`}</span>
         ${r.seconds ? html`<span class="mk-secs num">${r.seconds} с</span>` : ''}
         ${ib('folderOpen', 'Відкрити папку зі слайдами', `data-act="open-out" data-path="${r.folder}"`, { cls: 'sm' })}</h4>
       <div class="sl-shots">${r.pictures.map((p, i) => html`<div class="sl-shot">
@@ -151,14 +164,16 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
         ${ib('edit', `Правити слайд ${i + 1}`, `data-act="sl-edit" data-slide="${p.slide}"`, { cls: 'sm sl-pen' })}
       </div>`)}</div>
       ${r.missing?.length ? html`<div class="notice notice-warn">${ic('alert')}<div>Не було: ${r.missing.join(', ')} — на слайдах замість них порожні місця; в редакторі можна поставити інший мокап.</div></div>` : ''}
-      <button type="button" class="btn btn-block" data-act="sl-edit" data-slide="slide1">${ic('edit')}Відкрити в редакторі</button>
+      ${todo.length ? html`<button type="button" class="btn btn-primary btn-block" data-act="sl-rest" data-tip="Зробити з мокапів книги слайди, яких ще немає; зроблені лишаться, як є">${ic('images')}Доробити ${todo.length > 1 ? 'слайди' : 'слайд'} ${todo.map((s) => s.slice(5)).join(', ')}</button>` : ''}
+      <button type="button" class="btn btn-block" data-act="sl-edit" data-slide="${r.pictures[0]?.slide || 'slide1'}">${ic('edit')}Відкрити в редакторі</button>
     </div>`;
   }
 
   // ---------------------------------------------------------------- making them
-  async function make(fresh = false) {
+  // `list` — these slides exactly («Доробити»: the ones not made yet, slide 7 among them)
+  async function make(fresh = false, list = null) {
     if (sl.run || st.run) return;
-    const slides = ALL.filter((s) => picked().has(s));
+    const slides = list || ALL.filter((s) => picked().has(s));
     if (!slides.length) { toast('Позначте хоча б один слайд', 'info'); return; }
     const waiting = slides.filter((s) => NEEDS[s] && st.pending?.open?.includes(NEEDS[s]));
     if (waiting.length) {  // Cover 1 / Dedication are still open in Photoshop: the slides with them have to wait
@@ -166,20 +181,25 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
       blinkFinish();
       return;
     }
-    const whole = slides.length === ALL.length;
+    const whole = !list && slides.length === ALL.length;
+    // «Доробити» / «Зробити заново» act on the book whose card it is
+    const workshop = (list || fresh) && /^\d{1,5}\./.test(sl.result?.set || '') ? sl.result.set : book();
     sl.error = '';
-    sl.run = { step: 'Починаю…', percent: 0, rows: slides.map((s) => ({ slide: s, title: TITLES[ALL.indexOf(s)], state: 'wait' })) };
+    sl.run = { step: 'Починаю…', percent: 0, rows: slides.map((s) => ({ slide: s, title: titleOf(s), state: 'wait' })) };
     paint();
     busy(true);
-    const order = [...(st.result?.saved || []), ...(st.finished?.saved || [])];
+    paintBook();   // the book can't be changed while its slides are made
+    const order = [...(run()?.saved || []), ...(finished()?.saved || [])];
     try {
-      const res = await runJob(post('/api/slides/make', { folder: folder(), workshop: book(), order, book: st.book?.id || '', numbers: sl.numbers, fresh: fresh && whole, scheme: sl.scheme || undefined, ...(whole ? {} : { slides }) }), (job) => {
+      const res = await runJob(post('/api/slides/make', { folder: folder(), workshop, order, book: st.book?.id || '', numbers: sl.numbers, fresh: fresh && whole, scheme: sl.scheme || undefined, ...(whole ? {} : { slides }) }), (job) => {
         if (gone || !sl.run) return;
         Object.assign(sl.run, { step: job.step, percent: job.percent, rows: job.partial?.rows || sl.run.rows });
         patchRun();
       }, 600, () => !gone);
       if (gone) return;
       sl.result = res;
+      const x = ex();   // the folder as the page knows it is now this result (a later seed() must not bring back the old)
+      if (x && x.id === res.set) x.slides = { set: res.set, folder: res.folder, pictures: res.pictures, numbers: { ...sl.numbers }, todo: res.todo || [] };
       tellDone(`Слайди готові · ${res.pictures.length}`);
     } catch (err) {
       if (gone) return;
@@ -189,6 +209,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
       if (!gone) busy(false);
     }
     sl.run = null;
+    if (!gone) paintBook();
     paint();
   }
 
@@ -209,10 +230,12 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   // The editor may have baked them again: the card shows the pictures as they are now.
   async function refresh() {
     if (!sl.result) return;
+    const set = sl.result.set;
     try {
-      const v = await api(`/api/slides/state?w=${sl.result.set}`);
-      if (gone) return;
-      sl.result = { ...sl.result, pictures: v.pictures, seconds: 0 };
+      const v = await api(`/api/slides/state?w=${set}`);
+      if (gone || sl.result?.set !== set) return;   // another book was chosen meanwhile
+      const done = new Set(v.pictures.map((p) => p.slide));
+      sl.result = { ...sl.result, pictures: v.pictures, todo: v.slides.map((s) => s.id).filter((s) => !done.has(s)), seconds: 0 };
       paint();
     } catch { /* the set went: the card stays as it was */ }
   }
@@ -235,6 +258,7 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
   // ---------------------------------------------------------------- events (from mockups.js's one listener)
   async function act(a, t) {
     if (a === 'sl-make') { make(); return true; }
+    if (a === 'sl-rest') { if (sl.result?.todo?.length) make(false, sl.result.todo); return true; }
     if (a === 'sl-pick') {
       const next = new Set(picked());
       next[t.checked ? 'add' : 'delete'](t.dataset.slide);
@@ -266,6 +290,15 @@ export function slidesStep({ view, st, stepNo, tellDone, busy, blinkFinish }) {
 
   return {
     paint, act, input, refresh,
+    // The Workshop book's folder was read (another book chosen, a run ended, the page opened): with no run on this page,
+    // its own slides show as they are on disk — a part made, «Доробити» the rest; none yet — the six to make.
+    seed() {
+      if (sl.run || st.run || run()) { paint(); return; }
+      const s = ex()?.slides;
+      Object.assign(sl, { result: s?.pictures.length ? { set: s.set, folder: s.folder, pictures: s.pictures, todo: s.todo, missing: [], seconds: 0 } : null,
+        numbers: { pages: 24, poems: 11, ...(s?.numbers || {}) }, error: '', pick: null, cuts: null, folder: '' });
+      paint();
+    },
     wake() { refresh(); if (folder()) pollCuts(); },
     runStarted() { sl.folder = ''; sl.pick = null; },   // a new Photoshop run: its pictures' cut-outs are followed again
     keep: () => !!(sl.run || sl.result),

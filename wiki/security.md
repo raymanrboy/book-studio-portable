@@ -176,6 +176,9 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   slides are `Listing N.png` in a Workshop book's `etsy\` (or beside the mockups in a folder of the owner's), never over
   another file — only the program's own are baked again
   ([slides](features/slides.md)).
+- A Workshop book's mockups already there (11.10.2026) are **only read** and shown (`existing()`, `_existing_file()`):
+  a name must be a file right inside that book's `mockups\` and of a known template — anything else is refused; reading
+  makes no folder.
 - Its files live in `app/data/mockups`. The unpacked demo book has a folder of its own there
   (`mockups/book/`, `BOOKS`), so the mockups never delete the files dropped into an order's card and Book
   Studio's cleaning of dropped files never deletes the demo book. The demo book, old runs and Photoshop's temp

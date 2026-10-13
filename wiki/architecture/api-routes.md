@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-06
+updated: 2026-10-11
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -204,6 +204,9 @@ them) — see [features/mockups.md](../features/mockups.md).
 | POST | `/api/mockups/close` | token | `_close` | mockups.js «×» in the header — «Завершити» (`{run}`: the demo book goes, a run waiting for «Зберегти відкриті» is no longer offered; refused while a run goes on) |
 | POST | `/api/mockups/open-folder` | token | `_open_folder` | mockups.js (the result's folder button) |
 | POST | `/api/mockups/open-picture` | token | `_open_picture` | mockups.js, the viewer's "original" button (`{job, i}` — only a picture that job saved) |
+| GET | `/api/mockups/existing` | token | `_existing` | mockups.js `loadExisting()` (`?workshop=` — the Workshop book's mockups already in its folder and its slides with the ones not made yet, 11.10.2026) |
+| GET | `/media/mockups/existing` | media | `_existing_media` | mockups-run.js `existingCard()`, the viewer (`?workshop=&name=&w=` — only a mockup of a known template in that book's `mockups/`) |
+| POST | `/api/mockups/open-existing` | token | `_open_existing` | mockups.js, the viewer's "original" button for those (`{workshop, name}`) |
 | POST | `/api/mockups/attention` | token | `_attention` | mockups.js `tellDone` (a run ended while Book Studio's window was behind: the taskbar button flashes, Windows' sound) |
 | GET | `/media/mockups/template/([a-zA-Z0-9]+)` | media | `_template_media` | mockups.js (`?w=` — a template's own preview, read from the PSD) |
 | GET | `/media/mockups/out/([0-9a-f]{12})/([0-9]+)` | media | `_out_media` | mockups.js (`?w=` — a picture a job saved, by its number) |
@@ -224,6 +227,7 @@ Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a 
 | GET | `/api/slides/sig` | token | `_sig` | slides-editor.js `watch` every 1.5 s (a scene changed by an agent shows up) |
 | POST | `/api/slides/scene` | token | `_save` | slides-editor.js `flush` (`{w, s, scene, base}` — a stale `base` → 409 with the scene as it is now) |
 | POST | `/api/slides/reset` | token | `_reset` | no longer the editor's button since 2026-09-30 (it resets in the session — see [slides](../features/slides.md)); kept for agents |
+| GET | `/api/slides/books` | token | `_books` | slides-editor.js «Книга ▾» (the Workshop's books: slides there or not, how many mockups — 11.10.2026) |
 | GET | `/api/slides/presets` | token | `_presets` | slides-editor.js «Схема ▾» (the schemes and the other Workshop books' slides, the one put on, the default) |
 | POST | `/api/slides/apply` | token | `_apply` | slides-editor.js — a scheme (or `book:<id>`) put on all six (`{w, key}`) |
 | POST | `/api/slides/save-scheme` | token | `_save_scheme` | slides-editor.js «Зберегти ці слайди як схему…» (`{w, name, default}`) |

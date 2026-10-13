@@ -1,13 +1,13 @@
 """Etsy's payment-account ledger: every credit and debit on the shop's Etsy balance — a sale, its tax and fees, a refund,
-the ads, a listing, a payout (read only; the scope transactions_r the program already has). It checks the program's own
-sums (the owner, 2026-10-05): each receipt's real money against the fee formula. (The Etsy balance beside the program's
-expected sum — «Доступно до виводу» — was taken off again by the owner on 2026-10-06.) Pulled with the orders (sync.py), kept in
-data/profit/ledger.json; matched to receipts here, when the Profit view is built."""
+the ads, a listing, a payout (read only; the scope transactions_r the program already has). Since 2026-10-13 it is the
+source of the Etsy money (the owner: real numbers, not our own estimate): each receipt's real money, and what Etsy takes
+outside any order day by day (the ads, new listings); the fee formula is only the forecast until Etsy posts a sale.
+Pulled with the orders (sync.py), kept in data/profit/ledger.json; matched to receipts here, when the Profit view is built."""
 from __future__ import annotations
 
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from . import core, etsy
 
@@ -19,6 +19,11 @@ PAYMENT_REFS = ("shop_payment", "processing_fee", "payment_adjustment")  # their
 PAYOUT = "DISBURSE"            # DISBURSE2 — the money sent to the owner's Payoneer
 NEAR = 3                       # seconds: the entries of one sale are posted together
 SHOP_TYPES = ("prolist", "listing", "etsy_plus_credit", "renew_sold_auto_refund")  # the ads, a new listing, Etsy Plus, a listing fee given back (it names no receipt) — the shop's
+ADS = "prolist"                # Etsy charges a day's ads the next morning (~07:40): the entry of 12.10 was the first at the $10 budget of 11.10
+ADS_STALE = 3                  # days: ads last charged longer ago than this before the last read are off — no forecast
+# What the fee formula also counts: any other line on a receipt (Offsite Ads, a state's fee) is Etsy's own extra.
+FORMULA_TYPES = ("PAYMENT_GROSS", "sales_tax", "transaction", "shipping_transaction", "PAYMENT_PROCESSING_FEE",
+                 "renew_sold_auto", "vat")
 
 # What a receipt's entries are, in the owner's words (the order's panel lists them).
 LABELS = {
@@ -27,7 +32,7 @@ LABELS = {
     "renew_sold_auto": "Лістинг", "offsite_ads_fee": "Offsite Ads", "REFUND_GROSS": "Повернення покупцю",
     "REFUND_PROCESSING_FEE": "Повернення еквайрингу", "transaction_refund": "Повернення комісії товару",
     "shipping_transaction_refund": "Повернення комісії доставки", "sales_tax_refund": "Повернення податку",
-    "renew_sold_auto_refund": "Повернення лістингу", "vat": "ПДВ",
+    "renew_sold_auto_refund": "Повернення лістингу", "vat": "ПДВ", "vat_refund": "Повернення ПДВ",
 }
 
 
@@ -69,6 +74,8 @@ def refresh() -> int:
                 break
             time.sleep(0.12)
         start = end
+    # A hole in the chain (a sequence number missing, a balance that doesn't follow): read it all again next time.
+    holes = gaps(list(entries.values()))
     # Which receipt a payment (its gross, its fee, a refund of it) belongs to — asked once per payment.
     unknown = [e["id"] for e in entries.values() if e["rtype"] in PAYMENT_REFS and str(e["ref"]) not in payments]
     for i in range(0, len(unknown), 50):
@@ -79,10 +86,28 @@ def refresh() -> int:
             payments[str(p.get("payment_id"))] = str(p.get("receipt_id"))
             for adj in p.get("payment_adjustments") or []:
                 payments[str(adj.get("payment_adjustment_id"))] = str(p.get("receipt_id"))
-    data.update(shopId=shop_id, readTo=now, payments=payments,
+    data.update(shopId=shop_id, readTo=0 if holes else now, payments=payments,
                 entries=sorted(entries.values(), key=lambda e: e["seq"]))
     core.write_json(LEDGER, data)
     return came
+
+
+def is_refund(kind: str) -> bool:
+    """A line of money given back (to the buyer, or Etsy's fees to the shop)."""
+    return kind.startswith("REFUND_") or kind.endswith("_refund")
+
+
+def gaps(entries: list) -> int:
+    """How many breaks the chain of entries has: every entry carries Etsy's running number and the balance after it, so
+    one missing between two read entries shows (the 761 entries of 14.09–13.10.2026 had none). The entries before the
+    first one read are not a break."""
+    chain = sorted(entries, key=lambda e: e["seq"])
+    breaks = 0
+    for a, b in zip(chain, chain[1:]):
+        if b["seq"] != a["seq"] + 1 or (a["balance"] is not None and b["balance"] is not None
+                                        and a["balance"] + b["amount"] != b["balance"]):
+            breaks += 1
+    return breaks
 
 
 def _root(e: dict, by_id: dict) -> dict:
@@ -148,9 +173,39 @@ def assign(entries: list, payments: dict, receipts: list) -> dict:
     return own
 
 
+def overhead(entries: list, read_to: int) -> dict:
+    """What Etsy took outside any order, by day (local "YYYY-MM-DD" -> {"amount": dollars, negative, "forecast"}): the
+    ads, new listings, Etsy Plus, a listing fee given back, each with its VAT. An ads entry pays for the day before it.
+    The days after the last charged one, up to the last read, get that day's ads as a forecast — replaced by the real
+    charge when Etsy posts it (the owner's buffer, 2026-10-13); ads not charged for ADS_STALE days are taken as off."""
+    by_id = {e["id"]: e for e in entries}
+    cents: dict = defaultdict(int)
+    ads: dict = defaultdict(int)
+    for e in entries:
+        base = _root(e, by_id)
+        if base["type"] not in SHOP_TYPES:
+            continue
+        day = datetime.fromtimestamp(base["at"]).date()
+        if base["type"] == ADS:
+            day -= timedelta(days=1)
+            ads[day] += e["amount"]
+        cents[day] += e["amount"]
+    out = {d.isoformat(): {"amount": c / 100, "forecast": False} for d, c in cents.items()}
+    last_read = datetime.fromtimestamp(read_to or time.time()).date()
+    if ads and max(ads) >= last_read - timedelta(days=ADS_STALE):
+        last = max(ads)
+        day = last + timedelta(days=1)
+        # Up to today, not only to the last read: a page opened the next day without a sync still counts the ads.
+        while day <= max(last_read, datetime.now().date()):
+            got = out.setdefault(day.isoformat(), {"amount": 0.0, "forecast": False})
+            got.update(amount=round(got["amount"] + min(0, ads[last]) / 100, 2), forecast=True)
+            day += timedelta(days=1)
+    return out
+
+
 def view(receipts: list) -> dict:
     """What the Profit view needs from the ledger: each receipt's real money (only receipts whose payment is in the
-    ledger). {} — no ledger yet."""
+    ledger) with its lines, what Etsy took outside the orders by day, and the breaks in the chain. {} — no ledger yet."""
     data = load()
     entries = data.get("entries") or []
     if not entries:
@@ -162,14 +217,14 @@ def view(receipts: list) -> dict:
         rid = own.get(e["id"])
         if not rid:
             continue
-        # A VAT line joins the fee it is on, in the panel's list (the fee with its VAT, as the formula shows it).
+        # A VAT line joins the fee it is on, in the panel's list (the fee with its VAT, as the formula shows it); the VAT given
+        # back with a refund points at the fee's own VAT — it joins that fee's refund (the owner's cancellation of 18.09.2026).
         kind = e["type"]
-        if kind.startswith("vat_on_processing_fees"):
-            kind = "REFUND_PROCESSING_FEE" if kind.endswith("refund") else "PAYMENT_PROCESSING_FEE"
-        elif kind.startswith("vat_"):
-            kind = _root(e, by_id)["type"]
-            if kind.startswith("vat_"):
-                kind = "vat"
+        if kind.startswith("vat_"):
+            root = _root(e, by_id)["type"]
+            kind = "PAYMENT_PROCESSING_FEE" if root.startswith("vat_on_processing_fees") else "vat" if root.startswith("vat_") else root
+            if e["type"].endswith("_refund") and not is_refund(kind):
+                kind = "REFUND_PROCESSING_FEE" if kind == "PAYMENT_PROCESSING_FEE" else f"{kind}_refund"
         p = per[rid]
         p["cents"] += e["amount"]
         p["lines"][kind] += e["amount"]
@@ -179,5 +234,7 @@ def view(receipts: list) -> dict:
                            "lines": [{"type": t, "label": LABELS.get(t, t), "amount": c / 100}
                                      for t, c in p["lines"].items() if c]}
                      for rid, p in per.items() if p["paid"]},
+        "overhead": overhead(entries, data.get("readTo") or 0),
+        "gaps": gaps(entries),
         "readTo": data.get("readTo"),
     }

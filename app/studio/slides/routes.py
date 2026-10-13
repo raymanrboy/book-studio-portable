@@ -127,6 +127,23 @@ def _reset(req: Request):
     return {"scene": scene, "version": version}
 
 
+@route("GET", "/api/slides/books")
+def _books(req: Request):
+    """The Workshop's books for the editor's «Книга» (the owner, 11.10.2026: "in the listing slides I can't even choose
+    the book"), newest first: which have slides already, how many mockups the others have to make them from."""
+    from ..mockups import existing
+    from ..workshop.books import book_ids, display_name
+    out = []
+    for book in reversed(book_ids()):
+        if not store.is_book(book):
+            continue
+        # counted as the Mockups page counts them, so both say the same
+        mockups = sum(1 for f in existing(book)["files"] if cutout.kind_of(f["name"]))
+        out.append({"id": book, "name": display_name(book), "slides": (store.set_dir(book) / "set.json").is_file(),
+                    "mockups": mockups})
+    return {"books": out}
+
+
 @route("GET", "/api/slides/presets")
 def _presets(req: Request):
     """The schemes (Nature, Night, the owner's own) and the other Workshop books' slides — what the editor's «Схема»

@@ -103,6 +103,18 @@ export function resultCard(r) {
   </div>`;
 }
 
+// Everything already in the Workshop book's mockups/ — made another day or by an earlier run (11.10.2026): shown
+// whatever this session ran, and step 4 makes the slides from them.
+export function existingCard(x) {
+  const count = x.files.length;
+  return html`<div class="result-card mk-result mk-existing">
+    <h4>${ic('images')}<span class="grow">У папці книги · <span class="num">${count}</span> ${plural(count, PICTURES)}</span>
+      ${ib('folderOpen', 'Відкрити папку мокапів цієї книги', `data-act="open-out" ${attr('data-path', x.folder)}`, { cls: 'sm' })}</h4>
+    <div class="mk-shots">${x.files.map((f, i) => html`<button type="button" class="mk-shot" data-act="shot" data-which="existing" data-i="${i}"
+      aria-label="${f.name}" data-tip="${f.name}"><img data-fade alt="" draggable="false" src="${media('/media/mockups/existing', { workshop: x.id, name: f.name, w: SHOT_W, v: f.v })}"></button>`)}</div>
+  </div>`;
+}
+
 export function turnCard(p) {
   return html`<div class="mk-turn">
     <div class="mk-turn-head">${ic('hand')}<span>Ваша черга — у Photoshop</span></div>

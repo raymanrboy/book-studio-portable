@@ -1,7 +1,7 @@
 ---
 title: Profit (counts only sales from 1 October 2026)
 type: feature
-updated: 2026-10-06
+updated: 2026-10-13
 code:
   - app/web/js/pages/profit.js
   - app/web/js/pages/profit-rows.js
@@ -47,20 +47,27 @@ changes — `records.stamp()`) and its routes.
 
 ## What the page can do
 
-- **The check against Etsy's own ledger (since 2026-10-05, the owner: "if it all matches, our sums are right").** The sync also
+- **Etsy's own ledger gives the Etsy money (since 2026-10-13; from 2026-10-05 it only checked the formula).** The sync also
   reads Etsy's payment ledger (`ledger.refresh()`, read only, the scope `transactions_r` the program has) — see
   [rules/reconciliation.md](../rules/reconciliation.md).
   - **The cards are the period's own** — «На руки (Etsy Net)» with the orders count under it, «Собівартість друку», «Чистий прибуток»,
     «Середня маржа». (From 2026-10-05 to 2026-10-06 the first card was the Etsy balance, «Доступно до виводу», with the program's
     expected sum under it; the owner had it taken off: "return it as it was".)
-  - **Each row**: an amber mark by the Etsy Net when Etsy's real money for the receipt differs by more than 5 cents
-    (`etsy_check`); the open row says «За журналом Etsy: $X» and, when it differs, Etsy's lines (Offsite Ads, a state's fee…).
+  - **Each row**: the Etsy Net is Etsy's real money (`etsy_source: "ledger"`); a sale Etsy hasn't posted yet (seconds after it)
+    is the formula's forecast — faint, with a clock and the tip «Прогноз за формулою: у журналі Etsy цього ще немає». The fees under
+    it are the real ones; when they hold lines the formula doesn't know (`etsy_extra`), they are underlined dotted and the tip
+    names them («У т.ч. Offsite Ads -$5.72»). The open row says «За журналом Etsy: $X · формула дала $Y · Offsite Ads …» or
+    «збігається з формулою». A partial refund Etsy has posted shows its amount «з журналу Etsy» instead of the amount field.
+    (2026-10-05 – 2026-10-13: the formula's sum with an amber mark when the ledger differed.)
+  - A break in the ledger's chain (`ledger.gaps()`) is a warning above the table; the next sync reads the ledger again.
   - The header names only the printers connected now: «Gelato» with a Gelato key, «Printify: shop» only with a Printify token.
-- **Ads and new listings are counted quietly (since 2026-10-05).** Etsy takes money outside any order — Etsy Ads and the
-  fee for each new listing. From the owner's September–October statements: about **$1.38 a day** (`profit.OVERHEAD_PER_DAY`,
-  sent to the page as `overheadPerDay`; ads $0.99 + 20% VAT, a new listing $0.24). The page subtracts it, for the days of the chosen period that are
-  inside the books (`periodDays()`), from the «Чистий прибуток» and the margin — **no card of its own** (the owner didn't want
-  to see it). The table's rows stay per order, so their sum is a little above the card. It is an estimate: if ads change, change the constant.
+- **Ads and new listings are counted quietly (since 2026-10-05; from the ledger since 2026-10-13).** Etsy takes money outside
+  any order — Etsy Ads and the fee for each new listing. The page gets them by day from the ledger (`overheadDays`,
+  `ledger.overhead()`: an ads charge, ~07:40, pays for the day before; the days not charged yet are the last charged day's ads, a
+  forecast) and subtracts the days of the chosen period that are inside the books (`periodDays()`, `overhead()`) from the
+  «Чистий прибуток» and the margin — **no card of its own** (the owner didn't want to see it). The table's rows stay per order, so
+  their sum is a little above the card. With no ledger at all the old estimate stands in: **$1.38 a day** (`profit.OVERHEAD_PER_DAY`,
+  `overheadPerDay`, from the owner's September–October statements).
 
 - Periods (today, 7 days, 30 days, all time, custom), metrics, a table of 50 rows at a time, search.
 - A row expands: a breakdown of fees, cost, state.
@@ -84,9 +91,9 @@ changes — `records.stamp()`) and its routes.
 
 ## Where in the code
 
-- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `periodDays()`, `renderKpis()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
-- [app/web/js/pages/profit-rows.js](../../app/web/js/pages/profit-rows.js) — `rowInner()`, `detailHtml()`, `stateBox()`, `econLines()`, `costOf()`, `DEAD_SHORT`, `STATE_OPTS`
-- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `LABELS`, `SHOP_TYPES`
+- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `periodDays()`, `overhead()`, `renderKpis()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
+- [app/web/js/pages/profit-rows.js](../../app/web/js/pages/profit-rows.js) — `rowInner()`, `netCell()`, `detailHtml()`, `stateBox()`, `econLines()`, `costOf()`, `DEAD_SHORT`, `STATE_OPTS`
+- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `overhead()`, `gaps()`, `LABELS`, `SHOP_TYPES`
 - [app/studio/profit.py](../../app/studio/profit.py) — `ACCOUNTING_FROM`, `OVERHEAD_PER_DAY`, `counted()`, `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `mark_reprint()`
 - [app/studio/records.py](../../app/studio/records.py) — `unmark_reprint()`

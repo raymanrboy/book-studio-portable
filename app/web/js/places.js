@@ -11,6 +11,6 @@ export const TOOLS = [
     for: 'Для книг' },
   { id: 'photos', label: 'Фотомокапи', sub: 'Заготовки й промпти для фото з книгою', icon: 'camera', hash: '#/photos', area: 'books',
     for: 'Для книг' },
-  { id: 'slides', label: 'Слайди лістингу', sub: 'Схема шести слайдів для нових книг', icon: 'template', hash: '#/slides/template/1', area: 'books',
+  { id: 'slides', label: 'Слайди лістингу', sub: 'Слайди книги з Майстерні · схема для нових книг', icon: 'template', hash: '#/slides/template/1', area: 'books',
     for: 'Для книг' },
 ];

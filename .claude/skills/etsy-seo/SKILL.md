@@ -104,7 +104,12 @@ the `{…}` parts, from the book's text and input.md. "30-page". First sentence 
    ## Notes            season timing, what was not measured, eRank searches used
    ```
 2. `seo.py save <n>.<slug> --title "…" --tags "…"` — the database remembers what went into the listing.
-3. Reply in Ukrainian: the title, the tags, the description (each in its own code block, ready to paste),
+3. `seo.py to-drive <n>` — the owner's rule (2026-10-11): the book's listing photos and video go into his Google Drive,
+   `G:\My Drive\MoonMeadowStories\<n>.<slug>\` (made if missing; an existing folder of that number is used). It
+   **copies** `pipeline/books/<n>.<slug>/etsy/` — never moves (the Workshop counts the slides there), never overwrites or
+   deletes; a file of the same name with a different size is left as is and named in the output — tell the owner.
+   If `etsy/` is empty (mockups and slides not made yet), say so and skip it. Say in the report how many were copied.
+4. Reply in Ukrainian: the title, the tags, the description (each in its own code block, ready to paste),
    then 3–6 short lines of why, what could not be measured, and the eRank searches used.
 
 ## Checking the whole shop

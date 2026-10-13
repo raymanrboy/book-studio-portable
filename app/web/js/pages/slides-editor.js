@@ -6,6 +6,7 @@
 // up by itself (the signature is asked every 1.5 s) — the owner may work on the slides through an LLM too.
 import {
   api, post, html, ic, ib, setHtml, on, toast, runJob, menu, modal, confirmBox, segHtml, notFound, tellBusy, attr, reducedMotion,
+  remember,
 } from '../lib.js';
 import { store } from '../info.js';
 import {
@@ -152,6 +153,7 @@ export async function mount(view, [whereParam, nParam]) {
         <span class="sep"></span>
         ${ib('restore', 'Повернути слайд, як він був, коли ви відкрили редактор', 'data-act="reset"')}
       </div>
+      <button type="button" class="btn" data-act="book" data-tip="${isSet ? 'Слайди іншої книги з Майстерні' : 'Слайди якої книги з Майстерні правити або зробити'}">${ic('book', 'icon-s')}${isSet ? 'Інша книга' : 'Книга'}${ic('chevDown', 'icon-s')}</button>
       <button type="button" class="btn se-scheme" data-act="scheme" id="se-scheme">${ic('template', 'icon-s')}<span class="truncate">${schemeLabel()}</span>${ic('chevDown', 'icon-s')}</button>
       <span class="se-saved" id="se-saved"></span>
       ${isSet ? html`<button type="button" class="btn btn-primary" data-act="bake">${ic('download', 'icon-s')}Зберегти картинки</button>` : ''}
@@ -659,6 +661,7 @@ export async function mount(view, [whereParam, nParam]) {
     else if (a === 'redo') redo();
     else if (a === 'back') { flush(); location.hash = origin && !origin.startsWith('#/slides/') ? origin : '#/tools'; }
     else if (a === 'scheme') openSchemes(t);
+    else if (a === 'book') openBooks(t);
     else if (a === 'lock' || a === 'eye') {
       const i = +t.dataset.i, e = items()[i], before = snapshot();
       if (a === 'lock') e.locked = !isLocked(e); else e.hidden = !e.hidden;
@@ -774,6 +777,28 @@ export async function mount(view, [whereParam, nParam]) {
       ...(current && !current.default ? [{ label: `Нові книги — зі схеми «${current.name}»`, icon: 'check', onClick: () => makeDefault(current) }] : []),
     ]);
   }
+  // The Workshop's books (the owner, 11.10.2026: "in the listing slides I can't even choose the book"): one with slides opens
+  // them here; one without goes to the Mockups for that book, whose step 4 makes them from the mockups in its folder.
+  async function openBooks(anchor) {
+    let r;
+    try { r = await api('/api/slides/books'); } catch (err) { toast(err.message, 'error'); return; }
+    if (gone) return;
+    if (!r.books.length) { toast('У Майстерні ще немає книг', 'info'); return; }
+    menu(anchor, r.books.map((b) => ({
+      label: `${b.name} · ${b.slides ? 'слайди є' : b.mockups ? `мокапів: ${b.mockups}, слайдів ще немає` : 'мокапів ще немає'}`,
+      icon: b.slides ? 'template' : b.mockups ? 'mockup' : 'book', on: b.id === where, onClick: () => openBook(b),
+    })));
+  }
+  function openBook(b) {
+    if (b.id === where) return;
+    flush();
+    if (b.slides) { location.hash = `#/slides/${b.id}/1`; return; }
+    remember('mk-for-book', { id: b.id });   // the Mockups take it (as from the Workshop's «Мокапи» step)
+    toast(b.mockups ? 'Слайдів ще немає — крок 4 «Слайди для лістингу» зробить їх із мокапів книги'
+      : 'У книги ще немає мокапів — спершу зробіть їх тут, у «Мокапах»', 'info', 4500);
+    location.hash = '#/mockups';
+  }
+
   async function applyScheme(x) {
     const ok = await confirmBox({ title: `Накласти «${x.name}»?`, text: 'Усі шість слайдів цієї книги стануть як у ній — кольори, розташування, тексти. Мокапи й числа книги лишаться свої. Скасувати можна лише так: накласти іншу схему.', confirm: 'Накласти' });
     if (!ok || gone) return;

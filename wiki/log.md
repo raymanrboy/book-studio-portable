@@ -3,6 +3,60 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-13] decision | The Profit page takes the Etsy money from Etsy's ledger
+- The owner: why compute what the ledger says. Research on a copy of his data (14.09–13.10): the chain whole, every sale in the
+  ledger, the formula right to the cent except Offsite Ads / a state's fee / a cancellation; the ads at the $10 budget of 11.10
+  cost $5.95 that day, the flat $1.38 knew nothing of it.
+- `outcomes.apply()` takes `real` (ledger.view()): the Etsy Net, refunds, fees and `etsy_extra` from the ledger; the formula is the
+  forecast (`etsy_source`, `etsy_net_formula`). `ledger.overhead()` (ads by day, forecast for the days not charged) →
+  `overheadDays` → `profit.js overhead()`; `ledger.gaps()` → a warning and a full re-read. Rows: a faint forecast with a clock,
+  the fees name Etsy's extra lines; `etsy_check` / `etsy_net_actual` / `etsy_lines` are gone. Sample data: Jane's sale not posted,
+  the payout keeps the balances' chain.
+- On his data: 29 sales since 1.10 all from the ledger (−$6.36 against the formula: two state fees, one Offsite Ads); ads and
+  listings since 1.10 −$32.07 against the flat −$17.94. Checked in the preview (light).
+- After the code review: a cancellation/refund not yet in the ledger stays the forecast; the VAT given back joins its fee's refund
+  (`is_refund()`); the ads' forecast reaches today (the view's cache keys the date); a posted partial refund shows its amount
+  instead of the field; a negative forecast keeps its red.
+  Pages: [decisions](decisions.md), [features/profit](features/profit.md), [rules/reconciliation](rules/reconciliation.md),
+  [rules/sync-policy](rules/sync-policy.md), [dev/testing](dev/testing.md), [code-map](code-map.md).
+
+## [2026-10-11] update | Etsy SEO copies the listing photos to Google Drive
+- `seo.py to-drive <n>` (new) and `/etsy-seo` step 7: the book's `etsy/` files are copied into `G:\My Drive\MoonMeadowStories\<n>.<slug>\`
+  (copy, not move — the Workshop counts the slides there). Done for 39 and 40 (15 files each). [features/seo](features/seo.md), [decisions](decisions.md).
+
+## [2026-10-11] decision | Etsy SEO: each listing keeps its own angle
+- The owner weighed letting the shop's listings share tags and kept the own-angle way; written into `seo/knowledge/rules.md` §3
+  and [decisions](decisions.md). Books 39 and 40 stay as made.
+
+## [2026-10-11] update | SEO for books 39 and 40 (Christmas)
+- `/etsy-seo` for 39 (Christmas Eve goodnight, woodland animals) and 40 (Christmas with Grandma, bears): `agent/listing-seo.md` with
+  title, tags, description (30-page). Own angles: 39 = Christmas Eve + bedtime + woodland; 40 = Grandma + bears + baking, without
+  the tags of old listing 23 (Blessing from Grandma). 6 eRank searches (80 phrases + 2 idea lists).
+- `seo/knowledge/erank-browser.md`: Etsy may be opened as a visitor (the rule of 2026-10-11); what to do when eRank shows its login page.
+
+## [2026-10-11] update | The cover's «Назва на обкладинці» no longer stretches after «Поля» → «Картинка»
+- The owner's screenshot: going back from the cover's margins to its picture, the title block grew to the cover's height. The
+  in-place redraw (`patch()` morph, `lib.js`) kept every `style` attribute, so the «Поля» picture's `aspect-ratio` stayed on the
+  element reused as the title's head. Now a style the markup gave goes when the new markup has none (a script's own style still
+  stays). Checked in the preview (451 px → 69 px, both ways several times); 631 tests pass. Page: frontend.
+
+## [2026-10-11] update | The Mockups read the Workshop book's folder; «Доробити» slides; the slides' editor picks a book
+- The owner: book 40's mockups were made but the Mockups showed none, step 4 needed a run on the page, redoing one mockup left
+  only that one, and the slides' editor had no way to choose a book. Now: `GET /api/mockups/existing` (+ its media and «original»
+  routes) — step 3 shows «У папці книги · N картинок», step 4 works from the folder, made slides show «Зроблено 1 з 6» and
+  «Доробити …» (`todo`, `work.not_baked()`); the editor's «Книга ▾» (`GET /api/slides/books`). A race that drew a book's slide
+  pictures as `undefined` after choosing another book fixed (`refresh()`); after an independent review: the step follows the
+  book chosen now, «Доробити слайд 7», older copies of a redone mockup left out. Tests: three new in `test_slides.py`, 631 pass; the
+  preview checked the whole path on made-up data. Pages: mockups, slides, api-routes, security, testing, modes, frontend, decisions.
+
+## [2026-10-11] update | Book 39 wide-image prompt; more open space above in 39 and 40
+- (Revised the same evening: a first try with a far-away camera made the generator draw tiny animals, so both prompts now use a medium-wide view, the animals about three quarters of their size in the frame, and the **upper quarter** of the image left open for the title.)
+- `39.goodnight-christmas-eve`: the owner's chosen frame saved as `agent/ref_cover_spread-15.jpg`, `agent/cover-prompts-json.md` (CG style, the camera moved far away, the group small in the lower right, the whole upper right open sky for the title). The owner noticed the first cover of 40 had no room on top, so 40's prompt was strengthened the same way (the bears in the lower two thirds, the upper right a smooth wall with nothing in it). Both books: check GO, 0 FAIL.
+
+## [2026-10-11] update | Book 40: the wide-image prompt (Agent 6) from the owner's frame
+- The owner generated Spread 14 of `40.christmas-with-grandma` and chose it as the base for the cover. Saved as `agent/ref_cover_spread-14.jpg`; `agent/cover-prompts-json.md`
+  (one prompt, the CG style in full, the two bears moved to the right, a calm upper right for the title) — the book check still GO, 0 FAIL.
+
 ## [2026-10-11] update | Three Christmas animal books put through the pipeline into the Workshop
 - Books 38 (Night Before Christmas, foxes), 39 (Christmas Eve Goodnight, woodland animals) and 40 (Christmas with Grandma, bears) made by agents 0, 2, 3, 4, 5
   in `pipeline/books/<n>.<slug>/agent/` (input, formula, story-blueprint, book-text, spread and end-page prompts, text-critic and preflight reports), style `CG`,

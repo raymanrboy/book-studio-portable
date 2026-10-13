@@ -1,7 +1,7 @@
 ---
 title: Order matching and computing profit
 type: rule
-updated: 2026-10-08
+updated: 2026-10-13
 code:
   - app/studio/reconcile.py
   - app/studio/fees.py
@@ -101,7 +101,7 @@ right order — no link is asked for). If matching by name only finds a cancelle
 for a manual link (`needs_link`). A cancelled first order no longer takes the cost of the sale's other print
 orders with it (until 2026-09-26 it did).
 
-## The check against Etsy's ledger
+## Etsy's ledger — the source of the Etsy money (since 2026-10-13; a check only from 2026-10-05)
 
 Since 2026-10-05 the sync reads Etsy's payment ledger (`ledger.py`, `data/profit/ledger.json`): every credit and debit on the
 shop's Etsy balance, in cents, each with the balance after it. An entry finds its receipt by its reference — a receipt, a payment
@@ -116,13 +116,24 @@ keeps. The payout of 5 October ($606.68) against the program: $54.61 the payout 
 program's sum for the 21 sales between, less the ads a day = $606.63 — 5 cents off. (That balance check was shown on the page from
 2026-10-05 to 2026-10-06 as «Доступно до виводу»; the owner had it taken off — only each receipt's check stays.)
 
+**Since 2026-10-13 the ledger gives the numbers** ([decisions](../decisions.md)): `outcomes.apply()` takes a receipt's money from
+`ledger.view()` — the Etsy Net, the money before a refund, what went back, the fees Etsy gave back, the fees (`etsy_fees` = card
+total − US tax − the money before a refund) and Etsy's lines the formula doesn't know (`etsy_extra`: Offsite Ads, a state's fee).
+The formula and the state rules above give the **forecast** (`etsy_source: "forecast"`) until Etsy posts the sale; its sum stays
+in `etsy_net_formula`. A cancellation or refund the ledger has no refund lines for yet (or one set by hand for money given
+back outside Etsy) stays the forecast too, so a cancelled sale never shows its full sale. A VAT line given back points at the fee's
+own VAT entry: `view()` puts it with that fee's refund (`is_refund()`), so «до повернення» is exact (the 18.09 cancellation: $21.27,
+as the formula). `ledger.overhead()` gives what Etsy took outside the orders by day (an ads charge pays for the day before
+it; the days not charged yet, up to today, get the last charged day's ads as a forecast; ads not charged for 3 days are off). `ledger.gaps()`
+counts the breaks in the chain of running numbers and balances; with one, `refresh()` reads from `START` again next time.
+
 ## Where in the code
 
 - [app/studio/printorders.py](../../app/studio/printorders.py) — `facts()`, `all_facts()`, `dead()`, `is_placed()`, `to_usd()`, `rates()`, `RATE_KEYS`, `js_round()`, `CANCELLED`, `PRINTIFY_NOT_PLACED`, `GELATO_NOT_PAID`
 - [app/studio/reconcile.py](../../app/studio/reconcile.py) — `match()`, `_find()`, `_Printer`, `_numbers_named()`, `is_name_match()`, `normalize_name()`, `item_format()`, `cover_label()`, `printify_only_rows()`, `_NameIndex`
 - [app/studio/fees.py](../../app/studio/fees.py) — `calculate_ukrainian_etsy_fees()`, `r2()`, `money()`
 - [app/studio/outcomes.py](../../app/studio/outcomes.py) — `rows()`, `apply()`, `auto_state()`, `unpaid()`, `order_info()`, `reserved_orders()`, `STATES`
-- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`
+- [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `overhead()`, `gaps()`, `is_refund()`, `FORMULA_TYPES`
 - [app/studio/records.py](../../app/studio/records.py) — `remember_print_order()`, `load_sends()`, `SENDS`
 - Tests: [app/tests/test_profit.py](../../app/tests/test_profit.py) (`ProfitParity` against `golden_profit.json`), [app/tests/test_states.py](../../app/tests/test_states.py) (`MatchingOrder`, `MoneyRules`)
 

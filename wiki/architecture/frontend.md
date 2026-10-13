@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-06
+updated: 2026-10-11
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -276,6 +276,9 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 - **`patch()` morphs** (`lib.js`): a keyed child whose markup changed is updated **in place** (attributes, text, children, a new picture is shown
   only once decoded) instead of being replaced — so CSS transitions on state classes (`.waiting`, an active tab, a segment fill, the `.seg-pill`)
   really run; a focused field is never touched; `data-nomorph` or a key in `redraw` keeps the old replace; any failure falls back to it.
+  A `style` a script set is kept; a `style` the **markup** gave (`markupStyle`, `noteStyles()`) goes when the new markup has none
+  (11.10.2026: the cover's «Поля» picture left its `aspect-ratio` on the element that became the title's head in «Картинка» —
+  «Назва на обкладинці» stretched to the cover's height).
   `flip()` fades a removed item out as a ghost clone. Toasts, menus (`.menu.closing`) and modals leave with an animation (`removeAfterExit()`).
 - **Hidden elements fade**: `[data-fx]` makes a `hidden` toggle a fade (`--fx-display` for non-block); `:root { interpolate-size: allow-keywords }` lets
   panels open by `height`; new content uses `notice-in`/`card-in` (stagger capped ≈ 240 ms).

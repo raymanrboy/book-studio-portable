@@ -1,7 +1,7 @@
 ---
 title: The rail — places and tools
 type: feature
-updated: 2026-10-06
+updated: 2026-10-11
 code:
   - app/web/js/app.js
   - app/web/js/places.js
@@ -49,7 +49,7 @@ code:
 - `navigate()` → `swap()`: sets `html[data-mode]`, asks the page's controller `navFor()`, remembers the address under
   its place (`lastIn`, `entryOf()`), keeps `store.here` / `store.from` (info.js — where the owner came from, for the
   pages' «back»), then `placeNavPill()` glides the pill.
-- `places.js` — `TOOLS`: the tools page's list.
+- `places.js` — `TOOLS`: the tools page's list (a tile's tooltip — what it does; «Слайди лістингу»: «Слайди книги з Майстерні · схема для нових книг» since 11.10.2026).
 - The busy dots: the Mockups page sends `bs:busy` when a run starts and ends, `workshop-live.js` — while a picture is
   awaited; `paintBusy()` shows them and writes the title.
 

@@ -15,9 +15,9 @@ from .vault import vault
 # Profit page counts, shows and offers nothing older. The queue, the stages and the archive still read every order —
 # they take cached_view()["full"], which is not cut.
 ACCOUNTING_FROM = datetime(2026, 10, 1)  # midnight on this computer's clock
-# What Etsy takes outside any order — Etsy Ads ($0.99 + 20% VAT a day) and new listings ($0.24 each) — from the owner's
-# statements of September–October 2026: about $1.38 a day. The page takes it off the net profit quietly, no card of its
-# own (2026-10-05).
+# What Etsy takes outside any order — Etsy Ads and new listings — comes from the ledger by day (ledger.overhead(), since
+# 2026-10-13). Only with no ledger at all the page falls back to this estimate from the owner's statements of
+# September–October 2026: about $1.38 a day. The page takes it off the net profit quietly, no card of its own (2026-10-05).
 OVERHEAD_PER_DAY = 1.38
 
 
@@ -34,8 +34,14 @@ def build_view() -> dict:
     receipts = snap.get("receipts") or []
     p_orders = snap.get("printify") or []
     g_orders = snap.get("gelato") or []
+    real = ledger.view(receipts) if receipts else {}
+    warnings = list(snap.get("warnings") or [])
+    if real.get("gaps"):
+        warnings.append("У журналі платежів Etsy бракує записів — суми з нього можуть бути неточні. "
+                        "Наступне оновлення перечитає журнал повністю.")
     if receipts:
-        rows = outcomes.rows(receipts, p_orders, g_orders, records.load_links(), states, records.load_sends(), rates)
+        rows = outcomes.rows(receipts, p_orders, g_orders, records.load_links(), states, records.load_sends(), rates,
+                             real.get("receipts"))
         mode = "etsy"
     else:
         rows = reconcile.printify_only_rows(p_orders)
@@ -56,14 +62,6 @@ def build_view() -> dict:
         candidates.append({**{k: info[k] for k in ("provider", "id", "name", "createdAt", "status", "label", "dead")},
                            "cost": info["fullCost"], "usedBy": used.get(f["key"])})
     candidates.sort(key=lambda c: c.get("createdAt") or "", reverse=True)
-    real = ledger.view(receipts) if receipts else {}
-    for row in rows:
-        got = (real.get("receipts") or {}).get(str(row.get("etsy_receipt_id") or ""))
-        if got:
-            row["etsy_net_actual"] = r2(got["net"])
-            row["etsy_lines"] = got["lines"]
-            if row.get("etsy_net") is not None:
-                row["etsy_check"] = r2(got["net"] - row["etsy_net"])
     return {
         "mode": mode,
         "syncedAt": snap.get("syncedAt"),
@@ -71,7 +69,8 @@ def build_view() -> dict:
         # Only the printers connected now: no Printify token — no Printify in the page's header (2026-10-05).
         "printifyShop": snap.get("printifyShop") if vault.get("printify_token") else None,
         "gelatoConnected": bool(gelato.accounts()),
-        "warnings": snap.get("warnings") or [],
+        "warnings": warnings,
+        "overhead": real.get("overhead"),
         "counts": {"receipts": len(receipts), "printify": len(p_orders), "gelato": len(g_orders)},
         "rows": rows,
         "candidates": candidates,
@@ -86,7 +85,7 @@ SLIM_FIELDS = (
     "app_order_id", "gelato_order_id", "gelato_order_reference", "is_bundle", "bundle_count", "profit",
     "profit_margin", "cover_label", "link_blocked", "state", "state_manual", "refund_amount", "pod_dead",
     "replacement_cost", "cost_total", "impact", "needs_link", "etsy_net_original", "cost_unknown",
-    "etsy_net_actual", "etsy_check",
+    "etsy_source", "etsy_extra",
 )
 _view_lock = threading.Lock()
 _view_cache: dict = {"key": None}
@@ -96,7 +95,8 @@ def cached_view() -> dict:
     """build_view() again only when a file it is made from, the rates or the Etsy connection change. "key" names this
     build: stages.py keeps its own facts per build."""
     key = (tuple(records.stamp(p) for p in (records.SNAPSHOT, records.LINKS, records.STATES, records.SENDS, ledger.LEDGER)),
-           tuple(sorted(printorders.rates().items())), bool(etsy.tokens()))
+           tuple(sorted(printorders.rates().items())), bool(etsy.tokens()),
+           datetime.now().date())  # a new day: the ads' forecast reaches it (ledger.overhead())
     with _view_lock:
         if _view_cache.get("key") != key:
             view = build_view()
@@ -112,8 +112,9 @@ def cached_view() -> dict:
                 "key": key,
                 "full": {r["id"]: r for r in view["rows"]},
                 "candidates": view["candidates"],
-                "summary": {**{k: v for k, v in view.items() if k not in ("rows", "candidates")}, "rows": slim,
-                            "accountingFrom": ACCOUNTING_FROM.date().isoformat(), "overheadPerDay": OVERHEAD_PER_DAY},
+                "summary": {**{k: v for k, v in view.items() if k not in ("rows", "candidates", "overhead")}, "rows": slim,
+                            "accountingFrom": ACCOUNTING_FROM.date().isoformat(), "overheadPerDay": OVERHEAD_PER_DAY,
+                            "overheadDays": view.get("overhead")},
             })
         return _view_cache
 

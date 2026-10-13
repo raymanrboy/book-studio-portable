@@ -14,7 +14,7 @@ import { openLightbox } from '../lightbox.js';
 import { store } from '../info.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
 import { take } from '../handoff.js';
-import { PICTURES, runView, rowsHtml, resultCard, turnCard, finishedCard, runIndet, morphList, reveal } from './mockups-run.js';
+import { PICTURES, runView, rowsHtml, resultCard, existingCard, turnCard, finishedCard, runIndet, morphList, reveal } from './mockups-run.js';
 import { slidesStep } from './mockups-slides.js';
 
 const THUMB_H = 360;          // a spread tile (two 180-px pages side by side)
@@ -47,6 +47,7 @@ export async function mount(view) {
     finished: null,     // «Зберегти відкриті»: {saved, cleaned, folder, problems, job}
     pending: null,      // {run, folder, open} — templates still waiting in Photoshop for the front cover
     runError: '',
+    existing: null,     // the Workshop book's folder as it is: {id, folder, files: [{name, template, v}], slides} (11.10.2026)
   };
   st.pending = st.meta.pending || null;
   const bookById = (id) => (st.meta.books || []).find((b) => b.id === id) || null;
@@ -194,6 +195,7 @@ export async function mount(view) {
     slides.reset();
     resetPicks();
     paintAll();
+    loadExisting();
     toast('Мокапи завершено — можна брати наступну книгу', 'success');
   }
 
@@ -331,7 +333,7 @@ export async function mount(view) {
       setHtml($('#mk-s3'), html`
         <div class="row">${stepNo(2, !!st.workshop)}<h3 class="card-title grow">Книга</h3>
           ${st.workshop ? ib('folderOpen', 'Відкрити папку мокапів цієї книги', 'data-act="open-book-mockups"', { cls: 'sm' }) : ''}</div>
-        <select class="select" id="mk-workshop" aria-label="Книга з Майстерні" ${st.run ? 'disabled' : ''}>
+        <select class="select" id="mk-workshop" aria-label="Книга з Майстерні" ${st.run || slides.running() ? 'disabled' : ''}>
           ${books.map((b) => html`<option value="${b.id}" ${b.id === st.workshop?.id ? 'selected' : ''}>${b.name}</option>`)}</select>
         <div class="mk-foot">Мокапи й вирізані без фону ляжуть у папку книги <b>mockups</b>, слайди — у <b>etsy</b>. Нічого не перезаписується.
           <button type="button" class="btn btn-xs btn-ghost mk-other" data-act="pick-out">Інша папка…</button></div>`);
@@ -349,6 +351,26 @@ export async function mount(view) {
       ${!st.out && last && !st.asking ? html`<button type="button" class="btn btn-sm btn-ghost mk-last" data-act="same-out" data-tip="${last}">
         ${ic('folderOpen', 'icon-s')}<span class="truncate">Та сама, що минулого разу · ${folderName(last)}</span></button>` : ''}
       ${st.out ? html`<div class="mk-foot">Наявні картинки з такою самою назвою не перезаписуються — нові отримають « (2)».</div>` : ''}`);
+  }
+
+  // ---------------------------------------------------------------- the Workshop book's folder as it is
+  // Its mockups made another day or by an earlier run, and its slides: shown and used by step 4 whatever this page ran —
+  // redoing one mockup no longer leaves only that one to make slides from (the owner, 11.10.2026).
+  const existingNow = () => (!st.out && st.workshop && st.existing?.id === st.workshop.id ? st.existing : null);
+  async function loadExisting() {
+    const id = !st.out && st.workshop ? st.workshop.id : '';
+    if (!id) { st.existing = null; paintAction(); slides.seed(); return; }
+    try {
+      const got = await api(`/api/mockups/existing?workshop=${encodeURIComponent(id)}`);
+      if (gone || st.out || st.workshop?.id !== id) return;
+      st.existing = { ...got, id };
+    } catch {   // the folder can't be read: nothing to show (unless another book was chosen meanwhile)
+      if (st.out || st.workshop?.id !== id) return;
+      st.existing = null;
+    }
+    if (gone) return;
+    if (!st.run) paintAction();
+    slides.seed();
   }
 
   // ---------------------------------------------------------------- 3 · Photoshop: the button, the run, the results
@@ -369,7 +391,8 @@ export async function mount(view) {
       ${st.runError ? html`<div class="notice notice-error">${ic('alertCircle')}<div>${st.runError}</div></div>` : ''}
       ${st.result ? resultCard(st.result) : ''}
       ${st.pending ? turnCard(st.pending) : ''}
-      ${st.finished ? finishedCard(st.finished) : ''}`);
+      ${st.finished ? finishedCard(st.finished) : ''}
+      ${existingNow()?.files.length ? existingCard(existingNow()) : ''}`);
     paintMake();
     fadeImages(box);
   }
@@ -542,6 +565,17 @@ export async function mount(view) {
   }
 
   function openShots(which, i) {
+    if (which === 'existing') {
+      const x = existingNow();
+      if (!x) return;
+      viewer(x.files.map((f) => ({
+        src: media('/media/mockups/existing', { workshop: x.id, name: f.name, w: BIG, v: f.v }),
+        full: media('/media/mockups/existing', { workshop: x.id, name: f.name, w: SHARP, v: f.v }),
+        title: f.name, sub: folderName(x.folder),
+        onOriginal: () => post('/api/mockups/open-existing', { workshop: x.id, name: f.name }).catch((err) => toast(err.message, 'error')),
+      })), i);
+      return;
+    }
     const r = which === 'finished' ? st.finished : st.result;
     viewer(r.saved.map((name, n) => ({
       src: media(`/media/mockups/out/${r.job}/${n}`, { w: BIG }), full: media(`/media/mockups/out/${r.job}/${n}`, { w: SHARP }),
@@ -657,6 +691,7 @@ export async function mount(view) {
     if (path) st.out = path;
     else if (forRun) toast('Папку не вибрано — мокапи не робились', 'info');
     paintOut(); paintAction();
+    if (path) slides.seed();
     return path;
   }
 
@@ -700,7 +735,7 @@ export async function mount(view) {
       if (!gone) busy(false);
     }
     st.run = null;
-    if (!gone) { paintAction(); paintPicks(); paintTiles(); paintHead(); slides.paint(); }
+    if (!gone) { paintAction(); paintPicks(); paintTiles(); paintHead(); slides.paint(); loadExisting(); }
   }
 
   // The owner watches Photoshop while it works: the window's title says how it ended (app.js keeps it there until
@@ -749,14 +784,14 @@ export async function mount(view) {
 
   // ---------------------------------------------------------------- step 4: the listing slides (mockups-slides.js)
   const slides = slidesStep({
-    view, st, stepNo, tellDone, busy,
+    view, st, existing: existingNow, stepNo, tellDone, busy, paintBook: () => paintOut(),
     blinkFinish: () => { const b = $('[data-act="finish"]'); if (b) { b.scrollIntoView({ block: 'center', behavior: 'smooth' }); blink([b]); } },
   });
   offs.push(on(view, 'change', '#mk-s5 input[data-num]', (e, t) => slides.input(t)));
   offs.push(on(view, 'change', '#mk-workshop', (e, t) => {
     st.workshop = bookById(t.value);
     remember(LAST_BOOK, t.value);
-    paintOut(); paintMake();
+    paintOut(); paintMake(); loadExisting();
   }));
 
   // ---------------------------------------------------------------- events
@@ -779,8 +814,8 @@ export async function mount(view) {
     if (act === 'clear-all') { if (!st.run) { resetPicks(); changed(); } return; }
     if (act === 'pick-zip') { pickZip(); return; }
     if (act === 'pick-out') { if (!st.asking && !st.run) askFolder(false); return; }
-    if (act === 'same-out') { st.out = st.meta.lastOut; paintOut(); paintMake(); return; }
-    if (act === 'to-book') { st.out = ''; takeWorkshopBook(true); paintOut(); paintMake(); return; }
+    if (act === 'same-out') { st.out = st.meta.lastOut; paintOut(); paintAction(); slides.seed(); return; }
+    if (act === 'to-book') { st.out = ''; takeWorkshopBook(true); paintOut(); paintMake(); loadExisting(); return; }
     if (act === 'open-book-mockups') {
       post('/api/workshop/open', { book: st.workshop.id, what: 'mockups' }).catch((err) => toast(err.message, 'error'));
       return;
@@ -872,6 +907,7 @@ export async function mount(view) {
   resetPicks();
   render();
   arrived();
+  if (st.workshop) loadExisting();
   if (handedDrop) takeDrop(handedDrop); // after the first paint, which would wipe the «receiving» state
   // A run still going (the window was reloaded): follow it again.
   if (st.meta.jobId) {
@@ -888,6 +924,7 @@ export async function mount(view) {
     navFor: () => (fromBook ? '#/books' : null),
     revive: () => {
       if (takeWorkshopBook()) { paintOut(); paintMake(); toast(`Мокапи — для ${st.workshop.name}`, 'info'); }
+      if (!st.run) loadExisting();   // the folder may have changed while the owner was elsewhere
       arrived();
       slides.wake();
       return true;

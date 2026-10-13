@@ -38,10 +38,10 @@ def porder(pid, first, last, cost_cents=1195, status="fulfilled", shop_order_id=
 RATES = {"EUR": 1.085, "CZK": 0.0468}
 
 
-def view(receipts, p_orders=(), g_orders=(), states=None, links=None, sent=None):
+def view(receipts, p_orders=(), g_orders=(), states=None, links=None, sent=None, real=None):
     """Runs the same pipeline as build_view without touching the snapshot."""
     norm = [sync.normalize_receipt(r) for r in receipts]
-    rows = outcomes.rows(norm, list(p_orders), list(g_orders), links or {}, states or {}, sent or {}, RATES)
+    rows = outcomes.rows(norm, list(p_orders), list(g_orders), links or {}, states or {}, sent or {}, RATES, real)
     return {r["id"]: r for r in rows}
 
 
@@ -130,6 +130,58 @@ class EtsyStates(unittest.TestCase):
         self.assertTrue(row["state_manual"])
         self.assertEqual(row["state_auto"], "normal")
         self.assertEqual(row["refund_amount"], 20.0)
+
+
+def lines(**cents):
+    return [{"type": k, "label": k, "amount": v / 100} for k, v in cents.items()]
+
+
+class LedgerMoney(unittest.TestCase):
+    """Once Etsy's ledger has the sale, its money is the Etsy Net (2026-10-13); until then the formula forecasts."""
+    def setUp(self):
+        self.p = porder("a" * 24, "Amelia", "Lewis", shop_order_id="1")
+
+    def test_a_sale_not_posted_yet_is_the_formulas_forecast(self):
+        row = view([receipt(1, "Amelia Lewis")], [self.p])["1"]
+        self.assertEqual(row["etsy_source"], "forecast")
+        self.assertEqual(row["etsy_net"], row["etsy_net_formula"])
+        self.assertEqual(row["etsy_extra"], [])
+
+    def test_offsite_ads_come_off_the_net_the_fees_and_the_profit(self):
+        formula = view([receipt(1, "Amelia Lewis")], [self.p])["1"]
+        real = {"1": {"net": r2(formula["etsy_net"] - 5.72),
+                      "lines": lines(PAYMENT_GROSS=4998, transaction=-300, offsite_ads_fee=-572)}}
+        row = view([receipt(1, "Amelia Lewis")], [self.p], real=real)["1"]
+        self.assertEqual(row["etsy_source"], "ledger")
+        self.assertEqual(row["etsy_net"], r2(formula["etsy_net"] - 5.72))
+        self.assertEqual(row["etsy_net_formula"], formula["etsy_net"])
+        self.assertEqual(row["etsy_fees"], r2(formula["etsy_fees"] + 5.72))
+        self.assertEqual(row["profit"], r2(row["etsy_net"] - 11.95))
+        self.assertEqual([x["type"] for x in row["etsy_extra"]], ["offsite_ads_fee"])
+
+    def test_a_cancellation_is_what_etsy_really_gave_back(self):
+        # The owner's sale of 18.09.2026: Etsy kept the $0.20 listing fee, the formula said 0.
+        real = {"1": {"net": -0.20, "lines": lines(PAYMENT_GROSS=2573, PAYMENT_PROCESSING_FEE=-184, transaction=-83,
+                                                   shipping_transaction=-84, renew_sold_auto=-20, REFUND_GROSS=-2573,
+                                                   REFUND_PROCESSING_FEE=184, transaction_refund=83,
+                                                   shipping_transaction_refund=84)}}
+        row = view([receipt(1, "Amelia Lewis", status="Canceled", refunds=[25.73])], [self.p], real=real)["1"]
+        self.assertEqual(row["state"], "canceled")
+        self.assertEqual(row["etsy_net"], -0.20)
+        self.assertEqual(row["etsy_net_original"], 22.02)
+        self.assertEqual((row["refund_amount"], row["revenue_back"], row["fee_credit"]), (25.73, 25.73, 3.51))
+        self.assertAlmostEqual(row["etsy_net_original"] - row["revenue_back"] + row["fee_credit"], row["etsy_net"], places=2)
+        self.assertEqual(row["profit"], r2(-0.20 - 11.95))
+        self.assertEqual(row["impact"], r2(-0.20 - 11.95))
+
+    def test_a_cancellation_etsy_has_not_posted_yet_is_forecast(self):
+        real = {"1": {"net": 42.0, "lines": lines(PAYMENT_GROSS=4998, transaction=-798)}}
+        row = view([receipt(1, "Amelia Lewis", status="Canceled", refunds=[49.98])], [self.p], real=real)["1"]
+        self.assertEqual((row["etsy_source"], row["etsy_net"], row["impact"]), ("forecast", 0.0, -11.95))
+
+    def test_without_a_ledger_the_states_keep_their_numbers(self):
+        row = view([receipt(1, "Amelia Lewis", status="Canceled", refunds=[49.98])], [self.p])["1"]
+        self.assertEqual((row["etsy_net"], row["impact"]), (0.0, -11.95))
 
 
 class Replacement(unittest.TestCase):

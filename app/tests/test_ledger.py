@@ -1,6 +1,7 @@
 """Etsy's payment ledger (ledger.py): each entry finds its receipt, and a receipt's real money against the fee formula.
 Made-up entries in the shape the API returns."""
 import unittest
+from datetime import datetime
 from unittest import mock
 
 from tests import __init__  # noqa: F401  (sets a temporary data folder)
@@ -56,6 +57,68 @@ class ReceiptCheck(unittest.TestCase):
         self.assertEqual(got["net"], 25.5)
         self.assertIn({"type": "offsite_ads_fee", "label": "Offsite Ads", "amount": -4.5}, got["lines"])
 
+    def test_the_vat_given_back_joins_the_fees_refund(self):
+        # As in the owner's cancellation of 18.09.2026: the VAT refund points at the fee's own VAT entry.
+        core.write_json(ledger.LEDGER, {"payments": {"700": "301"}, "entries": [ledger._slim(e) for e in [
+            entry(1, "PAYMENT_GROSS", "shop_payment", 700, 3000, 1000),
+            entry(2, "transaction", "receipt", "301", -83, 1000),
+            entry(3, "vat_seller_services", "etsy", 0, -17, 1000, parent=2),
+            entry(4, "vat_on_processing_fees", "receipt", "301", -37, 1000),
+            entry(5, "transaction_refund", "receipt", "301", 83, 2000, parent=2),
+            entry(6, "vat_seller_services_refund", "etsy", 0, 17, 2000, parent=3),
+            entry(7, "vat_seller_services_refund", "etsy", 0, 37, 2000, parent=4),
+        ]]})
+        lines = {l["type"]: l["amount"] for l in ledger.view([receipt("301", 1000)])["receipts"]["301"]["lines"]}
+        self.assertEqual(lines, {"PAYMENT_GROSS": 30.0, "transaction": -1.0, "PAYMENT_PROCESSING_FEE": -0.37,
+                                 "transaction_refund": 1.0, "REFUND_PROCESSING_FEE": 0.37})
+
+
+class Chain(unittest.TestCase):
+    def chain(self, *rows):
+        return [ledger._slim(entry(seq, "x", "etsy", 0, cents, 0, balance=bal, seq=seq)) for seq, cents, bal in rows]
+
+    def test_a_whole_chain_has_no_gaps(self):
+        self.assertEqual(ledger.gaps(self.chain((5, 100, 100), (6, -30, 70), (7, 10, 80))), 0)
+
+    def test_a_missing_number_or_a_balance_that_does_not_follow_is_a_gap(self):
+        self.assertEqual(ledger.gaps(self.chain((5, 100, 100), (7, -30, 70))), 1)
+        self.assertEqual(ledger.gaps(self.chain((5, 100, 100), (6, -30, 60))), 1)
+
+
+class Overhead(unittest.TestCase):
+    """The ads and new listings by day: an ads charge pays for the day before it; the days not charged yet are forecast."""
+    @staticmethod
+    def at(day, hour=7):
+        return int(datetime(2026, 10, day, hour, 40).timestamp())
+
+    def test_ads_pay_for_the_day_before_and_the_days_not_charged_are_forecast(self):
+        raw = [entry(1, "prolist", "prolist", 1, -100, self.at(11)),
+               entry(2, "vat_seller_services", "etsy", 0, -20, self.at(11), parent=1),
+               entry(3, "prolist", "prolist", 1, -496, self.at(12)),
+               entry(4, "vat_seller_services", "etsy", 0, -99, self.at(12), parent=3),
+               entry(5, "listing", "listing", 9, -20, self.at(12, 15)),
+               entry(6, "vat_seller_services", "etsy", 0, -4, self.at(12, 15), parent=5),
+               entry(7, "transaction", "transaction", 8, -150, self.at(12, 16))]   # a sale's fee: not the shop's
+        days = ledger.overhead([ledger._slim(e) for e in raw], self.at(13, 3))
+        self.assertEqual(days["2026-10-10"], {"amount": -1.2, "forecast": False})
+        self.assertEqual(days["2026-10-11"], {"amount": -5.95, "forecast": False})
+        self.assertEqual(days["2026-10-12"], {"amount": -6.19, "forecast": True})   # the listing + the ads forecast
+        self.assertEqual(days["2026-10-13"], {"amount": -5.95, "forecast": True})
+
+    def test_the_forecast_reaches_today_without_a_new_read(self):
+        raw = [entry(1, "prolist", "prolist", 1, -100, self.at(11))]
+        later = datetime(2026, 10, 15, 9)
+        with mock.patch.object(ledger, "datetime", wraps=datetime) as clock:
+            clock.now.return_value = later
+            days = ledger.overhead([ledger._slim(e) for e in raw], self.at(12))
+        self.assertEqual([d for d, v in days.items() if v["forecast"]], ["2026-10-11", "2026-10-12", "2026-10-13",
+                                                                          "2026-10-14", "2026-10-15"])
+
+    def test_ads_turned_off_are_not_forecast(self):
+        raw = [entry(1, "prolist", "prolist", 1, -100, self.at(2))]
+        days = ledger.overhead([ledger._slim(e) for e in raw], self.at(13))
+        self.assertEqual(list(days), ["2026-10-01"])
+
 
 class Refresh(unittest.TestCase):
     def setUp(self):
@@ -79,6 +142,17 @@ class Refresh(unittest.TestCase):
         self.assertTrue(all(p["max_created"] - p["min_created"] <= ledger.WINDOW for p in reads))
         self.assertEqual(sum(1 for path, _ in calls if path.endswith("/payments")), 1)
         self.assertEqual(ledger.load()["payments"], {"700": "401"})
+
+    def test_a_gap_makes_the_next_read_start_from_the_beginning(self):
+        def fake_get(path, params=None, action=""):
+            if path.endswith("/payments") or params["offset"]:
+                return {"results": []}
+            return {"results": [entry(1, "x", "etsy", 0, 100, 1000, balance=100, seq=5),
+                                entry(2, "x", "etsy", 0, 100, 1000, balance=200, seq=7)]}
+
+        with mock.patch.object(etsy, "ensure_shop", return_value=(5, "s")), mock.patch.object(etsy, "get", fake_get):
+            ledger.refresh()
+        self.assertEqual(ledger.load()["readTo"], 0)
 
 
 if __name__ == "__main__":

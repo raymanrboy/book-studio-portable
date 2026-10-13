@@ -64,10 +64,12 @@ export function stateChip(o, mode) {
 export function netCell(o, mode) {
   if (o.etsy_net === undefined) return html`<span class="faint">—</span>`;
   const changed = o.state && o.state !== 'normal' && o.etsy_net_original !== undefined && Math.abs(o.etsy_net - o.etsy_net_original) > 0.004;
-  // Etsy's ledger says otherwise (more than rounding): a mark, its real sum in the tip; the open row shows why (2026-10-05).
-  const off = o.etsy_check !== undefined && o.etsy_check !== null && Math.abs(o.etsy_check) > 0.05;
-  return html`<div class="o-net ${o.etsy_net < 0 ? 'neg' : o.etsy_net === 0 ? 'zero' : ''}">${off ? html`<span class="o-check" data-tip="За журналом Etsy ${money(o.etsy_net_actual)} (${o.etsy_check > 0 ? '+' : ''}${money(o.etsy_check)})">${ic('alertCircle', 'icon-s')}</span>` : ''}${money(o.etsy_net)}</div>
-    ${changed ? html`<div class="o-was" data-tip="До повернення">${money(o.etsy_net_original)}</div>` : o.etsy_fees > 0 ? html`<div class="o-fees">збори: ${money(-o.etsy_fees)}</div>` : ''}`;
+  // The money is Etsy's own, from its ledger (2026-10-13); until Etsy posts the sale it is the formula's forecast — a clock, faint.
+  const forecast = o.etsy_source === 'forecast';
+  // Etsy's lines the formula doesn't know (Offsite Ads, a state's fee) are inside the fees: named in their tip.
+  const extra = (o.etsy_extra || []).map((l) => `${l.label} ${money(l.amount)}`).join(' · ');
+  return html`<div class="o-net ${o.etsy_net < 0 ? 'neg' : o.etsy_net === 0 ? 'zero' : ''} ${forecast ? 'forecast' : ''}">${forecast ? html`<span class="o-check" data-tip="Прогноз за формулою: у журналі Etsy цього ще немає">${ic('clock', 'icon-s')}</span>` : ''}${money(o.etsy_net)}</div>
+    ${changed ? html`<div class="o-was" data-tip="До повернення">${money(o.etsy_net_original)}</div>` : o.etsy_fees > 0 ? html`<div class="o-fees ${extra ? 'has-extra' : ''}" data-tip="${extra ? `У т.ч. ${extra}` : ''}">збори: ${money(-o.etsy_fees)}</div>` : ''}`;
 }
 
 export function rowInner(o, mode) {
@@ -112,7 +114,10 @@ export function stateBox(o, mode) {
       ${o.state_manual ? html`<button class="btn btn-ghost btn-xs" data-state-auto="${id}" data-tip="Повернути статус, який показує Etsy">${ic('restore', 'icon-s')}Як в Etsy</button>` : ''}
     </div>
     <div class="state-seg">${segHtml(STATE_OPTS, s, { name: `state-${id}` })}</div>
-    ${s === 'refund_partial' ? html`<div class="state-extra">
+    ${s === 'refund_partial' && o.etsy_source === 'ledger' ? html`<div class="state-extra">
+      <span class="st-label">Повернено покупцю</span><b class="num">${money(o.refund_amount)}</b>
+      <span class="state-hint">з журналу Etsy</span>
+    </div>` : s === 'refund_partial' ? html`<div class="state-extra">
       <label class="st-label" for="st-amt-${id}">Сума повернення покупцю, $</label>
       <input class="input mono" id="st-amt-${id}" data-state-amount="${id}" inputmode="decimal" value="${o.refund_amount ? o.refund_amount.toFixed(2) : ''}" placeholder="${o.etsy_refund_total ? o.etsy_refund_total.toFixed(2) : '0.00'}">
       <span class="state-hint">з ${money(o.fee_breakdown?.gross)}</span>
@@ -175,8 +180,9 @@ export function detailHtml(o, mode) {
       </div>
       <div class="dbox-foot">З картки покупця: <b class="num">$${fb.gross.toFixed(2)}</b> · товари: $${fb.item_total.toFixed(2)} · доставка: $${fb.shipping_total.toFixed(2)}
         ${fb.sales_tax > 0 ? html` · податок США $${fb.sales_tax.toFixed(2)} (утримує Etsy)` : ''}</div>
-      ${o.etsy_net_actual !== undefined ? html`<div class="dbox-foot ledger-foot">За журналом Etsy: <b class="num">${money(o.etsy_net_actual)}</b>
-        ${Math.abs(o.etsy_check || 0) > 0.05 ? html` · за розрахунком ${money(o.etsy_net)} · ${(o.etsy_lines || []).map((l) => `${l.label} ${money(l.amount)}`).join(' · ')}` : ' · збігається з розрахунком'}</div>` : ''}
+      ${o.etsy_source === 'ledger' ? html`<div class="dbox-foot ledger-foot">За журналом Etsy: <b class="num">${money(o.etsy_net)}</b>
+        ${Math.abs(o.etsy_net - o.etsy_net_formula) > 0.05 ? html` · формула дала ${money(o.etsy_net_formula)}${((o.etsy_extra || []).length ? o.etsy_extra : o.etsy_lines || []).map((l) => ` · ${l.label} ${money(l.amount)}`).join('')}` : ' · збігається з формулою'}</div>`
+        : o.etsy_source === 'forecast' ? html`<div class="dbox-foot ledger-foot">Прогноз за формулою: у журналі Etsy цього ще немає</div>` : ''}
     </div>` : ''}
     ${o.pod_provider === 'printify' && (o.pod_cost_original || o.printify_total_cost || 0) > 0 ? html`<div class="dbox">
       <div class="dbox-title"><span class="svc-dot printify"></span>Собівартість Printify

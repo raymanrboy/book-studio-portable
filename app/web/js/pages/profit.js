@@ -96,7 +96,7 @@ export async function mount(view) {
       return (o.search || `${o.customer_name || ''} ${o.id}`.toLowerCase()).includes(term);
     });
   }
-  // How many days of the chosen period are inside the books (not before the clean slate, not after today).
+  // The days of the chosen period that are inside the books (not before the clean slate, not after today).
   function periodDays() {
     const day = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
     const from = st.data?.accountingFrom ? new Date(`${st.data.accountingFrom}T00:00:00`) : null;
@@ -108,7 +108,19 @@ export async function mount(view) {
     let end = st.period === 'custom' ? new Date(`${st.end}T00:00:00`) : day;
     if (end > day) end = day;
     if (from && start < from) start = from;
-    return Math.max(0, Math.round((end - start) / 86400000) + 1);
+    const days = [];
+    for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+    return days;
+  }
+  // What Etsy took outside the orders in the period (ads, new listings), negative: from Etsy's ledger by day — the days
+  // Etsy hasn't charged yet are the server's forecast (ledger.overhead()); with no ledger, the old estimate a day.
+  function overhead() {
+    const byDay = st.data?.overheadDays;
+    const days = periodDays();
+    if (!byDay) return -days.length * (st.data?.overheadPerDay || 0);
+    return days.reduce((sum, d) => sum + (byDay[d]?.amount || 0), 0);
   }
   function kpi(rows) {
     let net = 0, cost = 0, profit = 0, n = 0, impact = 0, issues = 0;
@@ -121,8 +133,8 @@ export async function mount(view) {
       if (special) { impact += o.impact || 0; issues++; }
     }
     const r2 = (v) => Math.round(v * 100) / 100;
-    // Ads and new listings a day (profit.OVERHEAD_PER_DAY): counted into the profit and the margin, not shown (2026-10-05).
-    if (n) profit -= periodDays() * (st.data?.overheadPerDay || 0);
+    // Ads and new listings (overhead()): counted into the profit and the margin, not shown (2026-10-05).
+    if (n) profit += overhead();
     return { net: r2(net), cost: r2(cost), profit: r2(profit), margin: net > 0 ? Math.round((profit / net) * 1000) / 10 : 0, n, impact: r2(impact), issues };
   }
 

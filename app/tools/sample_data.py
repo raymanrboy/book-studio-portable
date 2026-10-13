@@ -101,7 +101,8 @@ def _full_gelato_order(order_id: str, account: str = "main") -> dict:
 
 def _seed_ledger(receipts: list) -> None:
     """A made-up Etsy payment ledger (ledger.py) for the receipts: each sale's gross, tax and fees as the formula has them,
-    an Offsite Ads fee on Chris's order (the row the check marks), a payout 8 days ago, the ads every day."""
+    an Offsite Ads fee on Chris's order (its fees name it), a payout 8 days ago, the ads every day; Jane's sale of today is not
+    posted yet (its row is the formula's forecast)."""
     from studio import core, ledger
     now = int(time.time())
     entries, payments, n = [], {}, 0
@@ -119,6 +120,8 @@ def _seed_ledger(receipts: list) -> None:
         add(now - day * 86400 + 60, "vat_seller_services", "etsy", 0, -20, fee)
     for r in sorted(receipts, key=lambda r: r["create_timestamp"]):
         fb, at, rid = r["fee_breakdown"], r["create_timestamp"], r["receipt_id"]
+        if rid == "4100000101":
+            continue
         cents = lambda v: -round(v * 100)  # noqa: E731
         payments[f"7{rid}"] = rid
         add(at, "PAYMENT_GROSS", "shop_payment", f"7{rid}", round(fb["gross"] * 100))
@@ -139,7 +142,9 @@ def _seed_ledger(receipts: list) -> None:
     entries.sort(key=lambda e: (e["at"], e["seq"]))
     balance = 0
     for i, e in enumerate(entries, 1):
-        e["seq"], balance = i, (0 if e["type"].startswith("DISBURSE") else balance + e["amount"])
+        if e["type"].startswith("DISBURSE"):
+            e["amount"] = -balance  # the payout takes the whole balance: the chain of balances stays whole (ledger.gaps())
+        e["seq"], balance = i, balance + e["amount"]
         e["balance"] = balance
     core.write_json(ledger.LEDGER, {"shopId": "sample", "readTo": now, "payments": payments, "entries": entries}, backup=False)
 

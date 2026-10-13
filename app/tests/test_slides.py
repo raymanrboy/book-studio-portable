@@ -452,6 +452,77 @@ class MakingThem(Base):
             work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book,
                       only=["slide5"])
 
+    def test_the_books_folder_is_read_as_it_is_whatever_the_page_ran(self):
+        """The owner, 11.10.2026: "the mockups are made, but the program says there are none"; "I redo one mockup — the
+        whole session goes". The Mockups page reads the Workshop book's folder: its mockups in the templates' order, its
+        slides with the ones not made yet («Доробити»)."""
+        book = self.workshop_book()
+        self.assertEqual(mockups.existing(book), {"folder": str(core.WORKSHOP_BOOKS / book / "mockups"), "files": [],
+                                                  "slides": None})
+        self.assertFalse((core.WORKSHOP_BOOKS / book / "mockups").exists())   # reading makes no folder
+        out = store.mockups_dir(book)
+        for name in ("1. Cover 1.png", "2. Open 1 (6-7).png", "2. Open 1 (2-3).png", "4. Dedication.png",
+                     "4. Dedication (2).png", "All & Open 1 (16-17).png", "3. Open 2 (8-9).png"):
+            mockup(out / name)
+        mockup(out / "canva-cover.png")                                         # not a mockup
+        found = mockups.existing(book)
+        self.assertEqual([f["name"] for f in found["files"]],
+                         ["2. Open 1 (2-3).png", "2. Open 1 (6-7).png", "3. Open 2 (8-9).png", "All & Open 1 (16-17).png",
+                          "4. Dedication (2).png", "4. Dedication.png", "1. Cover 1.png"])
+        self.assertEqual(found["files"][0]["template"], "open1")
+        with mock.patch.object(bake, "run_browser", pretend_browser([])), mock.patch.object(bake, "browser", lambda: "x"):
+            res = work.make(quiet_job(), out, "x", None, None, {"pages": 30}, self.root, "http://127.0.0.1:1", "tok",
+                            book=book, only=["slide3"])
+        self.assertEqual(res["todo"], ["slide1", "slide2", "slide4", "slide5", "slide6"])
+        slides = mockups.existing(book)["slides"]
+        self.assertEqual([p["slide"] for p in slides["pictures"]], ["slide3"])
+        self.assertEqual(slides["todo"], res["todo"])
+        self.assertEqual(slides["numbers"]["pages"], 30)
+        self.assertEqual(slides["folder"], str(core.WORKSHOP_BOOKS / book / "etsy"))
+        with mock.patch.object(bake, "run_browser", pretend_browser([])), mock.patch.object(bake, "browser", lambda: "x"):
+            rest = work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book,
+                             only=res["todo"])                                 # «Доробити»
+        self.assertEqual(rest["todo"], [])
+        self.assertEqual(len(rest["pictures"]), 6)
+        for wrong in ("../x.png", "canva-cover.png", "2. Open 1 (9-10).png", ""):
+            with self.assertRaises(ApiError):
+                mockups._existing_file(book, wrong)
+        self.assertEqual(mockups._existing_file(book, "1. Cover 1.png"), out / "1. Cover 1.png")
+
+    def test_slide_7_alone_is_made_from_the_looks_and_an_older_copy_of_a_redone_mockup_is_left_out(self):
+        """«Доробити слайд 7» — the looks came after the six were made: no mockup is needed for it. And a mockup redone
+        another day lies beside the old one: slides made from the folder take the newest of each spread, once."""
+        book = self.workshop_book()
+        out = store.mockups_dir(book)
+        for n in (2, 6):
+            mockup(out / f"2. Open 1 ({n}-{n + 1}).png")
+        time.sleep(0.05)
+        mockup(out / "2. Open 1 (2-3) (2).png", (30, 200, 30))                  # spread 2 redone
+        slots = work.slots_of(work.mockups_in(out))
+        self.assertEqual([slots[f"open1:{i}"].name for i in (1, 2)], ["2. Open 1 (2-3) (2).png", "2. Open 1 (6-7).png"])
+        self.assertNotIn("open1:3", slots)
+        with mock.patch.object(bake, "run_browser", pretend_browser([])), mock.patch.object(bake, "browser", lambda: "x"):
+            work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book)
+        self.looks(book, "B1_brunette", "B2_blond")
+        work.sync_heroes(book)
+        self.assertEqual(mockups.existing(book)["slides"]["todo"], ["slide7"])
+        calls = []
+        with mock.patch.object(bake, "run_browser", pretend_browser(calls)), mock.patch.object(bake, "browser", lambda: "x"):
+            res = work.make(quiet_job(), out, "x", None, None, {}, self.root, "http://127.0.0.1:1", "tok", book=book,
+                            only=["slide7"])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(res["todo"], [])
+
+    def test_the_editor_lists_the_workshops_books_with_what_they_have(self):
+        from studio.slides import routes
+        bare = self.workshop_book("24.spooky-stories")
+        made = self.workshop_book()
+        mockup(store.mockups_dir(made) / "2. Open 1 (2-3).png")
+        mockup(store.mockups_dir(made) / "Cover & Open 1 (4-5).png")             # not on the slides
+        books = routes._books(None)["books"]
+        self.assertEqual([(b["id"], b["slides"], b["mockups"]) for b in books], [(made, False, 1), (bare, False, 0)])
+        self.assertTrue(books[0]["name"].startswith("№25"))
+
     def looks(self, book: str, *names: str) -> None:
         for i, name in enumerate(names):
             hero = core.WORKSHOP_BOOKS / book / "agent" / "variants" / name / "hero.png"

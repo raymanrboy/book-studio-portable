@@ -15,6 +15,7 @@ extracts from eRank pages in the browser pane). Nothing here talks to Etsy or eR
     python seo/seo.py lint --title T --tags "a, b"     hard rules + exact phrases inside the title
     python seo/seo.py block <phrase> --reason R        never suggest this phrase again
     python seo/seo.py save <book> --title T --tags "a, b"   remember what went into a listing
+    python seo/seo.py to-drive <book>                  copy the book's etsy/ photos into its Google Drive folder
     python seo/seo.py summary
 """
 from __future__ import annotations
@@ -26,6 +27,7 @@ import hashlib
 import json
 import math
 import re
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -41,6 +43,8 @@ BOOK_NOUN_BONUS = 1.25   # a tag holding the item noun (book/storybook) — see 
 OWN_BOOST_MAX = 30.0     # the shop's own search-term visits outrank every eRank number (rules.md, level S)      # a tag eRank has never seen, when it describes the book exactly (relevance A)
 FACET_CAP = 5            # at most this many tags of one buyer intent (facet)
 TITLE_TARGET = (110, 140)
+BOOKS = HERE.parent / "pipeline" / "books"          # the Workshop's books; <book>/etsy = the listing's photos and video
+DRIVE = Path(r"G:\My Drive\MoonMeadowStories")     # the owner's Google Drive: one folder per book, the listing's files
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS keyword (
@@ -697,6 +701,47 @@ def cmd_save(a):
     print(f"saved listing version for {a.book}")
 
 
+def _numbered(folder: Path, book: str) -> Path | None:
+    """The sub-folder named `book`, or the one numbered like it ("39" or "39.x" → "39.<anything>")."""
+    if (folder / book).is_dir():
+        return folder / book
+    n = book.split(".")[0]
+    hits = sorted(p for p in folder.iterdir() if p.is_dir() and p.name.split(".")[0] == n) if folder.is_dir() else []
+    return hits[0] if len(hits) == 1 else None
+
+
+def cmd_to_drive(a):
+    """Copy (never move, overwrite or delete) a book's etsy/ files into its Google Drive folder.
+    The Workshop counts the slides in etsy/, so the originals stay where they are."""
+    book = _numbered(BOOKS, a.book)
+    src = book / "etsy" if book else None
+    files = sorted(f for f in src.iterdir() if f.is_file() and f.name.lower() != "desktop.ini"
+                   and not f.name.startswith(".")) if src and src.is_dir() else []
+    if not files:
+        print(f"no files in {src or BOOKS / a.book / 'etsy'} — make the mockups and slides first")
+        return 1
+    drive = Path(a.drive)
+    if not drive.is_dir():
+        print(f"Google Drive folder not found: {drive}")
+        return 1
+    dst = _numbered(drive, book.name) or drive / book.name
+    dst.mkdir(exist_ok=True)
+    copied = same = differ = 0
+    for f in files:
+        t = dst / f.name
+        if t.exists():
+            if t.stat().st_size == f.stat().st_size:
+                same += 1
+            else:
+                differ += 1
+                print(f"   left as is (a different file of this name is already there): {f.name}")
+            continue
+        shutil.copy2(f, t)
+        copied += 1
+    print(f"{dst}: copied {copied}, already there {same}, different and kept {differ}")
+    return 0
+
+
 def cmd_summary(a):
     con = connect()
     q = lambda s: con.execute(s).fetchone()[0]
@@ -739,6 +784,8 @@ def main(argv=None):
     s = sub.add_parser("save"); s.add_argument("book"); s.add_argument("--title", required=True)
     s.add_argument("--tags", required=True); s.add_argument("--note"); s.set_defaults(fn=cmd_save)
     s = sub.add_parser("summary"); s.set_defaults(fn=cmd_summary)
+    s = sub.add_parser("to-drive"); s.add_argument("book"); s.add_argument("--drive", default=str(DRIVE))
+    s.set_defaults(fn=cmd_to_drive)
     a = ap.parse_args(argv)
     return a.fn(a) or 0
 

@@ -748,6 +748,7 @@ export function patch(container, items, redraw = null) {
     old.delete(key);
     if (!node || drawnFrom.get(node) !== text || redraw?.has(key)) { // `redraw`: keys changed by hand meanwhile
       const next = el(raw(text));
+      noteStyles(next);
       // A changed child is updated in place (same element, new attributes and content), so a class that flips plays its CSS
       // transition instead of being drawn already in its end state. Any failure falls back to the old replace below.
       if (node && !redraw?.has(key) && canMorph(node, next) && tryMorph(node, next)) {
@@ -784,6 +785,14 @@ let morphDirty = false;
 const FORM_TAG = /^(INPUT|TEXTAREA|SELECT)$/;
 const KEEP_ATTRS = new Set(['style', 'data-key', 'aria-describedby', 'tabindex']); // set from script, not by the markup
 const noMorph = (n) => n.nodeType === 1 && n.hasAttribute('data-nomorph');
+// The style an element's markup gave it: when the new markup has none, that one goes — a script's own style stays (11.10.2026:
+// the cover's «Поля» picture left its aspect-ratio on the element that became the cover title's head, stretching it tall).
+const markupStyle = new WeakMap();
+function noteStyles(root) {
+  if (root?.nodeType !== 1) return;
+  if (root.hasAttribute('style')) markupStyle.set(root, root.getAttribute('style'));
+  root.querySelectorAll('[style]').forEach((x) => markupStyle.set(x, x.getAttribute('style')));
+}
 const canMorph = (o, n) => !!n && o.tagName === n.tagName && !FORM_TAG.test(o.tagName) && !noMorph(o) && !noMorph(n);
 function tryMorph(o, n) {
   try { morphAttrs(o, n); morphChildren(o, n); return true; }
@@ -798,9 +807,17 @@ function morphAttrs(o, n, skip = null) {
       for (const c of o.classList) if (!next.has(c)) morphDirty = true;
       const v = [...next].join(' ');
       if (o.getAttribute('class') !== v) o.setAttribute('class', v);
-    } else if (o.getAttribute(name) !== value) o.setAttribute(name, value);
+    } else {
+      if (o.getAttribute(name) !== value) o.setAttribute(name, value);
+      if (name === 'style') markupStyle.set(o, value);
+    }
   }
   for (const { name } of [...o.attributes]) {
+    if (name === 'style' && !n.hasAttribute(name) && !skip?.has(name) && markupStyle.get(o) === o.getAttribute('style')) {
+      o.removeAttribute(name);
+      markupStyle.delete(o);
+      continue;
+    }
     if (n.hasAttribute(name) || KEEP_ATTRS.has(name) || skip?.has(name)) continue;
     if (name === 'class') { morphDirty = true; if (o.classList.contains('enter')) { o.setAttribute('class', 'enter'); continue; } }
     o.removeAttribute(name);
@@ -855,6 +872,7 @@ function morphImg(o, n) {
 export function replaceKeyed(node, markup) {
   const text = render(markup);
   const next = el(raw(text));
+  noteStyles(next);
   if (node.dataset.key !== undefined) next.dataset.key = node.dataset.key;
   drawnFrom.set(next, text);
   node.replaceWith(next);

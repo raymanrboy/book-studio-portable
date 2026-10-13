@@ -1,7 +1,7 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-10-09
+updated: 2026-10-11
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
@@ -56,6 +56,14 @@ code:
    bakes only them (the other files in `etsy/` are not touched), reports only their missing slots and **does not tick** the Workshop's
    «Мокапи» step. Slides 2 and 3 wait for «Зберегти відкриті» only when ticked and their template is still open. The step shows after a run
    of Dedication alone once it is saved (it saves nothing by itself).
+2b. **Made another day** (11.10.2026, the owner: "if I decide to make them step by step"): step 4 starts from the Workshop
+   book's folder as it is, not only from a run on this page — the mockups there are what the slides are made from (by spread
+   when no run gave the picks' order), and slides already made show as their card: **«Зроблено 1 з 6 слайдів»** with
+   **«Доробити слайди 1, 2, 4, 5, 6»** — only the ones not baked yet are made (`seed()`, `work.not_baked()`; `todo` in the
+   result of `/api/slides/make` and of `existing()`); the ones made stay as they are. «Доробити слайд 7» works with no mockup
+   (the looks are its pictures). A mockup redone another day lies beside the old one («… (2).png»): outside the run's picks
+   `mockups_in()` takes only the newest of a kind and spread, so no spread shows twice. The step follows the book chosen now:
+   a run made for another book no longer holds it (`run()`), and the book can't be changed while its slides are made.
 3. **Made by themselves** (~10 s): the rows 1–6 (waiting / drawing / ✓) and a bar; then the card **«Готово · 6 слайдів»**
    with the pictures (a click → the viewer, whose «Правити» opens that slide in the editor; the original opens the file),
    a ✎ on each, the folder button, **«Відкрити в редакторі»**, and ↻ «Зробити заново» (from the scheme again — asks
@@ -118,6 +126,10 @@ cyan, `ib()` icons with tooltips.
   (the Mockups' step 4) the same choice is a button above the numbers — «Схема: Nature ▾» — and the six start from it (`scheme` in
   `POST /api/slides/make`); «Зберегти ці слайди як схему…» (a name — the same name
   replaces that scheme; «Нові книги починаються з цієї схеми»); «Нові книги — зі схеми «…»» · the saved state («Збережено», «Не збереглось», «Малюю 3 з 6») ·
+  **«Книга ▾» / «Інша книга»** (11.10.2026, the owner: "in the listing slides I can't even choose the book") — the Workshop's
+  books (`GET /api/slides/books`): «слайди є» opens that book's slides here; «мокапів: 8, слайдів ще немає» goes to the Mockups
+  for that book (as the Workshop's «Мокапи» step does), whose step 4 makes them from its folder; «мокапів ще немає» — the same,
+  to make them first ·
   **«Зберегти картинки»** (a book only: the six baked again into the same `Listing N.png` in `etsy\`, the Mockups' card shows them).
 - **Layers** (left, the top one in front): the kind's glyph, the name, the lock and 👁 on hover (a freed element's open
   lock stays shown); **dragged** to another depth; **«Тло» — the background as the bottom row** (its colour chip; a
@@ -237,17 +249,17 @@ real template: the desk and the book kept, the floor gone, the book's soft shado
 
 - [app/studio/slides/cutout.py](../../app/studio/slides/cutout.py) — `read_psd_desk()`, `DESK_READER`, `kind_of()`, `spread_of()`, `KINDS`, `NO_BG`, `CUTS`, `HAZE`, `MAX_WIDTH`, `read_psd()`, `_near_book()`, `READER`, `template()`, `cut()`, `smaller()`, `combined()`, `ensure()`, `Cutter`, `cutter`
 - [app/studio/slides/store.py](../../app/studio/slides/store.py) — `SLIDES`, `LOOKS_SLIDE`, `HERO_SLOTS`, `shown()`, `_recoloured()`, `_new_slides()`, `FACTORY`, `SCHEMES`, `SETS`, `TEMPLATE`, `BOOK_SLOTS`, `PICTURE_SLOTS`, `SLOT_LABEL`, `NUMBERS`, `KINDS`, `ensure_schemes()`, `list_schemes()`, `default_scheme()`, `save_scheme()`, `set_default()`, `presets()`, `apply_preset()`, `is_book()`, `mockups_dir()`, `load()`, `check()`, `save()`, `reset()`, `sig()`, `new_set()`, `put_book()`, `put_picture()`, `list_sets()`, `workshop_sets()`, `forget_old_sets()`, `clean_temporary()`, `book_done()`
-- [app/studio/slides/work.py](../../app/studio/slides/work.py) — `looks()`, `put_heroes()`, `sync_heroes()`, `_book_page30()`, `_tick()`, `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `title()`
+- [app/studio/slides/work.py](../../app/studio/slides/work.py) — `looks()`, `put_heroes()`, `sync_heroes()`, `not_baked()`, `_book_page30()`, `_tick()`, `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `title()`
 - [app/studio/slides/bake.py](../../app/studio/slides/bake.py) — `bake()`, `render()`, `outputs()`, `run_browser()`, `NAME`, `AT_ONCE` (4: seven slides in two rounds, 04.10.2026)
-- [app/studio/slides/routes.py](../../app/studio/slides/routes.py) — `assets()`, `_slot_label()`, `_make()`, `_bake()`, `_cutouts()`, `_save()`, `_presets()`, `_apply()`, `_save_scheme()`, `_default_scheme()`
+- [app/studio/slides/routes.py](../../app/studio/slides/routes.py) — `assets()`, `_slot_label()`, `_make()`, `_bake()`, `_cutouts()`, `_save()`, `_presets()`, `_apply()`, `_save_scheme()`, `_default_scheme()`, `_books()`
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `mockups_state()`, `MOCKUPS`, `_slides_done()` (in `to_library()`)
 - [app/studio/main.py](../../app/studio/main.py) — `slides.store.clean_temporary()` at launch and close
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `watch()` → `_cut_without_background()`
 - [app/web/js/slides/engine.js](../../app/web/js/slides/engine.js) — `isHero()`, `lookLabel()` (the look's name or `labelText`), `setAssets()`, `ready()`, `boxOf()`, `DRAW`, `drawElement()`, `drawScene()`, `fill()`, `elTransform()`
 - [app/web/slides/render.html](../../app/web/slides/render.html) — the page headless Edge bakes (`bake: true`)
 - [app/studio/slides/design/slide7.json](../../app/studio/slides/design/slide7.json) — slide 7's first design (on slide 4)
-- [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — `slidesStep()`: the cut-outs line, the card, «Зробити слайди», the viewer
-- [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `mount()`, `SPEC`, `NEW`, `KIND` (inside: `isLocked`, `palettes()`, `swatches()`, `loadOthers()`, `openSchemes()`, `applyScheme()`, `saveScheme()`)
+- [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — `slidesStep()`: the cut-outs line, the card, «Зробити слайди», «Доробити», `seed()` (the book's folder as it is), the viewer
+- [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `mount()`, `SPEC`, `NEW`, `KIND` (inside: `isLocked`, `palettes()`, `swatches()`, `loadOthers()`, `openSchemes()`, `applyScheme()`, `saveScheme()`, `openBooks()`, `openBook()`)
 - [app/web/css/slides.css](../../app/web/css/slides.css) — the editor's look
 - [app/web/js/app.js](../../app/web/js/app.js) — the route `#/slides/…` (`'lazy'`); a book's slides keep the rail on «Книги», a scheme on «Інструменти» (since 2026-09-30); [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `navFor()`
 - [app/tools/slides.py](../../app/tools/slides.py) — `main()`

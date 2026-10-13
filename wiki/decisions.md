@@ -1,10 +1,54 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-11
+updated: 2026-10-13
 code: []
 ---
 # Decisions
+
+## 2026-10-13 — Etsy's ledger is the source of the Etsy money; the formula only forecasts
+
+The owner, on learning the page computed what Etsy's ledger already says: «навіщо ми рахуємо самі, коли є точні цифри».
+Research on his data (14.09–13.10.2026, 761 entries): the chain of entries whole (no number missing, every balance follows),
+every sale in the ledger, 760 of 761 entries tied to their receipt by Etsy's own reference (one by the moment — 4 cents,
+18.09), a sale posted 5–7 seconds after it (the longest 29 minutes), the ads charged once a day ~07:40 for the day before.
+- **A row's Etsy Net is the ledger's** (Offsite Ads, a state's fee, refunds and cancellations as Etsy made them); until Etsy posts
+  the sale it is the formula's **forecast** — faint, with a clock (the owner's "buffer"). The formula's sum is kept beside it.
+- **The ads and new listings come from the ledger by day** instead of the flat $1.38 (on 11.10 the owner raised the ads budget to
+  $10 a day: Etsy charged $5.95 for that day, the flat sum knew nothing of it). The days Etsy hasn't charged yet are forecast with
+  the last charged day's ads. Still no card of its own (the decision of 2026-10-05 below).
+- **The ledger checks itself**: a break in the chain is a warning on the page, and the next sync reads the ledger from the start.
+- Not now (the owner: «це ще рано»): the payout to the card, bank fees, taxes in Ukraine. Gelato's cost is exact already.
+
+How to apply: a number Etsy (or a printer) reports is shown as reported; a rule of ours only stands in until it comes.
+[features/profit.md](features/profit.md) · [rules/reconciliation.md](rules/reconciliation.md)
+
+## 2026-10-11 — Etsy SEO: the book's listing photos go to Google Drive
+
+- **The owner:** at the SEO step, make the book's folder on his Google Drive and put the listing photos from the Etsy folder in it.
+- **Decision:** `/etsy-seo` step 7 runs `seo.py to-drive <n>`: `pipeline/books/<n>.<slug>/etsy/` → `G:\My Drive\MoonMeadowStories\<n>.<slug>\`.
+  It **copies** instead of moving — the Workshop counts the listing slides in `etsy/`, so moving would make a finished book look
+  unfinished. Never overwrites or deletes; an existing Drive folder of the same number is used.
+
+## 2026-10-11 — Etsy SEO: each listing keeps its own angle (sharing tags was weighed and dropped)
+
+- **The owner** first objected: "the more of my books one search shows, the better" — then, told that the "own angle"
+  comes from sellers' advice (Etsy may show only a few listings of one shop per search page; unverified), said "go back,
+  do it the way you did".
+- **Decision:** `/etsy-seo` keeps giving each listing its own angle (`seo/knowledge/rules.md` §3); a best-fitting tag may
+  still be shared by a few listings. Books 39 and 40 stay as made. Don't re-ask unless the shop's own Stats show
+  otherwise.
+
+## 2026-10-11 — The Mockups follow the book's folder, not the page's session; the slides' editor picks a book
+
+- **The owner:** "the mockups for Christmas with Grandma are made, but the program shows there are none"; "I redo one mockup —
+  the whole session goes and I can't get to the next step even when everything is done"; "in the listing slides I can't even
+  choose the book to make the slides from".
+- **Decided:** with a Workshop book chosen, the Mockups read its `mockups\` as it is and show it; step 4 «Слайди для лістингу» is
+  there whenever that folder has mockups for the slides (no demo book, no run on the page needed), and slides already made show
+  as made with «Доробити» for the rest. The slides' editor got «Книга ▾»: a book with slides opens them, one without goes to the
+  Mockups for it. **Not changed:** what a run makes, the run's own result card, a partial run not ticking the «Мокапи» step.
+  Pages: [mockups](features/mockups.md), [slides](features/slides.md).
 
 ## 2026-10-11 — Agents may browse Etsy as a visitor (never signed in)
 

@@ -677,6 +677,67 @@ def _state(req: Request):
     return state()
 
 
+def _template_of(name: str) -> str | None:
+    """The template a saved mockup came from, by its name: «2. Open 1 (6-7).png» → open1, «4. Dedication (2).png» →
+    dedication; None for anything else in the folder (canva-cover.png)."""
+    stem = re.sub(r"(\s*\([\d\s-]+\))+$", "", Path(name).stem).strip().lower()
+    return next((t["key"] for t in TEMPLATES if t["file"][:-4].lower() == stem), None)
+
+
+def existing(workshop: str) -> dict:
+    """What a Workshop book already has in its folder — mockups made another day or by an earlier run, its slides: the
+    page shows them and its step 4 makes the listing slides from them, whatever this session ran (the owner,
+    11.10.2026: "the mockups are made, but the program says there are none"; "I redo one mockup — the whole session
+    goes and I can't get to the next step")."""
+    from .slides import store as slide_store, work as slide_work
+    folder = slide_store.book_folder(workshop) / "mockups"
+    rank = {t["key"]: i for i, t in enumerate(TEMPLATES)}
+    files = []
+    for p in folder.glob("*.png") if folder.is_dir() else []:
+        key = _template_of(p.name)
+        if key and p.is_file():
+            files.append({"name": p.name, "template": key, "v": p.stat().st_mtime_ns})
+    files.sort(key=lambda f: (rank[f["template"]], slide_cutout.spread_of(f["name"]), f["name"].lower()))
+    slides = None
+    if (slide_store.set_dir(workshop) / "set.json").is_file():
+        try:
+            rec = slide_store.read_set(workshop)
+            pictures = slide_work.pictures(rec)
+            slides = {"set": workshop, "folder": str(slide_store.out_dir(rec)), "pictures": pictures,
+                      "numbers": rec.get("numbers") or {}, "todo": slide_work.not_baked(rec, pictures)}
+        except Exception:
+            core.log.warning("Mockups: the slides of %s not read", workshop, exc_info=True)
+    return {"folder": str(folder), "files": files, "slides": slides}
+
+
+def _existing_file(workshop: str, name: str) -> Path:
+    from .slides import store as slide_store
+    folder = slide_store.book_folder(workshop) / "mockups"
+    path = folder / name
+    if not name or Path(name).name != name or not name.lower().endswith(".png") or not _template_of(name) \
+            or not path.is_file():
+        raise ApiError("Не знайдено.", 404)
+    return path
+
+
+@route("GET", "/api/mockups/existing")
+def _existing(req: Request):
+    return existing(str(req.param("workshop") or ""))
+
+
+@route("GET", "/media/mockups/existing", auth="media")
+def _existing_media(req: Request):
+    path = _existing_file(str(req.param("workshop") or ""), str(req.param("name") or ""))
+    return file_response(images.preview(path, req.int_param("w", 480, 64, 4096)), "image/jpeg", cache="private, max-age=600")
+
+
+@route("POST", "/api/mockups/open-existing")
+def _open_existing(req: Request):
+    body = req.json or {}
+    desktop.open_image_file(_existing_file(str(body.get("workshop") or ""), str(body.get("name") or "")))
+    return {"ok": True}
+
+
 @route("POST", "/api/mockups/book")
 def _open_book(req: Request):
     folder = Path(str((req.json or {}).get("path") or ""))

@@ -1,7 +1,7 @@
 ---
 title: When orders are refreshed
 type: rule
-updated: 2026-10-05
+updated: 2026-10-13
 code:
   - app/studio/sync.py
   - app/studio/profit.py
@@ -75,4 +75,5 @@ within one Windows clock "tick" get the same modified time — a bug fixed on 20
 - [Stages](order-stages.md) · [Etsy](../integrations/etsy.md) · [Decisions](../decisions.md)
 
 > Since 2026-10-05 a missing Printify token gives **no warning** — all orders go through Gelato. With Etsy connected, every sync
-> also reads Etsy's payment ledger (`ledger.refresh()`, two days back from the last read); a failure is a warning and the old ledger stays.
+> also reads Etsy's payment ledger (`ledger.refresh()`, two days back from the last read); a failure is a warning and the old ledger stays. A break in the ledger's chain (`ledger.gaps()`, 2026-10-13) makes the
+> next read start from the beginning (14.09.2026).

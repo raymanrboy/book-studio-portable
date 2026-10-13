@@ -1,7 +1,7 @@
 ---
 title: Etsy SEO studio — a book's title, tags and description
 type: feature
-updated: 2026-10-10
+updated: 2026-10-11
 code:
   - seo/seo.py
   - seo/README.md
@@ -25,6 +25,10 @@ For a Workshop book, the agent writes into `pipeline/books/<n>.<slug>/agent/list
 - **13 tags**, chosen by numbers and by buyer intent (product, theme, recipient, occasion, giver, keepsake);
 - **the description** — the owner's template, only the parts about the book change; always "30-page".
 
+Then (the owner, 2026-10-11) `seo.py to-drive <n>` **copies** the book's listing photos and video (`pipeline/books/<n>.<slug>/etsy/`)
+into his Google Drive, `G:\My Drive\MoonMeadowStories\<n>.<slug>\` — the folder is made if missing. Copy, not move: the
+Workshop counts the slides in `etsy/`. Nothing on the Drive is overwritten or deleted.
+
 Where the numbers come from:
 
 1. **The keyword database** `seo/data/seo.sqlite` (local, not in git): the eRank «Shop tags» exports the owner gives
@@ -41,7 +45,7 @@ Where the numbers come from:
 4. **What is known about Etsy search** — [`seo/knowledge/rules.md`](../../seo/knowledge/rules.md), every rule with
    its evidence level (Etsy / eRank / practitioners / the owner) and source.
 
-**Etsy itself is never opened** — not for research, not for checking a listing ([security](../security.md)).
+**Etsy is opened only as a visitor, never signed in** (since 2026-10-11, [security](../security.md)); the numbers come from eRank.
 
 ## Checking the whole shop
 
@@ -69,9 +73,9 @@ tags eRank can't measure — so a listing that sells (≥ 3, `KEEP_SOLD`) is mar
 - [seo/seo.py](../../seo/seo.py) — the database and every command: `import-tagreport` (`cmd_import_tagreport()`),
   `import-legacy`, `import-erank` (`parse_compact()`, `import_payload()`), `known` (`evaluate()`, `group_key()`),
   `import-own`, `own` (`cmd_import_own()`), `related`, `competitors`, `pick` (`cmd_pick()`), `lint` (`cmd_lint()`, `title_phrases()`), `block` (`blocked()`),
-  `save`, `summary`.
+  `save`, `summary`, `to-drive` (`cmd_to_drive()`, `_numbered()`).
 - [.claude/skills/etsy-seo/SKILL.md](../../.claude/skills/etsy-seo/SKILL.md) — the agent's steps: brief → candidates →
-  numbers → tags → title → description → save and report.
+  numbers → tags → title → description → save, copy to Google Drive, report.
 - Data: `seo/data/seo.sqlite`, `seo/data/inbox/` (what was read from eRank, as text), `seo/data/work/` (a book's
   candidate list) — all local.
 

@@ -32,13 +32,21 @@ def title(slide: str) -> str:
 
 def mockups_in(folder: Path, order: list[str] | None = None) -> dict[str, list[Path]]:
     """The folder's mockups by kind: open1 / open2 / cover1 / dedication, each in the owner's picks order (the
-    Mockups' result lists them so), else by spread."""
-    files = [p for p in folder.glob("*.png") if p.is_file() and cutout.kind_of(p.name)]
+    Mockups' result lists them so), else by spread. A mockup redone another day lands beside the old one («… (2).png»,
+    never over it): outside the picks only the newest of a kind and spread is taken (11.10.2026 — slides made from the
+    book's folder alone would show the same spread twice)."""
+    files = [(p, p.stat().st_mtime) for p in folder.glob("*.png") if p.is_file() and cutout.kind_of(p.name)]
     rank = {name.lower(): i for i, name in enumerate(order or [])}
-    files.sort(key=lambda p: (rank.get(p.name.lower(), 10 ** 6), cutout.spread_of(p.name), p.name.lower()))
+    files.sort(key=lambda f: (rank.get(f[0].name.lower(), 10 ** 6), cutout.spread_of(f[0].name), -f[1], f[0].name.lower()))
     out: dict[str, list[Path]] = {"open1": [], "open2": [], "cover1": [], "dedication": []}
-    for p in files:
-        out[cutout.kind_of(p.name)].append(p)
+    seen: set[tuple[str, int]] = set()
+    for p, _ in files:
+        kind = cutout.kind_of(p.name)
+        key = (kind, cutout.spread_of(p.name))
+        if key in seen and p.name.lower() not in rank:
+            continue                    # an older copy of a mockup redone since
+        seen.add(key)
+        out[kind].append(p)
     return out
 
 
@@ -72,7 +80,8 @@ def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Pat
     found = mockups_in(folder, order)
     slots = {k: v for k, v in slots_of(found).items() if k in wanted}
     use_dedication = bool(found["dedication"]) and "dedication" in wanted
-    if not slots and not (only and use_dedication):
+    heroes_only = bool(only and book and "slide7" in only and looks(book))   # slide 7 needs the looks, no mockup
+    if not slots and not (only and use_dedication) and not heroes_only:
         raise UserError("У папці немає мокапів для цих слайдів — слайдам нема що показати." if only else
                         "У папці немає мокапів Open 1, Open 2 чи Cover 1 — слайдам нема що показати.")
     states: dict[str, str] = {}
@@ -115,7 +124,7 @@ def make(job: Job, folder: Path, name: str, order: list[str] | None, page30: Pat
     missing = [store.SLOT_LABEL[s] for s in store.BOOK_SLOTS + store.PICTURE_SLOTS
                if s in wanted and s not in rec["books"] and s not in rec["pictures"]]
     return {"set": rec["id"], "folder": str(store.out_dir(rec)), "pictures": baked, "missing": missing,
-            "seconds": round(time.time() - started)}
+            "todo": not_baked(rec, baked), "seconds": round(time.time() - started)}
 
 
 def _book_page30(book: str | None) -> Path | None:
@@ -226,6 +235,12 @@ def bake_set(job: Job, rec: dict, slides: list[str], base: str, token: str, stat
         photos.tidy_etsy(store.book_folder(rec["id"]))
         rec = store.read_set(rec["id"])
     return pictures(rec)
+
+
+def not_baked(rec: dict, baked: list[dict]) -> list[str]:
+    """The slides of a set not baked yet (a part made one day, the rest another — 11.10.2026)."""
+    done = {p["slide"] for p in baked}
+    return [s for s in store.shown(rec["id"], rec) if s not in done]
 
 
 def pictures(rec: dict) -> list[dict]:

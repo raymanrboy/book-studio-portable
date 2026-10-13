@@ -123,6 +123,10 @@ goes in (E: stuffing hurts):
 - **Mix:** 3–4 head tags (big demand even if crowded), 4–6 mid tags (demand ≥ ~150 with a good ratio),
   3–5 exact tags that describe this very book (theme words: `sleepy trucks book`, `godparent letter`).
 - Cover different **buyer intents** (facets): product+theme, recipient, occasion, giver, keepsake/format.
+- **O — each listing keeps its own angle (the owner, 2026-10-11, after weighing sharing tags):** two of the shop's books
+  on the same theme don't get the same tag set; a tag that fits a book best may still be shared with one or two others
+  (e.g. `christmas eve box`, `stocking stuffer`). P: sellers report Etsy limits how many listings of one shop a search
+  page shows — not stated by Etsy, unverified.
 - A tag must be true for the book (relevance A or B). Gender: only if the book's hero is that gender, or
   both (`… boy`, `… girl`) when the text is neutral.
 

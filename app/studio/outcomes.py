@@ -9,6 +9,8 @@ Etsy rules (Etsy Help, 2026):
   proportion to the refunded share of what the buyer paid; the $0.20 listing fee is
   not credited;
 - a replacement is a reprint the seller pays for: revenue stays, the reprint cost is added.
+These rules are the forecast only: once Etsy's ledger has the sale (ledger.view(), seconds after it), its real money —
+Offsite Ads, a state's fee, the refunds as Etsy made them — is the Etsy Net (the owner, 2026-10-13).
 
 Only a placed and paid print order costs money (owner, 18.09.2026; counted in the money since 26.09.2026): a
 cancelled one, a Gelato draft never ordered, an order on hold or awaiting payment cost nothing (yet). A normal order
@@ -18,6 +20,7 @@ from __future__ import annotations
 
 from . import reconcile
 from .fees import r1, r2
+from .ledger import FORMULA_TYPES, is_refund
 from .printorders import all_facts
 
 STATES = ("normal", "canceled", "refund_full", "refund_partial", "replacement")
@@ -59,8 +62,9 @@ def order_info(f: dict) -> dict:
             "createdAt": f["created"]}
 
 
-def rows(receipts: list, printify: list, gelato: list, links: dict, states: dict, sent: dict, rates: dict) -> list:
-    """Every receipt's row: matched (reconcile.match()), then its money (apply())."""
+def rows(receipts: list, printify: list, gelato: list, links: dict, states: dict, sent: dict, rates: dict,
+         real: dict | None = None) -> list:
+    """Every receipt's row: matched (reconcile.match()), then its money (apply()). `real` — ledger.view()["receipts"]."""
     reserved = reserved_orders(states)
     out = reconcile.match(receipts, printify, gelato, links, rates, reserved=reserved, sent=sent)
     orders = all_facts({"printify": printify, "gelato": gelato}, rates)
@@ -71,13 +75,13 @@ def rows(receipts: list, printify: list, gelato: list, links: dict, states: dict
             shared[key] = shared.get(key, 0) + 1
     by_id = {str(r["receipt_id"]): r for r in receipts}
     for row in out:
-        apply(row, by_id[row["id"]], states.get(row["id"]), orders, shared, reserved)
+        apply(row, by_id[row["id"]], states.get(row["id"]), orders, shared, reserved, (real or {}).get(row["id"]))
     return out
 
 
-def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, shared: dict, reserved) -> None:
+def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, shared: dict, reserved, real: dict | None = None) -> None:
     """The row's state and final money. `orders` — printorders.all_facts(); `shared` — how many receipts' own send
-    records name each order."""
+    records name each order; `real` — the receipt's money in Etsy's ledger (None: not posted yet, the formula forecasts)."""
     entry = entry or {}
     auto = auto_state(receipt)
     manual = entry.get("status") if entry.get("status") in STATES else None
@@ -105,6 +109,24 @@ def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, shared: di
         fee_credit = r2(variable * share)
         revenue_back = r2((gross - tax) * share)
         net = r2(base_net - revenue_back + fee_credit)
+    formula_net = net
+    extra = []
+    # A cancellation or refund Etsy hasn't posted yet (or one made outside Etsy, set by hand): the formula's numbers until it is.
+    if real is not None and state in ("canceled", "refund_full", "refund_partial") and \
+            not any(is_refund(line["type"]) for line in real["lines"]):
+        real = None
+    if real is not None:
+        # Etsy's own numbers: the money before any refund, what went back to the buyer, the fees Etsy gave back.
+        lines = {line["type"]: line["amount"] for line in real["lines"]}
+        back = r2(sum(a for k, a in lines.items() if is_refund(k)))
+        net = r2(real["net"])
+        base_net = r2(net - back)
+        refund = r2(-lines.get("REFUND_GROSS", 0))
+        revenue_back = r2(-(lines.get("REFUND_GROSS", 0) + lines.get("sales_tax_refund", 0)))
+        fee_credit = r2(back + revenue_back)
+        extra = [line for line in real["lines"] if line["type"] not in FORMULA_TYPES and not is_refund(line["type"])]
+        if gross:
+            row["etsy_fees"] = r2(gross - tax - base_net)
 
     # ---- the print order matching found (its bundle share), unless it costs nothing
     provider = row.get("pod_provider")
@@ -143,6 +165,10 @@ def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, shared: di
         "fee_credit": fee_credit,
         "etsy_net_original": base_net,
         "etsy_net": net,
+        "etsy_source": "ledger" if real is not None else "forecast",
+        "etsy_net_formula": formula_net,
+        "etsy_extra": extra,
+        "etsy_lines": real["lines"] if real is not None else [],
         "pod_dead": why_free,
         "pod_cost_original": matched_cost,
         "further_orders": further,
@@ -175,7 +201,7 @@ def apply(row: dict, receipt: dict, entry: dict | None, orders: dict, shared: di
     else:
         cost = r2(pod + repl_cost)
         profit = r2(net - cost)
-        impact = {"canceled": -cost, "refund_full": r2(-listing - pod), "refund_partial": r2(net - base_net),
+        impact = {"canceled": net - cost, "refund_full": r2(net - pod), "refund_partial": r2(net - base_net),
                   "replacement": -repl_cost}.get(state, 0.0)
         row.update({"pod_total_cost": pod, "printify_total_cost": pod,
                     "cost_total": cost, "profit": profit, "impact": r2(impact),
