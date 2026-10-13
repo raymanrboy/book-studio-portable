@@ -14,9 +14,15 @@ every sale in the ledger, 760 of 761 entries tied to their receipt by Etsy's own
 18.09), a sale posted 5–7 seconds after it (the longest 29 minutes), the ads charged once a day ~07:40 for the day before.
 - **A row's Etsy Net is the ledger's** (Offsite Ads, a state's fee, refunds and cancellations as Etsy made them); until Etsy posts
   the sale it is the formula's **forecast** — faint, with a clock (the owner's "buffer"). The formula's sum is kept beside it.
-- **The ads and new listings come from the ledger by day** instead of the flat $1.38 (on 11.10 the owner raised the ads budget to
-  $10 a day: Etsy charged $5.95 for that day, the flat sum knew nothing of it). The days Etsy hasn't charged yet are forecast with
+- **The ads and new listings come from the ledger by day** instead of the flat $1.38 (on 11.10 the owner raised the ads budget (now
+  $5 a day, the owner 13.10): Etsy charged $4.96 + 20% VAT = $5.95 for that day, the flat sum knew nothing of it). The days Etsy hasn't charged yet are forecast with
   the last charged day's ads. Still no card of its own (the decision of 2026-10-05 below).
+- **A day without sales still pays for the ads** (the owner, 13.10: «роби»): until then the page took them off only when the period
+  had a sale, so «Сьогодні» with no orders showed $0 though the ads had cost ~$6. Now the profit is that loss, in red.
+- **The Profit periods follow the payouts** (the owner, 13.10): on view «Сьогодні · Вчора · Цей тиждень · Цей місяць · Увесь час»,
+  the rest behind «Ще» («Минулий тиждень», «Минулий місяць», «30 днів», «Свій період»). A week runs from one Payoneer payout to
+  the next — the owner's real rhythm of money; it shows what was earned between payouts, not the payout itself (the balance
+  carries some over — the «Доступно до виводу» card stays off).
 - **The ledger checks itself**: a break in the chain is a warning on the page, and the next sync reads the ledger from the start.
 - Not now (the owner: «це ще рано»): the payout to the card, bank fees, taxes in Ukraine. Gelato's cost is exact already.
 

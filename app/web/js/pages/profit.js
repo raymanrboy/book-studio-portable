@@ -9,13 +9,25 @@ import { refreshInfo, store } from '../info.js';
 import { DEAD_SHORT, costOf, detailHtml, rowInner } from './profit-rows.js';
 
 const PAGE_SIZE = 50;
+// The periods on view, and the rarer ones behind «Ще», whose button takes the name of the one picked (the owner, 2026-10-13).
+// «Цей тиждень» runs from the last payout to Payoneer, «Минулий тиждень» between the last two (the ledger's DISBURSE entries).
 const PERIODS = [
   { value: 'today', label: 'Сьогодні' },
-  { value: '7d', label: '7 днів' },
-  { value: 'month', label: '30 днів' },
+  { value: 'yesterday', label: 'Вчора' },
+  { value: 'week', label: 'Цей тиждень' },
+  { value: 'thismonth', label: 'Цей місяць' },
   { value: 'all', label: 'Увесь час' },
-  { value: 'custom', label: 'Свій період' },
 ];
+const MORE = [
+  { value: 'lastweek', label: 'Минулий тиждень', icon: 'calendar' },
+  { value: 'lastmonth', label: 'Минулий місяць', icon: 'calendar' },
+  { value: '30d', label: '30 днів', icon: 'calendar' },
+  { value: 'custom', label: 'Свій період', icon: 'edit' },
+];
+const OLD_PERIODS = { '7d': 'week', month: '30d' }; // the keys saved before 2026-10-13 («month» was 30 days)
+const KNOWN = new Set([...PERIODS, ...MORE].map((p) => p.value));
+const dayMonth = (d) => d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
+const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const toCal = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const isIssue = (o) => (o.state && o.state !== 'normal') || o.needs_link || o.pod_dead || o.cost_unknown;
 
@@ -24,7 +36,7 @@ export async function mount(view) {
   let gone = false; // the page was let go: its polls stop (runJob keepGoing)
   const st = {
     data: null,
-    period: saved.period || 'all',
+    period: KNOWN.has(OLD_PERIODS[saved.period] || saved.period) ? OLD_PERIODS[saved.period] || saved.period : 'all',
     start: saved.start || toCal(new Date(Date.now() - 6 * 86400000)),
     end: saved.end || toCal(new Date()),
     query: '',
@@ -70,22 +82,82 @@ export async function mount(view) {
     </div>`);
 
   const $ = (s) => view.querySelector(s);
-  setHtml($('#pf-period'), segHtml(PERIODS, st.period, { accent: true, name: 'period' }));
-  requestAnimationFrame(() => syncSeg($('#pf-period .seg')));
+  // ---------------------------------------------------------------- periods
+  // The chosen period: the sales made in [from, to) (null — open), and its first and last day for the ads (overhead()).
+  // A payout's own day belongs to the week it closes: «Цей тиждень» counts the ads from the day after it.
+  function range() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const shift = (d, n) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; };
+    const pays = (st.data?.payouts || []).map((t) => new Date(t * 1000));
+    const last = pays[pays.length - 1];
+    const prev = pays[pays.length - 2];
+    const span = (from, to, first, lastDay) => ({ from, to, first, lastDay });
+    switch (st.period) {
+      case 'today': return span(today, null, today, today);
+      case 'yesterday': return span(shift(today, -1), today, shift(today, -1), shift(today, -1));
+      case 'week': return last ? span(last, null, shift(last, 1), today) : span(shift(today, -6), null, shift(today, -6), today);
+      case 'lastweek': return last && prev ? span(prev, last, shift(prev, 1), shift(last, 0))
+        : last ? span(shift(last, -7), last, shift(last, -6), shift(last, 0)) // one payout so far: the 7 days before it
+          : span(shift(today, -13), shift(today, -6), shift(today, -13), shift(today, -7));
+      case 'thismonth': { const m = new Date(today.getFullYear(), today.getMonth(), 1); return span(m, null, m, today); }
+      case 'lastmonth': {
+        const m = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const next = new Date(today.getFullYear(), today.getMonth(), 1);
+        return span(m, next, m, shift(next, -1));
+      }
+      case '30d': return span(shift(today, -29), null, shift(today, -29), today);
+      case 'custom': {
+        const s = new Date(`${st.start}T00:00:00`);
+        const e = new Date(`${st.end}T00:00:00`);
+        return span(s, shift(e, 1), s, e);
+      }
+      default: return span(null, null, null, today);
+    }
+  }
+  // What the week periods are, in their tips and in the «Ще» menu: the payout dates themselves.
+  function weekHint(value) {
+    const pays = (st.data?.payouts || []).map((t) => new Date(t * 1000));
+    const last = pays[pays.length - 1];
+    const prev = pays[pays.length - 2];
+    if (value === 'week') return last ? `Від виплати на Payoneer ${dayMonth(last)}, ${last.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}` : 'Останні 7 днів (виплат ще немає)';
+    if (value === 'lastweek') return last && prev ? `${dayMonth(prev)} – ${dayMonth(last)}` : '';
+    if (value === 'lastmonth') { const n = new Date(); return new Date(n.getFullYear(), n.getMonth() - 1, 1).toLocaleDateString('uk-UA', { month: 'long' }); }
+    return '';
+  }
+  function renderPeriod() {
+    const hidden = MORE.find((p) => p.value === st.period);
+    const opts = [...PERIODS.map((p) => (p.value === 'week' ? { ...p, tip: weekHint('week') } : p)),
+      hidden ? { value: hidden.value, label: hidden.label, after: 'chevDown', tip: weekHint(hidden.value) || undefined }
+        : { value: 'more', label: 'Ще', after: 'chevDown', tip: 'Інші періоди' }];
+    setHtml($('#pf-period'), segHtml(opts, st.period, { accent: true, name: 'period' }));
+    requestAnimationFrame(() => syncSeg($('#pf-period .seg')));
+  }
+  function setPeriod(value) {
+    // The last button changes only between «Ще» and a hidden period's name: otherwise the pill just moves (setSeg) and the
+    // keyboard keeps its place (the arrows pick as they go — lib.js).
+    const seg = $('#pf-period .seg');
+    const lastNow = [...(seg?.querySelectorAll('button') || [])].pop()?.dataset.value;
+    st.period = value; persist();
+    if (seg && lastNow === (MORE.some((p) => p.value === value) ? value : 'more')) setSeg(seg, value);
+    else {
+      const hadFocus = seg?.contains(document.activeElement);
+      renderPeriod();
+      if (hadFocus) $('#pf-period .seg button.active')?.focus();
+    }
+    $('#pf-custom').classList.toggle('open', st.period === 'custom');
+    st.page = 1; st.open = null; renderKpis(); renderFilter(); renderTable();
+  }
+  renderPeriod();
 
   // ---------------------------------------------------------------- data shaping
-  function inPeriod(o) {
+  function inPeriod(o, r) {
     if (st.period === 'all' || !o.created_at) return true;
     const d = new Date(o.created_at);
     if (Number.isNaN(d.getTime())) return true;
-    const now = new Date();
-    if (st.period === 'today') return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (st.period === '7d') return d >= new Date(now.getTime() - 7 * 86400000);
-    if (st.period === 'month') return d >= new Date(now.getTime() - 30 * 86400000);
-    if (st.period === 'custom') return d >= new Date(`${st.start}T00:00:00`) && d <= new Date(`${st.end}T23:59:59`);
-    return true;
+    return (!r.from || d >= r.from) && (!r.to || d < r.to);
   }
-  const periodRows = () => (st.data?.rows || []).filter(inPeriod);
+  const periodRows = () => { const r = range(); return (st.data?.rows || []).filter((o) => inPeriod(o, r)); };
   function visibleRows() {
     const term = st.query.trim().toLowerCase();
     return periodRows().filter((o) => {
@@ -100,18 +172,13 @@ export async function mount(view) {
   function periodDays() {
     const day = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
     const from = st.data?.accountingFrom ? new Date(`${st.data.accountingFrom}T00:00:00`) : null;
-    let start = new Date(day);
-    if (st.period === '7d') start.setDate(start.getDate() - 6);
-    else if (st.period === 'month') start.setDate(start.getDate() - 29);
-    else if (st.period === 'custom') start = new Date(`${st.start}T00:00:00`);
-    else if (st.period === 'all') start = from || day;
-    let end = st.period === 'custom' ? new Date(`${st.end}T00:00:00`) : day;
+    const r = range();
+    let start = r.first || from || day;
+    let end = r.lastDay;
     if (end > day) end = day;
     if (from && start < from) start = from;
     const days = [];
-    for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
-    }
+    for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(dayKey(d));
     return days;
   }
   // What Etsy took outside the orders in the period (ads, new listings), negative: from Etsy's ledger by day — the days
@@ -133,8 +200,9 @@ export async function mount(view) {
       if (special) { impact += o.impact || 0; issues++; }
     }
     const r2 = (v) => Math.round(v * 100) / 100;
-    // Ads and new listings (overhead()): counted into the profit and the margin, not shown (2026-10-05).
-    if (n) profit += overhead();
+    // Ads and new listings (overhead()): counted into the profit and the margin, not shown (2026-10-05) — on a day without
+    // sales too: the ads were paid all the same (the owner, 2026-10-13).
+    profit += overhead();
     return { net: r2(net), cost: r2(cost), profit: r2(profit), margin: net > 0 ? Math.round((profit / net) * 1000) / 10 : 0, n, impact: r2(impact), issues };
   }
 
@@ -268,7 +336,7 @@ export async function mount(view) {
     requestAnimationFrame(() => view.querySelectorAll('.state-seg .seg').forEach(syncSeg));
   }
 
-  function renderAll() { renderHead(); renderNotice(); renderKpis(); renderFilter(); renderTable(); }
+  function renderAll() { renderHead(); renderNotice(); renderPeriod(); renderKpis(); renderFilter(); renderTable(); }
 
   // Details (fees, address, items) are fetched when a row is opened, then the row grows smoothly.
   function closeRow(id) {
@@ -568,9 +636,12 @@ export async function mount(view) {
     on(view, 'click', '[data-page]', (e, t) => { st.page += +t.dataset.page; st.open = null; renderTable(); view.querySelector('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' }); }),
     on(view, 'click', '[data-act="sync"]', () => sync()),
     on(view, 'click', '[data-seg="period"] button', (e, b) => {
-      st.period = b.dataset.value; setSeg(b.closest('.seg'), st.period); persist();
-      $('#pf-custom').classList.toggle('open', st.period === 'custom');
-      st.page = 1; st.open = null; renderKpis(); renderFilter(); renderTable();
+      const value = b.dataset.value;
+      if (value !== 'more' && !MORE.some((p) => p.value === value)) { setPeriod(value); return; }
+      menu(b, MORE.map((p) => {
+        const hint = weekHint(p.value);
+        return { label: hint ? `${p.label} · ${hint}` : p.label, icon: p.icon, on: st.period === p.value, onClick: () => setPeriod(p.value) };
+      }));
     }),
     on(view, 'click', '[data-seg="filter"] button', (e, b) => {
       st.filter = b.dataset.value; setSeg(b.closest('.seg'), st.filter);

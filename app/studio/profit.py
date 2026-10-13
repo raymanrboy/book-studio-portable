@@ -71,6 +71,7 @@ def build_view() -> dict:
         "gelatoConnected": bool(gelato.accounts()),
         "warnings": warnings,
         "overhead": real.get("overhead"),
+        "payouts": real.get("payouts") or [],
         "counts": {"receipts": len(receipts), "printify": len(p_orders), "gelato": len(g_orders)},
         "rows": rows,
         "candidates": candidates,

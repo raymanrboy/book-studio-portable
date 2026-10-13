@@ -138,6 +138,7 @@
 }
 /* No sales in the period (2026-09-30): the zeros in grey, not in the colours of real results. */
 .kpi-none .kpi { --kpi-ink: var(--text-3); }
+.kpi-none .kpi.tone-red { --kpi-ink: var(--red); }  /* no sales, but the ads were paid: that loss is real (2026-10-13) */
 .kpi-none .kpi .kpi-ico { opacity: .5; }
 /* The Etsy Net is Etsy's own money (ledger, 2026-10-13); a forecast, until Etsy posts the sale, is faint with a clock. */
 .o-check { color: var(--text-3); display: inline-flex; vertical-align: -2px; margin-right: 4px; }

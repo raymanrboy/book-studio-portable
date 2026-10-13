@@ -530,7 +530,7 @@ export function segHtml(options, active, { accent = false, name = '', compact = 
   return html`<div class="seg ${accent ? 'seg-accent' : ''} ${compact ? 'seg-compact' : ''}" data-seg="${name}" role="tablist">
     <span class="seg-pill"></span>
     ${options.map((o) => html`<button type="button" role="tab" aria-selected="${String(o.value === active)}" data-value="${o.value}" class="${o.value === active ? 'active' : ''} ${o.label ? '' : 'seg-ico'}"
-      ${label(o)}>${o.icon ? ic(o.icon, o.label ? 'icon-s' : '') : ''}${o.label ? html`<span class="seg-label">${o.label}</span>` : ''}${o.count !== undefined ? html`<span class="seg-count">${o.count}</span>` : ''}</button>`)}
+      ${label(o)}>${o.icon ? ic(o.icon, o.label ? 'icon-s' : '') : ''}${o.label ? html`<span class="seg-label">${o.label}</span>` : ''}${o.count !== undefined ? html`<span class="seg-count">${o.count}</span>` : ''}${o.after ? ic(o.after, 'icon-s') : ''}</button>`)}
   </div>`;
 }
 export function syncSeg(seg) {

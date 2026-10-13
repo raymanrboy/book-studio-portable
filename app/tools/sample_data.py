@@ -101,7 +101,7 @@ def _full_gelato_order(order_id: str, account: str = "main") -> dict:
 
 def _seed_ledger(receipts: list) -> None:
     """A made-up Etsy payment ledger (ledger.py) for the receipts: each sale's gross, tax and fees as the formula has them,
-    an Offsite Ads fee on Chris's order (its fees name it), a payout 8 days ago, the ads every day; Jane's sale of today is not
+    an Offsite Ads fee on Chris's order (its fees name it), payouts 8 and 2 days ago (the Profit page's weeks), the ads every day; Jane's sale of today is not
     posted yet (its row is the formula's forecast)."""
     from studio import core, ledger
     now = int(time.time())
@@ -115,6 +115,7 @@ def _seed_ledger(receipts: list) -> None:
         return 9000 + n
 
     add(now - 8 * 86400, "DISBURSE2", "disbursement", 1, 0)
+    add(now - 2 * 86400 + 7200, "DISBURSE2", "disbursement", 2, 0)
     for day in range(8, 0, -1):
         fee = add(now - day * 86400 + 60, "prolist", "prolist", 1, -100)
         add(now - day * 86400 + 60, "vat_seller_services", "etsy", 0, -20, fee)

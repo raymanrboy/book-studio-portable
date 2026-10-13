@@ -5,7 +5,7 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 ## [2026-10-13] decision | The Profit page takes the Etsy money from Etsy's ledger
 - The owner: why compute what the ledger says. Research on a copy of his data (14.09–13.10): the chain whole, every sale in the
-  ledger, the formula right to the cent except Offsite Ads / a state's fee / a cancellation; the ads at the $10 budget of 11.10
+  ledger, the formula right to the cent except Offsite Ads / a state's fee / a cancellation; the ads at the $5 budget of 11.10 (+20% VAT)
   cost $5.95 that day, the flat $1.38 knew nothing of it.
 - `outcomes.apply()` takes `real` (ledger.view()): the Etsy Net, refunds, fees and `etsy_extra` from the ledger; the formula is the
   forecast (`etsy_source`, `etsy_net_formula`). `ledger.overhead()` (ads by day, forecast for the days not charged) →
@@ -17,6 +17,13 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 - After the code review: a cancellation/refund not yet in the ledger stays the forecast; the VAT given back joins its fee's refund
   (`is_refund()`); the ads' forecast reaches today (the view's cache keys the date); a posted partial refund shows its amount
   instead of the field; a negative forecast keeps its red.
+- Then (the owner: «роби»): the ads come off a period without sales too — «Чистий прибуток» shows the loss in red, the other
+  cards stay grey (`profit.js kpi()`, `.kpi-none .kpi.tone-red`). The ads budget is $5 a day (+20% VAT), not $10 — corrected.
+- The periods (the owner's list): «Сьогодні · Вчора · Цей тиждень · Цей місяць · Увесь час» + «Ще ▾» (Минулий тиждень, Минулий
+  місяць, 30 днів, Свій період); the weeks run between payouts to Payoneer (`ledger.view()["payouts"]` → `payouts`, `range()`).
+  `segHtml()` takes `after` (an icon after the word). Sample data: payouts 8 and 2 days ago. Checked in the preview (light,
+  desktop and 768 px): each period's rows match the sample's dates; the arrows walk the buttons (the bar is rebuilt only when
+  «Ще» changes its name). Code review: no critical; one payout so far → «Минулий тиждень» is the 7 days before it.
   Pages: [decisions](decisions.md), [features/profit](features/profit.md), [rules/reconciliation](rules/reconciliation.md),
   [rules/sync-policy](rules/sync-policy.md), [dev/testing](dev/testing.md), [code-map](code-map.md).
 

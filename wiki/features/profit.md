@@ -29,7 +29,8 @@ changes — `records.stamp()`) and its routes.
 
 - In `PLACES` and `ROUTES` as `#/profit` ([app.js](../../app/web/js/app.js)), Alt+3.
 - **No sales in the period** (since 2026-09-30): the four numbers stay grey (`kpi-none`) — green zeros looked earned;
-  the average margin has no ink of its own (the orange means an action).
+  the average margin has no ink of its own (the orange means an action). The ads of those days still come off (since
+  2026-10-13): the «Чистий прибуток» is then a loss, in red (`.kpi-none .kpi.tone-red`).
 - **A clean slate on 1 October 2026** (the owner, 25 and 27.09.2026: "it must not include earlier orders at all"):
   `profit.ACCOUNTING_FROM` — midnight of 1 October on this computer's clock; `counted()` decides. The page's rows
   (`/api/profit/data`), one row (`/api/profit/row` — an older one is 404) and the print orders offered for a manual
@@ -65,11 +66,17 @@ changes — `records.stamp()`) and its routes.
   any order — Etsy Ads and the fee for each new listing. The page gets them by day from the ledger (`overheadDays`,
   `ledger.overhead()`: an ads charge, ~07:40, pays for the day before; the days not charged yet are the last charged day's ads, a
   forecast) and subtracts the days of the chosen period that are inside the books (`periodDays()`, `overhead()`) from the
-  «Чистий прибуток» and the margin — **no card of its own** (the owner didn't want to see it). The table's rows stay per order, so
+  «Чистий прибуток» and the margin, on days without sales too — **no card of its own** (the owner didn't want to see it). The table's rows stay per order, so
   their sum is a little above the card. With no ledger at all the old estimate stands in: **$1.38 a day** (`profit.OVERHEAD_PER_DAY`,
   `overheadPerDay`, from the owner's September–October statements).
 
-- Periods (today, 7 days, 30 days, all time, custom), metrics, a table of 50 rows at a time, search.
+- **Periods (since 2026-10-13, the owner's list):** on view «Сьогодні», «Вчора», «Цей тиждень», «Цей місяць», «Увесь час»; behind
+  «Ще ▾» (a menu; the button takes the name of the one picked) «Минулий тиждень», «Минулий місяць», «30 днів», «Свій період» (only
+  it opens the two dates). The weeks follow the payouts to Payoneer, not the calendar: «Цей тиждень» from the last payout (its tip
+  names it), «Минулий тиждень» between the last two (`payouts` — the ledger's DISBURSE entries); a payout's own day counts its ads
+  in the week it closes. With no payouts the weeks are the last 7 days and the 7 before. `range()` in `profit.js` gives every
+  period's sales window and its days for the ads; the saved `7d` / `month` (30 days) become `week` / `30d`.
+- Metrics, a table of 50 rows at a time, search.
 - A row expands: a breakdown of fees, cost, state.
 - Manual matching to a Printify/Gelato order, or "no cost".
 - States: cancelled, full/partial refund (amount), replacement (a reprint order and/or an amount).
@@ -91,7 +98,7 @@ changes — `records.stamp()`) and its routes.
 
 ## Where in the code
 
-- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `kpi()`, `periodDays()`, `overhead()`, `renderKpis()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`
+- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `range()`, `renderPeriod()`, `setPeriod()`, `weekHint()`, `kpi()`, `periodDays()`, `overhead()`, `renderKpis()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`, `MORE`
 - [app/web/js/pages/profit-rows.js](../../app/web/js/pages/profit-rows.js) — `rowInner()`, `netCell()`, `detailHtml()`, `stateBox()`, `econLines()`, `costOf()`, `DEAD_SHORT`, `STATE_OPTS`
 - [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `overhead()`, `gaps()`, `LABELS`, `SHOP_TYPES`
 - [app/studio/profit.py](../../app/studio/profit.py) — `ACCOUNTING_FROM`, `OVERHEAD_PER_DAY`, `counted()`, `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`

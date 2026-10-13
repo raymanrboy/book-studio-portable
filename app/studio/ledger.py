@@ -19,7 +19,7 @@ PAYMENT_REFS = ("shop_payment", "processing_fee", "payment_adjustment")  # their
 PAYOUT = "DISBURSE"            # DISBURSE2 — the money sent to the owner's Payoneer
 NEAR = 3                       # seconds: the entries of one sale are posted together
 SHOP_TYPES = ("prolist", "listing", "etsy_plus_credit", "renew_sold_auto_refund")  # the ads, a new listing, Etsy Plus, a listing fee given back (it names no receipt) — the shop's
-ADS = "prolist"                # Etsy charges a day's ads the next morning (~07:40): the entry of 12.10 was the first at the $10 budget of 11.10
+ADS = "prolist"                # Etsy charges a day's ads the next morning (~07:40): the entry of 12.10 was the first at the higher budget of 11.10 ($5 a day, the owner 13.10: $4.96 + 20% VAT)
 ADS_STALE = 3                  # days: ads last charged longer ago than this before the last read are off — no forecast
 # What the fee formula also counts: any other line on a receipt (Offsite Ads, a state's fee) is Etsy's own extra.
 FORMULA_TYPES = ("PAYMENT_GROSS", "sales_tax", "transaction", "shipping_transaction", "PAYMENT_PROCESSING_FEE",
@@ -235,6 +235,8 @@ def view(receipts: list) -> dict:
                                      for t, c in p["lines"].items() if c]}
                      for rid, p in per.items() if p["paid"]},
         "overhead": overhead(entries, data.get("readTo") or 0),
+        # The moments the money went to the owner's Payoneer: the Profit page's weeks run from one to the next (2026-10-13).
+        "payouts": sorted({e["at"] for e in entries if e["type"].startswith(PAYOUT) and e["amount"] < 0}),
         "gaps": gaps(entries),
         "readTo": data.get("readTo"),
     }
