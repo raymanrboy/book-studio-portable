@@ -218,8 +218,8 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   is read every 20 ms and the window in front is checked to be Chrome (only its program's file name is read); no
   key is caught, blocked or written down, nothing else is looked at, and the watching stops after the last part
   (`clipboard.PasteWatch`, `Hotkey`).
-- No internet and no keys: Antigravity is only started on `pipeline/`; the book agents' rules never reach Book
-  Studio's code and data (outside the folder Antigravity opens).
+- No internet and no keys: no agent program is started by Book Studio; the book agents' rules never reach Book
+  Studio's code and data (they sit in `pipeline/`).
 - **The sandbox** (`core.SANDBOX` — the preview server and the tests): the clipboard goes into files, F8 and the keys aren't touched,
   no window opens, Downloads, the books and the Recycle Bin are made-up folders in the data folder.
 - Tests: `TheSandbox`, `OnlyInsideTheBook`, `CatchingDownloads` ([test_workshop.py](../app/tests/test_workshop.py)); `TheTemplates`, `WithoutABook` ([test_photos.py](../app/tests/test_photos.py)).

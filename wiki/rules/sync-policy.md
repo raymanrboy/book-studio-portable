@@ -1,7 +1,7 @@
 ---
 title: When orders are refreshed
 type: rule
-updated: 2026-10-13
+updated: 2026-10-14
 code:
   - app/studio/sync.py
   - app/studio/profit.py
@@ -9,13 +9,15 @@ code:
 ---
 # When orders are refreshed
 
-> **Only ever twice: once automatically on launch, and after that only by button.**
-> Pages never load anything on their own (the owner's requirement, 2026-09-15).
+> **On launch, then quietly every hour while the program runs, and by the button at any time** (since 2026-10-14 — the
+> owner: a refused Gelato payment or a new tracking number should not wait for the button; from 2026-09-15 it was launch +
+> button only). Pages still never start one on their own.
 
 ## How it works
 
 - On launch, `main()` calls `startup_sync()`: if Etsy or Printify is connected, a background job
-  `profit-sync` starts.
+  `profit-sync` starts; then a thread (`_every_hour()`, `AUTO_EVERY` = 3600 s) runs the same job every hour unless one is
+  already running (`_quiet_sync()`) — not in the preview or the tests (`SANDBOX`).
 - The "Orders" page and picking an order in the Order Creator both ask `GET /api/profit/sync` when
   opened: if a sync is running, they show its steps and refresh the list once it's done (one shared
   function for both, `orderSync()` in `order-bits.js`; both list the same orders — `GET /api/orders`, since

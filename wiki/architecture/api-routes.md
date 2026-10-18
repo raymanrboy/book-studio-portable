@@ -69,6 +69,7 @@ code:
 | GET | `/api/orders` | token | `_list` | orders.js (the queue), creator-picker.js `pickEtsyOrder` (the same list; its own `/api/creator/etsy-orders` went on 2026-09-27) |
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (the card; `earlierSends` — sends of this order that never became a print-shop order) |
 | GET | `/api/orders/(\d{5,20})/history` | token | `_history` | order-history.js `mountHistory` (the card's history of a placed Gelato order, read from Gelato when the card opens; `?fresh=1` asks again) |
+| GET | `/api/orders/(\d{5,20})/canva-zip` | token | `_canva_zip` | order-card.js `awaitZip` (after «Відкрити шаблон у Canva», every 2.5 s: this order's ZIP from Downloads, unpacked like a dropped one; `{path, name}`, `{}` or `{error}`) |
 | POST | `/api/orders/(\d{5,20})/files` | token | `_files` | orders.js `arrange` (laying out pages; for Gelato — also whether it prints that many pages in this format; `provider: "files"` — a hardcover, the length picks the printer) |
 
 ## Text check — [textcheck/routes.py](../../app/studio/textcheck/routes.py)
@@ -126,7 +127,7 @@ The books in development (the Workshop) — the book pipeline's folders ([featur
 | GET | `/api/workshop/books/([^/]+)/file` | token | `_file` | workshop-book.js (`?name=` — one of the agent's text files, for the step's panel) |
 | POST | `/api/workshop/books/([^/]+)/mark` | token | `_mark` | workshop-book.js (`{step, on}` — Canva, the mockups, the photo mockups with a category skipped) |
 | POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|mockups\|etsy\|agent, name, variant}` — Explorer, or one file in its program; `variant` — a hero variant's picture) |
-| POST | `/api/workshop/agent` | token | `_agent` | workshop.js «+», workshop-book.js «Відкрити агента» (Antigravity on `pipeline/`; «нова книга» / «Продовжуємо книгу …» into the clipboard) |
+| POST | `/api/workshop/agent` | token | `_agent` | workshop.js «+», workshop-book.js «Відкрити агента» (no program is started; «нова книга» / «Продовжуємо книгу …» into the clipboard) |
 | POST | `/api/workshop/books/([^/]+)/to-library` | token | `_to_library` | add-book.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage` → `{jobId}`; a listing another library book has → 409 with its `bookId`) |
 | POST | `/api/workshop/books/([^/]+)/place` | token | `_place` | workshop-book.js (`?key=&name=&variant=`, body — the picture: cut, flipped, two pages; the cover goes on to wait for its margins; `key=photo:<category>` — a finished photo mockup into `etsy/`, `key=canva-cover` — the photo mockups' Canva cover) |
 | POST | `/api/workshop/books/([^/]+)/adopt` | token | `_adopt` | workshop-book.js «Підхопити з папки» (`{variant}` — the pictures put into `originals/` by hand, the usual way → `{jobId}`; nothing new → an error) |

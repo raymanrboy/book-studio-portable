@@ -248,6 +248,7 @@
 .oc-printed { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
 .oc-printed-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: var(--r-grp); background: var(--accent-soft); color: var(--accent-ink); }
 .oc-printed .faint { font-size: var(--fs-s); }
+.oc-prints { margin-bottom: 12px; }
 
 /* A field with its name above it (2026-09-30) — the Order Creator's address first. */
 .fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

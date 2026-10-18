@@ -21,11 +21,10 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import threading
 from pathlib import Path
 
-from .. import aside, core, desktop, library, portable
+from .. import aside, core, desktop, library
 from ..jobs import jobs
 from ..server import ApiError
 
@@ -482,14 +481,6 @@ def open_in_windows(book_id: str | None, what: str, name: str = "", variant: str
         desktop.open_in_explorer(target)
 
 
-def antigravity() -> Path | None:
-    if portable.antigravity():
-        return portable.antigravity()
-    base = os.environ.get("LOCALAPPDATA")
-    exe = Path(base) / "Programs" / "antigravity" / "Antigravity.exe" if base else None
-    return exe if exe and exe.is_file() else None
-
-
 def agent_words(book_id: str | None) -> str:
     """What to say to the book agent: a new book or which book goes on — with the pipeline's full paths. Antigravity 2
     ignores a folder given at its start: a new chat runs in the project last picked in it, and once that was the
@@ -502,18 +493,9 @@ def agent_words(book_id: str | None) -> str:
 
 
 def open_agent(book_id: str | None) -> str:
-    """Antigravity and, in the clipboard, the words for its agent (`agent_words()`). Which folder the agent works in
-    is the project picked in Antigravity — Book Studio can't choose it."""
+    """Only the words for the book agent (`agent_words()`), in the clipboard: the owner picks the agent or harness
+    to paste them into — no program is started (the owner, 16.10.2026)."""
     say = agent_words(book_id)
-    if not core.SANDBOX:
-        exe = antigravity()
-        if not exe:
-            raise ApiError("Antigravity не знайдено — він має лежати в теці runtime\\Antigravity\\app поруч із програмою."
-                           if portable.root() else
-                           "Antigravity не знайдено (очікувався %LOCALAPPDATA%\\Programs\\antigravity\\Antigravity.exe).")
-        args, env = portable.antigravity_launch() or ([str(exe)], {})
-        subprocess.Popen(args, cwd=str(core.PIPELINE_DIR), env={**os.environ, **env},
-                         creationflags=desktop.CREATE_NO_WINDOW)
     from .. import clipboard
     clipboard.set_text(say)
     return say

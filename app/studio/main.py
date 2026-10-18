@@ -142,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     mockups.clear_books()
     slides.store.clean_temporary()  # the slides' cut-out cache and the bake's browser files (29.09.2026)
     httpd = server.start(args.port)
-    sync.startup_sync()  # the one automatic refresh of orders; afterwards only the refresh button
+    sync.startup_sync()  # a refresh of orders now, then quietly every hour (and by the refresh button)
     # The order archive tidies up on its own (again after every sync): books whose 14 days are over go.
     import threading
     threading.Thread(target=archive.refresh_quietly, daemon=True).start()
@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     # A Workshop book passed on before 27.09.2026 kept a copy of its pages in the library: it takes them from the
     # Workshop instead, its copies to the Recycle Bin (once; a copy that differs keeps its book as it is).
     threading.Thread(target=library.link_workshop_books, daemon=True).start()
-    backup.schedule()  # a copy to Google Drive when the last one is 3 days old (the window waits for it on close)
+    backup.schedule()  # a copy to Google Drive when the last one is 3 days old, checked every 6 hours (the window waits for it on close)
     url = f"{server.base_url()}/"
     if args.no_window:
         print(f"Book Studio: {url}", flush=True)

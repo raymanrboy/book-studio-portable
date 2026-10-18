@@ -1,7 +1,7 @@
 ---
 title: Gelato and the temporary link
 type: integration
-updated: 2026-10-04
+updated: 2026-10-14
 code:
   - app/studio/gelato.py
   - app/studio/gelato_accounts.py
@@ -181,6 +181,41 @@ Gelato's responses are read by a function shared with Printify, `httpc.human()` 
 the key, 404, 429, 4xx — "Gelato rejected the data", 5xx and a drop — with `ambiguous`. For creating a
 draft, this tells apart a refusal from an **unknown result**
 ([order-creator.md](../features/order-creator.md), step 7).
+
+## Paying Gelato (outside the program)
+
+The program only creates drafts; the owner pays the orders in Gelato himself. **The main way: the direct Payoneer integration**
+(Gelato → Billing → Payment → Methods → Payoneer — Gelato takes the money from the Payoneer USD balance, no fee). **A Payoneer
+card** is linked as the spare: it works, but Payoneer may take up to 1.8% a purchase (Gelato is not in the card's country) and the
+card costs 29.95 USD a year (Payoneer's price page, 13.10.2026).
+
+What a hardcover costs now (order #4202433342, 13.10.2026): print $13.17 − Gelato+ discount $3.29 + USPS Ground Advantage $6.99 +
+**9% US sales tax $1.52** (Louisiana) = $18.39. The buyer already paid sales tax on Etsy, so the owner asked Gelato about a resale
+certificate (2026-10-14). Gelato: no registered business is needed, a personal Ukrainian taxpayer number will do, as long as the
+name, address and email match the Gelato account (Billing → Tax center → Resale certificate → Avalara's form, state by state).
+**Submitted on 2026-10-14, all «under review»:** the Streamlined Sales Tax states among his buyers (North Carolina, Iowa, Ohio,
+Wisconsin, Michigan, Tennessee, Minnesota, New Jersey, Nevada, Washington, Kansas, Oklahoma, North and South Dakota) with the
+Ukrainian number, and Pennsylvania with a written reason (no PA licence: a non-US seller selling only through Etsy, a marketplace
+facilitator). **Skipped** — they want a registration in the state, which he has not: California (a seller's permit), New York,
+Florida (its own Annual Resale Certificate), Illinois (the out-of-state option says «delivered outside Illinois» — untrue),
+Missouri (did not let through), Texas (its permit, another US state's or a Mexican RFC). About a quarter of his US orders; once
+approved, their tax line should be gone — the Profit page sees it by itself (it takes Gelato's own totals).
+
+### Incident 2026-10-13 — Payoneer refused every payment to Gelato
+
+- **What happened:** order #4202433342 (Margot, 21:52) and then a top-up of the Gelato USD wallet ($50) failed: «Top-up transaction
+  failed. The program has exceeded the allowed limit. Please contact Payoneer support to request an increase in the limit.» The first
+  refusal of the direct integration; the failed tries never show in Payoneer's history (and Gelato's payments reach it late).
+- **Payoneer support (chat, ticket 261013-020209):** first said there is no limit on their side ($50,000 a month on payments
+  *received* from Gelato — they mixed up the direction) and sent the owner to Gelato; after the wallet top-up failed too, they
+  escalated it and promised to change the limits on his account **within 24 hours**. On 14.10 they explained by email: payments
+  of this integration are capped at **10 a day and 30 a month** (he makes 65–90 a month); they asked for the wanted values — he
+  asked for 40 a day, 600 a month, 1,000 USD a day, 10,000 USD a month, with the Christmas season as the reason.
+- **Meanwhile:** the Payoneer card is linked in Gelato and goes through — the waiting orders can be paid with it (on the order:
+  Edit, after the refusal).
+- **To check on 2026-10-14:** a small wallet top-up ($20) through Payoneer. It passes → the direct integration is the main method
+  again, the card the spare. It fails → write to Payoneer with the ticket number.
+- If it comes back before Christmas: the limit on outgoing payments to Gelato grows with the shop — ask Payoneer for a margin.
 
 ## Where in the code
 

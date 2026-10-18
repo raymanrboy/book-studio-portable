@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-10-04
+updated: 2026-10-18
 code:
   - app/web/js/path.js
   - app/studio/orders.py
@@ -52,6 +52,13 @@ code:
     plain language (`statusText()`: `in_transit` → "In transit", `has-issues` → "Has issues") with a
     dot colored by meaning (`statusTone()`: a problem — yellow, shipped/delivered — green, draft/on
     hold/pending — gray, everything else — light blue). "New" orders don't have a status yet.
+  - **Since 2026-10-14** (the owner's «так» to the audit): a **clock chip** with Etsy's ship-by date (`shipByChip()`: plain,
+    amber on its last day, red once past — late marking counts against the shop), a red **«Payment refused»** when Gelato
+    could not take the money, an amber draft older than 12 hours (`statusChip()`), and **«1/2»** in amber on an order of
+    several books only some of which are ordered (`booksChip()`; listed under «Нові» too — `inTab()`), the status chips of
+    its other sends still waiting at the printer (`pendingChips()`). **A list left open follows the hourly sync**
+    (`watchSyncs()`: once a minute, while the window is shown, it asks `GET /api/profit/sync` — now with `syncedAt` — and
+    fetches the orders again when a newer sync ended) — [rules/order-stages.md](../rules/order-stages.md).
   - Every text in the top row sits on one baseline (not aligned to the top edge of the chips) — the
     owner's requirement.
 - **The queue remembers where the owner was** (since 2026-09-19, his request): the tab, the search, and
@@ -67,6 +74,15 @@ code:
   [rules/order-stages.md](../rules/order-stages.md).
 
 ## Card (`#/orders/<receipt number>`)
+
+**«Відкрити шаблон у Canva» hands the order to the Canva extension** (`canvaLink()`, `openCanva()`; reduced on 2026-10-18): the template's
+link carries `#bs=…` (the receipt, the child, the copy's name `titleOf()`, the book) — the extension makes the copy, names it and deletes
+its first page ([canva-extension](canva-extension.md)). Then each book waits for its own ZIP
+(`awaitZip()`, `w.zipTimer`: `GET /api/orders/<id>/canva-zip?title=…` every 2.5 s for 3 hours, one look at a time — the newest ZIP in
+Downloads named after the book's copy (`canvaTitle()`, «#2» for a second child of one name), saved after the press, its size
+still; `orders.find_canva_zip()`, `_is_book_zip()`), and takes it like a dropped one: unpacked, laid out, checked. Files put in by
+hand end the wait; no child's name in the order — the template opens without the hand-over and the ZIP is dropped as before. The
+download stays in Downloads.
 
 **A "✓ Finish work on this order"** (an × until 2026-09-30 — the same glyph meant «remove» elsewhere) next to the "back"
 arrow appears once a draft has been created for the order (`sentOf()`, `renderFinish()`). Clicking it — the card and the
@@ -89,6 +105,13 @@ print (date, pages, format) and two icons — the [archive](archive.md) entry (f
 «other files» (the files flow, folded until asked, for a send by hand). **The header chip names the printer it really went
 to** (`o.provider`); the printer rule's chip appears only while the order is new. The server gives the card `printed` (`archive.card_facts()`). This replaced the warning "print again only for
 a reprint".
+
+**Several prints — a tab each** (since 2026-10-18, the owner's choice of tabs over a list): an order printed more than once
+(a reprint, a book sent in another go) has tabs above the strip — «Друк · 08.10», «Передрук · 18.10» (`printsTabs()`), the
+newest open. A tab switches the header's status chip and tracking, the strip (date, pages, format, the print's cost, its
+archive entry — matched by `orderId`) and the history (`mountHistory(…, printId)` → `/history?order=`; a Printify print has
+none, the panel hides). The server gives `prints` (`stages.prints()`: `first` / `more` / `reprint`, oldest first). The queue
+row of a reprint being made has a «передрук» chip and no ship-by chip.
 
 Header: the buyer's name and, centered next to it, a printer-status chip (`.ord-title`, the owner's
 request, 2026-09-17); below them, in gray, the receipt number (a click copies it), the time, the stage
@@ -246,9 +269,11 @@ one column.
   `pageOptions` (the lengths for each printer, when it's picked by hand).
 - `GET /api/orders/<receipt>` → the same, for one order, plus `buyerMessage`, `earlierSends` (sends
   that never became a print-shop order, whose files are still in the archive), `atPrinter` and `printed` (the sends
-  that went to print, newest first — since 2026-09-30) — all from `archive.card_facts()`.
+  that went to print, newest first — since 2026-09-30; each with its `orderId`) — all from `archive.card_facts()`; and
+  `prints` — every placed print order of it (`stages.prints()`, since 2026-10-18).
 - `GET /api/orders/<receipt>/history` → `{available, status, events, shipments, due}` — Gelato's history of the placed order
-  (`?fresh=1` skips the minute's memory); `{available: false}` for a new, Printify or unknown one.
+  (`?fresh=1` skips the minute's memory; `?order=<id>` — one of the receipt's own prints, a tab); `{available: false}` for a
+  new, Printify or unknown one.
 - `POST /api/orders/<receipt>/files` `{folder, provider, format}` → `{path, note, renumbered, pageCount, provider}`;
   `provider: "files"` — a card opened before 1 October (the answer's `provider` is Gelato).
 - `POST /api/orders/<receipt>/textcheck` `{folder, pages, pick}` → `{jobId}` (or `{off: true}`, when the
@@ -260,7 +285,7 @@ one column.
 - [app/studio/orders.py](../../app/studio/orders.py) — `_history()`
 - [app/web/js/pages/orders.js](../../app/web/js/pages/orders.js) — `mountQueue()`, `queueState`
 - [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `mountCard()`, `readyBooks()`
-- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `pathSteps()`, `renderPath()`, `goStep()`, `printedHtml()`, `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `linkTimer()`, `redrawPrint()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
+- [app/web/js/pages/order-card.js](../../app/web/js/pages/order-card.js) — `pathSteps()`, `renderPath()`, `goStep()`, `printedHtml()`, `openViewer()`, `readings()`, `pageChanged()`, `revalidate()`, `mountCard()`, `renderPlan()`, `renderLeft()`, `renderRight()`, `filesCard()`, `proofCard()`, `printCard()`, `linkTimer()`, `redrawPrint()`, `arrange()`, `takeDrop()`, `takeFolder()`, `earlier()`, `takeEarlier()`, `print()`, `titleOf()`, `providerOf()`, `blank()`, `showing()`, `printsTabs()`, `showPrint()`, `asShown()`, `startCheck()`, `warmModel()`, `checkBadge()`, `checkBody()`, `issueRow()`, `markPages()`, `learnPassport()`
 - [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — shared with the [order archive](archive.md): `proofHtml()`, `STRIP_THUMB`, `fieldsHtml()`, `addressHtml()`, `etsyAddressLines()`, `svcChip()`, `trackChips()`, `statusChip()`, `statusText()`, `statusTone()`, `STATUS_TONE`, `receiptCopy()`, `copyChip()`, `isFormatField()`, `isCustomText()`, `isNameField()`, `alsoSentChip()`, `restorable()`
 - [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `books_by_listing()`, `book_brief()`, `enrich()`, `arrange_pages()`, `page_options()`, `pages_word()`, `_list()`, `_one()`, `_files()`
 - [app/studio/stages.py](../../app/studio/stages.py) — `picker_orders()`, `order_stage()`, `print_order()`, `waiting_order()`

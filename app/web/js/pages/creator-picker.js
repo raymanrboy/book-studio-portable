@@ -5,7 +5,7 @@ import {
   api, html, ic, ib, setHtml, modal, toast, segHtml, syncSeg, setSeg, dateTime, relTime, slide, debounce, patch,
 } from '../lib.js';
 import {
-  STAGES, matchesOrder, variationsOf, holdClicks, orderSync, svcChip, countStages, emptyOrders,
+  STAGES, matchesOrder, variationsOf, holdClicks, orderSync, svcChip, countStages, emptyOrders, inTab,
 } from '../order-bits.js';
 
 export async function pickEtsyOrder(onPick) {
@@ -48,7 +48,7 @@ export async function pickEtsyOrder(onPick) {
   const render = ({ fresh = false } = {}) => {
     const t = term.trim().toLowerCase();
     countStages(seg, data.orders, t);
-    const rows = data.orders.filter((o) => o.stage === stage && matchesOrder(o, t));
+    const rows = data.orders.filter((o) => inTab(o, stage) && matchesOrder(o, t));
     const before = shown;
     shown = rows.map((o) => o.receiptId);
     if (!rows.length) { setHtml(list, emptyOrders(data.orders, t, stage, sync.syncing, 'empty-sm')); return; }

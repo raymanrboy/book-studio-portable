@@ -94,8 +94,10 @@ def _create_gelato(req: Request):
         first = books[0] if books and isinstance(books[0], dict) else {}
         books = [{**first, "folder": str(archive.folder(reprint_of)),
                   "receiptId": entry.get("receiptId") or first.get("receiptId")}]
+    # «Передрук» with new files: an order already printed, sent again from its card (the tick the Order Creator sets).
+    again = bool(body.get("reprint")) and not reprint_of
     address = body.get("address") or {}
-    job = jobs.start("gelato-create", lambda j: create_gelato_draft(books, address, j, reprint_of=reprint_of),
+    job = jobs.start("gelato-create", lambda j: create_gelato_draft(books, address, j, reprint_of=reprint_of, again=again),
                      exclusive="gelato-create")
     return {"jobId": job.id}
 

@@ -1,7 +1,7 @@
 ---
 title: The order-to-print path, from Etsy
 type: flow
-updated: 2026-10-03
+updated: 2026-10-18
 code:
   - app/web/js/pages/orders.js
   - app/studio/orders.py
@@ -33,7 +33,7 @@ code:
 | 10 | Clicks "Refresh" | A confirmed and paid order moves to "In progress" (the receipt number is in the reference / title); the printer status shows on the right; the book appears in the order archive | [stages.py](../../app/studio/stages.py) `order_stage()`; [printorders.py](../../app/studio/printorders.py) `is_placed()` |
 | 11 | Once the printer ships it — opens the «Позначити в Etsy» tab, clicks to copy the tracking number | An order with a tracking number or "shipped" status is on the truck tab, with a carrier and a number | [stages.py](../../app/studio/stages.py) `order_stage()`; [order-bits.js](../../app/web/js/order-bits.js) `trackChips()` |
 | 12 | Marks the order shipped on Etsy (on the Kyiv PC), then clicks "Refresh" | The order moves to "Sent" (a box); its 14-day countdown starts in the order archive | [rules/order-stages.md](../rules/order-stages.md); [archive.py](../../app/studio/archive.py) `refresh()` |
-| 13 | If something happened to the book — the order's card → «Що пішло в друк · передрук» (or «Інструменти» → «Архів друку») → "Reprint" | Gelato: a new draft from the same files; a Printify-era book is downloaded again and sent from the order's card; the receipt is marked as a replacement | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator/printify_send.py](../../app/studio/creator/printify_send.py) `create_printify_reprint()` |
+| 13 | If something happened to the book — the order's card → «Що пішло в друк · передрук» (or «Інструменти» → «Архів друку») → "Reprint" | Gelato: a new draft from the same files; a Printify-era book is downloaded again and sent from the order's card; the receipt is marked as a replacement. **With new files** (a cover fixed after a complaint): the card's «Покласти інші файли й надіслати ще раз» → the Order Creator ticks «Передрук» itself (since 2026-10-18) | [archive.js](../../app/web/js/pages/archive.js) `reprint()`; [creator/printify_send.py](../../app/studio/creator/printify_send.py) `create_printify_reprint()` |
 
 While the order is in "New", the card and the Order Creator remember with it where the owner left off:
 he can switch to another tab and come back to the same step, even a page showing a successful creation

@@ -12,7 +12,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from . import archive, core, creator, drops, library, printify, reconcile, records, stages, wording
+from . import archive, core, creator, desktop, drops, library, printify, reconcile, records, stages, wording
 from .server import ApiError, Request, route
 
 PRINTIFY_PAGES = 24
@@ -196,7 +196,11 @@ def _one(req: Request):
     order = stages.picker_order(rid)
     if not order:
         raise ApiError("Замовлення не знайдено або його скасовано.", 404)
-    order["buyerMessage"] = stages.facts()["receipts"][rid]["receipt"].get("message_from_buyer") or ""
+    known = stages.facts()
+    one = known["receipts"][rid]
+    order["buyerMessage"] = one["receipt"].get("message_from_buyer") or ""
+    # every print of it — the first, a book sent in another go, a reprint: the card's tabs (owner, 18.10.2026)
+    order["prints"] = stages.prints(one["row"], known["placed"])
     # a send of this order that never went to print (cancelled, a deleted draft): its files can be taken again;
     # a draft or a book of it already at a printer: replacing a page there first asks (the card's own memory of
     # a send is gone after a restart)
@@ -207,14 +211,91 @@ def _one(req: Request):
 @route("GET", r"/api/orders/(\d{5,20})/history")
 def _history(req: Request):
     """The printer's history of one order, asked for when its card is opened (never for the whole queue): Gelato's
-    status and events, the tracking. `{available: false}` — no placed Gelato order to ask about (new, or Printify)."""
-    one = stages.facts()["receipts"].get(req.groups[0])
+    status and events, the tracking. `{available: false}` — no placed Gelato order to ask about (new, or Printify).
+    `order` — one of the receipt's own prints (a tab of the card: the first print, a reprint); else the one it shows."""
+    known = stages.facts()
+    one = known["receipts"].get(req.groups[0])
     shown = (one or {}).get("order") or {}
-    if not one or one["stage"] in ("new", "closed") or shown.get("provider") != "gelato":
+    if one and req.param("order"):
+        wanted = next((p for p in stages.prints(one["row"], known["placed"]) if p["id"] == req.param("order")), None)
+        shown = known["placed"].get(wanted["key"]) if wanted else {}
+    if not one or one["stage"] in ("new", "closed") or (shown or {}).get("provider") != "gelato":
         return {"available": False}
     from . import gelato
     data = gelato.cached_history(shown["id"], gelato.slot_of(shown.get("order") or {}), fresh=req.param("fresh") == "1")
     return {"available": True, **data}
+
+
+# ---------------------------------------------------------------- Canva's ZIP, caught from Downloads (2026-10-15)
+
+_zip_sizes: dict[str, int] = {}   # a ZIP seen once: taken when its size holds still on the next look
+_zip_taking: set[str] = set()     # being unpacked now: a look meanwhile does not take it twice
+
+
+def canva_downloads() -> Path | None:
+    """Where the browser puts Canva's ZIP; the sandbox has a made-up folder of its own."""
+    if core.SANDBOX:
+        return core.data_path("downloads")
+    found = desktop.downloads_folder()
+    return Path(found) if found else None
+
+
+def _is_book_zip(stem: str, receipt_id: str, title: str | None) -> bool:
+    """The book's own ZIP: named after its Canva copy («R - Emma», the browser's «R - Emma (1)» for a second download); with
+    no title, any name carrying the receipt number."""
+    if title:
+        return stem == title or re.fullmatch(re.escape(title) + r" \(\d+\)", stem) is not None
+    return receipt_id in stem
+
+
+def find_canva_zip(receipt_id: str, since: float, folder: Path | None, title: str | None = None) -> Path | None:
+    """The book's newest ZIP in Downloads saved after `since` (seconds), once finished. The Canva extension names the copy
+    after the book and Canva names its ZIP after the design, so only this book's ZIP matches (two books of one order have
+    two names). The newest only: one still growing (or seen the first time) waits for the next look."""
+    if not folder or not folder.is_dir():
+        return None
+    hits = []
+    for e in os.scandir(folder):
+        if not e.is_file() or not e.name.lower().endswith(".zip") or not _is_book_zip(e.name[:-4], receipt_id, title):
+            continue
+        st = e.stat()
+        if st.st_mtime >= since - 2 and st.st_size:
+            hits.append((st.st_mtime, e.path, st.st_size))
+    if not hits:
+        return None
+    _, path, size = max(hits)
+    if len(_zip_sizes) > 200:
+        _zip_sizes.clear()
+    if _zip_sizes.get(path) == size and path not in _zip_taking:
+        return Path(path)
+    _zip_sizes[path] = size
+    return None
+
+
+@route("GET", r"/api/orders/(\d{5,20})/canva-zip")
+def _canva_zip(req: Request):
+    """The order card asks every few seconds after «Відкрити шаблон у Canva»: the book's ZIP (`title` — its Canva copy's name),
+    unpacked into a drop folder just as a dragged one would be — `{path, name}` — `{}` while there is none, `{error}` when it
+    cannot be unpacked (said once, not retried). The ZIP itself stays in Downloads."""
+    try:
+        since = float(req.param("since") or 0) / 1000
+    except ValueError:
+        raise ApiError("Некоректний запит.") from None
+    found = find_canva_zip(req.groups[0], since, canva_downloads(), (req.param("title") or "").strip() or None)
+    if not found:
+        return {}
+    _zip_taking.add(str(found))
+    root = drops.DROPS / uuid.uuid4().hex
+    try:
+        drops.extract_zip(found, root / drops.archive_folder(found.name))
+    except ApiError as err:
+        shutil.rmtree(root, ignore_errors=True)
+        return {"error": str(err)}
+    finally:
+        _zip_taking.discard(str(found))
+        _zip_sizes.pop(str(found), None)
+    drops.clear_drops(keep=root.name, older_than=drops.KEEP_UNUSED)
+    return {"path": str(drops.dropped_folder(root)), "name": found.name}
 
 
 @route("POST", r"/api/orders/(\d{5,20})/files")

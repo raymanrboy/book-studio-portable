@@ -1,7 +1,7 @@
 ---
 title: Profit (counts only sales from 1 October 2026)
 type: feature
-updated: 2026-10-13
+updated: 2026-10-18
 code:
   - app/web/js/pages/profit.js
   - app/web/js/pages/profit-rows.js
@@ -69,6 +69,8 @@ changes — `records.stamp()`) and its routes.
   «Чистий прибуток» and the margin, on days without sales too — **no card of its own** (the owner didn't want to see it). The table's rows stay per order, so
   their sum is a little above the card. With no ledger at all the old estimate stands in: **$1.38 a day** (`profit.OVERHEAD_PER_DAY`,
   `overheadPerDay`, from the owner's September–October statements).
+  **The ads' sum is said under «Собівартість друку»** (2026-10-17, `+ реклама $X`; tooltip: Etsy Ads + Offsite Ads): Etsy Ads from the ledger's
+  per-day `ads` (`adsSpend()`; the ads part of the overhead, forecast days included) plus the period's Offsite Ads fees (`kpi().offsite`, already inside the Etsy Net). Only a caption — the profit already has both.
 
 - **Periods (since 2026-10-13, the owner's list):** on view «Сьогодні», «Вчора», «Цей тиждень», «Цей місяць», «Увесь час»; behind
   «Ще ▾» (a menu; the button takes the name of the one picked) «Минулий тиждень», «Минулий місяць», «30 днів», «Свій період» (only
@@ -76,15 +78,26 @@ changes — `records.stamp()`) and its routes.
   names it), «Минулий тиждень» between the last two (`payouts` — the ledger's DISBURSE entries); a payout's own day counts its ads
   in the week it closes. With no payouts the weeks are the last 7 days and the 7 before. `range()` in `profit.js` gives every
   period's sales window and its days for the ads; the saved `7d` / `month` (30 days) become `week` / `30d`.
+- **«Лістинги»** (since 2026-10-14): a second view of the table (`#pf-view`, icons «Замовлення» / «Лістинги», remembered):
+  the period's sales summed by the Etsy listing they came from — books, «На руки», cost, profit and profit a book, best
+  first (`listingRows()`, `renderListings()`; the server sends each row's `listings`). An order of books from two listings
+  shares its money by the books; a cancelled or fully refunded sale counts its money but no book; the shop's ads are not
+  split (the header's tip says so). The page left open loads again after an hourly sync (`watchSyncs()`), unless a row is open. Replaces counting from Etsy's CSV.
+- **Offsite Ads for the period** (since 2026-10-14): under «На руки», «N замовлень · Offsite Ads −$X» — the ledger's
+  `offsite_ads_fee` lines of the counted rows (already inside the Etsy Net; the tip says for how many sales).
 - Metrics, a table of 50 rows at a time, search.
 - A row expands: a breakdown of fees, cost, state.
 - Manual matching to a Printify/Gelato order, or "no cost".
-- States: cancelled, full/partial refund (amount), replacement (a reprint order and/or an amount).
+- States: cancelled, full/partial refund (amount), replacement (a reprint order and/or an amount). The replacement picker
+  offers every order, the one matching now counts as the receipt's first print too, marked «зараз як перший друк» (one linked
+  by hand stays excluded and refused by `_replacement_orders()`) (since
+  2026-10-18: two Gelato orders of the same name, and only the first print could be picked as the reprint — the costs
+  came out under swapped labels).
 - A sync button (and a full one — re-reading every receipt).
 
 ## What works even without the page
 
-- **A reprint from the [order archive](archive.md)** records a "replacement" state for the receipt on
+- **A reprint from the [order archive](archive.md)**, or one with new files (the Order Creator's «Передрук» tick), records a "replacement" state for the receipt on
   its own (`mark_reprint()`): the new print order is added to `replacementOrders`, so matching keeps the
   first print order attached to the receipt (its stage in the queue doesn't jump), and the reprint isn't
   counted as a new sale. A receipt with a "cancelled" or "refund" state isn't touched; neither is a
@@ -98,7 +111,7 @@ changes — `records.stamp()`) and its routes.
 
 ## Where in the code
 
-- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `range()`, `renderPeriod()`, `setPeriod()`, `weekHint()`, `kpi()`, `periodDays()`, `overhead()`, `renderKpis()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`, `MORE`
+- [app/web/js/pages/profit.js](../../app/web/js/pages/profit.js) — `mount()`, `listingRows()`, `renderListings()`, `VIEWS`, `range()`, `renderPeriod()`, `setPeriod()`, `weekHint()`, `kpi()`, `periodDays()`, `overhead()`, `renderKpis()`, `renderTable()`, `sync()`, `saveState()`, `orderPicker()`, `openMatch()`, `openReplacement()`, `PERIODS`, `MORE`
 - [app/web/js/pages/profit-rows.js](../../app/web/js/pages/profit-rows.js) — `rowInner()`, `netCell()`, `detailHtml()`, `stateBox()`, `econLines()`, `costOf()`, `DEAD_SHORT`, `STATE_OPTS`
 - [app/studio/ledger.py](../../app/studio/ledger.py) — `refresh()`, `assign()`, `view()`, `overhead()`, `gaps()`, `LABELS`, `SHOP_TYPES`
 - [app/studio/profit.py](../../app/studio/profit.py) — `ACCOUNTING_FROM`, `OVERHEAD_PER_DAY`, `counted()`, `build_view()`, `cached_view()`, `SLIM_FIELDS`, `_data()`, `_row()`, `_candidates()`, `_set_link()`, `_set_state()`, `_delete_link()`

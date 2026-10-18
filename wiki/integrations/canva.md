@@ -1,7 +1,7 @@
 ---
 title: Canva — book templates
 type: integration
-updated: 2026-10-08
+updated: 2026-10-18
 code: []
 ---
 # Canva
@@ -31,6 +31,10 @@ code: []
 
 This is the riskiest manual step, which is why the card keeps all the buyer's data close by and lets it
 be copied instead of retyped ([decisions.md](../decisions.md)).
+
+**Since 2026-10-18 the Canva extension does three things of an order** ([canva-extension](../features/canva-extension.md)): makes the
+template's copy named «<receipt> - <child>», deletes the copy's first page, and the card takes the ZIP from Downloads by itself. The name
+in the pages, the dedication, the cover and the download press stay the owner's.
 
 **A demo book for the listing** (a new book in the shop): the same template with a sample name on the
 cover ("Oliver") and a literal `{Name}` in the pages, downloaded as a ZIP; its cover and chosen spreads

@@ -200,8 +200,9 @@ def _in_window(order_time: float | None, receipt_time: float | None) -> bool:
 
 
 class _Printer:
-    """One printer's orders as matching reads them: by the receipt number they name (the first order that names it,
-    a live one before a cancelled one or a draft) and by the recipient's name."""
+    """One printer's orders as matching reads them: by the receipt number they name (the earliest order that names it,
+    a live one before a cancelled one or a draft — a later one is a second go or an unmarked reprint, so the first
+    print stays the receipt's own: owner, 18.10.2026) and by the recipient's name."""
 
     def __init__(self, provider: str, orders: list[dict], rates: dict, reserved, rid_set: set[str]):
         self.orders = [order_facts(provider, o, rates) for o in orders]
@@ -209,7 +210,9 @@ class _Printer:
         free = [f["key"] not in reserved for f in self.orders]
         lengths = {len(r) for r in rid_set}
         self.by_number: dict[str, dict] = {}
-        for i in sorted(range(len(self.orders)), key=lambda i: bool(self.orders[i]["dead"])):
+        # placed before unplaced (a refused payment replaced by a new order), then the earliest
+        for i in sorted(range(len(self.orders)), key=lambda i: (bool(self.orders[i]["dead"]), not self.orders[i]["placed"],
+                                                                 self.orders[i]["created"] or "")):
             if free[i]:
                 for rid in _numbers_named(provider, self.orders[i]["order"], rid_set, lengths):
                     self.by_number.setdefault(rid, self.orders[i])

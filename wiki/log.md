@@ -3,6 +3,116 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-18] decision | A reprint with new files: the «Передрук» tick, «Друкується» while made, a tab per print
+- Order Creator: `alreadyPrinted` → the «Передрук» tick (Gelato `reprint: true` → replacement, archive `reprint`/`reprintOf`).
+- `stages.live_reprint()` / `prints()`; matching takes the earliest order naming a receipt; replacement picker offers the first print too.
+- Order card: `printsTabs()` / `showPrint()`, history `?order=`; queue chip «передрук»; sample data: Liam's reprint marked.
+- Real data: the complaint order's replacement now names the 18.10 reprint, its archive record is a reprint. Tests: `ReprintWithNewFiles`,
+  `GelatoReprint.test_a_reprint_with_new_files*`. Pages: order-stages, reconciliation, profit, archive, order-creator, orders, order-to-print, decisions.
+
+## [2026-10-18] update | Wiki catches up with «no Antigravity» (code of 16.10)
+- workshop.md, api-routes, code-map, testing, security, portable and a new decision now say the Workshop starts no IDE; `antigravity()` is gone from the page's code list.
+
+## [2026-10-18] update | Three order steps back in the Canva extension (0.4.0)
+- The owner kept: the template's copy named after the order, the copy's first page deleted, the ZIP caught from Downloads. New `order.js`
+  (the first one was lost, never committed) and `early.js`; the panel's small order card; the card's `canvaLink()`/`awaitZip()`, the `canva-zip`
+  route, `find_canva_zip()` and the test class are back. Tried live in the owner's signed-in Canva (rename and back, delete page 1 and Ctrl+Z,
+  the template restored); «Файл → Копіювати» not tried (new tab). Run the first real order in his Chrome.
+
+## [2026-10-18] update | The Canva extension's order mode removed
+- Extension 0.3.0: early.js, order.js, the panel's order steps gone. Book Studio: the card's Canva button only opens the template; the hand-over, the ZIP wait, the canva-zip route, the ZIP finder and its test class removed. Decision of 2026-10-15 reversed.
+
+## [2026-10-17] update | Workshop: sort «Спочатку найбільш готові» (default)
+- `workshop.js` `SORTS.most`: by the step bars' readiness, descending; the default instead of by number.
+
+## [2026-10-17] update | Profit: the period's ad spend under the print cost
+- `ledger.overhead()` gives each day an `ads` part; `profit.js` `adsSpend()` + Offsite Ads → «+ реклама $X» under «Собівартість друку». Test `Overhead` updated.
+
+## [2026-10-15] update | The Canva extension's order mode; the card takes Canva's ZIP by itself
+- Extension 0.2.0: `early.js` (the order from `#bs=`), `order.js` (copy, rename, `{Name}` by Canva's find-and-replace, download),
+  the panel's order steps; the icon centred without the badge, the black rim gone. Tried live on a copy of the owner's «BS 4k
+  Трафарет» in the browser pane (copy, replace both ways, rename, the download panel).
+- Book Studio: the card's Canva button passes the order (`canvaLink()`), waits for the ZIP (`awaitZip()`,
+  `GET /api/orders/<id>/canva-zip`, `orders.find_canva_zip()`). Tests: `CanvaZipFromDownloads`; `TextEncoder`/`btoa` allowed.
+- After the code review: only Canva's own «<template>, копія» is claimed as the copy (a design opened meanwhile was at risk of
+  being renamed and edited — checked in a stand-in page: an unrelated design and the template itself are not taken); orders kept
+  per book; each book waits for its own ZIP by the copy's exact name («#2» for a second child of one name); one look at a time,
+  a drop by hand ends the wait, a broken ZIP said once; no child's name — no hand-over.
+  Pages: [features/canva-extension](features/canva-extension.md), [integrations/canva](integrations/canva.md),
+  [features/orders](features/orders.md), [architecture/api-routes](architecture/api-routes.md), [decisions](decisions.md).
+
+## [2026-10-17] update | Book 42: the light-ground formula on a soft muted red; the formula starts from book 46
+- The owner: the formula applies from book 46 on (the older books keep their outer images). Book 42 (Christmas Snowman, FG) got a new wide-image prompt by the formula, but on a soft muted dusty red instead of milky cream (the saturated cranberry solid ground of 2026-10-14 was too strong); the snowman group small and low on a little snowy hill, the upper right empty, small details on the left. The old prompt kept in the session scratchpad. Book check GO, 0 FAIL. Agent 6 and [decisions](decisions.md) updated.
+
+## [2026-10-17] decision | Light-ground covers approved
+- The owner liked all three round-2 pictures of book 40 ("I like this approach"). Saved as the target look in [raw/2026-10-17-white-cover-examples/](raw/2026-10-17-white-cover-examples/SOURCE.md) (`ours-book40-round2-*.jpg`); Agent 6 points to them and to the tested wording.
+
+## [2026-10-17] update | Light-ground covers, round 2: milky cream, the characters lower, details on the left
+- The owner's notes on round 1 of book 40 (three generated pictures): the ground should be milky; the bears were too tall, with almost no room above them for the title (only the tree version hinted at it); the left area should get a few small details. Agent 6's formula rewritten with these (sizes in numbers, the group centered in the right area, new negatives) and round 2 of the three test prompts written to book 40's `agent/cover-white-tests.md`. [Decision](decisions.md).
+
+## [2026-10-17] decision | Covers on a white ground (the light-ground formula of Agent 6)
+- The owner's five example covers saved in [raw/2026-10-17-white-cover-examples/](raw/2026-10-17-white-cover-examples/SOURCE.md) with the analysis (white ground, the upper 40–55% empty for the title, the characters large in the lower part, a vignette dissolving into white or the characters alone on white, one tall framing element). Agent 6 (`pipeline/playbook/agents/6-wraparound-image-director.md`) got the formula as its default; `pipeline/AGENTS.md` and `build-book.md` point to it. Three test prompts for book 40 (A vignette · B alone on white · C tall tree) in its `agent/cover-white-tests.md`. [Decision](decisions.md).
+
+## [2026-10-16] update | Book 46 (Grandma & {Name}: Our Happy Days) in the Workshop; new style preset WP
+- The owner: one new book after a competitor, not Christmas. Taken from TheChildhoodKeeper's grandma-bear listing (the owner liked its look the most): a little bear (the child, {Name}) spends a day with Grandma Bear — hello at the door, cookies, garden, berries, a birdhouse for the robin, tea party, puddles, painting, dress-up, picnic, fireflies, porch swing, bedtime story, goodbye at the gate. Tier S, our own scenes and rhymes. The look became a new preset **WP — Watercolor & Pencil Cottage** in `pipeline/playbook/knowledge/media-presets.md` (added to the style lists of build-book, Agent 2 and onboarding). Book check GO, 0 FAIL. [Book ideas](owner/book-ideas.md) and [listing ideas](owner/listing-ideas.md) updated.
+- Fixed: in `input.md` of books 42–46 the "Visual Medium / Style" and "Tone" values had been swapped by the build script (the prompts were not affected).
+
+## [2026-10-14] update | Book 38 (fox family): the wide-image prompt rewritten with no reference
+- The owner: the picture came out too yellow. Cause: the CG preset is all amber firelight and golden haze, and the old ref frame was warm too. The new prompt has no ref image (the fox family is described in full), a cool snowy-blue and white room with a big blue night window, gold only as small accents, the orange foxes as the one warm color, and negatives against a yellow/sepia/amber cast. Same scene (decorating the tree). Book check GO, 0 FAIL.
+
+## [2026-10-14] update | Books 42 and 43: solid-color wide-image prompts
+- Same idea as 44 (one plain background, the hero large on the right, one small scene, the upper quarter plain for the title). 43 (Letter from Santa, CP): the elf letter carrier from the mail-room frame holding up the opened letter, a tiny glowing North Pole rising out of it, on deep midnight-violet paper; ref `agent/ref_cover_spread-04-05.jpg`. 42 (Snowman, FG): the snowman, bunny and robin on the red sled bursting off a small floating snow island, on deep cranberry red; ref `agent/ref_cover_spread-14-15.jpg`. Both book checks GO, 0 FAIL.
+
+## [2026-10-14] update | Book 44 (Santa's Workshop): a solid-color wide-image prompt
+- The owner wanted to try a cover on one plain background with the hero and a small scene. `44.santas-workshop/agent/cover-prompts-json.md`: Pip large on the right on a stack of gifts with the open star music box, a spiral of star dust rising into one small round vignette (the snowy workshop and the sleigh crossing the moon), all on a single midnight-teal field; the upper quarter plain for the title. `agent/ref_cover_spread-18-19.jpg` attached for Pip and the look only. Book check GO, 0 FAIL.
+
+## [2026-10-14] update | Book 45 (Little Reindeer): the wide-image prompt from the owner's frame
+- The owner chose the pages 4–5 frame (the sparkle chase). Saved as `45.little-reindeer/agent/ref_cover_spread-04-05.jpg`; `agent/cover-prompts-json.md`: the calf leaping on the right after the golden star, a medium-wide view, the upper quarter left as calm starry sky for the title. Book check GO, 0 FAIL.
+
+## [2026-10-14] update | Book 41 (the child and Santa): agents 2–5 after the owner's canonical.png
+- The owner made `canonical.png` (a girl, about 2–3, chestnut bob with a peach bow, red star pajamas). `character-card.md` was rewritten to match the picture; story-blueprint, book-text (no he/she for the child, so the boy version reuses it), 14 panorama prompts each with `reference_image: canonical.png`, 2 squares, text-critic and preflight reports. Book check GO, 0 FAIL, 0 WARN.
+
+## [2026-10-14] ingest | Gelato resale certificates submitted; Payoneer limits explained
+- Resale certificates through Gelato's Avalara form: the SST states and Pennsylvania submitted (under review), California, New
+  York, Florida, Illinois, Missouri, Texas skipped (a state registration needed). Payoneer: the Gelato integration was capped at
+  10 transactions a day and 30 a month; the owner asked for 40 / 600 and 1,000 / 10,000 USD (ticket 261013-020209).
+  Page: [integrations/gelato](integrations/gelato.md).
+
+## [2026-10-14] update | Book 38: a new wide-image prompt — the fox family decorating the tree
+- The owner asked for a new, dynamic cover scene from scratch. `38.night-before-christmas/agent/cover-prompts-json.md`: the four foxes decorate the tree in one moving moment (Papa on a stepstool with the star, Mama swinging the garland, one kit leaping with an ornament, one running with a wobbling tower of gifts), on the right; the upper quarter left calm for the title; a medium-wide view so the faces read at thumbnail size. `agent/ref_cover_spread-04-05.jpg` (the stockings spread) is attached for the characters and the look only. Book check GO, 0 FAIL.
+
+## [2026-10-14] update | The Gelato login survives; the Canva extension's new icon and look
+- The owner signed in to Gelato again every time in the program's Edge (`work-browser`): Edge drops session cookies unless it
+  restores the last session. `settings_api._open_in_profile()` adds `--restore-last-session` — tried on Edge 155 with a local
+  page setting a session cookie: kept with the flag, lost without; a running Edge only adds the tab. `--load-extension` is
+  ignored by Edge 155 (tried) — the extension is installed in that profile once by hand ([dev/portable](dev/portable.md)).
+- The Canva extension: a new icon (orange + the book + a cyan sparkle badge) and a calmer, smoother panel
+  ([features/canva-extension](features/canva-extension.md)); checked in a local page standing in for Canva.
+
+## [2026-10-14] update | The audit's «так»: ship-by, refused payments, two-book orders, listings, hourly sync
+- `sync.normalize_receipt()` keeps `ship_by` (Etsy's `expected_ship_date`, earliest item); an open receipt without it makes
+  one whole Etsy read. `printorders.facts()` adds `payment` (Gelato's `financialStatus`). Sends note their `books`
+  (`records.remember_print_order()`, `creator/sending.py`); `stages.books_in_print()` keeps a partly ordered receipt «new».
+  The queue: `shipByChip()`, `booksChip()`, `statusChip()` (refused red, old draft amber).
+- Profit: «Лістинги» view (`listingRows()`, slim rows carry `listings`), Offsite Ads total under «На руки».
+- `sync._every_hour()` (hourly quiet sync), `backup._watch()` (every 6 h). Slides' numbers 30 / 14.
+- Sample data: ship-by dates, a refused payment (Jane), a 20-hour draft (Alex), Robin's «1/2». Tests: `QueueSignals`, the
+  ship-by full read. Checked in the preview (light). The UI smoke test had failed on an orphaned headless Edge of an
+  earlier run (00:20) holding its profile — closed; its half-made `.tmp/bsui` set aside as `bsui.stale-20261014`.
+- After the code review: a partly ordered receipt keeps its stage (turning it back to «new» hid its print in the card and
+  invited a duplicate) and is listed under «Нові» too (`partial`, `inTab()`), counted by items; its other waiting sends show
+  (`pending`, `pendingChips()`); the ship-by chip goes by calendar days; open lists follow the hourly sync (`watchSyncs()`,
+  `syncedAt` in `GET /api/profit/sync`); «Лістинги» counts no books for cancelled sales; the filter's pill re-measured.
+  Pages: [decisions](decisions.md), [rules/order-stages](rules/order-stages.md), [rules/sync-policy](rules/sync-policy.md),
+  [features/orders](features/orders.md), [features/profit](features/profit.md), [features/backup](features/backup.md),
+  [features/slides](features/slides.md), [dev/testing](dev/testing.md).
+
+## [2026-10-13] ingest | Incident: Payoneer refused the payments to Gelato
+- Order #4202433342 and a $50 wallet top-up failed («The program has exceeded the allowed limit»); Payoneer support (ticket
+  261013-020209) promised to raise the limit within 24 h; the Payoneer card works as the spare. Check on 14.10 with a small top-up.
+  Also what a hardcover costs at Gelato now (print − Gelato+ discount + USPS + 9% US sales tax) and the card's fees.
+  Page: [integrations/gelato](integrations/gelato.md).
+
 ## [2026-10-13] update | Drawn Open 1, Open 2, Dedication kept only without their background
 - The owner saw both versions in the folder again: "if it isn't needed, don't save it". It was needed by the slides (they
   cut book and shadow from the picture with its background) and Cover 1 by the photo mockups. Now `cutout.cut_drawn()`

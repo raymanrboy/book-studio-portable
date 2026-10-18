@@ -133,6 +133,7 @@ class Portable(unittest.TestCase):
         args = launched.call_args.args[0]
         self.assertEqual(args[0], r"C:\edge\msedge.exe")
         self.assertTrue(any(a.startswith("--user-data-dir=") and a.endswith("work-browser") for a in args))
+        self.assertIn("--restore-last-session", args)   # else Edge drops the Gelato login's session cookie on exit
 
     def test_a_fresh_install_opens_gelato_and_canva_in_the_programs_own_profile(self):
         from studio import settings_api

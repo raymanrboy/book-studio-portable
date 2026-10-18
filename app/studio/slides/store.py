@@ -59,7 +59,7 @@ SLOT_LABEL = {"open1:1": "Open 1 · 1", "open1:2": "Open 1 · 2", "open1:3": "Op
 SLIDE_SLOTS = {"slide1": ["open1:1", "open1:2"], "slide2": ["cover"], "slide3": ["dedication", "page30"],
                "slide4": ["open1:3", "open1:4"], "slide5": ["open2:1"], "slide6": ["open2:2"],
                "slide7": HERO_SLOTS}
-NUMBERS = {"pages": 24, "poems": 11}        # «24 unique pages», «11 unique little poems» (the owner, 29.09.2026)
+NUMBERS = {"pages": 30, "poems": 14}        # «30 pages», «14 poems» — the books Gelato prints (the owner, 14.10.2026; 24 / 11 from 29.09)
 
 KINDS = ("blob", "grain", "band", "book", "dashes", "leaves", "sticker", "sparkle", "text", "arrow", "image",
          "ribbon", "heart")

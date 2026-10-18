@@ -1,7 +1,7 @@
 ---
 title: Backup to Google Drive
 type: feature
-updated: 2026-10-04
+updated: 2026-10-14
 code:
   - app/studio/backup.py
   - app/tools/restore_keys.py
@@ -45,7 +45,8 @@ code:
   old one).
 - **Which copies stay** (`to_remove()`): the last 7, plus the newest of each of the last 12 months. The rest are
   deleted from the Drive folder — Drive keeps them in its trash for 30 days.
-- **When** (`start_if_due()`): on launch, after `START_DELAY` (120 s), if the last copy is 3 days old (`EVERY_DAYS`,
+- **When** (`start_if_due()`): on launch, after `START_DELAY` (120 s), and again every 6 hours while the program runs
+  (`CHECK_EVERY`, since 2026-10-14 — a program left open for days made no copy), if the last copy is 3 days old (`EVERY_DAYS`,
   an hour's slack) and the password, 7-Zip and Drive are all there. Never in the preview or the tests (`SANDBOX`).
   The button «Зробити копію зараз» makes one any time. It's a background job: closing the window waits for it.
 - Files another program holds open are skipped with a warning (7-Zip's exit code 1) — their count shows in Settings.
@@ -62,7 +63,7 @@ A test restore of the first real copy is to be done with the owner.
 
 ## Where in the code
 
-- [app/studio/backup.py](../../app/studio/backup.py) — `drive_root()`, `target()`, `sources()`, `copies()`, `to_remove()`, `due()`, `make()`, `start_if_due()`, `schedule()`, `status()`, `SEVEN_ZIP`, `SKIP`, `EVERY_DAYS`, `KEEP_LAST`, `KEEP_MONTHS`, `START_DELAY`
+- [app/studio/backup.py](../../app/studio/backup.py) — `drive_root()`, `target()`, `sources()`, `copies()`, `to_remove()`, `due()`, `make()`, `start_if_due()`, `schedule()`, `_watch()`, `CHECK_EVERY`, `status()`, `SEVEN_ZIP`, `SKIP`, `EVERY_DAYS`, `KEEP_LAST`, `KEEP_MONTHS`, `START_DELAY`
 - [app/studio/vault.py](../../app/studio/vault.py) — `readable()`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `backupCard()`, `watchBackup()`
 - [app/tools/restore_keys.py](../../app/tools/restore_keys.py) — `main()`

@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-10-06
+updated: 2026-10-18
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -23,7 +23,7 @@ code:
 # The Workshop (Майстерня)
 
 > Where the owner makes a new book before it goes on sale. A book is a folder of the book pipeline, where the agents
-> in Antigravity write its formula, hero, story, text and prompts; the Workshop shows the book's path, puts every prompt
+> (in whatever IDE or harness the owner uses) write its formula, hero, story, text and prompts; the Workshop shows the book's path, puts every prompt
 > into the clipboard, **catches the picture the owner downloads from Gemini** into its row — cut, flipped, upscaled,
 > the cover laid on the printer's template — and passes the finished book to the library with its Etsy listing. Part
 > of [«Книги»](modes.md) — its first tab.
@@ -51,9 +51,9 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
   listing's number** (the owner, 29.09.2026). The agents make the folder themselves — the Workshop finds it.
 - **The agents write only into `agent/`** and never touch `book.json` — they can't break a book's state
   ([decisions](../decisions.md)).
-- **Antigravity**: the owner turned on *Agent Gitignore Access* once (`books/` is out of git; checked in the program:
-  `AllowAgentAccessGitignoreFiles`), and picked a project on `Book Studio\pipeline` for new chats. Antigravity ignores a
-  folder given at its start, so the words put into the clipboard carry the full paths (`agent_words()`).
+- **No IDE is started (the owner, 2026-10-16: he gave up on Antigravity).** «+» and the agent icon only put the words for the
+  book agent into the clipboard (`agent_words()`, `open_agent()`); the owner pastes them into the agent or harness of his
+  choice. The words carry the full paths (the rules file and the book's folder), so any agent knows where to write.
 
 ## The gallery («Книги» → «Майстерня», `#/books/work`; `#/workshop` leads there)
 
@@ -62,13 +62,13 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
   hero; `№25 Title`, the cover's title from `book-text.md`, **one bar of eleven segments** (the steps), a chevron with the
   next step (and «n/16» for the pictures), the prompts check's GO or «N помилок»; a pulsing mark with pictures on a book a
   picture is awaited for.
-- Search (Ctrl+F or `/`), sort (`SORTS`, remembered in `bs-workshop-view`), «У роботі · У бібліотеці», the books
-  folder, **«+» (N)** — Antigravity opens, the clipboard holds «Нова книга…» with the paths; the book appears by itself.
+- Search (Ctrl+F or `/`), sort (`SORTS`, remembered in `bs-workshop-view`; default since 2026-10-17 — the most ready first, `readiness()`), «У роботі · У бібліотеці», the books
+  folder, **«+» (N)** — the clipboard holds «Нова книга…» with the paths (no program opens); the book appears by itself.
 
 ## A book (`#/workshop/<folder>`)
 
 - **Header**: back (Esc), `№25 Title`, the cover's title, the Tier chip (H — a child hero on every spread; S — none);
-  on the right a group of icons (the agent — Antigravity and «Продовжуємо книгу …» in the clipboard; the pages; the
+  on the right a group of icons (the agent — «Продовжуємо книгу …» in the clipboard; the pages; the
   originals; the book's folder — it was a labelled button the owner called "important", an icon since the late evening of
   2026-09-30; «Ще» → delete: at once, with «Скасувати» — the folder waits 2 min on the program's shelf, then the Recycle Bin, `aside.py`, 06.10.2026) and one more icon, «Передати в бібліотеку» (a shelf; a tick
   «У бібліотеці» after) — which becomes **the one loud, labelled button** only once every picture and the cover are there.
@@ -191,7 +191,7 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 
 ## Where in the code
 
-- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `AREAS`, `ETSY`, `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `mockups_state()`, `MOCKUPS`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `antigravity()`, `delete_book()`, `to_library()`, `update_state()`
+- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `AREAS`, `ETSY`, `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `mockups_state()`, `MOCKUPS`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `delete_book()`, `to_library()`, `update_state()`
 - [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
 - [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `restore()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`, `_same_as_original()`
 - [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session` (`start_photo()`, `_open()`), `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`

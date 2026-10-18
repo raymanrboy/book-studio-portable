@@ -7,18 +7,25 @@
   window.__bsCanvaPanel = true;
   const Book = window.BSBook;
   const Bot = window.BSCanva;
+  const Order = window.BSOrder;
 
   const store = {
     get(k, d) { try { const v = localStorage.getItem('bs-canva:' + k); return v === null ? d : v; } catch (_) { return d; } },
     set(k, v) { try { localStorage.setItem('bs-canva:' + k, v); } catch (_) { /* a private window — fine */ } },
   };
 
-  // Book Studio's icon (app/web/img/icon.png) drawn; each copy has its own gradient — a hidden copy's would paint nothing.
-  const logo = id => `<svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#f68d4e"/><stop offset="1" stop-color="#df5418"/></linearGradient></defs>
-    <rect width="48" height="48" rx="12" fill="url(#${id})"/>
-    <path d="M9.5 14.2c4.3-1.7 8.8-1.5 13.3.6v20.4c-4.5-2.1-9-2.3-13.3-.6zM38.5 14.2c-4.3-1.7-8.8-1.5-13.3.6v20.4c4.5-2.1 9-2.3 13.3-.6z" fill="#fff"/>
-    <path d="M13.2 19.6h6.2M13.2 23.2h6.2M13.2 26.8h4.2M28.6 19.6h6.2M28.6 23.2h6.2M28.6 26.8h4.2" stroke="#ec7432" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+  // The extension's icon (icons/, 2026-10-14): Book Studio's orange and its open book, with the cyan «magic» badge of the
+  // Books' ink — the book laid into Canva. Each copy has its own gradients (a hidden copy's would paint nothing); `badge`
+  // false for the button over Canva and the panel's head: the badge crowded a 48 px button (the owner, 2026-10-15), it stays
+  // on the toolbar icon only.
+  const logo = (id, badge = true) => `<svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><defs>
+    <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f79254"/><stop offset="1" stop-color="#dc5016"/></linearGradient>
+    <linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#28a8d6"/><stop offset="1" stop-color="#0a74a3"/></linearGradient></defs>
+    <rect x="1.7" y="1.7" width="44.6" height="44.6" rx="11" fill="url(#${id})"/>
+    <g${badge ? '' : ' transform="translate(1.2 1.6)"'}><path d="M22.1 14.3c-3.6-1.9-7.4-2.6-11.9-1.9v18.6c4.4-.7 8.3 0 11.9 1.9zM23.5 14.3c3.6-1.9 7.4-2.6 11.9-1.9v18.6c-4.4-.7-8.3 0-11.9 1.9z" fill="#fff"/>
+    <path d="M13 18.2h5.9M13 22.2h5.9M13 26.2h4.1M26.6 18.2h5.9M26.6 22.2h5.9M26.6 26.2h4.1" stroke="#f4a070" stroke-width="1.5" stroke-linecap="round"/></g>
+    ${badge ? `<circle cx="37" cy="37" r="8.6" fill="#fff"/><circle cx="37" cy="37" r="7.1" fill="url(#${id}b)"/>
+    <path d="M36.2 33.1l.9 3.1 3.1.9-3.1.9-.9 3.1-.9-3.1-3.1-.9 3.1-.9z" fill="#fff"/>` : ''}</svg>`;
   const ICON = {
     folder: '<svg viewBox="0 0 24 24"><path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2h8A1.5 1.5 0 0 1 20.5 9v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z"/></svg>',
     minus: '<svg viewBox="0 0 24 24"><path d="M7 12h10"/></svg>',
@@ -45,12 +52,14 @@
     }
     * { box-sizing: border-box; margin: 0; }
     svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    svg.logo { stroke: none; }  /* the icons' line style outlined the logo in black (the owner's «жахливо», 2026-10-15) */
     button { font: inherit; color: inherit; }
     button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .fab { position: fixed; z-index: 2147483000; width: 48px; height: 48px; padding: 0; border: 0; touch-action: none;
-      border-radius: 13px; background: none; cursor: pointer; box-shadow: 0 6px 18px -4px rgba(191,79,26,.55), 0 1px 2px rgba(0,0,0,.12);
-      transition: transform .2s var(--ease), box-shadow .2s var(--ease); }
+      border-radius: 13px; background: none; cursor: pointer; box-shadow: 0 8px 22px -6px rgba(191,79,26,.5), 0 1px 2px rgba(0,0,0,.12);
+      transition: transform .25s var(--ease), box-shadow .25s var(--ease); animation: fab-in .32s var(--ease); }
+    @keyframes fab-in { from { opacity: 0; transform: scale(.6); } }
     .fab.dragging { cursor: grabbing; transform: scale(1.06); box-shadow: 0 14px 30px -8px rgba(191,79,26,.6), 0 2px 4px rgba(0,0,0,.14); transition: none; }
     .box.dragging { box-shadow: 0 4px 10px rgba(20,21,23,.1), 0 36px 80px -16px rgba(20,21,23,.4); }
     .fab:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 24px -6px rgba(191,79,26,.6), 0 1px 2px rgba(0,0,0,.12); }
@@ -61,37 +70,43 @@
     @keyframes halo { 0%,100% { opacity: .15; transform: scale(.98); } 50% { opacity: .8; transform: scale(1.02); } }
 
     .box { position: fixed; z-index: 2147483000; width: 352px; max-height: calc(100vh - 32px); display: flex; flex-direction: column;
-      background: var(--surface); color: var(--text); font: 13px/1.4 var(--font); border: 1px solid var(--border);
-      border-radius: 14px; box-shadow: var(--shadow-l); overflow: hidden;
-      transform-origin: bottom right; animation: rise .22s var(--ease); }
+      background: var(--surface); color: var(--text); font: 13px/1.4 var(--font); border: 1px solid rgba(20,21,23,.1);
+      border-radius: 16px; box-shadow: var(--shadow-l); overflow: hidden;
+      transform-origin: top left; animation: rise .28s var(--ease); }
     .box[hidden] { display: none; }
-    @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+    .box.closing { animation: sink .18s cubic-bezier(.4,0,1,1) forwards; pointer-events: none; }
+    @keyframes rise { from { opacity: 0; transform: scale(.94) translateY(6px); } }
+    @keyframes sink { to { opacity: 0; transform: scale(.94) translateY(6px); } }
+    @media (prefers-reduced-motion: reduce) { .box, .box.closing, .fab { animation-duration: .01ms !important; } }
 
-    .head { display: flex; align-items: center; gap: 10px; padding: 12px 10px 12px 14px; cursor: grab; user-select: none; touch-action: none; }
+    .head { display: flex; align-items: center; gap: 10px; padding: 12px 10px 10px 14px; cursor: grab; user-select: none; touch-action: none; }
     .head:active { cursor: grabbing; }
-    .head .logo { width: 26px; height: 26px; border-radius: 7px; }
-    .head h1 { flex: 1; font: 600 15px/1.2 var(--display); letter-spacing: .01em; }
-    .head h1 span { color: var(--text-4); font-weight: 400; margin: 0 2px; }
+    .head .logo { width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(191,79,26,.3)); }
+    .head h1 { flex: 1; display: grid; font: 600 15px/1.15 var(--display); letter-spacing: .01em; }
+    .head h1 small { color: var(--text-4); font: 500 11px/1.3 var(--font); letter-spacing: .02em; }
     .icon { width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: var(--text-3); cursor: pointer;
       display: grid; place-items: center; transition: background .12s; }
     .icon:hover { background: var(--surface-3); color: var(--text); }
 
     .controls { display: flex; gap: 8px; padding: 0 14px 12px; }
-    .book { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; cursor: pointer;
-      border: 1px solid var(--border); border-radius: 9px; background: #fff; color: var(--text-2); text-align: left;
-      transition: border-color .15s, background .15s, box-shadow .15s; }
-    .book:hover { border-color: var(--border-strong); background: var(--hover); }
+    .book { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; cursor: pointer;
+      border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text-2); text-align: left;
+      box-shadow: 0 1px 1px rgba(20,21,23,.04); transition: border-color .15s, background .15s, box-shadow .2s var(--ease), transform .12s var(--ease); }
+    .book:hover { border-color: var(--border-strong); box-shadow: 0 3px 10px -4px rgba(20,21,23,.18); }
+    .book:active { transform: scale(.985); }
     .book span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .book.chosen { color: var(--text); font-weight: 600; }
     .book.chosen svg { color: var(--accent); }
-    .pages { width: 84px; height: 36px; padding: 0 8px; border: 1px solid var(--border); border-radius: 9px; background: #fff;
+    .pages { width: 84px; height: 38px; padding: 0 8px; border: 1px solid var(--border); border-radius: 10px; background: #fff;
       color: var(--text); font: 600 13px var(--font); text-align: center; font-variant-numeric: tabular-nums; transition: border-color .15s, box-shadow .15s; }
     .pages:hover { border-color: var(--border-strong); }
+    .pages:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
     .missing { border-color: var(--red) !important; box-shadow: 0 0 0 3px var(--red-soft) !important; animation: nudge .3s; }
     @keyframes nudge { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 
-    .shelf { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; background: var(--surface-2);
-      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); scrollbar-width: thin; }
+    .shelf { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px; background: var(--surface-2);
+      border-top: 1px solid rgba(20,21,23,.07); border-bottom: 1px solid rgba(20,21,23,.07); scrollbar-width: thin;
+      scroll-behavior: smooth; }
     .welcome { display: grid; place-items: center; gap: 12px; padding: 26px 12px 30px; color: var(--text-3); text-align: center; }
     .welcome .open-book { width: 120px; height: 72px; display: flex; gap: 3px; perspective: 400px; }
     .welcome .open-book i { flex: 1; border-radius: 3px 3px 6px 6px; background: #fff; box-shadow: var(--art);
@@ -113,10 +128,10 @@
     .pg.endpaper { background: #fff; cursor: default; box-shadow: var(--art); border-radius: 3px; }
     .pg.endpaper.l { visibility: hidden; }
     .pg.endpaper.r { visibility: hidden; }
-    .pg:not(.endpaper):hover { transform: translateY(-1px); z-index: 1; }
+    .pg:not(.endpaper):hover { transform: translateY(-2px); z-index: 1; filter: brightness(1.03); }
     .pg.nopic { background: repeating-linear-gradient(-45deg, #fff 0 6px, var(--red-soft) 6px 12px); outline: 1.5px dashed var(--red); outline-offset: -1.5px; }
     .pg.off { opacity: .28; filter: grayscale(1); }
-    .pg.focus { outline: 2px solid var(--text); outline-offset: 2px; z-index: 2; }
+    .pg.focus { outline: 2px solid var(--accent); outline-offset: 2px; z-index: 2; }
     .pg .num { position: absolute; left: 3px; bottom: 3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 4px;
       background: rgba(20,21,23,.55); color: #fff; font: 600 10px/15px var(--font); text-align: center; font-variant-numeric: tabular-nums; }
     .pg .tx { position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 5px; background: #fff;
@@ -148,22 +163,54 @@
     .reader .ok { margin-top: 6px; color: var(--green); font: 12px var(--font); }
 
     .foot { padding: 12px 14px 14px; display: grid; gap: 10px; }
-    .bar { height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
-    .bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .5s var(--ease); }
+    .bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+    .bar i { display: block; height: 100%; width: 0; border-radius: inherit; transition: width .6s var(--ease);
+      background: linear-gradient(90deg, #f0874d, var(--accent), #f0874d) 0 0 / 200% 100%; animation: flow 1.6s linear infinite; }
+    .bar.ok i { animation: none; }
+    @keyframes flow { to { background-position: -200% 0; } }
     .bar.ok i { background: var(--green); }
     .row { display: flex; align-items: center; gap: 12px; }
     .msg { flex: 1; min-width: 0; color: var(--text-3); font-size: 12px; line-height: 1.35; }
     .msg.err { color: var(--red); }
     .msg b { color: var(--text); font-variant-numeric: tabular-nums; }
     .go { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 18px 0 14px; border: 0; border-radius: 10px;
-      background: var(--accent); color: #fff; font: 600 14px var(--display); letter-spacing: .01em; cursor: pointer;
+      background: linear-gradient(#cf5a22, var(--accent)); color: #fff; font: 600 14px var(--display); letter-spacing: .01em; cursor: pointer;
       box-shadow: 0 1px 1px rgba(0,0,0,.08), 0 6px 14px -6px rgba(191,79,26,.7);
       transition: background .15s, transform .12s var(--ease), box-shadow .15s; }
-    .go:hover { background: var(--accent-hover); }
+    .go:hover { background: linear-gradient(#bf4f1a, var(--accent-hover)); transform: translateY(-1px); }
     .go:active { transform: scale(.96); }
     .go.stop { background: #fff; color: var(--red); box-shadow: inset 0 0 0 1.5px var(--red); }
     .go.stop:hover { background: var(--red-soft); }
     .go svg { width: 16px; height: 16px; }
+
+
+    /* The order (2026-10-18): the copy of the template named after the order, its first page out — then the owner downloads. */
+    .order { padding: 0 14px 14px; display: grid; gap: 10px; }
+    .order[hidden] { display: none; }
+    .ord-card { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 12px;
+      background: linear-gradient(135deg, rgba(240,135,77,.12), rgba(191,79,26,.05)); border: 1px solid var(--accent-line); }
+    .ord-card .who { flex: 1; min-width: 0; display: grid; }
+    .ord-card .who small { color: var(--text-3); font: 500 11px/1.3 var(--font); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+    .ord-card .who b { font: 600 17px/1.2 var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .steps { list-style: none; padding: 0; display: grid; gap: 2px; }
+    .step { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 4px 10px; padding: 8px 6px 8px 4px; border-radius: 10px; }
+    .step .n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--display);
+      color: var(--text-3); background: var(--surface-3); }
+    .step .n svg { width: 14px; height: 14px; stroke-width: 2.6; }
+    .step.done .n { background: var(--green); color: #fff; }
+    .step.next .n, .step.busy .n { background: var(--accent); color: #fff; }
+    .step .what b { display: block; font-weight: 600; color: var(--text); }
+    .step .what small { display: block; color: var(--text-3); font-size: 12px; line-height: 1.35; }
+    .step .err { color: var(--red); }
+    .step-btn { height: 32px; padding: 0 12px; border-radius: 9px; cursor: pointer; border: 1px solid var(--border); background: #fff;
+      color: var(--text-2); font: 600 12.5px var(--font); white-space: nowrap; }
+    .step.next .step-btn { background: linear-gradient(#cf5a22, var(--accent)); color: #fff; border-color: transparent; }
+    .to-book { justify-self: start; border: 0; background: none; padding: 2px 0; color: var(--text-3); font: 500 12px var(--font);
+      cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+    .to-book:hover { color: var(--text); }
+    .order-chip { display: none; margin: 0 14px 10px; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px;
+      border: 1px dashed var(--accent-line); background: var(--accent-soft); color: var(--accent-hover); font: 600 12px var(--font); cursor: pointer; }
+    .order-chip.on { display: inline-flex; }
 
     /* The lock: while a run goes, a clear layer over Canva takes the real mouse (a hand on the mouse made Canva drag
        a frame); the panel and the button stay above it. */
@@ -186,12 +233,14 @@
   const root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `<style>${CSS}</style>
     <div class="lock" hidden><div class="pill"><b></b><span></span></div></div>
-    <button class="fab" title="Книга → Canva">${logo('bs-fab')}</button>
+    <button class="fab" title="Book Studio · Книга → Canva">${logo('bs-fab', false)}</button>
     <section class="box" hidden>
-      <div class="head">${logo('bs-head')}<h1>Книга <span>→</span> Canva</h1><button class="icon min" title="Згорнути">${ICON.minus}</button></div>
+      <div class="head">${logo('bs-head', false)}<h1>Book Studio<small>Книга → Canva</small></h1><button class="icon min" title="Згорнути">${ICON.minus}</button></div>
+      <section class="order" hidden></section>
+      <button class="order-chip" title="Повернутися до замовлення"><span></span></button>
       <div class="controls">
         <button class="book" title="Папка книги з Майстерні: pipeline/books/…">${ICON.folder}<span>Папка книги</span></button>
-        <input class="pages" value="1-31" spellcheck="false" title="Сторінки: 1-31, 5-10 або 3,7,12">
+        <input class="pages" value="1-31" placeholder="всі 1-31" spellcheck="false" title="Сторінки: 1-31 (31 — обкладинка), 5-10 або 3,7,12. Порожньо — всі">
       </div>
       <div class="shelf"><div class="welcome"><div class="open-book"><i></i><i></i></div><div>Виберіть папку книги</div></div></div>
       <div class="reader" hidden></div>
@@ -202,7 +251,7 @@
     </section>`;
   const $ = s => root.querySelector(s);
   const fab = $('.fab'), box = $('.box'), bookBtn = $('.book'), pagesIn = $('.pages'), shelf = $('.shelf'),
-    reader = $('.reader'), bar = $('.bar'), msg = $('.msg'), go = $('.go');
+    reader = $('.reader'), bar = $('.bar'), msg = $('.msg'), go = $('.go'), orderBox = $('.order'), orderChip = $('.order-chip');
 
   let book = null;        // {name, plan}
   let running = false;
@@ -226,9 +275,14 @@
     el.style.top = Math.min(Math.max(8, a.y), Math.max(8, innerHeight - h - 8)) + 'px';
   }
   const setOpen = open => {
+    store.set('open', open ? '1' : '');
+    if (!open && !box.hidden) {        // the panel sinks away first, then the button comes back where it stood
+      box.classList.add('closing');
+      setTimeout(() => { box.classList.remove('closing'); box.hidden = true; fab.hidden = false; layout(); }, 170);
+      return;
+    }
     box.hidden = !open;
     fab.hidden = open;
-    store.set('open', open ? '1' : '');
     layout();
   };
   let dragged = false;   // a drag of the button ends in a click — that click must not open the panel
@@ -268,6 +322,7 @@
   draggable($('.head'), box);
 
   pagesIn.value = store.get('pages', '1-31');
+  const pageSpec = () => pagesIn.value.trim() || '1-31';  // an empty field means the whole book with the cover
   pagesIn.oninput = () => { pagesIn.classList.remove('missing'); store.set('pages', pagesIn.value); lightPages(); };
 
   const say = (html, bad) => { msg.innerHTML = html || ''; msg.classList.toggle('err', Boolean(bad)); };
@@ -375,7 +430,7 @@
 
   function lightPages() {
     if (!book) return;
-    const on = new Set(Book.parsePages(pagesIn.value) || []);
+    const on = new Set(Book.parsePages(pageSpec()) || []);
     for (const b of shelf.querySelectorAll('.pg[data-page]')) b.classList.toggle('off', !on.has(Number(b.dataset.page)));
   }
 
@@ -464,7 +519,7 @@
     if (countdownCancel) { countdownCancel(); return; }
     if (running) { Bot.stop(); go.querySelector('span').textContent = 'Зупиняю…'; return; }
     if (!book) { missing(bookBtn); return say('Спершу виберіть папку книги', true); }
-    const pages = Book.parsePages(pagesIn.value);
+    const pages = Book.parsePages(pageSpec());
     if (!pages) { missing(pagesIn); return say('Сторінки: 1-31, 5-10 або 3,7,12', true); }
     // the run's mark in the upload names (month-day-hour-minute-second): no older upload of the same page is ever taken
     const now = new Date();
@@ -525,10 +580,106 @@
     else { bar.classList.add('ok'); progress(1); say(`Готово: <b>${done}</b> сторінок за ${min} хв`); }
   };
 
-  // Canva is one page app: the panel lives only in the editor.
+  // ---- The order (2026-10-18): the order card's «Відкрити шаблон у Canva» handed it over (early.js, order.js)
+  let bookMode = false;            // the owner chose «Розкласти книгу» while an order is open
+  let orderBusy = null;            // the step running now
+  let orderError = null;           // {step, text}
+  const orderNow = () => (Order ? Order.current() : null);
+  const here = () => location.pathname.split('/')[2];
+
+  function stepsOf(o) {
+    const onCopy = Order.isCopyFor(o);
+    return [
+      o.copyDesign === here() && !onCopy
+        ? { key: 'rename', title: 'Копія шаблону', note: `Ще не названа «${o.title}»`, done: false, btn: 'Назвати' }
+        : { key: 'copy', title: 'Копія шаблону',
+          note: onCopy ? `«${Order.title()}»` : Order.isTemplateFor(o) ? 'Відкриється в новій вкладці' : 'Відкрийте шаблон з картки замовлення',
+          done: onCopy, btn: !onCopy && Order.isTemplateFor(o) ? 'Зробити копію' : null },
+      { key: 'first', title: 'Перша сторінка',
+        note: onCopy && o.firstDeleted === here() ? 'Видалено' : 'Прибираю з копії',
+        done: onCopy && o.firstDeleted === here(), btn: onCopy && o.firstDeleted !== here() ? 'Видалити' : null },
+      { key: 'download', title: 'Завантажити PNG', note: 'Самі: Файл → Скачати. ZIP піде в картку замовлення сам', done: false, btn: null },
+    ];
+  }
+
+  function drawOrder() {
+    const o = orderNow();
+    const inOrder = Boolean(o) && !bookMode;
+    orderBox.hidden = !inOrder;
+    orderChip.classList.toggle('on', Boolean(o) && bookMode);
+    if (o) orderChip.querySelector('span').textContent = `Замовлення · ${o.child}`;
+    for (const el of [$('.controls'), shelf, reader, $('.foot')]) el.style.display = inOrder ? 'none' : '';
+    if (!inOrder) return;
+    const steps = stepsOf(o);
+    const next = steps.find(s => !s.done && s.btn);
+    orderBox.innerHTML = `<div class="ord-card"><div class="who"><small>Замовлення #${esc(o.receipt)}${o.book ? ' · ' + esc(o.book) : ''}</small><b>${esc(o.child)}</b></div>
+        <button class="icon ord-close" title="Закрити замовлення">✕</button></div>
+      <ol class="steps">${steps.map((s, i) => {
+        const state = orderBusy === s.key ? 'busy' : s.done ? 'done' : s === next ? 'next' : '';
+        const err = orderError && orderError.step === s.key ? `<small class="err">${esc(orderError.text)}</small>` : '';
+        return `<li class="step ${state}"><span class="n">${s.done ? ICON.check : i + 1}</span>
+          <div class="what"><b>${esc(s.title)}</b><small>${esc(s.note)}</small>${err}</div>
+          ${s.btn ? `<button class="step-btn" data-do="${s.key}">${esc(s.btn)}</button>` : '<span></span>'}</li>`;
+      }).join('')}</ol>
+      <button class="to-book">Розкласти книгу з Майстерні</button>`;
+    orderBox.querySelector('.ord-close').onclick = () => { Order.clear(o); drawOrder(); };
+    orderBox.querySelector('.to-book').onclick = () => { bookMode = true; drawOrder(); layout(); };
+    for (const b of orderBox.querySelectorAll('[data-do]')) b.onclick = () => doStep(b.dataset.do);
+  }
+  orderChip.onclick = () => { bookMode = false; drawOrder(); layout(); };
+
+  // One step, under the lock (the real mouse goes nowhere for those few seconds).
+  async function doStep(key, auto = false) {
+    if (orderBusy) return;
+    const o = orderNow();
+    if (!o) return drawOrder();
+    orderBusy = key; orderError = null; drawOrder();
+    lock.hidden = false;
+    lockSay(ICON.book, auto ? 'Готую копію для замовлення — хвилинку' : 'Працюю в Canva — хвилинку');
+    try {
+      if (key === 'copy') await Order.makeCopy(o);
+      else if (key === 'rename') await Order.rename(o.title);
+      else if (key === 'first') {
+        await Order.deleteFirstPage(o);
+        Order.save({ ...o, firstDeleted: here() });
+      }
+    } catch (e) {
+      orderError = { step: key, text: e.message || String(e) };
+    }
+    lock.hidden = true;
+    orderBusy = null;
+    drawOrder();
+  }
+
+  // A fresh copy of the order's template opened in this tab: named after the order, its first page deleted — at once.
+  // Only Canva's own copy of the order's template (Order.isFreshCopy), under the lock.
+  async function takeCopy() {
+    const o = orderNow();
+    if (!o || !Order.isFreshCopy(o) || Order.isCopyFor(o) || orderBusy) return;
+    Order.save({ ...o, copyDesign: here() });
+    orderError = null;
+    orderBusy = 'copy';
+    lock.hidden = false;
+    lockSay(ICON.book, 'Готую копію для замовлення — хвилинку');
+    drawOrder();
+    await new Promise(r => setTimeout(r, 2500));          // Canva's editor settles first
+    let named = true;
+    try { await Order.rename(o.title); } catch (e) { named = false; orderError = { step: 'rename', text: e.message }; }
+    lock.hidden = true;
+    orderBusy = null;
+    if (named) await doStep('first', true);
+    else drawOrder();
+  }
+
   function place() {
     const inEditor = /^\/design\//.test(location.pathname);
-    if (inEditor && !host.isConnected) { document.documentElement.appendChild(host); setOpen(store.get('open', '1') === '1'); }
+    if (inEditor && !host.isConnected) {
+      document.documentElement.appendChild(host);
+      const o = orderNow();
+      setOpen(Boolean(o) || store.get('open', '1') === '1');   // an order opens the panel
+      drawOrder();
+      if (o) takeCopy();
+    }
     if (!inEditor && host.isConnected && !running) host.remove();
   }
   place();

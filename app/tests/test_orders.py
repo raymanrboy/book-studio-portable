@@ -335,8 +335,75 @@ class PartialBookImport(unittest.TestCase):
             self.assertEqual(drops.extract_zip(archive, root / "out2"), 1)   # the Order Creator takes pictures only
 
 
-class SyncOnlyAtStartOrByHand(unittest.TestCase):
-    """Orders are pulled once when the program starts and afterwards only by the refresh button."""
+class CanvaZipFromDownloads(unittest.TestCase):
+    """The order card takes this order's Canva ZIP from Downloads by itself — the extension named the copy
+    «<receipt> - <child>», and Canva names the ZIP after the design."""
+
+    def setUp(self):
+        import os, time, zipfile
+        self.os, self.time, self.zipfile = os, time, zipfile
+        self.dl = Path(tempfile.mkdtemp())
+        orders._zip_sizes.clear()
+
+    def zip(self, name, mtime=None):
+        path = self.dl / name
+        import io
+
+        def picture(size):
+            buf = io.BytesIO()
+            Image.new("RGB", size, (200, 180, 160)).save(buf, "PNG")
+            return buf.getvalue()
+        with self.zipfile.ZipFile(path, "w") as z:
+            z.writestr("Cover.png", picture((64, 32)))
+            for n in range(1, 31):
+                z.writestr(f"{n}.png", picture((32, 32)))
+        if mtime:
+            self.os.utime(path, (mtime, mtime))
+        return path
+
+    def test_only_this_orders_finished_zip_after_the_press(self):
+        now = self.time.time()
+        self.zip("4202433342 - Margot.zip", mtime=now - 3600)          # an older download of the same order
+        self.zip("4100000001 - Emma.zip")                              # another order's
+        self.assertIsNone(orders.find_canva_zip("4202433342", now, self.dl))
+        self.zip("4202433342 - Margot (1).zip")
+        self.assertIsNone(orders.find_canva_zip("4202433342", now, self.dl))   # seen once: its size must hold
+        found = orders.find_canva_zip("4202433342", now, self.dl)
+        self.assertEqual(found.name, "4202433342 - Margot (1).zip")
+
+    def test_each_book_takes_only_its_own_zip(self):
+        """Two books of one order: «R - Emma» and «R - Max» — Emma's ZIP never goes into Max's book."""
+        now = self.time.time()
+        self.zip("4202433342 - Emma.zip")
+        self.assertIsNone(orders.find_canva_zip("4202433342", now, self.dl, "4202433342 - Max"))
+        self.assertIsNone(orders.find_canva_zip("4202433342", now, self.dl, "4202433342 - Max"))
+        self.zip("4202433342 - Max (1).zip")                            # the browser's own «(1)» of a second download
+        orders.find_canva_zip("4202433342", now, self.dl, "4202433342 - Max")
+        self.assertEqual(orders.find_canva_zip("4202433342", now, self.dl, "4202433342 - Max").name, "4202433342 - Max (1).zip")
+        self.assertIsNone(orders.find_canva_zip("4202433342", now, self.dl, "4202433342 - Emma #2"))
+
+    def test_a_broken_zip_is_said_once(self):
+        (self.dl / "4202433342 - Margot.zip").write_bytes(b"not a zip at all")
+        req = SimpleNamespace(groups=("4202433342",), param=lambda k: {"since": "0", "title": "4202433342 - Margot"}.get(k))
+        with mock.patch.object(orders, "canva_downloads", lambda: self.dl):
+            orders._canva_zip(req)
+            self.assertIn("error", orders._canva_zip(req))
+
+    def test_the_route_unpacks_it_like_a_dropped_zip(self):
+        self.zip("4202433342 - Margot.zip")
+        req = SimpleNamespace(groups=("4202433342",), param=lambda k: "0" if k == "since" else None)
+        with mock.patch.object(orders, "canva_downloads", lambda: self.dl):
+            self.assertEqual(orders._canva_zip(req), {})                # the first look only notes its size
+            res = orders._canva_zip(req)
+        folder = Path(res["path"])
+        self.assertTrue((folder / "Cover.png").exists())
+        self.assertEqual(res["name"], "4202433342 - Margot.zip")
+        self.assertTrue((self.dl / "4202433342 - Margot.zip").exists())  # the download itself stays
+
+
+class SyncAtStartHourlyOrByHand(unittest.TestCase):
+    """Orders are pulled when the program starts, quietly every hour (a thread, not in the tests' sandbox — 2026-10-14)
+    and by the refresh button."""
 
     def test_start_up_sync_runs_once_and_pages_can_follow_it(self):
         import threading

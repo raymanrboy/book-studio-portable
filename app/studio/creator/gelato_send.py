@@ -7,7 +7,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from .. import core, gelato, sendlog, tunnel
+from .. import archive, core, gelato, sendlog, tunnel
 from ..jobs import JobError
 from ..server import ApiError
 from .printfolder import gelato_page_options
@@ -72,13 +72,16 @@ def _journal_readback(log: dict, order_id: str, sizes: list[int]) -> None:
                      events=item.get("eventLog"), refusal=item.get("refusalReason"))
 
 
-def create_gelato_draft(books, address: dict, job, reprint_of: str | None = None) -> dict:
+def create_gelato_draft(books, address: dict, job, reprint_of: str | None = None, again: bool = False) -> dict:
     """A Gelato draft order for the books of one Etsy order — several books travel as items of one draft to
     one address. Every attempt is written to the send journal.
-    reprint_of: the archived book this draft reprints (then the folder is that book's archive folder)."""
+    reprint_of: the archived book this draft reprints (then the folder is that book's archive folder);
+    again: a reprint of an order already printed, with new files (the Order Creator's «Передрук» tick, 18.10.2026 —
+    a book fixed after the buyer's complaint): recorded as a replacement like one from the archive."""
     books = books_of(books)
-    return journaled_send("gelato", "reprint" if reprint_of else "draft", joint_title(books),
-                          (b["folder"] for b in books), lambda log: _gelato_draft(books, address, job, log, reprint_of))
+    return journaled_send("gelato", "reprint" if reprint_of or again else "draft", joint_title(books),
+                          (b["folder"] for b in books),
+                          lambda log: _gelato_draft(books, address, job, log, reprint_of, again))
 
 
 def _gelato_book(book: dict, job, log: dict, cfg: dict, at: float) -> dict:
@@ -105,9 +108,13 @@ def _gelato_book(book: dict, job, log: dict, cfg: dict, at: float) -> dict:
             "pageCount": page_count, "geometry": geo}
 
 
-def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: str | None = None) -> dict:
+def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: str | None = None,
+                  again: bool = False) -> dict:
+    reprint = bool(reprint_of or again)
     if reprint_of:
         log["reprintOf"] = reprint_of
+    if reprint:
+        log["reprint"] = True
     cfg = core.settings.section("gelato")
     mark_books(books)
     log["format"] = books[0]["format"]
@@ -200,7 +207,7 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
                            f"перевірте Gelato → Orders → Drafts, чи є там «{title}».")
         _journal_readback(log, order_id, [b["pdf"]["pdfBytes"] for b in ready])
         warnings = [f"{b['title']}: {w}" if b["mark"] else w for b in ready for w in b["pdf"]["warnings"]]
-        record_order(log, warnings, "gelato", ready, order_id, reprint_of)
+        record_order(log, warnings, "gelato", ready, order_id, reprint)
         for book in ready:
             book["archiveId"] = _to_archive(log, job, warnings, "gelato",
                                             [(Path(r["path"]), r["file"]) for r in book["files"]],
@@ -209,12 +216,15 @@ def _gelato_draft(books: list[dict], address: dict, job, log: dict, reprint_of: 
                                              "formatLabel": book["fmt"].get("label"),
                                              "productUid": book["fmt"]["productUid"], "orderId": order_id,
                                              "orderReferenceId": payload["orderReferenceId"], "address": address,
-                                             "reprintOf": reprint_of})
+                                             # with new files: the book's first print in the archive, while it is there
+                                             "reprintOf": reprint_of or (archive.printed_before(book.get("receipt"), book["title"])
+                                                                         if again else None),
+                                             "reprint": reprint})
         first = ready[0]
         return {"archiveId": first["archiveId"], "orderId": order_id, "orderReferenceId": payload["orderReferenceId"],
                 "fulfillmentStatus": created.get("fulfillmentStatus"), "orderType": created.get("orderType"),
                 "format": first["fmt"].get("label"), "keepAliveSeconds": keep, "title": title, "warnings": warnings,
-                "pdfPages": first["pdf"]["pdfPages"], "pageCount": first["pageCount"], "reprint": bool(reprint_of),
+                "pdfPages": first["pdf"]["pdfPages"], "pageCount": first["pageCount"], "reprint": reprint,
                 "books": [{"title": b["title"], "archiveId": b["archiveId"], "format": b["fmt"].get("label"),
                            "pageCount": b["pageCount"], "pdfPages": b["pdf"]["pdfPages"]} for b in ready]}
     finally:

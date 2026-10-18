@@ -36,12 +36,13 @@ SAMPLE_TEXTS = {
 SLIPS = {6: ("{Name}", "Olivai"), 10: ("{Name}", "{NAME}")}  # spread -> what Olivia's book prints instead
 
 
-def _book_bought(rid: int, n: int, cover: str, child: str) -> dict:
-    """One book of a receipt: Etsy calls it a transaction, the program — an item of the order."""
+def _book_bought(rid: int, n: int, cover: str, child: str, ship_by: int | None = None) -> dict:
+    """One book of a receipt: Etsy calls it a transaction, the program — an item of the order. `ship_by` — Etsy's date
+    to ship it by."""
     money = lambda cents: {"amount": cents, "divisor": 100, "currency_code": "USD"}  # noqa: E731
     return {
         "transaction_id": rid * 10 + n, "title": "Personalized Baptism Storybook for Kids", "quantity": 1,
-        "price": money(3990), "sku": "", "listing_id": 4100000900,
+        "price": money(3990), "sku": "", "listing_id": 4100000900, "expected_ship_date": ship_by,
         "variations": [
             {"formatted_name": "Cover Type &amp; Size", "formatted_value": cover},
             {"formatted_name": "Child's Name", "formatted_value": child},
@@ -63,7 +64,9 @@ def _receipt(rid: int, name: str, country: str, city: str, state: str, cover: st
         "message_from_buyer": "Could you ship before the baptism? Thank you!" if rid % 2 else "",
         "grandtotal": money(4990), "total_price": money(3990), "subtotal": money(3990),
         "total_shipping_cost": money(1000), "total_tax_cost": money(0), "discount_amt": money(0),
-        "transactions": [_book_bought(rid, i, cover, kid) for i, kid in enumerate([child, *also])],
+        # Etsy's ship-by date: 3 days after the sale — Chris's (4 days ago) is past, Lee's (3 days) is due today.
+        "transactions": [_book_bought(rid, i, cover, kid, int(time.time()) - days_ago * 86400 + 3 * 86400 - 3600)
+                         for i, kid in enumerate([child, *also])],
     }
 
 
@@ -75,12 +78,13 @@ def _printify(rid: int, status: str, tracking: str = "") -> dict:
             "shipments": [{"carrier": "usps", "number": tracking, "url": ""}] if tracking else []}
 
 
-def _gelato(rid: int, status: str, carrier: str = "", tracking: str = "") -> dict:
+def _gelato(rid: int, status: str, carrier: str = "", tracking: str = "", financial: str | None = None,
+            hours_ago: int = 0) -> dict:
     """A made-up Gelato order (slim, tracking already read) carrying the receipt number."""
     return {"id": f"00000000-0000-4000-8000-{rid:012d}", "orderReferenceId": f"{rid}-sample", "firstName": "",
             "lastName": "", "totalInclVat": "21.50", "currency": "EUR", "fulfillmentStatus": status,
-            "financialStatus": "draft" if status == "draft" else "paid",
-            "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime()),
+            "financialStatus": financial or ("draft" if status == "draft" else "paid"),
+            "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(time.time() - hours_ago * 3600)),
             "orderType": "draft" if status == "draft" else "order",
             "shipments": [{"carrier": carrier, "number": tracking, "url": ""}] if tracking else []}
 
@@ -173,7 +177,8 @@ def seed(data: Path) -> None:
         _receipt(4100000108, "Robin Sample", "US", "Madison", "WI", soft, "Sofia", days_ago=1, also=("Jack",)),
     ]
     printify_orders = [
-        _printify(4100000104, "fulfilled", "9400100000000000000001"),
+        {**_printify(4100000104, "fulfilled", "9400100000000000000001"),
+         "created_at": time.strftime("%Y-%m-%d %H:%M:%S+00:00", time.gmtime(time.time() - 8 * 86400))},
         _printify(4100000105, "fulfilled", "9400100000000000000002"),   # sent: waits for the mark on Etsy
         _printify(4100000106, "in-production"),
         _printify(4100000107, "has-issues"),
@@ -181,8 +186,10 @@ def seed(data: Path) -> None:
     ]
     gelato_orders = [
         _gelato(4100000102, "in_transit", "Canada Post Tracked Packet", "7023210000000003"),  # sent
-        _gelato(4100000103, "draft"),
+        _gelato(4100000103, "draft", hours_ago=20),          # a draft forgotten for 20 hours: amber
         _gelato(4100000107, "printed"),   # Leo's order was split: one book here, one in Printify
+        _gelato(4100000101, "failed", financial="refused"),  # Gelato could not take the money (13.10.2026)
+        _gelato(4100000108, "passed"),    # Robin's two books: only Sofia's ordered so far («1/2»)
     ]
     snapshot = {"receipts": [sync.normalize_receipt(r) for r in receipts], "printify": printify_orders,
                 "gelato": gelato_orders, "shopName": "Sample shop", "syncedAt": core.now_iso(), "warnings": [],
@@ -196,6 +203,8 @@ def seed(data: Path) -> None:
     core.write_json(records.SENDS, {"4100000107": [
         {"provider": "printify", "orderId": f"{4100000107:024x}", "at": core.now_iso()},
         {"provider": "gelato", "orderId": f"00000000-0000-4000-8000-{4100000107:012d}", "at": core.now_iso()},
+    ], "4100000108": [
+        {"provider": "gelato", "orderId": f"00000000-0000-4000-8000-{4100000108:012d}", "at": core.now_iso(), "books": 1},
     ]}, backup=False)
     book_id = "0" * 31 + "1"
     folder = data / "library" / "books" / book_id
@@ -304,6 +313,8 @@ def _seed_archive(data: Path) -> None:
         "title": "4100000104 - Liam", "productId": "sample-product-1", "orderId": "e" * 20 + "0104",
         "address": address, "reprintOf": liam})
     archive.update(reprint, sentAt=archive._iso(time.time() - 2 * 3600))
+    from studio import records
+    records.add_replacement("4100000104", "printify", "e" * 20 + "0104")  # as the reprint's send marks it: Liam's card has two tabs
     olivia = archive.store("gelato", _sample_book(src / "olivia", "Olivia", 30, 120, story=True), {
         "title": "4100000103 - Olivia", "format": "softcover_5x5", "formatLabel": "Softcover 5.5×5.5",
         "orderId": "00000000-0000-4000-8000-004100000103", "address": {**address, "country": "GB", "state": ""}})

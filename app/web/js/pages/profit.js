@@ -4,7 +4,7 @@ import {
   api, post, html, raw, ic, ib, setHtml, on, modal, toast, runJob, segHtml, syncSeg, setSeg, money, menu, dateTime, relTime,
   plural, slide, debounce, reducedMotion, idle, keepFocus, remembered, remember, setProgress, glide, patch, enterOnce,
 } from '../lib.js';
-import { stopSpin } from '../order-bits.js';
+import { stopSpin, watchSyncs } from '../order-bits.js';
 import { refreshInfo, store } from '../info.js';
 import { DEAD_SHORT, costOf, detailHtml, rowInner } from './profit-rows.js';
 
@@ -48,7 +48,8 @@ export async function mount(view) {
     syncing: false,
     notice: null,
   };
-  const persist = () => remember('bs-profit', { period: st.period, start: st.start, end: st.end });
+  st.view = saved.view === 'listings' ? 'listings' : 'orders'; // the table: by order, or summed by listing (2026-10-14)
+  const persist = () => remember('bs-profit', { period: st.period, start: st.start, end: st.end, view: st.view });
 
   setHtml(view, html`
     <div class="page-head">
@@ -74,6 +75,7 @@ export async function mount(view) {
     <div class="table-card">
       <div class="table-top">
         <div class="input-group pf-search">${ic('search')}<input class="input" id="pf-q" placeholder="Замовник, чек чи товар…" autocomplete="off"></div>
+        <div id="pf-view"></div>
         <div id="pf-filter"></div>
         <span class="spacer"></span>
         <span class="pf-count" data-tip="Замовлень у вибірці">${ic('receipt', 'icon-s')}<b class="num" id="pf-count">0</b></span>
@@ -189,21 +191,32 @@ export async function mount(view) {
     if (!byDay) return -days.length * (st.data?.overheadPerDay || 0);
     return days.reduce((sum, d) => sum + (byDay[d]?.amount || 0), 0);
   }
+  // Only the Etsy Ads (Promoted Listings) part of overhead(), negative; with no ledger — nothing known.
+  function adsSpend() {
+    const byDay = st.data?.overheadDays;
+    return byDay ? periodDays().reduce((sum, d) => sum + (byDay[d]?.ads || 0), 0) : 0;
+  }
   function kpi(rows) {
-    let net = 0, cost = 0, profit = 0, n = 0, impact = 0, issues = 0;
+    let net = 0, cost = 0, profit = 0, n = 0, impact = 0, issues = 0, offsite = 0, offsiteN = 0;
     for (const o of rows) {
       if (o.profit === null || o.profit === undefined) continue;
       const c = costOf(o);
       const special = o.state && o.state !== 'normal';
       // Normal orders count once their cost is known (as in the original); cancelled/refunded/replaced ones always.
-      if (c > 0 || special || o.pod_dead) { net += o.etsy_net || 0; cost += c; profit += o.profit || 0; n++; }
+      if (c > 0 || special || o.pod_dead) {
+        net += o.etsy_net || 0; cost += c; profit += o.profit || 0; n++;
+        // Etsy's Offsite Ads fee is already inside the Etsy Net (the ledger's): the period's sum is said under it (2026-10-14).
+        const fee = (o.etsy_extra || []).filter((l) => l.type === 'offsite_ads_fee').reduce((s, l) => s + l.amount, 0);
+        if (fee) { offsite += fee; offsiteN++; }
+      }
       if (special) { impact += o.impact || 0; issues++; }
     }
     const r2 = (v) => Math.round(v * 100) / 100;
     // Ads and new listings (overhead()): counted into the profit and the margin, not shown (2026-10-05) — on a day without
     // sales too: the ads were paid all the same (the owner, 2026-10-13).
     profit += overhead();
-    return { net: r2(net), cost: r2(cost), profit: r2(profit), margin: net > 0 ? Math.round((profit / net) * 1000) / 10 : 0, n, impact: r2(impact), issues };
+    return { net: r2(net), cost: r2(cost), profit: r2(profit), margin: net > 0 ? Math.round((profit / net) * 1000) / 10 : 0, n, impact: r2(impact), issues,
+      offsite: r2(offsite), offsiteN, ads: r2(adsSpend()) };
   }
 
   // ---------------------------------------------------------------- render
@@ -256,7 +269,14 @@ export async function mount(view) {
         card('margin', 'Середня маржа', 'shield', ''), // a number, not an action: no ink of its own (2026-09-30)
       ]);
     }
-    box.querySelector('[data-f="net"]').textContent = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}`;
+    const netFoot = box.querySelector('[data-f="net"]');
+    netFoot.textContent = `${k.n} ${plural(k.n, ['замовлення', 'замовлення', 'замовлень'])}${k.offsite < 0 ? ` · Offsite Ads ${money(k.offsite)}` : ''}`;
+    netFoot.dataset.tip = k.offsite < 0 ? `Комісія Etsy за ${k.offsiteN} ${plural(k.offsiteN, ['продаж', 'продажі', 'продажів'])} через зовнішню рекламу — уже віднята з «На руки»` : '';
+    // Ads in the period, both kinds in one sum (2026-10-17): Etsy Ads (the ledger's) + Offsite Ads (inside the Etsy Net).
+    const adsTotal = k.ads + k.offsite;
+    const cf = box.querySelector('[data-f="cost"]');
+    cf.textContent = adsTotal < 0 ? `+ реклама ${money(-adsTotal)}` : '';
+    cf.dataset.tip = adsTotal < 0 ? `Etsy Ads ${money(-k.ads)} + Offsite Ads ${money(-k.offsite)}. Уже враховано в чистому прибутку` : '';
     box.classList.toggle('kpi-none', !k.n); // no sales in the period: grey zeros, not green ones that look earned
     const pf = box.querySelector('[data-f="profit"]');
     pf.textContent = k.issues ? `Повернення й заміни: ${money(k.impact)}` : '';
@@ -286,7 +306,62 @@ export async function mount(view) {
     else kpiRaf = requestAnimationFrame(step);
   }
 
+  // ---------------------------------------------------------------- by listing
+  // The period's sales summed by the Etsy listing they came from: the books, the money and the profit — which listings
+  // earn, from the orders the program already reads (the owner, 2026-10-14; before, Etsy's CSV export by hand). An order
+  // of books from two listings shares its money between them by the books. The ads of the shop are not split.
+  const VIEWS = [{ value: 'orders', icon: 'receipt', label: 'Замовлення', tip: 'Кожне замовлення' },
+    { value: 'listings', icon: 'book', label: 'Лістинги', tip: 'Продажі й прибуток по лістингах' }];
+  function listingRows() {
+    const term = st.query.trim().toLowerCase();
+    const by = new Map();
+    for (const o of periodRows()) {
+      if (o.profit === null || o.profit === undefined) continue;
+      const c = costOf(o);
+      if (!(c > 0 || (o.state && o.state !== 'normal') || o.pod_dead)) continue; // the cards' own rule (kpi())
+      const items = o.listings || [];
+      const books = items.reduce((s, i) => s + i.qty, 0) || 1;
+      for (const it of items) {
+        const share = it.qty / books;
+        const key = it.id || it.title; // an item without a listing (a deleted one) by its title
+        const x = by.get(key) || { id: it.id, title: it.title, books: 0, net: 0, cost: 0, profit: 0 };
+        // A cancelled or fully refunded sale sold no book; its money (a loss) still counts, as on the cards.
+        if (!['canceled', 'refund_full'].includes(o.state)) x.books += it.qty;
+        x.net += (o.etsy_net || 0) * share; x.cost += c * share; x.profit += (o.profit || 0) * share;
+        by.set(key, x);
+      }
+    }
+    return [...by.values()].filter((x) => !term || x.title.toLowerCase().includes(term)).sort((a, b) => b.profit - a.profit);
+  }
+  function renderListings() {
+    const list = listingRows();
+    $('#pf-count').textContent = list.length;
+    $('#pf-count').closest('.pf-count').dataset.tip = 'Лістингів у вибірці';
+    const box = $('#pf-table');
+    if (!list.length) {
+      setHtml(box, html`<div class="empty"><div class="empty-icon">${ic('book')}</div><h3>Продажів за цей період немає</h3></div>`);
+      return;
+    }
+    setHtml(box, html`<div class="olist" role="table">
+      <div class="ohead lhead" role="row"><div>Лістинг Etsy</div><div class="r">Книг</div><div class="r">На руки (Etsy Net)</div><div class="r">Собівартість</div>
+        <div class="r" data-tip="Без реклами Etsy — вона спільна для магазину">Прибуток</div><div class="r">На книгу</div></div>
+      ${list.map((x) => html`<div class="orow lrow" role="row">
+        <div class="truncate" data-tip="${x.title}">${x.title || `Лістинг #${x.id}`}</div>
+        <div class="r num">${x.books}</div>
+        <div class="r num">${money(x.net)}</div>
+        <div class="r num">${money(x.cost)}</div>
+        <div class="r num ${x.profit < 0 ? 'neg' : ''}"><b>${money(x.profit)}</b></div>
+        <div class="r num faint">${x.books ? money(x.profit / x.books) : '—'}</div>
+      </div>`)}</div>`);
+  }
+  setHtml($('#pf-view'), segHtml(VIEWS, st.view, { name: 'view', compact: true }));
+  requestAnimationFrame(() => syncSeg($('#pf-view .seg')));
+
   function renderTable() {
+    const listings = st.view === 'listings';
+    $('#pf-filter').hidden = listings; // «Без пари» / «Проблемні» are about orders
+    if (listings && st.data && st.data.mode !== 'empty') { renderListings(); return; }
+    $('#pf-count').closest('.pf-count').dataset.tip = 'Замовлень у вибірці';
     const rows = visibleRows();
     $('#pf-count').textContent = rows.length;
     const box = $('#pf-table');
@@ -497,7 +572,7 @@ export async function mount(view) {
   };
 
   // ---------------------------------------------------------------- provider order picker
-  async function orderPicker({ o, title, sub, multi = false, selected = [], exclude = [], foot, onFoot }) {
+  async function orderPicker({ o, title, sub, multi = false, selected = [], exclude = [], notes = {}, foot, onFoot }) {
     try { await ensureCandidates(); } catch (err) { toast(err.message, 'error'); return; }
     const norm = (s) => (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
     const words = new Set(norm(o.customer_name).split(' ').filter((w) => w.length > 1));
@@ -543,7 +618,7 @@ export async function mount(view) {
         return html`<div class="cand ${sel.has(key) ? 'sel' : ''}" data-key="${key}" role="option" aria-selected="${String(sel.has(key))}" tabindex="0" data-press>
           <span class="${multi ? 'box' : 'radio'}"></span>
           <div class="cand-main"><div class="cand-name"><b class="truncate">${c.name}</b>${c.score ? html`<span class="chip chip-green">схоже</span>` : ''}
-            ${c.dead ? html`<span class="chip">${DEAD_SHORT[c.dead]}</span>` : ''}</div>
+            ${c.dead ? html`<span class="chip">${DEAD_SHORT[c.dead]}</span>` : ''}${notes[key] ? html`<span class="chip">${notes[key]}</span>` : ''}</div>
             <div class="cand-meta">#${c.label} · ${dateTime(c.createdAt)}${c.status ? ` · ${c.status}` : ''}${usedNote(c)}</div></div>
           <span class="chip ${c.provider === 'gelato' ? 'chip-blue' : 'chip-lime'}">${c.provider === 'gelato' ? 'Gelato' : 'Printify'}</span>
           <b class="num cand-cost">${money(c.cost)}</b></div>`;
@@ -616,7 +691,11 @@ export async function mount(view) {
       title: 'Замовлення заміни',
       sub: `${o.customer_name} · Чек #${o.etsy_receipt_id} · оберіть замовлення, якими книгу передрукували за ваш рахунок`,
       selected: (o.replacement_orders || []).map((r) => `${r.provider}:${r.id}`),
-      exclude: [primary],
+      // The order now counted as the first print is offered too, marked: when it is really the reprint (two orders
+      // of one name), ticking it puts it right (owner, 18.10.2026 — the reprint could not be picked).
+      // One linked by hand stays the receipt's own and is not offered (the server refuses it too).
+      exclude: o.match_type === 'manual' ? [primary] : [],
+      notes: primary && o.match_type !== 'manual' ? { [primary]: 'зараз як перший друк' } : {},
       foot: html`<span class="spacer"></span>
         <button class="btn btn-ghost" data-x="cancel">Скасувати</button>
         <button class="btn btn-primary" data-x="save">${ic('check', 'icon-s')}Зберегти заміну</button>`,
@@ -642,6 +721,12 @@ export async function mount(view) {
         const hint = weekHint(p.value);
         return { label: hint ? `${p.label} · ${hint}` : p.label, icon: p.icon, on: st.period === p.value, onClick: () => setPeriod(p.value) };
       }));
+    }),
+    on(view, 'click', '[data-seg="view"] button', (e, b) => {
+      if (b.dataset.value === st.view) return;
+      st.view = b.dataset.value; setSeg(b.closest('.seg'), st.view); persist();
+      st.page = 1; st.open = null; renderTable();
+      requestAnimationFrame(() => syncSeg($('#pf-filter .seg'))); // its pill was measured while hidden
     }),
     on(view, 'click', '[data-seg="filter"] button', (e, b) => {
       st.filter = b.dataset.value; setSeg(b.closest('.seg'), st.filter);
@@ -696,5 +781,10 @@ export async function mount(view) {
 
   setHtml($('#pf-kpis'), Array.from({ length: 4 }, () => html`<div class="kpi"><div class="skeleton sk-label"></div><div class="skeleton sk-value"></div></div>`));
   await load();
-  return { unmount() { gone = true; offs.forEach((f) => f()); clearTimeout(noticeTimer); runSearch.cancel(); cancelAnimationFrame(kpiRaf); } };
+  // The hourly sync: the page left open loads what it brought — not while a row is open or a sync of its own runs (2026-10-14).
+  const unwatch = watchSyncs({
+    current: () => st.data?.syncedAt,
+    onNewer: async () => { if (!st.open && !st.syncing && !gone) await load(); },
+  });
+  return { unmount() { gone = true; unwatch(); offs.forEach((f) => f()); clearTimeout(noticeTimer); runSearch.cancel(); cancelAnimationFrame(kpiRaf); } };
 }

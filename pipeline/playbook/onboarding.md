@@ -41,7 +41,7 @@ moment, without jargon.
 > > [Tier H:] A book with a recurring baby hero — so first we'll make the main character. Agree?
 > > [Tier S:] This is an anthology or scenic book (figures change every time or pure scenery) — there is no recurring hero, we'll start straight with the story.
 >
-> > What are we painting with? **rich watercolor (RW, default)** / **pastel watercolor (W)** / **gouache (G)** / **glowing watercolor (GW)** / **luminous oil (LO)** / **high-fidelity realism (HR, scenic/sacred keepsake)** / **cozy glow (CG)** / **festive gouache (FG)** / **colored pencil (CP)** — choose the art style
+> > What are we painting with? **rich watercolor (RW, default)** / **pastel watercolor (W)** / **gouache (G)** / **glowing watercolor (GW)** / **luminous oil (LO)** / **high-fidelity realism (HR, scenic/sacred keepsake)** / **cozy glow (CG)** / **festive gouache (FG)** / **colored pencil (CP)** / **watercolor & pencil cottage (WP)** — choose the art style
 > (`knowledge/media-presets.md`). We will lock it for ALL frames of the book.
 
 *(Note on folder structure: when a new book is initialized, create only `books/[number].[slug]/agent/` and write

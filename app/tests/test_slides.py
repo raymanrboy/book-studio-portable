@@ -413,7 +413,7 @@ class MakingThem(Base):
         self.assertEqual(set(rec["pictures"]), {"dedication", "page30"})
         self.assertTrue(rec["pictures"]["dedication"].get("cut"))            # the floor see-through
         self.assertTrue((out / cutout.NO_BG / "4. Dedication.png").is_file())
-        self.assertEqual(rec["numbers"], {"pages": 30, "poems": 11})
+        self.assertEqual(rec["numbers"], {"pages": 30, "poems": 14})
         self.assertTrue((out / cutout.NO_BG / "1. Cover 1.png").is_file())
         self.assertEqual(len(calls), 6)
         args = calls[0]

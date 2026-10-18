@@ -56,14 +56,56 @@ export const trackChips = (o) => (o.tracking || []).map((t) => html`<span class=
       ? html`<span class="ord-carrier" role="button" tabindex="0" data-press data-act="copy-text" data-text="${t.carrier}" data-done="Перевізника скопійовано" data-tip="Копіювати перевізника">${t.carrier}</span><span class="ord-track-sep"></span>` : ''}<span class="ord-track-no" ${raw(NUMBER_COPY)} data-text="${t.number}">${t.number}</span></span></span>`);
 
 /** The printer's status (its own word, in English, as the owner asked); nothing before the book is ordered. */
-export const statusChip = (o) => (o.printStatus
-  ? html`<span class="chip ${statusTone(o.printStatus)}" data-tip="Статус у ${providerName(o.provider)}"><span class="dot"></span>${statusText(o.printStatus)}</span>`
-  : '');
+// A draft waiting longer than this at the printer is shown amber: confirmed and paid, or forgotten? (2026-10-14)
+const DRAFT_STALE_HOURS = 12;
+export const statusChip = (o) => {
+  // Gelato could not take the money (its financial status «refused», 13.10.2026: a Payoneer limit) — red, whatever the order's own word.
+  if (o.payment === 'refused') {
+    return html`<span class="chip chip-red" data-tip="${providerName(o.provider)} не зміг списати оплату — оплатіть замовлення там (Edit)"><span class="dot"></span>Payment refused</span>`;
+  }
+  if (!o.printStatus) return '';
+  const hours = /draft/i.test(o.printStatus) && o.orderCreated ? (Date.now() - new Date(o.orderCreated).getTime()) / 3600000 : 0;
+  if (hours >= DRAFT_STALE_HOURS) {
+    return html`<span class="chip chip-amber" data-tip="Чернетка в ${providerName(o.provider)} чекає підтвердження й оплати вже ${Math.floor(hours)} год"><span class="dot"></span>${statusText(o.printStatus)}</span>`;
+  }
+  return html`<span class="chip ${statusTone(o.printStatus)}" data-tip="Статус у ${providerName(o.provider)}"><span class="dot"></span>${statusText(o.printStatus)}</span>`;
+};
+
+/** The receipt's other sends waiting at the printer (o.pending): a second book's draft or refused payment shows too. */
+export const pendingChips = (o) => (o.pending || []).map((p) => statusChip({ provider: p.provider, printStatus: p.status, payment: p.payment, orderCreated: p.created }));
+
+/** Etsy's date to ship by (o.shipBy, epoch seconds) until the order is marked shipped: plain, amber on its last day,
+ * red once past — a late one counts against the shop's dispatch record (2026-10-14). */
+export const shipByChip = (o) => {
+  if (!o.shipBy || o.stage === 'shipped' || o.reprint) return ''; // a reprint: Etsy's order was shipped long ago
+  const due = new Date(o.shipBy * 1000);
+  // By calendar days, not to the second: what time of the day Etsy puts in the date is not known, so the due day itself is
+  // amber, and only the day after it red.
+  const dayOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const left = Math.round((dayOf(due) - dayOf(new Date())) / 86400000);
+  const day = due.toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
+  const tone = left < 0 ? 'chip-red' : left === 0 ? 'chip-amber' : '';
+  const tip = left < 0 ? `Строк відправки за Etsy минув ${day}` : `Відправити до ${day} — строк Etsy`;
+  return html`<span class="chip ${tone}" data-tip="${tip}">${ic('clock', 'icon-s')}${day}</span>`;
+};
+
+/** The books of an order of several: amber «1/2» while only some of them are ordered at the printer (2026-10-14). */
+export const booksChip = (o) => {
+  if (!(o.books > 1)) return '';
+  if (o.partial) {
+    const of = (o.items || []).length;
+    return html`<span class="chip chip-amber" data-tip="Замовлено в друкарні ${o.booksInPrint} з ${of} книг — решту ще треба замовити (рахуються відправки цієї програми)">${ic('book', 'icon-s')}${o.booksInPrint}/${of}</span>`;
+  }
+  return html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>`;
+};
 
 /** The stage tabs' counts for a search — the queue and the Order Creator's «Замовлення Etsy» list the same orders. */
+/** Whether an order is listed on a stage's tab: its own, and «Нові» for one whose books are only partly ordered (2026-10-14). */
+export const inTab = (o, stage) => o.stage === stage || (stage === 'new' && !!o.partial);
+
 export function countStages(seg, orders, term) {
   seg.querySelectorAll('button[data-value]').forEach((b) => {
-    const n = orders.filter((o) => o.stage === b.dataset.value && matchesOrder(o, term)).length;
+    const n = orders.filter((o) => inTab(o, b.dataset.value) && matchesOrder(o, term)).length;
     const count = b.querySelector('.seg-count');
     if (count.textContent !== String(n)) {
       count.textContent = n;
@@ -233,8 +275,9 @@ export function addressFromEtsy(o) {
   };
 }
 
-// Orders are pulled from Etsy, Printify and Gelato only twice over: once when the program starts
-// (on the server) and whenever the refresh button is pressed. Pages never start a sync on their own.
+// Orders are pulled from Etsy, Printify and Gelato when the program starts, quietly every hour (on the server, since
+// 2026-10-14) and whenever the refresh button is pressed. Pages never start a sync on their own; an open list notices a
+// finished one (watchSyncs()) and shows the new orders.
 
 /** Pulls the latest orders now (the refresh button; a few seconds). */
 async function syncOrders(onStep) {
@@ -291,6 +334,22 @@ export function orderSync({ fetch, alive, setSub, syncedText, button, onStart, o
   };
   sync.follow = () => runningSync().then((jobId) => { if (jobId && alive()) sync.refresh(() => watchSync(jobId, setSub)); });
   return sync;
+}
+
+/** An open page and the hourly sync (2026-10-14): once a minute, while the window is shown, it asks whether a sync runs
+ *  (then onRunning()) or ended after the page's own data (then onNewer()). Returns the function that stops it. */
+export function watchSyncs({ current, onRunning, onNewer, every = 60000 }) {
+  let busy = false;
+  const timer = setInterval(async () => {
+    if (busy || document.hidden) return;
+    busy = true;
+    try {
+      const s = await api('/api/profit/sync');
+      if (s.jobId) onRunning?.();
+      else if (s.syncedAt && current() && s.syncedAt !== current()) await onNewer();
+    } catch { /* the next minute tries again */ } finally { busy = false; }
+  }, every);
+  return () => clearInterval(timer);
 }
 
 /** Pages that still have a previous version on disk, from the files check — so «Повернути» is offered

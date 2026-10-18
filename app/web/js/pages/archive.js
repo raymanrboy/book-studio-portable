@@ -30,7 +30,7 @@ function clockChip(e) {
 function clockText(e, keepDays) {
   if (e.keep) return 'Не видаляти: файли лишаються, доки не знімете позначку.';
   if (e.deleteAt) return `Файли видаляться ${dateTime(e.deleteAt)} — ${e.daysLeft ? `через ${e.daysLeft} дн.` : 'сьогодні'}`;
-  return e.reprintOf
+  return e.reprintOf || e.reprint
     ? `Файли зберігатимуться ${keepDays} днів після того, як друкарня відправить передрук.`
     : `Файли зберігатимуться ${keepDays} днів після того, як замовлення стане «Відправленим».`;
 }
@@ -61,7 +61,7 @@ async function mountList(view) {
       <span class="ord-thumb arc-thumb"><img data-fade loading="lazy" decoding="async" src="${file(e, 'Cover.png', THUMB)}" alt=""></span>
       <span class="ord-main">
         <span class="row ord-chips"><b class="truncate">${e.buyer || e.title}</b>${e.receiptId ? receiptCopy(e, 'chip chip-mono') : ''}${svcChip(e.provider)}
-          ${e.reprintOf ? html`<span class="chip" data-tip="Передрук книги з архіву">${ic('sync', 'icon-s')}передрук</span>` : ''}${trackChips(e)}</span>
+          ${e.reprintOf || e.reprint ? html`<span class="chip" data-tip="${e.reprintOf ? 'Передрук цього замовлення' : 'Передрук цього замовлення з новими файлами'}">${ic('sync', 'icon-s')}передрук</span>` : ''}${trackChips(e)}</span>
         <span class="ord-meta faint truncate"><span data-tip="${dateTime(e.sentAt)}">у друці ${relTime(e.sentAt)}</span> ·
           ${child ? html`<b class="ord-child">${child}</b> · ` : ''}<span class="num">${e.pageCount}</span> стор.${e.formatLabel ? ` · ${e.formatLabel}` : ''}</span>
       </span>

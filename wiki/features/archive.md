@@ -1,7 +1,7 @@
 ---
 title: Order archive — what went to print, and reprints
 type: feature
-updated: 2026-10-04
+updated: 2026-10-18
 code:
   - app/studio/archive.py
   - app/tools/archive_dedupe.py
@@ -128,6 +128,12 @@ reprint mode is dropped.
   replacement: it becomes the only live print order, gets matched like a normal one, and the receipt
   moves from "New" to "In progress".
 - A reprint is a new record in the archive (`reprintOf`) and in the send journal (`kind: reprint`).
+- **A reprint with new files** (since 2026-10-18: a cover fixed after the buyer's complaint): sent from the order's card
+  through the Order Creator with its «Передрук» tick ([order-creator](order-creator.md)). The new files go (not the
+  archived ones); the record has `reprint: true` and `reprintOf` — the first print's book while it is still archived
+  (`printed_before()`). It counts as a reprint everywhere (`is_reprint()`): its 14 days start when its own print order is
+  shipped, it is marked a replacement, the «передрук» chip. Before, such a send was a «second sale»: its record took the
+  receipt's «Sent» at once and its files would have gone 14 days after sending.
 - **Only from a book that really went to print** (`reprintable()`): the server won't make a reprint from
   a send that never became an order (409) — that order is simply sent again from its card.
 
@@ -153,11 +159,11 @@ page itself remembered this).
 - `POST /api/archive/<id>/keep` `{keep}` → the record.
 - `POST /api/archive/<id>/reuse` → `{path}` of a working copy of the files, for the order card.
 - `POST /api/creator/printify/reprint` `{archiveId, title, address}` → a background job.
-- `POST /api/creator/gelato/create` with `reprintOf` — a reprint draft.
+- `POST /api/creator/gelato/create` with `reprintOf` — a reprint draft; with `reprint: true` — a reprint with the page's own (new) files.
 
 ## Where in the code
 
-- [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `page_key()`, `_index()`, `dedupe()`, `INDEX`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `card_facts()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
+- [app/studio/archive.py](../../app/studio/archive.py) — `ROOT`, `KEEP_DAYS`, `LOST_DAYS`, `store()`, `update()`, `entries()`, `get()`, `folder()`, `receipt_of()`, `child_of()`, `_facts()`, `_loaded()`, `_reached_buyer()`, `_unknown()`, `standing()`, `shown()`, `clock()`, `refresh()`, `_note()`, `_reprint_mark()`, `is_reprint()`, `printed_before()`, `refresh_quietly()`, `_remove()`, `summary()`, `_warm_previews()`, `page_key()`, `_index()`, `dedupe()`, `INDEX`, `_list()`, `_one()`, `_keep()`, `reprintable()`, `card_facts()`, `_reuse()`, `DROP_DAYS`, `VANISH_DAYS`
 - [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `_to_archive()`, `_mark_reprint()`, `_journaled()`
 - [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `create_printify_reprint()`, `_printify_reprint()`
 - [app/studio/creator/routes.py](../../app/studio/creator/routes.py) — `_reprint_printify()`, `_create_gelato()`

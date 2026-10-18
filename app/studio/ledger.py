@@ -190,15 +190,16 @@ def overhead(entries: list, read_to: int) -> dict:
             day -= timedelta(days=1)
             ads[day] += e["amount"]
         cents[day] += e["amount"]
-    out = {d.isoformat(): {"amount": c / 100, "forecast": False} for d, c in cents.items()}
+    out = {d.isoformat(): {"amount": c / 100, "ads": ads.get(d, 0) / 100, "forecast": False} for d, c in cents.items()}
     last_read = datetime.fromtimestamp(read_to or time.time()).date()
     if ads and max(ads) >= last_read - timedelta(days=ADS_STALE):
         last = max(ads)
         day = last + timedelta(days=1)
         # Up to today, not only to the last read: a page opened the next day without a sync still counts the ads.
         while day <= max(last_read, datetime.now().date()):
-            got = out.setdefault(day.isoformat(), {"amount": 0.0, "forecast": False})
-            got.update(amount=round(got["amount"] + min(0, ads[last]) / 100, 2), forecast=True)
+            got = out.setdefault(day.isoformat(), {"amount": 0.0, "ads": 0.0, "forecast": False})
+            got.update(amount=round(got["amount"] + min(0, ads[last]) / 100, 2),
+                       ads=round(got["ads"] + min(0, ads[last]) / 100, 2), forecast=True)
             day += timedelta(days=1)
     return out
 

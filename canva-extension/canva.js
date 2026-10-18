@@ -172,6 +172,8 @@
     await sleep(150);
   }
 
+  NS.openPage = openPage;   // the order's steps open a page (order.js)
+
   // What was seen while waiting for a page — the failing sign is in the message, so a screenshot of it is enough.
   function pageReport(n) {
     const groups = $$('[id^="accessibility_dom"][role="group"]').map(g => g.getAttribute('aria-label')).slice(0, 3);

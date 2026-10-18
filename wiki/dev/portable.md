@@ -1,7 +1,7 @@
 ---
 title: The portable copy
 type: dev
-updated: 2026-10-04
+updated: 2026-10-14
 code:
   - app/studio/portable.py
   - app/tests/test_portable.py
@@ -31,7 +31,7 @@ Without `runtime/` they all answer None and every place looks where it always di
 - **Saved paths** (`relocate()`): a path in the settings that contains a `runtime` folder of another place the copy was moved
   from is taken into the current `runtime/`. In the portable copy the mockups' places are `runtime/Photoshop` and
   `runtime/Templates` first (`mockups._saved_or_runtime()`); no PC-specific path is left in the code (cleaned 2026-10-03).
-- **Users:** `mockups.places()`, `workshop/books.antigravity()`, `textcheck/ollama._ollama_command()` and its start,
+- **Users:** `mockups.places()`, `textcheck/ollama._ollama_command()` and its start,
   `workshop/upscale._candidates()`, `photos.ffmpeg()`, `settings_api._open_in_profile()`, `workshop/books.open_agent()`.
 - **Left as the owner set them:** the backup folder (`G:\My Drive\…`) and the mockups' last output folder — his own
   folders, not programs.
@@ -60,7 +60,11 @@ Without `runtime/` they all answer None and every place looks where it always di
 - **Gelato and Canva links open in Edge** (every Windows has it) with a profile of its own, `work-browser` in the data folder
   (`settings_api._open_in_profile()`), instead of Cent Browser's «Work»: a browser's saved logins are encrypted for the
   Windows user and would not travel anyway, so the 5 GB browser copy was dropped. Log in to Gelato and Canva once per PC.
-  The original install still uses Cent.
+  The original install still uses Cent. **It starts with `--restore-last-session`** (2026-10-14, the owner signed in to Gelato
+  again and again): Edge drops session cookies on exit unless it restores the last session — tried on Edge 155, the cookie
+  lives through a restart only with the flag; a running Edge just adds the new tab. The last tabs come back with it.
+  **The Canva extension goes into this profile once by hand** (`edge://extensions` → «Режим розробника» → «Завантажити
+  розпаковане» → `Book Studio\canva-extension`): Edge 155 ignores `--load-extension`, even with its opt-out (tried).
 - **`pipeline/AGENTS.md` is the only entry point** for book agents (the owner: «щоб будь-який агент міг юзати»); `GEMINI.md`
   is gone from the copy and the Workshop's words name `AGENTS.md`. The owner's global Antigravity rules (`~/.gemini/GEMINI.md`:
   answer in Ukrainian, no jargon, check yourself) came along inside the copied `home/.gemini`.

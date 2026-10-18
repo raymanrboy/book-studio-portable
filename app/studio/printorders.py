@@ -104,6 +104,7 @@ def facts(provider: str, order: dict, rates: dict) -> dict:
     return {"key": f"gelato:{order.get('id')}", "provider": provider, "id": str(order.get("id")),
             "name": full_name(order.get("firstName"), order.get("lastName")), "created": order.get("createdAt"),
             "status": order.get("fulfillmentStatus"), "shown": shown_status(provider, order), "dead": dead(provider, order), "placed": is_placed(provider, order),
+            "payment": str(order.get("financialStatus") or "").lower(),  # "refused" — Gelato could not take the money
             "cost": to_usd(raw, order.get("currency"), rates), "prod": 0.0, "ship": 0.0, "raw_cost": raw,
             "currency": order.get("currency") or "USD",
             "label": order.get("orderReferenceId") or str(order.get("id"))[-8:].upper(),

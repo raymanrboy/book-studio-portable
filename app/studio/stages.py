@@ -46,6 +46,82 @@ def waiting_order(row: dict, placed: dict) -> tuple[str | None, dict]:
     return None, {}
 
 
+def books_in_print(row: dict, placed: dict, refs: list) -> int | None:
+    """How many of the receipt's books are in placed print orders, by this program's own send records (each send notes
+    its books since 2026-10-14). None — not known: the shown print order was sent before that or made at the printer by
+    hand, and is taken to hold every book, as before."""
+    provider, shown = print_order(row, placed)
+    by_key = {f"{r.get('provider')}:{r.get('orderId')}": r for r in refs or []}
+    if not provider or shown.get("key") not in by_key:
+        return None
+    n = 0
+    for key, ref in by_key.items():
+        if not (placed.get(key) or {}).get("placed"):
+            continue
+        if not ref.get("books"):
+            return None
+        n += int(ref["books"])
+    return n
+
+
+def _pending(refs: list, placed: dict, shown: dict) -> list:
+    """The receipt's other sends that wait at the printer (a draft, awaiting payment, a refused payment — not cancelled):
+    a second book's refused payment shows on the row too, not only the shown order's (2026-10-14)."""
+    out = []
+    for ref in refs or []:
+        f = placed.get(f"{ref.get('provider')}:{ref.get('orderId')}")
+        if not f or f.get("placed") or f.get("key") == shown.get("key") \
+                or str(f.get("status") or "").lower() in printorders.CANCELLED:
+            continue
+        out.append({"provider": f["provider"], "status": f.get("shown") or f.get("status") or "",
+                    "payment": f.get("payment") or "", "created": f.get("created")})
+    return out
+
+
+def _shipped_by_printer(facts: dict) -> bool:
+    return bool(facts.get("tracking")) or str(facts.get("status") or "").lower() in printorders.SENT_STATUSES
+
+
+def live_reprint(row: dict, placed: dict) -> dict:
+    """The receipt's replacement reprint that is placed at the printer and not shipped by it yet — the newest one —
+    or {} when there is none. While it is being made the order is «в роботі» again, whatever Etsy says (owner,
+    18.10.2026: a reprint sat among the shipped orders and its own print could not be followed)."""
+    if row.get("state") != "replacement":
+        return {}
+    found = {}
+    for ref in row.get("replacement_orders") or []:
+        facts = placed.get(f"{ref.get('provider')}:{ref.get('id')}") or {}
+        if facts.get("placed") and not _shipped_by_printer(facts) \
+                and (facts.get("created") or "") >= (found.get("created") or ""):
+            found = facts
+    return found
+
+
+def prints(row: dict, placed: dict) -> list[dict]:
+    """Every placed print order of the receipt, oldest first: its own («first»), its other books sent in another go
+    («more») and its reprints («reprint») — the order card shows each as its own tab (owner, 18.10.2026)."""
+    out, seen = [], set()
+
+    def add(provider, order_id, kind):
+        facts = placed.get(f"{provider}:{order_id}") or {}
+        if not facts.get("placed") or facts["key"] in seen:
+            return
+        seen.add(facts["key"])
+        out.append({"key": facts["key"], "provider": facts["provider"], "id": facts["id"], "kind": kind,
+                    "label": facts.get("label"), "createdAt": facts.get("created"),
+                    "printStatus": facts.get("shown") or facts.get("status") or "", "tracking": facts.get("tracking") or [],
+                    "payment": facts.get("payment") or "", "cost": facts.get("cost")})
+
+    provider, own = _matched_order(row, placed)
+    if provider and own:
+        add(provider, own["id"], "first")
+    for f in row.get("further_orders") or []:
+        add(f.get("provider"), f.get("order_id"), "more")
+    for ref in row.get("replacement_orders") or []:
+        add(ref.get("provider"), ref.get("id"), "reprint")
+    return sorted(out, key=lambda p: (p["kind"] == "reprint", p["createdAt"] or ""))
+
+
 def order_stage(row: dict, placed: dict) -> tuple[str, str | None]:
     """Where an Etsy order stands: ("new" | "work" | "sent" | "shipped" | "closed", provider).
 
@@ -53,17 +129,21 @@ def order_stage(row: dict, placed: dict) -> tuple[str, str | None]:
     print order: once Printify or Gelato has a placed order carrying the receipt number (not a draft, not on
     hold or unpaid, not cancelled — printorders.is_placed()), the book is in work;
     once the printer has shipped it (tracking or a shipped status), it is "sent" — waiting for the
-    owner to mark it shipped on Etsy, after which Etsy's own flag makes it "shipped".
+    owner to mark it shipped on Etsy, after which Etsy's own flag makes it "shipped". A reprint being made puts it
+    back "in work" until its printer ships it (live_reprint()).
     placed is printorders.all_facts().
     """
     if row.get("state") in ("canceled", "refund_full"):
         return "closed", None
+    reprint = live_reprint(row, placed)
+    if reprint:
+        return "work", reprint["provider"]
     provider, facts = print_order(row, placed)
     if row.get("is_shipped"):
         return "shipped", provider
     if not provider:
         return ("work", None) if row.get("link_blocked") else ("new", None)
-    if facts.get("tracking") or str(facts.get("status") or "").lower() in printorders.SENT_STATUSES:
+    if _shipped_by_printer(facts):
         return "sent", provider
     return "work", provider
 
@@ -80,20 +160,39 @@ def facts() -> dict:
         if _facts["key"] != view["key"]:
             snap = records.load_snapshot()
             placed = printorders.all_facts(snap, printorders.rates())
+            sends = records.load_sends()
             receipts = {}
             for r in snap.get("receipts") or []:
                 row = view["full"].get(str(r["receipt_id"]))
                 if not row:
                     continue
                 stage, provider = order_stage(row, placed)
-                shown = print_order(row, placed)[1] if provider else {}
+                reprint = live_reprint(row, placed) if stage == "work" else {}
+                shown = reprint or (print_order(row, placed)[1] if provider else {})
                 if stage == "new":  # a draft or unpaid order waiting at the printer: its status shows, the stage stays
                     provider, shown = waiting_order(row, placed)
+                # Some of the receipt's books are ordered, the others not yet (2026-10-14; open since 22.09): the stage
+                # stays what the ordered one makes it — the card keeps what went to print — and the queue lists the
+                # receipt under «Нові» too («partial»). Counted by the Order Creator's books (one per Etsy item; a
+                # partial refund may have dropped one).
+                refs = sends.get(str(r["receipt_id"])) or []
+                books = len(r.get("items") or [])
+                in_print = books_in_print(row, placed, refs) if books > 1 else None
+                partial = (stage in ("work", "sent") and in_print is not None and in_print < books
+                           and row.get("state") != "refund_partial")
                 receipts[str(r["receipt_id"])] = {"stage": stage, "provider": provider, "order": shown,
-                                                  "row": row, "receipt": r}
+                                                  "row": row, "receipt": r, "inPrint": in_print, "partial": partial,
+                                                  "pending": _pending(refs, placed, shown), "reprint": bool(reprint)}
             _facts.update(key=view["key"], placed=placed, receipts=receipts,
                           loaded=snap.get("loaded") or {}, haveReceipts=bool(snap.get("receipts")))
         return _facts
+
+
+def _all_placed(one: dict) -> bool:
+    """Every book of the order is in a placed print order (an order of several books: by the send records' count)."""
+    several = len(one["receipt"].get("items") or []) > 1
+    return (one["stage"] in ("work", "sent", "shipped") and not one.get("partial")
+            and not (several and one.get("inPrint") is None))
 
 
 def _picker(one: dict) -> dict:
@@ -113,6 +212,19 @@ def _picker(one: dict) -> dict:
         # order, so the card says there is more than one
         "alsoSent": [{"provider": f["provider"], "status": f.get("status") or ""} for f in row.get("further_orders") or []],
         "books": sum(int(i.get("quantity") or 1) for i in r.get("items") or []),
+        "booksInPrint": one.get("inPrint"),
+        "partial": bool(one.get("partial")),              # some books ordered, some not: listed under «Нові» too
+        "pending": one.get("pending") or [],              # its other sends waiting at the printer
+        "reprint": bool(one.get("reprint")),              # the print shown is a reprint being made (live_reprint())
+        # The Order Creator's «Передрук» for a send of this order (owner, 18.10.2026): offered once its every book is placed
+        # at the printer (an order of several books whose count is unknown is not offered: its second book is no reprint);
+        # ticked by itself once the book has left the printer — paid but still being made, a new send may be a correction
+        # with the first one cancelled.
+        "reprintOffered": _all_placed(one),
+        "alreadyPrinted": _all_placed(one) and (one["stage"] in ("sent", "shipped") or bool(one.get("reprint"))),
+        "shipBy": r.get("ship_by"),                       # Etsy's date to ship by (epoch seconds), or None
+        "payment": shown.get("payment") or "",            # Gelato's financial status: "refused" — the money was not taken
+        "orderCreated": shown.get("created"),             # when the print order shown was made (a draft's age)
         "items": [{"title": i.get("title"), "quantity": i.get("quantity"), "sku": i.get("sku") or "",
                    "listingId": str(i.get("listing_id") or ""),
                    "variations": [{"name": v.get("name"), "value": v.get("value")} for v in i.get("variations") or []]}

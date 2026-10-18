@@ -100,10 +100,10 @@ class Overhead(unittest.TestCase):
                entry(6, "vat_seller_services", "etsy", 0, -4, self.at(12, 15), parent=5),
                entry(7, "transaction", "transaction", 8, -150, self.at(12, 16))]   # a sale's fee: not the shop's
         days = ledger.overhead([ledger._slim(e) for e in raw], self.at(13, 3))
-        self.assertEqual(days["2026-10-10"], {"amount": -1.2, "forecast": False})
-        self.assertEqual(days["2026-10-11"], {"amount": -5.95, "forecast": False})
-        self.assertEqual(days["2026-10-12"], {"amount": -6.19, "forecast": True})   # the listing + the ads forecast
-        self.assertEqual(days["2026-10-13"], {"amount": -5.95, "forecast": True})
+        self.assertEqual(days["2026-10-10"], {"amount": -1.2, "ads": -1.2, "forecast": False})
+        self.assertEqual(days["2026-10-11"], {"amount": -5.95, "ads": -5.95, "forecast": False})
+        self.assertEqual(days["2026-10-12"], {"amount": -6.19, "ads": -5.95, "forecast": True})   # the listing + the ads forecast
+        self.assertEqual(days["2026-10-13"], {"amount": -5.95, "ads": -5.95, "forecast": True})
 
     def test_the_forecast_reaches_today_without_a_new_read(self):
         raw = [entry(1, "prolist", "prolist", 1, -100, self.at(11))]

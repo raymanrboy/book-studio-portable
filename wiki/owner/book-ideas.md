@@ -1,7 +1,7 @@
 ---
 title: Book ideas
 type: owner
-updated: 2026-10-11
+updated: 2026-10-16
 code: []
 ---
 # Book ideas
@@ -198,7 +198,7 @@ The owner sends a link (or a screenshot) and says in words what he likes. The ag
   look, and so on. It was surely made with Nano Banana. The open question is what to *call* this style: "paints" is what we call it now,
   but it isn't really paints — more a drawing format; the owner's guess is pencil plus something else.
 - **For our books:** to analyse the style, name it exactly, and reuse it in our prompts ("analyze and use, work out the guess").
-- **Status:** idea — the style analysis is still to be done (the owner asked for it later; nothing analysed yet).
+- **Status:** made (2026-10-16). The style is analysed and saved as the preset **WP — Watercolor & Pencil Cottage** (`pipeline/playbook/knowledge/media-presets.md`): transparent watercolor over soft warm-brown pencil lines, colored-pencil strokes for fur and knit, muted cottage-garden colors, the text side a plain watercolor wash. The book is in the Workshop as `46.grandma-and-me` ("Grandma & {Name}: Our Happy Days", Tier S, our own scenes and rhymes).
 
 ## Related
 

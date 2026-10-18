@@ -338,6 +338,86 @@ class PickerStages(OnTheSnapshot):
             "1005": ("gelato", "draft"), "1009": ("printify", "on-hold"), "1010": ("gelato", "created")})
 
 
+class QueueSignals(OnTheSnapshot):
+    """2026-10-14: an order of two books with only one ordered is listed under «Нові» too («partial»), its stage kept; a
+    refused Gelato payment — the shown order's or another send's — and Etsy's ship-by date reach the queue."""
+    def two_books(self, rid, ship_by=None):
+        r = receipt(rid, "Lu Park", status="Paid")
+        r["transactions"] = [{"transaction_id": rid * 10, "expected_ship_date": ship_by},
+                             {"transaction_id": rid * 10 + 1, "expected_ship_date": ship_by + 86400 if ship_by else None}]
+        return r
+
+    def gelato(self, gid, ref, financial="paid", status="passed"):
+        return {"id": gid, "orderReferenceId": ref, "firstName": "Lu", "lastName": "Park", "totalInclVat": 20,
+                "currency": "USD", "createdAt": "2025-09-05T10:00:00Z", "fulfillmentStatus": status,
+                "orderType": "order", "financialStatus": financial}
+
+    def test_one_of_two_books_ordered_is_partial(self):
+        self.synced([self.two_books(1011, ship_by=1757500000)], [],
+                    [self.gelato("g4", "1011 - Mia"), self.gelato("g8", "1011 - Jack", financial="refused", status="failed")])
+        core.write_json(records.SENDS, {"1011": [{"provider": "gelato", "orderId": "g4", "books": 1},
+                                                 {"provider": "gelato", "orderId": "g8", "books": 1}]})
+        got = stages.picker_order("1011")
+        self.assertEqual((got["stage"], got["partial"], got["booksInPrint"]), ("work", True, 1))  # the card keeps its print
+        self.assertEqual(got["shipBy"], 1757500000)                 # the earliest of the items'
+        self.assertEqual([(p["provider"], p["payment"]) for p in got["pending"]], [("gelato", "refused")])  # the second book's
+        core.write_json(records.SENDS, {"1011": [{"provider": "gelato", "orderId": "g4", "books": 2}]})
+        self.assertFalse(stages.picker_order("1011")["partial"])
+
+    def test_a_send_without_its_books_counted_holds_them_all(self):
+        self.synced([self.two_books(1012)], [], [self.gelato("g5", "1012 - Mia")])
+        core.write_json(records.SENDS, {"1012": [{"provider": "gelato", "orderId": "g5"}]})   # sent before 14.10
+        got = stages.picker_order("1012")
+        self.assertEqual((got["stage"], got["partial"], got["shipBy"]), ("work", False, None))
+
+    def test_a_refused_payment_reaches_the_queue(self):
+        self.synced([receipt(1013, "Lu Park", status="Paid")], [],
+                    [self.gelato("g6", "1013 - Mia", financial="refused", status="failed")])
+        got = stages.picker_order("1013")
+        self.assertEqual((got["stage"], got["provider"], got["payment"]), ("new", "gelato", "refused"))
+
+    def test_the_send_record_notes_its_books(self):
+        records.remember_print_order("1014", "gelato", "g7", books=2)
+        self.assertEqual(records.load_sends()["1014"][0]["books"], 2)
+
+
+class ReprintWithNewFiles(OnTheSnapshot):
+    """18.10.2026: a shipped order reprinted at Gelato with a fixed cover. The first print stays the receipt's own even
+    when the reprint carries the same name; while the reprint is made the order is «в роботі» again; the card has a
+    tab per print; the money keeps the first print's cost and adds the reprint's."""
+    def gelato(self, gid, created, status, cost):
+        return {"id": gid, "orderReferenceId": "1021 - Noah", "firstName": "Jo", "lastName": "Bell", "totalInclVat": cost,
+                "currency": "USD", "createdAt": created, "fulfillmentStatus": status, "orderType": "order",
+                "financialStatus": "paid"}
+
+    def setUp(self):
+        super().setUp()
+        self.first = self.gelato("g-first", "2025-09-05T10:00:00Z", "delivered", "10.47")
+        self.again = self.gelato("g-again", "2025-09-20T10:00:00Z", "uploading", "18.30")
+        self.synced([receipt(1021, "Jo Bell")], [], [self.again, self.first])   # Gelato lists the newest first
+
+    def test_the_first_print_stays_the_receipts_own_without_a_mark(self):
+        self.assertEqual(profit.cached_view()["full"]["1021"]["gelato_order_id"], "g-first")
+
+    def test_a_marked_reprint_puts_the_order_back_in_work_with_a_tab_each(self):
+        self.assertEqual(stages.picker_order("1021")["stage"], "shipped")
+        self.assertTrue(stages.picker_order("1021")["alreadyPrinted"])   # a send of it now ticks «Передрук»
+        records.add_replacement("1021", "gelato", "g-again")
+        got = stages.picker_order("1021")
+        self.assertEqual((got["stage"], got["reprint"], got["printStatus"]), ("work", True, "uploading"))
+        known = stages.facts()
+        prints = stages.prints(known["receipts"]["1021"]["row"], known["placed"])
+        self.assertEqual([(p["kind"], p["id"]) for p in prints], [("first", "g-first"), ("reprint", "g-again")])
+        row = profit.cached_view()["full"]["1021"]
+        self.assertEqual((row["pod_total_cost"], row["replacement_cost"], row["cost_total"]), (10.47, 18.3, 28.77))
+
+    def test_the_order_is_shipped_again_once_the_reprint_has_left(self):
+        records.add_replacement("1021", "gelato", "g-again")
+        self.synced([receipt(1021, "Jo Bell")], [], [{**self.again, "fulfillmentStatus": "in_transit"}, self.first])
+        got = stages.picker_order("1021")
+        self.assertEqual((got["stage"], got["reprint"]), ("shipped", False))
+
+
 class SentStage(OnTheSnapshot):
     """The truck tab: the printer has shipped the book, Etsy is not marked yet."""
     AFTER = "2025-09-05 10:00:00+00:00"
@@ -530,6 +610,27 @@ class IncrementalSync(unittest.TestCase):
                 sync._sync(Job("c"))
             self.assertEqual(sorted(records.load_snapshot()["loaded"]), ["etsy", "gelato"])
 
+    def test_an_open_receipt_without_its_ship_by_date_is_read_again_whole(self):
+        """2026-10-14: the ship-by date is kept from now on; receipts read before have none — one full read fills it."""
+        calls = []
+
+        def fetch(progress=None, min_last_modified=None):
+            calls.append(min_last_modified)
+            r = receipt(1, "A", status="Paid")
+            r["transactions"] = [{"transaction_id": 10, "expected_ship_date": 1757500000}]
+            return [r], 63208655, "Shop"
+
+        with mock.patch.object(etsy, "tokens", lambda: {"access_token": "1.x", "shop_id": 63208655}),                 mock.patch.object(etsy, "fetch_all_receipts", fetch):
+            sync._sync(Job("a"))
+            snap = records.load_snapshot()
+            self.assertEqual(snap["receipts"][0]["ship_by"], 1757500000)
+            del snap["receipts"][0]["ship_by"]                       # as a receipt kept before the date was
+            records.save(records.SNAPSHOT, snap)
+            sync._sync(Job("b"))
+            self.assertIsNone(calls[1])                              # read whole again
+            sync._sync(Job("c"))
+            self.assertIsNotNone(calls[2])                           # then only what changed
+
     def test_the_snapshot_is_read_once_per_change(self):
         core.write_json(records.SNAPSHOT, {"receipts": [], "syncedAt": "2026-09-22T10:00:00Z"})
         first = records.load_snapshot()
@@ -661,10 +762,17 @@ class StateApi(unittest.TestCase):
     def call(self, fn, body):
         return fn(SimpleNamespace(json=body))
 
-    def test_replacement_cannot_reuse_the_primary_order(self):
+    def test_replacement_cannot_reuse_a_primary_linked_by_hand(self):
+        records.save(records.LINKS, {"1": {"provider": "printify", "orderId": "a" * 24}})
         with self.assertRaises(ApiError):
             self.call(profit._set_state, {"receiptId": "1", "status": "replacement",
                                           "replacementOrders": [{"provider": "printify", "orderId": "a" * 24}]})
+
+    def test_a_primary_matching_found_may_be_ticked_as_the_reprint(self):
+        """18.10.2026: two orders of one receipt, matching took the reprint — ticking it moves it to the replacement."""
+        res = self.call(profit._set_state, {"receiptId": "1", "status": "replacement",
+                                            "replacementOrders": [{"provider": "printify", "orderId": "a" * 24}]})
+        self.assertEqual((res["row"]["state"], res["row"]["replacement_cost"]), ("replacement", 11.95))
 
     def test_states_round_trip_and_reserved_orders_cannot_be_linked_elsewhere(self):
         res = self.call(profit._set_state, {"receiptId": "1", "status": "replacement",

@@ -1,6 +1,6 @@
 """Pulling the orders: Etsy receipts (only the changed ones, a full re-read once a week), every Printify and Gelato
-order — into the snapshot (records.SNAPSHOT), once at start-up and then only by the refresh button (the owner,
-16.09.2026). After each sync the order archive looks at its books again."""
+order — into the snapshot (records.SNAPSHOT), at start-up, quietly every hour, and by the refresh button (the owner,
+14.10.2026; until then start-up and the button only). After each sync the order archive looks at its books again."""
 from __future__ import annotations
 
 import html
@@ -17,6 +17,7 @@ from .vault import vault
 
 FULL_SYNC_EVERY = 7 * 86400   # a complete Etsy re-read once a week; otherwise only changed receipts
 SYNC_OVERLAP = 3600           # re-read the last hour again so nothing slips between two syncs
+AUTO_EVERY = 3600             # a quiet refresh every hour while the program runs (the owner, 2026-10-14)
 
 
 def plain(value) -> str:
@@ -45,6 +46,7 @@ def normalize_receipt(r: dict) -> dict:
             "sku": t.get("sku") or "",
             "listing_id": t.get("listing_id"),
             "transaction_id": t.get("transaction_id"),  # the ledger names a sold item by it (ledger.py)
+            "ship_by": t.get("expected_ship_date"),
         })
     ts = r.get("create_timestamp") or r.get("created_timestamp") or 0
     created = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
@@ -72,6 +74,8 @@ def normalize_receipt(r: dict) -> dict:
             "country_iso": r.get("country_iso") or "",
         },
         "items": items,
+        # Etsy's own date to ship by (the earliest of the items'): late marking counts against the shop (2026-10-14).
+        "ship_by": min((i["ship_by"] for i in items if i.get("ship_by")), default=None),
         "status": r.get("status") or ("Completed" if r.get("is_shipped") else "Paid"),
         "is_shipped": bool(r.get("is_shipped")),
         "etsy_gross": fees["gross"],
@@ -108,7 +112,9 @@ def _etsy_part(job, snap: dict, warnings: list, full: bool) -> int | None:
     request, on the first sync, with another shop and once a week. An Etsy failure fails the whole sync. Returns how
     many receipts changed (None after a full read)."""
     started = int(time.time())
-    incremental = (not full and snap["receipts"] and snap["etsyCursor"] and snap["etsyFullAt"]
+    # An open receipt read before the ship-by date was kept (2026-10-14) has no "ship_by": read everything once again.
+    stale = any("ship_by" not in r for r in snap["receipts"] if not r.get("is_shipped"))
+    incremental = (not full and not stale and snap["receipts"] and snap["etsyCursor"] and snap["etsyFullAt"]
                    and started - int(snap["etsyFullAt"]) < FULL_SYNC_EVERY
                    and str(snap.get("shopId") or "") == str(etsy.tokens().get("shop_id") or snap.get("shopId") or ""))
     job.progress("Завантаження замовлень Etsy…", 5, "Лише змінені чеки" if incremental else "Усі чеки магазину")
@@ -270,14 +276,32 @@ def _start_sync(req: Request):
 def _sync_state(req: Request):
     """The sync running right now (the one at start-up, or one started by the refresh button), if any."""
     running = jobs.running("profit-sync")
-    return {"jobId": running.id if running else None}
+    # When the last one ended: an open page sees an hourly sync it did not follow, and fetches again (2026-10-14).
+    return {"jobId": running.id if running else None, "syncedAt": records.load_snapshot().get("syncedAt")}
 
 
-def startup_sync() -> None:
-    """Orders are pulled once when the program starts; after that only by the refresh button."""
-    if not _connected():
+def _quiet_sync() -> None:
+    """One sync, unless one is running already (the button's, or the last hour's still going)."""
+    if not _connected() or jobs.running("profit-sync"):
         return
     try:
         jobs.start("profit-sync", lambda j: _sync(j), exclusive="profit-sync")
     except JobError:
         pass
+
+
+def _every_hour() -> None:
+    while True:
+        time.sleep(AUTO_EVERY)
+        try:
+            _quiet_sync()
+        except Exception:
+            core.log.exception("Hourly sync not started")
+
+
+def startup_sync() -> None:
+    """Orders are pulled when the program starts, and then quietly every hour (since 2026-10-14 — the owner: a refused
+    Gelato payment or a new tracking number should not wait for the button); the button still refreshes at once."""
+    _quiet_sync()
+    if not core.SANDBOX:
+        threading.Thread(target=_every_hour, name="hourly-sync", daemon=True).start()

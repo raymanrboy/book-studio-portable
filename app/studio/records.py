@@ -77,12 +77,13 @@ def has_ref(refs: list, provider: str, order_id) -> bool:
     return any(r.get("provider") == provider and str(r.get("orderId")) == str(order_id) for r in refs or [])
 
 
-def remember_print_order(receipt_id: str | None, provider: str, order_id: str | None) -> bool:
+def remember_print_order(receipt_id: str | None, provider: str, order_id: str | None, books: int | None = None) -> bool:
     """What this program itself sent to a printer for a receipt. Books of one order can go in two goes
     (some ready now, the rest later) or to two printers, and then one receipt honestly has two print
     orders. Matching finds one of them by itself; only this record proves the others belong here too —
     a receipt number inside a printer's own text also appears on reprints, so it cannot be trusted for
-    money. Reprints are not written here: they are replacements (stages.mark_reprint())."""
+    money. Reprints are not written here: they are replacements (stages.mark_reprint()). `books` — how many of the
+    receipt's books went in this order (since 2026-10-14): an order of two books stays «new» until both are ordered."""
     if not receipt_id or not order_id:
         return False
     with lock:
@@ -90,7 +91,8 @@ def remember_print_order(receipt_id: str | None, provider: str, order_id: str | 
         refs = sends.setdefault(str(receipt_id), [])
         if has_ref(refs, provider, order_id):
             return False
-        refs.append({"provider": provider, "orderId": str(order_id), "at": core.now_iso()})
+        refs.append({"provider": provider, "orderId": str(order_id), "at": core.now_iso(),
+                     **({"books": int(books)} if books else {})})
         save(SENDS, sends)
     return True
 

@@ -106,6 +106,9 @@ def cached_view() -> dict:
                 if not counted(r.get("created_at")):
                     continue
                 s = {k: r.get(k) for k in SLIM_FIELDS}
+                # The listings the receipt's books were sold from: the page's «Лістинги» view sums them (2026-10-14).
+                s["listings"] = [{"id": str(i.get("listing_id") or ""), "title": i.get("title") or "",
+                                  "qty": int(i.get("quantity") or 1)} for i in r.get("items") or []]
                 s["search"] = " ".join([r.get("customer_name") or "", r.get("etsy_receipt_id") or "",
                                         r.get("app_order_id") or ""] + [i.get("title") or "" for i in r.get("items") or []]).lower()
                 slim.append(s)
@@ -196,8 +199,10 @@ def _replacement_orders(body: dict, receipt_id: str) -> list[dict]:
         key = f"{ref.get('provider')}:{ref.get('orderId')}"
         if key not in known:
             raise ApiError("Замовлення заміни не знайдено серед замовлень Printify/Gelato. Оновіть дані.")
-        if key in primary:
-            raise ApiError("Це основне замовлення цього чека — для заміни оберіть інше.")
+        # The order matching found by itself may be the reprint (two orders of one receipt): ticking it puts that right — it
+        # leaves matching, and the other becomes the receipt's own (18.10.2026). One linked by hand stays the receipt's.
+        if key in primary and row.get("match_type") == "manual":
+            raise ApiError("Це замовлення вручну зв'язане з цим чеком як основне — для заміни оберіть інше або скиньте зв'язок.")
         if key in linked and linked[key] != receipt_id:
             raise ApiError(f"Це замовлення вручну зв'язане з чеком #{linked[key]}. Спершу скиньте той зв'язок.")
         if not records.has_ref(refs, ref["provider"], ref["orderId"]):

@@ -90,7 +90,7 @@ export async function mount(view, [rawId]) {
       ...(b.tier ? [['tier', html`<span class="chip chip-accent ws-tier" data-tip="${b.tier === 'H' ? 'Tier H — герой-дитина на кожному розвороті' : 'Tier S — без постійного героя'}">Tier ${b.tier}</span>`]] : []),
       ['tools', html`<div class="page-actions">
         <div class="tools">
-          ${ib('agent', 'Відкрити агента — Antigravity; у буфері «Продовжуємо книгу …» з повною адресою книги', 'data-act="agent"')}
+          ${ib('agent', 'Текст для агента в буфер — «Продовжуємо книгу …» з повною адресою книги', 'data-act="agent"')}
           <span class="sep"></span>
           ${ib('images', 'Сторінки — нарізані 1–30 і Cover.png, набір для Canva', 'data-act="open" data-what="pictures"')}
           ${ib('original', 'Оригінали — картинки, як їх віддав генератор', 'data-act="open" data-what="originals"')}
@@ -742,7 +742,7 @@ export async function mount(view, [rawId]) {
     const a = t.dataset.act;
     const { key = '', variant = '' } = t.dataset;
     if (a === 'back') { location.hash = '#/books/work'; return; }
-    if (a === 'agent') { act(t, () => post('/api/workshop/agent', { book: id }), () => 'Antigravity відкривається · у буфері — ця книга з повною адресою; вставте в чат агента'); return; }
+    if (a === 'agent') { act(t, () => post('/api/workshop/agent', { book: id }), () => 'У буфері — ця книга з повною адресою; вставте в чат агента'); return; }
     if (a === 'open') { act(t, () => post('/api/workshop/open', { book: id, what: t.dataset.what, name: t.dataset.name || '' })); return; }
     if (a === 'more') {
       menu(t, [{ label: 'Видалити книгу…', icon: 'trash', danger: true, onClick: () => deleteBook(t) }]);

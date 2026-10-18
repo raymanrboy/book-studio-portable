@@ -18,7 +18,7 @@ const titleOf = (s) => TITLES[ALL.indexOf(s)] || 'Appearance options';   // slid
 
 export function slidesStep({ view, st, existing, stepNo, tellDone, busy, blinkFinish, paintBook }) {
   const sl = {
-    numbers: { pages: 24, poems: 11 },
+    numbers: { pages: 30, poems: 14 },
     run: null,        // {step, percent, rows}
     result: null,     // {set, folder, pictures: [{slide, name, v}], missing, seconds}
     error: '',
@@ -296,7 +296,7 @@ export function slidesStep({ view, st, existing, stepNo, tellDone, busy, blinkFi
       if (sl.run || st.run || run()) { paint(); return; }
       const s = ex()?.slides;
       Object.assign(sl, { result: s?.pictures.length ? { set: s.set, folder: s.folder, pictures: s.pictures, todo: s.todo, missing: [], seconds: 0 } : null,
-        numbers: { pages: 24, poems: 11, ...(s?.numbers || {}) }, error: '', pick: null, cuts: null, folder: '' });
+        numbers: { pages: 30, poems: 14, ...(s?.numbers || {}) }, error: '', pick: null, cuts: null, folder: '' });
       paint();
     },
     wake() { refresh(); if (folder()) pollCuts(); },

@@ -559,6 +559,53 @@ class GelatoReprint(ArchiveCase):
         with self.assertRaises(ApiError):   # a reprint stays with the printer that printed the book
             creator._create_gelato(SimpleNamespace(json={"reprintOf": printed_elsewhere}))
 
+    def test_a_reprint_with_new_files(self):
+        """An order already printed, sent again from its card with fixed files (the Order Creator's «Передрук» tick,
+        18.10.2026): the new files go, and the draft is a replacement of the receipt linked to the first print."""
+        first = self.keep(title="4100000002 - Noah", provider="gelato", pages=28, format="hardcover_8x8", orderId="g1",
+                          receiptId="4100000002")
+        printed = facts(placed={"gelato:g1": {"status": "delivered", "placed": True, "tracking": []}})
+        fixed = book(self.root / "fixed", 28)
+        vault.set("gelato_api_key", "fake-gelato-key")
+        gelato._geometry.clear()
+        gelato._products.clear()
+        sent, started = {}, []
+
+        def fake_call(method, url, body=None, **kw):
+            if method == "GET":
+                return self.COVER if "/cover-dimensions" in url else ({} if "/orders/" in url else self.PRODUCT)
+            sent.update(body)
+            return {"id": "g2", "orderType": "draft"}
+
+        def start(kind, fn, exclusive=None):
+            started.append(fn(Job("t")))
+            return SimpleNamespace(id="job")
+
+        try:
+            with mock.patch.object(archive, "_facts", lambda: printed), mock.patch.object(gelato, "call", fake_call), \
+                    mock.patch.object(tunnel.FileTunnel, "start", lambda self: "https://fake.trycloudflare.com"), \
+                    mock.patch.object(tunnel.registry, "keep", lambda *a, **kw: None), \
+                    mock.patch.object(creator.jobs, "start", start):
+                creator._create_gelato(SimpleNamespace(json={"books": [{"folder": str(fixed), "title": "4100000002 - Noah",
+                                                                        "format": "hardcover_8x8", "receiptId": "4100000002"}],
+                                                             "address": ADDRESS, "reprint": True}))
+        finally:
+            vault.set("gelato_api_key", None)
+            gelato._products.clear()
+        res = started[0]
+        self.assertTrue(res["reprint"])
+        kept = archive.get(res["archiveId"])
+        self.assertEqual((kept["reprint"], kept["reprintOf"], kept["orderId"]), (True, first, "g2"))
+        self.assertTrue(archive.is_reprint(kept))
+        self.assertEqual(records.load_states()["4100000002"]["replacementOrders"], [{"provider": "gelato", "orderId": "g2"}])
+        self.assertNotIn("4100000002", records.load_sends())   # not a second sale of the receipt
+
+    def test_a_reprint_with_new_files_counts_from_its_own_print(self):
+        eid = self.keep(reprint=True, orderId="g2", provider="gelato")   # the first print's book already gone
+        shipped_long_ago = {"4100000001": "shipped"}
+        self.refresh(time.time(), stages=shipped_long_ago, placed={"gelato:g2": {"status": "uploading", "tracking": [], "placed": True}})
+        self.assertIsNone(archive.get(eid)["shippedAt"])
+
     def test_no_reprint_from_a_send_that_never_went_to_print(self):
         draft = self.keep(provider="gelato", orderId="g1")
         cancelled = self.keep(provider="printify", orderId="o1", productId="p1")

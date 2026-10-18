@@ -5,7 +5,7 @@ import {
 } from '../lib.js';
 import {
   STAGES, matchesOrder, providerName, planText, trackChips, statusChip, receiptCopy, copyChip, alsoSentChip,
-  holdClicks, orderSync, svcChip, countStages, emptyOrders, bookImage,
+  holdClicks, orderSync, svcChip, countStages, emptyOrders, bookImage, shipByChip, booksChip, pendingChips, inTab, watchSyncs,
 } from '../order-bits.js';
 import { settle } from '../keep.js';
 import { mountCard } from './order-card.js';
@@ -58,7 +58,7 @@ async function mountQueue(view) {
         ${o.book?.image ? html`<img data-fade loading="lazy" decoding="async" src="${bookImage(o.book, 160)}" alt="">` : ic('book')}</span>
       <span class="ord-main">
         <span class="row ord-chips"><b class="truncate">${o.name}</b>${receiptCopy(o, 'chip chip-mono')}
-          ${o.books > 1 ? html`<span class="chip" data-tip="Книг у замовленні">${ic('book', 'icon-s')}${o.books}</span>` : ''}${printerChip(o)}${alsoSentChip(o)}${trackChips(o)}</span>
+          ${booksChip(o)}${printerChip(o)}${o.reprint ? html`<span class="chip" data-tip="Друкується передрук — після першої відправки">${ic('sync', 'icon-s')}передрук</span>` : ''}${shipByChip(o)}${alsoSentChip(o)}${trackChips(o)}${pendingChips(o)}</span>
         <span class="ord-meta faint truncate"><span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> ·
           ${o.childName ? html`<b class="ord-child">${o.childName}</b> · ` : ''}${o.book ? o.book.title : html`<span class="ord-miss">книги немає в бібліотеці</span>`} · ${[o.address.city, o.address.country_iso].filter(Boolean).join(', ')}</span>
       </span>
@@ -75,7 +75,7 @@ async function mountQueue(view) {
     const before = shown;
     clearTimeout(rest);
     const known = new Set([...list.children].map((n) => n.dataset.key));
-    const rows = data.orders.filter((o) => o.stage === stage).map((o) => [o.receiptId, rowHtml(o)]);
+    const rows = data.orders.filter((o) => inTab(o, stage)).map((o) => [o.receiptId, rowHtml(o)]);
     // A tab with many rows (the sent ones) used to build them all in one go, right under the tab pill's glide: the glide hitched.
     const split = tab && rows.length > FIRST_ROWS;
     const drawn = patch(list, split ? rows.slice(0, FIRST_ROWS) : rows);
@@ -96,7 +96,7 @@ async function mountQueue(view) {
   const narrow = ({ still = false } = {}) => {
     const t = term.trim().toLowerCase();
     countStages(seg, data.orders, t);
-    shown = data.orders.filter((o) => o.stage === stage && matchesOrder(o, t)).map((o) => o.receiptId);
+    shown = data.orders.filter((o) => inTab(o, stage) && matchesOrder(o, t)).map((o) => o.receiptId);
     const visible = new Set(shown);
     // the rows that stay glide to their new places, the ones that come back scale in (flip); typing never rebuilds a row
     const hide = () => { [...list.children].forEach((n) => { n.hidden = !visible.has(n.dataset.key); }); };
@@ -130,12 +130,18 @@ async function mountQueue(view) {
   setSub(syncedText());
   render();
   sync.follow();
+  // The hourly sync: a list left open follows it and shows what it brought (2026-10-14).
+  const unwatch = watchSyncs({
+    current: () => data.syncedAt,
+    onRunning: () => { if (!sync.syncing) sync.follow(); },
+    onNewer: async () => { const next = await api('/api/orders'); if (!view.isConnected) return; settle(next.orders); data = next; setSub(syncedText()); render({ fresh: true }); },
+  });
   const main = document.getElementById('main');
   return {
     shown() {
       syncSeg(seg);
       if (returning) main.scrollTo({ top: queueState.scroll, behavior: 'instant' }); // .main scrolls smoothly otherwise
     },
-    unmount() { clearTimeout(rest); queueState.scroll = main.scrollTop; offs.forEach((f) => f()); clearTimeout(list.holdTimer); },
+    unmount() { unwatch(); clearTimeout(rest); queueState.scroll = main.scrollTop; offs.forEach((f) => f()); clearTimeout(list.holdTimer); },
   };
 }

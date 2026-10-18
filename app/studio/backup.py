@@ -26,6 +26,7 @@ EVERY_DAYS = 3                                 # the owner: "раз на 2–3 �
 KEEP_LAST = 7                                  # the last 7 copies,
 KEEP_MONTHS = 12                               # and the newest of each month for a year
 START_DELAY = 120                              # seconds after launch: the orders' sync and the first pages go first
+CHECK_EVERY = 6 * 3600                         # and again every 6 hours: a program left open for days still makes its copy
 FOLDER_NAME = "Book Studio — резервні копії"
 def family() -> str:
     """The ordinary and the portable Book Studio share the Drive folder: each keeps, prunes and cleans only its own copies."""
@@ -276,10 +277,16 @@ def start_if_due() -> None:
         core.log.exception("Backup not started")
 
 
+def _watch() -> None:
+    time.sleep(START_DELAY)
+    while True:
+        start_if_due()
+        time.sleep(CHECK_EVERY)
+
+
 def schedule() -> None:
-    timer = threading.Timer(START_DELAY, start_if_due)
-    timer.daemon = True
-    timer.start()
+    """On launch, then every CHECK_EVERY while the program runs (until 2026-10-14 only on launch)."""
+    threading.Thread(target=_watch, name="backup-watch", daemon=True).start()
 
 
 # ---------------------------------------------------------------- routes

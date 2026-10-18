@@ -92,10 +92,11 @@ def checked_files(mode: str, book: dict, job, log: dict, at: float) -> dict:
 
 
 def record_order(log: dict, warnings: list[str], provider: str, books: list[dict], order_id: str | None,
-                 reprint_of: str | None) -> None:
-    """The new print order recorded here: as a reprint of its receipt (the queue keeps the first print order), or
-    as the order of its books' receipts. Never fails a finished send."""
-    if reprint_of:
+                 reprint) -> None:
+    """The new print order recorded here: as a reprint of its receipt (the queue keeps the first print order) — one
+    from the archive, or one with new files (`reprint` true, the Order Creator's «Передрук» tick) — or as the order of
+    its books' receipts. Never fails a finished send."""
+    if reprint:
         _mark_reprint(log, warnings, books[0].get("receipt"), provider, order_id)
     else:
         _remember_sent(log, warnings, books, provider, order_id)
@@ -132,7 +133,8 @@ def _remember_sent(log: dict, warnings: list[str], books: list, provider: str, o
     but a record that could not be written is said, like the reprint mark's."""
     receipts = {b.get("receipt") for b in books}
     try:
-        written = [r for r in receipts if r and records.remember_print_order(r, provider, order_id)]
+        written = [r for r in receipts if r and records.remember_print_order(
+            r, provider, order_id, books=sum(1 for b in books if b.get("receipt") == r))]
     except Exception as err:
         core.log.exception("Print order not remembered")
         sendlog.step(log, "printOrderRemembered", ok=False, error=str(err))
@@ -155,6 +157,11 @@ def _mark_reprint(log: dict, warnings: list[str], receipt: str | None, provider:
                         f"як передрук: {err}. Не надсилайте ще раз — перевірте собівартість вручну.")
         return
     sendlog.step(log, "reprintMarked", ok=marked)
+    if not marked and receipt:
+        # The receipt's first print is cancelled, or it is marked by hand (cancelled, refunded, «без собівартості»): the
+        # draft is not a replacement — said, so its cost is looked at in «Прибуток» (the 18.10.2026 review).
+        warnings.append("Чернетку не записано як передрук: перший друк цього замовлення скасований або замовлення позначене "
+                        "вручну в «Прибутку». Перевірте там його собівартість.")
 
 
 def _unknown_outcome(err: ApiError) -> bool:

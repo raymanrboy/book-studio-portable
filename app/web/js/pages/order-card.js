@@ -9,7 +9,7 @@ import {
 import { openFolderViewer, pageNo } from '../folder-viewer.js';
 import {
   STAGE_LABEL, providerName, planText, pagesText, addressFromEtsy, smoothWheel, trackChips, statusChip, receiptCopy,
-  copyChip, restorable, alsoSentChip, pageVersion, proofHtml, filesBadge, checkNotices, fieldsHtml, addressHtml,
+  copyChip, restorable, alsoSentChip, pageVersion, statusText, proofHtml, filesBadge, checkNotices, fieldsHtml, addressHtml,
   etsyAddressLines, svcChip, bookImage, paintBadge, ringHtml,
 } from '../order-bits.js';
 import { receiveDrop, dropLabel, wireFolderDrop } from '../drop.js';
@@ -75,35 +75,67 @@ export async function mountCard(view, rid) {
   };
   const pagesLabel = () => (f.pages ? String(f.pages) : pagesText(byFiles() ? plan().choice[provider()] : pageOptions()));
 
+  // Every print of the order — the first one, a book sent in another go, a reprint — is a tab (owner, 18.10.2026): the
+  // header's status and tracking, the line below and the history all show the chosen one. The newest is open first.
+  const prints = o.prints || [];
+  let tab = prints.length - 1;
+  const tabbed = prints.length > 1;
+  const shownPrint = () => (tabbed ? prints[tab] : null);
+  // The order as the header reads it: the chosen print's printer, status and tracking.
+  const asShown = () => {
+    const p = shownPrint();
+    return p ? { ...o, provider: p.provider, printStatus: p.printStatus, tracking: p.tracking, payment: p.payment, orderCreated: p.createdAt } : o;
+  };
+  const dayOf = (at) => (at ? new Date(at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }) : '');
+  const KIND = { first: 'Друк', more: 'Друк', reprint: 'Передрук' };
+  function printsTabs() {
+    if (!tabbed) return '';
+    let n = 0;
+    return html`<div class="oc-prints">${segHtml(prints.map((p, i) => {
+      const word = p.kind === 'reprint' ? KIND.reprint : `${KIND[p.kind]}${prints.filter((x) => x.kind !== 'reprint').length > 1 ? ` ${++n}` : ''}`;
+      return { value: String(i), icon: p.kind === 'reprint' ? 'sync' : 'printer', label: `${word} · ${dayOf(p.createdAt)}`,
+        tip: `${providerName(p.provider)} · ${p.printStatus ? statusText(p.printStatus) : ''}` };
+    }), String(tab), { name: 'print' })}</div>`;
+  }
+
   // A printed order (2026-09-30): what went to print and the reprint, here — the order in one place. The files
   // below stay for a send made again by hand (files no longer in the archive).
   function printedHtml() {
-    const last = (o.printed || [])[0];
+    const p = shownPrint();
+    const last = p ? (o.printed || []).find((e) => e.orderId === p.id) : (o.printed || [])[0];
+    const cost = p && p.cost != null ? ` · $${Number(p.cost).toFixed(2)}` : '';
+    if (p && !last) {
+      return html`<section class="card card-pad oc-printed">
+        <span class="oc-printed-icon">${ic(p.kind === 'reprint' ? 'sync' : 'package')}</span>
+        <div class="grow"><span class="faint">${dateTime(p.createdAt)}${cost} · файлів цього друку в архіві немає</span></div>
+      </section>`;
+    }
     // Data and two quiet icon buttons — no sentence telling what to do: the path above and the status chip say where
     // the order is (2026-09-30).
     return html`<section class="card card-pad oc-printed">
-      <span class="oc-printed-icon">${ic(o.stage === 'sent' ? 'truck' : o.stage === 'work' ? 'hourglass' : 'package')}</span>
-      <div class="grow">${last ? html`<span class="faint">${dateTime(last.sentAt)}${last.pageCount ? ` · ${last.pageCount} стор.` : ''}${last.formatLabel ? ` · ${last.formatLabel}` : ''}${(o.printed || []).length > 1 ? ` · відправок: ${o.printed.length}` : ''}</span>`
+      <span class="oc-printed-icon">${ic(p ? (/transit|ship|deliver|fulfilled/i.test(p.printStatus) ? 'truck' : 'hourglass')
+        : o.stage === 'sent' ? 'truck' : o.stage === 'work' ? 'hourglass' : 'package')}</span>
+      <div class="grow">${last ? html`<span class="faint">${dateTime(last.sentAt)}${last.pageCount ? ` · ${last.pageCount} стор.` : ''}${last.formatLabel ? ` · ${last.formatLabel}` : ''}${cost}${!tabbed && (o.printed || []).length > 1 ? ` · відправок: ${o.printed.length}` : ''}</span>`
           : html`<span class="faint">Файлів цієї відправки в архіві друку немає</span>`}</div>
       ${last ? ib('orderArchive', 'Що пішло в друк · передрук', `data-href="#/archive/${last.id}"`) : ''}
       ${last ? ib('upload', 'Покласти інші файли й надіслати ще раз', 'data-act="manual" id="oc-manual"') : ''}
     </section>`;
   }
 
-  const atGelato = o.stage !== 'new' && o.provider === 'gelato';
+  const atGelato = o.stage !== 'new' && (o.provider === 'gelato' || prints.some((p) => p.provider === 'gelato'));
   setHtml(view, html`
     <div class="page-head">
       <button class="back-link" data-act="back" aria-label="До замовлень" data-tip="До замовлень" data-kbd="Esc">${ic('arrowLeft')}</button>
       <span id="oc-finish"></span>
       <div class="grow">
-        <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1>${statusChip(o)}${alsoSentChip(o)}</div>
-        <div class="page-sub ord-sub">${receiptCopy(o, 'mono')} · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}${trackChips(o)}</div>
+        <div class="ord-title"><h1 class="page-title truncate">${o.name}</h1><span id="oc-status" style="display:contents">${statusChip(asShown())}</span>${tabbed ? '' : alsoSentChip(o)}</div>
+        <div class="page-sub ord-sub">${receiptCopy(o, 'mono')} · <span data-tip="${dateTime(o.createdAt)}">${relTime(o.createdAt)}</span> · ${STAGE_LABEL[o.stage] || ''}<span id="oc-track" style="display:contents">${trackChips(asShown())}</span></div>
       </div>
       <div id="oc-plan"></div>
     </div>
     <div class="ord-path-slot" id="oc-path"></div>
     <div id="oc-link"></div>
-    ${o.stage !== 'new' ? printedHtml() : ''}
+    ${o.stage !== 'new' ? html`${printsTabs()}<div id="oc-printed">${printedHtml()}</div>` : ''}
     <div class="ord-grid${atGelato ? ' ord-hist' : ''}">
       <div class="stack-l" id="oc-flow"></div>
       <div class="stack-l ord-side" id="oc-data"></div>
@@ -111,7 +143,15 @@ export async function mountCard(view, rid) {
     </div>`);
   const $ = (s) => view.querySelector(s);
   // A placed Gelato order's history, asked for now that the card is open (never for the whole queue).
-  const stopHistory = atGelato ? mountHistory($('#oc-history'), o) : () => {};
+  let stopHistory = atGelato ? mountHistory($('#oc-history'), o, shownPrint()?.id || '') : () => {};
+  // Another print's tab: its status, tracking, line and history.
+  function showPrint(i) {
+    tab = i;
+    setHtml($('#oc-status'), statusChip(asShown()));
+    setHtml($('#oc-track'), trackChips(asShown()));
+    setHtml($('#oc-printed'), printedHtml());
+    if (atGelato) { stopHistory(); stopHistory = mountHistory($('#oc-history'), o, shownPrint()?.id || ''); }
+  }
 
   // ---------------------------------------------------------------- header: where it is printed
   function renderPlan() {
@@ -163,10 +203,8 @@ export async function mountCard(view, rid) {
   const renderPath = () => setHtml($('#oc-path'), pathHtml(pathSteps(), { label: 'Шлях замовлення' }));
   function goStep(key) {
     const to = { files: '#oc-flow', proof: '#oc-proof', print: '#oc-print' }[key];
-    if (key === 'canva') {
-      if (item().book?.canvaUrl) openExternal(item().book.canvaUrl);
-      else toast('У паспорті книги немає посилання на Canva', 'info');
-    } else if (to && $(to)) $(to).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (key === 'canva') openCanva();
+    else if (to && $(to)) $(to).scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ---------------------------------------------------------------- right (stays in view): book, personalization, delivery
@@ -567,6 +605,61 @@ export async function mountCard(view, rid) {
       startCheck(w, my);
     }
   }
+  // ---------------------------------------------------------------- Canva: the order handed over, its ZIP caught (2026-10-18)
+  // The template opens with the order in its link (`#bs=…`, read by the Canva extension's early.js and never sent to Canva):
+  // the receipt, the child and the copy's name. The extension makes the copy, names it after the book and deletes its first
+  // page; the owner downloads, Canva names the ZIP after the copy, and the card takes that book's ZIP from Downloads by
+  // itself (`/api/orders/<id>/canva-zip`) — the same as dropping it in. Each book waits for its own ZIP.
+  // «R - Emma (2)» would read as the browser's own «(2)» of a second download: the copy of a second Emma is «R - Emma #2».
+  const canvaTitle = (i) => titleOf(i).replace(/ \((\d+)\)$/, ' #$1');
+  const childOf = (i) => o.items[i]?.childName || (o.items.length < 2 ? o.childName : '') || '';
+  function canvaLink(i = pick) {
+    const it = o.items[i] || {};
+    const url = String(it.book?.canvaUrl || '').split('#')[0];
+    if (!url || !childOf(i)) return url;
+    const data = { receipt: String(o.receiptId), child: childOf(i), title: canvaTitle(i), book: it.book?.title || '' };
+    let bin = '';
+    new TextEncoder().encode(JSON.stringify(data)).forEach((b) => { bin += String.fromCharCode(b); });
+    return `${url}#bs=${btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+  }
+  function openCanva() {
+    const link = canvaLink();
+    if (!link) { toast('У паспорті книги немає посилання на Canva', 'info'); return; }
+    openExternal(link);
+    if (!childOf(pick)) { toast('Не бачу імені дитини в замовленні — шаблон відкрито без нього, ZIP перетягніть сюди самі', 'info', 7000); return; }
+    awaitZip(f);
+    toast('Чекаю ZIP із Canva — він з’явиться тут сам', 'info', 3500);
+  }
+  let dead = false;                     // the card is gone: a look still on its way does nothing
+  const ZIP_WAIT = 3 * 3600 * 1000;     // a long pause: still waited for
+  function awaitZip(w) {
+    const i = work.indexOf(w);
+    const since = Date.now();
+    const seq = w.seq;                  // files put in by hand meanwhile (a drop, a folder) end the wait
+    let looking = false;
+    clearInterval(w.zipTimer);
+    w.zipTimer = setInterval(async () => {
+      if (dead || w.seq !== seq || Date.now() - since > ZIP_WAIT) { clearInterval(w.zipTimer); return; }
+      if (looking || w.busy || !providerOf(i)) return;   // the last look still on its way, files arriving, no printer chosen
+      looking = true;
+      let res;
+      try { res = await api(`/api/orders/${o.receiptId}/canva-zip?${new URLSearchParams({ since: String(since), title: canvaTitle(i) })}`); }
+      catch { return; } finally { looking = false; }
+      if (dead || w.seq !== seq) return;
+      if (res.error) { clearInterval(w.zipTimer); toast(`ZIP із Canva не прийнято: ${res.error}`, 'error', 7000); return; }
+      if (!res.path) return;
+      clearInterval(w.zipTimer);
+      toast(`ZIP із Canva: ${res.name}`, 'success', 3000);
+      dropCheck(w);
+      warmModel();
+      const my = ++w.seq;
+      Object.assign(w, { folder: '', label: res.name, note: '', pages: 0, validation: null, busy: -1, error: '', check: null,
+        decided: null, versions: {}, replaced: new Set(), dismissed: new Set() });
+      if (showing(w)) { renderPlan(); renderRight(); }
+      try { await arrange(res.path, w, my); } catch (err) { failed(w, my, err); }
+    }, 2500);
+  }
+
   const failed = (w, my, err) => {
     if (my !== w.seq) return;
     Object.assign(w, { busy: 0, error: err.message, validation: null, pages: 0, decided: null });
@@ -703,6 +796,8 @@ export async function mountCard(view, rid) {
       receiptId: String(o.receiptId), // the Order Creator keeps its work (and result) for this order
       buyer: o.name,                  // its head: the order it prints (2026-09-30)
       mode: p, books, address: addressFromEtsy(o),
+      reprintOffered: !!o.reprintOffered, // sent again once printed: the Order Creator offers «Передрук»…
+      alreadyPrinted: !!o.alreadyPrinted, // …ticked when the book has left the printer
     });
     location.hash = '#/creator';
   }
@@ -723,7 +818,7 @@ export async function mountCard(view, rid) {
       if (sent && t.closest('.result-card') && await resultAction(a, sent, t)) { if (a === 'close-tunnel') redrawPrint(); return; }
       if (a === 'back') location.hash = '#/orders';
       else if (a === 'finish') { finished = true; finish(o.receiptId); toast('Роботу над замовленням завершено', 'success'); location.hash = '#/orders'; }
-      else if (a === 'canva') openExternal(item().book?.canvaUrl);
+      else if (a === 'canva') openCanva();
       else if (a === 'browse') takeFolder();
       else if (a === 'earlier') takeEarlier();
       else if (a === 'print') print();
@@ -754,6 +849,11 @@ export async function mountCard(view, rid) {
       resetFiles();
       renderPlan(); renderRight();
     }),
+    on(view, 'click', '[data-seg="print"] button', (e, b) => {
+      if (+b.dataset.value === tab) return;
+      setSeg(b.closest('.seg'), b.dataset.value);
+      showPrint(+b.dataset.value);
+    }),
     // Each book keeps its own work: switching simply shows another one, nothing is lost.
     on(view, 'click', '[data-seg="book"] button', (e, b) => {
       if (+b.dataset.value === pick) return;
@@ -763,6 +863,7 @@ export async function mountCard(view, rid) {
     }),
   ];
   wireFolderDrop(view, () => $('#oc-folder'), takeDrop);
+  if (tabbed) requestAnimationFrame(() => syncSeg($('.oc-prints .seg')));
 
   const listenEsc = escBack('#/orders'); // Esc steps back to the queue (not named esc: that is the HTML escape imported above)
 
@@ -786,6 +887,6 @@ export async function mountCard(view, rid) {
     },
     // Nothing but a position to remember: such cards give way first when many are kept (keep.js).
     idle: () => !(work.some((w) => w.folder || w.busy || w.label) || sentOf(o.receiptId)),
-    unmount() { work.forEach((w) => { dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopHistory(); stopFit(); listenEsc(false); stopLink(); stopPlaque(); },
+    unmount() { dead = true; work.forEach((w) => { clearInterval(w.zipTimer); dropCheck(w); w.seq++; }); offs.forEach((fn) => fn()); stopHistory(); stopFit(); listenEsc(false); stopLink(); stopPlaque(); },
   };
 }

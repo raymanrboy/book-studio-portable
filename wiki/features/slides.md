@@ -1,7 +1,7 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-10-13
+updated: 2026-10-14
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
@@ -45,8 +45,8 @@ code:
    Cover & Open 1 and All & Open 1 are whole scenes — they stay as they are. The ones left open for the owner go the
    same way right after «Зберегти відкриті». ~3–7 s a mockup, in the background.
 2. **Step 4 «Слайди для лістингу»** appears under the Photoshop step once a run has saved pictures: a line «Без фону ·
-   5/6» (a spinner while cutting, the folder button when some are ready), the two numbers **Сторінок** (24) and
-   **Віршів** (11), six numbered outlines, and **«Зробити слайди»**. The button always answers: while Cover 1 and
+   5/6» (a spinner while cutting, the folder button when some are ready), the two numbers **Сторінок** (30) and
+   **Віршів** (14; 24 / 11 until 2026-10-14 — the owner: «тепер 30 / 14»), six numbered outlines, and **«Зробити слайди»**. The button always answers: while Cover 1 and
    Dedication still wait in Photoshop it says slides 2 and 3 need them and blinks «Зберегти відкриті».
 2a. **A part of the six** (09.10.2026, the owner: "if I made only Dedication, I redo only that slide"): each of the six outlines is a
    **tick**; the ones on the run's ticked templates are ticked by themselves (Open 1 → slides 1 and 4, Open 2 → 5 and 6, Cover 1 → 2,

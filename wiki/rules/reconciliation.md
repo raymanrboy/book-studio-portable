@@ -1,7 +1,7 @@
 ---
 title: Order matching and computing profit
 type: rule
-updated: 2026-10-13
+updated: 2026-10-18
 code:
   - app/studio/reconcile.py
   - app/studio/fees.py
@@ -29,7 +29,8 @@ of 2026-09-26).
 1. **A manual link** (`links.json`): receipt → order, or "no cost" (`none`). A link to an order the last sync
    doesn't have falls back to the rules below.
 2. **By receipt number** — first Printify (`metadata.shop_order_id`, or a product's title), then Gelato
-   (`orderReferenceId`). The first order that names the receipt wins, a live one before a dead one.
+   (`orderReferenceId`). The **earliest** order that names the receipt wins, a live one before a dead one and a placed one before an unpaid or on-hold one (since 2026-10-18; before, the newest —
+   an unmarked reprint of the same name took the first print's place, and the replacement picker could not offer it).
 3. **By the recipient's name** — first Printify, then Gelato (`is_name_match()`: identical, the same first and
    last word, or one contains the other from 4 characters on) **and made from 1 day before to 30 days after the receipt**
    (since 2026-10-08: a repeat buyer's old order was taken by her new receipt and the cost split); with several — the closest in

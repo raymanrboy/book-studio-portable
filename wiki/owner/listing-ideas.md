@@ -1,7 +1,7 @@
 ---
 title: Listing ideas backlog
 type: owner
-updated: 2026-10-11
+updated: 2026-10-16
 code: []
 ---
 # Listing ideas backlog
@@ -45,7 +45,7 @@ the first five T books).
 | # | Idea | Seen | Listings | Pictures | Status |
 |---|---|---|---|---|---|
 | **Family — the adult buys it from the child** | | | | | |
-| 1 | Grandma (birthday, Mother's Day, "First Christmas as Grandma", bears with grandma) | L, T | 4 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) · [owner's shots](../raw/2026-10-11-grandma-bear-listing/1.webp) | idea |
+| 1 | Grandma (birthday, Mother's Day, "First Christmas as Grandma", bears with grandma) | L, T | 4 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) · [owner's shots](../raw/2026-10-11-grandma-bear-listing/1.webp) | **in the Workshop** — 46.grandma-and-me (a day with Grandma Bear, not seasonal, style WP, 2026-10-16) |
 | 2 | Grandpa (birthday, Father's Day, "First Christmas as Grandpa") | L | 3 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) | idea |
 | 3 | Mom (Mother's Day, birthday, "First Christmas as Mom") | L | 3 | [L](../raw/2026-10-11-lunabooksus-book-pages/first-christmas-as-mom/01.jpg) | idea |
 | 4 | Dad: Father's Day, birthday, "First Christmas as Dad", **a day with Daddy** (fishing or mushrooms instead of golf — the owner) | L, T | 4 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) · [owner's shots](../raw/2026-10-11-day-with-daddy-listing/1.webp) | idea |

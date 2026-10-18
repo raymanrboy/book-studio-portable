@@ -293,6 +293,24 @@ def _loaded(entry: dict, facts: dict) -> float | None:
     return (facts.get("loaded") or {}).get(source)
 
 
+def is_reprint(entry: dict) -> bool:
+    """A reprint: from the archive (`reprintOf` — the archived book it reprints) or with new files (`reprint`, since
+    18.10.2026; its `reprintOf` is the first print's book while that is still archived)."""
+    return bool(entry.get("reprintOf") or entry.get("reprint"))
+
+
+def printed_before(receipt_id: str | None, title: str = "") -> str | None:
+    """The newest archived book of this Etsy order that went to print — what a reprint with new files reprints; of the
+    same child (`title`, «R - Emma») when the order has several books."""
+    if not receipt_id:
+        return None
+    facts = _facts_or_none()
+    own = [e for e in entries() if e.get("receiptId") == str(receipt_id) and standing(e, facts) == "counted"]
+    child = child_of(title).lower()
+    same = [e for e in own if child and child_of(e.get("title") or "").lower() == child]
+    return (same or own or [{}])[0].get("id")
+
+
 def _own_order(entry: dict, facts: dict) -> dict:
     if not entry.get("orderId"):
         return {}
@@ -302,7 +320,7 @@ def _own_order(entry: dict, facts: dict) -> dict:
 def _reached_buyer(entry: dict, facts: dict) -> bool:
     """The moment the 14 days start: the Etsy order shipped or closed; for a reprint, its own print order
     shipped by the printer (the Etsy order was shipped long before)."""
-    if entry.get("reprintOf"):
+    if is_reprint(entry):
         own = _own_order(entry, facts)
         return bool(own.get("tracking")) or str(own.get("status") or "").lower() in facts["sent"]
     return facts["stages"].get(entry.get("receiptId") or "") in ("shipped", "closed")
@@ -311,7 +329,7 @@ def _reached_buyer(entry: dict, facts: dict) -> bool:
 def _unknown(entry: dict, facts: dict) -> bool:
     """The program cannot follow this book's order, so the timer counts from sending instead: no Etsy
     receipt number or a receipt the synced orders do not have — until it shows up."""
-    if entry.get("reprintOf"):
+    if is_reprint(entry):
         return not entry.get("orderId")
     rid = entry.get("receiptId")
     return not rid or (facts["haveReceipts"] and rid not in facts["stages"])
@@ -416,12 +434,12 @@ def _note(entry: dict, state: str, facts: dict, now: float) -> bool:
     if state == "dropped" and not entry.get("droppedAt"):
         entry["droppedAt"] = _iso(now)
         changed = True
-        if entry.get("reprintOf"):
+        if is_reprint(entry):
             _reprint_mark(entry, False)
     elif state != "dropped" and entry.get("droppedAt"):
         entry["droppedAt"] = None
         changed = True
-        if entry.get("reprintOf"):
+        if is_reprint(entry):
             _reprint_mark(entry, True)
     if state == "counted" and not entry.get("shippedAt") and _reached_buyer(entry, facts):
         entry["shippedAt"] = _iso(now)  # first seen "shipped" — as the owner sees it in the queue
@@ -542,11 +560,11 @@ def card_facts(receipt_id: str) -> dict:
     reprint from here (2026-09-30 — the order in one place, not also in the archive's own list)."""
     facts = _facts_or_none()
     own = [e for e in entries() if e.get("receiptId") == str(receipt_id)]
-    brief = ("id", "provider", "sentAt", "pageCount", "format", "formatLabel")
+    brief = ("id", "provider", "sentAt", "pageCount", "format", "formatLabel", "orderId")
     return {"earlierSends": [{k: e.get(k) for k in brief}
                              for e in own if facts is not None and standing(e, facts) != "counted"],
             "atPrinter": any(standing(e, facts) != "dropped" for e in own),
-            "printed": [{**{k: e.get(k) for k in brief}, "reprint": bool(e.get("reprintOf"))}
+            "printed": [{**{k: e.get(k) for k in brief}, "reprint": is_reprint(e)}
                         for e in own if standing(e, facts) == "counted"],
             "links": _open_links(own)}
 

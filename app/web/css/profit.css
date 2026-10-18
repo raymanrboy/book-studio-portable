@@ -20,6 +20,8 @@
 .ohead > div { padding: 10px 16px; font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; color: var(--text-3); }
 .orow > div { padding: 13px 16px; min-width: 0; }
 .ohead .r, .orow .r { text-align: right; }
+/* «Лістинги» (2026-10-14): a listing's long Etsy title, then its books and money. */
+.ohead.lhead, .orow.lrow { grid-template-columns: minmax(0, 1fr) 8% 16% 14% 13% 11%; }
 .ohead .c, .orow .c { text-align: center; }
 .oitem { border-top: 1px solid var(--border); content-visibility: auto; contain-intrinsic-size: auto 66px; }
 .oitem:first-of-type { border-top: 0; }

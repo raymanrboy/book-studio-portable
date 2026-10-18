@@ -32,6 +32,7 @@ Only these production styles are available:
 - **CP** - Colored Pencil & Glowing Pastel (colored pencil and chalk pastel on deep midnight paper, glowing lanterns; the look of 24.spooky-stories, made general 2026-10-13)
 - **CG** - Cozy Glow (a soft polished digital painting with golden light; the look of the cozy bedtime books of TheChildhoodKeeper)
 - **FG** - Festive Gouache (bold saturated gouache with crayon texture; the look of LunaBooksUS's Christmas books)
+- **WP** - Watercolor & Pencil Cottage (watercolor with soft sepia pencil lines, cottage-garden colors; the look of TheChildhoodKeeper's grandma-bear book)
 
 ---
 
@@ -246,6 +247,34 @@ wide open smiles, chalky crayon texture, gold stars on warm gradient grounds, bo
 }
 ```
 `negative+`: `["3D render","glossy vector clip art","anime","photorealism","hard black outlines","only pale washed-out pastels","horror","muddy colors","plastic AI sheen","thin lifeless lines"]`
+
+---
+
+## WP - Watercolor & Pencil Cottage
+`task` tag: `... in a warm hand-drawn watercolor and colored pencil children's illustration style with soft sepia pencil lines and cozy cottage-garden charm`
+Added 2026-10-16 from the grandma-and-little-bear listing of the competitor TheChildhoodKeeper (the pictures:
+`wiki/raw/2026-10-11-grandma-bear-listing/`; the owner liked this look the most, "pencil plus something"). Differs from `CG`: it HAS lines — soft
+warm-brown pencil contours around every figure and prop, and pencil strokes for fur — over transparent watercolor washes; muted cottage-garden
+colors (sage, dusty rose, cream, honey brown, peach sky, lavender wisteria) instead of a golden glow; and the text side is a plain warm watercolor
+paper wash with a few petals.
+```json
+"style": {
+  "medium": "premium hand-drawn children's illustration in transparent watercolor and fine colored pencil over soft sepia pencil drawing, on warm cream watercolor paper",
+  "paint_quality": "soft layered watercolor washes with gentle pigment blooms and granulation, colored pencil shading laid over the washes for fur, knit and wood grain, a few small opaque gouache highlights; hand-made, never airbrushed",
+  "washes": "warm cream paper glowing through every wash; soft peach-to-butter sky, honey and apricot afternoon light, pale sage foliage blooms, misty lavender twilight, loose watercolor blooms fading into plain paper at quiet edges",
+  "linework": "thin soft warm-brown sepia pencil contours around every figure and prop, slightly sketchy and varied in pressure, never black, never thick; fine short pencil strokes for fur, knitted stitches, flower petals and leaf veins",
+  "forms": "chubby round friendly animals dressed like people: soft rounded bodies, small round ears, small dark glossy eyes with a tiny highlight, a little cream muzzle, rosy blush cheeks, gentle closed-mouth smiles; cozy handmade clothes such as knitted cardigans, floral aprons, knitted scarves, round wire glasses",
+  "detail": "medium-rich cottage-garden charm: stone cottage walls with climbing ivy and roses, wooden window frames with glowing windows, terracotta flower pots, wooden tables and benches, a little robin, butterflies, wisteria, daisies and pansies in the grass, fairy-light strings, jars and teacups; every prop small, inspectable and charming but never busy",
+  "texture": "visible cold-press watercolor paper tooth, colored pencil grain over the washes, soft pigment granulation, a few floating petals, dust motes and tiny light dots",
+  "color": "muted warm cottage palette: sage and moss green, dusty rose, blush pink, cream, honey and chestnut brown, apricot, butter yellow, soft peach sky, lavender and wisteria violet, a little robin orange; gentle, never neon, never one color washing over the whole picture",
+  "light": "soft warm natural light: honey afternoon sun, glowing cottage windows, dappled light under trees, warm twinkle lights at dusk; gentle soft shadows",
+  "depth_feel": "clear crisp foreground characters with pencil lines, a softer and lighter background with fewer lines, gentle atmospheric watercolor distance",
+  "overlay_behavior": "the calm area for later text is a plain soft watercolor wash over cream paper continuing the scene's sky, wall or meadow, with a few drifting petals, butterflies or light dots and no objects",
+  "mood": "warm, tender, nostalgic, cozy, loving, gently playful",
+  "finish": "matte hand-drawn watercolor and colored pencil finish on textured cream paper"
+}
+```
+`negative+`: `["3D render","vector","anime","photorealism","glossy AI render","airbrushed digital smoothness","thick black outlines","flat cel shading","neon colors","harsh contrast","orange or yellow color cast over the whole picture","busy cluttered scene","hyper-detailed texture noise"]`
 
 ---
 

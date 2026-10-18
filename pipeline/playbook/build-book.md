@@ -12,7 +12,7 @@ The book's other folders and `book.json` belong to the Workshop: never create or
 If something is missing, pick the safest sensible default and note it — do NOT stop to ask.
 
 ## Run 0 → 5 with NO questions
-**Exception — Style/Medium:** if not specified in `input.md`, STOP and ask the user which preset to use before Agent 2. Show the options from `knowledge/media-presets.md` (RW / W / G / GW / LO / HR / CP / CG / FG). This is the only pre-Agent-2 stop in autonomous mode.
+**Exception — Style/Medium:** if not specified in `input.md`, STOP and ask the user which preset to use before Agent 2. Show the options from `knowledge/media-presets.md` (RW / W / G / GW / LO / HR / CP / CG / FG / WP). This is the only pre-Agent-2 stop in autonomous mode.
 
 **Format exception — Formula F / ABC Alphabet:** if Agent 0 routes to Formula F, use the ABC square
 workflow instead of the standard panorama workflow: Tier S by default, no Agent 1, no `canonical.png`,
@@ -42,7 +42,7 @@ contract.
    gates. Present **GO**, or a precise fix list and loop until GO. No tokens spent yet.
 3. **STOP 3 — generation:** on the human's "go", generate the **14 story panoramas + 2 square end
    images** in ONE chat with the reference attached. Tokens are spent here, so only after GO.
-4. **STOP 4 — final wide image:** after story panoramas are generated and approved, ask the user: "Are you ready to create the cover? Please send me the best frame from the generated spreads." Once the user provides the chosen frame, run `agents/6-wraparound-image-director.md` using that frame as the visual foundation → `cover-prompts-json.md`, rerun the book check, then generate that one final 2:1 image only after a clean mechanical gate.
+4. **STOP 4 — final wide image:** after story panoramas are generated and approved, ask the user: "Are you ready to create the cover? Please send me the best frame from the generated spreads." Once the user provides the chosen frame, run `agents/6-wraparound-image-director.md` using that frame for the characters and the look, placed by its light-ground formula (milky cream ground, the characters low, the title space above them) → `cover-prompts-json.md`, rerun the book check, then generate that one final 2:1 image only after a clean mechanical gate.
 
 ## After generation
 Agent 6 final wide image (2:1 panorama) → Canva text overlay → PDF. Internally

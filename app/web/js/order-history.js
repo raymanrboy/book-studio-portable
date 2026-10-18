@@ -27,9 +27,10 @@ function rows(data) {
   </ol>`;
 }
 
-/** Fills `host` (an empty element of the card) with the history of order `o`; removes it when there is nothing to
- *  ask about (not placed, or not at Gelato). Returns a function that stops it (the card closed). */
-export function mountHistory(host, o) {
+/** Fills `host` (an empty element of the card) with the history of order `o` — of its print `printId` when given (a tab
+ *  of the card: the first print, a reprint); hides it while there is nothing to ask about (not placed, or not at Gelato).
+ *  Returns a function that stops it (the card closed, another tab chosen). */
+export function mountHistory(host, o, printId = '') {
   let data = null;
   let ask = 0;
   let state = 'busy';
@@ -55,9 +56,11 @@ export function mountHistory(host, o) {
     state = 'busy';
     paint();
     try {
-      const got = await api(`/api/orders/${o.receiptId}/history${fresh ? '?fresh=1' : ''}`);
+      const q = new URLSearchParams({ ...(fresh ? { fresh: '1' } : {}), ...(printId ? { order: printId } : {}) }).toString();
+      const got = await api(`/api/orders/${o.receiptId}/history${q ? `?${q}` : ''}`);
       if (mine !== ask || !host.isConnected) return;
-      if (!got.available) { host.remove(); document.querySelector('.ord-grid')?.classList.remove('ord-hist'); return; }
+      showHost(got.available);
+      if (!got.available) return;
       data = got;
       state = 'ready';
     } catch (err) {
@@ -66,6 +69,12 @@ export function mountHistory(host, o) {
       error = err.message || 'невідома помилка';
     }
     paint();
+  }
+
+  // Hidden, not removed: another tab of the card may be a Gelato print with a history of its own.
+  function showHost(on) {
+    host.hidden = !on;
+    host.closest('.ord-grid')?.classList.toggle('ord-hist', on);
   }
 
   const stops = [

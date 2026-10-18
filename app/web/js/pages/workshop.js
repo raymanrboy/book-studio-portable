@@ -11,6 +11,7 @@ import { bookTile, segBar, tickBadge } from '../book-tile.js';
 
 const PREF = 'bs-workshop-view';
 const SORTS = [
+  { value: 'most', label: 'Спочатку найбільш готові', icon: 'checkCircle' },
   { value: 'number', label: 'За номером — новіші спершу', icon: 'sort' },
   { value: 'recent', label: 'Нещодавно змінені', icon: 'clock' },
   { value: 'least', label: 'Спочатку найменш готові', icon: 'alertCircle' },
@@ -21,7 +22,7 @@ const SORTS = [
 // being made are shown (the ones passed on are the library's, under «У магазині»).
 export async function mount(view, params, { embedded = false } = {}) {
   const saved = remembered(PREF, {});
-  const state = { books: [], folder: '', sort: SORTS.some((s) => s.value === saved.sort) ? saved.sort : 'number', query: '', shelf: 'work' };
+  const state = { books: [], folder: '', sort: SORTS.some((s) => s.value === saved.sort) ? saved.sort : 'most', query: '', shelf: 'work' };
   let first;
   try {
     first = await api('/api/workshop/books');
@@ -43,7 +44,7 @@ export async function mount(view, params, { embedded = false } = {}) {
       <div class="input-group">${ic('search')}<input class="input" id="ws-q" placeholder="Назва або номер книги" aria-label="Пошук книг" autocomplete="off"></div>
       <span id="ws-shelf"></span>
       <div class="tools">${ib('sort', 'Сортування', 'data-act="sort" id="ws-sort"')}${ib('folderOpen', 'Відкрити папку книг', 'data-act="folder"')}</div>
-      ${ib('plus', 'Нова книга — в Antigravity', 'data-act="add"', { cls: 'primary', kbd: 'N' })}
+      ${ib('plus', 'Нова книга — текст для агента в буфер', 'data-act="add"', { cls: 'primary', kbd: 'N' })}
     </div>
     <div class="lib-grid" id="ws-grid"></div>
     <div id="ws-empty"></div>`);
@@ -61,6 +62,7 @@ export async function mount(view, params, { embedded = false } = {}) {
     const by = {
       number: (a, b) => (b.number ?? -1) - (a.number ?? -1) || a.title.localeCompare(b.title),
       recent: (a, b) => b.updated - a.updated,
+      most: (a, b) => readiness(b) - readiness(a) || (b.number ?? -1) - (a.number ?? -1),
       least: (a, b) => readiness(a) - readiness(b) || (b.number ?? -1) - (a.number ?? -1),
     }[state.sort];
     return list.sort(by);
@@ -107,7 +109,7 @@ export async function mount(view, params, { embedded = false } = {}) {
       patch(box, [['none', html`<div class="empty" style="padding:72px 20px">
         <div class="empty-icon">${ic('workshop')}</div>
         <h3>Майстерня порожня</h3>
-        <p>«Нова книга» відкриє Antigravity, а в буфері буде «Нова книга» з адресою папки книг — вставте в чат агента. Книга з'явиться тут сама, щойно агент почне її писати.</p>
+        <p>«Нова книга» покладе в буфер «Нова книга» з адресою папки книг — вставте в чат будь-якого агента. Книга з'явиться тут сама, щойно агент почне її писати.</p>
         <button class="btn btn-primary" data-act="add">${ic('agent')}Нова книга</button>
         <div class="faint mono ws-empty-path">${state.folder}</div></div>`]]);
     } else if (!list.length) {
@@ -152,7 +154,7 @@ export async function mount(view, params, { embedded = false } = {}) {
   paint();
 
   const newBook = (btn) => act(btn, () => post('/api/workshop/agent', {}),
-    () => 'Antigravity відкривається · у буфері — «Нова книга» з адресою папки книг; вставте в чат агента');
+    () => 'У буфері — «Нова книга» з адресою папки книг; вставте в чат агента');
   const runSearch = debounce(paint, 90);
   const offs = [
     on(view, 'click', '[data-open]', (e, b) => { location.hash = `#/workshop/${encodeURIComponent(b.dataset.open)}`; }),

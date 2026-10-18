@@ -1,10 +1,84 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-13
+updated: 2026-10-18
 code: []
 ---
 # Decisions
+
+## 2026-10-18 — A reprint with new files is a reprint; it is «in progress» while made; a tab per print
+
+**The case:** a buyer complained about the possessive on the cover («…'s» → «…'»); the owner sent the fixed book to Gelato from the order's
+card. The program took that send for a normal order: the newest Gelato order of the receipt's name became «the» print, the first
+one the extra; the order stayed among the shipped; the card showed one print; the replacement picker hid the reprint, so the
+costs came out under swapped labels (the total was right: $10.47 the first print with Gelato+'s free shipping of 1–8 October,
+$18.30 the reprint).
+**The owner decided:**
+- **«Передрук» tick in the Order Creator, set by itself** for an order already printed; he takes it off when it is not a reprint
+  (asked: ask every time, or tick by itself — «б»).
+- **While the reprint is made the order is «Друкується»** with a «передрук» mark, then back to its stage. *Revises* 2026-09-18
+  («a reprint doesn't change the stage»).
+- **A tab per print** on the order's page (asked: tabs or a list inside — «вкладки»), the newest open.
+**The agent decided (engineering):** the earliest order naming a receipt is its own (not the newest); the replacement picker
+offers every order, the current first print marked; a reprint with new files keeps `reprint: true` in the archive (14 days from
+its own shipping). That order's records put right by hand (backup copies kept outside the data folder). Pages: [order-stages](rules/order-stages.md),
+[order-creator](features/order-creator.md), [orders](features/orders.md), [archive](features/archive.md).
+
+## 2026-10-17 — Every book's outer picture: the characters low on a milky cream ground, the title space above them
+
+The owner sent five competitor covers as the format for all our next ones: the picture sits on a clean white, light ground with plenty of
+empty space for the title. Agent 6 now makes every wide image by this **light-ground formula** (the characters large and close in the
+lower right, a small vignette dissolving into white or the characters alone on white, the upper right plain white, the left area almost all
+white); the full-scene and solid-color grounds (books 38–45) stay only on request. First tests: three versions for book 40
+(`cover-white-tests.md`). **After the first test the owner corrected it:** the ground milky cream, not white; the characters much lower
+and smaller with real empty space above their heads (in round 1 the heads nearly touched the top); the left area with a minimal but
+present sprinkle of small details, not empty. Round 2 of the tests has these, and **the owner approved it** ("I like this approach") — its three pictures are saved next to the examples. **It applies from book 46 on**;
+older books keep their outer images unless he asks. A soft colored ground instead of cream is allowed on his request (book 42: a muted red). [The examples and their analysis](raw/2026-10-17-white-cover-examples/SOURCE.md) · the rule —
+`pipeline/playbook/agents/6-wraparound-image-director.md`
+
+## 2026-10-16 — Antigravity is given up: Book Studio starts no IDE, only puts the agent's words into the clipboard
+
+The owner decided to abandon that IDE. «+» and «Відкрити агента» now only copy the words (`agent_words()`) and the owner pastes them into
+any agent or harness; the `antigravity()` finder and the window start are gone from the Workshop. The words with full paths stay (they
+were made for an agent that picks its own folder). *Left in place, unused by the Workshop:* `portable.antigravity()` / `antigravity_launch()` and the
+`runtime/Antigravity` check of the portable copy — to be removed if the owner wants the program fully clean. Supersedes the start-only
+decision of 2026-09-26 below. [features/workshop.md](features/workshop.md)
+
+## 2026-10-18 (later) — Three order steps taken back: the copy + its name, the first page out, the ZIP caught
+
+After the removal below the owner named what he liked and wanted kept: the template's copy made and renamed by itself, the first page of
+the copy deleted, the downloaded archive caught by the card. Only those came back (extension 0.4.0; the route, the ZIP finder and the
+card's wait restored); the name replace, the dedication fields and the download press stay gone. The first `order.js` was lost, so it is
+rewritten and was tried live only in part. [features/canva-extension.md](features/canva-extension.md)
+
+## 2026-10-18 — The Canva extension's order mode is removed; the extension only makes books
+
+The owner: remove the order helper whole, with all the autofill work; the extension stays for making books only. Gone: `early.js`, `order.js`,
+the panel's order steps, the card's hand-over and ZIP wait, the route that took the ZIP from Downloads. This reverses the
+decision of 2026-10-15 below. [features/canva-extension.md](features/canva-extension.md)
+
+## 2026-10-15 — The Canva extension does an order's mechanical part; the owner keeps the words and the cover (reversed 2026-10-18)
+
+The owner: «якщо є рішення — давай», with the cover's name and the custom fonts as the worry. The extension edits the owner's
+own template in Canva in place (no re-drawing, so his fonts and layouts stay): the copy «<receipt> - <child>», `{Name}` → the
+child everywhere, the PNG download; Book Studio takes the ZIP by its name. **His (14.10):** the dedication and «від кого»
+(buyers write them messily — an AI to tidy them was weighed and dropped: he writes them), and the name on the cover. No 28-page
+cut and no Upscayl any more. [features/canva-extension.md](features/canva-extension.md)
+
+## 2026-10-14 — After the audit of the program's functions: the queue warns, orders refresh hourly
+
+Three agents read every feature page and the decisions; the owner said yes or no to each finding.
+- **Yes:** Etsy's ship-by date in the queue (red once past); a refused Gelato payment in red and a draft forgotten for 12 h
+  in amber; an order of several books is listed under «Нові» until all are ordered (open since 22.09; its stage is kept); the period's sales and profit
+  by listing on the Profit page (instead of Etsy's CSV); the backup checked every 6 hours, not only on launch; the
+  period's Offsite Ads under «На руки» (he keeps Offsite Ads on); **orders refresh quietly every hour** — this replaces the
+  rule of 2026-09-15 (launch + button only).
+- **No:** archive files kept longer than 14 days; fixed costs (Gelato+, Payoneer, the FOP tax) in Profit; the September
+  orders' October refunds; any Etsy automation (marking shipped, draft listings — Etsy stays read-only); several books on one
+  listing; automating the Canva step for now (he asked for a worked-out proposal first).
+- **Not needed:** the receipt number in Gelato's references — all 31 sales since 1.10 already match by it.
+- The listing slides' numbers are **30 pages / 14 poems** (were 24 / 11).
+[rules/order-stages.md](rules/order-stages.md) · [rules/sync-policy.md](rules/sync-policy.md) · [features/profit.md](features/profit.md)
 
 ## 2026-10-13 — The Mockups are drawn by Book Studio; Photoshop only bakes a template once
 

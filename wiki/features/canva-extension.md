@@ -1,7 +1,7 @@
 ---
 title: The Canva extension — a Workshop book into its Canva template
 type: feature
-updated: 2026-10-08
+updated: 2026-10-18
 code:
   - canva-extension/
   - app/tests/test_canva_extension.py
@@ -93,6 +93,42 @@ have it on the left — 3, 4, 7, 8, 11, 12 … The text is read exactly as the W
 
 All the words it looks for are in one place — `UI` at the top of `canva.js`; if Canva renames a button, that is the line to change.
 
+## The order mode, reduced (2026-10-18)
+
+The order mode of 2026-10-15 was removed whole on 18.10 («тільки для створення книг»), and the same day the owner took back
+three things he liked: **the template's copy made and named by itself, the copy's first page deleted, the downloaded ZIP caught by
+the card**. Nothing else came back — no `{Name}` replace, no dedication fields, no download press (the owner downloads himself).
+The first version's `order.js` was lost (it was never committed), so `order.js` is **new, written from what the owner's Canva shows**.
+- **The hand-over**: the order card's «Відкрити шаблон у Canva» opens the book's template with `#bs=<base64url JSON>` —
+  `receipt`, `child`, `title` («<receipt> - <child>», «#2» for a second child of one name), `book`. `early.js` (document_start) keeps it in
+  `localStorage["bs-canva:orders"]` (one entry per book, 12 hours, the template's design id) and takes the hash off the address.
+  The buyer's name stays local in the browser profile's history and is never sent anywhere.
+- **The steps** (the panel shows them instead of the shelf; «Розкласти книгу з Майстерні» goes back to the book mode, a chip back to
+  the order): ① **Копія шаблону** — «Файл → Копіювати» (`BSOrder.makeCopy`; Canva opens the copy in a new tab); the new tab takes the order
+  on only if the design is Canva's own copy of that template (`isFreshCopy`: name «<template>, копія», opened within 5 minutes — never a
+  master or another design) and renames it, in the field «Назва дизайну» that lives **inside the «Файл» menu** (the name is read from the tab
+  title «<name> – Multi-design»); ② **Перша сторінка** — page 1 opened, the trash «Видалити сторінку» pressed (no confirm; checked by the
+  counter «N з M» dropping by one) — **only on a design that carries the order's name**, once (`firstDeleted`); ③ «Завантажити PNG» is the
+  owner's own press. Each step has a button to repeat it by hand. A step runs under the lock.
+- **The ZIP**: Canva names it after the design; the order card asks `/api/orders/<id>/canva-zip?title=<the copy's name>` every 2.5 s
+  after the press (each book its own wait, 3 hours; a drop by hand ends it) and takes **that book's** ZIP only — like a dropped ZIP
+  ([orders](orders.md)). A ZIP that cannot be unpacked is said once.
+- **Tried live (18.10, the owner's «BS 4k Трафарет», signed in in the browser pane, the template put back after each try):** the «Файл» menu's
+  items and the «Назва дизайну» field; the rename (and back, trailing space and all); page 1's delete (32 → 31 pages, no dialog) and **Ctrl+Z**
+  puts it back; the menu closes by the «Файл» button again (a script's Escape does not close it). **Not tried:** «Файл → Копіювати» itself
+  (it opens a new tab, which the pane blocks; it would also leave a stray copy), so the whole run from the card's button, the copy's
+  new tab, the rename there and the first page's delete — all in the owner's Chrome — is the first real test.
+
+## The look (2026-10-14, the owner: «перемалювати значок… зробити інтерфейс гарнішим»)
+
+- **The icon** (`icons/`, drawn by a script — Pillow, 1024 px brought down): Book Studio's orange squircle and its open book,
+  centred and symmetric (15.10, the owner: «не симетричне» — the cyan sparkle badge of 14.10 pushed the book aside and crowded
+  the 48 px button; gone). The same drawing in the panel (`logo()`); the icons' line style no longer outlines it in black
+  (`svg.logo { stroke: none }` — the dark rim the owner called «жахливо»).
+- **The panel**: the head names «Book Studio · Книга → Canva»; the book button and the pages field as one pair (38 px, a
+  focus ring in the accent); page thumbnails lift on hover, the chosen one outlined in the accent; a fuller bar with a moving
+  sheen while it works; the panel rises in and sinks away when folded (the button pops back), still under reduced motion.
+
 ## Install (the owner)
 
 `chrome://extensions` → «Режим розробника» on → «Завантажити розпаковане розширення» → the folder `Book Studio\canva-extension`.
@@ -101,6 +137,9 @@ After a change in the folder — the ↻ on the extension's card, then reload th
 
 ## Where in the code
 
+- [canva-extension/early.js](../../canva-extension/early.js) — the order from the link's `#bs=`, kept and taken off the address (document_start).
+- [canva-extension/order.js](../../canva-extension/order.js) — the order mode's Canva driver: `UI`, current, save, clear, title, isCopyFor,
+  isTemplateFor, isFreshCopy, makeCopy, rename, pageCount, deleteFirstPage.
 - [canva-extension/manifest.json](../../canva-extension/manifest.json) — Manifest V3; content scripts on `https://www.canva.com/*` in the
   page's world (`"world": "MAIN"`); the panel shows only under `/design/`.
 - [canva-extension/book.js](../../canva-extension/book.js) — pure logic, run in node by the test: textSections (the same as

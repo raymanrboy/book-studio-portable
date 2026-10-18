@@ -101,7 +101,9 @@ explicitly requested to `draft ahead`. In draft-ahead mode, mark all downstream 
 
 - **`playbook/master-prompt.md` — our everything for story panoramas.** The only skeleton for story prompts.
   We do not change the structure; agents only FILL its blocks with data (see Agent 5).
-  The final wide image is done by Agent 6 following the same image-only language discipline.
+  The final wide image is done by Agent 6 following the same image-only language discipline, and since 2026-10-17
+  always by its **light-ground formula**: the characters small and low in the right area on a milky cream ground, the whole
+  upper right empty for the title, a few small details on the left (the owner's examples: `../wiki/raw/2026-10-17-white-cover-examples/`).
   Why it works: `playbook/master-prompt-anatomy.md`.
 - In every generator-facing prompt: **standalone image + text area / overlay area + safe text/style negatives**.
   Do not mention `book/page/spread/cover/front/back/spine/fold/gutter/seam/mockup/product` even in negatives.

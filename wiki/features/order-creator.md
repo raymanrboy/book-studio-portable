@@ -1,7 +1,7 @@
 ---
 title: Order Creator — a book in Printify, a draft in Gelato
 type: feature
-updated: 2026-10-04
+updated: 2026-10-18
 code:
   - app/studio/creator/
   - app/web/js/pages/creator.js
@@ -113,6 +113,21 @@ The "Reprint" button in the [order archive](archive.md) also passes `reprint: {a
 - a different folder (picked, dragged, or a typed path) drops reprint mode;
 - the result card: "Reprint: order created in Printify!" (for the same book — "nothing was uploaded") /
   "Reprint: draft created in Gelato!".
+
+## «Передрук»: an order already printed, sent again with new files (since 2026-10-18)
+
+An order that went to print and is sent again — from its card («Покласти інші файли й надіслати ще раз»), or picked in
+«Заповнити із замовлення Etsy» — comes with `reprintOffered` (every book of it placed at the printer: work / sent / shipped,
+not `partial`, and for several books a known count — `stages._all_placed()`) and `alreadyPrinted` (also the book has left the
+printer: sent / shipped, or a reprint being made). The «Чернетка» step then shows a **«Передрук» tick, set by itself** once the
+book has left the printer (the owner's choice: the program ticks it, he takes it off when it is not a reprint); while the first
+print is paid but still being made it is offered unticked — a new send then may be a correction with the first one cancelled.
+If the server cannot record it as a replacement (the first print cancelled, a state set by hand) the result says so; the button reads «Створити чернетку-передрук». Ticked, the draft goes with `reprint: true`:
+the page's own (new) files, recorded as a **replacement** of the receipt (`record_order()` → `_mark_reprint()`), not as a
+second sale, and kept in the archive as a reprint (`reprint`, `reprintOf` — the first print's book, `archive.printed_before()`).
+Gelato only (Printify no longer prints). **Why:** 18.10.2026 a cover fixed after the buyer's complaint went to Gelato as a new
+order — the program took the reprint for the receipt's print and the first one for the extra, the order stayed among the
+shipped ones and the replacement picker could not offer the reprint.
 
 ## Both printers: one send frame (since 2026-09-27)
 

@@ -119,7 +119,10 @@ def _open_in_profile(url: str, host: str) -> bool:
     """Sites the owner keeps in one browser profile (Gelato and Canva in Cent Browser's «Work», 01.10.2026) open in it.
     The settings' "browser" section: `exe`, `profile` (the profile's folder name, "Profile 6"), `hosts`. Not set, another
     site, or the browser not found → False, and the default browser opens the link as before. In the portable copy it is
-    Edge with a profile of its own (`work-browser` in the data folder): a login cannot travel between PCs anyway."""
+    Edge with a profile of its own (`work-browser` in the data folder): a login cannot travel between PCs anyway. It starts
+    with `--restore-last-session` (2026-10-14): without it Edge drops session cookies on exit, and the owner had to sign in to
+    Gelato again every time (tried on Edge 155: the cookie survives a restart only with it; a running Edge just adds the tab).
+    The Canva extension is installed in that profile once by hand — Edge 155 ignores `--load-extension` (tried)."""
     import subprocess
     cfg = core.settings.section("browser")
     if not any(host == h or host.endswith("." + h) for h in cfg.get("hosts") or []):
@@ -129,7 +132,7 @@ def _open_in_profile(url: str, host: str) -> bool:
         if exe:
             desktop.trim_profile(core.data_path("work-browser"))
         args = [exe, f"--user-data-dir={core.data_path('work-browser')}", "--no-first-run",
-                "--no-default-browser-check", *desktop.QUIET_EDGE, url] if exe else None
+                "--no-default-browser-check", "--restore-last-session", *desktop.QUIET_EDGE, url] if exe else None
     else:
         exe, profile = cfg.get("exe"), cfg.get("profile")
         args = [exe, f"--profile-directory={profile}", url] if exe and profile and Path(exe).is_file() else None

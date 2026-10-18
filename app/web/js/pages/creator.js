@@ -50,6 +50,10 @@ export async function mount(view) {
   // The new order this page works on (from its card, or picked below); a reprint from the archive is not one.
   st.receiptId = handed?.receiptId && !handed.reprint ? String(handed.receiptId) : '';
   st.buyer = st.receiptId ? handed.buyer || '' : ''; // the order it prints: its head, its path (2026-09-30)
+  // An order already printed and sent again with new files is a reprint: the «Передрук» tick is set by itself and can
+  // be taken off (owner, 18.10.2026 — a cover fixed after the buyer's complaint went in as a second sale).
+  st.again = { offered: !!handed?.reprintOffered && !handed?.reprint, on: !!handed?.alreadyPrinted };
+  const againOn = () => st.mode === 'gelato' && !cur().reprint && st.again.offered && st.again.on;
   if (handed && !(gelatoOnly && handed.mode === 'printify')) {
     st.mode = handed.mode;
     Object.assign(st[handed.mode], {
@@ -61,7 +65,7 @@ export async function mount(view) {
   const hasAddress = (a) => ['firstName', 'lastName', 'addressLine1', 'city', 'postCode'].some((k) => (a[k] || '').trim());
   // A Printify reprint is always an order (for the book Printify already has), so it needs the address.
   const withOrder = () => st.mode === 'gelato' || !!st.printify.reprint || hasAddress(st.printify.address);
-  const createLabel = () => (st.mode === 'gelato' ? (st.gelato.reprint ? 'Створити чернетку-передрук' : 'Створити чернетку')
+  const createLabel = () => (st.mode === 'gelato' ? (st.gelato.reprint || againOn() ? 'Створити чернетку-передрук' : 'Створити чернетку')
     : st.printify.reprint ? 'Створити замовлення-передрук'
       : withOrder() ? 'Створити чернетку замовлення' : 'Створити книгу без замовлення');
   let stopCountdown = () => {};
@@ -246,7 +250,8 @@ export async function mount(view) {
   function createCard(num) {
     const s = cur();
     return html`<section class="card card-pad stack">
-      <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">Чернетка</h3></div>
+      <div class="row"><span class="step-no">${num}</span><h3 class="card-title grow">Чернетка</h3>
+        ${st.mode === 'gelato' && !s.reprint && st.again.offered ? html`<label class="check" data-tip="Замовлення вже друкувалося: книга піде як заміна за ваш рахунок, а не новий продаж"><input type="checkbox" data-again ${st.again.on ? 'checked' : ''}><span>Передрук</span></label>` : ''}</div>
       <div id="cr-alert">${s.error ? html`<div class="notice notice-error">${ic('alertCircle')}<div class="grow" style="white-space:pre-line">${s.error}</div>${sendLogButton(null)}</div>` : ''}</div>
       <div class="row" style="justify-content:center;padding:4px 0">
         <button class="btn btn-xl create-btn btn-block" id="cr-create" ${s.running ? 'disabled' : ''}>
@@ -460,10 +465,11 @@ export async function mount(view) {
     setProgress($('#cr-bar'), 0, { reset: true }); // a second send starts from empty, not from the last one's end
     renderLeft();
     const reprint = s.reprint;
+    const again = againOn();
     const url = mode === 'gelato' ? '/api/creator/gelato/create' : reprint ? '/api/creator/printify/reprint' : '/api/creator/printify/create';
     const books = s.books.map((b) => ({ folder: b.folder, title: b.title, format: b.format, receiptId: b.receiptId || null }));
     const body = mode === 'gelato'
-      ? { books, address: s.address, ...(reprint ? { reprintOf: reprint.archiveId } : {}) }
+      ? { books, address: s.address, ...(reprint ? { reprintOf: reprint.archiveId } : again ? { reprint: true } : {}) }
       : reprint ? { archiveId: reprint.archiveId, title: bk().title, address: s.address }
         : { books, address: order ? s.address : null };
     try {
@@ -481,7 +487,7 @@ export async function mount(view) {
       if (mode === 'gelato') linkUntil(s.result);
       if (st.receiptId && !reprint) markSent(st.receiptId, { provider: mode, what: sentText(mode, s.result), result: mode === 'gelato' ? s.result : null });
       if (s.result?.orderError) toast('Книгу створено, але замовлення — ні. Подробиці в картці.', 'error', 7000);
-      else if (reprint) toast(mode === 'gelato' ? 'Передрук: чернетку створено в Gelato' : 'Передрук: замовлення створено в Printify', 'success');
+      else if (reprint || again) toast(mode === 'gelato' ? 'Передрук: чернетку створено в Gelato' : 'Передрук: замовлення створено в Printify', 'success');
       else toast(mode === 'gelato' ? 'Чернетку створено в Gelato' : s.result?.order ? 'Чернетку замовлення створено в Printify' : 'Книгу створено в Printify', 'success');
       status = await api('/api/creator/status');
     } catch (err) {
@@ -527,6 +533,7 @@ export async function mount(view) {
   function fillFromOrder(o) {
     const s = cur();
     if (o.stage === 'new') { st.receiptId = String(o.receiptId); st.buyer = o.name || ''; renderStatus(); }
+    st.again = { offered: !!o.reprintOffered, on: !!o.alreadyPrinted }; // an order already printed: a reprint
     // An order of several books gives a name to each of them (a folder is still chosen for each by hand).
     const names = (o.items || []).map((it) => it.childName || o.childName || '');
     while (s.books.length < Math.max(1, names.length)) s.books.push(newBook({ format: bk(0).format }));
@@ -647,6 +654,11 @@ export async function mount(view) {
   });
   view.addEventListener('change', (e) => {
     if (e.target.dataset.addr === 'country') cur().address.country = e.target.value;
+    if (e.target.matches?.('[data-again]')) {
+      st.again.on = e.target.checked;
+      const label = $('#cr-create-label');
+      if (label) label.textContent = createLabel();
+    }
   });
   view.addEventListener('keydown', (e) => { if (e.target.id?.startsWith('cr-title-') && e.key === 'Enter') { e.preventDefault(); create(); } });
 
