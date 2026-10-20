@@ -150,13 +150,13 @@
 .dbox-foot.ledger-foot { display: block; line-height: 1.6; }  /* a long line of Etsy's entries wraps as text */
 
 /* ------------------------------------------------------------------ the calendar page (the owner's whiteboard, 2026-10-21) */
-/* The arrow that flips between the table and the calendar: two dots say which page is shown. */
-.pf-flip { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); color: var(--text-2); transition: background var(--t-fast) ease, color var(--t-fast) ease, transform var(--t-fast) var(--ease); }
+/* The arrow that flips between the table and the calendar: a table and a calendar icon, the page shown lit. */
+.pf-flip { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 8px 0 3px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); color: var(--text-2); transition: background var(--t-fast) ease, color var(--t-fast) ease, transform var(--t-fast) var(--ease); }
 .pf-flip:hover { background: var(--surface-3); color: var(--text); }
 .pf-flip:active { transform: scale(var(--press)); }
-.pf-dots { display: inline-flex; gap: 5px; }
-.pf-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: background var(--t) ease, width var(--t) var(--ease); }
-.pf-dots i.on { width: 16px; border-radius: 3px; background: var(--text-2); }
+.pf-dots { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-ctl); background: var(--surface-2); }
+.pf-dots i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--r-sm); color: var(--text-3); opacity: .6; transition: background var(--t) ease, color var(--t) ease, opacity var(--t) ease; }
+.pf-dots i.on { background: var(--surface); color: var(--text); opacity: 1; box-shadow: var(--shadow-s); }
 
 /* The calendar is softer than the rest of the program on purpose (the owner, 2026-10-21: "миленький, зглажений, козі"):
    round days, no grid lines, red dots as on his whiteboard, a light rounded hover card. */
@@ -211,4 +211,4 @@ button.cal-day:hover .cal-num { transform: scale(1.08); }
   .cal-num { width: 30px; height: 30px; }
   .cal-dots i { width: 6px; height: 6px; }
   .cal-week b { padding: 4px 8px; font-size: var(--fs-s); }
-}
+}.pf-flip.back { padding: 0 3px 0 8px; }

@@ -425,13 +425,15 @@ export async function mount(view) {
     forecast: (day) => Boolean(st.data?.overheadDays?.[day]?.forecast),
     estimated: () => !st.data?.overheadDays,
   });
-  // The arrow flips between the two pages; its two dots say which one is shown.
+  // The arrow flips between the two pages; a table and a calendar beside it, the one shown lit (the owner, 2026-10-21:
+  // two bare dots didn't say what the pages are).
   function renderFlip() {
     const toCal = st.screen === 'table';
     const tip = toCal ? 'Календар продажів' : 'Таблиця замовлень';
-    const dots = html`<span class="pf-dots"><i class="${toCal ? 'on' : ''}"></i><i class="${toCal ? '' : 'on'}"></i></span>`;
+    const dots = html`<span class="pf-dots"><i class="${toCal ? 'on' : ''}">${ic('table', 'icon-s')}</i><i class="${toCal ? '' : 'on'}">${ic('calendar', 'icon-s')}</i></span>`;
     const b = $('#pf-flip');
     b.dataset.tip = tip; b.setAttribute('aria-label', tip);
+    b.classList.toggle('back', !toCal); // the arrow on the left
     setHtml(b, toCal ? html`${dots}${ic('chevRight')}` : html`${ic('chevLeft')}${dots}`);
   }
   function flip() {

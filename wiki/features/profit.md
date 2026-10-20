@@ -86,13 +86,13 @@ changes — `records.stamp()`) and its routes.
   split (the header's tip says so). The page left open loads again after an hourly sync (`watchSyncs()`), unless a row is open. Replaces counting from Etsy's CSV.
 - **Offsite Ads for the period** (since 2026-10-14): under «На руки», «N замовлень · Offsite Ads −$X» — the ledger's
   `offsite_ads_fee` lines of the counted rows (already inside the Etsy Net; the tip says for how many sales).
-- **The calendar page** (since 2026-10-21, the owner's whiteboard in the program): an arrow in the head (#pf-flip, two dots
-  for which page is on, remembered as screen) flips the page from the cards and the table to a month calendar. Monday first, a
+- **The calendar page** (since 2026-10-21, the owner's whiteboard in the program): an arrow in the head (`#pf-flip`, a table and a calendar
+  icon beside it, the page shown lit — two bare dots at first didn't say what the pages are; remembered as `screen`) flips the page from the cards and the table to a month calendar. Monday first, a
   **red dot for every sale** (not a cancelled or fully refunded one), the day's circle tinted when it sold; hovering (or focusing)
-  a day shows a small card: the day, its profit, the dots and «N продажів · на руки », the day's ads and new-listing fees (marked «прогноз» while the
+  a day shows a small card: the day, its profit, the dots and «N продажів · на руки $X», the day's ads and new-listing fees (marked «прогноз» while the
   ledger only forecasts them, «оцінка» with no ledger at all) and how many sales still have no cost (left out of the sum). Each week's profit stands at the end of its
   row, the month's in the head; arrows go back to the month books start in and forward to this month. **The money is the cards'
-  own** — kpi(rows, days) for that day / week / month, so the month equals «Цей місяць» on the cards (the ads of each day come off,
+  own** — `kpi(rows, days)` for that day / week / month, so the month equals «Цей місяць» on the cards (the ads of each day come off,
   a day without sales can be a small loss). The weeks are **calendar weeks** (Mon–Sun, as on the board), not the payout weeks of the
   periods; a week crossing the month counts only the shown month's days, so the weeks add up to the month. On purpose softer than the
   rest of the program (round days, no grid lines, a light rounded hover card with a tail) — the owner asked for it.

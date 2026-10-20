@@ -13,7 +13,7 @@ beside it, and wanted it in the program: "a second desktop in Profit, I click an
 hovering a day shows what I earned and how many sales". Then: "the dots red, as on my board; cuter, smoother, cosy — circles,
 not squares; the hover card not so brutal".
 - **The sum is the profit** (his board's 208 $ for ~40 sales of October is the profit, not the money in) and the cards' own:
-  kpi() with that day's ads, so the month equals «Цей місяць».
+  `kpi()` with that day's ads, so the month equals «Цей місяць».
 - **Calendar weeks** Mon–Sun as on the board — not the payout weeks of «Цей тиждень».
 - **Red dots** here although red elsewhere means a loss: they are his board's marker; the calendar alone is styled softer.
 - [features/profit.md](features/profit.md).

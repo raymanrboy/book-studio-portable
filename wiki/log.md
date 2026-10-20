@@ -3,11 +3,15 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-21] update | Profit: the page switch shows a table and a calendar icon
+
+- The owner: the two dots didn't say what the pages are. Now the table / calendar icons (a new `table` icon in `icons.js`), the page shown lit. Page: profit.
+
 ## [2026-10-21] update | Profit: the calendar page (the owner's whiteboard)
 
 - An arrow in the Profit head flips to a month calendar: a red dot per sale, a hover card (profit, sales, money in, ads), each week's
-  profit at the end of its row, the month's in the head; soft round design on the owner's word. New profit-calendar.js;
-  kpi() / overhead() / dsSpend() take the days. Pages: profit, code-map, frontend, decisions.
+  profit at the end of its row, the month's in the head; soft round design on the owner's word. New `profit-calendar.js`;
+  `kpi()` / `overhead()` / `adsSpend()` take the days. Pages: profit, code-map, frontend, decisions.
 
 ## [2026-10-19] update | Text-check calibration on 103 checks and the print archive
 
