@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-10-13
+updated: 2026-10-19
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -144,7 +144,8 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   accepted as `127.0.0.1` / `localhost` (`_base()`), requests go out with no proxy. No Gemini, no other
   cloud — pages never leave the computer. Test: `OllamaAndRoutes` ([test_textcheck.py](../app/tests/test_textcheck.py)).
 - The program can start Ollama itself (`start_ollama()`) — only its own `ollama app.exe` next to
-  `ollama.exe` from PATH; nothing else is launched.
+  `ollama.exe` from PATH (in the portable copy only `runtime/Ollama/ollama.exe serve`); nothing else is launched. The starts it makes
+  by itself (at the program's start, before a check) are `ollama.exe serve`, hidden; made-up data (tests, the preview) never starts it (19.10.2026).
 - The book passport only changes on the owner's click of "Update passport" (`_passport()`): only the
   texts of the cover and spreads, the child's name → `{Name}`; the dedication and afterword can't be
   changed this way.

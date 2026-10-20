@@ -20,7 +20,9 @@ known, with evidence levels. The browser steps: [`seo/knowledge/erank-browser.md
 - The page count in a **new** book's description is always **30-page**; never a count taken from the book's files.
   An **existing** listing keeps the count its current description says (books 1–23 are 24-page) — the owner never
   wants a listing's page count changed.
-- Titles are **long** (110–140 characters, phrase blocks) — the owner's rule, no short-title tests.
+- Titles are **long** (110–140 characters, phrase blocks) — the owner's rule, no short-title tests. The first blocks are
+  split by ` | ` (one or two), the rest by `, ` (the owner, 2026-10-18; `lint` checks it):
+  `Personalized Christmas with Grandma Book with Name | Grandma Christmas Gift from Grandchild | Little Bear Story, Cookies & Cocoa Keepsake`.
 - Nothing untrue about the book; nothing from the blocklist.
 
 ## 1. The brief

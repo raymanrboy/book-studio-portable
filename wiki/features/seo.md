@@ -20,7 +20,8 @@ code:
 
 For a Workshop book, the agent writes into `pipeline/books/<n>.<slug>/agent/listing-seo.md`:
 
-- **a long title** (110–140 characters, "phrase blocks": every block is a phrase buyers really type) — the owner's
+- **a long title** (110–140 characters, "phrase blocks": every block is a phrase buyers really type; the first blocks split
+  by ` | `, one or two, the rest by `, ` — the owner, 2026-10-18) — the owner's
   rule, no short titles;
 - **13 tags**, chosen by numbers and by buyer intent (product, theme, recipient, occasion, giver, keepsake);
 - **the description** — the owner's template, only the parts about the book change; always "30-page".

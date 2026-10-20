@@ -32,7 +32,7 @@ def rebuild(journal: dict) -> tuple:
     if pers["dedication"]:  # the box read again by today's headings («close:», «Closing», a note before them)
         dedication, closing = tc.split_dedication(pers["dedication"])
         pers["dedication"], pers["closing"] = dedication, pers["closing"] or closing
-    child = tc.clean_name(pers.get("child") or "")
+    child = tc.printed_name(pers.get("child") or "")
     try:
         texts = library.load(journal["bookId"])["text"] if journal.get("bookId") else {}
     except Exception:
@@ -56,7 +56,8 @@ def rebuild(journal: dict) -> tuple:
         if t["expected"] is not None and t["key"] and texts.get(t["key"]):
             t["expected"] = tc.fill(texts[t["key"]], child, pers.get("gifter") or "") or t["expected"]
         elif t["expected"] and child != pers.get("child"):
-            t["expected"] = t["expected"].replace(pers["child"], child)  # the name read right since
+            t["expected"] = re.sub(rf"(?<!\w){re.escape(pers['child'])}(?!\w)", lambda m: child,
+                                   t["expected"])  # the name read right since («ava» → «Ava», never «lava»)
         if t["expected"] != p.get("expected") and _same_words(t["expected"] or "", answers[n].get("transcript") or ""):
             answers[n].update(verdict="ok", problems=[])  # the model spoke of a text the page no longer has to be
         targets.append(t)

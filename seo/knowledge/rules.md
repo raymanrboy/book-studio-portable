@@ -92,7 +92,9 @@ eRank numbers +0.30, tags our shop already gets visits from +0.25.
 place by being part of an *exact buyer phrase* (E: exact matches may rank higher), and nothing irrelevant
 goes in (E: stuffing hurts):
 
-1. 4–5 blocks separated by `, ` (commas, not `|`).
+1. 4–5 blocks. **O — the owner's format (2026-10-18):** the first two or three blocks are split by ` | ` (one or two
+   of them), the rest by `, ` — `Personalized Christmas with Grandma Book with Name | Grandma Christmas Gift from
+   Grandchild | Little Bear Story, Cookies & Cocoa Keepsake`. `seo.py lint` refuses any other count of `|`.
 2. **Block 1** = what it is + how it's personalized + the main theme: `Personalized Truck Bedtime Book with
    Name`. The item noun (`book`/`storybook`) appears in block 1.
 3. Blocks 2–5 = the strongest **exact** phrases buyers type for this book, by demand from the database:

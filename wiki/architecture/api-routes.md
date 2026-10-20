@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-11
+updated: 2026-10-19
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -81,7 +81,7 @@ code:
 | GET | `/api/textcheck/status` | token | `_status` | settings.js `loadTextcheck` (enabled, model, whether Ollama answers) |
 | POST | `/api/settings/textcheck` | token | `_save_settings` | settings.js (the switch, the model) |
 | POST | `/api/textcheck/start` | token | `_start` | settings.js "Start" Ollama |
-| POST | `/api/textcheck/warm` | token | `_warm` | orders.js `warmModel` (the card took files — the model loads onto the GPU ahead of time) |
+| POST | `/api/textcheck/warm` | token | `_warm` | orders.js `warmModel` (a new order's card opened or took files — the model loads onto the GPU ahead of time; nothing on made-up data) |
 | POST | `/api/textcheck/mark` | token | `_mark` | orders.js `keepMark` (the owner's "Not an error" into that check's journal, `{journal, id}` → `{kept}`; for the next calibration) |
 | POST | `/api/textcheck/passport` | token | `_passport` | orders.js `learnPassport` (the cover's and spreads' texts into the book passport — only on the owner's click; with `preview` it only shows what they'd become, without saving anything) |
 

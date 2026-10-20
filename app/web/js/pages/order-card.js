@@ -422,13 +422,14 @@ export async function mountCard(view, rid) {
     if (journal) post('/api/textcheck/mark', { journal, id }).catch(() => {});
   }
 
-  // The model takes ~4 s to reach the graphics card (~70 s when it comes from disk): it is asked for while
-  // the files are still being copied and checked, so the check right after them does not wait for it.
+  // The model takes ~4 s to reach the graphics card (~70 s when it comes from disk): it is asked for when a new order's card
+  // opens and again while the files are still being copied and checked, so the check right after them does not wait for it.
   // When Ollama is not running yet, it is started now (no console window): the owner is told, and told when it is ready.
-  const warmModel = async () => {
+  // `quiet` (the card just opened): nothing is said — the owner did not ask for anything yet (19.10.2026).
+  const warmModel = async (quiet = false) => {
     let r;
     try { r = await post('/api/textcheck/warm'); } catch { return; }
-    if (!r?.starting) return;
+    if (quiet || !r?.starting) return;
     toast('Запускається Ollama… це кілька секунд', 'info', 5000);
     for (let i = 0; i < 40; i++) {
       await new Promise((ok) => setTimeout(ok, 1500));
@@ -868,6 +869,9 @@ export async function mountCard(view, rid) {
   const listenEsc = escBack('#/orders'); // Esc steps back to the queue (not named esc: that is the HTML escape imported above)
 
   renderPlan(); renderLeft(); renderRight();
+  // A new order still to be sent: the model is asked for as soon as its card opens (owner, 19.10.2026) — while the files are made in
+  // Canva its first read off the disk (~70 s) is done, and the check later finds it in memory (~4 s).
+  if (o.stage === 'new' && !sentOf(o.receiptId)) warmModel(true);
   // A new order's card is kept when the owner steps to another tab (keep.js): hidden, it lets go of Esc;
   // brought back, it first asks whether the order is still new, then shows a draft made meanwhile.
   return {

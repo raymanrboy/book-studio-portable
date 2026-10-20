@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-10-18
+updated: 2026-10-19
 code:
   - app/web/js/path.js
   - app/studio/orders.py
@@ -182,6 +182,8 @@ one column.
    deleted), a **"Take files from an earlier send · … ago"** button appears under the field (`earlier()`,
    `takeEarlier()`): files from the [archive](archive.md) get substituted in, and everything else
    follows as normal — this is a new, ordinary order, not a reprint.
+   The text check's model is asked for as soon as a new, unsent order's card opens (`warmModel()`, 19.10.2026) and again when the
+   files come — nothing is shown for it ([text-check](text-check.md)).
 2. **Proofing** (`proofCard()`, appears after a successful check; the page scrolls to it on its own):
    - the cover, full width;
    - below it, the first spread, full width: the left half (blank in print) is the **note**: the child's

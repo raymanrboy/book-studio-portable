@@ -58,7 +58,7 @@ code:
 | [sendlog.py](../app/studio/sendlog.py) | The journal of sends to Printify/Gelato (`data/logs/sends/`) | `attempt()`, `step()`, `write()` |
 | [wording.py](../app/studio/wording.py) | What the buyer wrote, read the same way by the card, the Order Creator and the text check: words, "custom text vs DEFAULT", the child's name | `words()`, `is_default()`, `custom_text()`, `clean_name()`, `guess_child_name()`, `alike()` |
 | [textcheck/](../app/studio/textcheck/__init__.py) | [Text check](features/text-check.md) with a local model (Ollama) — a package since 2026-09-27; `__init__.py` gathers what the rest of the program uses | what the parts below give the rest of the program |
-| [textcheck/run.py](../app/studio/textcheck/run.py) | One check: the print files, a quick page scan, the read and check passes, answers cached by content, stopping | `check_order()`, `check_book()`, `run_key()`, `_passes()`, `page_kinds()`, `_second_half()`, `_collect()`, `_Run`, `cancel()`, `warm()`, `picture()` |
+| [textcheck/run.py](../app/studio/textcheck/run.py) | One check: the print files, a quick page scan, the read and check passes, answers cached by content, stopping | `check_order()`, `check_book()`, `run_key()`, `_passes()`, `page_kinds()`, `_second_half()`, `_collect()`, `_Run`, `cancel()`, `warm()`, `start_quietly()`, `picture()` |
 | [textcheck/rules.py](../app/studio/textcheck/rules.py) | What the card shows: findings, page and book rules, the wrong-book guard | `findings()`, `page_issues()`, `book_issues()`, `_all_issues()`, `_one_alarm()`, `has_text()` |
 | [textcheck/texts.py](../app/studio/textcheck/texts.py) | Words compared, the buyer's fields, which page is which library text | `diff()`, `similarity()`, `personalization()`, `fill()`, `assign()`, `COMMON` |
 | [textcheck/ollama.py](../app/studio/textcheck/ollama.py) | The model on this computer (127.0.0.1 only) | `status()`, `start_ollama()`, `_ready()`, `_chat()`, `_release_model()` |
@@ -160,6 +160,7 @@ code:
 | [js/slides/engine.js](../app/web/js/slides/engine.js) | Draws a slide's scene (torn paper, stickers, fitted Comica, arrows, the cut-out books) — the editor, the bake | `drawScene()`, `drawElement()`, `boxOf()`, `setAssets()`, `ready()` |
 | [slides/render.html](../app/web/slides/render.html) | The page headless Edge bakes a slide from | — |
 | [js/pages/profit.js](../app/web/js/pages/profit.js) | Profit (hidden): the period, the figures, the table, linking an order by hand | `mount()` |
+| [js/pages/profit-calendar.js](../app/web/js/pages/profit-calendar.js) | Profit: the calendar page — a month by days, a dot per sale, a hover card, the weeks' and the month's profit | `makeCalendar()` |
 | [js/pages/profit-rows.js](../app/web/js/pages/profit-rows.js) | Profit: one order's row and its open panel (templates of the order) | `rowInner()`, `detailHtml()`, `stateBox()`, `costOf()` |
 | [css/app.css](../app/web/css/app.css) | The "Prepress" visual system: tokens, the shell, the controls, what the pages share | — |
 | [css/library.css](../app/web/css/library.css) | The Library and a book's passport | — |

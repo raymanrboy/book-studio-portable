@@ -3,6 +3,35 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-21] update | Profit: the calendar page (the owner's whiteboard)
+
+- An arrow in the Profit head flips to a month calendar: a red dot per sale, a hover card (profit, sales, money in, ads), each week's
+  profit at the end of its row, the month's in the head; soft round design on the owner's word. New profit-calendar.js;
+  kpi() / overhead() / dsSpend() take the days. Pages: profit, code-map, frontend, decisions.
+
+## [2026-10-19] update | Text-check calibration on 103 checks and the print archive
+
+- Owner-marked rows still shown 37 → 13 (11 of them the two orders edited through Etsy messages), red 27 → 11, real catches kept.
+- On the owner's word, the Sleepy Trucks passport cover is «Sweet Dreams {Name}» (was «Good Night, Little Trucks»; backup in `data/merge-backup/2026-10-19-sleepy-trucks-cover/`).
+- `texts.printed_name()` (a lowercase name capitalised; replay uses it too), `texts._spelled()` in `diff()` (hyphen = space, «James'» =
+  «James's»), `_WISH` (a first «Happy…/Merry…»); `rules._own_greeting()` / `_love_line()`, `_vocabulary()` takes hyphen parts, `_LINES` «один
+  рядок», `_CLAIM` «замін». Test: `test_the_owners_marks_of_the_nineteenth_of_october`. Pages: text-check, decisions.
+
+## [2026-10-19] decision | Ollama starts hidden with the program; the model warms when a new order opens
+- `textcheck.run.start_quietly()` (8 s after the start, no model), called from `main()`; `start_ollama()` never starts Ollama on made-up or test data (`core.SANDBOX`), `warm()` / `start_quietly()` do nothing there.
+- `ollama._ollama_command(hidden)` / `start_ollama(hidden)`: the program's own starts (start-up, `_ready()`) are `ollama.exe serve`, never the tray app.
+- Order card: `warmModel(true)` (silent) when a new, unsent order's card opens. Tests: `test_ollama_starts_quietly_without_the_model`, `test_test_data_never_starts_the_real_ollama`, `test_the_hidden_start_never_opens_the_tray_app`.
+- Pages: text-check, runtime, orders, api-routes, security, decisions.
+
+## [2026-10-18] decision | Etsy titles: one or two « | », then commas
+- The owner's format for every title; `seo.py lint` checks it; rules §2, `/etsy-seo`, [features/seo](features/seo.md), [decisions](decisions.md).
+
+## [2026-10-18] update | SEO for Christmas books 38, 42, 43, 45; their listing files on Google Drive
+- `seo.py to-drive` copied each book's 15 listing files (photos, slides, video) into `G:\My Drive\MoonMeadowStories\<n>.<slug>\`.
+- `/etsy-seo`: `agent/listing-seo.md` with title, tags, description (30-page). Own angles: 38 = Night Before Christmas + Santa and
+  reindeer + fox family; 42 = snowman + winter; 43 = letter from Santa + North Pole; 45 = reindeer + the lost reindeer + wish star.
+  8 eRank searches (100 phrases + 3 idea lists).
+
 ## [2026-10-18] decision | A reprint with new files: the «Передрук» tick, «Друкується» while made, a tab per print
 - Order Creator: `alreadyPrinted` → the «Передрук» tick (Gelato `reprint: true` → replacement, archive `reprint`/`reprintOf`).
 - `stages.live_reprint()` / `prints()`; matching takes the earliest order naming a receipt; replacement picker offers the first print too.
@@ -12,6 +41,12 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 ## [2026-10-18] update | Wiki catches up with «no Antigravity» (code of 16.10)
 - workshop.md, api-routes, code-map, testing, security, portable and a new decision now say the Workshop starts no IDE; `antigravity()` is gone from the page's code list.
+
+## [2026-10-18] update | The copy's first page deleted by itself, no confirm
+- `watchOrder` runs the delete once per named copy (`firstTried`); a Canva confirm dialog, if any, is pressed by the extension.
+
+## [2026-10-18] fix | The Canva copy's tab now goes on by itself
+- The owner: the copy opened, nothing renamed or deleted. `current()` didn't know a fresh copy's tab; the check ran once, before Canva named the tab. Now `isFreshCopy` is part of `current()`, `copyAt`/`templateName` are kept, and `watchOrder()` looks every second. Checked with the real order.js under node (template, copy in three namings, another design, too late).
 
 ## [2026-10-18] update | Three order steps back in the Canva extension (0.4.0)
 - The owner kept: the template's copy named after the order, the copy's first page deleted, the ZIP caught from Downloads. New `order.js`

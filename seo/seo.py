@@ -589,6 +589,8 @@ def cmd_lint(a):
     for ch in "%:&":
         if title.count(ch) > 1:
             errors.append(f"'{ch}' may appear only once in an Etsy title")
+    if not 1 <= title.count(" | ") <= 2 or title.count("|") != title.count(" | "):
+        errors.append("the owner's title format: blocks 1–3 split by ' | ' (one or two), the rest by ', '")
     if re.search(r"[$^`]", title):
         errors.append("title has a character Etsy refuses ($ ^ `)")
     caps = [w for w in re.findall(r"[A-Za-z]{2,}", title) if w.isupper()]

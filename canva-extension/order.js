@@ -1,8 +1,8 @@
 /* Book Studio → Canva: the order mode's Canva driver (2026-10-18, rewritten smaller). What it does for an order handed over
    by the order card (early.js): makes the copy of the book's template, names it «<receipt> - <child>» and deletes the copy's
    first page. The PNG download stays the owner's own press; the card takes the ZIP from Downloads by itself.
-   The words it looks for are in `UI` — if Canva renames a button, that is the line to change. NOT yet tried live in Canva
-   (the first version's file was lost): the first run on a real order is the test. */
+   The words it looks for are in `UI` — if Canva renames a button, that is the line to change. Tried live on the owner's
+   template: the «Файл» menu, the rename, page 1's delete; the copy's new tab is picked up by `current()` (wiki). */
 (function () {
   'use strict';
   const NS = (window.BSOrder = window.BSOrder || {});
@@ -13,12 +13,12 @@
     copyItems: /^(Створити копію|Копіювати|Зробити копію|Make a copy)$/i,
     nameField: /^Назва дизайну$|^Design name$/i,           // the name field inside the «Файл» menu (aria-label)
     deletePage: /^Видалити сторінку|^Delete page/i,       // the page toolbar's trash
-    confirm: /^(Видалити|Delete)$/i,                       // a confirm button, if Canva asks
+    confirm: /^(Видалити|Видалити сторінку|Так|Delete|Yes|OK)$/i,   // a confirm button, if Canva asks
   };
   const KEY = 'bs-canva:orders';
   const KEEP = 12 * 3600 * 1000;          // an order is kept 12 hours
   const FRESH = 5 * 60 * 1000;            // a copy opened within 5 minutes of the press is the order's
-  const COPY_SUFFIX = /(,\s*копія|\s*\(копія\)| copy)$/i;
+  const COPY_SUFFIX = /(,\s*копія|\s*\(копія\)| copy)$|^(копія|copy of)\s/i;
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -74,19 +74,25 @@
   // ---- which order is this tab's
   const isCopyFor = o => Boolean(o.copyDesign) && o.copyDesign === here() && title() === o.title;
   const isTemplateFor = o => (Boolean(o.template) && o.template === here()) || Boolean(o.fromFolder);
-  // Only Canva's own copy of the order's template — its name «<template>, копія», opened within 5 minutes of the press —
-  // is taken on: any other design opened meanwhile (a master template too) is never renamed or edited.
+  // Only Canva's own copy of the order's template is taken on: another design (not the template), opened within 5 minutes of
+  // the «Зробити копію» press (`copyAt`; 30 minutes from the link when the owner copied by Canva's own menu), named after the
+  // template («<template>», «<template>, копія»…). Any other design opened meanwhile (a master too) is never renamed or edited.
   function isFreshCopy(o) {
-    if (o.copyDesign || Date.now() - o.at > FRESH || here() === o.template) return false;
+    if (o.copyDesign || here() === o.template || !here()) return false;
+    const fresh = o.copyAt ? Date.now() - o.copyAt < FRESH : Date.now() - o.at < 6 * FRESH;
+    if (!fresh) return false;
     const t = title();
-    if (!t || !COPY_SUFFIX.test(t)) return false;
-    return !o.templateName || t.startsWith(o.templateName);
+    if (!t || t === 'Canva') return false;          // the tab's title not yet the design's
+    const base = (o.templateName || '').trim();
+    if (base) return t.includes(base) && t !== o.title;   // «<template>», «<template>, копія», «Копія <template>»
+    return COPY_SUFFIX.test(t);
   }
   function current() {
     const list = Object.values(load()).sort((a, b) => b.at - a.at);
     const id = here();
     return list.find(o => o.copyDesign === id)
       || list.find(o => !o.copyDesign && o.template && o.template === id)
+      || list.find(o => !o.copyDesign && isFreshCopy(o))                  // the copy just opened in a new tab
       || list.find(o => !o.copyDesign && o.fromFolder && Date.now() - o.at < KEEP)
       || null;
   }
@@ -94,8 +100,7 @@
   // ---- steps
   // «Файл → Копіювати»: Canva opens the copy in a new tab (the owner's own press lets the tab open).
   async function makeCopy(o) {
-    const tn = title();
-    if (tn && !o.templateName) save({ ...o, templateName: tn });
+    save({ ...o, templateName: o.templateName || title(), copyAt: Date.now() });
     click(await waitFor(fileButton, `меню «${UI.file}»`));
     const item = await waitFor(() => $$('[role=menuitem], button, [role=option]').find(b => shown(b) && UI.copyItems.test(b.innerText.trim())),
       'пункт «Створити копію» у меню «Файл»');
@@ -139,8 +144,11 @@
       && UI.deletePage.test(`${b.getAttribute('aria-label') || ''} ${b.innerText.trim()}`.trim())),
       'кнопку «Видалити сторінку» (позначте першу сторінку й видаліть її самі)');
     click(trash);
-    await sleep(500);
-    const sure = $$('button').find(b => shown(b) && UI.confirm.test(b.innerText.trim()));
+    await sleep(600);
+    // A confirm, if Canva ever asks (it did not on the owner's template, 18.10): its own «Видалити»/«Так» in the dialog, pressed by
+    // itself — the owner wants no question here.
+    const dialog = $$('[role=dialog], [role=alertdialog]').find(shown);
+    const sure = dialog && $$('button', dialog).find(b => shown(b) && UI.confirm.test(b.innerText.trim()));
     if (sure) click(sure);
     if (before) await waitFor(() => pageCount() === before - 1, 'що сторінок стало менше', 8000);
     else await sleep(1000);

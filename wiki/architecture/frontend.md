@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-13
+updated: 2026-10-21
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -220,7 +220,7 @@ The styles are five files since 2026-09-27 (it was one of 1 500 lines), loaded b
 rules had, so no rule moved past another that styles the same element (checked on every page, both themes and a
 narrow window — the computed styles of every element were the same): `app.css` — the tokens, the shell, the controls
 and everything shared (dialogs, the viewer, Settings, the picker lists), the reduced motion; `library.css` — the
-Library and the passport; `orders.css` — the Order Creator, the queue and the card, the archive; `profit.css`;
+Library and the passport; `orders.css` — the Order Creator, the queue and the card, the archive; `profit.css` (with the softer calendar page, its own `--cal-*` colours);
 `listings.css` — the Workshop and the mockups. Each file keeps its own narrow-window rules at its end.
 
 - Color tokens on `:root` (the light "proofing booth" theme) and `[data-theme="dark"]` ("graphite"); the

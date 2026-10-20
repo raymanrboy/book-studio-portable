@@ -83,9 +83,10 @@ def _same_model(a: str, b: str) -> bool:
     return a == b or a.removesuffix(":latest") == b.removesuffix(":latest")
 
 
-def _ollama_command() -> list[str] | None:
+def _ollama_command(hidden: bool = False) -> list[str] | None:
     """How to start Ollama the way the Start menu does: its tray app next to ollama.exe on PATH. In the portable copy only its own
-    `runtime/Ollama/ollama.exe serve` — never the PC's."""
+    `runtime/Ollama/ollama.exe serve` — never the PC's. `hidden` (the start with the program): never the tray app — it shows its
+    icon and its helpers open black windows (19.10.2026); only `ollama.exe serve`, which nothing of it shows."""
     if portable.root():
         exe = (portable.ollama_folder() or Path()) / "ollama.exe"
         return [str(exe), "serve"] if portable.ollama_folder() and exe.is_file() else None
@@ -95,8 +96,10 @@ def _ollama_command() -> list[str] | None:
     if os.environ.get("LOCALAPPDATA"):
         folders.append(Path(os.environ["LOCALAPPDATA"]) / "Programs" / "Ollama")
     for folder in folders:
-        if (folder / "ollama app.exe").is_file():
+        if not hidden and (folder / "ollama app.exe").is_file():
             return [str(folder / "ollama app.exe")]
+        if hidden and (folder / "ollama.exe").is_file():
+            return [str(folder / "ollama.exe"), "serve"]
     return [found, "serve"] if found else None
 
 
@@ -116,23 +119,26 @@ def starting() -> bool:
     return _starting
 
 
-def start_ollama(wait: float = 40) -> bool:
+def start_ollama(wait: float = 40, hidden: bool = False) -> bool:
     """Starts Ollama when it is not running (it stays running after Book Studio closes, like from the
     Start menu). False when it is not installed or did not answer in time. Under a lock: the warm-up and
-    the check can both notice it missing at the same moment, and it must be started only once."""
+    the check can both notice it missing at the same moment, and it must be started only once. Never on made-up or test
+    data (`core.SANDBOX`): the test run once started the PC's own Ollama (19.10.2026) — one already running is still used."""
     if _alive():
         return True
+    if core.SANDBOX:
+        return False
     with _start_lock:
         global _starting
         _starting = True
         try:
-            return _alive() or _start_ollama(wait)
+            return _alive() or _start_ollama(wait, hidden)
         finally:
             _starting = False
 
 
-def _start_ollama(wait: float) -> bool:
-    command = _ollama_command()
+def _start_ollama(wait: float, hidden: bool = False) -> bool:
+    command = _ollama_command(hidden)
     if not command:
         return False
     if portable.root():
@@ -185,7 +191,7 @@ def _ready(model: str, say) -> None:
     """Ollama running (started when needed), the model installed and loaded into the graphics card."""
     if not _alive():
         say("Запуск Ollama…")
-        if not start_ollama():
+        if not start_ollama(hidden=True):        # started by the program itself: nothing of it is seen (19.10.2026)
             raise Unavailable("Ollama не запущена і не запустилась сама — запустіть її з меню «Пуск».")
     if not _has(_names("/api/tags"), model):
         raise ModelError(f"В Ollama немає моделі {model} — встановіть її або оберіть іншу в Налаштуваннях.")

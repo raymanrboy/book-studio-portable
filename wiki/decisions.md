@@ -1,10 +1,56 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-18
+updated: 2026-10-21
 code: []
 ---
 # Decisions
+
+## 2026-10-21 — Profit gets a second page: the owner's whiteboard calendar
+
+The owner keeps a month calendar on a whiteboard, a red dot for each sale, the week's sum at the end of each row, the month's
+beside it, and wanted it in the program: "a second desktop in Profit, I click an arrow and switch to it, just a visual dashboard;
+hovering a day shows what I earned and how many sales". Then: "the dots red, as on my board; cuter, smoother, cosy — circles,
+not squares; the hover card not so brutal".
+- **The sum is the profit** (his board's 208 $ for ~40 sales of October is the profit, not the money in) and the cards' own:
+  kpi() with that day's ads, so the month equals «Цей місяць».
+- **Calendar weeks** Mon–Sun as on the board — not the payout weeks of «Цей тиждень».
+- **Red dots** here although red elsewhere means a loss: they are his board's marker; the calendar alone is styled softer.
+- [features/profit.md](features/profit.md).
+
+## 2026-10-19 — The text check calibrated a third time, against the print archive
+
+The owner: "a bit more data has gathered on the proofreading, calibrate — dig well, pull the pages from the archive to compare;
+there were a few exceptions where clients asked for edits in private messages, I don't remember which orders, but it's obvious".
+- **Done on** 103 journaled checks; every finding the rules still showed was looked at on the archived print files.
+- **The exceptions found** (edits asked in Etsy messages): Eloise 4206086560 (dedication rewritten) and James 4197201764 (the reprint
+  with «James'»). Their rows are **not** turned into rules — they stay shown, as they should for an ordinary order.
+- **Left red on purpose**: a misspelt name read by the model on a correct page (Eliana, p. 23) — rare, and a misspelt name is the
+  check's main catch. A second, closer look at such a page is a possible next step.
+- **A passport, not a rule**: the Sleepy Trucks passport's cover («Good Night, Little Trucks») differed from Canva — on the owner's word
+  it is now «Sweet Dreams {Name}» (`library.update_texts()`, as «Оновити паспорт» does; the old `book.json` kept in
+  `data/merge-backup/2026-10-19-sleepy-trucks-cover/` and in the history).
+- The rules — [text check](features/text-check.md#why-the-rules-are-what-they-are).
+
+## 2026-10-19 — Ollama starts with the program, hidden; the model is asked for when a new order is opened
+
+- **The owner** remembered the old start-up warm-up (removed 05.10 in the speed audit) and chose two of three offered options: «1 + 2 — роби».
+- **Decision:** (1) 8 s after the start Ollama itself is started — **without the model**, so the graphics card stays free
+  (`textcheck.run.start_quietly()`); (2) the model is asked for as soon as the card of a new, not yet sent order opens
+  (`warmModel()`), not only when it takes files — its first read off the disk (~70 s) happens while the files are made in
+  Canva. The model still goes off the card after a check (and 2 min after a warm-up with no check).
+- **Nothing of it may be seen** (the owner, same day: «нічого з цього я не маю бачити, все в фоні»): every start the
+  program makes by itself is `ollama.exe serve` with `CREATE_NO_WINDOW` — never the PC's tray app `ollama app.exe` (its
+  icon and its helpers' black windows). Only Settings → «Запустити» still opens the tray app on a PC install.
+- **Made-up or test data never starts Ollama** (`core.SANDBOX`, checked in `start_ollama()` itself, so every path obeys): the
+  first version of this change started the PC's own Ollama from the test run (the UI smoke test opens a new order's card).
+
+## 2026-10-18 — Etsy titles: the first blocks split by « | »
+
+- **The owner** showed his own title — `Personalized Christmas with Grandma Book with Name | Grandma Christmas Gift from Grandchild |
+  Little Bear Story, Cookies & Cocoa Keepsake` — and asked for every title like it: one or two ` | `, then commas.
+- **Decision:** `seo/knowledge/rules.md` §2 and `/etsy-seo` say so; `seo.py lint` gives an error for any other count of `|`
+  (before, the rule was commas only).
 
 ## 2026-10-18 — A reprint with new files is a reprint; it is «in progress» while made; a tab per print
 

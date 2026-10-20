@@ -7,7 +7,7 @@ import re
 import unicodedata
 
 from .. import library
-from ..wording import DEDICATION as _DEDICATION, clean_name, guess_child_name, is_default, words
+from ..wording import DEDICATION as _DEDICATION, alike, clean_name, guess_child_name, is_default, words
 
 
 MATCH = 0.45             # how alike a page's first lines and a library text must be to call them one
@@ -32,9 +32,27 @@ def diff(expected: str, printed: str) -> list[dict]:
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == "equal":
             ops += [{"expected": x, "printed": y} for x, y in zip(a[i1:i2], b[j1:j2]) if not _same(x, y)]
-        else:
+        elif not _said_alike(_spelled(a[i1:i2], printed), _spelled(b[j1:j2], printed)):
             ops.append({"expected": " ".join(a[i1:i2]), "printed": " ".join(b[j1:j2])})
     return ops
+
+
+def _said_alike(x: list[str], y: list[str]) -> bool:
+    """The same words, capitals by the same rule as an equal run (a «mary-kate» printed small still shows)."""
+    return len(x) == len(y) and all(_same(p, q) for p, q in zip(x, y))
+
+
+def _spelled(ws: list[str], printed: str) -> list[str]:
+    """The words as said aloud (19.10.2026 calibration): «Godparents-John» laid out as «Godparents –\nJohn», and
+    «James'» for «James's» — both spellings of a name ending in s (a reprint asked for «James'»); only where the page
+    really carries the apostrophe: «James» alone for «James's» is a lost possessive."""
+    out = []
+    for w in ws:
+        stem = re.sub(r"(?<=s)'s$", "", w, flags=re.I)
+        if stem != w and not re.search(rf"(?<!\w){re.escape(stem)}'(?!\w)", alike(printed), re.I):
+            stem = w
+        out += [part for part in stem.split("-") if part]
+    return out
 
 
 def similarity(read: list[str], reference: list[str]) -> float:
@@ -88,12 +106,15 @@ _GIFTER_SLOT = re.compile(r"\{\s*gifter\s*\}", re.I)
 # «With Love, Aunt Kate & Uncle Tom»: the buyer's own greeting — the template's «With love,» line then goes.
 _GREETING = re.compile(r"^\s*(?:with\s+(?:(?:all\s+)?(?:of\s+)?(?:my|our)\s+)?love|(?:lots\s+of\s+|much\s+|all\s+"
                        r"(?:my|our)\s+)?love|from|xoxo|hugs)\b", re.I)
+# «Happy Diwali» as the «from whom»: a wish of its own — «With love, Happy Diwali» is never printed (19.10.2026).
+# Only first: «Grandma Sue. Merry Christmas!» still signs under the template's «With love,».
+_WISH = re.compile(r"^\s*(?:happy|merry)\b", re.I)
 _TEMPLATE_GREETING = re.compile(r"(?im)^[^\n{]{1,30},[ \t]*\n(?=[ \t]*\{\s*gifter\s*\})")
 
 
 def personalization(item: dict) -> dict:
     """The child's name, who the book is from, and the buyer's own dedication / closing when there is one."""
-    child = clean_name(item.get("childName") or guess_child_name([item]))  # «Leo & Mila.» -> «Leo & Mila»
+    child = printed_name(item.get("childName") or guess_child_name([item]))  # «Leo & Mila.» -> «Leo & Mila»
     gifter, raw = "", ""
     for v in item.get("variations") or []:
         name, value = str(v.get("name") or ""), str(v.get("value") or "").strip()
@@ -106,6 +127,20 @@ def personalization(item: dict) -> dict:
     gifter = re.sub(r",(?=[^\s\d])", ", ", gifter)
     dedication, closing = split_dedication(raw)
     return {"child": child, "gifter": gifter, "dedication": dedication, "closing": closing}
+
+
+def printed_name(value: str) -> str:
+    """The child's name as the owner prints it: «kobe» typed in small letters is «Kobe» on every page (19.10.2026
+    calibration: fifteen red rows on one book). A name typed with any capital is kept as typed («McKenzie»)."""
+    name = clean_name(value)
+    if name != name.lower():
+        return name
+    # «leo and mila» → «Leo and Mila», «de la cruz» → «de la Cruz», «o'neil» → «O'Neil»
+    return re.sub(r"(?<![\w'])\w+|(?<=\b\w')\w+", lambda m: m.group() if m.group() in COMMON | _PARTICLES
+                  else m.group()[0].upper() + m.group()[1:], name)
+
+
+_PARTICLES = {"de", "la", "le", "del", "della", "da", "di", "dos", "van", "von", "der", "den", "du", "bin", "ibn"}
 
 
 def split_dedication(raw: str) -> tuple[str | None, str | None]:
@@ -126,7 +161,8 @@ def split_dedication(raw: str) -> tuple[str | None, str | None]:
 def signs_off(gifter: str) -> bool:
     """«God bless you… Love, Pop-pop and Nonna», «We love you baby boy! Love, Mama & Dada»: the buyer's «from whom»
     carries its own «Love,» — the template's «With love,» line goes, as when it starts with one."""
-    return any(_GREETING.match(s.lstrip(" \"'“”‘’«»")) for s in re.split(r"[.!?\n]+", gifter or "") if s.strip())
+    said = [s.lstrip(" \"'“”‘’«»") for s in re.split(r"[.!?\n]+", gifter or "") if s.strip()]
+    return any(_GREETING.match(s) for s in said) or bool(said and _WISH.match(said[0]))
 
 
 def fill(template: str, child: str, gifter: str) -> str | None:

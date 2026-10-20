@@ -149,7 +149,9 @@ def main(argv: list[str] | None = None) -> int:
     threading.Thread(target=images.prune_cache_quietly, daemon=True).start()  # old previews go
     threading.Thread(target=mockups.clean_runs, daemon=True).start()  # runs Photoshop no longer needs go
     threading.Thread(target=core.daily_snapshot, name="daily-snapshot", daemon=True).start()   # yesterday's state is always on the disk
-    # The text check's model is asked for when the order card takes files (textcheck.run.warm), not at every start (05.10.2026).
+    # Ollama is started quietly, without the model (19.10.2026); the model is asked for when an order is opened or takes files
+    # (textcheck.run.warm), not at every start (05.10.2026).
+    threading.Thread(target=textcheck.run.start_quietly, name="ollama-start", daemon=True).start()
     # A Workshop book passed on before 27.09.2026 kept a copy of its pages in the library: it takes them from the
     # Workshop instead, its copies to the Recycle Bin (once; a copy that differs keeps its book as it is).
     threading.Thread(target=library.link_workshop_books, daemon=True).start()

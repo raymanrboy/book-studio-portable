@@ -1,7 +1,7 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-10-06
+updated: 2026-10-19
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -40,7 +40,8 @@ code:
    up get deleted); it also runs again after every sync. Also in the background — preview cache cleanup
    (`images.prune_cache_quietly()`: unneeded after 21 days, and over 800 MB the least recently used go) and the mockup runs Photoshop no longer needs
    (`mockups.clean_runs()`). Two minutes later — a [backup](../features/backup.md) to Google Drive when the last
-   one is 3 days old (`backup.schedule()`).
+   one is 3 days old (`backup.schedule()`). 8 s after the start — Ollama, hidden and without the model
+   (`textcheck.run.start_quietly()`, 19.10.2026; never on made-up data).
 8. **Window**: Edge or Chrome with `--app=<address>`, its own profile `data/window-profile`, sized
    1480×940. Edge is told not to update its components or work in the background (`desktop.QUIET_EDGE`), and what it stored for itself (`component_crx_cache`, `ProvenanceData`, its shopping, wallet and entity models — ~400 MB in each profile) goes while no window holds the profile (`desktop.trim_profile()`, 05.10.2026); the same for `work-browser`. The text check's model is no longer read at the start (see [text-check](../features/text-check.md)). Neither Edge nor Chrome present — opens the regular browser.
 

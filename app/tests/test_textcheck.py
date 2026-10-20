@@ -323,6 +323,55 @@ class PageIssues(unittest.TestCase):
         self.assertEqual(said(page1, kept, [], who), [])
 
 
+    def test_the_owners_marks_of_the_nineteenth_of_october(self):
+        """19.10.2026 calibration on 103 journaled checks against the print archive: each kind of «not a mistake»
+        once, and what must still show beside it."""
+        def said(target, text, pers, problems=(), verdict="error"):
+            return [i["text"] for i in tc.page_issues(target, {"transcript": text, "verdict": verdict,
+                                                               "problems": list(problems)},
+                                                       pers, tc._vocabulary(pers), {"john"})]
+        # A name typed in small letters is printed with a capital — and printed small it is red.
+        kobe = {**self.pers, "child": tc.personalization(item(child="kobe"))["child"]}
+        self.assertEqual(kobe["child"], "Kobe")
+        self.assertEqual(said(self.target(expected="Wave hello, sweet Kobe."), "Wave hello, sweet Kobe.", kobe), [])
+        self.assertEqual(said(self.target(expected="Wave hello, sweet Kobe."), "Wave hello, sweet kobe.", kobe),
+                         ["«kobe» замість «Kobe» — великі й малі літери"])
+        # The owner's own line of love above a bare «from whom»; a line said twice still shows.
+        nanny = {**self.pers, "gifter": "Nanny"}
+        page1 = self.target("personal", tc.fill(TEXTS["page1"], "Olivia", "Nanny"), 1)
+        mine = "Dear Olivia,\n\nWe made this little sky just for you.\n\nLove you always,\nNanny"
+        self.assertEqual(said(page1, mine, nanny, ["Слово 'love' у підписі замінено на 'you always'."]), [])
+        self.assertEqual(said(page1, mine.replace("you always", "you always and"), nanny), [])  # still a line of love
+        self.assertEqual(said(page1, mine.replace("Love you always,", "Bye,"), nanny, verdict="ok"),
+                         ["«Bye» замість «With love»"])
+        # A «from whom» that is a wish of its own: no «With love,» above it.
+        self.assertTrue(tc.fill(TEXTS["page1"], "Olivia", "Happy Diwali").endswith("just for you.\n\nHappy Diwali"))
+        # «Godparents-John» laid out as «Godparents –\nJohn»: not another order's John, not a difference.
+        godparents = {**self.pers, "gifter": "Love, Your Godparents-John and Danna"}
+        signed = self.target("personal", "Dear Olivia,\n\nLove, Your Godparents-John and Danna", 1)
+        self.assertEqual(said(signed, "Dear Olivia,\n\nLove, Your Godparents –\nJohn and Danna", godparents, verdict="ok"), [])
+        self.assertEqual(said(signed, "Dear Olivia,\n\nLove, Your Godparents –\nJohn", godparents, verdict="ok"),
+                         ["«Godparents John» замість «Godparents-John and Danna»"])  # a lost name still shows
+        # «James'» for «James's»: one name, two spellings.
+        self.assertEqual(tc.diff("James's First Birthday", "James' FIRST BIRTHDAY"), [])
+        self.assertEqual(tc.diff("Olivia's First Birthday", "Olivia FIRST BIRTHDAY"),
+                         [{"expected": "Olivia's", "printed": "Olivia"}])
+        self.assertEqual(tc.diff("James's First Birthday", "James FIRST BIRTHDAY"),   # no apostrophe: a lost «'s»
+                         [{"expected": "James's", "printed": "James"}])
+        self.assertTrue(tc.diff("Happy birthday, Mary-Kate", "Happy birthday, mary-\nkate"))  # small letters still show
+        # What the review of this calibration traced: names typed small, a typo in the owner's own line, a late wish.
+        self.assertEqual([tc.printed_name(n) for n in ("leo and mila", "o'neil", "de la cruz", "mary-kate", "McKenzie")],
+                         ["Leo and Mila", "O'Neil", "de la Cruz", "Mary-Kate", "McKenzie"])
+        self.assertEqual(said(page1, mine.replace("always", "alwys"), nanny, verdict="ok"),
+                         ["Пропущено «With»", "Зайве «you alwys»"])  # a typo in it still shows
+        self.assertTrue(tc.fill(TEXTS["page1"], "Olivia", "Grandma Sue. Merry Christmas!").endswith(
+            "With love,\nGrandma Sue. Merry Christmas!"))
+        # Where a line breaks, said another way.
+        story = self.target(expected="May God bless Olivia today\nand forevermore.")
+        self.assertEqual(said(story, "May God bless\nOlivia today and forevermore.", self.pers,
+                              ["Слово 'forevermore' записане в один рядок разом із ім'ям 'Olivia today'."]), [])
+
+
 class WholeCheck(unittest.TestCase):
     """24 pages for Printify without spreads 5, 9 and 12; the model is a stand-in that «reads» what the test
     printed on each page and answers like Gemma does."""
@@ -892,6 +941,41 @@ class OllamaAndRoutes(unittest.TestCase):
             with self.assertRaises(tc.Unavailable) as err:
                 tc._ready("gemma", lambda step: None)
         self.assertIn("Ollama", str(err.exception))
+
+    def test_ollama_starts_quietly_without_the_model(self):
+        with mock.patch.object(tc.run, "START_DELAY", 0), mock.patch.object(tc.ollama, "start_ollama", return_value=True) as start, \
+                mock.patch.object(tc.ollama, "_call", side_effect=AssertionError("no model is asked for at the start")):
+            with mock.patch.object(core, "SANDBOX", True):
+                tc.run.start_quietly()
+                self.assertFalse(tc.warm())            # nor a warm-up from an opened card
+            start.assert_not_called()                  # made-up or test data (the preview, tests): never the PC's real Ollama
+            with mock.patch.object(core, "SANDBOX", False), mock.patch("studio.portable.root", return_value=None):
+                tc.run.start_quietly()
+            start.assert_called_once_with(hidden=True)
+            core.settings.update({"textcheck": {"enabled": False}})
+            try:
+                tc.run.start_quietly()
+            finally:
+                core.settings.update({"textcheck": {"enabled": True}})
+            start.assert_called_once()                 # switched off in Settings: Ollama is left alone
+
+    def test_test_data_never_starts_the_real_ollama(self):
+        with mock.patch.object(tc.ollama, "_alive", return_value=False), \
+                mock.patch.object(tc.ollama.subprocess, "Popen", side_effect=AssertionError("Ollama may not be started")):
+            self.assertTrue(core.SANDBOX)              # the tests' own data folder
+            self.assertFalse(tc.start_ollama())
+            with self.assertRaises(tc.Unavailable):
+                tc._ready("gemma", lambda step: None)
+
+    def test_the_hidden_start_never_opens_the_tray_app(self):
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder, True)
+        for name in ("ollama app.exe", "ollama.exe"):
+            (folder / name).write_bytes(b"")
+        with mock.patch("studio.portable.root", return_value=None), mock.patch("studio.portable.ollama_folder", return_value=folder), \
+                mock.patch.object(tc.ollama.shutil, "which", return_value=None):
+            self.assertEqual(tc.ollama._ollama_command(), [str(folder / "ollama app.exe")])
+            self.assertEqual(tc.ollama._ollama_command(hidden=True), [str(folder / "ollama.exe"), "serve"])
 
     def test_missing_model(self):
         with mock.patch.object(tc.ollama, "_alive", return_value=True), \

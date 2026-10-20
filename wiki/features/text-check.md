@@ -1,7 +1,7 @@
 ---
 title: Text check (AI validator on a local model)
 type: feature
-updated: 2026-10-06
+updated: 2026-10-19
 code:
   - app/studio/textcheck/
   - app/studio/wording.py
@@ -116,7 +116,18 @@ which text, `ollama.py` — the model, `journal.py` — the journal and the owne
   signed message from the buyer lets the template's last short wish above it go, only when that fits the page better (`_without_wish()`);
   the child's name shorter or fuller than Etsy's field («'Ava'» for «Ava Rose», «Chloe Jane Robinson») — `_name_part()`; where a line
   breaks, even when the remark names the name («Amen.» on a line of its own — `_LINES`); «Текст повністю збігається» (`_NO_PROBLEM`);
-  a model's «a line is missing» when its own copy carries every word the page must (`intact`). **The next calibration**: `python app/tools/textcheck_replay.py` shows what today's rules would show
+  a model's «a line is missing» when its own copy carries every word the page must (`intact`). **The calibration of 19.10.2026**
+  (the owner: "a bit more data has gathered… dig well, pull the pages from the archive"), on 103 journaled checks, every remaining
+  finding looked at on the archived print files: of the 60 rows he marked «not a mistake», today's rules showed 14, now 13 → of those, 11 are the
+  two orders where the buyer asked for changes in Etsy messages (Eloise — a rewritten dedication; James — the reprint with «James'»),
+  1 an unreadable page (honest), 1 a model misread («Eliand's» on a page that says «Eliana's» — left red: a misspelt name is the main
+  catch), 1 a passport that drifted from Canva (Sleepy Trucks cover — fixed in the passport the same day: «Sweet Dreams {Name}»). Red 27 → 11, with every
+  real catch kept (a line or signature twice, another book's pages, a wrong spread). The kinds: a name typed in small letters is
+  printed with a capital (`printed_name()`: «kobe» → «Kobe»; printed small it is now red); the owner's own short line of love above a
+  bare «from whom» («Love you always,\nNanny» for «With love,» — `_own_greeting()`); a «from whom» that is a wish («Happy Diwali») drops the
+  template's «With love,» (`_WISH`, only as its first words); «Godparents-John» laid out as «Godparents –\nJohn» (`_spelled()`, and the parts of a hyphenated
+  word in the buyer's fields are not another order's child — `_vocabulary()`); «James'» = «James's» when the page has the apostrophe (`_spelled()`); «записане в один
+  рядок» is a line break (`_LINES`); «замінено» is a claim (`_CLAIM`). **The next calibration**: `python app/tools/textcheck_replay.py` shows what today's rules would show
   for every journaled check beside what was shown, with his "Not an error" marks; `--all` — every check.
 - **The quick scan** cut a 30-page book's check from ~40 s to ~24 s with identical findings; a text page scores 2.4–2.6,
   a picture 0.9–1.5.
@@ -153,12 +164,12 @@ A disabled Ollama makes Windows wait 2 s per attempt, so the probe is capped at 
 
 ## Where in the code
 
-- [app/studio/textcheck/rules.py](../../app/studio/textcheck/rules.py) — calibration and the wrong-book guard: `_name_part()`, `_without_wish()`, `_LINES`, `_case_only()`, `_buyer_intact()`, `_twice()`, `_strange()`, `_wrong_book()`, `_one_alarm()`, `_like_book()`, `WRONG_BOOK`, `_NO_PROBLEM`, `_CLAIM`, `_SEEN`
-- [app/studio/textcheck/run.py](../../app/studio/textcheck/run.py) — `_parse()`, `_salvage()`, `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_collect()`, `_targets()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `picture()`, `_other_children()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `READ_TOKENS`, `JUDGE_TOKENS`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
+- [app/studio/textcheck/rules.py](../../app/studio/textcheck/rules.py) — calibration and the wrong-book guard: `_name_part()`, `_own_greeting()`, `_love_line()`, `_without_wish()`, `_LINES`, `_case_only()`, `_buyer_intact()`, `_twice()`, `_strange()`, `_wrong_book()`, `_one_alarm()`, `_like_book()`, `WRONG_BOOK`, `_NO_PROBLEM`, `_CLAIM`, `_SEEN`
+- [app/studio/textcheck/run.py](../../app/studio/textcheck/run.py) — `_parse()`, `_salvage()`, `check_order()`, `check_book()`, `_passes()`, `page_kinds()`, `_page_score()`, `_second_half()`, `_collect()`, `_targets()`, `_print_files()`, `_Run`, `run_key()`, `cancel()`, `warm()`, `start_quietly()`, `picture()`, `_other_children()`, `READ_PROMPT`, `STRICT_PROMPT`, `LOOSE_PROMPT`, `SCHEMA`, `PARALLEL`, `IMAGE_SIDE`, `READ_TOKENS`, `JUDGE_TOKENS`, `WARM_AGAIN`, `LOOKS_TEXT`, `LOOKS_PICTURE`
 - [app/studio/textcheck/rules.py](../../app/studio/textcheck/rules.py) — `_saw_nothing()`, `_ordered()`, `_all_issues()`, `_learnable()`, `findings()`, `page_issues()`, `book_issues()`, `has_text()`, `_vocabulary()`, `_only_punctuation()`
 - [app/studio/textcheck/ollama.py](../../app/studio/textcheck/ollama.py) — `_release_model()`, `status()`, `start_ollama()`, `_ready()`, `_names()`, `_has()`, `_chat()`, `TimedOut`, `_base()`, `KEEP_ALIVE`, `DEFAULT_MODEL`, `PROBE_TIMEOUT`
 - [app/studio/textcheck/routes.py](../../app/studio/textcheck/routes.py) — `_cancel()`, `_warm()`, `as_template()`, `_passport()`, `_passport_texts()`, `_passport_words()`, `_check()`, `_mark()`
-- [app/studio/textcheck/texts.py](../../app/studio/textcheck/texts.py) — `assign()`, `similarity()`, `diff()`, `personalization()`, `split_dedication()`, `signs_off()`, `fill()`, `MATCH`, `COMMON`
+- [app/studio/textcheck/texts.py](../../app/studio/textcheck/texts.py) — `assign()`, `similarity()`, `diff()`, `_spelled()`, `printed_name()`, `personalization()`, `split_dedication()`, `signs_off()`, `fill()`, `MATCH`, `COMMON`
 - [app/studio/textcheck/journal.py](../../app/studio/textcheck/journal.py) — `_journal()`, `CHECKS`, `_raw()`, `mark()` (the owner's «це не помилка» marks)
 - [app/studio/wording.py](../../app/studio/wording.py) — `words()`, `is_default()`, `clean_name()`, `custom_text()`, `alike()`, `guess_child_name()`, `DEDICATION`, `META`, `_POSSESSIVE`
 - [app/tools/textcheck_replay.py](../../app/tools/textcheck_replay.py) — `replay()`, `rebuild()`, `main()` (the journal through today's rules)
@@ -182,4 +193,6 @@ Ollama is started with `CREATE_NO_WINDOW` (no black windows from its helper proc
 ## Quiet start-up and no black windows (2026-10-04)
 
 - No read-in at the program's start any more (05.10.2026): the old start-up read-in (`prime`) started Ollama and read the model at every launch — gigabytes off the disk and the graphics card for a window often open for a minute or two. The model is asked for by `warm()` when the card takes files (every path that starts a check goes through it), as the Warm-up step above says.
+- **Since 19.10.2026** (the owner): Ollama itself — without the model — is started 8 s after the program (`run.start_quietly()`), and the model is also asked for as soon as the card of a new, unsent order opens (`warmModel()` at the card's start): its slow first read off the disk is over while the files are made in Canva. A warm-up with no check lets the card go after 2 min (`KEEP_ALIVE`).
+- **Hidden, always:** every start the program makes by itself (`start_quietly()`, `_ready()`) is `ollama.exe serve` with `CREATE_NO_WINDOW` (`_ollama_command(hidden=True)`) — never the tray app `ollama app.exe`, whose icon and helpers' windows the owner saw on 19.10. Settings → «Запустити» still opens the tray app on a PC install. On made-up or test data (`core.SANDBOX` — the preview, tests) `start_ollama()` never starts Ollama (one already running is still used), and neither `warm()` nor `start_quietly()` does anything. The warm-up at the card's opening says nothing even while Ollama starts (`warmModel(true)`).
 - Ollama is started with `CREATE_NO_WINDOW`. Measured: with the old `DETACHED_PROCESS` its helpers (`llama-server.exe`, `ollama.exe gpu-discover`) each opened a black console at every model load; with the new flag none appeared during a load and an unload. An Ollama started by an earlier version keeps flashing until it is ended (task manager → `ollama.exe`).

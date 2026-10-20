@@ -7,6 +7,7 @@ import {
 import { stopSpin, watchSyncs } from '../order-bits.js';
 import { refreshInfo, store } from '../info.js';
 import { DEAD_SHORT, costOf, detailHtml, rowInner } from './profit-rows.js';
+import { makeCalendar } from './profit-calendar.js';
 
 const PAGE_SIZE = 50;
 // The periods on view, and the rarer ones behind «Ще», whose button takes the name of the one picked (the owner, 2026-10-13).
@@ -49,18 +50,23 @@ export async function mount(view) {
     notice: null,
   };
   st.view = saved.view === 'listings' ? 'listings' : 'orders'; // the table: by order, or summed by listing (2026-10-14)
-  const persist = () => remember('bs-profit', { period: st.period, start: st.start, end: st.end, view: st.view });
+  // The page shown: the table, or the calendar of sales by day (the owner's whiteboard, 2026-10-21), flipped by the arrow.
+  st.screen = saved.screen === 'cal' ? 'cal' : 'table';
+  const persist = () => remember('bs-profit', { period: st.period, start: st.start, end: st.end, view: st.view, screen: st.screen });
 
   setHtml(view, html`
     <div class="page-head">
       <div><h1 class="page-title">Прибуток</h1><div class="page-sub" id="pf-sub"></div></div>
-      <div class="page-actions"><div class="tools">${ib('sync', 'Оновити замовлення', 'id="pf-sync"')}${ib('more', 'Інші способи оновлення', 'id="pf-more"')}</div></div>
+      <div class="page-actions"><button type="button" class="pf-flip" id="pf-flip"></button>
+        <div class="tools">${ib('sync', 'Оновити замовлення', 'id="pf-sync"')}${ib('more', 'Інші способи оновлення', 'id="pf-more"')}</div></div>
     </div>
     <div id="pf-progress" class="pf-progress"><div>
       <div class="row"><b id="pf-step"></b><span class="faint" id="pf-detail"></span><span class="spacer"></span><span class="mono faint" id="pf-pct"></span></div>
       <div class="progress progress-thin live indet" id="pf-barbox"><i id="pf-bar"></i></div>
     </div></div>
     <div id="pf-notice" class="pf-notices"></div>
+    <div id="pf-cal" class="pf-cal" ${st.screen === 'cal' ? '' : 'hidden'}></div>
+    <div id="pf-main" ${st.screen === 'cal' ? 'hidden' : ''}>
     <div id="pf-kpis" class="kpis"></div>
     <div class="period-bar">
       <span class="row pf-period-label"><span class="pf-period-ico">${ic('calendar', 'icon-s')}</span>Період</span>
@@ -81,7 +87,7 @@ export async function mount(view) {
         <span class="pf-count" data-tip="Замовлень у вибірці">${ic('receipt', 'icon-s')}<b class="num" id="pf-count">0</b></span>
       </div>
       <div id="pf-table"></div>
-    </div>`);
+    </div></div>`);
 
   const $ = (s) => view.querySelector(s);
   // ---------------------------------------------------------------- periods
@@ -185,18 +191,18 @@ export async function mount(view) {
   }
   // What Etsy took outside the orders in the period (ads, new listings), negative: from Etsy's ledger by day — the days
   // Etsy hasn't charged yet are the server's forecast (ledger.overhead()); with no ledger, the old estimate a day.
-  function overhead() {
+  // `days` — the period's by default; the calendar asks for one day or one week.
+  function overhead(days = periodDays()) {
     const byDay = st.data?.overheadDays;
-    const days = periodDays();
     if (!byDay) return -days.length * (st.data?.overheadPerDay || 0);
     return days.reduce((sum, d) => sum + (byDay[d]?.amount || 0), 0);
   }
   // Only the Etsy Ads (Promoted Listings) part of overhead(), negative; with no ledger — nothing known.
-  function adsSpend() {
+  function adsSpend(days = periodDays()) {
     const byDay = st.data?.overheadDays;
-    return byDay ? periodDays().reduce((sum, d) => sum + (byDay[d]?.ads || 0), 0) : 0;
+    return byDay ? days.reduce((sum, d) => sum + (byDay[d]?.ads || 0), 0) : 0;
   }
-  function kpi(rows) {
+  function kpi(rows, days = periodDays()) {
     let net = 0, cost = 0, profit = 0, n = 0, impact = 0, issues = 0, offsite = 0, offsiteN = 0;
     for (const o of rows) {
       if (o.profit === null || o.profit === undefined) continue;
@@ -214,9 +220,9 @@ export async function mount(view) {
     const r2 = (v) => Math.round(v * 100) / 100;
     // Ads and new listings (overhead()): counted into the profit and the margin, not shown (2026-10-05) — on a day without
     // sales too: the ads were paid all the same (the owner, 2026-10-13).
-    profit += overhead();
+    profit += overhead(days);
     return { net: r2(net), cost: r2(cost), profit: r2(profit), margin: net > 0 ? Math.round((profit / net) * 1000) / 10 : 0, n, impact: r2(impact), issues,
-      offsite: r2(offsite), offsiteN, ads: r2(adsSpend()) };
+      offsite: r2(offsite), offsiteN, ads: r2(adsSpend(days)) };
   }
 
   // ---------------------------------------------------------------- render
@@ -411,7 +417,37 @@ export async function mount(view) {
     requestAnimationFrame(() => view.querySelectorAll('.state-seg .seg').forEach(syncSeg));
   }
 
-  function renderAll() { renderHead(); renderNotice(); renderPeriod(); renderKpis(); renderFilter(); renderTable(); }
+  // ---------------------------------------------------------------- the calendar page
+  const cal = makeCalendar($('#pf-cal'), {
+    rows: () => st.data?.rows || [],
+    kpi, overhead,
+    from: () => (st.data?.accountingFrom ? new Date(`${st.data.accountingFrom}T00:00:00`) : null),
+    forecast: (day) => Boolean(st.data?.overheadDays?.[day]?.forecast),
+    estimated: () => !st.data?.overheadDays,
+  });
+  // The arrow flips between the two pages; its two dots say which one is shown.
+  function renderFlip() {
+    const toCal = st.screen === 'table';
+    const tip = toCal ? 'Календар продажів' : 'Таблиця замовлень';
+    const dots = html`<span class="pf-dots"><i class="${toCal ? 'on' : ''}"></i><i class="${toCal ? '' : 'on'}"></i></span>`;
+    const b = $('#pf-flip');
+    b.dataset.tip = tip; b.setAttribute('aria-label', tip);
+    setHtml(b, toCal ? html`${dots}${ic('chevRight')}` : html`${ic('chevLeft')}${dots}`);
+  }
+  function flip() {
+    st.screen = st.screen === 'cal' ? 'table' : 'cal'; persist();
+    const show = st.screen === 'cal' ? $('#pf-cal') : $('#pf-main');
+    (st.screen === 'cal' ? $('#pf-main') : $('#pf-cal')).hidden = true;
+    if (st.screen === 'cal') cal.render();
+    show.hidden = false;
+    renderFlip();
+    if (st.screen === 'table') requestAnimationFrame(() => $('#pf-main').querySelectorAll('.seg').forEach(syncSeg)); // measured while hidden
+    const dir = st.screen === 'cal' ? 1 : -1;
+    if (!reducedMotion()) show.animate([{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  }
+  renderFlip();
+
+  function renderAll() { renderHead(); renderNotice(); renderPeriod(); renderKpis(); renderFilter(); renderTable(); if (st.screen === 'cal') cal.render(); }
 
   // Details (fees, address, items) are fetched when a row is opened, then the row grows smoothly.
   function closeRow(id) {
@@ -769,6 +805,7 @@ export async function mount(view) {
   view.addEventListener('focusout', (e) => { if (e.target.matches?.(fieldSel)) commitField(e.target); });
   view.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches?.(fieldSel)) { e.preventDefault(); e.target.blur(); } });
 
+  $('#pf-flip').addEventListener('click', flip);
   $('#pf-sync').addEventListener('click', () => sync());
   $('#pf-more').addEventListener('click', (e) => menu(e.currentTarget, [
     { label: 'Швидке оновлення (лише змінені чеки)', icon: 'sync', onClick: () => sync(false) },
@@ -786,5 +823,5 @@ export async function mount(view) {
     current: () => st.data?.syncedAt,
     onNewer: async () => { if (!st.open && !st.syncing && !gone) await load(); },
   });
-  return { unmount() { gone = true; unwatch(); offs.forEach((f) => f()); clearTimeout(noticeTimer); runSearch.cancel(); cancelAnimationFrame(kpiRaf); } };
+  return { unmount() { gone = true; unwatch(); cal.destroy(); offs.forEach((f) => f()); clearTimeout(noticeTimer); runSearch.cancel(); cancelAnimationFrame(kpiRaf); } };
 }

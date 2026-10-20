@@ -148,3 +148,67 @@
 /* The fees hold Etsy lines the formula doesn't know (Offsite Ads, a state's fee): named in the tip. */
 .o-fees.has-extra { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 .dbox-foot.ledger-foot { display: block; line-height: 1.6; }  /* a long line of Etsy's entries wraps as text */
+
+/* ------------------------------------------------------------------ the calendar page (the owner's whiteboard, 2026-10-21) */
+/* The arrow that flips between the table and the calendar: two dots say which page is shown. */
+.pf-flip { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); color: var(--text-2); transition: background var(--t-fast) ease, color var(--t-fast) ease, transform var(--t-fast) var(--ease); }
+.pf-flip:hover { background: var(--surface-3); color: var(--text); }
+.pf-flip:active { transform: scale(var(--press)); }
+.pf-dots { display: inline-flex; gap: 5px; }
+.pf-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); transition: background var(--t) ease, width var(--t) var(--ease); }
+.pf-dots i.on { width: 16px; border-radius: 3px; background: var(--text-2); }
+
+/* The calendar is softer than the rest of the program on purpose (the owner, 2026-10-21: "миленький, зглажений, козі"):
+   round days, no grid lines, red dots as on his whiteboard, a light rounded hover card. */
+.pf-cal {
+  --cal-dot: #e0464e; --cal-rose: rgba(224, 70, 78, .09); --cal-mint: rgba(29, 122, 76, .09);
+}
+[data-theme="dark"] .pf-cal { --cal-dot: #f2737a; --cal-rose: rgba(242, 115, 122, .14); --cal-mint: rgba(92, 200, 142, .12); }
+.cal-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 20px 22px 22px; box-shadow: var(--shadow-s); }
+.cal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.cal-month { display: flex; align-items: center; gap: 4px; }
+.cal-month .ib { border-radius: 50%; }
+.cal-title { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; min-width: 160px; text-align: center; margin: 0; }
+.cal-total { display: flex; align-items: baseline; gap: 10px; padding: 6px 16px; border-radius: 999px; background: var(--cal-mint); }
+.cal-total b { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
+.cal-total span { font-size: var(--fs-s); color: var(--text-3); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(92px, 11%); gap: 6px; }
+.cal-wd { padding: 4px 0 6px; text-align: center; font-size: var(--fs-s); font-weight: 600; color: var(--text-3); }
+.cal-wd-sum { display: grid; place-items: center; }
+.cal-day { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; min-height: 86px; padding: 8px 4px; border: 0; border-radius: 18px; background: transparent; color: inherit; font: inherit; transition: background var(--d-2) ease, transform var(--d-2) var(--spring); }
+button.cal-day { cursor: default; }
+button.cal-day:hover, button.cal-day:focus-visible { background: var(--surface-3); }
+button.cal-day:hover .cal-num { transform: scale(1.08); }
+.cal-num { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; font-family: var(--font-display); font-weight: 600; font-size: var(--fs); color: var(--text-2); font-variant-numeric: tabular-nums; transition: transform var(--d-2) var(--spring), background var(--d-2) ease; }
+.cal-day.has-sales .cal-num { background: var(--cal-rose); color: var(--text); }
+.cal-day.is-today .cal-num { box-shadow: 0 0 0 2px var(--cal-dot); color: var(--text); }
+.cal-day.is-off .cal-num { color: var(--text-3); opacity: .5; }
+.cal-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 72px; }
+.cal-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--cal-dot); box-shadow: 0 1px 2px rgba(224, 70, 78, .35); }
+.cal-dots em { font-style: normal; font-size: var(--fs-s); font-weight: 600; color: var(--cal-dot); line-height: 8px; }
+.cal-week { display: grid; place-items: center; min-height: 86px; }
+.cal-week b { padding: 5px 12px; border-radius: 999px; background: var(--cal-mint); font-family: var(--font-display); font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
+.cal-week b.neg { background: var(--red-soft); color: var(--red); }
+.cal-week b.zero { background: transparent; color: var(--text-3); font-weight: 500; }  /* a week without sales: no green that looks earned */
+.cal-total b.neg, .cal-pop-profit.neg { color: var(--red); }
+/* The hover card: light, rounded, a little tail pointing at the day; it floats in softly. */
+.cal-pop { position: absolute; z-index: 20; pointer-events: none; min-width: 180px; width: max-content; max-width: 300px; padding: 12px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-l); font-size: var(--fs-s); line-height: var(--lh); color: var(--text-2);
+  opacity: 0; transform: translateY(4px) scale(.97); transform-origin: var(--tail, 50%) 100%; transition: opacity var(--d-2) ease, transform var(--d-3) var(--spring); }
+.cal-pop[data-side="bottom"] { transform: translateY(-4px) scale(.97); transform-origin: var(--tail, 50%) 0; }
+.cal-pop.on { opacity: 1; transform: none; }
+.cal-pop::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -6px; width: 11px; height: 11px; margin-left: -6px; background: var(--surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); border-bottom-right-radius: 3px; transform: rotate(45deg); }
+.cal-pop[data-side="bottom"]::after { bottom: auto; top: -6px; transform: rotate(225deg); }
+.cal-pop-date { color: var(--text-3); }
+.cal-pop-profit { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; color: var(--green); margin: 2px 0 4px; font-variant-numeric: tabular-nums; }
+.cal-pop-line { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.cal-pop-line .cal-dots { max-width: 96px; justify-content: flex-start; }
+.cal-pop-line .cal-dots:empty { display: none; }
+.cal-pop-faint { color: var(--text-3); margin-top: 4px; }
+@media (max-width: 960px) {
+  .cal-card { padding: 14px; }
+  .cal-grid { gap: 2px; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(72px, 12%); }
+  .cal-day, .cal-week { min-height: 70px; }
+  .cal-num { width: 30px; height: 30px; }
+  .cal-dots i { width: 6px; height: 6px; }
+  .cal-week b { padding: 4px 8px; font-size: var(--fs-s); }
+}

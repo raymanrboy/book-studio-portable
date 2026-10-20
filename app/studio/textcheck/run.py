@@ -78,8 +78,8 @@ def warm() -> bool:
     right after them does not wait for it (~4 s from this computer's memory, ~70 s from disk). Quiet: a
     model that cannot be had is the check's own thing to report, and the card hears it there."""
     global _warmed_at
-    if not _settings()["enabled"]:
-        return False
+    if core.SANDBOX or not _settings()["enabled"]:
+        return False  # made-up or test data (the preview, tests) never starts the PC's real Ollama or fills its graphics card
     with _warm_lock:
         if _active or time.monotonic() - _warmed_at < WARM_AGAIN:
             return False  # a check is already holding the model, or one folder asked twice
@@ -94,6 +94,24 @@ def warm() -> bool:
 
     threading.Thread(target=load, name="textcheck-warm", daemon=True).start()
     return True
+
+
+START_DELAY = 8  # seconds after the program's start: the window opens first
+
+
+def start_quietly() -> None:
+    """Ollama itself is started a little after the program (owner, 19.10.2026), so a check never waits for it — without the model:
+    that is asked for by warm() when an order is opened or takes files, and only then fills the graphics card (05.10.2026).
+    Hidden: no tray icon, no window. Never on made-up or test data (the preview, tests): they would start the PC's real Ollama."""
+    from .. import modules, portable
+    if core.SANDBOX or not _settings()["enabled"] or (portable.root() and not modules.installed("textcheck")):
+        return
+    time.sleep(START_DELAY)
+    try:
+        if not ollama.start_ollama(hidden=True):
+            core.log.info("Text check: Ollama was not started at the program's start")
+    except Exception:  # a thread of its own: unlogged, a failure here would vanish without a trace
+        core.log.exception("Text check: Ollama's start at the program's start failed")
 
 
 def picture(path: Path, part: str | None = None) -> str:

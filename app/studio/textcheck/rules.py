@@ -69,6 +69,7 @@ def _vocabulary(pers: dict) -> set[str]:
             vocab.update(w.casefold() for w in words(_NAME_SLOT.sub(" ", text or "")))
     for value in (pers["gifter"], pers["dedication"] or "", pers["closing"] or ""):
         vocab.update(w.casefold() for w in words(value))
+        vocab.update(p.casefold() for w in words(value) for p in w.split("-") if p)  # «Godparents-John»: the buyer's John
     return vocab
 
 
@@ -167,7 +168,7 @@ def page_issues(target: dict, answer: dict, pers: dict, vocab: set[str], others:
         out.append(_issue(target, "error" if sure else "warn", FINDING_TEXT[f["kind"]].format(**f), kind="rule"))
         covered.add(f["printed"])
     if expected is not None and mode == "personal":
-        expected = _without_wish(expected, text, pers["gifter"])
+        expected = _own_greeting(_without_wish(expected, text, pers["gifter"]), text, pers["gifter"])
     ops = None
     if expected is not None:
         ops = [op for op in diff(expected, text) if not set(op["printed"].split()) & covered and not _case_only(op, names)]
@@ -219,11 +220,38 @@ def _without_wish(expected: str, text: str, gifter: str) -> str:
     return shorter if _changed(shorter, text) < _changed(expected, text) else expected
 
 
+def _love_line(line: str) -> bool:
+    """«With love,», «Love you always,»: a short line of love ending with a comma, every word an everyday one (a typo
+    in it — «Love you alwys,» — is still compared)."""
+    said = [w.casefold() for w in words(line)]
+    return line.endswith(",") and 1 <= len(said) <= 4 and "love" in said and all(w in COMMON for w in said)
+
+
+def _own_greeting(expected: str, text: str, gifter: str) -> str:
+    """«Love you always,\nNanny» where the template says «With love,\n{Gifter}»: the owner's own words of love above
+    a bare «from whom» (19.10.2026 calibration — three books of three, all marked «not a mistake»). Taken only when
+    both lines are short lines of love standing right above the «from whom»."""
+    at = expected.rfind(gifter) if gifter else -1
+    head = expected[:at].rstrip(" \t")
+    if at <= 0 or not head.endswith("\n"):
+        return expected
+    start = head[:-1].rfind("\n") + 1
+    template = head[start:-1].strip()
+    first = gifter.split("\n", 1)[0].strip()
+    lines = [ln.strip() for ln in text.splitlines()]
+    signed = re.compile(re.escape(first) + r"(?!\w)")  # the signature, not «Mommy» for «Mom» in the body
+    above = next((lines[i - 1] for i in range(len(lines) - 1, 0, -1) if signed.match(lines[i])), "")
+    if not (_love_line(template) and _love_line(above)):
+        return expected
+    return expected[:start] + above + "\n" + expected[at:]
+
+
 # Where a line breaks is the owner's: «'Amen.' на окремому рядку», «у тому ж рядку», «додаткові порожні рядки»
 # (06.10.2026 calibration — four of his «not a mistake» on one book). `_LINES` alone decides when the remark
 # claims nothing else — «на новому рядку після імені Sophie» names the name only to say where.
-_LINES = re.compile(r"окрем\w* рядк|нов\w* рядк|тому ж рядку|одному рядку|порожн\w* рядк|абзац|перенос|line break", re.I)
-_LINES_SUBSTANCE = re.compile(r"обріз|обірв|зрізан|за кра|злит|злип|пропущ|відсутн|зайв|замість|повтор|двічі|дублю|"
+_LINES = re.compile(r"окрем\w* рядк|нов\w* рядк|тому ж рядку|одному рядку|один рядок|порожн\w* рядк|абзац|перенос|"
+                    r"line break", re.I)  # «записане в один рядок разом із…» — 19.10.2026
+_LINES_SUBSTANCE = re.compile(r"обріз|обірв|зрізан|за кра|злит|злип|пропущ|відсутн|зайв|замість|повтор|двічі|дублю|не вистача|бракує|"
                               r"\{|cut|missing|repeat|extra", re.I)
 _PUNCTUATION = re.compile(r"лапк|ком[аиуою]\b|крапк|пробіл|розділов|пунктуац|апостроф|тире|дефіс|перенес|"
                           r"нов\w* рядк|кінці рядк|окрем\w* рядк|одному рядку|тому ж рядку|порожн\w* рядк|"
@@ -237,7 +265,7 @@ _NO_PROBLEM = re.compile(r"помил\w*[^.]{0,30}\bнема|нема\w* пом�
                          r"збігається повністю", re.I)
 # The model says a word is missing or changed; on a page where the program finds every word of the buyer's
 # message, that is the model «correcting» it — a Bible verse quoted the buyer's way (25.09.2026).
-_CLAIM = re.compile(r"пропущ|відсутн|замість|змін|має бути|не вистача|missing|absent|instead", re.I)
+_CLAIM = re.compile(r"пропущ|відсутн|замість|змін|замін|має бути|не вистача|missing|absent|instead", re.I)
 # A name the model quotes: 'Ava' (not the apostrophe inside «Ім'я»).
 _QUOTED = re.compile(r"(?:(?<=\s)|^|(?<=\())['‘\"«“]([^'’\"»”\n]{1,60})['’\"»”](?=[\s,.;:)!?]|$)")
 

@@ -110,6 +110,13 @@ The first version's `order.js` was lost (it was never committed), so `order.js` 
   title «<name> – Multi-design»); ② **Перша сторінка** — page 1 opened, the trash «Видалити сторінку» pressed (no confirm; checked by the
   counter «N з M» dropping by one) — **only on a design that carries the order's name**, once (`firstDeleted`); ③ «Завантажити PNG» is the
   owner's own press. Each step has a button to repeat it by hand. A step runs under the lock.
+- **The copy's tab** (fixed 18.10 after the owner's first run: the copy opened and nothing went on): `current()` now also finds
+  the order from a fresh copy's tab (`isFreshCopy`: not the template, within 5 minutes of «Зробити копію» — `copyAt` — or 30 minutes from
+  the link, the design's name containing the template's, which the template's tab remembers as `templateName`), and the panel looks
+  every second (`watchOrder` in panel.js), since Canva names the tab after the design only a moment after it opens.
+- **The first page goes by itself, never asked** (the owner, 18.10): as soon as the tab is the order's named copy, once per copy
+  (`firstTried`), even when the rename was done apart (the «Назвати» button, a reloaded tab); a confirm, should Canva ever show one, is
+  answered by the extension. Only a failure leaves the «Видалити» button with its reason.
 - **The ZIP**: Canva names it after the design; the order card asks `/api/orders/<id>/canva-zip?title=<the copy's name>` every 2.5 s
   after the press (each book its own wait, 3 hours; a drop by hand ends it) and takes **that book's** ZIP only — like a dropped ZIP
   ([orders](orders.md)). A ZIP that cannot be unpacked is said once.

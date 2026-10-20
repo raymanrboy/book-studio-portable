@@ -640,6 +640,7 @@
       if (key === 'copy') await Order.makeCopy(o);
       else if (key === 'rename') await Order.rename(o.title);
       else if (key === 'first') {
+        Order.save({ ...o, firstTried: here() });
         await Order.deleteFirstPage(o);
         Order.save({ ...o, firstDeleted: here() });
       }
@@ -678,9 +679,33 @@
       const o = orderNow();
       setOpen(Boolean(o) || store.get('open', '1') === '1');   // an order opens the panel
       drawOrder();
-      if (o) takeCopy();
     }
+    if (inEditor && host.isConnected) watchOrder();
     if (!inEditor && host.isConnected && !running) host.remove();
+  }
+  // Every second: Canva names the tab after the design only a moment after it opens, so the copy is looked for until it is
+  // seen (not once at the start); the template's name is remembered on the template's own tab; the order card is redrawn
+  // when what it shows changes.
+  let orderSeen = '';
+  function watchOrder() {
+    if (!Order || orderBusy || running) return;
+    const o = orderNow();
+    if (o && o.template === here() && !o.templateName && Order.title() && Order.title() !== 'Canva') {
+      Order.save({ ...o, templateName: Order.title() });
+    }
+    const seen = o ? `${o.receipt}|${o.title}|${o.copyDesign || ''}|${o.firstDeleted || ''}|${Order.title()}` : '';
+    if (seen !== orderSeen) {
+      if (o && !orderSeen) setOpen(true);                      // an order showed up: the panel opens
+      orderSeen = seen;
+      drawOrder();
+    }
+    if (o && !o.copyDesign && Order.isFreshCopy(o)) takeCopy();
+    // The copy carries the order's name and its first page is still there: it goes by itself, no press (the owner, 18.10).
+    // One try by itself per copy (`firstTried`); a failure shows its reason and the «Видалити» button.
+    else if (o && Order.isCopyFor(o) && o.firstDeleted !== here() && o.firstTried !== here()) {
+      Order.save({ ...o, firstTried: here() });
+      doStep('first', true);
+    }
   }
   place();
   setInterval(place, 1000);
