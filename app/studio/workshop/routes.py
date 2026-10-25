@@ -8,7 +8,7 @@ from pathlib import Path
 from .. import clipboard, core, desktop, images, library, photos
 from ..jobs import jobs
 from ..server import ApiError, Request, file_response, route
-from . import books, generate, pictures, upscale
+from . import books, generate, pictures, rows, upscale
 
 def _variant(body_or_value) -> str | None:
     value = body_or_value.get("variant") if isinstance(body_or_value, dict) else body_or_value
@@ -108,6 +108,24 @@ def _place(req: Request):
     return result
 
 
+@route("POST", r"/api/workshop/books/([^/]+)/cover-squares")
+def _cover_squares(req: Request):
+    """The cover tool's choices for «Два квадрати»: the soft edge, a side's layout guide, the front's reference."""
+    from . import cover
+    return cover.set_settings(req.groups[0], req.json or {})
+
+
+@route("POST", r"/api/workshop/books/([^/]+)/cover-mode")
+def _cover_mode(req: Request):
+    """The cover row's switch «2:1 · Два квадрати» — a wait for the other way's outpaint ends (its result would be
+    brought to the wrong template)."""
+    result = pictures.set_cover_mode(req.groups[0], str((req.json or {}).get("mode") or ""))
+    a = generate.status()["active"]
+    if a and a.get("book") == req.groups[0] and not a.get("variant") and str(a.get("key") or "").startswith("cover"):
+        generate.stop(req.groups[0])  # a spread awaited meanwhile goes on
+    return result
+
+
 @route("POST", r"/api/workshop/books/([^/]+)/adopt")
 def _adopt(req: Request):
     """«Підхопити з папки»: the pictures the owner put into originals/ by hand (the base book's, or `variant`'s) go
@@ -151,6 +169,18 @@ def _copy_picture(req: Request):
     """«Копіювати картинку»: a spread as Gemini made it (e.g. for Agent 6's "best frame"), a page, the cover."""
     clipboard.set_image(pictures.picture_for_clipboard(req.groups[0], str((req.json or {}).get("key") or "")))
     return {"ok": True}
+
+
+@route("POST", r"/api/workshop/books/([^/]+)/copy-reference")
+def _copy_reference(req: Request):
+    """«Референс у буфер» (the owner, 24.10.2026): the picture a cover prompt names as its `reference_image` (Agent 6's
+    `ref_cover_….jpg` in `agent/`), so it goes into Gemini without hunting for it in the folder."""
+    key = str((req.json or {}).get("key") or "")
+    name = rows.book_rows(books.book_path(req.groups[0]))["cover"].get("refs", {}).get(key)
+    if not name:
+        raise ApiError("Промпт обкладинки не називає картинку-референс, або її немає в папці agent.")
+    clipboard.set_image(books.book_path(req.groups[0]) / books.AGENT / name)
+    return {"ok": True, "name": name}
 
 
 @route("POST", r"/api/workshop/books/([^/]+)/copy-hero")

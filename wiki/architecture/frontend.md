@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-21
+updated: 2026-10-25
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -88,6 +88,9 @@ code:
   redraws via `whenInfoChanges()`.
 - Theme and "reduce motion" are both taken from the program's settings the same way on launch (the
   browser only remembers the theme for the first frame); a failed save shows a message.
+- **«Нагору»** (the owner, 24.10.2026: "I scroll a lot from the bottom to the top") — a round floating button at the bottom right,
+  on every page: it appears once `#main` is scrolled more than a screen down and brings the page back to the top
+  (`installToTop()`, `.to-top`, the `arrowUp` icon); while it is shown the toasts sit higher (`.to-top-on .toasts`).
 
 ## Shared helpers — `lib.js`
 
@@ -297,20 +300,20 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 ## Where in the code
 
 - [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
-- [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `navigate()`, `ordersTarget()`, `entryOf()`, `placeOf()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`
+- [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `navigate()`, `ordersTarget()`, `entryOf()`, `placeOf()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`, `installToTop()`
 - [app/web/js/path.js](../../app/web/js/path.js) — `pathHtml()`, `pathStep()`
 - [app/web/js/book-tile.js](../../app/web/js/book-tile.js) — `bookTile()`, `segBar()`, `tickBadge()`
 - [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `markMissing()`, `attr()`, `typing()`, `galleryKeys()`, `replaceKeyed()`, `listingState()`, `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`, `paintGenBar()`, `startPhoto()`
-- [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`
+- [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`, `coverWide`, `coverSquares` (the cover's two ways; `coverSquares` is also the «Обкладинка» tool's tile)
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`, `finish()`
 - [app/web/js/lightbox.js](../../app/web/js/lightbox.js) — `openLightbox()`, `TAU`, `MAX_ZOOM`
 - [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`
 - [app/web/css/app.css](../../app/web/css/app.css) — color tokens at the top of the file; `.lightbox`, `.modal-root`, `.menu`, `.toasts` (layers)
-- [app/web/css/listings.css](../../app/web/css/listings.css) — `.mk-shell`, `.mk-slot`
+- [app/web/css/listings.css](../../app/web/css/listings.css) — `.mk-shell`, `.mk-slot`, `.ws-squares`, `.ws-tpl-hinge`, `.cv-*` (the [cover](../features/cover.md) tool)
 - [app/web/css/motion-mockups.css](../../app/web/css/motion-mockups.css), [app/web/css/motion-settings.css](../../app/web/css/motion-settings.css) — the motion overrides
 - [app/web/css/library.css](../../app/web/css/library.css), [orders.css](../../app/web/css/orders.css), [profit.css](../../app/web/css/profit.css) — the sections' own styles
 

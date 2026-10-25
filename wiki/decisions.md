@@ -1,10 +1,42 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-21
+updated: 2026-10-25
 code: []
 ---
 # Decisions
+
+## 2026-10-25 — The cover is a step of its own; «Два квадрати» made by Book Studio, no outpaint; layout guides
+
+- **The cover moved out of the Workshop's rows into its own tool «Обкладинка»** (Інструменти, `#/cover/<book>`), like the
+  Mockups and the photo mockups; the strip's step «Обкладинка» leads there. The owner: "етап обкладинки тепер окремий як
+  і мокапи і фото мокапи, це повноцінний крок".
+- **«Два квадрати»: no outpaint.** The squares are on one cream ground already, so Book Studio fills the spine and the
+  wrap itself from the colours along their edges (tested on two books in `D:\Roman\Desktop\Cover Squares Test`; the owner:
+  "цей підхід краще… корінець нормальний"). Saves a generation and keeps the squares untouched.
+- **A layout guide picture with each square's prompt** (title / name's room / scene as soft shapes) — the owner after the
+  test on book 46: the guides give "значно більше контролю"; keep several for different titles. Without one there was too
+  little room for the name.
+- **Generated from the tool, as in the Workshop**: the reference (front) or the finished front (back), the guide, then the
+  prompt with the guide's words — the owner chose it over dragging the squares in by hand.
+- The 2:1 way stays as it was, in the same tool.
+
+## 2026-10-24 — The cover from two squares («Два квадрати»), a second way beside 2:1
+
+- **What:** the Workshop's cover row has a switch: 2:1 (as before) or two squares — the back and the front generated
+  apart, the front with its title painted in by the generator and room left for the name (put on in Canva); the Workshop
+  lays both on **Gelato's** 8×8 hardcover template and the white spine and wrap are outpainted.
+- **Why (the owner):** competitors' covers have the title drawn into the picture; in 2:1 the generator never centres
+  anything on the front. A square is centred by itself; the spine filled by the outpaint is "stylistically flawless".
+- **The numbers** — measured from Gelato's template PDF: 458×246 mm, 20 mm wrap, spine 226–232, each side with its hinge
+  a 206 mm square. The squares take the whole side (the owner: margins of 190 mm squares were "too much" — the front's
+  prompt keeps the title and faces ~1/10 off the edges anyway). The canvas has Nano Banana's 16:9 shape (2752×1536) so
+  nothing is squeezed; the extra goes after.
+- **Gelato, not Printify's template:** printing is Gelato's since 2026-10-01; the 2:1 way keeps its old template.
+- **Agent 6's prompts:** told apart by `id` (`title-square`, `quiet-square`) — no "front"/"back" words, the check's
+  triggers. **Agent 6 asks the owner** «2:1 чи два квадрати?» before writing (never picks itself) and follows its
+  «Mode B» for the squares; the Workshop's cover row follows the prompts it finds until the owner switches it.
+  The name is never painted: the title square leaves open cream paper (not a band) where it goes.
 
 ## 2026-10-21 — Profit gets a second page: the owner's whiteboard calendar
 

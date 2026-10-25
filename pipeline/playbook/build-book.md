@@ -42,7 +42,7 @@ contract.
    gates. Present **GO**, or a precise fix list and loop until GO. No tokens spent yet.
 3. **STOP 3 — generation:** on the human's "go", generate the **14 story panoramas + 2 square end
    images** in ONE chat with the reference attached. Tokens are spent here, so only after GO.
-4. **STOP 4 — final wide image:** after story panoramas are generated and approved, ask the user: "Are you ready to create the cover? Please send me the best frame from the generated spreads." Once the user provides the chosen frame, run `agents/6-wraparound-image-director.md` using that frame for the characters and the look, placed by its light-ground formula (milky cream ground, the characters low, the title space above them) → `cover-prompts-json.md`, rerun the book check, then generate that one final 2:1 image only after a clean mechanical gate.
+4. **STOP 4 — final wide image:** after story panoramas are generated and approved, ask the user (in Ukrainian) which cover he wants — **2:1** or **два квадрати** — and for the best frame from the generated spreads (the exact question is at the top of Agent 6). Never pick the mode yourself. **Два квадрати** → Agent 6's «Mode B — two squares» (two 1:1 prompts, `title-square` + `quiet-square`). **2:1** → once the user provides the chosen frame, run `agents/6-wraparound-image-director.md` using that frame for the characters and the look, placed by its light-ground formula (milky cream ground, the characters low, the title space above them) → `cover-prompts-json.md`, rerun the book check, then generate that one final 2:1 image only after a clean mechanical gate.
 
 ## After generation
 Agent 6 final wide image (2:1 panorama) → Canva text overlay → PDF. Internally

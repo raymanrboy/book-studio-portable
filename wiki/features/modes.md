@@ -1,7 +1,7 @@
 ---
 title: The rail — places and tools
 type: feature
-updated: 2026-10-11
+updated: 2026-10-25
 code:
   - app/web/js/app.js
   - app/web/js/places.js
@@ -25,7 +25,7 @@ code:
   had open); a second click on the place he is in goes to its start (the queue, the gallery); **«Інструменти» always opens the list**, never the tool last
   used (2026-09-30). A tool opened on its own has a back arrow to the list (`backToTools()`); opened from an object — to that object.
 - **The ink follows the area**: orange for the orders, the profit, the order tools and Settings; cyan for the books
-  and the book tools (the Mockups, the photo mockups, the slides). The brand square takes the ink of where he is.
+  and the book tools (the cover, the Mockups, the photo mockups, the slides — [cover](cover.md) since 2026-10-25). The brand square takes the ink of where he is.
   Book Studio always starts in the orders.
 - **A page that serves an object claims its place** (`navFor()`): the Order Creator opened from an order's card is
   that order's print step — the rail stays on «Замовлення»; the Mockups opened from a Workshop book, and a book's

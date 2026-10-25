@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-10-19
+updated: 2026-10-25
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -214,7 +214,8 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   variant's `hero.png`). The agents write only into `agent/` and never into `book.json`.
 - The clipboard is filled only on the owner's press («Генерувати», «Далі»/F8, Ctrl+V in Chrome during a
   several-part paste, the copy buttons, «Відкрити агента»); F8 is taken from Windows only while a several-part paste
-  goes on and given back after the last part.
+  goes on and given back after the last part. What comes next after a caught picture (the cover's margins, the other
+  of «Два квадрати») is put in only within the wait the owner started.
 - **Ctrl+V is only looked at, never taken** (since 2026-09-27): during a several-part paste the keys' state (Ctrl, V)
   is read every 20 ms and the window in front is checked to be Chrome (only its program's file name is read); no
   key is caught, blocked or written down, nothing else is looked at, and the watching stops after the last part

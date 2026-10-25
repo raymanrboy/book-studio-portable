@@ -60,6 +60,41 @@ def template_guides() -> dict:
             "front": box(left + half + TEMPLATE["spine"] + ss, top + so, half - so - ss, th - 2 * so)}
 
 
+# «Два квадрати» (the owner, 2026-10-24): the cover from two square pictures — the back and the front, the front with
+# the title painted in and room for the name — laid on Gelato's 8×8 hardcover template by Book Studio itself, the rest
+# filled from their edges (cover.py; the owner, 2026-10-25: no outpaint). In mm,
+# measured from Gelato's template PDF (2026-10-24): the whole file 458×246 with a 20 mm wrap all round; the spine
+# 226–232; each side with its hinge a 206 mm square (back 20–226, front 232–438, top 20–226).
+SQUARES = {"mm": (458, 246), "wrap": 20, "spine": (226, 232), "hinge": (218, 240), "back": (20, 20, 206),
+           "front": (232, 20, 206), "dpi": 300}
+SQUARE_KEYS = ("cover-back", "cover-front")
+# The ids that tell Agent 6's two square prompts in cover-prompts-json.md (no "front"/"back" — the check's trigger words).
+SQUARE_IDS = {"cover-front": "title-square", "cover-back": "quiet-square"}
+
+
+def squares_layout() -> dict:
+    """The two squares on Gelato's spread, in pixels at 300 dpi: the spread, each square's [x, y, side]."""
+    ppmm = SQUARES["dpi"] / 25.4
+    place = {k: [round(SQUARES[side][0] * ppmm), round(SQUARES[side][1] * ppmm), round(SQUARES[side][2] * ppmm)]
+             for k, side in (("cover-back", "back"), ("cover-front", "front"))}
+    return {"spread": [round(SQUARES["mm"][0] * ppmm), round(SQUARES["mm"][1] * ppmm)], **place}
+
+
+def squares_guides() -> dict:
+    """Gelato's lines as fractions of the spread — the page draws them over the cover: what folds round the boards,
+    the hinges, the spine, the two squares."""
+    w, h = SQUARES["mm"]
+    wrap = SQUARES["wrap"]
+
+    def box(x, y, bw, bh):
+        return [round(x / w, 5), round(y / h, 5), round(bw / w, 5), round(bh / h, 5)]
+    (sl, sr), (hl, hr) = SQUARES["spine"], SQUARES["hinge"]
+    return {"trim": box(wrap, wrap, w - 2 * wrap, h - 2 * wrap), "spine": box(sl, wrap, sr - sl, h - 2 * wrap),
+            "hinges": [box(hl, wrap, 0, h - 2 * wrap), box(hr, wrap, 0, h - 2 * wrap)],
+            "back": box(*SQUARES["back"][:2], SQUARES["back"][2], SQUARES["back"][2]),
+            "front": box(*SQUARES["front"][:2], SQUARES["front"][2], SQUARES["front"][2])}
+
+
 def _prompts_word(n: int) -> str:
     if n % 10 == 1 and n % 100 != 11:
         return f"{n} промпт"
@@ -98,7 +133,8 @@ def original_stem(key: str) -> str:
     if key.startswith("spread"):
         a, b = library.spread_pages(int(key[6:]))
         return f"spread-{a:02d}-{b:02d}"
-    return {"cover": "cover-art", "cover-wrap": "cover-wrap", "hero": "hero"}[key]
+    return {"cover": "cover-art", "cover-wrap": "cover-wrap", "hero": "hero",
+            "cover-front": "cover-front", "cover-back": "cover-back"}[key]
 
 
 def original_of(names, key: str) -> str | None:
@@ -210,10 +246,18 @@ def book_rows(path: Path) -> dict:
             prompts["page1"] = as_prompt(ends[0])
         if len(ends) > 1:
             prompts["page30"] = as_prompt(ends[1])
+    square_prompts, refs = {}, {}
     if covers:
-        prompts["cover"] = as_prompt(covers[0])
-        if len(covers) > 1:
-            notes.append(f"cover-prompts-json.md: {_prompts_word(len(covers))} — взято перший")
+        ids = {str(p.get("id") or ""): p for p in covers}
+        square_prompts = {k: as_prompt(ids[i]) for k, i in SQUARE_IDS.items() if i in ids}
+        refs = {k: ref for k, i in SQUARE_IDS.items() if i in ids and (ref := reference_file(agent, ids[i]))}
+        wide = [p for p in covers if str(p.get("id") or "") not in SQUARE_IDS.values()]
+        if wide:
+            prompts["cover"] = as_prompt(wide[0])
+            if ref := reference_file(agent, wide[0]):
+                refs["cover"] = ref
+            if len(wide) > 1:
+                notes.append(f"cover-prompts-json.md: {_prompts_word(len(wide))} 2:1 — взято перший")
 
     marks = books.state(path).get("rows") or {}
     originals = set(books._names(path / books.ORIGINALS))
@@ -223,11 +267,30 @@ def book_rows(path: Path) -> dict:
         rows.append({**r, "prompt": prompts.get(r["key"], ""), "text": texts.get(r["key"], ""),
                      "pictures": pics if all(pics) else [], "marks": marks.get(r["key"], {}),
                      "original": original_of(originals, r["key"])})
+    cover = cover_state(path)
+    cover["prompts"] = square_prompts
+    from . import cover as cover_tool
+    cover["tool"] = cover_tool.tool_state(path, rows)
+    cover["refs"] = refs
     return {"rows": rows, "notes": notes,
             "counts": {"prompts": len(prompts), "texts": sum(1 for r in rows if r["text"]),
                        "pictures": sum(1 for r in rows if r["pictures"]), "total": len(rows)},
             "heroPrompt": first_prompt(books.read_text(agent / "canonical-prompt.md") or "") if "canonical-prompt.md" in names else "",
-            "variants": variants(path), "cover": cover_state(path)}
+            "variants": variants(path), "cover": cover}
+
+
+REFERENCE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
+
+
+def reference_file(agent: Path, prompt: dict) -> str:
+    """The picture a cover prompt names as its `reference_image` (Agent 6 copies the best frame into `agent/` as
+    `ref_cover_….jpg`) — its file name when it is a picture lying right in `agent/`, else "" («Референс у буфер»)."""
+    ref = prompt.get("reference_image")
+    ref = ref[0] if isinstance(ref, list) and ref else ref
+    name = str(ref or "")
+    if not name or name != Path(name).name or not name.lower().endswith(REFERENCE_SUFFIXES):
+        return ""
+    return name if (agent / name).is_file() else ""
 
 
 # ---------------------------------------------------------------- the cover: the picture, then its margins
@@ -236,20 +299,47 @@ def cover_state(path: Path) -> dict:
     """Stage 1 — the picture Gemini made from Agent 6's prompt (originals/cover-art.*); the Workshop lays it on the
     printer's template, the rest white (originals/cover-expanded.png, `template_layout()`); stage 2 — the generator
     fills the white margins (outpaint) → pictures/Cover.png, brought to the template's exact 5370×2850 px at 300 dpi.
-    «Без полів» takes the picture as it is."""
+    «Без полів» takes the picture as it is.
+
+    «Два квадрати» (`"coverMode": "squares"` in book.json): two square pictures (cover-back, cover-front); once both
+    are in, Book Studio makes Cover.png of them itself on Gelato's template (cover.py) — no margins, no outpaint."""
     originals = set(books._names(path / books.ORIGINALS))
-    marks = books.state(path).get("rows") or {}
+    st = books.state(path)
+    marks = st.get("rows") or {}
+    common = {"art": original_of(originals, "cover"),
+              "final": books.picture(set(books._names(path / books.PICTURES)), "Cover"),
+              "wrapOriginal": original_of(originals, "cover-wrap"),
+              "skipped": bool(marks.get("cover-wrap", {}).get("skipped")),
+              "artMarks": marks.get("cover", {}), "wrapMarks": marks.get("cover-wrap", {}),
+              "front": original_of(originals, "cover-front"), "back": original_of(originals, "cover-back"),
+              "frontMarks": marks.get("cover-front", {}), "backMarks": marks.get("cover-back", {})}
+    lay = squares_layout()
+    sq_tpl = {"guides": squares_guides(), "template": {"px": lay["spread"], "dpi": SQUARES["dpi"]}}
+    wide_tpl = {"guides": template_guides(), "template": {"px": list(TEMPLATE["px"]), "dpi": TEMPLATE["dpi"]}}
+    squares = cover_mode(path, st) == "squares"
+    # the lines and the size shown: the finished cover's own template (a 2:1 cover stays while the squares are made),
+    # else the mode's
+    final_sq = bool(common["wrapMarks"].get("squares")) if common["final"] else squares   # «Без полів» is 2:1
+    shown = {**(sq_tpl if final_sq else wide_tpl), "finalSquares": final_sq, "wideTemplate": wide_tpl["template"],
+             "gelato": sq_tpl["guides"]}
+    if squares:
+        return {**common, **shown, "mode": "squares", "expanded": None, "layout": {}, "squares": lay, "outpaint": ""}
     expanded = "cover-expanded.png" if "cover-expanded.png" in originals else None
     layout = marks.get("cover-expanded", {})
     size = layout.get("size")
-    return {"art": original_of(originals, "cover"), "expanded": expanded,
-            "final": books.picture(set(books._names(path / books.PICTURES)), "Cover"),
-            "layout": layout, "guides": template_guides(),
-            "template": {"px": list(TEMPLATE["px"]), "dpi": TEMPLATE["dpi"]},
-            "wrapOriginal": original_of(originals, "cover-wrap"),
-            "skipped": bool(marks.get("cover-wrap", {}).get("skipped")),
-            "artMarks": marks.get("cover", {}), "wrapMarks": marks.get("cover-wrap", {}),
+    return {**common, **shown, "mode": "wide", "expanded": expanded, "layout": layout, "squares": lay,
             "outpaint": outpaint_prompt(size) if expanded and size else ""}
+
+
+def cover_mode(path: Path, st: dict | None = None) -> str:
+    """'squares' or 'wide': what the owner chose in the cover row (or a picture put in chose), else what Agent 6 wrote
+    — it asks the owner first (2026-10-24): only the two square prompts in cover-prompts-json.md → «Два квадрати»."""
+    st = books.state(path) if st is None else st
+    if st.get("coverMode") in ("squares", "wide"):
+        return st["coverMode"]
+    raw = books.read_text(path / books.AGENT / "cover-prompts-json.md") if (path / books.AGENT / "cover-prompts-json.md").is_file() else None
+    ids = {str(p.get("id") or "") for p in prompt_objects(raw)[0]} if raw else set()
+    return "squares" if ids and ids <= set(SQUARE_IDS.values()) else "wide"
 
 
 def outpaint_prompt(size) -> str:

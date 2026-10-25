@@ -201,6 +201,20 @@ Florida (its own Annual Resale Certificate), Illinois (the out-of-state option s
 Missouri (did not let through), Texas (its permit, another US state's or a Mexican RFC). About a quarter of his US orders; once
 approved, their tax line should be gone — the Profit page sees it by itself (it takes Gelato's own totals).
 
+**Done again on 2026-10-24 — the 14.10 ones were not there.** Gelato's Resale Certificates list and Avalara CertExpress
+(roman.boichenko.work@gmail.com, opened from Gelato → Tax center → Resale certificate → «Get resale certificate») both showed
+none. So the certificates were made again, all for Gelato ASA, **16, all «PENDING»**: the SST states North Carolina (21783), South
+Dakota (21784), Ohio (21785), Iowa (21786), Minnesota (21787), Michigan (21788), Wisconsin (21789), Tennessee (21790), New Jersey
+(21791), Nevada (21792), Washington (21793), Kansas (21794), Georgia (21795), Oklahoma (21796), North Dakota (21797), and Pennsylvania
+(21798, REV-1220: resale, no PA licence, the written reason, no EIN). The answers: Blanket, Retail trade, Resale (G), ID from
+Ukraine; the company: Roman Boichenko, 3 Petra Zaporozhtsia St, Kyiv 02125, Ukraine (the phone has to be xxx-xxx-xxxx). Avalara
+fills the ID in later SST forms by itself after the first ones; the owner pastes it where it doesn't (an agent never types it).
+**Not filed — the state's own registration is needed:** California, New York, Florida, Illinois, Missouri, Texas (as before),
+Louisiana and New Mexico (only a request for the state's own form), Maryland (MD registration), Massachusetts (MA account or US
+EIN), Alabama and Maine (the MTC form: registered states), Colorado (state licence), Connecticut («registered» retailer), Hawaii
+(GE number), Virginia (a state tax ID; a foreign number is doubtful, 1 order). Delaware and New Hampshire have no sales tax.
+US orders by state up to 2026-10-24 (115): the filed states hold ~40, the skipped ones ~66.
+
 ### Incident 2026-10-13 — Payoneer refused every payment to Gelato
 
 - **What happened:** order #4202433342 (Margot, 21:52) and then a top-up of the Gelato USD wallet ($50) failed: «Top-up transaction

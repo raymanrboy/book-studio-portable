@@ -36,7 +36,9 @@ The generator-facing JSON describes only a standalone image: no words like `book
 
 ### 6. Wraparound Image Director → `agents/6-wraparound-image-director.md`
 After story panoramas are approved, creates `cover-prompts-json.md` for the final 2:1 wide image
-(the Workshop's cover row takes it).
+(the Workshop's cover row takes it). It first **asks the user which mode**: 2:1, or «два квадрати» — two 1:1
+prompts (`title-square` with the painted title and room for the name, `quiet-square` with no characters and no
+text), which the Workshop lays on Gelato's template and outpaints between.
 Internally this is a cover wrap, but in prompt-language it is just one continuous panorama:
 main focus on the right, quieter environment continuation on the left, calm zone top right
 for future typography. No book/physical trigger words even in negatives.

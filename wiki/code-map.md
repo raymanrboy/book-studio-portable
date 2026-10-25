@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-10-09
+updated: 2026-10-25
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -40,7 +40,7 @@ code:
 
 | File | Purpose | Main |
 |---|---|---|
-| [main.py](../app/studio/main.py) | Entry point: server, window, shutdown | `main()`, `_another_copy_starting()`, `_running_instance()`, `run_until_closed()` |
+| [main.py](../app/studio/main.py) | Entry point: server, window, shutdown | `main()`, `_another_copy_starting()`, `_release_lock()`, `_running_instance()`, `run_until_closed()` |
 | [core.py](../app/studio/core.py) | Paths, atomic JSON, settings, logging; what counts as a picture, "inside our folder" | `ROOT`, `DATA_DIR`, `SAMPLE`, `read_json()`, `write_json()`, `Settings`, `DEFAULT_SETTINGS`, `ensure_dirs()`, `IMAGE_EXTS`, `inside()` |
 | [server.py](../app/studio/server.py) | HTTP server, routing, token, static files; which program and page it serves (`state.app`, `state.page`) | `route()`, `Request`, `json_response()`, `file_response()`, `start()`, `SESSION_TOKEN` |
 | [jobs.py](../app/studio/jobs.py) | Background jobs with progress and partial findings | `Jobs`, `Job`, `Job.progress()`, `Job.share()`, `UserError`, `JobError` |
@@ -72,6 +72,7 @@ code:
 | [workshop/books.py](../app/studio/workshop/books.py) | [The Workshop](features/workshop.md): a book = a folder of the pipeline — the list, the path strip, marks, versions, the agent's words, delete, passing to the library | `all_books()`, `summary()`, `detail()`, `steps()`, `set_mark()`, `signature()`, `agent_words()`, `open_agent()`, `delete_book()`, `to_library()` |
 | [workshop/rows.py](../app/studio/workshop/rows.py) | The agents' files read into the book's rows; the cover's template and outpaint prompt; hero variants; the book check (GO) | `book_rows()`, `text_sections()`, `cover_state()`, `template_layout()`, `outpaint_prompt()`, `variants()`, `book_check()` |
 | [workshop/pictures.py](../app/studio/workshop/pictures.py) | A picture into its row: cut, flipped, two pages; the cover on the template; ⇄; nothing deleted | `place()`, `two_squares()`, `build_expanded()`, `fit_template()`, `flip()`, `remove()`, `spread_panorama()` |
+| [workshop/cover.py](../app/studio/workshop/cover.py) | [Cover](features/cover.md) «Два квадрати»: the book's choices (soft edge, guides, reference), what «Генерувати» pastes, the cover made of the two squares (no outpaint) | `settings()`, `set_settings()`, `items()`, `prompt_with_guide()`, `compose()`, `assemble()`, `GUIDES` |
 | [workshop/generate.py](../app/studio/workshop/generate.py) | The generation mode: the clipboard, the Downloads watcher, F8 | `Session`, `session()`, `downloads_folder()` |
 | [workshop/upscale.py](../app/studio/workshop/upscale.py) | Upscaling a row's picture ×2 by the owner's Upscayl, in the background, then cut again | `upscale_row()`, `Upscaler`, `engine()`, `status()`, `after_place()`, `set_on()`, `start()` |
 | [workshop/check.py](../app/studio/workshop/check.py) | The book check: the old pipeline validator's rules (the agents run it too) | `run()`, `main()` |
@@ -148,9 +149,10 @@ code:
 | [js/pages/settings.js](../app/web/js/pages/settings.js) | Settings | `mount()` |
 | [js/pages/settings-dialogs.js](../app/web/js/pages/settings-dialogs.js) | Settings' dialogs: the Etsy sign-in, the Printify Master | `oauthFlow()`, `pickMaster()` |
 | [js/pages/workshop.js](../app/web/js/pages/workshop.js) | The Workshop's gallery: the books with their path, a new book's words for the agent | `mount()` |
-| [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: the path strip and its panel, the rows, the cover's two stages, hero variants, «Передати в бібліотеку» | `mount()` |
+| [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: the path strip and its panel (the cover's step leads to its tool), the rows, hero variants, «Передати в бібліотеку» | `mount()` |
 | [js/pages/workshop-rows.js](../app/web/js/pages/workshop-rows.js) | A Workshop book's rows drawn: a spread or a page with its prompt, its frame, its text; the parts the cover's card shares | `rowTemplates()`, `waitChip()` |
 | [js/workshop-live.js](../app/web/js/workshop-live.js) | The Workshop's live link: what changed, the generation mode's state and bar, the rail's dot and title | `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genBar()` |
+| [js/pages/cover.js](../app/web/js/pages/cover.js) | «Обкладинка» (`#/cover`, `#/cover/<book>`): which book; «Два квадрати» — the spread, the two squares with their guides and prompts; 2:1 — the old two stages | `mount()` |
 | [js/pages/photos.js](../app/web/js/pages/photos.js) | «Фотомокапи» (`#/photos`): the templates by category — a click puts the template, then the prompt into the clipboard; add, remove | `mount()` |
 | [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups: the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
 | [js/pages/mockups-run.js](../app/web/js/pages/mockups-run.js) | Mockups, step 3 drawn: the run and Photoshop's question, the result, «Ваша черга», the pictures saved after it | `runView()`, `resultCard()`, `turnCard()`, `finishedCard()` |

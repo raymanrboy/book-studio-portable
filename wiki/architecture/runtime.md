@@ -1,7 +1,7 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-10-19
+updated: 2026-10-25
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -23,6 +23,10 @@ code:
 3. If the program is already running on this data — it just opens another window and exits. The named lock is asked first
    (`_another_copy_starting()`, instant); `/api/ping` only when the lock is held — asking a port nobody listens on cost 1.5 s of
    every start (Windows retries a refused connection; measured 04.10.2026).
+   A copy that only waits **lets the lock go** (`_release_lock()`) and waits up to 30 s for the other one's ping; when nobody
+   answers and the lock is free by then (the other copy was closing, not starting), it starts itself. Before 24.10.2026 a start
+   made while the old copy was still closing kept the lock while waiting, so every following start waited for it in turn and
+   the program would not open at all.
    Otherwise it takes its own temp folder on drive D (`core.own_temp()`, [below](#temporary-files-and-drive-c)).
 4. Imports every module with routes (`archive`, `creator`, `drops`, `etsy`, `gelato`, `images`, `library`,
    `mockups`, `orders`, `printify`, `profit`, `sendlog`, `settings_api`, `textcheck`, `tunnel`, `workshop`) —

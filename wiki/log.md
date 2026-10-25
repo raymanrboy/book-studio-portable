@@ -3,6 +3,43 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-25] update | «Обкладинка» — the cover's own tool; two squares made into the cover without the generator
+
+- A new tool in «Інструменти» (`#/cover/<book>`, cover.js): the Workshop's cover card moved there; the strip's step «Обкладинка» leads to it (`coverBody()`).
+- «Два квадрати»: both squares in → Cover.png 5409×2906 made by Book Studio (cover.py: the spine and wrap filled from a 4 mm ring along the squares' edges, soft edge 0–6 mm). No outpaint, no canvas.
+- Five layout guides (web/img/cover-guides) picked under each square; «Генерувати» pastes the reference / the front, the guide, the prompt with `layout_guide` put in.
+- After a review: the page no longer breaks when the square prompts are there (an empty part given to patch()); «Скласти обкладинку» and a switch back to the squares make the cover again; the back only after the front; no reference picture → the prompt names none; a 2:1 book never overwritten by the squares.
+- Pages: cover (new), workshop, glossary, api-routes, code-map, decisions, index. Checked: tests, the preview (the tool, the Workshop step). Not checked: a real generation in Gemini with the guides through the tool.
+
+## [2026-10-24] update | «Нагору»: a floating button back to the top of a long page
+- The owner: a floating button that takes him to the top (the Workshop's book is long and he scrolls back up a lot). On every page: a round arrow at the bottom right, shown once the page is scrolled more than a screen down; the toasts move up above it. Checked in the preview, light and dark. [Frontend](architecture/frontend.md).
+
+## [2026-10-24] update | Start-up: a start made while Book Studio was closing no longer blocks every next start
+- The owner: Book Studio stopped opening. Not the day's Workshop change: a start at 13:54 came while the old copy was still closing (since 13:52); it took the one-copy lock as "another copy is starting", waited for a server that never came — and held the lock while waiting, so every next double-click waited for it in turn. Now a waiting copy lets the lock go, and when nobody answered and the lock is free, it starts itself (`main._release_lock()`; a test in `OneCopy`). The two stuck processes were stopped. [Runtime](architecture/runtime.md).
+
+## [2026-10-24] update | Book 41 (Night Before Christmas, a girl): the two-square cover prompts
+- The owner chose «Два квадрати» and sent the best frame («A Cookie Together», spread 08 → `agent/ref_cover_spread-14-15.jpg`). `title-square`: the painted «Night Before Christmas» with the open room for «{Name}'s» above it, Santa and the girl sharing cookies low on a little rug by a small tree, milky cream ground (CG); `quiet-square`: Christmas morning by the tree — crumbs, an empty milk glass, a bitten carrot, the silver bell, a stocking. Book check GO, 0 FAIL.
+
+## [2026-10-24] update | Workshop: «Референс у буфер» on the cover row
+- The owner: when the cover prompt has a reference, a shortcut to put it into the clipboard instead of hunting for it in the folder. A picture icon left of «Генерувати» on each cover square (and on the 2:1 row): the `reference_image` of that prompt, if it is a picture in `agent/`, goes into the clipboard as an image (`rows.reference_file()`, `cover.refs`, route `copy-reference`). A test in `TwoSquares`. [Workshop](features/workshop.md) · [API routes](architecture/api-routes.md).
+
+## [2026-10-24] update | Book 46: the two-square cover prompts (title «Grandma» + a small «&»)
+- The owner: generate book 46's cover by the new «Два квадрати» way; the title «Grandma», a small «&» under it, then the open room for the name; the picture after his liked look (the kneeling hug in the rose garden by the picket fence), the gate frame attached. Written `agent/cover-prompts-json.md` (`title-square` + `quiet-square`, the bench after a happy day); the frame copied to `agent/ref_cover_spread-28-29.jpg`. Book check GO, 0 FAIL. Agent 6's Mode B fixed: its shape said `"reference_image": "Image 1"`, which the book check fails — now the title square names a real `ref_cover_*.jpg` and the quiet square has no `reference_image`.
+
+## [2026-10-24] update | Agent 6 asks: 2:1 or «два квадрати»
+
+- Agent 6 first asks the owner which cover (with the best frame) and follows one path; «Mode B — two squares»: `title-square` (the painted title without the name, open cream room for the name, the characters low) + `quiet-square` (the story's things, no characters, no text). Also in build-book.md (STOP 4), onboarding.md (step 10), workflow.md, pipeline AGENTS.md.
+- The Workshop's cover row follows the prompts: only the two square prompts → «Два квадрати» by itself (`cover_mode()`); the owner's switch is now written either way and wins.
+- The test prompts of book 46 lost three trigger words the check would have failed ("storybook", "half", "front").
+
+## [2026-10-24] update | The Workshop's cover: «Два квадрати» — two squares on Gelato's template
+
+- A switch in the cover row: 2:1 or two squares (back + front with the title); both laid on Gelato's 458×246 mm template on a 16:9 canvas, the rest outpainted → Cover.png 5409×2906, 300 dpi.
+- The squares' prompts come from `cover-prompts-json.md` by id (`title-square`, `quiet-square`); the check doesn't ask the 2:1 contract of them.
+- The back goes with the front attached; the next square and then the outpaint follow by themselves.
+- After a review: a 2:1 cover after a squares one is no longer taken for squares (the `squares` mark always written); a 2:1 picture switches the mode back; the switch ends a waiting cover outpaint; «Скасувати» of a square rebuilds the canvas; the stage-2 lines follow the cover actually shown.
+- Pages: workshop, api-routes, frontend, testing, security, glossary, decisions. Checked: tests, the preview in light and dark. Not checked: a real Nano Banana outpaint.
+
 ## [2026-10-21] update | Profit: the page switch shows a table and a calendar icon
 
 - The owner: the two dots didn't say what the pages are. Now the table / calendar icons (a new `table` icon in `icons.js`), the page shown lit. Page: profit.
@@ -63,6 +100,10 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 ## [2026-10-17] update | Workshop: sort «Спочатку найбільш готові» (default)
 - `workshop.js` `SORTS.most`: by the step bars' readiness, descending; the default instead of by number.
+
+## [2026-10-24] ingest | Gelato resale certificates made again: 16 states pending
+- The 14.10 certificates were not in Gelato or Avalara. 15 SST states + Pennsylvania filed in the owner's CertExpress (all PENDING);
+  the states that need their own registration skipped, with reasons. Page: [integrations/gelato](integrations/gelato.md).
 
 ## [2026-10-17] update | Profit: the period's ad spend under the print cost
 - `ledger.overhead()` gives each day an `ads` part; `profit.js` `adsSpend()` + Offsite Ads → «+ реклама $X» under «Собівартість друку». Test `Overhead` updated.

@@ -8,7 +8,7 @@ A caught picture is **moved** out of Downloads into the book's `originals/`, nam
 only pictures (PNG, JPEG, WEBP), never a half-downloaded one.
 
 A row that needs several things pasted (a spread of a book with a hero: the hero, then the prompt — the owner attaches
-the reference to every prompt, 2026-09-27; the cover's margins: the picture with its white margins, then the outpaint
+the reference to every prompt, 2026-09-27; «Два квадрати»: the reference, the layout guide, the prompt; the cover's margins: the picture with its white margins, then the outpaint
 prompt; a hero variant's spread) gives them one by one: the first goes into the clipboard at once, and **Ctrl+V in
 Chrome** puts in the next by itself — «Далі» in the window or F8 anywhere do the same. The cover's picture, once in,
 goes on to its margins by itself. A hero variant's cover (one frame, the finished wide cover at once) has no prompt:
@@ -63,6 +63,9 @@ def _items(book_id: str, key: str, variant: str | None) -> tuple[str, list[dict]
         return "Обкладинка · поля", [
             {"kind": "image", "label": "обкладинка з полями", "path": str(path / books.ORIGINALS / c["expanded"])},
             {"kind": "text", "label": "промпт аутпейнту", "text": c["outpaint"]}]
+    if key in rows.SQUARE_KEYS and not variant:  # «Два квадрати»: the reference / the front, the guide, the prompt
+        from . import cover
+        return cover.items(book_id, key, detail)
     if variant:
         v = next((x for x in detail["variants"] if x["name"] == variant), None)
         if not v:
@@ -111,6 +114,16 @@ def _items(book_id: str, key: str, variant: str | None) -> tuple[str, list[dict]
     if hero:
         items.insert(0, {"kind": "image", "label": "герой", "path": str(hero)})
     return r["label"], items
+
+
+def squares_next(book_id: str) -> list[str]:
+    """«Два квадрати», after a square came in: the one still missing, when it has its prompt (both there — the cover is
+    made of them at once, nothing more to wait for)."""
+    c = books.detail(book_id)["cover"]
+    if c["front"] and c["back"]:
+        return []
+    other = "cover-back" if c["front"] else "cover-front"
+    return [other] if c.get("prompts", {}).get(other) else []
 
 
 # ---------------------------------------------------------------- the session
@@ -325,6 +338,8 @@ class Session:
             queue = a["queue"]
             if a["key"] == "cover" and not queue:
                 queue = ["cover-wrap"]  # the cover's picture goes on to its margins by itself
+            if a["key"] in rows.SQUARE_KEYS and not queue:
+                queue = squares_next(a["book"])  # the other square (both there: the cover is made, nothing waits)
             self.active = None
             self.hotkey.want(False)
             while queue:

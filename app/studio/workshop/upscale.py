@@ -161,8 +161,8 @@ def _source(path: Path, slot: str) -> Path | None:
     originals = books._names(orig_dir)
     pictures = set(books._names(pic_dir))
     if key == "cover-wrap":
-        if not books.picture(pictures, "Cover"):
-            return None
+        if not books.picture(pictures, "Cover") or _marks(path, slot).get("squares"):
+            return None  # «Два квадрати»: the cover is made of the squares, not of an outpainted picture
         name = rows.original_of(originals, "cover" if _marks(path, slot).get("skipped") else "cover-wrap")
     else:
         if not all(books.picture(pictures, p) for p in rows.row(key)["pages"]):

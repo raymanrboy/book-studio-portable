@@ -488,6 +488,17 @@ a.chip:hover, button.chip:hover { text-decoration: none; border-color: var(--bor
 .empty.empty-sm { padding: 30px; }
 
 /* ------------------------------------------------------------------ toasts, modal, menu */
+/* «Нагору»: a floating button back to the top of a long page (24.10.2026) */
+.to-top {
+  position: fixed; right: 26px; bottom: 22px; z-index: 960; display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+  border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-2); box-shadow: var(--shadow-l);
+  opacity: 0; transform: translateY(12px) scale(.9); pointer-events: none;
+  transition: opacity var(--t-fast) ease, transform var(--t-fast) var(--ease), color var(--t-fast) ease, background var(--t-fast) ease;
+}
+.to-top.on { opacity: 1; transform: none; pointer-events: auto; }
+.to-top:hover { color: var(--text); background: var(--surface-3); }
+.to-top:active { transform: scale(var(--press)); }
+.to-top-on .toasts { bottom: 78px; }
 .toasts { position: fixed; right: 18px; bottom: 18px; z-index: 970; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
 .toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 10px; max-width: 420px; padding: 10px 13px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow-l); font-size: var(--fs); white-space: pre-line; animation: toast-in 380ms var(--spring) both; }
 .toast.out { animation: toast-out 180ms ease forwards; }

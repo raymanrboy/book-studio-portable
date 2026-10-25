@@ -290,6 +290,216 @@ class TheRows(Base):
         self.assertEqual(d["counts"]["pictures"], 5)
 
 
+def square_png(path: Path, side=1024, colour=(220, 40, 40)) -> Path:
+    im = Image.new("RGB", (side, side), colour)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im.save(path, "PNG")
+    return path
+
+
+class TwoSquares(Base):
+    """«Два квадрати» (2026-10-24/25): the back and the front as two squares; Book Studio makes the cover of them itself
+    on Gelato's template (cover.py) — no outpaint."""
+
+    def squares(self, back=(220, 40, 40), front=(30, 60, 220)):
+        pictures.place(H, "cover-back", square_png(self.tmp / "b.png", colour=back), "b.png")
+        return pictures.place(H, "cover-front", square_png(self.tmp / "f.png", colour=front), "f.png")
+
+    def cover_px(self, xy):
+        with Image.open(self.dir / H / "pictures" / "Cover.png") as im:
+            return im.getpixel(xy)
+
+    def test_gelatos_template_in_numbers(self):
+        # 458×246 mm at 300 dpi; each side with its hinge a 206 mm square: the back 20 mm in, the front 232 mm in
+        lay = rows.squares_layout()
+        self.assertEqual(lay["spread"], [5409, 2906])
+        self.assertEqual(lay["cover-back"], [236, 236, 2433])
+        self.assertEqual(lay["cover-front"], [2740, 236, 2433])
+        g = rows.squares_guides()
+        self.assertEqual(g["spine"][0], round(226 / 458, 5))
+        self.assertEqual(g["front"][2], round(206 / 458, 5))
+
+    def test_the_mode_is_the_books(self):
+        self.assertEqual(books.detail(H)["cover"]["mode"], "wide")
+        pictures.set_cover_mode(H, "squares")
+        self.assertEqual(books.detail(H)["cover"]["mode"], "squares")
+        pictures.set_cover_mode(H, "wide")
+        self.assertEqual(books.detail(H)["cover"]["mode"], "wide")
+        with self.assertRaises(ApiError):
+            pictures.set_cover_mode(H, "round")
+
+    def test_both_squares_make_the_cover_at_once(self):
+        pictures.place(H, "cover-back", square_png(self.tmp / "b.png", colour=(220, 40, 40)), "b.png")
+        self.assertIsNone(books.detail(H)["cover"]["final"])                  # one square: nothing yet
+        r = pictures.place(H, "cover-front", square_png(self.tmp / "f.png", colour=(30, 60, 220)), "f.png")
+        self.assertIn("обкладинку складено", r["note"])
+        c = books.detail(H)["cover"]
+        self.assertEqual((c["mode"], c["final"], c["finalSquares"]), ("squares", "Cover.png", True))
+        with Image.open(self.dir / H / "pictures" / "Cover.png") as im:     # Gelato's 458×246 mm at 300 dpi
+            self.assertEqual(im.size, (5409, 2906))
+            self.assertEqual(round(im.info["dpi"][0]), 300)
+        self.assertEqual(self.cover_px((1450, 1450)), (220, 40, 40))           # the back square
+        self.assertEqual(self.cover_px((3950, 1450)), (30, 60, 220))           # the front square
+        wrap = self.cover_px((60, 1450))                                       # the wrap: the back's colour
+        self.assertGreater(wrap[0], 180)
+        spine = self.cover_px((2704, 1450))                                    # the spine: between the two
+        self.assertTrue(40 < spine[0] < 220 and 60 < spine[2] < 220, spine)
+        self.assertEqual(states(H)["cover"], "done")
+        self.assertNotIn("cover-wrap", upscale.sides(books.book_path(H)))     # nothing for the upscaler to remake
+
+    def test_a_2_1_cover_already_there_stays_until_both_squares(self):
+        pictures.place(H, "cover", spread_png(self.tmp / "c.png", (2000, 1000)), "c.png")
+        pictures.place(H, "cover-wrap", spread_png(self.tmp / "w.png", (2200, 1200)), "w.png")
+        pictures.place(H, "cover-front", square_png(self.tmp / "f.png"), "f.png")
+        c = books.detail(H)["cover"]
+        self.assertEqual((c["final"], c["finalSquares"]), ("Cover.png", False))
+        self.assertEqual(c["template"]["px"], [5370, 2850])                  # the lines of the cover shown: 2:1
+        pictures.place(H, "cover-back", square_png(self.tmp / "b.png"), "b.png")
+        self.assertTrue(books.detail(H)["cover"]["finalSquares"])
+        self.assertTrue(any("pictures__Cover.png" in p.name for p in (self.dir / H / ".replaced").iterdir()))
+
+    def test_in_two_squares_a_wide_picture_is_refused_and_a_2_1_picture_switches_back(self):
+        self.squares()
+        with self.assertRaises(ApiError):
+            pictures.place(H, "cover-wrap", spread_png(self.tmp / "w.png", (2752, 1536)), "w.png")
+        pictures.place(H, "cover", spread_png(self.tmp / "c.png", (2000, 1000)), "c.png")
+        self.assertEqual(books.detail(H)["cover"]["mode"], "wide")
+        pictures.place(H, "cover-wrap", spread_png(self.tmp / "w2.png", (2200, 1200)), "w2.png")
+        c = books.detail(H)["cover"]
+        self.assertFalse(c["wrapMarks"]["squares"])
+        self.assertEqual(c["template"]["px"], [5370, 2850])
+
+    def test_a_new_square_makes_the_cover_again(self):
+        self.squares()
+        pictures.place(H, "cover-front", square_png(self.tmp / "f2.png", colour=(0, 200, 0)), "f2.png")
+        self.assertEqual(self.cover_px((3950, 1450)), (0, 200, 0))
+
+    def test_a_square_that_isnt_one_is_cut_and_says_so(self):
+        r = pictures.place(H, "cover-back", spread_png(self.tmp / "b.png", (1200, 1000)), "b.png")
+        self.assertEqual(r["cut"], "sides")
+        self.assertEqual(books.detail(H)["cover"]["backMarks"]["cut"], "sides")
+
+    def test_removing_a_square_keeps_the_cover_and_can_be_undone_from_the_squares_as_they_are(self):
+        self.squares()
+        undo = pictures.remove(H, "cover-front")["undo"]
+        c = books.detail(H)["cover"]
+        self.assertEqual((c["front"], c["back"], c["final"]), (None, "cover-back.png", "Cover.png"))
+        pictures.place(H, "cover-back", square_png(self.tmp / "b2.png", colour=(0, 200, 0)), "b2.png")
+        pictures.restore(H, undo)
+        self.assertEqual(books.detail(H)["cover"]["front"], "cover-front.png")
+        self.assertEqual(self.cover_px((1450, 1450)), (0, 200, 0))            # made again, with the new back
+
+    def test_the_soft_edge_guides_and_reference_are_the_books(self):
+        from studio.workshop import cover
+        self.squares()
+        st = cover.set_settings(H, {"feather": 6})
+        self.assertEqual(st["feather"], 6)
+        self.assertEqual(books.detail(H)["cover"]["wrapMarks"]["feather"], 6)  # the cover made again at once
+        cover.set_settings(H, {"side": "cover-front", "guide": "front-title-name-scene"})
+        self.assertEqual(cover.settings(books.book_path(H))["guides"]["cover-front"], "front-title-name-scene")
+        for bad in ({"feather": 5}, {"side": "cover-back", "guide": "front-scene"}, {"ref": "../x"}):
+            with self.assertRaises(ApiError):
+                cover.set_settings(H, bad)
+        tool = books.detail(H)["cover"]["tool"]
+        self.assertEqual({g["side"] for g in tool["guides"]}, {"cover-front", "cover-back"})
+        self.assertTrue(all((core.WEB_DIR / g["src"].lstrip("/")).is_file() for g in tool["guides"]))
+
+    def test_the_square_prompts_are_told_by_their_ids(self):
+        wide = {**PROMPT, "id": "final-wide-image"}
+        front = {"id": "title-square", "aspect_ratio": "1:1", "task": "square with a title"}
+        back = {"id": "quiet-square", "aspect_ratio": "1:1", "task": "quiet square"}
+        (self.dir / H / "agent" / "cover-prompts-json.md").write_text(fenced([wide, front, back]), encoding="utf-8")
+        d = books.detail(H)
+        self.assertIn("final-wide-image", next(r for r in d["rows"] if r["key"] == "cover")["prompt"])
+        self.assertIn("square with a title", d["cover"]["prompts"]["cover-front"])
+        self.assertIn("quiet square", d["cover"]["prompts"]["cover-back"])
+        self.assertFalse(any("cover-prompts-json" in n for n in d["notes"]))
+        fails = rows.book_check(books.book_path(H))["fails"]
+        self.assertFalse([f for f in fails if "cover-prompts-json" in f and ("#2" in f or "#3" in f)], fails)
+
+    def test_generating_pastes_the_reference_the_guide_and_the_prompt_with_the_guides_words(self):
+        from studio.workshop import cover
+        (self.dir / H / "agent" / "cover-prompts-json.md").write_text(fenced([
+            {"id": "title-square", "aspect_ratio": "1:1", "task": "front", "reference_image": "Image 1", "reference_rule": "keep the bears"},
+            {"id": "quiet-square", "aspect_ratio": "1:1", "task": "back"}]), encoding="utf-8")
+        label, items = generate._items(H, "cover-front", None)               # no reference: the guide is Image 1
+        self.assertEqual([i["kind"] for i in items], ["image", "text"])
+        self.assertTrue(items[0]["path"].endswith("front-title-scene.png"))
+        prompt = json.loads(items[1]["text"])
+        self.assertIn("Image 1 is ONLY a layout guide", prompt["layout_guide"])
+        self.assertNotIn("reference_rule", prompt)                           # no picture pasted for it: not named
+        with self.assertRaises(ApiError):                                    # the back needs the front first
+            generate._items(H, "cover-back", None)
+        pictures.place(H, "spread2", spread_png(self.tmp / "s.png"), "s.png")
+        cover.set_settings(H, {"ref": "spread2"})
+        label, items = generate._items(H, "cover-front", None)               # the reference first, the guide Image 2
+        self.assertEqual(items[0].get("spread"), "spread2")
+        prompt = json.loads(items[2]["text"])
+        self.assertIn("Image 2 is ONLY", prompt["layout_guide"])
+        self.assertEqual(list(prompt)[list(prompt).index("reference_rule") + 1], "layout_guide")
+        pictures.place(H, "cover-front", square_png(self.tmp / "f.png"), "f.png")
+        self.assertEqual(generate.squares_next(H), ["cover-back"])
+        label, items = generate._items(H, "cover-back", None)                # the back: the front, its guide, the prompt
+        self.assertEqual(label, "Обкладинка · задня")
+        self.assertTrue(items[0]["path"].endswith("cover-front.png") and items[1]["path"].endswith("back-scene.png"))
+        pictures.place(H, "cover-back", square_png(self.tmp / "b.png"), "b.png")
+        self.assertEqual(generate.squares_next(H), [])                       # both there: the cover is made, nothing waits
+
+    def test_the_cover_prompts_reference_picture_for_the_clipboard(self):
+        # «Референс у буфер» (24.10.2026): the picture a cover prompt names as its reference, only when it lies in agent/
+        agent = self.dir / H / "agent"
+        square_png(agent / "ref_cover_28.jpg")
+        (agent / "cover-prompts-json.md").write_text(fenced([
+            {**PROMPT, "id": "final-wide-image", "reference_image": "ref_cover_28.jpg"},
+            {"id": "title-square", "aspect_ratio": "1:1", "reference_image": "ref_cover_28.jpg"},
+            {"id": "quiet-square", "aspect_ratio": "1:1", "reference_image": "Image 1"}]), encoding="utf-8")
+        refs = books.detail(H)["cover"]["refs"]
+        self.assertEqual(refs, {"cover": "ref_cover_28.jpg", "cover-front": "ref_cover_28.jpg"})   # «Image 1» gives nothing
+        self.assertEqual(rows.reference_file(agent, {"reference_image": "../ref_cover_28.jpg"}), "")  # never out of agent/
+        self.assertEqual(rows.reference_file(agent, {"reference_image": "missing.jpg"}), "")
+        self.assertEqual(routes._copy_reference(request(H, {"key": "cover-front"}))["name"], "ref_cover_28.jpg")
+        with self.assertRaises(ApiError):
+            routes._copy_reference(request(H, {"key": "cover-back"}))
+        # and the cover tool pastes it as the front's reference by default
+        label, items = generate._items(H, "cover-front", None)
+        self.assertTrue(items[0]["path"].endswith("ref_cover_28.jpg"))
+
+    def test_switching_back_to_two_squares_makes_the_cover_again(self):
+        # the review of 2026-10-25: both squares there and a 2:1 cover put in meanwhile — back to squares, the cover again
+        self.squares()
+        pictures.place(H, "cover", spread_png(self.tmp / "c.png", (2000, 1000)), "c.png")
+        pictures.skip_margins(H)                                              # a 2:1 cover, «Без полів»
+        c = books.detail(H)["cover"]
+        self.assertEqual((c["mode"], c["finalSquares"]), ("wide", False))
+        pictures.set_cover_mode(H, "squares")
+        self.assertTrue(books.detail(H)["cover"]["finalSquares"])
+
+    def test_a_2_1_book_keeps_its_cover_when_the_squares_change(self):
+        from studio.workshop import cover
+        self.squares()
+        pictures.set_cover_mode(H, "wide")
+        pictures.place(H, "cover", spread_png(self.tmp / "c.png", (2000, 1000)), "c.png")
+        pictures.skip_margins(H)
+        cover.set_settings(H, {"feather": 4})                                 # nothing made of the squares now
+        self.assertFalse(books.detail(H)["cover"]["finalSquares"])
+
+    def test_the_next_square_only_when_it_has_a_prompt(self):
+        pictures.place(H, "cover-front", square_png(self.tmp / "f.png"), "f.png")
+        self.assertEqual(generate.squares_next(H), [])
+
+    def test_agent_6s_square_prompts_turn_the_book_to_two_squares_until_the_owner_switches(self):
+        cover_file = self.dir / H / "agent" / "cover-prompts-json.md"
+        cover_file.write_text(fenced([{"id": "title-square", "aspect_ratio": "1:1"}, {"id": "quiet-square", "aspect_ratio": "1:1"}]),
+                              encoding="utf-8")
+        self.assertEqual(books.detail(H)["cover"]["mode"], "squares")
+        pictures.set_cover_mode(H, "wide")
+        self.assertEqual(books.detail(H)["cover"]["mode"], "wide")
+
+    def test_a_2_1_prompt_keeps_the_book_2_1(self):
+        (self.dir / H / "agent" / "cover-prompts-json.md").write_text(fenced([{**PROMPT, "id": "final-wide-image"}]), encoding="utf-8")
+        self.assertEqual(books.detail(H)["cover"]["mode"], "wide")
+
+
 class TheBookCheck(Base):
     def test_no_prompt_files_no_check(self):
         self.assertIsNone(books.detail(H)["check"])

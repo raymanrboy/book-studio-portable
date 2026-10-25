@@ -39,6 +39,7 @@ code: []
 - [Workshop](features/workshop.md) — «Книги»: books in development, written by the book pipeline's
   agents (`pipeline/`); the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches
   the pictures from Downloads, the cover on the printer's template; passed to the library with their Etsy listing.
+- [Cover](features/cover.md) — the cover's own tool: two squares → Gelato's cover made by Book Studio, no outpaint; or 2:1
 - [Photo mockups](features/photo-mockups.md) — lifestyle photos with a blank book → our book in
   them (a Workshop book's step «Фото» and the «Фотомокапи» page): template, cover, JSON prompt into the clipboard.
 - [Mockups](features/mockups.md) — a Canva demo book → Etsy listing pictures from the Photoshop templates (the owner

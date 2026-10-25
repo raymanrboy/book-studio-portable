@@ -155,6 +155,11 @@ class OneCopy(unittest.TestCase):
                 % str(Path(__file__).resolve().parents[1]))
         run = subprocess.run([sys.executable, "-c", code], env={**os.environ}, capture_output=True)
         self.assertEqual(run.returncode, 7, run.stderr.decode("utf-8", "replace"))
+        # a copy that only waits lets the lock go — or the next start would wait for it in turn (24.10.2026: a start made while the
+        # old copy was closing left every following start waiting for nobody)
+        m._release_lock()
+        run = subprocess.run([sys.executable, "-c", code], env={**os.environ}, capture_output=True)
+        self.assertEqual(run.returncode, 0, run.stderr.decode("utf-8", "replace"))
 
 
 if __name__ == "__main__":

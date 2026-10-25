@@ -30,8 +30,8 @@ from PIL import Image, ImageOps
 from .. import core
 from ..server import ApiError
 from . import books
-from .rows import (MIRRORED, TEMPLATE, cover_state, original_of, original_stem, row, row_list, template_layout,
-                   variant_names)
+from .rows import (MIRRORED, SQUARE_KEYS, TEMPLATE, cover_mode, cover_state, original_of, original_stem, row, row_list,
+                   template_layout, variant_names)
 
 OFF = 0.04       # a picture more than 4 % away from its frame's proportion is cut (and says so)
 FORMATS = {"PNG", "JPEG", "WEBP", "MPO"}
@@ -244,9 +244,9 @@ def place(book_id: str, key: str, source: Path, name: str, variant: str | None =
 def _place(book_id: str, key: str, source: Path, name: str, variant: str | None, take: bool, kept: bool) -> dict:
     book = books.book_path(book_id)
     variant = _variant(book, variant)
-    if key not in ("hero", "cover-wrap"):
+    if key not in ("hero", "cover-wrap", *SQUARE_KEYS):
         row(key)
-    if variant and key == "cover":
+    if variant and key in ("cover", *SQUARE_KEYS):
         raise ApiError("У варіанта одна обкладинка — одразу розширена (з полями).")
     im = open_picture(source, name)  # only a real picture goes anywhere, and nothing is moved before that
     size = list(im.size)
@@ -263,6 +263,7 @@ def _place(book_id: str, key: str, source: Path, name: str, variant: str | None,
         _save(book, im, target)
         return {"key": key, "label": "Герой", "note": "Герой на місці" + (f" ({variant})" if variant else "")}
     if key == "cover":
+        _set_mode(book, "wide")  # a 2:1 picture goes on to the 2:1 margins, as a square switches to the squares
         _mark(book, None, "cover", {**stamp, "cut": ""})
         _mark(book, None, "cover-wrap", None)
         final = _pictures_dir(book, None) / "Cover.png"
@@ -270,11 +271,23 @@ def _place(book_id: str, key: str, source: Path, name: str, variant: str | None,
             _retire(book, final)  # a new picture: the old cover with margins no longer fits it
         build_expanded(book, im)
         return {"key": key, "label": "Обкладинка", "note": "Обкладинка на місці — додано поля, далі аутпейнт"}
+    if key in SQUARE_KEYS:  # «Два квадрати»: one of the two, cut to a square; both there → the cover made of them
+        _, cut = square(im)
+        _mark(book, None, key, {**stamp, "cut": cut})
+        _set_mode(book, "squares")
+        from . import cover
+        both = cover.assemble(book)  # a 2:1 cover already there stays the book's Cover.png until both squares are in
+        side = "Лицьова" if key == "cover-front" else "Задня"
+        return {"key": key, "label": f"Обкладинка · {side.lower()}", "cut": cut,
+                "note": f"{side} сторона на місці" + (" — обкладинку складено" if both else "")}
     if key == "cover-wrap":  # the base cover's second stage, or a variant's one cover
+        if not variant and cover_mode(book) == "squares":
+            raise ApiError("У «Двох квадратах» обкладинку складає сам інструмент — широку картинку кладіть у режимі 2:1.")
         final, cut = fit_template(im)
         _save(book, final, _pictures_dir(book, variant) / "Cover.png")
-        _mark(book, variant, "cover-wrap", {**stamp, "cut": cut, **({} if variant else {"skipped": False})})
-        w, h = TEMPLATE["px"]
+        # "squares" always written: the marks merge, and a 2:1 cover after a squares one must not keep it
+        _mark(book, variant, "cover-wrap", {**stamp, "cut": cut, **({} if variant else {"skipped": False, "squares": False})})
+        w, h = final.size
         return {"key": key, "label": "Обкладинка",
                 "note": (f"Обкладинка {variant}" if variant else "Обкладинка з полями")
                 + f" — готова: {w}×{h}, 300 dpi" + ("" if variant else ", у папці сторінок")}
@@ -394,13 +407,32 @@ def fit_template(im: Image.Image) -> tuple[Image.Image, str]:
     return out, cut
 
 
+def _set_mode(book: Path, mode: str) -> None:
+    def change(data):
+        data["coverMode"] = mode  # written either way: the owner's choice wins over what Agent 6's prompts suggest
+    books.update_state(book, change)
+
+
+def set_cover_mode(book_id: str, mode: str) -> dict:
+    """The cover row's switch «2:1 · Два квадрати» — the pictures of either stay where they are."""
+    if mode not in ("wide", "squares"):
+        raise ApiError("Невідомий режим обкладинки.")
+    with WRITING:
+        book = books.book_path(book_id)
+        _set_mode(book, mode)
+        if mode == "squares":
+            from . import cover
+            cover.assemble(book)  # both squares there (made before a 2:1 one, or put in by hand): the cover again
+    return {"mode": mode}
+
+
 def skip_margins(book_id: str) -> dict:
     """«Без полів»: the cover's picture itself becomes Cover.png (then upscaled, like a caught one)."""
     with WRITING:
         book = books.book_path(book_id)
         im = open_picture(_art(book), "cover")
         _save(book, im, _pictures_dir(book, None) / "Cover.png")
-        _mark(book, None, "cover-wrap", {"skipped": True, "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        _mark(book, None, "cover-wrap", {"skipped": True, "squares": False, "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
                                              "pic": core.new_id()[:12], "upscaled": None})
     from . import upscale
     upscale.after_place(book_id, "cover-wrap")
@@ -444,9 +476,13 @@ def remove(book_id: str, key: str, variant: str | None = None) -> dict:
     originals = book / books.ORIGINALS / ("variants/" + variant if variant else "")
     rows_before = copy.deepcopy(books.state(book).get("rows") or {})
     touched: list[str] = []                       # the row marks this removal clears — «Скасувати» puts them back
-    if variant and key == "cover":
+    if variant and key in ("cover", *SQUARE_KEYS):
         raise ApiError("У варіанта одна обкладинка — одразу розширена (з полями).")
-    if variant and key == "cover-wrap":  # a variant's one cover
+    if key in SQUARE_KEYS:  # one of «Два квадрати»: the square itself; the cover made of it stays until a new one
+        targets = [originals / n for n in books._names(originals) if Path(n).stem == key]
+        _mark(book, None, key, None)
+        touched.append(key)
+    elif variant and key == "cover-wrap":  # a variant's one cover
         targets = [_pictures_dir(book, variant) / "Cover.png"] + [
             originals / n for n in books._names(originals) if Path(n).stem == "cover-wrap"]
         _mark(book, variant, "cover-wrap", None)
@@ -499,6 +535,9 @@ def restore(book_id: str, undo: dict) -> dict:
     for slot, marks in ((undo or {}).get("marks") or {}).items():
         variant, _, key = slot.rpartition("/")
         _mark(book, variant or None, key, marks if isinstance(marks, dict) else None)
+    if any(Path(t).stem in SQUARE_KEYS for _, t in plan):
+        from . import cover
+        cover.assemble(book)  # the cover from the squares as they are now (the other may have been replaced meanwhile)
     return {"restored": len(plan)}
 
 
@@ -529,6 +568,9 @@ def picture_for_clipboard(book_id: str, key: str) -> Image.Image:
         c = cover_state(book)
         path = (book / books.PICTURES / c["final"] if c["final"]
                 else book / books.ORIGINALS / c["art"] if c["art"] else None)
+    elif key in SQUARE_KEYS:
+        name = original_of(books._names(book / books.ORIGINALS), key)
+        path = book / books.ORIGINALS / name if name else None
     else:
         pages = _pages(book, key, None)
         path = pages[0] if pages else None

@@ -231,7 +231,7 @@ def steps(path: Path) -> list[dict]:
                 files.insert(0, {"name": c["final"], "kind": "image", "area": PICTURES, "exists": True})
                 st = "done"
             else:
-                st = "part" if c["art"] or "cover-prompts-json.md" in a else "todo"
+                st = "part" if c["art"] or c["front"] or c["back"] or "cover-prompts-json.md" in a else "todo"
         elif key == "library":
             st = "done" if library_book(path) else "todo"
         elif key == "photos":

@@ -37,6 +37,16 @@ def _another_copy_starting() -> bool:
     return ctypes.get_last_error() == 183          # ERROR_ALREADY_EXISTS
 
 
+def _release_lock() -> None:
+    """A copy that only waits for another one lets go of the lock: holding it, it would make the next start wait for it in turn —
+    a start made while the old copy was still closing then left every following start waiting for nobody (24.10.2026)."""
+    global _mutex
+    if _mutex and os.name == "nt":
+        import ctypes
+        ctypes.WinDLL("kernel32").CloseHandle(ctypes.c_void_p(_mutex))
+    _mutex = None
+
+
 SILENCE = 90   # seconds without a page's ping before a window nobody sees (no Edge process, no profile in use) counts as closed
 GRACE = 12     # ... and when the window was seen open and then went
 LOST = 1800    # a window held only by Edge's profile, with no page pinging for this long: Edge kept running without one
@@ -120,14 +130,21 @@ def main(argv: list[str] | None = None) -> int:
     # The lock first: it answers at once. Asking the port when nothing listens there costs 1.5 s of every start (Windows retries a
     # refused connection), so it is asked only when the lock says another copy on this data is running or starting (04.10.2026).
     if _another_copy_starting() or (os.name != "nt" and _running_instance(args.port)):
+        _release_lock()
+        running = False
         for _ in range(60):                        # a copy still starting: wait for it, then only open its window
             if _running_instance(args.port):
+                running = True
                 break
             time.sleep(0.5)
-        core.log.info("Another copy on this data is running — opening its window")
-        if not args.no_window:
-            desktop.open_app_window(f"http://127.0.0.1:{args.port}/")
-        return 0
+        # Nobody answered: the other copy was closing, not starting. When the lock is free now, this copy starts itself.
+        if running or _another_copy_starting():
+            _release_lock()
+            core.log.info("Another copy on this data is running — opening its window")
+            if not args.no_window:
+                desktop.open_app_window(f"http://127.0.0.1:{args.port}/")
+            return 0
+        core.log.info("The other copy ended without starting — starting this one")
 
     core.own_temp()  # the window, the dialogs and cloudflared keep their temp files on drive D, not C
 

@@ -49,7 +49,7 @@ const PLACES = [
   { hash: '#/books', label: 'Книги', icon: 'shelf', match: /^#\/(books|library|book|workshop)/, key: '2', busy: 'workshop' },
   { hash: '#/profit', label: 'Прибуток', icon: 'chart', match: /^#\/profit/, key: '3' },
   { gap: true },
-  { hash: '#/tools', label: 'Інструменти', icon: 'tools', match: /^#\/(tools|creator|archive|mockups|photos|slides)/, key: '4', busy: 'mockups' },
+  { hash: '#/tools', label: 'Інструменти', icon: 'tools', match: /^#\/(tools|creator|archive|mockups|photos|slides|cover)/, key: '4', busy: 'mockups' },
 ];
 const HOME = '#/orders'; // Book Studio always starts in the orders (owner, 24.09.2026)
 const TITLE = 'Book Studio';
@@ -215,6 +215,7 @@ const ROUTES = [
   [/^#\/workshop\/([^/]+)$/, () => import('./pages/workshop-book.js'), 'listings'],
   [/^#\/mockups\/?$/, () => import('./pages/mockups.js'), 'listings'],
   [/^#\/photos\/?$/, () => import('./pages/photos.js'), 'listings'],
+  [/^#\/cover(?:\/([^/]+))?\/?$/, () => import('./pages/cover.js'), 'listings'],
   // the slides' editor: its own module, loaded only when opened (the owner, 29.09.2026) — not warmed up below
   [/^#\/slides\/(template|scheme:[a-z0-9-]+|\d{8}-\d{6}-[0-9a-f]{6}|\d{1,5}\.[^/]+)\/([1-7])$/, () => import('./pages/slides-editor.js'), 'listings', 'lazy'],
 ];
@@ -380,8 +381,29 @@ for (const type of ['dragenter', 'dragover', 'drop']) {
   }, true);
 }
 
+// «Нагору» (the owner, 24.10.2026: "I scroll a lot from the bottom to the top"): a floating button back to the top of a long
+// page, shown once the page is scrolled more than a screen down; the toasts move up above it while it is there.
+function installToTop() {
+  const main = document.getElementById('main');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'to-top';
+  btn.dataset.tip = 'Нагору';
+  btn.setAttribute('aria-label', 'Нагору');
+  btn.innerHTML = ic('arrowUp');
+  document.body.append(btn);
+  const update = () => {
+    const show = main.scrollTop > main.clientHeight;
+    btn.classList.toggle('on', show);
+    document.body.classList.toggle('to-top-on', show);
+  };
+  main.addEventListener('scroll', update, { passive: true });
+  btn.addEventListener('click', () => { hideTip(); main.scrollTo({ top: 0, behavior: reducedMotion() ? 'instant' : 'smooth' }); });
+}
+
 async function boot() {
   topbar.el = document.getElementById('topbar');
+  installToTop();
   heartbeat();
   buildSidebar();
   wireSidebar();

@@ -1,7 +1,7 @@
 ---
 title: The interface the owner wants
 type: owner
-updated: 2026-10-06
+updated: 2026-10-25
 code:
   - app/web/css/app.css
   - app/web/css/library.css

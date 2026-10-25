@@ -51,8 +51,6 @@ export async function mount(view, [rawId]) {
   const mem = memory.get(id);
   const uploading = new Map(); // drop key → the share uploaded (0…1)
   let stepsSeen = null;         // the steps' states at the last draw: a step that has just become done pops
-  let coverSeen = null;         // { art, stage } at the last draw: a new cover picture turns the card to its margins
-  let coverSlide = '';          // the cover's pane glides this way once, at the next draw ('slide-next' / 'slide-back')
   const docs = new Map();       // a step's text by its file and version: an open step isn't fetched again on each change
   let waitSeen = '';            // the row waited for at the last draw: the page follows the queue
   let lb = null;
@@ -167,6 +165,18 @@ export async function mount(view, [rawId]) {
 
   // «Мокапи» (the owner, 29.09.2026): made from here they go into the book's folder «mockups», the step ticks itself; back
   // to them at any time — the folder, the Mockups for this book, its slides in the editor.
+  // «Обкладинка» (2026-10-25): a step of its own, made in its tool (#/cover/<book>) — here what the book has and the way there.
+  function coverBody(s) {
+    const c = b.cover;
+    const how = c.mode === 'squares' ? 'два квадрати' : '2:1';
+    const shot = c.final ? html`<div class="ws-shot"><img data-fade alt="Обкладинка" src="${pic('pictures', c.final, 1400)}" data-act="zoom-one" data-area="pictures" data-name="${c.final}"></div>` : '';
+    const note = c.final ? html`Обкладинка є: <span class="mono">${c.final}</span>${c.finalSquares ? ' · з двох квадратів, Gelato 458×246 мм' : ''}.`
+      : c.front || c.back || c.art ? `Обкладинку почато (${how}).` : `Обкладинки ще немає. Спосіб — ${how}.`;
+    return html`<div class="ws-manual"><div>${note}</div>
+      <div class="row-wrap"><button class="btn ${c.final ? '' : 'btn-primary'}" data-act="to-cover">${ic('coverSquares')}${c.final ? 'Відкрити обкладинку' : 'Зробити обкладинку'}</button>
+      ${c.final ? html`<button class="btn" data-act="open" data-what="pictures">${ic('folderOpen')}Відкрити папку сторінок</button>` : ''}</div></div>${shot}`;
+  }
+
   function mockupsBody(s) {
     const made = s.mockups || s.slides;
     const what = [s.mockups ? `${s.mockups} ${plural(s.mockups, ['мокап', 'мокапи', 'мокапів'])}` : '',
@@ -271,9 +281,7 @@ export async function mount(view, [rawId]) {
     }
     if (s.state === 'skip') return html`<div class="ws-missing">Книга без постійного героя (Tier S) — цей крок не потрібен.</div>`;
     const hero = s.key === 'hero' ? heroActions(s) : '';
-    if (s.key === 'cover' && !file) {
-      return html`<div class="ws-missing">Обкладинка — остання картка внизу сторінки: два етапи, картинка й поля.</div><button class="btn btn-sm" data-act="goto" data-row="cover">Показати обкладинку</button>`;
-    }
+    if (s.key === 'cover') return coverBody(s);
     if (!file) return html`${hero}<div class="ws-missing">${WHO[s.key] || ''}</div>`;
     if (!file.exists) return html`${hero}<div class="ws-missing"><div>Ще немає: <span class="mono">${file.name}</span></div><div>${WHO[s.key] || ''}</div></div>`;
     if (file.kind === 'check') return checkBody(b.check);
@@ -289,7 +297,7 @@ export async function mount(view, [rawId]) {
   }
 
   function panelFiles(s) {
-    if (s.key === 'cover' && !step('cover').files.some((f) => f.area === 'pictures')) return [];
+    if (s.key === 'cover') return [];   // its own tool shows it
     const files = s.manual || ['pictures', 'library'].includes(s.key) ? [] : [...s.files];
     if (s.key === 'prompts' && b.check) files.unshift({ name: '__check', label: 'Перевірка', kind: 'check', exists: true });
     return files;
@@ -331,75 +339,6 @@ export async function mount(view, [rawId]) {
   // ---------------------------------------------------------------- the rows (workshop-rows.js)
   const { saveBtn, waitCover, busyCover, genButton, promptBlock, textBlock, rowCard, upChip, upBtn } = rowTemplates({ id, book: () => b, mem, uploading });
 
-  // ---------------------------------------------------------------- the cover: ① the picture ② its margins
-  function coverCard() {
-    const r = b.rows.find((x) => x.key === 'cover');
-    const c = b.cover;
-    const artV = c.art ? b.v?.[`originals/${c.art}`] || c.art : '';
-    if (coverSeen && artV && coverSeen.art !== artV) mem.cover = 0; // a new picture: on to its margins
-    const stage = mem.cover || (c.final || c.art ? 2 : 1);
-    coverSlide = coverSeen && coverSeen.stage !== stage ? (stage > coverSeen.stage ? 'slide-next' : 'slide-back') : '';
-    coverSeen = { art: artV, stage };
-    const w1 = waitingFor(id, 'cover', ''), w2 = waitingFor(id, 'cover-wrap', '');
-    const stepBtn = (n, label, done, now) => html`<button type="button" class="ws-cv-step ${stage === n ? 'on' : ''} ${done ? 'done' : ''}" data-act="cover-stage" data-stage="${n}">
-      <span class="ws-cv-no">${done ? ic('check') : n}</span>${label}${now ? html`<span class="ws-pulse"></span>` : ''}</button>`;
-    const ratio = (s) => (s && s[0] && s[1] ? raw(` style="aspect-ratio:${s[0]} / ${s[1]}"`) : '');
-    let pane;
-    if (stage === 1) {
-      const artFrame = c.art
-        ? html`<div class="ws-drop" data-drop="cover" data-variant=""><div class="ws-art ws-wide"${ratio(c.artMarks.source)}>
-            <img data-fade alt="Обкладинка" src="${pic('originals', c.art, 1400)}" data-act="zoom" data-key="cover-art">
-            ${saveBtn('originals', c.art, '', 'Зберегти обкладинку як…')}
-            ${c.artMarks.source ? html`<div class="ws-marks"><span class="chip ws-mark num">${c.artMarks.source[0]}×${c.artMarks.source[1]}</span></div>` : ''}
-            <div class="img-actions">${ib('upload', 'Замінити файлом', 'data-act="pick" data-key="cover" data-variant=""', { cls: 'sm' })}${ib('trash', 'Прибрати обкладинку (і її поля)', 'data-act="remove" data-key="cover" data-variant=""', { cls: 'sm danger' })}</div>
-          </div>${busyCover('cover')}${w1 ? waitCover('Чекаю обкладинку…') : ''}</div>`
-        : html`<div class="ws-frame"><div class="ws-drop" data-drop="cover" data-variant=""><button type="button" class="ws-ph" data-act="pick" data-key="cover" data-variant="">
-            <span class="ws-half">задня</span><span class="ws-half">передня</span>
-            <span class="ws-ph-text"><span class="drop-ico">${ic('upload')}</span><b>Перетягніть обкладинку</b><span>або клацніть, щоб обрати файл</span></span></button>
-            ${busyCover('cover')}${w1 ? waitCover('Чекаю обкладинку з «Завантажень»…') : ''}</div></div>`;
-      pane = html`${promptBlock(r, '', 'Промпт обкладинки (агент 6)')}${artFrame}${textBlock(r)}
-        ${c.art ? html`<div class="ws-cv-next"><button class="btn btn-primary" data-act="cover-stage" data-stage="2">Далі: поля${ic('chevRight')}</button></div>` : ''}`;
-    } else {
-      // The picture laid on the printer's template, white all round → the generator fills the margins → Cover.png at
-      // the template's exact size. The template's lines can be shown over it.
-      const lay = c.layout || {};
-      const [cw, ch] = lay.size || [1, 1];
-      const [ax, ay, aw, ah] = lay.art || [0, 0, cw, ch];
-      const pct = (v, of) => `${((v / of) * 100).toFixed(3)}%`;
-      const box = (g) => `left:${(g[0] * 100).toFixed(3)}%;top:${(g[1] * 100).toFixed(3)}%;width:${(g[2] * 100).toFixed(3)}%;height:${(g[3] * 100).toFixed(3)}%`;
-      const G = c.guides;
-      const lines = mem.guides && !c.skipped ? html`<div class="ws-tpl" aria-hidden="true">
-          <span class="ws-tpl-trim" style="${box(G.trim)}"></span><span class="ws-tpl-spine" style="${box(G.spine)}"></span>
-          <span class="ws-tpl-safe" style="${box(G.back)}"><em>задня</em></span><span class="ws-tpl-safe" style="${box(G.front)}"><em>передня</em></span></div>` : '';
-      const tpx = c.template.px;
-      const shown = c.final
-        ? html`<img data-fade alt="Обкладинка з полями" src="${pic('pictures', c.final, 2600)}" data-act="zoom" data-key="cover">${saveBtn('pictures', c.final, '', 'Зберегти готову обкладинку як…')}`
-        : c.expanded ? html`<img data-fade alt="Обкладинка з білими полями" src="${pic('originals', c.expanded, 2600)}"><span class="ws-cv-inner" style="left:${pct(ax, cw)};top:${pct(ay, ch)};width:${pct(aw, cw)};height:${pct(ah, ch)}"></span>` : '';
-      pane = html`<div class="ws-cv-bar">
-          <div class="tools">${ib('guides', mem.guides ? 'Сховати лінії шаблону друкарні' : 'Показати лінії шаблону друкарні: обріз, корінець, безпечні зони', 'data-act="guides"', { cls: mem.guides ? 'on' : '' })}</div>
-          <span class="ws-cv-info num">${c.final ? (c.skipped ? 'без полів' : `${tpx[0]}×${tpx[1]} px · ${c.template.dpi} dpi`) : `поля за шаблоном · ${cw}×${ch} px`}</span>
-          ${c.final ? upChip('cover-wrap', c.wrapMarks) : ''}
-          <span class="spacer"></span>
-          ${c.final ? '' : html`<button class="btn btn-sm btn-ghost" data-act="no-margins" data-tip="Взяти обкладинку як є, без полів — вона стане Cover.png">Без полів</button>`}
-          ${w2 ? waitChip('чекаю обкладинку з полями')
-            : html`<button class="btn btn-sm ${c.final ? '' : 'btn-primary'}" data-act="gen" data-key="cover-wrap" data-variant="" data-tip="У буфер: обкладинка з полями, потім промпт аутпейнту — Ctrl+V у Chrome сам перемикає">${ic(c.final ? 'regenerate' : 'generate')}${c.final ? 'Ще раз' : 'Генерувати поля'}</button>`}
-        </div>
-        <div class="ws-drop" data-drop="cover-wrap" data-variant="">
-          <div class="ws-art ws-wide ${c.final ? '' : 'margins'}"${ratio(c.final && !c.skipped ? tpx : c.final ? c.artMarks.source : [cw, ch])}>${shown}${lines}
-            ${c.final ? html`<div class="img-actions">${upBtn('cover-wrap', c.wrapMarks)}${ib('copy', 'Копіювати готову обкладинку як картинку', 'data-act="copy-picture" data-key="cover"', { cls: 'sm' })}
-              ${ib('upload', 'Замінити файлом', 'data-act="pick" data-key="cover-wrap" data-variant=""', { cls: 'sm' })}
-              ${ib('trash', 'Прибрати поля (сама обкладинка лишиться)', 'data-act="remove" data-key="cover-wrap" data-variant=""', { cls: 'sm danger' })}</div>` : ''}
-          </div>${busyCover('cover-wrap')}${w2 ? waitCover('Чекаю обкладинку з полями…') : ''}</div>
-        ${c.outpaint ? promptBlock({ key: 'cover-wrap', prompt: c.outpaint }, '', 'Промпт аутпейнту — заповнити тільки білі поля') : ''}`;
-    }
-    return html`<section class="ws-row ws-cover ${w1 || w2 ? 'waiting' : ''}" id="row-cover">
-      <div class="ws-row-head"><span class="ws-row-label">Обкладинка</span>
-        <span class="ws-cv-steps">${stepBtn(1, 'Картинка', !!c.art, w1)}<i class="ws-cv-line ${c.art ? 'on' : ''}"></i>${stepBtn(2, 'Поля', !!c.final, w2)}</span>
-        <span class="ws-row-act">${stage === 1 ? genButton({ ...r, pictures: c.art ? [c.art] : [] }) : ''}</span></div>
-      <div class="ws-cv-body"><div class="ws-cv-pane">${pane}</div></div>
-    </section>`;
-  }
-
   // ---------------------------------------------------------------- hero variants (only when the agent made one)
   function variantHero(v) {
     const waiting = waitingFor(id, 'hero', v.name);
@@ -423,7 +362,7 @@ export async function mount(view, [rawId]) {
   function variantCover(v) {
     const c = v.cover || {};
     const waiting = waitingFor(id, 'cover-wrap', v.name);
-    const tpx = b.cover.template.px;
+    const tpx = b.cover.wideTemplate.px;   // a variant's cover is always brought to the 2:1 template
     const act = (k) => `data-key="cover-wrap" data-variant="${v.name}" ${k}`;
     const art = c.final
       ? html`<div class="ws-art ws-wide" style="aspect-ratio:${tpx[0]} / ${tpx[1]}">
@@ -525,7 +464,7 @@ export async function mount(view, [rawId]) {
       ? [[`${v.name}|hero`, variantHero(v)], ...(v.rows.length ? v.rows.map((r) => [`${v.name}|${r.key}`, rowCard(r, v.name)])
         : [[`${v.name}|none`, html`<div class="ws-missing">У цьому варіанті ще немає промптів заміни (2.json … 15.json) — їх пише агент.</div>`]]),
         [`${v.name}|cover`, variantCover(v)]]
-      : [...rows.map((r) => [r.key, rowCard(r)]), ['cover', coverCard()]];
+      : rows.map((r) => [r.key, rowCard(r)]);
     const drawn = patch($('#ws-rows'), cards);
     drawn.forEach(fadeImages);
     if (shownVariant !== undefined && shownVariant !== mem.variant) appear($('#ws-rows'), 220);   // another tab: its rows come in
@@ -537,9 +476,6 @@ export async function mount(view, [rawId]) {
     }
     // One-shot animations go on after the redraw, not into the markup: written there, the next redraw found the markup
     // changed (the class gone) and drew the part once more, losing its hover and tip (26.09.2026).
-    const body = coverSlide && $('#ws-rows .ws-cv-body');
-    if (body) once(body, coverSlide);
-    coverSlide = '';
     view.querySelectorAll('#ws-vtabs .seg').forEach(syncSeg);
     uploading.forEach((_, key) => paintProgress(key));
   }
@@ -635,8 +571,11 @@ export async function mount(view, [rawId]) {
     }
     const c = b.cover;
     const text = b.rows.find((r) => r.key === 'cover')?.text || '';
-    if (c.final) push('cover:0', 'pictures', c.final, 'Обкладинка', c.skipped ? 'без полів' : 'з полями, за шаблоном друкарні', text);
-    if (c.art) push('cover-art:0', 'originals', c.art, 'Обкладинка · картинка', 'як її зробив генератор', text);
+    if (c.final) push('cover:0', 'pictures', c.final, 'Обкладинка', c.skipped ? 'без полів' : c.wrapMarks?.squares ? 'з двох квадратів, за шаблоном Gelato' : 'з полями, за шаблоном друкарні', text);
+    if (c.mode === 'squares') {
+      if (c.back) push('cover-back:0', 'originals', c.back, 'Обкладинка · задня', 'квадрат, як його зробив генератор', '');
+      if (c.front) push('cover-front:0', 'originals', c.front, 'Обкладинка · лицьова', 'квадрат, як його зробив генератор', text);
+    } else if (c.art) push('cover-art:0', 'originals', c.art, 'Обкладинка · картинка', 'як її зробив генератор', text);
     return items;
   }
   function zoom(key) {
@@ -680,7 +619,8 @@ export async function mount(view, [rawId]) {
   async function removePicture(btn, key, variant) {
     const done = await act(btn, () => post(url('/remove'), { key, variant }));
     if (!done?.undo) return;
-    const what = key === 'cover' ? 'Обкладинку прибрано' : key === 'cover-wrap' ? 'Поля обкладинки прибрано' : 'Картинку прибрано';
+    const what = key === 'cover' ? 'Обкладинку прибрано' : key === 'cover-wrap' ? 'Поля обкладинки прибрано'
+      : key === 'cover-front' ? 'Лицьову сторону прибрано' : key === 'cover-back' ? 'Задню сторону прибрано' : 'Картинку прибрано';
     toast(what, 'success', 9000, {
       undo: { label: 'Скасувати', run: async () => { await post(url('/restore'), { undo: done.undo }); toast('Повернуто', 'success', 2000); refresh(); } },
     });
@@ -736,8 +676,7 @@ export async function mount(view, [rawId]) {
   }
 
   // ---------------------------------------------------------------- events
-  const rowOf = (key, variant) => (variant ? b.variants.find((x) => x.name === variant)?.rows : b.rows)?.find((r) => r.key === key)
-    || (key === 'cover-wrap' ? { key, label: 'Поля обкладинки', prompt: b.cover.outpaint } : null);
+  const rowOf = (key, variant) => (variant ? b.variants.find((x) => x.name === variant)?.rows : b.rows)?.find((r) => r.key === key);
   const offs = [on(view, 'click', '[data-act]', (e, t) => {
     const a = t.dataset.act;
     const { key = '', variant = '' } = t.dataset;
@@ -753,6 +692,7 @@ export async function mount(view, [rawId]) {
     if (a === 'fold') { mem.step = null; draw(); return; }
     if (a === 'tab') { mem.tabs.set(mem.step, t.dataset.file); paintPanel(); return; }
     if (a === 'mark') { act(t, () => post(url('/mark'), { step: t.dataset.step, on: step(t.dataset.step).state !== 'done' })); return; }
+    if (a === 'to-cover') { location.hash = `#/cover/${encodeURIComponent(id)}`; return; }
     if (a === 'to-mockups') { remember('mk-for-book', { id }); location.hash = '#/mockups'; return; }
     if (a === 'to-slides') { location.hash = `#/slides/${encodeURIComponent(id)}/1`; return; }
     if (a === 'photo-cat') { mem.photoCat = t.dataset.cat; paintPanel(); return; }
@@ -791,7 +731,6 @@ export async function mount(view, [rawId]) {
     if (a === 'adopt') { adopt(t); return; }
     if (a === 'upscale-all') { act(t, () => post(url('/upscale/start'), { keys: JSON.parse(t.dataset.keys || '[]') }), (r) => `У черзі: ${r.queue.length + (r.current ? 1 : 0)}`); return; }
     if (a === 'upscale-row') { act(t, () => post(url('/upscale/start'), { key }), 'У черзі на апскейл'); return; }
-    if (a === 'no-margins') { act(t, () => post(url('/no-margins'), {}), (r) => r.note); return; }
     if (a === 'pick') { pickFor = { key, variant }; $('#ws-file').click(); return; }
     if (a === 'zoom') { zoom(`${key}:${t.dataset.part || 0}`); return; }
     if (a === 'zoom-one') {
@@ -807,8 +746,7 @@ export async function mount(view, [rawId]) {
     }
     if (a === 'whole-prompt') { if (mem.open.has(key)) mem.open.delete(key); else mem.open.add(key); paintRows(); return; }
     if (a === 'variant') { mem.variant = variant; paintRows(); return; }
-    if (a === 'cover-stage') { mem.cover = Number(t.dataset.stage); paintRows(); return; }
-    if (a === 'guides') { mem.guides = !mem.guides; paintRows(); }
+
   }), on(view, 'click', '[data-gen]', (e, t) => genAction(t, t.dataset.gen))];
 
   $('#ws-file').addEventListener('change', (e) => {

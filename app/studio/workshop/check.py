@@ -198,8 +198,18 @@ def _is_abc_prompt_set(name):
     return name.startswith("abc-prompts-json")
 
 
-def _expected_aspect(name):
+# Agent 6's two square prompts for «Два квадрати» (the Workshop's cover mode, 2026-10-24) — 1:1, not the 2:1 contract.
+SQUARE_COVER_IDS = ("title-square", "quiet-square")
+
+
+def _is_square_cover(prompt):
+    return str(prompt.get("id", "")) in SQUARE_COVER_IDS
+
+
+def _expected_aspect(name, prompt=None):
     if _is_endpage_prompt_set(name) or _is_abc_prompt_set(name):
+        return "1:1"
+    if prompt is not None and _is_wraparound_prompt_set(name) and _is_square_cover(prompt):
         return "1:1"
     return "2:1"
 
@@ -397,14 +407,14 @@ def rule_json_aspect(ctx):
     for name, prompts in ctx.prompt_sets:
         if not prompts:
             continue
-        expected = _expected_aspect(name)
-        bad = [i + 1 for i, p in enumerate(prompts)
-               if str(p.get("aspect_ratio", "")).strip() != expected]
+        bad = [(i + 1, _expected_aspect(name, p)) for i, p in enumerate(prompts)
+               if str(p.get("aspect_ratio", "")).strip() != _expected_aspect(name, p)]
         if bad:
-            out.append(("FAIL", "%s: missing aspect_ratio '%s' at #%s" %
-                        (name, expected, ", ".join(map(str, bad)))))
+            for expected in sorted({e for _, e in bad}):
+                out.append(("FAIL", "%s: missing aspect_ratio '%s' at #%s" %
+                            (name, expected, ", ".join(str(i) for i, e in bad if e == expected))))
         else:
-            out.append(("PASS", "%s: every prompt declares %s" % (name, expected)))
+            out.append(("PASS", "%s: every prompt declares %s" % (name, " / ".join(sorted({_expected_aspect(name, p) for p in prompts})))))
     return out
 
 
@@ -538,6 +548,8 @@ def rule_wraparound_image_contract(ctx):
             continue
         findings = []
         for i, p in enumerate(prompts):
+            if _is_square_cover(p):
+                continue  # «Два квадрати»: a square, its own composition
             blob = _prompt_blob(p).lower()
             if "2:1" not in blob:
                 findings.append("%s prompt #%d does not describe a 2:1 image" % (name, i + 1))

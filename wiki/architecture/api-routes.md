@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-19
+updated: 2026-10-25
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -135,7 +135,10 @@ The books in development (the Workshop) — the book pipeline's folders ([featur
 | POST | `/api/workshop/books/([^/]+)/remove` | token | `_remove` | workshop-book.js (`{key, variant}` — into `.replaced/`) |
 | POST | `/api/workshop/books/([^/]+)/restore` | token | `_restore` | workshop-book.js «Скасувати» after «Прибрати» (`{undo}` as `/remove` handed it out) |
 | POST | `/api/workshop/books/([^/]+)/no-margins` | token | `_no_margins` | workshop-book.js «Без полів» |
+| POST | `/api/workshop/books/([^/]+)/cover-squares` | token | `_cover_squares` | cover.js «Два квадрати»: the soft edge, a side's guide, the front's reference |
+| POST | `/api/workshop/books/([^/]+)/cover-mode` | token | `_cover_mode` | cover.js the «Два квадрати · 2:1» switch |
 | POST | `/api/workshop/books/([^/]+)/copy-picture` | token | `_copy_picture` | workshop-book.js «Копіювати картинку» (`{key}`) |
+| POST | `/api/workshop/books/([^/]+)/copy-reference` | token | `_copy_reference` | workshop-book.js «Референс у буфер» on the cover row (`{key}`: `cover-front`, `cover-back`, `cover`) |
 | POST | `/api/workshop/books/([^/]+)/copy-hero` | token | `_copy_hero` | workshop-book.js «Героя в буфер» (`{variant}`) |
 | POST | `/api/workshop/books/([^/]+)/upscale` | token | `_upscale_on` | workshop-book.js the switch «Апскейл ×2» (`{on}` — the whole book; on by default, off drops its queue) |
 | POST | `/api/workshop/books/([^/]+)/upscale/start` | token | `_upscale_start` | workshop-book.js «Апскейлити решту» / «Перерізати з великих оригіналів» (`{keys}` — the tab's rows; `{}` — all), a picture's ✦ «Апскейлити ще раз» (`{key}`) |

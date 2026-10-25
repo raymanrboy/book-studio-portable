@@ -112,11 +112,12 @@ Before saying GO, you must run `python check_book.py "books/[number].[slug]"`.
 If Tier H prompts refer to `canonical.png`, and the file is missing, the validator will FAIL — this is not a GO.
 
 ## Step 10 — Cover (at the very end)
-> Are you ready to create the cover?
-> Please select the **best, most beautiful frame** out of all the spreads we just generated and send it to me. I will use it as the visual foundation to create a premium wraparound cover prompt (2:1, front=right, back=left, continuous).
+> Готові робити обкладинку? Яку: **2:1** (одна широка картинка) чи **два квадрати** (лицьова з назвою + задня)?
+> І надішліть, будь ласка, **найкращий кадр** із розворотів — він буде основою для героїв і стилю.
 
-→ Internally: `agents/6-wraparound-image-director` → `cover-prompts-json.md`, then rerun the book check;
-the cover prompt appears in the Workshop's cover row.
+→ Wait for both answers — never pick the mode. Internally: `agents/6-wraparound-image-director` (2:1 — one wide
+prompt; два квадрати — its «Mode B»: `title-square` + `quiet-square`) → `cover-prompts-json.md`, then rerun the
+book check; the prompt(s) appear in the Workshop's cover row, in the matching mode.
 
 ## Helper tools
 - **Book check:** `python check_book.py "books/[number].[slug]"` — deterministic pre-flight checks (the old validator's rules);

@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-10-18
+updated: 2026-10-25
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -118,6 +118,15 @@ then the [upscaling](#upscaling):
   `template_layout()`) with white all round → `cover-expanded.png`; ② **Поля**: that picture and the **outpaint prompt**
   (`outpaint_prompt()`), the template's lines as a toggle; the result → `pictures/Cover.png`, exactly 5370×2850 px,
   300 dpi (`fit_template()`). «Без полів» takes the picture as it is.
+- **The cover lives in its own tool now** (2026-10-25, [cover](cover.md)): the card under the rows moved there; the
+  strip's step «Обкладинка» shows what the book has and leads to the tool. Its «Два квадрати» way makes Cover.png of two
+  squares by itself (no outpaint); the 2:1 way is the two stages above.
+- **«Референс у буфер»** (the owner, 24.10.2026) — a picture icon left of a cover «Генерувати» (each square, and the 2:1
+  row's head): the picture the cover prompt names as its `reference_image` (Agent 6's `agent/ref_cover_….jpg`) goes into
+  the clipboard as an image, so he pastes it into Gemini without looking for it in the folder. Shown only when the prompt
+  names a picture lying right in `agent/` (`rows.reference_file()` → `cover.refs`; «Image 1» or a path out of the folder
+  give nothing); route `copy-reference`.
+  Which way a book's cover is made — [cover](cover.md#two-ways--the-switch-in-the-pages-head).
 - **The hero**: `agent/canonical.png` (a variant's `hero.png`).
 - A dropped picture is copied; **a caught download is moved** into `originals/`, named by its row. A picture byte for
   byte the row's original replaces nothing — its pages are only cut again (`_same_as_original()`).
@@ -192,18 +201,18 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 ## Where in the code
 
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `AREAS`, `ETSY`, `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `mockups_state()`, `MOCKUPS`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `delete_book()`, `to_library()`, `update_state()`
-- [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
-- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `restore()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`, `_same_as_original()`
-- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session` (`start_photo()`, `_open()`), `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`
+- [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `SQUARES`, `SQUARE_KEYS`, `SQUARE_IDS`, `squares_layout()`, `squares_guides()`, `cover_mode()`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
+- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `set_cover_mode()`, `skip_margins()`, `flip()`, `remove()`, `restore()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`, `_same_as_original()`
+- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session` (`start_photo()`, `_open()`), `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`, `squares_next()`
 - [app/studio/workshop/upscale.py](../../app/studio/workshop/upscale.py) — `MODEL`, `SCALE`, `KEYS`, `BIG`, `sides()`, `side()`, `slots()`, `split()`, `engine()`, `upscale_row()`, `todo()`, `Upscaler`, `status()`, `after_place()`, `set_on()`, `start()`, `forget()`, `_size()`
-- [app/studio/workshop/check.py](../../app/studio/workshop/check.py) — `run()`, `RULES`, `main()`
+- [app/studio/workshop/check.py](../../app/studio/workshop/check.py) — `run()`, `RULES`, `main()`, `SQUARE_COVER_IDS`
 - [app/studio/workshop/routes.py](../../app/studio/workshop/routes.py) — the routes ([api-routes](../architecture/api-routes.md))
 - [app/studio/clipboard.py](../../app/studio/clipboard.py) — `set_text()`, `set_image()`, `Hotkey`, `PasteWatch`, `BROWSERS`, `PASTE_SETTLE`, `sandbox_file()`
 - [app/studio/desktop.py](../../app/studio/desktop.py) — `save_file()`, `to_recycle_bin()`, `attention()`, `file_holders()`
 - [app/studio/library.py](../../app/studio/library.py) — `create_book()`, `listing_of()`, `follow()`, `keep_pages()`, `take_listing_image()`, `PAGES_FROM_WORKSHOP`
 - [app/web/js/pages/workshop.js](../../app/web/js/pages/workshop.js) — `mount()` (`embedded` in «Книги»), `SORTS`
 - [app/web/js/workshop-bits.js](../../app/web/js/workshop-bits.js) — `picture()`, `checkWord()`, `STATE_WORDS`, `STATE_TEXT`, `ERRORS`
-- [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`, `photosBody()`
+- [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `mount()`, `WHO`, `photosBody()`, `coverBody()`
 - [app/web/js/pages/workshop-rows.js](../../app/web/js/pages/workshop-rows.js) — `rowTemplates()` (a row: its prompt, its frame, its text), `waitChip()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `startPhoto()`, `genAction()`, `genBar()`, `paintGenBar()`, `waitingFor()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `patch()`
