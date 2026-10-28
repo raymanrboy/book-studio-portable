@@ -198,7 +198,8 @@ def _is_abc_prompt_set(name):
     return name.startswith("abc-prompts-json")
 
 
-# Agent 6's two square prompts for «Два квадрати» (the Workshop's cover mode, 2026-10-24) — 1:1, not the 2:1 contract.
+# Agent 6's two square prompts of «Два квадрати» (2026-10-24…27, taken out) — books written then keep them: 1:1, not
+# the 2:1 contract (the Workshop's cover row ignores them).
 SQUARE_COVER_IDS = ("title-square", "quiet-square")
 
 

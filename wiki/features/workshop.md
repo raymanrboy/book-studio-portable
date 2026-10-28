@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-10-25
+updated: 2026-10-27
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -87,7 +87,7 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
   hand); **Фото** — every photo mockup category (the Omni video too), or by hand; **Бібліотека** — when passed on (unticks if that library book
   went to the trash).
 - **The step's panel** (a click or ← →; × folds): the step's file (text, a picture, tabs, the agent who writes a
-  missing one, «Відкрити файл у Windows»); Герой — generate, «Героя в буфер», «Обрати файл»; Промпти — the **book
+  missing one, «Відкрити файл у Windows»); Герой — generate, «Героя в буфер», «Обрати файл», and `canonical.png` drawn small like a variant's hero (a 180 px 3:4 thumbnail with the buttons and `canonical-prompt.md` beside it; a click opens it big — the owner, 27.10.2026); Промпти — the **book
   check** (GO / errors / warnings, `check.py`); Картинки — the 16 rows small; Canva — «Зроблено»; **Мокапи** — what the
   book holds, «Зробити / Редагувати мокапи», «Редагувати слайди», the folders (`mockupsBody()`, `mockups_state()`);
   **Фото** — the [photo mockups](photo-mockups.md) (`photosBody()`); Бібліотека — what's missing, «Передати».
@@ -119,13 +119,13 @@ then the [upscaling](#upscaling):
   (`outpaint_prompt()`), the template's lines as a toggle; the result → `pictures/Cover.png`, exactly 5370×2850 px,
   300 dpi (`fit_template()`). «Без полів» takes the picture as it is.
 - **The cover lives in its own tool now** (2026-10-25, [cover](cover.md)): the card under the rows moved there; the
-  strip's step «Обкладинка» shows what the book has and leads to the tool. Its «Два квадрати» way makes Cover.png of two
-  squares by itself (no outpaint); the 2:1 way is the two stages above.
-- **«Референс у буфер»** (the owner, 24.10.2026) — a picture icon left of a cover «Генерувати» (each square, and the 2:1
-  row's head): the picture the cover prompt names as its `reference_image` (Agent 6's `agent/ref_cover_….jpg`) goes into
-  the clipboard as an image, so he pastes it into Gemini without looking for it in the folder. Shown only when the prompt
-  names a picture lying right in `agent/` (`rows.reference_file()` → `cover.refs`; «Image 1» or a path out of the folder
-  give nothing); route `copy-reference`.
+  strip's step «Обкладинка» shows what the book has and leads to the tool — the two stages above; since 2026-10-27 the
+  picture's «Генерувати» pastes the reference and a layout guide before the prompt («Два квадрати» of 2026-10-24…27
+  taken out).
+- **«Референс у буфер»** (the owner, 24.10.2026): the picture the cover prompt names as its `reference_image` (Agent 6's
+  `agent/ref_cover_….jpg`) — only when the prompt names a picture lying right in `agent/` (`rows.reference_file()` →
+  `cover.refs`; «Image 1» or a path out of the folder give nothing); route `copy-reference`. The cover tool now pastes it
+  itself, first, with «Генерувати» (its reference chip).
   Which way a book's cover is made — [cover](cover.md#two-ways--the-switch-in-the-pages-head).
 - **The hero**: `agent/canonical.png` (a variant's `hero.png`).
 - A dropped picture is copied; **a caught download is moved** into `originals/`, named by its row. A picture byte for
@@ -201,9 +201,9 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 ## Where in the code
 
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `AREAS`, `ETSY`, `books_dir()`, `book_path()`, `book_ids()`, `STEPS`, `MANUAL`, `ROWS`, `steps()`, `summary()`, `detail()`, `all_books()`, `library_book()`, `set_mark()`, `versions()`, `signature()`, `display_name()`, `mockups_state()`, `MOCKUPS`, `media_file()`, `agent_text()`, `open_in_windows()`, `agent_words()`, `open_agent()`, `delete_book()`, `to_library()`, `update_state()`
-- [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `SQUARES`, `SQUARE_KEYS`, `SQUARE_IDS`, `squares_layout()`, `squares_guides()`, `cover_mode()`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
-- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `set_cover_mode()`, `skip_margins()`, `flip()`, `remove()`, `restore()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`, `_same_as_original()`
-- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session` (`start_photo()`, `_open()`), `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`, `squares_next()`
+- [app/studio/workshop/rows.py](../../app/studio/workshop/rows.py) — `row_list()`, `MIRRORED`, `text_sections()`, `book_texts()`, `prompt_objects()`, `as_prompt()`, `book_rows()`, `cover_state()`, `outpaint_prompt()`, `TEMPLATE`, `SQUARES`, `OLD_SQUARE_IDS`, `squares_guides()`, `template_layout()`, `template_guides()`, `variants()`, `book_check()`, `original_stem()`
+- [app/studio/workshop/pictures.py](../../app/studio/workshop/pictures.py) — `WRITING`, `place()`, `left_behind()`, `adopt()`, `two_squares()`, `square()`, `OFF`, `build_expanded()`, `fit_template()`, `skip_margins()`, `flip()`, `remove()`, `restore()`, `spread_panorama()`, `picture_for_clipboard()`, `_retire()`, `_same_as_original()`
+- [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session` (`start_photo()`, `_open()`), `session()`, `downloads_folder()`, `SERIES_ORDER`, `_items()`, `_hero()`
 - [app/studio/workshop/upscale.py](../../app/studio/workshop/upscale.py) — `MODEL`, `SCALE`, `KEYS`, `BIG`, `sides()`, `side()`, `slots()`, `split()`, `engine()`, `upscale_row()`, `todo()`, `Upscaler`, `status()`, `after_place()`, `set_on()`, `start()`, `forget()`, `_size()`
 - [app/studio/workshop/check.py](../../app/studio/workshop/check.py) — `run()`, `RULES`, `main()`, `SQUARE_COVER_IDS`
 - [app/studio/workshop/routes.py](../../app/studio/workshop/routes.py) — the routes ([api-routes](../architecture/api-routes.md))

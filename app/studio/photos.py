@@ -28,12 +28,13 @@ from __future__ import annotations
 
 import hashlib
 import os
+import time
 import re
 import shutil
 import subprocess
 from pathlib import Path
 
-from . import aside, core, desktop, portable
+from . import aside, core, desktop, portable, scrub
 from .server import ApiError
 
 ETSY = "etsy"             # a Workshop book's folder of what goes into its Etsy listing: the slides and these photos
@@ -354,6 +355,7 @@ def state(book: Path) -> dict:
     is marked only for a category that has its result — a record left from a removed photo (or from the time the category
     was a photo, 07.10.2026) is no ✓."""
     from .workshop import books
+    _trim_quietly(book)
     refs = references(book)
     done = results(book)
     record = books.state(book).get("photos") or {}
@@ -374,6 +376,8 @@ def items(book_id: str | None, key: str, template: str) -> tuple[str, list[dict]
     if book_id:
         from .workshop import books
         book = books.book_path(book_id)
+        if c["ref"] == "canva-cover":
+            _trim_quietly(book)
         ref = references(book)[c["ref"]]
         if not ref:
             raise ApiError(REFS[c["ref"]]["missing"])
@@ -426,7 +430,13 @@ def tidy_etsy(book: Path) -> list[str]:
     """Every file of the program's in the book's etsy/ gets its number («01 photo-main.png» …); the owner's own files
     are left as they are. With an open-book photo there, Cover & Open 1's copy goes (to .replaced/ — the mockup itself
     is in mockups/). Two of one kind (a slide baked anew beside a numbered one): the newer keeps the place, the older
-    goes to .replaced/. Returns the new names."""
+    goes to .replaced/. Every picture there is cleaned of its metadata first (scrub). Returns the new names."""
+    with scrub.LOCK:
+        scrub.folder(book / ETSY)
+        return _tidy_etsy(book)
+
+
+def _tidy_etsy(book: Path) -> list[str]:
     from .workshop.pictures import _retire
     folder = book / ETSY
     open_book = _has_open_book(folder)
@@ -503,7 +513,8 @@ def trim(source: Path, target: Path, seconds: float = TRIM_SECONDS) -> None:
     part = target.with_name(target.stem + ".part.mp4")
     command = [ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-ss", str(seconds), "-i", str(source),
                "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-preset", "medium", "-crf", "16",
-               "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(part)]
+               "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", *scrub.VIDEO_CLEAN, "-movflags", "+faststart",
+               str(part)]   # no metadata in what goes to Etsy (scrub)
     try:
         run = subprocess.run(command, capture_output=True, timeout=600,
                              creationflags=desktop.CREATE_NO_WINDOW)
@@ -599,12 +610,121 @@ def scenes_to_etsy(book: Path) -> list[str]:
 
 
 def set_canva_cover(book: Path, source: Path, name: str) -> dict:
-    """The flat cover from the Canva ZIP into the book's mockups/ as canva-cover.* (the grandmother's reference);
-    the one before goes to .replaced/."""
+    """The flat cover from the Canva ZIP into the book's mockups/ as canva-cover.* (the grandmother's reference),
+    cut to the finished cover when it is a hardcover's file with its wrap (`trim_box()`); the one before goes to
+    .replaced/. The cut picture is written first, so a failed write leaves the cover that was there."""
     from .workshop.pictures import open_picture
-    open_picture(source, name)
+    im = open_picture(source, name)
     folder = book / MOCKUPS
     folder.mkdir(exist_ok=True)
-    _retire_all(book, folder, CANVA_COVER)
-    shutil.copyfile(source, folder / f"{CANVA_COVER}{_suffix(name)}")
+    target = folder / f"{CANVA_COVER}{_suffix(name)}"
+    part = _part_of(target)
+    try:
+        if trim_box(im.size):
+            _save_trimmed(im, part)
+        else:
+            shutil.copyfile(source, part)
+        _retire_all(book, folder, CANVA_COVER)
+        core.replace_file(part, target)
+    finally:
+        part.unlink(missing_ok=True)
     return {"key": CANVA_COVER, "label": REFS["canva-cover"]["label"], "note": "Обкладинка з Canva на місці"}
+
+
+# The grandmother's reference is the book as it is seen (the owner, 27.10.2026: with the wrap the generator draws a
+# wrong book): a hardcover's cover file is cut to its finished size — back, spine, front, without what folds round the
+# boards. Told by its proportions: Gelato's 458×246 mm with 20 mm all round, the Printify template before it 17.90×9.50″
+# with the finished 16.40×8.00″ in its middle. A 2:1 cover has no wrap and stays whole.
+def _trims() -> list[tuple[float, tuple[float, float, float, float]]]:
+    from .workshop.rows import SQUARES, TEMPLATE
+    (gw, gh), wrap = SQUARES["mm"], SQUARES["wrap"]
+    (pw, ph), (tw, th) = TEMPLATE["full"], TEMPLATE["trim"]
+    return [(gw / gh, (wrap / gw, wrap / gh, (gw - 2 * wrap) / gw, (gh - 2 * wrap) / gh)),
+            (pw / ph, ((pw - tw) / 2 / pw, (ph - th) / 2 / ph, tw / pw, th / ph))]
+
+
+def trim_box(size: tuple[int, int]) -> tuple[int, int, int, int] | None:
+    """The finished cover inside a cover file with its wrap, in its pixels (left, top, right, bottom); None — no wrap."""
+    w, h = size
+    for aspect, (x, y, bw, bh) in _trims():
+        if h and abs(w / h - aspect) / aspect < 0.004:
+            return round(x * w), round(y * h), round((x + bw) * w), round((y + bh) * h)
+    return None
+
+
+def _part_of(target: Path) -> Path:
+    """Where a cover is written before it takes its place — a name the references never take for the cover."""
+    return target.with_name(f".{target.stem}.part{target.suffix}")
+
+
+def _save_trimmed(im, target: Path) -> None:
+    box = trim_box(im.size)
+    if not box:
+        raise ValueError("no wrap to cut")      # never an uncut copy written as if cut
+    part = im.crop(box)
+    extra = {k: v for k, v in (("dpi", im.info.get("dpi")), ("icc_profile", im.info.get("icc_profile"))) if v}
+    fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".webp": "WEBP"}.get(target.suffix.lower(), "PNG")
+    if fmt == "JPEG":
+        part.convert("RGB").save(target, "JPEG", quality=95, subsampling=0, **extra)
+    elif fmt == "WEBP":
+        part.save(target, "WEBP", quality=95, **extra)
+    else:
+        part.save(target, "PNG", **extra)
+
+
+def _trim_quietly(book: Path) -> None:
+    try:
+        trim_kept_cover(book)
+    except Exception:          # never in the way of the page: cut the next time
+        core.log.warning("Photos: the Canva cover of %s not cut", book.name, exc_info=True)
+
+
+def trim_kept_cover(book: Path) -> bool:
+    """A Canva cover kept before 27.10.2026 with its wrap: cut to the finished cover now, the whole one to .replaced/.
+    On the book page's way (every open), so it never waits: the cut is written beside first, the whole one moved once
+    — held by another program, it stays as it is until the next time."""
+    from PIL import Image
+    from .workshop.pictures import WRITING, open_picture
+    name = references(book).get("canva-cover")
+    if not name:
+        return False
+    path = book / MOCKUPS / name
+    try:
+        with Image.open(path) as im:
+            if not trim_box(im.size) and not trim_box(im.size[::-1]):    # cheap: the header only
+                return False
+        im = open_picture(path, name)
+    except Exception:
+        core.log.warning("Photos: the Canva cover of %s not read", book.name, exc_info=True)
+        return False
+    if not trim_box(im.size):       # as it is seen (turned by its EXIF)
+        return False
+    if not WRITING.acquire(blocking=False):
+        return False                # the book is being written to: the next time
+    part = _part_of(path)
+    try:
+        with Image.open(path) as now:
+            if not trim_box(now.size) and not trim_box(now.size[::-1]):
+                return False        # another request cut it a moment ago
+        _save_trimmed(im, part)
+        keep = book / ".replaced"
+        keep.mkdir(exist_ok=True)
+        stamp, n = time.strftime("%Y%m%d-%H%M%S"), 1
+        dest = keep / f"{stamp}-{MOCKUPS}__{name}"
+        while dest.exists():
+            n += 1
+            dest = keep / f"{stamp}.{n}-{MOCKUPS}__{name}"
+        try:
+            os.replace(path, dest)  # once: a held file is left for the next time
+        except PermissionError:
+            return False
+        try:
+            os.replace(part, path)
+        except OSError:
+            os.replace(dest, path)  # the whole one back: never a book without its cover
+            raise
+    finally:
+        part.unlink(missing_ok=True)
+        WRITING.release()
+    core.log.info("Photos: the Canva cover of %s cut to the finished cover", book.name)
+    return True

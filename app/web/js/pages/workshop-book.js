@@ -168,12 +168,11 @@ export async function mount(view, [rawId]) {
   // «Обкладинка» (2026-10-25): a step of its own, made in its tool (#/cover/<book>) — here what the book has and the way there.
   function coverBody(s) {
     const c = b.cover;
-    const how = c.mode === 'squares' ? 'два квадрати' : '2:1';
     const shot = c.final ? html`<div class="ws-shot"><img data-fade alt="Обкладинка" src="${pic('pictures', c.final, 1400)}" data-act="zoom-one" data-area="pictures" data-name="${c.final}"></div>` : '';
     const note = c.final ? html`Обкладинка є: <span class="mono">${c.final}</span>${c.finalSquares ? ' · з двох квадратів, Gelato 458×246 мм' : ''}.`
-      : c.front || c.back || c.art ? `Обкладинку почато (${how}).` : `Обкладинки ще немає. Спосіб — ${how}.`;
+      : c.art ? 'Картинка 2:1 є — далі поля (аутпейнт).' : 'Обкладинки ще немає: картинка 2:1, потім поля.';
     return html`<div class="ws-manual"><div>${note}</div>
-      <div class="row-wrap"><button class="btn ${c.final ? '' : 'btn-primary'}" data-act="to-cover">${ic('coverSquares')}${c.final ? 'Відкрити обкладинку' : 'Зробити обкладинку'}</button>
+      <div class="row-wrap"><button class="btn ${c.final ? '' : 'btn-primary'}" data-act="to-cover">${ic('coverWide')}${c.final ? 'Відкрити обкладинку' : 'Зробити обкладинку'}</button>
       ${c.final ? html`<button class="btn" data-act="open" data-what="pictures">${ic('folderOpen')}Відкрити папку сторінок</button>` : ''}</div></div>${shot}`;
   }
 
@@ -285,6 +284,16 @@ export async function mount(view, [rawId]) {
     if (!file) return html`${hero}<div class="ws-missing">${WHO[s.key] || ''}</div>`;
     if (!file.exists) return html`${hero}<div class="ws-missing"><div>Ще немає: <span class="mono">${file.name}</span></div><div>${WHO[s.key] || ''}</div></div>`;
     if (file.kind === 'check') return checkBody(b.check);
+    // The book's own hero is drawn like a variant's hero (the owner, 27.10.2026: "not a huge field — small and neat, like the
+    // variants"): a 3:4 thumbnail, its buttons and its prompt beside it; a click on it opens it big.
+    if (file.kind === 'image' && s.key === 'hero') {
+      return html`<div class="ws-vhero">
+        <div class="ws-drop ws-hero-shot" data-drop="hero" data-variant=""><div class="ws-art"><img data-fade alt="${file.name}" src="${pic(file.area, file.name, 600)}" data-act="zoom-one" data-area="${file.area}" data-name="${file.name}"></div></div>
+        <div class="ws-hero-side">${hero}
+          <div class="ws-block ws-prompt"><div class="ws-block-head"><span class="eyebrow">Промпт героя (canonical-prompt.md)</span></div>
+            ${b.heroPrompt ? html`<pre class="ws-body ws-mono clamp">${b.heroPrompt}</pre>` : html`<div class="ws-body empty-text">canonical-prompt.md ще немає — його напише агент.</div>`}</div></div>
+      </div>`;
+    }
     if (file.kind === 'image') {
       return html`${hero}<div class="ws-shot"><img data-fade alt="${file.name}" src="${pic(file.area, file.name, 1400)}" data-act="zoom-one" data-area="${file.area}" data-name="${file.name}"></div>`;
     }
@@ -572,10 +581,7 @@ export async function mount(view, [rawId]) {
     const c = b.cover;
     const text = b.rows.find((r) => r.key === 'cover')?.text || '';
     if (c.final) push('cover:0', 'pictures', c.final, 'Обкладинка', c.skipped ? 'без полів' : c.wrapMarks?.squares ? 'з двох квадратів, за шаблоном Gelato' : 'з полями, за шаблоном друкарні', text);
-    if (c.mode === 'squares') {
-      if (c.back) push('cover-back:0', 'originals', c.back, 'Обкладинка · задня', 'квадрат, як його зробив генератор', '');
-      if (c.front) push('cover-front:0', 'originals', c.front, 'Обкладинка · лицьова', 'квадрат, як його зробив генератор', text);
-    } else if (c.art) push('cover-art:0', 'originals', c.art, 'Обкладинка · картинка', 'як її зробив генератор', text);
+    if (c.art) push('cover-art:0', 'originals', c.art, 'Обкладинка · картинка', 'як її зробив генератор', text);
     return items;
   }
   function zoom(key) {
@@ -619,8 +625,7 @@ export async function mount(view, [rawId]) {
   async function removePicture(btn, key, variant) {
     const done = await act(btn, () => post(url('/remove'), { key, variant }));
     if (!done?.undo) return;
-    const what = key === 'cover' ? 'Обкладинку прибрано' : key === 'cover-wrap' ? 'Поля обкладинки прибрано'
-      : key === 'cover-front' ? 'Лицьову сторону прибрано' : key === 'cover-back' ? 'Задню сторону прибрано' : 'Картинку прибрано';
+    const what = key === 'cover' ? 'Обкладинку прибрано' : key === 'cover-wrap' ? 'Поля обкладинки прибрано' : 'Картинку прибрано';
     toast(what, 'success', 9000, {
       undo: { label: 'Скасувати', run: async () => { await post(url('/restore'), { undo: done.undo }); toast('Повернуто', 'success', 2000); refresh(); } },
     });

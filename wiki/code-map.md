@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-10-25
+updated: 2026-10-27
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -72,7 +72,7 @@ code:
 | [workshop/books.py](../app/studio/workshop/books.py) | [The Workshop](features/workshop.md): a book = a folder of the pipeline — the list, the path strip, marks, versions, the agent's words, delete, passing to the library | `all_books()`, `summary()`, `detail()`, `steps()`, `set_mark()`, `signature()`, `agent_words()`, `open_agent()`, `delete_book()`, `to_library()` |
 | [workshop/rows.py](../app/studio/workshop/rows.py) | The agents' files read into the book's rows; the cover's template and outpaint prompt; hero variants; the book check (GO) | `book_rows()`, `text_sections()`, `cover_state()`, `template_layout()`, `outpaint_prompt()`, `variants()`, `book_check()` |
 | [workshop/pictures.py](../app/studio/workshop/pictures.py) | A picture into its row: cut, flipped, two pages; the cover on the template; ⇄; nothing deleted | `place()`, `two_squares()`, `build_expanded()`, `fit_template()`, `flip()`, `remove()`, `spread_panorama()` |
-| [workshop/cover.py](../app/studio/workshop/cover.py) | [Cover](features/cover.md) «Два квадрати»: the book's choices (soft edge, guides, reference), what «Генерувати» pastes, the cover made of the two squares (no outpaint) | `settings()`, `set_settings()`, `items()`, `prompt_with_guide()`, `compose()`, `assemble()`, `GUIDES` |
+| [workshop/cover.py](../app/studio/workshop/cover.py) | [Cover](features/cover.md): the book's choices (the layout guide, the reference), what the 2:1 picture's «Генерувати» pastes — the reference, the guide, the prompt with its words | `settings()`, `set_settings()`, `items()`, `prompt_with_guide()`, `GUIDES` |
 | [workshop/generate.py](../app/studio/workshop/generate.py) | The generation mode: the clipboard, the Downloads watcher, F8 | `Session`, `session()`, `downloads_folder()` |
 | [workshop/upscale.py](../app/studio/workshop/upscale.py) | Upscaling a row's picture ×2 by the owner's Upscayl, in the background, then cut again | `upscale_row()`, `Upscaler`, `engine()`, `status()`, `after_place()`, `set_on()`, `start()` |
 | [workshop/check.py](../app/studio/workshop/check.py) | The book check: the old pipeline validator's rules (the agents run it too) | `run()`, `main()` |
@@ -88,6 +88,7 @@ code:
 | [creator/routes.py](../app/studio/creator/routes.py) | The routes; a print folder's pictures for the page and the viewer | `_status()`, `_create_printify()`, `_create_gelato()`, `_folder_media()`, `_folder_spread()` |
 | [orders.py](../app/studio/orders.py) | Order pipeline: printer, book, laying out pages | `plan_for()`, `page_options()`, `binding_of()`, `books_by_listing()`, `enrich()`, `arrange_pages()` |
 | [drops.py](../app/studio/drops.py) | Dragged-in files (saving, unpacking a ZIP, the book folder) and how a Canva export names its files — shared by the orders, the library and the mockups | `export_files()`, `page_number()`, `COVER_NAME`, `UPSCAYL_TAIL`, `extract_zip()`, `dropped_folder()`, `dropped_top()`, `clear_drops()`, `DROPS` |
+| [scrub.py](../app/studio/scrub.py) | [Photo mockups](features/photo-mockups.md): every new picture and video in a book's `etsy/` without its metadata (C2PA, XMP, EXIF, ICC, video tags …), the pixels kept | `folder()`, `soon()`, `picture()` |
 | [photos.py](../app/studio/photos.py) | [Photo mockups](features/photo-mockups.md): the templates by category (`app/data/photo-mockups`), the five JSON prompts, a book's references (`mockups/`) and photos (`etsy/`) | `CATEGORIES`, `REFS`, `PROMPTS`, `templates()`, `add_template()`, `references()`, `items()`, `place()`, `state()`, `set_canva_cover()` |
 | [modules.py](../app/studio/modules.py) | Optional modules (the text check, upscaling): installed on request from checked official files into `runtime/`, or from a ZIP; removed | `MODULES`, `installed()`, `listing()`, `download()`, `unpack()`, `start_install()`, `remove()` |
 | [portable.py](../app/studio/portable.py) | The portable copy's `runtime/`: where each program is, saved paths taken into it, `PATH`/`OLLAMA_MODELS` | `root()`, `runtime()`, `relocate()`, `antigravity_launch()`, `ffmpeg()`, `env()`, `check()`, `rebase_paths()`, `prerequisites()`, `install()` |
@@ -152,12 +153,12 @@ code:
 | [js/pages/workshop-book.js](../app/web/js/pages/workshop-book.js) | A Workshop book: the path strip and its panel (the cover's step leads to its tool), the rows, hero variants, «Передати в бібліотеку» | `mount()` |
 | [js/pages/workshop-rows.js](../app/web/js/pages/workshop-rows.js) | A Workshop book's rows drawn: a spread or a page with its prompt, its frame, its text; the parts the cover's card shares | `rowTemplates()`, `waitChip()` |
 | [js/workshop-live.js](../app/web/js/workshop-live.js) | The Workshop's live link: what changed, the generation mode's state and bar, the rail's dot and title | `watch()`, `refresh()`, `wake()`, `act()`, `startGen()`, `genBar()` |
-| [js/pages/cover.js](../app/web/js/pages/cover.js) | «Обкладинка» (`#/cover`, `#/cover/<book>`): which book; «Два квадрати» — the spread, the two squares with their guides and prompts; 2:1 — the old two stages | `mount()` |
+| [js/pages/cover.js](../app/web/js/pages/cover.js) | «Обкладинка» (`#/cover`, `#/cover/<book>`): which book; the 2:1 picture (its reference, its layout guide) and its margins | `mount()` |
 | [js/pages/photos.js](../app/web/js/pages/photos.js) | «Фотомокапи» (`#/photos`): the templates by category — a click puts the template, then the prompt into the clipboard; add, remove | `mount()` |
 | [js/pages/mockups.js](../app/web/js/pages/mockups.js) | Mockups: the dropped demo book, spreads, template slots, the run; kept when left | `mount()` |
 | [js/pages/mockups-run.js](../app/web/js/pages/mockups-run.js) | Mockups, step 3 drawn: the run and Photoshop's question, the result, «Ваша черга», the pictures saved after it | `runView()`, `resultCard()`, `turnCard()`, `finishedCard()` |
 | [js/pages/mockups-slides.js](../app/web/js/pages/mockups-slides.js) | Mockups, step 4 — the listing slides: «Без фону», «Зробити слайди», the six, the editor's door | `slidesStep()` |
-| [js/pages/mockups-edit.js](../app/web/js/pages/mockups-edit.js) | Mockups: the crop window — the front cover moved in its frame, the softcover scenes' background and edge colours, the mockup drawn again beside | `openEditor()` |
+| [js/pages/mockups-edit.js](../app/web/js/pages/mockups-edit.js) | Mockups: the crop window — the front cover moved in its frame (the back in its own where it shows), the softcover scenes' background and edge colours, the mockup drawn again beside | `openEditor()` |
 | [js/pages/slides-editor.js](../app/web/js/pages/slides-editor.js) | The listing slides' editor (loaded only when opened): layers, the slide with its handles, the grouped properties, live saving, an agent's change shown | `mount()`, `SPEC`, `NEW` |
 | [js/slides/engine.js](../app/web/js/slides/engine.js) | Draws a slide's scene (torn paper, stickers, fitted Comica, arrows, the cut-out books) — the editor, the bake | `drawScene()`, `drawElement()`, `boxOf()`, `setAssets()`, `ready()` |
 | [slides/render.html](../app/web/slides/render.html) | The page headless Edge bakes a slide from | — |
@@ -199,6 +200,7 @@ code:
 | [test_portable.py](../app/tests/test_portable.py) | The portable copy: programs found in `runtime/`, saved paths taken into it, the ordinary install unchanged |
 | [test_mockups.py](../app/tests/test_mockups.py) | Mockups: the demo book (its own folder, apart from an order's dropped files), the cuts, the run plan, following Photoshop, the Photoshop script run by Node.js against a pretend Photoshop |
 | [test_mockup_draw.py](../app/tests/test_mockup_draw.py) | Mockups drawn without Photoshop: the baked templates (linear, multiply, a new background), a template changed since, the colours from the cover, the front's crop, a drawn run and the crop window's routes |
+| [test_scrub.py](../app/tests/test_scrub.py) | The metadata out of `etsy/`'s pictures and videos: PNG, JPEG, WEBP, MP4, a rotation, a colour profile, a file cut short, the old files left, the folder's look |
 | [test_photos.py](../app/tests/test_photos.py) | Photo mockups: the templates, the five prompts, a book's clipboard order and the photo caught into `etsy/`, the step, without a book, the Canva cover kept |
 | [test_slides.py](../app/tests/test_slides.py) | Listing slides: the cut-out and `no-background/`, the background cutter, the template and a set (a stale save refused), «Зробити слайди» with a pretend browser, names, the command line |
 | [test_workshop.py](../app/tests/test_workshop.py) | The Workshop: a book by its title, never in the orders, prompts, one JSON (dry run, what's missing), the agent's instruction, passing a book to the library |

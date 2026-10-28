@@ -3,6 +3,50 @@
 Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened`
 (kind: `setup`, `ingest`, `update`, `query`, `lint`, `decision`). Rules — [dev/wiki-rules.md](dev/wiki-rules.md).
 
+## [2026-10-27] decision | The cover: back to 2:1 + outpaint, «Два квадрати» taken out, a layout guide for the 2:1 picture
+- The owner chose book 44's 2:1 test (the scene on the whole picture, the title painted, a big empty room for the name, a 2:1 guide attached). The tool «Обкладинка» keeps only 2:1: «Генерувати» pastes the reference, the guide (`wide-name-title` / `wide-title-name`, by the title), the prompt with the guide's words (`cover.items()`); route `cover-squares` → `cover-tool`, `cover-mode` gone; the squares' code (`compose()`, `assemble()`, `squares_next()`, `set_cover_mode()`, `cover_mode()`) and guides removed. Agent 6: one 2:1 prompt by the full-scene formula, no mode question; build-book, onboarding, workflow, pipeline/AGENTS updated. [Cover](features/cover.md), [decision](decisions.md). Tests in `CoverTool`.
+
+## [2026-10-27] update | The Canva cover for the photo mockups cut to the contour
+- The owner: the grandmother's reference without the hardcover's wrap. `set_canva_cover()` cuts a Gelato (458×246 mm, 20 mm off all round) or Printify (17.90×9.50″ → 16.40×8.00″) cover file to the finished cover; a cover kept with its wrap is cut once when the step opens (`trim_kept_cover()`, the whole one to `.replaced/`); a 2:1 cover stays whole. [Photo mockups](features/photo-mockups.md), [decision](decisions.md). Tests in `TheMockupsKeepTheCanvaCover`.
+
+## [2026-10-27] update | The crop window: All & Open 1 crops the back too
+- A second frame «Задня» over the back beside «Лицьова» (the same corners, one shade outside both); each side moved by itself, ↶ resets both, «Зберегти» keeps both (`crop.back`); the server cuts the back from its own window (`cover_pictures()`, `_window()`, `BACK_X`), without one — the left half as before. [Mockups](features/mockups.md), [decision](decisions.md). Tests in `TheFrontsCrop`, `DrawnRun`.
+
+## [2026-10-27] update | The cover tool's new guides, the defaults
+- Five guides of the full-scene formula in `web/img/cover-guides/` and `GUIDES`; the front's default by the title (`default_guides()`), only a picked guide saved (`"v": 2`). [cover](features/cover.md#the-guides). Tests in `TwoSquares`.
+
+## [2026-10-27] decision | The cover's squares: a full scene, a thin border, a big empty room for the name
+- Agent 6's «Mode B» takes book 44's test v3 as the target: the light-patch formula (A) or the open top (B), the name room as big as the title's main line, the reverse a full scene. [Decision](decisions.md).
+
+## [2026-10-27] decision | Girl archetypes G4 and G6 removed; the other numbers kept
+- The owner: G4 (olive / Mediterranean) and G6 (South Asian) are not used — deleted from `pipeline/playbook/knowledge/archetypes.md` (now 12: 5 girls, 7 boys; the coverage note updated). The numbers are not shifted, by his choice. [Decision](decisions.md).
+
+## [2026-10-27] update | Workshop: the book's own hero drawn small, like a variant's
+- The owner: the «Герой» panel showed `canonical.png` as a huge picture; he wants it small and neat like the variants' heroes. Now the panel's `canonical.png` tab is the variant layout: a 180 px 3:4 thumbnail (a click opens it big), the buttons and the hero prompt beside it (`.ws-hero-side`). Checked in the preview: light and dark, a narrow window. [Workshop](features/workshop.md).
+
+## [2026-10-27] update | Book 41: five hero variants of the girl from the owner's pictures
+- The owner made five looks of the girl himself (`D:\Roman\Desktop\output\imagegen\girl-variations-2026-10-27`) and asked for them as the book's character variants in the Workshop. Copied as `hero.png` into `agent/variants/` — `G1_blonde`, `G2_dark_haired`, `G3_east_asian`, `G5_black_curly`, `G7_redhead` (names after `playbook/knowledge/archetypes.md`) — each with `hero-prompt.md` (the edit prompt + his own generation prompt) and 14 swap prompts `2.json … 15.json` (Image 1 = the spread, Image 2 = hero.png; only hair, eyebrows, the bow and skin change). The Workshop reads all five (14 rows each); book check GO, 0 FAIL.
+
+## [2026-10-27] update | The description says the listing's photos are digital mockups
+
+- The owner: a quiet line, no heading, inside «📘 MADE TO ORDER WITH CARE» of the description template — the lifestyle
+  photos and videos are digital mockups made with digital tools; the book is personalized, laid out and prepared for
+  print by us. `/etsy-seo` puts it into every new description. [SEO](features/seo.md).
+
+## [2026-10-27] update | The pictures and videos of a book's etsy/ without their metadata
+
+- The owner: Etsy reads the photos' metadata now. `scrub.py` cuts every new PNG/JPEG/WEBP in `etsy/` down to the picture
+  (C2PA, XMP, EXIF, ICC, DPI, text, comments go; the pixels stay) and copies every new MP4/MOV without its tags — in
+  `tidy_etsy()` and in the background for files dropped in by hand (`detail()` → `scrub.soon()`); the trimmed video is
+  made clean. The files already there are left (`NEW_FROM`). [Photo mockups](features/photo-mockups.md) ·
+  [decisions](decisions.md) · code-map. Checked: tests (`test_scrub.py`), a dry run over the 240 real PNGs in `etsy/`
+  (137 had metadata, pixels identical after), copies of real Gemini and etsy/ videos (clean after, same length).
+
+## [2026-10-25] update | A book's tile shows only the face of a cover made of two squares
+
+The owner: the tile caught the hinge and the wrap. Now a cover made of the squares is cut at the hinge line in the tile
+(`summary()` → `thumb.face`, CSS `.book-cover img.face`); [cover](features/cover.md). A test in `TwoSquares`.
+
 ## [2026-10-25] update | «Обкладинка» — the cover's own tool; two squares made into the cover without the generator
 
 - A new tool in «Інструменти» (`#/cover/<book>`, cover.js): the Workshop's cover card moved there; the strip's step «Обкладинка» leads to it (`coverBody()`).

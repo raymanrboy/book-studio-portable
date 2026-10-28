@@ -20,6 +20,9 @@
 .book-cover { position: relative; aspect-ratio: 1 / 1; background-color: var(--surface-2); overflow: hidden; border-radius: var(--r-art); box-shadow: var(--art-shadow); }
 .book-cover img { width: 100%; height: 100%; object-fit: cover; }
 .book-cover img.front { object-position: 100% 50%; }
+/* a cover made of two squares (Gelato 458×246 mm): only the visible face — 240…438 mm across (from the hinge line),
+   a 198 mm square centred in 20…226 mm down, so no hinge, spine or wrap shows */
+.book-cover img.face { position: absolute; width: calc(100% * 458 / 198); height: calc(100% * 246 / 198); max-width: none; left: calc(-100% * 240 / 198); top: calc(-100% * 24 / 198); object-fit: fill; }
 .book-cover-ph { position: absolute; inset: 0; display: grid; place-items: center; background: var(--paper); }
 .book-cover-ph .serif { font-size: var(--fs-glyph); color: var(--text-4); }
 .book-badge { position: absolute; top: 8px; right: 8px; z-index: 2; width: 24px; height: 24px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--green); color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }

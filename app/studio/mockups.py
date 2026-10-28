@@ -221,30 +221,41 @@ def cover_pictures(path: Path, size: dict, crop: dict | None = None) -> dict[str
     the halves' scale (what the owner did by hand). `crop` places the front's window anywhere on the whole cover
     (the owner's touch in the crop window, 13.10.2026: "the whole picture's spare, as with Ctrl+T in Photoshop"):
     {"x", "y"} — its centre as shares of the whole cover, "zoom" — its scale against filling the half (1), never
-    smaller than the cover lets (the window stays inside the picture: no empty edges, never stretched)."""
+    smaller than the cover lets (the window stays inside the picture: no empty edges, never stretched). Its "back"
+    — the back's own window the same way (27.10.2026: since the two squares the back is a scene of its own, framed in
+    All & Open 1 as the front is); without it the back is the left half, as before."""
     with Image.open(path) as im:
         im = _rgb(im)
         w, h = im.size
-        bw, bh = size["board"]
-        scale = max(bw / (w / 2), bh / h)
+        scale = max(size["board"][0] / (w / 2), size["board"][1] / h)
+        back_crop = crop.get("back") if isinstance(crop, dict) else None
         if crop is None:
             front = _fill(im.crop((w - w // 2, 0, w, h)), size["board"], scale=scale)
         else:
-            x, y, zoom = _crop_values(crop, smallest=min_zoom((w, h), size["board"]))
-            cw, ch = min(bw / (scale * zoom), w), min(bh / (scale * zoom), h)
-            x0 = min(max(x * w - cw / 2, 0), w - cw)
-            y0 = min(max(y * h - ch / 2, 0), h - ch)
-            # cut to the window first: the resize never takes in what lies beyond it (the back, over the spine)
-            left, top = math.floor(x0), math.floor(y0)
-            part = im.crop((left, top, min(w, math.ceil(x0 + cw)), min(h, math.ceil(y0 + ch))))
-            front = part.resize(size["board"], Image.Resampling.LANCZOS,
-                                box=(x0 - left, y0 - top, x0 - left + cw, y0 - top + ch))
-        return {"back": _fill(im.crop((0, 0, w // 2, h)), size["board"], scale=scale), "front": front,
-                "spine": _fill(im, size["spine"], centre=(w / 2, h / 2), scale=scale)}
+            front = _window(im, size["board"], scale, _crop_values(crop, min_zoom((w, h), size["board"])))
+        if isinstance(back_crop, dict):
+            back = _window(im, size["board"], scale, _crop_values(back_crop, min_zoom((w, h), size["board"]), BACK_X))
+        else:
+            back = _fill(im.crop((0, 0, w // 2, h)), size["board"], scale=scale)
+        return {"back": back, "front": front, "spine": _fill(im, size["spine"], centre=(w / 2, h / 2), scale=scale)}
+
+
+def _window(im: Image.Image, board: tuple[int, int], scale: float, values: tuple[float, float, float]) -> Image.Image:
+    """One side's window on the whole cover — its centre (x, y) as shares of it, its zoom against filling a half."""
+    w, h = im.size
+    (bw, bh), (x, y, zoom) = board, values
+    cw, ch = min(bw / (scale * zoom), w), min(bh / (scale * zoom), h)
+    x0 = min(max(x * w - cw / 2, 0), w - cw)
+    y0 = min(max(y * h - ch / 2, 0), h - ch)
+    # cut to the window first: the resize never takes in what lies beyond it (the other side, over the spine)
+    left, top = math.floor(x0), math.floor(y0)
+    part = im.crop((left, top, min(w, math.ceil(x0 + cw)), min(h, math.ceil(y0 + ch))))
+    return part.resize(board, Image.Resampling.LANCZOS, box=(x0 - left, y0 - top, x0 - left + cw, y0 - top + ch))
 
 
 MAX_ZOOM = 3.0
 FRONT_X = 0.75       # the crop's centre by default: the middle of the right half — where the program puts the front
+BACK_X = 0.25        # the back's: the middle of the left half
 
 
 def min_zoom(cover: tuple[int, int], board: tuple[int, int]) -> float:
@@ -254,8 +265,9 @@ def min_zoom(cover: tuple[int, int], board: tuple[int, int]) -> float:
     return max(bw / (scale * w), bh / (scale * h))
 
 
-def _crop_values(crop, smallest: float = 1.0) -> tuple[float, float, float]:
-    """The front's crop as (x, y, zoom), each kept in its range; None or a wrong value — the program's own place."""
+def _crop_values(crop, smallest: float = 1.0, centre: float = FRONT_X) -> tuple[float, float, float]:
+    """A side's crop as (x, y, zoom), each kept in its range; None or a wrong value — the program's own place
+    (`centre` — that side's middle: the front's, or BACK_X)."""
     def num(v, default, lo, hi):
         try:
             v = float(v)
@@ -263,7 +275,7 @@ def _crop_values(crop, smallest: float = 1.0) -> tuple[float, float, float]:
             return default
         return min(hi, max(lo, v)) if v == v else default
     crop = crop if isinstance(crop, dict) else {}
-    return (num(crop.get("x"), FRONT_X, 0, 1), num(crop.get("y"), 0.5, 0, 1),
+    return (num(crop.get("x"), centre, 0, 1), num(crop.get("y"), 0.5, 0, 1),
             max(smallest, num(crop.get("zoom"), 1.0, min(smallest, 1.0), MAX_ZOOM)))
 
 
@@ -792,10 +804,14 @@ def _edit_state(req: Request):
     with Image.open(book["cover"]) as im:
         size = ImageOps.exif_transpose(im).size       # as cover_pictures() sees it
     smallest = min_zoom(size, t["size"]["board"])
-    x, y, zoom = _crop_values(edit["crops"].get(key), smallest)
+    saved = edit["crops"].get(key)
+    x, y, zoom = _crop_values(saved, smallest)
     out = {"key": key, "title": t["label"], "name": Path(edit["items"][key]["save"]).name, "book": book["id"],
            "cover": list(size), "board": list(t["size"]["board"]), "crop": {"x": x, "y": y, "zoom": zoom},
            "minZoom": smallest, "maxZoom": MAX_ZOOM, "scene": key in SCENES}
+    if "back" in mockup_render.slots(key):             # the back shows too (All & Open 1): its own window
+        bx, by, bzoom = _crop_values((saved or {}).get("back"), smallest, BACK_X)
+        out["back"] = {"x": bx, "y": by, "zoom": bzoom}
     if key in SCENES:
         cover = Path(book["cover"])
         out["colours"] = edit.get("colours") or {}
@@ -811,6 +827,8 @@ def _edit_preview(req: Request):
     run, edit, book = _edit(str(req.param("job") or ""))
     key = _edit_key(edit, str(req.param("key") or ""))
     crop = {"x": req.param("x"), "y": req.param("y"), "zoom": req.param("zoom")}
+    if req.param("bx") is not None:                    # the back's window, where the back shows
+        crop["back"] = {"x": req.param("bx"), "y": req.param("by"), "zoom": req.param("bzoom")}
     edit["colours"] = _edit_colours(edit, {k: req.param(k) for k in ("background", "front", "back")})
     im = _draw_one(edit, book, key, crop)
     side = req.int_param("w", PREVIEW_W, 200, 2400)
@@ -828,8 +846,10 @@ def _edit_save(req: Request):
     job_id = str(body.get("job") or "")
     run, edit, book = _edit(job_id)
     key = _edit_key(edit, str(body.get("key") or ""))
-    crop = body.get("crop") if isinstance(body.get("crop"), dict) else {}
-    crop = dict(zip(("x", "y", "zoom"), _crop_values(crop, smallest=0.0)))    # kept to the cover when drawn
+    sent = body.get("crop") if isinstance(body.get("crop"), dict) else {}
+    crop = dict(zip(("x", "y", "zoom"), _crop_values(sent, smallest=0.0)))    # kept to the cover when drawn
+    if isinstance(sent.get("back"), dict) and "back" in mockup_render.slots(key):
+        crop["back"] = dict(zip(("x", "y", "zoom"), _crop_values(sent["back"], 0.0, BACK_X)))
     colours = _edit_colours(edit, body)
     # The other scene too when it was drawn with other colours (one background for the book's two scenes) — read from
     # what each picture really has, so a save that failed halfway is made good by the next one.

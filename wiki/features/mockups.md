@@ -1,7 +1,7 @@
 ---
 title: Mockups — listing pictures from a demo book (a tool, and a Workshop book's step)
 type: feature
-updated: 2026-10-13
+updated: 2026-10-27
 code:
   - app/studio/mockups.py
   - app/studio/mockup_render.py
@@ -160,6 +160,11 @@ All & Open 1** carry the crop button «Поправити обкладинку»
   closer than ×3. ↶ — as the program put it. The crop is per template (the hardcover's board is not the softcover's square);
   the server cuts the picture to the window before resizing, so nothing beyond it bleeds in (`cover_pictures()`; a run
   without a crop keeps the right half exactly as before);
+- **All & Open 1 crops the back too** (27.10.2026 — since the two squares the back is a scene of its own): a second frame
+  over the left half, the same look and corners, each frame tagged «Задня» / «Лицьова» and moved by itself (a press beside
+  the frames moves the one of that half; the one last touched sits on top). Outside both the cover goes dark (one shade
+  with a hole per frame). ↶ puts both back; «Зберегти» keeps both (the back's inside the crop as `back`, sent only when moved from its place — left there, the back stays the left half). The other
+  templates show no back, so they have one frame; a picture without a back crop draws the left half exactly as before;
 - the window fits 1024×640 and up without scrolling (the preview's height kept to the screen: a square Cover 1 too);
 - right — the mockup as it will be, drawn by the server a moment after each change (nothing saved);
 - in the scenes also **«Фон»** — pastel shades of the cover's own leading hues (OKLCH, light and soft; the first is what a run
@@ -308,7 +313,7 @@ takes the demo book. Nothing goes to drive C (`core.own_temp()`, [runtime](../ar
 - [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
 - [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `arrived()`, `paintBack()`, `takeWorkshopBook()`, `existingNow()`, `loadExisting()`, `FOR_BOOK`, `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `ticked()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
 - [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — step 4, the listing slides: `slidesStep()` ([slides](slides.md))
-- [app/studio/mockups.py](../../app/studio/mockups.py) — drawn: `EDITABLE`, `CUT_ONLY`, `SCENES`, `FRONT_X`, `min_zoom()`, `drawn()`, `draw_plan()`, `draw()`, `_pictures_for()`, `_fills()`, `_draw_one()`, `_save_drawn()`, `_crop_values()`, `MAX_ZOOM`, `_edit()`, `_edit_state()`, `_edit_preview()`, `_edit_save()`
+- [app/studio/mockups.py](../../app/studio/mockups.py) — drawn: `EDITABLE`, `CUT_ONLY`, `SCENES`, `FRONT_X`, `BACK_X`, `min_zoom()`, `drawn()`, `draw_plan()`, `draw()`, `_pictures_for()`, `_fills()`, `_draw_one()`, `_save_drawn()`, `_window()`, `_crop_values()`, `MAX_ZOOM`, `_edit()`, `_edit_state()`, `_edit_preview()`, `_edit_save()`
 - [app/studio/mockup_render.py](../../app/studio/mockup_render.py) — `BAKED`, `stamp()`, `ready()`, `render()`, `slots()`, `fills()`, `forget()`, `_render_linear()`, `_render_multiply()`, `_recolour()`
 - [app/studio/mockup_colours.py](../../app/studio/mockup_colours.py) — `edges()`, `pastels()`, `hex_of()`, `rgb_of()`
 - [app/tools/mockup_bake/bake.py](../../app/tools/mockup_bake/bake.py) — `prepare()`, `build_linear()`, `build_multiply()`; [engine.py](../../app/tools/mockup_bake/engine.py) — `passes()`, `bake()`, `tune()`; [mult.py](../../app/tools/mockup_bake/mult.py) — `bake()`, `register()`; [bake.jsx](../../app/tools/mockup_bake/bake.jsx) — the Photoshop script; [install.py](../../app/tools/mockup_bake/install.py) — `read_fills()`, `main()`

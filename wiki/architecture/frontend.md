@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-25
+updated: 2026-10-27
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -307,7 +307,7 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 - [app/web/js/info.js](../../app/web/js/info.js) — `store`, `refreshInfo()`, `whenInfoChanges()`
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `markMissing()`, `attr()`, `typing()`, `galleryKeys()`, `replaceKeyed()`, `listingState()`, `html()`, `raw()`, `ib()`, `showTip()`, `api()`, `media()`, `upload()`, `runJob()`, `openExternal()`, `post()`, `tellBusy()`, `glide()`, `money()`, `modal()`, `confirmBox()`, `confirmChecked()`, `escBack()`, `notFound()`, `topLayer()`, `menu()`, `segHtml()`, `flip()`, `slide()`, `fadeImages()`, `patch()`, `enterOnce()`, `setProgress()`, `remembered()`, `remember()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `watch()`, `refresh()`, `wake()`, `genBar()`, `paintGenBar()`, `startPhoto()`
-- [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`, `coverWide`, `coverSquares` (the cover's two ways; `coverSquares` is also the «Обкладинка» tool's tile)
+- [app/web/js/icons.js](../../app/web/js/icons.js) — `icon()`, `coverWide` (the «Обкладинка» tool's tile and the book's step button)
 - [app/web/js/handoff.js](../../app/web/js/handoff.js) — `give()`, `take()`, `waiting()`
 - [app/web/js/keep.js](../../app/web/js/keep.js) — `stash()`, `unstash()`, `release()`, `isKept()`, `keptOrder()`, `settle()`, `markSent()`, `sentOf()`, `finish()`
 - [app/web/js/lightbox.js](../../app/web/js/lightbox.js) — `openLightbox()`, `TAU`, `MAX_ZOOM`

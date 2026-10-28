@@ -1,7 +1,7 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-10-13
+updated: 2026-10-27
 code:
   - app/tools/dev_server.py
   - app/tools/sample_data.py
@@ -78,7 +78,7 @@ code:
   flash or sound for the mockups** — the book field's button answers with `Goose demo.zip`, "where to save" with
   `sample-mockups\out`, `attention()` does nothing (only the mockups' own `desktop` is swapped: the rest of the
   program keeps its dialogs). Since 13.10.2026 **every made-up template counts as baked**: the run is drawn by
-  `pretend_render()` (the template's scene, its background tinted by a scene's colour, the pages or the front laid on it)
+  `pretend_render()` (the template's scene, its background tinted by a scene's colour, the pages or the front laid on it; in All & Open 1 the back and the front, so the back's crop shows)
   — the crop window works on it; the pretend Photoshop is there for a template that is not.
 - **The listing slides** (since 2026-09-29): the slides' cut-out gets a pretend template (`pretend_template()` — the
   book is where the pretend Photoshop lays the pages, a soft shadow down-right), so a run fills «Без фону», and

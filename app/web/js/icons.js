@@ -64,9 +64,8 @@ const P = {
   original: '<path d="M3 8.2V5.5A1.5 1.5 0 0 1 4.5 4h3.7M15.8 4h3.7A1.5 1.5 0 0 1 21 5.5v2.7M21 15.8v2.7a1.5 1.5 0 0 1-1.5 1.5h-3.7M8.2 20H4.5A1.5 1.5 0 0 1 3 18.5v-2.7"/><circle cx="9.2" cy="10" r="1.5"/><path d="M17.2 16l-4-4-5.4 5.4"/>',
   imageDown:'<path d="M20.5 13v5.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h5.5"/><path d="M3.5 17l4.5-4.5 3.5 3.5"/><path d="M17.5 3v7.5M14.5 7.5l3 3 3-3"/>',
   text: '<path d="M6 3.5h9l4 4v13H6z"/><path d="M14.5 3.5V8H19M9 12.5h7M9 16.5h7"/>',
-  // the cover row's two ways (2026-10-24): one wide picture · two squares with the spine between
+  // the cover: one wide picture, the spine dashed across its middle
   coverWide: '<rect x="2.5" y="6" width="19" height="12" rx="1.5"/><path d="M12 6v12" stroke-dasharray="1.5 2"/>',
-  coverSquares: '<rect x="2.5" y="7" width="8.5" height="10" rx="1.2"/><rect x="13" y="7" width="8.5" height="10" rx="1.2"/>',
   spread: '<path d="M12 6.5C9.5 5 6.5 4.5 3.5 5v13.5c3-.5 6 0 8.5 1.5 2.5-1.5 5.5-2 8.5-1.5V5c-3-.5-6 0-8.5 1.5z"/><path d="M12 6.5V20"/>',
 
   // ---- services (letter marks, one shape family)

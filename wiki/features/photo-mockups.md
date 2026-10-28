@@ -1,9 +1,10 @@
 ---
 title: Photo mockups — lifestyle photos with our book (the Workshop's «Фото» step and the «Фотомокапи» page)
 type: feature
-updated: 2026-10-09
+updated: 2026-10-27
 code:
   - app/studio/photos.py
+  - app/studio/scrub.py
   - app/web/js/pages/photos.js
 ---
 # Photo mockups (Фотомокапи)
@@ -81,7 +82,14 @@ does not show them — another name).
 
 **The Canva cover** is kept by the Mockups: a run for a Workshop book copies the demo book's cover (as Canva exported
 it) into the book's `mockups/canva-cover.*` (`mockups._keep_canva_cover()`); for a book whose mockups were made before,
-it can be dropped onto its frame in the step.
+it can be dropped onto its frame in the step. **Only the finished cover, without the wrap** (the owner, 27.10.2026:
+with the wrap the generator draws a wrong book): a hardcover's cover file is cut to what is inside the contour — back,
+spine, front — when it comes in (`trim_box()`, `_save_trimmed()`). It is told by its proportions: Gelato's 458×246 mm,
+cut 20 mm all round to 418×206 mm (4937×2434 px), or the Printify template's 17.90×9.50″, cut to 16.40×8.00″. A 2:1
+cover has no wrap and stays whole. A cover kept with its wrap before is cut the first time the step opens or its
+picture goes to the clipboard (`trim_kept_cover()`); the whole one goes to `.replaced/`. The cut is written beside
+first (`_part_of()`), so a failed write leaves the cover there; it is on the book page's way, so it never waits: a cover
+held by another program is moved once and otherwise left for the next time.
 
 ## The prompts
 
@@ -124,6 +132,17 @@ books made until then (25–37) were renamed the same way, the list of renames i
   in `mockups/`) and isn't copied again; the photo removed — it comes back.
 - Anything else there (an old `video-hands.mp4`, the owner's own files) keeps its name, so it sorts after the numbered ones; the
   owner's own numbered files are never renamed.
+- **No metadata in what goes into `etsy/`** (the owner, 27.10.2026: Etsy now reads it). C2PA (the generators' content
+  credentials — found in 104 of the 240 PNGs there that day), XMP, EXIF, ICC, DPI, text chunks, comments and whatever
+  trails after the picture go; the pixels stay — PNG, JPEG and WEBP are cut chunk by chunk, not encoded again (`scrub.py`).
+  Encoded again only when dropping the metadata would change the look: an EXIF rotation, a colour profile other than
+  sRGB, a CMYK / RGB-encoded JPEG. **Videos too**: MP4/MOV copied by ffmpeg without tags, dates, the encoder's name and
+  C2PA's box (not re-encoded); the video category's trim makes its video so at once (`trim()` → `scrub.VIDEO_CLEAN`).
+  Done in `tidy_etsy()` (after every write of the program's) and, for a file the owner drops in by hand, in the
+  background when the book's page looks (`detail()` → `scrub.soon()`, a file at least 3 s old).
+  **Only what comes in from 27.10.2026 07:30** (`NEW_FROM`, by the file's creation or modification time — a re-baked
+  slide is new): the files the books had before are left as they were (the owner). The copies in `mockups/`,
+  `originals/`, `.replaced/` keep theirs — only `etsy/` goes to Etsy.
 - Everything finds its file by the name without the number (`bare()`): the step's cards, the slides' re-bake
   (`slides.store._baked_file()`), the scenes' copy.
 
@@ -138,16 +157,17 @@ Tests — `app/tests/test_photos.py`.
 
 ## Where in the code
 
-- [app/studio/photos.py](../../app/studio/photos.py) — `ETSY_ORDER`, `ETSY_SCENES`, `tidy_etsy()`, `bare()`, `etsy_number()`, `SCENES`, `scenes_to_etsy()`, `CATEGORIES`, `PHOTOS`, `REFS`, `PROMPTS`, `OMNI_PROMPTS`, `prompt()`, `place_video()`, `trim()`, `ffmpeg()`, `TRIM_SECONDS`, `templates()`, `signature()`, `template_file()`, `add_template()`, `remove_template()`, `open_folder()`, `references()`, `results()`, `count()`, `state()`, `items()`, `place()`, `remove()`, `set_canva_cover()`, `ETSY`, `CANVA_COVER`
+- [app/studio/photos.py](../../app/studio/photos.py) — `ETSY_ORDER`, `ETSY_SCENES`, `tidy_etsy()`, `bare()`, `etsy_number()`, `SCENES`, `scenes_to_etsy()`, `CATEGORIES`, `PHOTOS`, `REFS`, `PROMPTS`, `OMNI_PROMPTS`, `prompt()`, `place_video()`, `trim()`, `ffmpeg()`, `TRIM_SECONDS`, `templates()`, `signature()`, `template_file()`, `add_template()`, `remove_template()`, `open_folder()`, `references()`, `results()`, `count()`, `state()`, `items()`, `place()`, `remove()`, `set_canva_cover()`, `trim_box()`, `_trims()`, `_part_of()`, `_save_trimmed()`, `trim_kept_cover()`, `_trim_quietly()`, `ETSY`, `CANVA_COVER`
+- [app/studio/scrub.py](../../app/studio/scrub.py) — `folder()`, `soon()`, `file()`, `picture()`, `_png()`, `_jpeg()`, `_webp()`, `_redraw()`, `video_dirty()`, `VIDEO_CLEAN`, `NEW_FROM`, `LOCK`, `SETTLE`
 - [app/studio/workshop/generate.py](../../app/studio/workshop/generate.py) — `Session.start_photo()` (no catch without a book; `video` — a video awaited), `Session._open()` (`catch=False` — nothing awaited), `look()` (pictures, or videos for a video category), `_catch()` (a photo or a video → `photos.place()`), `next_item()` (the wait ends after the last part when nothing is caught)
-- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — the step `photos` in `STEPS`, `steps()`, `detail()` (`photos`), `ETSY` in `AREAS`
+- [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — the step `photos` in `STEPS`, `steps()`, `detail()` (`photos`, `scrub.soon()`), `ETSY` in `AREAS`
 - [app/studio/workshop/routes.py](../../app/studio/workshop/routes.py) — `_gen_photo()`, `_photos()`, `_photos_sig()`, `_photo_media()`, `_photo_add()`, `_photo_remove()`, `_photo_open()`, `_photo_prompt()`, `_book_photo_remove()`, `_place()` (`photo:<category>`, `canva-cover`)
 - [app/studio/mockups.py](../../app/studio/mockups.py) — `_keep_canva_cover()`, `_to_etsy()`
 - [app/web/js/pages/photos.js](../../app/web/js/pages/photos.js) — `mount()`: `section()`, `addFiles()`, `remove()`, `zoom()`
 - [app/web/js/pages/workshop-book.js](../../app/web/js/pages/workshop-book.js) — `photosBody()`, `templatesOf()`
 - [app/web/js/workshop-live.js](../../app/web/js/workshop-live.js) — `startPhoto()`, `watch()` (`sigUrl`), `genBar()` (a wait without a book)
 - [app/web/css/listings.css](../../app/web/css/listings.css) — `.ph-*`
-- Tests: [app/tests/test_photos.py](../../app/tests/test_photos.py) (`TheTemplates`, `ThePrompts`, `InABook`, `TheOmniVideo`, `WithoutABook`, `TheMockupsKeepTheCanvaCover`)
+- Tests: [app/tests/test_photos.py](../../app/tests/test_photos.py) (`TheTemplates`, `ThePrompts`, `InABook`, `TheOmniVideo`, `WithoutABook`, `TheMockupsKeepTheCanvaCover`), [app/tests/test_scrub.py](../../app/tests/test_scrub.py) (`Pictures`, `TheEtsyFolder`)
 
 ## Related
 

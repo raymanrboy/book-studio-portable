@@ -231,7 +231,7 @@ def steps(path: Path) -> list[dict]:
                 files.insert(0, {"name": c["final"], "kind": "image", "area": PICTURES, "exists": True})
                 st = "done"
             else:
-                st = "part" if c["art"] or c["front"] or c["back"] or "cover-prompts-json.md" in a else "todo"
+                st = "part" if c["art"] or "cover-prompts-json.md" in a else "todo"
         elif key == "library":
             st = "done" if library_book(path) else "todo"
         elif key == "photos":
@@ -364,7 +364,9 @@ def summary(book_id: str, path: Path | None = None, st: list[dict] | None = None
     art = next((n for n in _names(path / ORIGINALS) if n.startswith("cover-art.")), None)
     hero = next((s.get("thumb") for s in st if s["key"] == "hero"), None)
     first = next((picture(p, pages[0]) for _, pages in ROWS[1:-1] if all(picture(p, x) for x in pages)), None)
-    thumb = ({"area": PICTURES, "name": cover, "kind": "cover"} if cover
+    # a cover made of the two squares: the tile shows only its visible face, cut at the hinge line (the owner, 2026-10-25)
+    face = bool(cover and ((state(path).get("rows") or {}).get("cover-wrap") or {}).get("squares"))
+    thumb = ({"area": PICTURES, "name": cover, "kind": "cover", **({"face": True} if face else {})} if cover
              else {"area": ORIGINALS, "name": art, "kind": "cover"} if art
              else {"area": PICTURES, "name": first, "kind": "page"} if first
              else {"area": AGENT, "name": hero, "kind": "hero"} if hero else None)
@@ -383,9 +385,10 @@ def summary(book_id: str, path: Path | None = None, st: list[dict] | None = None
 def detail(book_id: str) -> dict:
     """A book's page: its card, the whole strip, the rows, the book check, every picture's version — each worked
     out once (the strip and the versions were twice, 26.09.2026)."""
-    from .. import photos
+    from .. import photos, scrub
     from .rows import book_check, book_rows
     path = book_path(book_id)
+    scrub.soon(path / ETSY)   # a picture the owner dropped into etsy/ by hand loses its metadata too
     st = steps(path)
     out = summary(book_id, path, st)
     out["steps"] = st

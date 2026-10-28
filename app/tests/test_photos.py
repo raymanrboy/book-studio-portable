@@ -333,6 +333,57 @@ class TheMockupsKeepTheCanvaCover(Base):
         self.assertTrue((self.dir / S / "mockups" / "canva-cover.png").is_file())
         mockups._keep_canva_cover(S, {"cover": None})   # no cover in the ZIP: nothing happens
 
+    def test_a_hardcover_with_its_wrap_is_cut_to_the_finished_cover(self):
+        # 27.10.2026, the owner: with the wrap the generator draws a wrong book — only what is inside the contour
+        gelato = Image.new("RGB", (5409, 2906), (255, 0, 0))              # the wrap red
+        gelato.paste((0, 0, 255), (236, 236, 5409 - 236, 2906 - 236))      # the finished cover blue
+        src = core.data_path("tmp", "gelato.png")
+        src.parent.mkdir(parents=True, exist_ok=True)
+        gelato.save(src, dpi=(300, 300))
+        photos.set_canva_cover(self.dir / S, src, "Cover.png")
+        with Image.open(self.dir / S / "mockups" / "canva-cover.png") as im:
+            self.assertEqual(im.size, (4937, 2434))                         # 418×206 mm at 300 dpi
+            self.assertEqual(im.getpixel((0, 0)), (0, 0, 255))
+            self.assertEqual(im.getpixel((im.width - 1, im.height - 1)), (0, 0, 255))
+        self.assertEqual(photos.trim_box((1074, 570)), (45, 45, 1029, 525))  # the Printify template: 16.40×8.00″
+        flat = photo(core.data_path("tmp", "flat.png"), size=(1000, 500))
+        photos.set_canva_cover(self.dir / S, flat, "flat.png")               # a 2:1 cover has no wrap: kept whole
+        with Image.open(self.dir / S / "mockups" / "canva-cover.png") as im:
+            self.assertEqual(im.size, (1000, 500))
+
+    def test_a_cover_kept_with_its_wrap_is_cut_when_the_photos_open(self):
+        folder = self.dir / S / "mockups"
+        folder.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (5409, 2906), (255, 0, 0)).save(folder / "canva-cover.png")
+        photos.state(self.dir / S)
+        with Image.open(folder / "canva-cover.png") as im:
+            self.assertEqual(im.size, (4937, 2434))
+        kept = list((self.dir / S / ".replaced").glob("*canva-cover.png"))
+        self.assertEqual(len(kept), 1)                                       # the whole one kept, never deleted
+        self.assertFalse(photos.trim_kept_cover(self.dir / S))               # once only
+
+    def test_a_held_or_unwritable_cover_stays_as_it_is(self):
+        from unittest import mock
+        folder = self.dir / S / "mockups"
+        folder.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (5409, 2906), (255, 0, 0)).save(folder / "canva-cover.jpg")
+        real = photos.os.replace
+
+        def held(src, dst):
+            if Path(src).name == "canva-cover.jpg":
+                raise PermissionError("held")
+            return real(src, dst)
+        with mock.patch.object(photos.os, "replace", held):
+            self.assertFalse(photos.trim_kept_cover(self.dir / S))           # held: at once, left for the next time
+        with mock.patch.object(photos, "_save_trimmed", side_effect=OSError("disk full")):
+            photos.state(self.dir / S)                                       # a failed write: the page still opens
+        self.assertEqual(sorted(e.name for e in folder.iterdir()), ["canva-cover.jpg"])   # whole, nothing left beside
+        with Image.open(folder / "canva-cover.jpg") as im:
+            self.assertEqual(im.size, (5409, 2906))
+        self.assertTrue(photos.trim_kept_cover(self.dir / S))                # a JPEG cut too
+        with Image.open(folder / "canva-cover.jpg") as im:
+            self.assertEqual((im.format, im.size), ("JPEG", (4937, 2434)))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -108,22 +108,11 @@ def _place(req: Request):
     return result
 
 
-@route("POST", r"/api/workshop/books/([^/]+)/cover-squares")
-def _cover_squares(req: Request):
-    """The cover tool's choices for «Два квадрати»: the soft edge, a side's layout guide, the front's reference."""
+@route("POST", r"/api/workshop/books/([^/]+)/cover-tool")
+def _cover_tool(req: Request):
+    """The cover tool's choices: the layout guide pasted with the prompt, the reference."""
     from . import cover
     return cover.set_settings(req.groups[0], req.json or {})
-
-
-@route("POST", r"/api/workshop/books/([^/]+)/cover-mode")
-def _cover_mode(req: Request):
-    """The cover row's switch «2:1 · Два квадрати» — a wait for the other way's outpaint ends (its result would be
-    brought to the wrong template)."""
-    result = pictures.set_cover_mode(req.groups[0], str((req.json or {}).get("mode") or ""))
-    a = generate.status()["active"]
-    if a and a.get("book") == req.groups[0] and not a.get("variant") and str(a.get("key") or "").startswith("cover"):
-        generate.stop(req.groups[0])  # a spread awaited meanwhile goes on
-    return result
 
 
 @route("POST", r"/api/workshop/books/([^/]+)/adopt")

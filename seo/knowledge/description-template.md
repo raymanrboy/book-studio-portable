@@ -69,6 +69,8 @@ Your child's name will be added to the cover and woven naturally throughout the 
 
 Every book is personalized and printed especially for your family. Choose your preferred format from the listing options, and we will create a meaningful keepsake to enjoy for years to come.
 
+The lifestyle photos and videos in this listing are digital mockups, created with the help of digital tools to show how your book looks and feels. Every book itself is personalized, laid out and prepared for print by us, then printed to order especially for your family.
+
 🛡 RETURNS, EXCHANGES & ORDER ISSUES
 
 Because each book is made to order and personalized especially for your child, we cannot accept returns or exchanges for change-of-mind purchases or incorrect details submitted at checkout.

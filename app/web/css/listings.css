@@ -289,32 +289,9 @@
 .ws-tpl-spine { background: rgba(140, 200, 90, .28); border-left: 1px solid rgba(90, 160, 60, .7); border-right: 1px solid rgba(90, 160, 60, .7); }
 .ws-tpl-safe { border: 1.5px dashed #29b6e8; }
 .ws-tpl-hinge { border-left: 1.5px dashed rgba(90, 160, 60, .8); }
-/* «Два квадрати»: the back and the front side by side, each its square frame, its button and its prompt */
-.ws-cv-mode { flex: none; }
-.ws-squares { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.ws-sq-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.ws-sq-head { display: flex; align-items: center; gap: 8px; min-height: 30px; }
-.ws-sq { position: relative; aspect-ratio: 1 / 1; border-radius: var(--r-art); }
-.ws-sq > .ws-drop { position: absolute; inset: 0; }
-@media (max-width: 760px) { .ws-squares { grid-template-columns: 1fr; } }
-
-/* «Обкладинка» — the cover's own tool (2026-10-25): one column like the Workshop's rows, the spread on top, the two
-   squares under it, each with its button, its layout guide and its prompt */
+/* «Обкладинка» — the cover's own tool (2026-10-25): one column like the Workshop's rows; the 2:1 picture with its
+   reference and its layout guide (what goes into the clipboard with the prompt), then its margins */
 .cv-body { display: flex; flex-direction: column; gap: 16px; max-width: 1040px; }
-.cv-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); }
-.cv-mode { flex: none; }
-.cv-spread { position: relative; }
-.cv-sketch { position: absolute; inset: 0; border-radius: inherit; background: var(--paper); }
-.cv-slot { position: absolute; overflow: hidden; border-radius: 2px; }
-.cv-slot img { width: 100%; height: 100%; object-fit: cover; cursor: default; }
-.cv-slot.empty { display: grid; place-items: center; outline: 1.5px dashed var(--border-strong); outline-offset: -1.5px; color: var(--text-4);
-  font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-.cv-feather { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); }
-.cv-feather .seg button { min-width: 30px; justify-content: center; font-variant-numeric: tabular-nums; }
-.cv-unit { font-size: var(--fs-s); }
-.cv-sides { gap: 18px; }
-.cv-sides .ws-sq { width: 100%; max-width: 340px; align-self: center; }
-.cv-sides .ws-sq-col { padding: 12px 14px 14px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-s); }
 .cv-ref { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 8px 0 3px; border: 1px solid var(--border); border-radius: var(--r-ctl);
   background: var(--surface); color: var(--text-2); font: inherit; font-size: var(--fs-s); cursor: pointer; max-width: 210px;
   transition: border-color var(--t-fast) ease, background var(--t-fast) ease; }
@@ -331,12 +308,14 @@
 .cv-guide:hover { opacity: 1; }
 .cv-guide.on { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
 .cv-guide:active { transform: scale(var(--press)); }
+.cv-guide-wide { width: 72px; height: 36px; display: grid; place-items: center; color: var(--text-3); }
 .cv-body > .ws-block { background: var(--surface); border: 1px solid var(--border); }
 .ws-tpl-safe em { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); font-style: normal; font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: rgba(20, 21, 23, .6); padding: 1px 7px; border-radius: var(--r-sm); }
 
 /* A hero variant (Tier H): its hero on the left, the edit prompt beside it. */
 .ws-vhero { display: flex; gap: 14px; align-items: flex-start; }
 .ws-hero-shot { width: 180px; aspect-ratio: 3 / 4; flex: none; }
+.ws-hero-side { flex: 1; min-width: 0; }   /* the book's own hero in its panel: its buttons, then its prompt (27.10.2026) */
 
 /* ================================================================== LISTING MOCKUPS (the Listings mode) */
 /* The Order Creator's layout: numbered steps on the left (.creator-grid), the demo book's structure on the right. */
@@ -648,10 +627,16 @@ button.ph-ref:hover, .drop-hot > .ph-ref { border-color: var(--accent); backgrou
 .mk-ed-cover > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 /* the middle of the wide cover: the spine — where the back ends and the front begins */
 .mk-ed-spine { position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px dashed rgba(255, 255, 255, .7); box-shadow: -1px 0 0 rgba(0, 0, 0, .25); pointer-events: none; }
-/* the front's window: what is outside it goes dark; four corner handles inside it (they stay seen at the cover's edges) */
-.mk-ed-frame { position: absolute; outline: 2px solid var(--accent); box-shadow: 0 0 0 9999px rgba(20, 20, 20, .45); cursor: move;
-  transition: box-shadow var(--t-fast) ease; }
-.mk-ed-cover.picking .mk-ed-frame { box-shadow: none; outline-style: dashed; }
+/* a side's window (the front's; the back's too where it shows, 27.10.2026): what is outside them all goes dark (one
+   shade with a hole per frame); four corner handles inside each (they stay seen at the cover's edges) */
+.mk-ed-shade { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; fill: rgba(20, 20, 20, .45); transition: opacity var(--t-fast) ease; }
+.mk-ed-cover.picking .mk-ed-shade { opacity: 0; }
+.mk-ed-frame { position: absolute; outline: 2px solid var(--accent); cursor: move; }
+.mk-ed-frame.on { z-index: 1; }
+.mk-ed-cover.picking .mk-ed-frame { outline-style: dashed; }
+.mk-ed-tag { position: absolute; left: 50%; top: 6px; transform: translateX(-50%); padding: 2px 8px; border-radius: var(--r-ctl); background: var(--surface);
+  color: var(--text); font-size: 11px; font-weight: 600; line-height: 1.4; box-shadow: var(--shadow-s); pointer-events: none; white-space: nowrap; }
+.mk-ed-frame.on .mk-ed-tag { background: var(--accent); color: var(--on-accent); }
 .mk-ed-h { position: absolute; width: 14px; height: 14px; background: var(--surface); border: 2px solid var(--accent); border-radius: 3px; box-shadow: var(--shadow-s); }
 .mk-ed-h.nw { left: 0; top: 0; cursor: nwse-resize; }
 .mk-ed-h.ne { right: 0; top: 0; cursor: nesw-resize; }

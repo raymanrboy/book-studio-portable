@@ -1,7 +1,7 @@
 ---
 title: Etsy SEO studio — a book's title, tags and description
 type: feature
-updated: 2026-10-11
+updated: 2026-10-27
 code:
   - seo/seo.py
   - seo/README.md
@@ -24,7 +24,9 @@ For a Workshop book, the agent writes into `pipeline/books/<n>.<slug>/agent/list
   by ` | `, one or two, the rest by `, ` — the owner, 2026-10-18) — the owner's
   rule, no short titles;
 - **13 tags**, chosen by numbers and by buyer intent (product, theme, recipient, occasion, giver, keepsake);
-- **the description** — the owner's template, only the parts about the book change; always "30-page".
+- **the description** — the owner's template, only the parts about the book change; always "30-page". In «MADE TO ORDER
+  WITH CARE» it says, without a heading, that the photos and videos are digital mockups made with digital tools (the owner,
+  27.10.2026).
 
 Then (the owner, 2026-10-11) `seo.py to-drive <n>` **copies** the book's listing photos and video (`pipeline/books/<n>.<slug>/etsy/`)
 into his Google Drive, `G:\My Drive\MoonMeadowStories\<n>.<slug>\` — the folder is made if missing. Copy, not move: the

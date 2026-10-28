@@ -1,10 +1,72 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-25
+updated: 2026-10-27
 code: []
 ---
 # Decisions
+
+## 2026-10-27 (later) — Back to 2:1 and the outpaint; «Два квадрати» taken out; the 2:1 picture gets a layout guide
+
+- The owner tested one more way on book 44 (`Cover Squares Test/prompts/44-santas-workshop-wide.md`): one 2:1 picture
+  **filled with the scene edge to edge** (no cream ground, no light patch), the title painted in its right area and a
+  big empty room left for the name, with a **2:1 layout guide** attached (where the title and the name's room go). He
+  chose it: "переходимо на цей підхід з OutPaint… Прибирай цей інструмент [квадрати]".
+- **«Два квадрати» taken out** of the tool, the server and Agent 6 (the owner's answers: only the squares, the tool
+  «Обкладинка» stays with 2:1; Agent 6 — only 2:1, no question). The full-scene squares of earlier today and their guides
+  are gone with it. A Cover.png made of squares stays its book's until a new one.
+- The cover tool's «Генерувати» pastes the reference, the guide (picked by the title: «{Name}'s …» → the name's room
+  above the title), then the prompt with the guide's words; the margins are outpainted as before.
+
+How to apply: Agent 6 writes one 2:1 prompt by its full-scene formula and no `layout_guide` (the tool adds it).
+[features/cover.md](features/cover.md), `pipeline/playbook/agents/6-wraparound-image-director.md`.
+
+## 2026-10-27 — The grandmother's reference is the finished cover, without the wrap
+
+The owner: the photo mockups must take the cover as it is inside the contour, not with the margins that fold round
+the hardcover's boards — otherwise the generator draws a wrong book. The Canva cover is cut to its finished size when
+it comes into `mockups/`; one kept before is cut once, the whole file to `.replaced/`.
+
+How to apply: a picture of the book for a generator shows only what the reader sees.
+[features/photo-mockups.md](features/photo-mockups.md)
+
+## 2026-10-27 — All & Open 1: the back cropped as the front is
+
+Since the two squares the back is a full scene of its own, so the owner wants to frame it in the «All & Open» mockup the
+way he frames the front. The crop window gets a second frame over the back where the back shows (only All & Open 1 of
+the three); each side is moved by itself, ↶ resets both, «Зберегти» keeps both.
+
+How to apply: a side shown in a mockup gets its own window; a picture saved without one draws exactly as before.
+[features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026)
+
+## 2026-10-27 — The two squares fill the square: a full scene, a thin border, a big empty room for the name
+
+- The owner: the name room of the squares was too small — "the child's name is the selling element"; and the picture
+  need not be a small scene on a cream ground. Tested on book 44 (`Cover Squares Test/prompts/44-santas-workshop-v3.md`),
+  the result he called the goal ("ось така ціль моєї роботи"): the scene fills almost the whole square; the title and a
+  **big empty room for the name** (about as big as the title's main line) sit in a soft light patch of the scene; the
+  reverse is a full scene too, no calm top. A thin plain border (~4 %) stays on every square — Book Studio stitches the
+  spine from it.
+- The name is never painted: the generator only leaves the room, the owner sets the name himself in Canva.
+- Agent 6's «Mode B» rewritten for it (`pipeline/playbook/agents/6-wraparound-image-director.md`). The layout guides that
+  fit (`front-spot-*`, `front-open-*`, `back-full`) are in the cover tool and are its defaults (the owner: "зроби їх
+  типовими"); the older ones stay to choose ([cover](features/cover.md#the-guides)).
+
+## 2026-10-27 — Girl archetypes G4 and G6 dropped; the numbers stay
+
+The owner does not use the olive/Mediterranean (G4) and South Asian (G6) girls — removed from `pipeline/playbook/knowledge/archetypes.md`.
+He asked why the numbers skip and chose to keep them (a number means the same child in every book; book 41's variants are G1, G2, G3,
+G5, G7). The boys' B1–B7 are unchanged.
+
+## 2026-10-27 — No metadata in the pictures and videos of a book's etsy/
+
+- The owner: Etsy now checks the photos' metadata; nothing in it should draw its attention. Every picture and video put
+  into `etsy/` loses all of it — C2PA, XMP, EXIF, ICC, text chunks, comments, a video's tags and dates. Only what comes in
+  from now on: the files the books already have stay untouched (the owner: "ті фото книжок що вже є в нас, їх думаю
+  можна не чіпати").
+- Cut out chunk by chunk, not re-encoded, so no quality is lost and a clean file is never touched again; re-encoded only
+  where the look would change otherwise (a rotation, a non-sRGB profile). SynthID-style watermarks live in the pixels and
+  stay — this is metadata only.
 
 ## 2026-10-25 — The cover is a step of its own; «Два квадрати» made by Book Studio, no outpaint; layout guides
 

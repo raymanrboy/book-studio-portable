@@ -76,7 +76,7 @@ export async function mount(view, params, { embedded = false } = {}) {
     const count = next?.key === 'pictures' ? html` <span class="num">${b.pictures}/${b.picturesTotal}</span>` : '';
     return bookTile({
       key: b.id, title: b.title, number: b.number,
-      cover: { src: t ? picture(b, t.area, t.name, 720) : '', cls: t?.kind === 'cover' ? 'front' : '', letter: (b.title || '?').charAt(0).toUpperCase() },
+      cover: { src: t ? picture(b, t.area, t.name, 720) : '', cls: t?.face ? 'face' : t?.kind === 'cover' ? 'front' : '', letter: (b.title || '?').charAt(0).toUpperCase() },
       over: html`<span class="ws-card-wait" data-wait="${b.id}" data-tip="Чекаю картинку"><span class="ws-pulse"></span>${ic('images', 'icon-s')}</span>
         ${b.library ? tickBadge('У бібліотеці замовлень') : ''}`,
       sub: html`<span class="serif">${highlightTokens(b.coverTitle)}</span>`,

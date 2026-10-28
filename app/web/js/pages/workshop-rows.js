@@ -100,7 +100,8 @@ export function rowTemplates({ id, book, mem, uploading }) {
     const again = r.pictures.length > 0;
     // A spread of a book with a hero: the hero goes first, then the prompt (the owner, 27.09.2026).
     const hero = r.kind === 'spread' && !variant && book().steps.find((s) => s.key === 'hero')?.thumb;
-    const what = hero ? 'У буфер герой, потім промпт — Ctrl+V у Chrome сам перемикає' : 'Промпт — у буфер';
+    const what = hero ? 'У буфер герой, потім промпт — Ctrl+V у Chrome сам перемикає'
+      : r.key === 'cover' && !variant ? 'У буфер референс, схема, потім промпт — Ctrl+V у Chrome сам перемикає' : 'Промпт — у буфер';
     // Quiet: up to sixteen empty rows each shouting «Генерувати» read as sixteen next steps; the loud one is «Генерувати всю книгу».
     return html`<button class="btn btn-sm" data-act="gen" data-key="${r.key}" data-variant="${variant}"
       data-tip="${again ? `Згенерувати ще раз — нова картинка замінить цю (стара піде в .replaced). ${what}` : `${what}; Майстерня чекає картинку з «Завантажень»`}">${ic(again ? 'regenerate' : 'generate')}${label || (again ? 'Ще раз' : 'Генерувати')}</button>`;

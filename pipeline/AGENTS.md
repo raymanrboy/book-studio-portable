@@ -76,7 +76,7 @@ INPUT (listing + occasion + name + character)
   ▼ [5] Illustration Director  playbook/agents/5-illustration-director.md   → spread-prompts-json.md + endpage-prompts-json.md + pre-flight GO/NO-GO
   ▼ the user generates the story panoramas in Gemini (one chat), the Workshop catches them
   ▼ [6] Wraparound Image       playbook/agents/6-wraparound-image-director.md → cover-prompts-json.md → final wide image
-                               (first ASKS the user: 2:1 or «два квадрати» — title square + quiet square)
+                               (one 2:1 picture: the full scene, the title painted, a big empty room for the name)
   ▼ Canva (the book's pictures/ folder + the texts) → the Book Studio library
   ▼ FULFILLMENT: Tier S — {Name}+PDF (no generation); Tier H — +img2img character swap to archetype
 ```

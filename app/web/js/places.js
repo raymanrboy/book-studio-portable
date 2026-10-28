@@ -7,7 +7,7 @@ export const TOOLS = [
     for: 'Для замовлень' },
   { id: 'archive', label: 'Архів друку', sub: 'Що пішло в друк · передрук', icon: 'orderArchive', hash: '#/archive', area: 'orders',
     for: 'Для замовлень' },
-  { id: 'cover', label: 'Обкладинка', sub: 'Два квадрати → обкладинка Gelato без генерації', icon: 'coverSquares', hash: '#/cover', area: 'books',
+  { id: 'cover', label: 'Обкладинка', sub: 'Картинка 2:1 зі схемою → поля аутпейнтом', icon: 'coverWide', hash: '#/cover', area: 'books',
     for: 'Для книг' },
   { id: 'mockups', label: 'Мокапи', sub: 'ZIP із Canva → картинки в Photoshop', icon: 'mockup', hash: '#/mockups', area: 'books',
     for: 'Для книг' },

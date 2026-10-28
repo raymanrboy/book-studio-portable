@@ -162,6 +162,25 @@ class TheFrontsCrop(unittest.TestCase):
             self.assertEqual(mockups.min_zoom((400, 100), (40, 40)), 1.0)
             self.assertAlmostEqual(mockups.min_zoom((200, 100), (30, 40)), 1.0)
 
+    def test_the_back_has_a_window_of_its_own(self):
+        # 27.10.2026: since the two squares the back is a scene of its own, framed in All & Open 1 as the front is
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "cover.png"
+            im = Image.new("RGB", (200, 100), (0, 0, 255))                        # a blue back
+            ImageDraw.Draw(im).rectangle([0, 50, 49, 99], fill=(0, 255, 0))       # its bottom-left quarter green
+            ImageDraw.Draw(im).rectangle([100, 0, 199, 99], fill=(0, 0, 0))       # a black front
+            im.save(path)
+            size = {"board": (40, 40), "spine": (4, 40)}
+            plain = mockups.cover_pictures(path, size)
+            front_only = mockups.cover_pictures(path, size, {"x": mockups.FRONT_X, "y": 0.5, "zoom": 1})
+            self.assertEqual(front_only["back"].tobytes(), plain["back"].tobytes())     # no back crop: as before
+            same = mockups.cover_pictures(path, size, {"back": {"x": mockups.BACK_X, "y": 0.5, "zoom": 1}})
+            self.assertEqual(same["back"].tobytes(), plain["back"].tobytes())           # the program's own place
+            near = mockups.cover_pictures(path, size, {"back": {"x": 0.125, "y": 0.75, "zoom": 2}})
+            self.assertEqual(near["back"].getpixel((5, 5)), (0, 255, 0))               # only the green quarter now
+            self.assertEqual(near["front"].tobytes(), plain["front"].tobytes())        # the front untouched
+            self.assertEqual(mockups._crop_values(None, 1.0, mockups.BACK_X), (mockups.BACK_X, 0.5, 1.0))
+
 
 class Req(SimpleNamespace):
     def param(self, name, default=None):
@@ -277,6 +296,25 @@ class DrawnRun(unittest.TestCase):
         self.assertEqual(mockups._edit_state(Req(query={"job": job.id, "key": "cover1"}))["crop"], {"x": 0.0, "y": 0.0, "zoom": 2.0})
         with self.assertRaises(ApiError):
             mockups._edit_state(Req(query={"job": job.id, "key": "open1"}))   # no front cover to move there
+        self.assertNotIn("back", state)                                   # Cover 1 shows no back
+
+    def test_all_and_open_crops_the_back_too(self):
+        job, _ = self.run_it()
+        state = mockups._edit_state(Req(query={"job": job.id, "key": "allOpen"}))
+        self.assertEqual(state["back"], {"x": mockups.BACK_X, "y": 0.5, "zoom": 1.0})
+        preview = mockups._edit_preview(Req(query={"job": job.id, "key": "allOpen", "x": "0.75", "y": "0.5", "zoom": "1",
+                                                   "bx": "0.1", "by": "0.2", "bzoom": "2", "w": "300"}))
+        self.assertEqual(preview.content_type, "image/jpeg")
+        res = mockups._edit_save(Req(json={"job": job.id, "key": "allOpen",
+                                          "crop": {"x": 0.7, "y": 0.5, "zoom": 1, "back": {"x": 0.1, "y": 0.2, "zoom": 2}}}))
+        self.assertEqual(res["saved"], ["All & Open 1 (16-17).png"])
+        state = mockups._edit_state(Req(query={"job": job.id, "key": "allOpen"}))
+        self.assertEqual(state["back"], {"x": 0.1, "y": 0.2, "zoom": 2.0})          # both kept, each its own
+        self.assertEqual(state["crop"]["x"], 0.7)
+        mockups._edit_save(Req(json={"job": job.id, "key": "coverOpen", "crop": {"back": {"x": 0, "y": 0, "zoom": 2}}}))
+        self.assertNotIn("back", mockups._edit(job.id)[1]["crops"]["coverOpen"])   # no back shows there: not kept
+        mockups._edit_save(Req(json={"job": job.id, "key": "allOpen", "crop": {"x": 0.7, "y": 0.5, "zoom": 1}}))
+        self.assertNotIn("back", mockups._edit(job.id)[1]["crops"]["allOpen"])     # put back: the left half again
 
     def test_a_new_background_redraws_both_scenes(self):
         job, _ = self.run_it()

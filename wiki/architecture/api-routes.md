@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-25
+updated: 2026-10-27
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -135,8 +135,7 @@ The books in development (the Workshop) — the book pipeline's folders ([featur
 | POST | `/api/workshop/books/([^/]+)/remove` | token | `_remove` | workshop-book.js (`{key, variant}` — into `.replaced/`) |
 | POST | `/api/workshop/books/([^/]+)/restore` | token | `_restore` | workshop-book.js «Скасувати» after «Прибрати» (`{undo}` as `/remove` handed it out) |
 | POST | `/api/workshop/books/([^/]+)/no-margins` | token | `_no_margins` | workshop-book.js «Без полів» |
-| POST | `/api/workshop/books/([^/]+)/cover-squares` | token | `_cover_squares` | cover.js «Два квадрати»: the soft edge, a side's guide, the front's reference |
-| POST | `/api/workshop/books/([^/]+)/cover-mode` | token | `_cover_mode` | cover.js the «Два квадрати · 2:1» switch |
+| POST | `/api/workshop/books/([^/]+)/cover-tool` | token | `_cover_tool` | cover.js: the layout guide pasted with the cover's prompt, the reference |
 | POST | `/api/workshop/books/([^/]+)/copy-picture` | token | `_copy_picture` | workshop-book.js «Копіювати картинку» (`{key}`) |
 | POST | `/api/workshop/books/([^/]+)/copy-reference` | token | `_copy_reference` | workshop-book.js «Референс у буфер» on the cover row (`{key}`: `cover-front`, `cover-back`, `cover`) |
 | POST | `/api/workshop/books/([^/]+)/copy-hero` | token | `_copy_hero` | workshop-book.js «Героя в буфер» (`{variant}`) |
@@ -212,9 +211,9 @@ them) — see [features/mockups.md](../features/mockups.md).
 | GET | `/media/mockups/existing` | media | `_existing_media` | mockups-run.js `existingCard()`, the viewer (`?workshop=&name=&w=` — only a mockup of a known template in that book's `mockups/`) |
 | POST | `/api/mockups/open-existing` | token | `_open_existing` | mockups.js, the viewer's "original" button for those (`{workshop, name}`) |
 | POST | `/api/mockups/attention` | token | `_attention` | mockups.js `tellDone` (a run ended while Book Studio's window was behind: the taskbar button flashes, Windows' sound) |
-| GET | `/api/mockups/edit` | token | `_edit_state` | mockups-edit.js `openEditor()` (`?job=&key=` — a drawn run's picture of Cover 1 / Cover & Open 1 / All & Open 1: the cover's size, the board, the crop; for a scene its colours, the pastel suggestions, the cover's edge colours, the other scene; 13.10.2026) |
-| GET | `/media/mockups/edit` | media | `_edit_preview` | mockups-edit.js (`?job=&key=&x=&y=&zoom=&background=&front=&back=&w=` — the mockup drawn with that crop and those colours, a JPEG; nothing saved) |
-| POST | `/api/mockups/edit` | token | `_edit_save` | mockups-edit.js «Зберегти» (`{job, key, crop, background?, front?, back?}` — drawn over the run's own picture, its cut-out again, the other scene too when the colours changed → `{saved, v}`) |
+| GET | `/api/mockups/edit` | token | `_edit_state` | mockups-edit.js `openEditor()` (`?job=&key=` — a drawn run's picture of Cover 1 / Cover & Open 1 / All & Open 1: the cover's size, the board, the crop; `back` — the back's crop where the back shows (All & Open 1, 27.10.2026); for a scene its colours, the pastel suggestions, the cover's edge colours, the other scene; 13.10.2026) |
+| GET | `/media/mockups/edit` | media | `_edit_preview` | mockups-edit.js (`?job=&key=&x=&y=&zoom=&bx=&by=&bzoom=&background=&front=&back=&w=` — the mockup drawn with that crop and those colours, a JPEG; nothing saved) |
+| POST | `/api/mockups/edit` | token | `_edit_save` | mockups-edit.js «Зберегти» (`{job, key, crop (its `back` — the back's window), background?, front?, back?}` — drawn over the run's own picture, its cut-out again, the other scene too when the colours changed → `{saved, v}`) |
 | GET | `/media/mockups/template/([a-zA-Z0-9]+)` | media | `_template_media` | mockups.js (`?w=` — a template's own preview, read from the PSD) |
 | GET | `/media/mockups/out/([0-9a-f]{12})/([0-9]+)` | media | `_out_media` | mockups.js (`?w=` — a picture a job saved, by its number) |
 | GET | `/media/mockups/([0-9a-f]{16})/(cover\|page\|spread)` | media | `_media` | mockups.js (`?n=&w=` / `?n=&h=` — a page, the cover, a spread glued together) |

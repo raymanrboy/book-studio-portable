@@ -2,8 +2,9 @@
 // the mockups itself; where the front cover shows (Cover 1, Cover & Open 1, All & Open 1) it puts the right half of
 // the wide cover in by itself, and here the owner may move it and bring it closer when it looks so-so. In the two
 // softcover scenes the background colour (one for the book's both scenes) and the open book's edge colours (taken from
-// the cover's edges, an eyedropper on the cover takes another). Left — the cover with the front's frame, right — the
-// mockup as it will be (drawn by the server, a second or three); «Зберегти» draws it over the picture of this run.
+// the cover's edges, an eyedropper on the cover takes another). Left — the cover with the front's frame (and the
+// back's, where the back shows — All & Open 1, 27.10.2026), right — the mockup as it will be (drawn by the server,
+// a second or three); «Зберегти» draws it over the picture of this run.
 import { api, post, html, ic, ib, setHtml, modal, toast, media } from '../lib.js';
 
 const PREVIEW_W = 1400;
@@ -16,19 +17,32 @@ export async function openEditor({ job, key, onSaved }) {
   catch (err) { toast(err.message, 'error'); return; }
   const [W, H] = s.cover;
   const [BW, BH] = s.board, aspect = BW / BH;
-  const base = Math.max(BW / (W / 2), BH / H);    // the scale filling the right half (zoom 1), as the server's
-  const st = { x: s.crop.x, y: s.crop.y, zoom: s.crop.zoom, colours: { ...(s.colours || {}) }, pick: null };
+  const base = Math.max(BW / (W / 2), BH / H);    // the scale filling a half (zoom 1), as the server's
+  // Each side the mockup shows has its own window: the front always, the back where it shows too (All & Open 1;
+  // 27.10.2026 — since the two squares the back is a scene of its own). Kept apart, each moved by itself.
+  const sides = { front: { x: s.crop.x, y: s.crop.y, zoom: s.crop.zoom, centre: 0.75 } };
+  if (s.back) sides.back = { x: s.back.x, y: s.back.y, zoom: s.back.zoom, centre: 0.25 };
+  const names = Object.keys(sides);
+  const st = { colours: { ...(s.colours || {}) }, pick: null, active: 'front' };
+  // The back is sent only when moved from the program's place: left there, it is drawn as before (the left half)
+  const moved = (c) => c && (Math.abs(c.x - c.centre) > 1e-4 || Math.abs(c.y - 0.5) > 1e-4 || Math.abs(c.zoom - 1) > 1e-4);
+  const shot = () => JSON.stringify([names.map((n) => [sides[n].x, sides[n].y, sides[n].zoom]), st.colours]);
   let first = '';
 
   const handles = ['nw', 'ne', 'sw', 'se'].map((h) => html`<i class="mk-ed-h ${h}" data-h="${h}"></i>`);
+  const tags = { front: 'Лицьова', back: 'Задня' };
+  const frames = names.map((n) => html`<span class="mk-ed-frame" data-side="${n}">${names.length > 1 ? html`<b class="mk-ed-tag">${tags[n]}</b>` : ''}${handles}</span>`);
   const m = modal({
     title: html`Поправити · ${s.title}`, sub: s.name, size: 'xl',
     body: html`<div class="mk-ed">
       <div class="mk-ed-side stack">
         <div class="mk-ed-cover" id="ed-cover" style="aspect-ratio:${W} / ${H}">
           <img id="ed-img" alt="" draggable="false" src="${media(`/media/mockups/${s.book}/cover`, { w: COVER_W })}">
+          <svg class="mk-ed-shade" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+            <mask id="ed-holes" maskUnits="userSpaceOnUse"><rect width="${W}" height="${H}" fill="#fff"></rect><path id="ed-shade" fill="#000"></path></mask>
+            <rect width="${W}" height="${H}" mask="url(#ed-holes)"></rect></svg>
           <i class="mk-ed-spine"></i>
-          <span class="mk-ed-frame" id="ed-frame">${handles}</span>
+          ${frames}
         </div>
         <div class="row mk-ed-tools"><span class="spacer"></span>${ib('undo', 'Як поставила програма', 'data-ed="reset"', { cls: 'sm' })}</div>
         ${s.scene ? html`<div class="mk-ed-colours stack-s" id="ed-colours"></div>` : ''}
@@ -38,36 +52,45 @@ export async function openEditor({ job, key, onSaved }) {
     foot: html`<button type="button" class="btn btn-primary" data-ed="save">${ic('check')}Зберегти</button>`,
   });
   const $ = (sel) => m.root.querySelector(sel);
-  const cover = $('#ed-cover'), frame = $('#ed-frame');
+  const cover = $('#ed-cover');
+  const frameOf = (n) => m.root.querySelector(`.mk-ed-frame[data-side="${n}"]`);
 
-  // ---------------------------------------------------------------- the frame over the whole cover
-  // The window the front takes, in the cover's pixels — the same sums as the server's _fill(): its size from the zoom
+  // ---------------------------------------------------------------- the frames over the whole cover
+  // The window a side takes, in the cover's pixels — the same sums as the server's _window(): its size from the zoom
   // (the board's proportions, never stretched), kept inside the picture (13.10.2026, the owner: "the whole picture's
   // spare, and drag the edges as with Ctrl+T in Photoshop").
   const tallest = Math.min(H, W / aspect);                       // the biggest window the cover takes
   const zoomOf = (ch) => BH / (base * ch);
-  function windowOf() {
-    const scale = base * st.zoom;
+  function windowOf(c) {
+    const scale = base * c.zoom;
     const cw = BW / scale, ch = BH / scale;
-    const x0 = Math.min(Math.max(st.x * W - cw / 2, 0), Math.max(W - cw, 0));
-    const y0 = Math.min(Math.max(st.y * H - ch / 2, 0), Math.max(H - ch, 0));
+    const x0 = Math.min(Math.max(c.x * W - cw / 2, 0), Math.max(W - cw, 0));
+    const y0 = Math.min(Math.max(c.y * H - ch / 2, 0), Math.max(H - ch, 0));
     return { x0, y0, cw, ch };
   }
-  function clampCentre() {     // what is sent is what is seen: the centre the frame really has
-    if (!Number.isFinite(st.x) || !Number.isFinite(st.y)) Object.assign(st, { x: 0.75, y: 0.5 });
-    st.zoom = Math.min(s.maxZoom, Math.max(s.minZoom, Number.isFinite(st.zoom) ? st.zoom : 1));
-    const w = windowOf();
-    st.x = (w.x0 + w.cw / 2) / W;
-    st.y = (w.y0 + w.ch / 2) / H;
+  function clampCentre(c) {     // what is sent is what is seen: the centre the frame really has
+    if (!Number.isFinite(c.x) || !Number.isFinite(c.y)) Object.assign(c, { x: c.centre, y: 0.5 });
+    c.zoom = Math.min(s.maxZoom, Math.max(s.minZoom, Number.isFinite(c.zoom) ? c.zoom : 1));
+    const w = windowOf(c);
+    c.x = (w.x0 + w.cw / 2) / W;
+    c.y = (w.y0 + w.ch / 2) / H;
   }
-  function paintFrame() {
-    const w = windowOf();
-    Object.assign(frame.style, { left: `${(100 * w.x0) / W}%`, top: `${(100 * w.y0) / H}%`,
-      width: `${(100 * w.cw) / W}%`, height: `${(100 * w.ch) / H}%` });
+  function paintFrames() {      // every frame, and the dark outside them all (a mask: frames that overlap stay clear)
+    let d = '';
+    for (const n of names) {
+      const w = windowOf(sides[n]), f = frameOf(n);
+      Object.assign(f.style, { left: `${(100 * w.x0) / W}%`, top: `${(100 * w.y0) / H}%`,
+        width: `${(100 * w.cw) / W}%`, height: `${(100 * w.ch) / H}%` });
+      f.classList.toggle('on', names.length > 1 && n === st.active);
+      d += `M${w.x0} ${w.y0}h${w.cw}v${w.ch}h${-w.cw}Z`;
+    }
+    $('#ed-shade').setAttribute('d', d);
   }
+  // The side a press belongs to: the frame under it, else the half it is on (the back left of the spine).
+  const sideAt = (e, p) => e.target.closest('[data-side]')?.dataset.side || (sides.back && p.x < W / 2 ? 'back' : 'front');
 
-  // Inside the frame — move it; a corner — resize it, the opposite corner staying put (Ctrl+T with the
-  // proportions locked); outside — the frame jumps there and follows.
+  // Inside a frame — move it; a corner — resize it, the opposite corner staying put (Ctrl+T with the
+  // proportions locked); outside — that half's frame jumps there and follows.
   let drag = null;
   const at = (e, r) => ({ x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H });
   cover.addEventListener('pointerdown', (e) => {
@@ -75,21 +98,24 @@ export async function openEditor({ job, key, onSaved }) {
     const r = cover.getBoundingClientRect();
     if (!r.width || !r.height) return;
     e.preventDefault();
-    const p = at(e, r), w = windowOf(), h = e.target.closest('[data-h]')?.dataset.h;
+    const p = at(e, r), n = sideAt(e, p), c = sides[n], h = e.target.closest('[data-h]')?.dataset.h;
+    st.active = n;
+    const w = windowOf(c);
     if (h) {
-      drag = { h, r, ox: h.includes('w') ? w.x0 + w.cw : w.x0, oy: h.includes('n') ? w.y0 + w.ch : w.y0 };
+      drag = { c, h, r, ox: h.includes('w') ? w.x0 + w.cw : w.x0, oy: h.includes('n') ? w.y0 + w.ch : w.y0 };
     } else {
-      if (!e.target.closest('#ed-frame')) {    // a press beside the frame: it comes under the pointer
-        st.x = p.x / W; st.y = p.y / H; clampCentre(); paintFrame();
+      if (!e.target.closest('[data-side]')) {    // a press beside the frames: that half's comes under the pointer
+        c.x = p.x / W; c.y = p.y / H; clampCentre(c);
       }
-      drag = { r, p, x: st.x, y: st.y };
+      drag = { c, r, p, x: c.x, y: c.y };
     }
+    paintFrames();
     try { cover.setPointerCapture(e.pointerId); } catch { /* the drag still follows inside */ }
     cover.classList.add(drag.h ? 'resizing' : 'dragging');
   });
   cover.addEventListener('pointermove', (e) => {
     if (!drag) return;
-    const p = at(e, drag.r);
+    const p = at(e, drag.r), c = drag.c;
     if (drag.h) {
       const left = drag.h.includes('w'), up = drag.h.includes('n');
       // as big as the pointer asks, the proportions kept; at the cover's edge the frame grows on and slides back
@@ -98,13 +124,13 @@ export async function openEditor({ job, key, onSaved }) {
       ch = Math.max(Math.min(ch, tallest), BH / (base * s.maxZoom));
       const cw = ch * aspect;
       const x0 = left ? drag.ox - cw : drag.ox, y0 = up ? drag.oy - ch : drag.oy;
-      st.zoom = zoomOf(ch);
-      st.x = (x0 + cw / 2) / W; st.y = (y0 + ch / 2) / H;
+      c.zoom = zoomOf(ch);
+      c.x = (x0 + cw / 2) / W; c.y = (y0 + ch / 2) / H;
     } else {
-      st.x = drag.x + (p.x - drag.p.x) / W;
-      st.y = drag.y + (p.y - drag.p.y) / H;
+      c.x = drag.x + (p.x - drag.p.x) / W;
+      c.y = drag.y + (p.y - drag.p.y) / H;
     }
-    clampCentre(); paintFrame();
+    clampCentre(c); paintFrames();
   });
   const endDrag = () => {
     if (!drag) return;
@@ -114,10 +140,14 @@ export async function openEditor({ job, key, onSaved }) {
   };
   cover.addEventListener('pointerup', endDrag);
   cover.addEventListener('pointercancel', endDrag);
-  cover.addEventListener('wheel', (e) => {       // the wheel: closer or farther, around the frame's middle
+  cover.addEventListener('wheel', (e) => {       // the wheel: closer or farther, around the middle of that side's frame
     e.preventDefault();
-    st.zoom *= e.deltaY < 0 ? 1.06 : 1 / 1.06;
-    clampCentre(); paintFrame(); redraw();
+    const r = cover.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const n = sideAt(e, at(e, r)), c = sides[n];
+    st.active = n;
+    c.zoom *= e.deltaY < 0 ? 1.06 : 1 / 1.06;
+    clampCentre(c); paintFrames(); redraw();
   }, { passive: false });
 
   // ---------------------------------------------------------------- the colours of the softcover scenes
@@ -184,8 +214,9 @@ export async function openEditor({ job, key, onSaved }) {
     };
     img.onload = () => done(true);
     img.onerror = () => done(false);
-    img.src = media('/media/mockups/edit', { job, key, x: st.x.toFixed(4), y: st.y.toFixed(4), zoom: st.zoom.toFixed(3),
-      ...st.colours, w: PREVIEW_W });
+    const f = sides.front, b = sides.back;
+    img.src = media('/media/mockups/edit', { job, key, x: f.x.toFixed(4), y: f.y.toFixed(4), zoom: f.zoom.toFixed(3),
+      ...(moved(b) ? { bx: b.x.toFixed(4), by: b.y.toFixed(4), bzoom: b.zoom.toFixed(3) } : {}), ...st.colours, w: PREVIEW_W });
   }
 
   m.root.addEventListener('input', (e) => {
@@ -200,7 +231,10 @@ export async function openEditor({ job, key, onSaved }) {
     const t = e.target.closest('[data-ed]');
     if (!t) return;
     const act = t.dataset.ed;
-    if (act === 'reset') { Object.assign(st, { x: 0.75, y: 0.5, zoom: 1 }); clampCentre(); paintFrame(); redraw(); return; }
+    if (act === 'reset') {       // both sides as the program put them
+      for (const c of Object.values(sides)) { Object.assign(c, { x: c.centre, y: 0.5, zoom: 1 }); clampCentre(c); }
+      paintFrames(); redraw(); return;
+    }
     if (act === 'colour') { st.colours[t.dataset.what] = t.dataset.hex; paintColours(); redraw(); return; }
     if (act === 'pick') { st.pick = st.pick === t.dataset.what ? null : t.dataset.what; paintColours(); return; }
     if (act === 'edges-auto') { Object.assign(st.colours, s.suggest.edges); paintColours(); redraw(); return; }
@@ -208,11 +242,13 @@ export async function openEditor({ job, key, onSaved }) {
   });
 
   async function save(btn) {
-    if (JSON.stringify([st.x, st.y, st.zoom, st.colours]) === first) { m.close(); return; }
+    if (shot() === first) { m.close(); return; }
     btn.disabled = true;
     setHtml(btn, html`<span class="spinner"></span>Зберігаю…`);
     try {
-      const res = await post('/api/mockups/edit', { job, key, crop: { x: st.x, y: st.y, zoom: st.zoom }, ...st.colours });
+      const part = (c) => ({ x: c.x, y: c.y, zoom: c.zoom });
+      const crop = { ...part(sides.front), ...(moved(sides.back) ? { back: part(sides.back) } : {}) };
+      const res = await post('/api/mockups/edit', { job, key, crop, ...st.colours });
       m.close();
       onSaved?.(res);
       toast(res.saved.length > 1 ? 'Збережено — обидві сцени з новим фоном' : 'Збережено', 'success');
@@ -223,6 +259,6 @@ export async function openEditor({ job, key, onSaved }) {
     }
   }
 
-  clampCentre(); first = JSON.stringify([st.x, st.y, st.zoom, st.colours]);
-  paintFrame(); paintColours(); redraw(true);
+  Object.values(sides).forEach(clampCentre); first = shot();
+  paintFrames(); paintColours(); redraw(true);
 }

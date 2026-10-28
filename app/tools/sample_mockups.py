@@ -88,6 +88,8 @@ def pretend_render(data: Path, key: str, pictures: dict, colours: dict | None):
     laid = [pictures[s] for s in ("left", "right") if s in pictures] or [pictures.get("page1") or pictures["front"]]
     if "front" in pictures and key in ("cover1", "coverOpen", "allOpen"):
         laid = [pictures["front"]] + laid[1:]
+    if key == "allOpen":                 # the back shows there too: laid beside the front (its own crop, 27.10.2026)
+        laid = [pictures["back"], pictures["front"]]
     for i, im in enumerate(laid[:2]):
         sheet.paste(im.convert("RGB").resize((460, 460)), (290 + i * 460, 270))
     edge = (colours or {}).get("Front Color")
