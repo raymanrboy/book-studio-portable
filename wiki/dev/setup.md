@@ -1,7 +1,7 @@
 ---
 title: Setup, launch, GitHub
 type: dev
-updated: 2026-10-04
+updated: 2026-10-28
 code:
   - app/tools/make_shortcut.py
   - app/requirements.txt
@@ -35,7 +35,7 @@ code:
 
 ## GitHub
 
-- The private repository of **this (portable) copy**: **raymanrboy/book-studio-portable**, branch `main`, remote `origin`. (The ordinary Book Studio has its own, `raymanrboy/book-studio` — never push this copy there: the history is shared up to 2026-10-04, then they part.)
+- The private repository of **this (portable) copy**: **raymanrboy/book-studio-portable**, branch `main`, remote `origin`. (The ordinary Book Studio has its own, `raymanrboy/book-studio` — never push this copy there.)
 - The GitHub CLI on the Wrocław PC was unpacked without an installer and **is not on PATH**:
   `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe` (sign-in — `raymanrboy`).
 - Git isn't configured globally for gh; push from Git Bash:
@@ -46,7 +46,7 @@ code:
 - Commit and push — **only when the owner asks.** Commit messages — in English.
 - **When he asks — commit everything in the working folder together** (including other sessions'
   changes), without splitting into "mine / someone else's": it's simpler for the owner, and the version
-  history is all in git either way (his request, 2026-09-17). Before committing, only check that no keys
+  history is all in git either way (his request). Before committing, only check that no keys
   or real customer data get in.
 - `app/data/`, `app/bin/`, `__pycache__`, `.obsidian/`, and local Claude Code settings never go into the
   repository.

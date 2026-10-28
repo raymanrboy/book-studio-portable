@@ -1,7 +1,7 @@
 ---
 title: Book Studio overview
 type: overview
-updated: 2026-10-25
+updated: 2026-10-28
 code:
   - app/studio/main.py
   - app/studio/core.py
@@ -17,8 +17,7 @@ code:
 The owner sells personalized books on Etsy: the text carries the child's name, the first page has a
 dedication, and the end has a "from whom". The buyer fills in the personalization fields on Etsy. The
 owner makes a copy of the book template in Canva, drops in the name with find-and-replace on `{Name}`,
-downloads the PNG pages, and sends the book to print: since 1 October 2026 only **Gelato**, on his own account (30
-pages or 28 without one spread); before, **Printify** printed US hardcovers (24 pages) — see the
+downloads the PNG pages, and sends the book to print at **Gelato** (30 pages, or 28 without one spread) — see the
 [printer rule](rules/printer-rule.md).
 
 The owner is not a programmer, writes in Ukrainian, and works from two computers: the **Wrocław** one
@@ -33,14 +32,14 @@ listings and shops — see [security](security.md). The program itself is not ru
 | Orders (start screen) | The queue of new Etsy orders and the order card: the book, Canva, personalization, files, proofing, sending to print | [features/orders.md](features/orders.md) |
 | Text check | A local Gemma model reads the pages, the program checks them against the book passport and Etsy data | [features/text-check.md](features/text-check.md) |
 | Book library | The reference for every book: cover, 16 pages/spreads, texts, a link to Canva | [features/library.md](features/library.md) |
-| Order Creator | A draft order in Gelato (until 30 September also an unpublished book and an On-hold order in Printify) | [features/order-creator.md](features/order-creator.md) |
+| Order Creator | A draft order in Gelato | [features/order-creator.md](features/order-creator.md) |
 | Order archive | Files of books that went to print: proofing and reprints; live 14 days after "Sent" | [features/archive.md](features/archive.md) |
-| Settings | Service keys, the Etsy connection, Gelato (two accounts during the move), the Printify template, the text check, the data folder | [features/settings.md](features/settings.md) |
+| Settings | Service keys, the Etsy connection, Gelato, the Printify template, the text check, the data folder | [features/settings.md](features/settings.md) |
 | Backup | Every 3 days the whole program folder and the mockup templates, with the keys, go to Google Drive as one password-protected archive | [features/backup.md](features/backup.md) |
-| Profit (counts only sales from 1 October 2026) | An equivalent of the Etsy Profit Calculator: Etsy Net minus print cost | [features/profit.md](features/profit.md) |
+| Profit | An equivalent of the Etsy Profit Calculator: Etsy Net minus print cost | [features/profit.md](features/profit.md) |
 | **The rail** | One icon rail: **Замовлення**, **Книги**, **Прибуток**, **Інструменти**; the ink is orange for orders and cyan for books | [features/modes.md](features/modes.md) |
 | Workshop («Книги») | Books in development, written by the book pipeline's agents in Antigravity (`pipeline/`): the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches the downloaded pictures; passed to the library with their Etsy listing | [features/workshop.md](features/workshop.md) |
-| Mockups (a tool, and a Workshop book's step) | Etsy listing pictures: a Canva demo book → the owner's Photoshop templates; he fits the front cover by hand | [features/mockups.md](features/mockups.md) |
+| Mockups (a tool, and a Workshop book's step) | Etsy listing pictures: a Canva demo book → the owner's templates, drawn by the program (a crop window to fit the cover) | [features/mockups.md](features/mockups.md) |
 | Listing slides | The six Etsy slides made from the mockups, with a Canva-like editor | [features/slides.md](features/slides.md) |
 | Photo mockups | Lifestyle photos with a blank book → our book in them | [features/photo-mockups.md](features/photo-mockups.md) |
 
@@ -58,18 +57,13 @@ listings and shops — see [security](security.md). The program itself is not ru
 
 ## Earlier tools
 
-Book Studio replaces three older programs that sit next to it on the desktop:
-- **Etsy Profit Calculator** — its profit formulas were carried over one-to-one and checked by tests
-  ([features/profit.md](features/profit.md));
-- **Order Creator Printify** — its book-creation logic was carried into the Order Creator;
-- **Etsy OS** — a failed attempt at an order pipeline; its lessons are reflected in the
-  [decisions](decisions.md) ("one order — one screen").
-Keys from the first two can be moved over with one button in Settings.
+Book Studio replaces three older programs on the desktop (Etsy Profit Calculator, Order Creator Printify, Etsy OS); what
+was carried over is in [profit](features/profit.md) and the [decisions](decisions.md).
 
 ## Repository
 
 ```
-Book Studio/            ← git root (private GitHub: raymanrboy/book-studio)
+Book Studio/            ← git root (private GitHub: raymanrboy/book-studio-portable)
   AGENTS.md, CLAUDE.md  ← rules for agents
   app/                  ← the program (see the code map)
   wiki/                 ← this wiki

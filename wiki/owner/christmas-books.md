@@ -1,19 +1,19 @@
 ---
 title: Five Christmas books and the two styles to copy
 type: owner
-updated: 2026-10-13
+updated: 2026-10-28
 code: []
 ---
 # Five Christmas books and the two styles to copy
 
-> From the [ideas backlog](listing-ideas.md) the owner picked the Christmas season to focus on (2026-10-11): five books, and for them **the visual
+> From the [ideas backlog](listing-ideas.md) the owner picked the Christmas season to focus on: five books, and for them **the visual
 > style of the two shops — TheChildhoodKeeper ("A") and LunaBooksUS ("B") — copied as exactly as possible**. The two styles are written as locked
 > `style{}` presets for the book pipeline (`CG` and `FG` in
 > [media-presets.md](../../pipeline/playbook/knowledge/media-presets.md)), so every picture of a book gets the same long description.
 
 ## The five books
 
-Christmas demand on Etsy builds from now; the aim is to have the first listings up in about two weeks. "Tier" is the pipeline's: **S** = animals, only
+Christmas demand on Etsy builds early, so the listings go up well before the season. "Tier" is the pipeline's: **S** = animals, only
 the name is typed into the text (no per-order generation); **H** = a child character that must look like the buyer's child.
 
 | # | Book | Style | Tier | Listings it gives | Seen at |
@@ -43,12 +43,10 @@ much, swap it for a simpler "spot the star" book with three things to find per s
 
 All five can carry "Christmas gift" and "New Year" in the listing title and tags — the owner's "New Year" is the same season, not a separate book.
 
-## In the Workshop (2026-10-11)
+## In the Workshop
 
-The three animal books were taken through the pipeline's agents (0, 2, 3, 4, 5) at the owner's request and wait in the Workshop («Майстерня») as
-**38** (Night Before Christmas), **39** (Goodnight, Christmas Eve) and **40** (Christmas with Grandma). For each: the formula, the story
-(14 scenes), the text (6 rhymed lines per spread, a dedication and an afterword), the 14 panorama prompts and 2 square prompts are filled and the
-book check says GO (0 FAIL, 0 WARN); the steps from «Картинки» on are still to do — **the pictures are the owner's to generate**. The style is
+The three animal books are Workshop («Майстерня») books **38** (Night Before Christmas), **39** (Goodnight, Christmas Eve) and **40** (Christmas with
+Grandma); where each stands is the Workshop's to say ([workshop](../features/workshop.md)). **The pictures are the owner's to generate.** The style is
 `CG` in all three.
 
 - **38 — {Name}'s Night Before Christmas:** a fox family in a cottage in an old fir; the star stocking stands for {Name}; Santa is only a far silhouette,
@@ -62,7 +60,7 @@ book check says GO (0 FAIL, 0 WARN); the steps from «Картинки» on are 
   text was written and checked by one agent (syllables counted by a script, no second reader) — worth a native-English read; (4) no listing SEO yet
   (`/etsy-seo` when the owner asks).
 
-## Five more Christmas books (2026-10-13) — taken from the shops that sell
+## Five more Christmas books — taken from the shops that sell
 
 The owner asked for five more, looking actively at the competitors ("we copy successful shops"). Searched Etsy as a visitor (search "personalized christmas book for kids",
 "letter from santa", "snowman", and the shops behind the results). **What sells** (shop sales / shop rating counts as Etsy shows them; per-listing sales are not public):
@@ -84,10 +82,9 @@ The owner asked for five more, looking actively at the competitors ("we copy suc
 | 9 | **44** | **{Name}'s Toy from Santa's Workshop** — the little elf Pip builds a star-shaped music box for {Name} | Pip the elf, toys | FG | S | WhimsyNestCorner, TheCraftyOwlGoods |
 | 10 | **45** | **{Name}'s Wish Star and the Little Reindeer** — a lost reindeer calf follows {Name}'s wish star home | a reindeer calf, a hare, a fox, an owl | CG | S | LUFgifts |
 
-**Where they stand (2026-10-13):** books 42–45 went through the pipeline's agents 0, 2, 3, 4, 5 and wait in the Workshop with the check at GO, 0 FAIL, 0 WARN; the pictures are the owner's to generate.
-**41 stops at the pipeline's first hard stop** (Agent 1): `formula.md`, `input.md`, `canonical-prompt.md` and `character-card.md` are made; nothing more until the owner generates `canonical.png`
-(the child is a recurring hero that must look like the buyer's child). Santa has a face in this one (a written description in the card). The style choice: the owner said "CP, CG and FG — choose the fittest"; `CP` was added to
-`media-presets.md` as a general preset (from the owner's 24.spooky-stories); the picks are the agent's.
+**41** is a Tier H book: the pipeline stops at its first hard stop until the owner generates `canonical.png` (the child is a recurring hero that must
+look like the buyer's child). Santa has a face in this one (a written description in the card). The style choice: the owner said "CP, CG and FG — choose the fittest"
+(`CP` is a general preset in `media-presets.md`, from the owner's 24.spooky-stories); the picks are the agent's.
 
 ## Style A — TheChildhoodKeeper (the cozy glow)
 
@@ -147,7 +144,7 @@ ours use their own animals, own scenes and own words. Close clones of a single b
 
 ## How to check that it is "almost ideal"
 
-The presets were written from the pictures, not tested: no image has been generated yet. Before a whole book: generate **one** frame per style
+The presets were written from the pictures. Before a whole book: generate **one** frame per style
 (a Christmas tree scene with a child, or a woodland animal under snowy pines), put it next to the reference pictures above, and compare the ten
 things listed under each style. What differs goes into the preset's `style{}` (the pipeline's rule: the long block is pasted verbatim, never
 shortened). The generation is the owner's, in Nano Banana; the pipeline's GO/NO-GO step is the place for it.

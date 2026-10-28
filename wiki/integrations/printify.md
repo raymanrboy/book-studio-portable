@@ -1,28 +1,26 @@
 ---
 title: Printify
 type: integration
-updated: 2026-10-03
+updated: 2026-10-28
 code:
   - app/studio/printify.py
 ---
 # Printify
 
-> **Since 1 October 2026 only read** (the owner, 29.09.2026: "from 1 October I move only to Gelato"): every new
-> book goes to Gelato. Before, it printed **hardcovers for the US** (24 pages). Shop CozyCovenant, template
+> **Read only**: every new book goes to Gelato (the owner: "I move only to Gelato"). Shop CozyCovenant, template
 > "Hardcover 8x8 Template" (the Master). API `https://api.printify.com/v1`, token — a Personal Access Token.
 
-## Read only from 1 October 2026
+## Read only
 
-- `retired()` — from `READ_ONLY_FROM` (1 October 2026, this computer's calendar). Then `_check()` blocks **every**
-  request that isn't a `GET` — image uploads, products, orders on hold — with "З 1 жовтня Printify лише для читання —
-  нові книги друкує Gelato." (`RETIRED_TEXT`); the Order Creator's Printify routes refuse before a job starts.
+- `retired()` — true from `READ_ONLY_FROM`. `_check()` blocks **every** request that isn't a `GET` — image uploads,
+  products, orders on hold — with `RETIRED_TEXT`; the Order Creator's Printify routes refuse before a job starts.
 - **Reading stays**: the sync still reads its orders, so the earlier ones keep their stage, tracking, archive days
   and cost. The token stays in Settings (the card says «лише читання старих замовлень», no Master picker).
 - **Where it shows**: the printer rule gives every book to Gelato ([printer-rule](../rules/printer-rule.md)); the
   Order Creator has no Printify/Gelato switch; an archived Printify book has no «Передрук» — its 24 pages don't fit
-  Gelato, so a reprint starts from the order's card with the book downloaded anew (28 or 30 pages).
+  Gelato, so a reprint starts from the order's card with the book downloaded anew.
 
-## What was allowed (before 1 October 2026; the rails stay in the code)
+## What the code still allows to write (only before the read-only date; the rails stay)
 
 | Action | API path | When |
 |---|---|---|
@@ -38,11 +36,10 @@ Everything else is blocked in `_check()` ([security](../security.md)).
 - An order created through the API is kept **"On hold"** by Printify. Whether (and when) it goes into
   production and gets charged depends on the shop's *Order submission / Order approval* setting:
   **Manual** — only after "Submit order" in Printify; the automatic options go on their own after a set
-  time. The owner's shop is set to **Manual** (a screenshot from 2026-09-15), and the program asks once
-  to confirm this.
+  time. The owner's shop is set to **Manual**, and the program asks once to confirm this.
 - Fields: `external_id` (`<receipt>-<8 characters>`), `label` (the book's title), `line_items`
   (`product_id` + the matte variant's `variant_id` + `quantity` 1) — **one line item per book of the
-  receipt**: an order for two books goes as one order to one address (since 2026-09-20),
+  receipt**: an order for two books goes as one order to one address,
   `shipping_method: 1` (standard), `is_printify_express: false`, `send_shipping_notification: false`,
   `address_to` (`first_name`, `last_name`, `address1`, `address2`, `city`, `region`, `zip`, `country`,
   `phone`).
@@ -63,15 +60,15 @@ Everything else is blocked in `_check()` ([security](../security.md)).
 `data/creator/upload-cache.json`: a file's SHA-256 → its image ID (the last 5000, `UPLOADS_KEPT`).
 Before reusing one, it's checked to still exist in Printify (`upload_exists()`). An upload is only
 retried when it certainly didn't arrive (the connection was refused, 429, 503); never after a timeout,
-so duplicates never pile up in Printify's media library (since 2026-09-23). The upload's JSON is built straight in
-bytes (`upload_image()`): a 30 MB page was held about five times over, three uploads at once (since 2026-09-26).
+so duplicates never pile up in Printify's media library. The upload's JSON is built straight in
+bytes (`upload_image()`), so a big page is not held in memory several times over.
 
 ## Sync
 
 `all_orders()` reads every order in the shop (50 at a time, up to 4 pages in parallel, no more than
 `MAX_ORDER_PAGES` = 400 pages — a larger shop is marked incomplete, `httpc.Listing`); `slim_order()`
-keeps only the fields needed for matching, the status, and (since 2026-09-17) `shipments` — tracking
-numbers once shipped (`carrier` as a code, e.g. `usps`, `number`, `url`, and since 2026-09-28 `delivered_at` —
+keeps only the fields needed for matching, the status, and `shipments` — tracking
+numbers once shipped (`carrier` as a code, e.g. `usps`, `number`, `url`, and `delivered_at` —
 when the carrier delivered it; not stored without a number). The chip shows `fulfilled` as In transit /
 Delivered by it ([rules/order-stages.md](../rules/order-stages.md)).
 They're already in the order list, so no separate requests are needed. A `fulfilled`/`partially-fulfilled`

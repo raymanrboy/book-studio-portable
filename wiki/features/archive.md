@@ -1,7 +1,7 @@
 ---
 title: Order archive — what went to print, and reprints
 type: feature
-updated: 2026-10-18
+updated: 2026-10-28
 code:
   - app/studio/archive.py
   - app/tools/archive_dedupe.py
@@ -9,48 +9,46 @@ code:
 ---
 # Order archive
 
-> **«Архів друку»** among [«Інструменти»](modes.md) (a separate item of the rail until 2026-09-30); a printed order's card
+> **«Архів друку»** among [«Інструменти»](modes.md); a printed order's card
 > shows what went to print and leads to its entry, which goes back to the card. Every book sent to print **from Book Studio**, whose print-shop order is
 > **confirmed and paid**, sits here with exactly the files that went to print — so you can see what was
 > really printed, and **reprint it in two clicks**.
 > Files delete themselves **14 days after the order became "Sent"**.
-> Designed and built on 2026-09-18 ([decision](../decisions.md)).
+> The decision — [decisions.md](../decisions.md).
 
 ## What goes into the archive
 
 - **Every successful send** from the Order Creator (and from the order card through it): a book in
   Printify (with or without an "On hold" order), a draft in Gelato, a reprint. Failed attempts don't —
   they're visible in the [send journal](send-journal.md).
-- **Exactly the files that were sent**: `Cover.png` + `1…N.png` (24 for Printify, 28 or 30 for Gelato) —
+- **Exactly the files that were sent**: `Cover.png` + `1…N.png` (Gelato: 28 or 30 pages, [gelato](../integrations/gelato.md)) —
   a **copy**, not a link: if the files in your own folder change afterward, the archive stays as it went
   to print. A reprint from the archive takes the same files via a hard link (uses no extra space).
-- **The same page is kept once** (2026-10-04): 14 of a book's ~31 pages are the same illustrations in every child's order, and
-  Canva signs each export with its own text (XMP), so they were kept again and again — 5.6 of the archive's 12.2 GB. A page is known
-  by its picture (`page_key()`: the PNG's chunks without the text ones), and a send whose page the archive already holds keeps it as a
-  hard link to that file — one file on the disk, a whole book in every entry; removing one book leaves the others whole. Pixels and
-  print size are the same; only Canva's signature of the later export is not kept. `archive/pages.json` remembers each file's key
-  by its stamp (`_index()`, refreshed on launch and after each sync). What was there before: `app/tools/archive_dedupe.py`
-  (`--apply`; the replaced files go to the Recycle Bin) — run on 04.10.2026: 455 pages of 31 books, 12.2 → 6.7 GB on the disk.
-  The backup still packs every name in full (7-Zip reads a hard link as a file).
+- **The same page is kept once**: many of a book's pages are the same illustrations in every child's order, and Canva signs each
+  export with its own text (XMP). A page is known by its picture (`page_key()`: the PNG's chunks without the text ones), and a send
+  whose page the archive already holds keeps it as a hard link to that file — one file on the disk, a whole book in every entry;
+  removing one book leaves the others whole. Only Canva's signature of the later export is not kept. `archive/pages.json` remembers
+  each file's key by its stamp (`_index()`, refreshed on launch and after each sync). For entries stored earlier:
+  `app/tools/archive_dedupe.py` (`--apply`; the replaced files go to the Recycle Bin). The backup still packs every name in full
+  (7-Zip reads a hard link as a file).
 - **Description** (`entry.json`): the printer, the title (`receipt number - name`), the receipt number,
   when, how many pages, the Gelato format, Product ID / Order ID, the shipping address, the send
   journal's record name, whether it's a reprint and of which book, "Keep", when the order became "Sent".
-- **Only what really went to print is shown** (the owner's decision, 2026-09-18, `standing()`): files
+- **Only what really went to print is shown** (the owner's decision, `standing()`): files
   are stored at the moment they're sent, but a book appears in the list **once its print-shop order is
   confirmed and paid** (after "Refresh"): Printify — not "on-hold", not "pending", not
   "payment-not-received", not cancelled; Gelato — the draft confirmed as an order, paid, not cancelled
   (`profit.is_placed()`). A draft, unpaid, or cancelled order **doesn't count**: the book isn't in the
   archive, and there's no reprint from it. The exception is "Keep".
-- **New ones only**: books sent before 2026-09-18, or created by hand in Gelato, aren't picked up.
+- **New ones only**: books created by hand in Gelato aren't picked up.
 - Lives in `app/data/archive/<id>/` (id — `YYYYMMDD-HHMMSS-xxxxxx`); never goes into git. One book is
-  ~200–500 MB of real files.
+  hundreds of MB of real files.
 
 ## When files get deleted (`archive.refresh()`)
 
-The list is drawn once; its search only hides rows (no picture reloads, no entrance replays on each letter; since
-2026-09-26). The archive's previews (the page and its viewer) are ready before it opens: the ones the order card or the Order
-Creator already made of the sent files are copied (`images.copy_previews()`), only the rest are made — each send
-used to decode every page once more, right when the owner started the next order (since 2026-09-26).
+The list is drawn once; its search only hides rows (no picture reloads, no entrance replays on each letter). The archive's
+previews (the page and its viewer) are ready before it opens: the ones the order card or the Order Creator already made of the
+sent files are copied (`images.copy_previews()`), only the rest are made.
 
 Checked on program launch and after every order refresh. Rules (`clock()`):
 
@@ -66,20 +64,18 @@ Checked on program launch and after every order refresh. Rules (`clock()`):
 
 - No sync data (Etsy not connected), or it couldn't be read → **nothing gets deleted**, and the list
   shows everything as before.
-- **Only a fresh printer list** (the 2026-09-22 audit): the sync records, separately for Etsy, Printify
+- **Only a fresh printer list**: the sync records, separately for Etsy, Printify
   and Gelato, when their order list **last loaded in full** (`loaded` in the snapshot, `_loaded()`). A
   printer whose list failed to load (an expired key, a glitch) or was cut off at its cap proves nothing:
   an order missing from a stale list doesn't make a book a "deleted draft". Both "never became an order"
   (3 days) and "never got confirmed" (30 days) only delete files when that printer's list loaded
-  **after** the deadline arrived. Before, a fresh list from any printer was enough — and a book that
-  went to print in Gelato could lose its files after 5 days of Gelato failing to sync.
+  **after** the deadline arrived.
 - A reprint that never became an order clears its "replacement" mark from the receipt
   (`profit.unmark_reprint()`).
 - Pictures are deleted first, the description last: if some file is open in another program, the book
   stays in the list and gets deleted on the next check (`_remove()`).
 - Half-copied `.tmp-*` folders (a power cut) are cleared out after an hour.
-- Auto-deletion is a **deliberate exception** to the "never delete the owner's data" rule (decision,
-  2026-09-18).
+- Auto-deletion is a **deliberate exception** to the "never delete the owner's data" rule ([decisions.md](../decisions.md)).
 
 ## Screen
 
@@ -91,7 +87,7 @@ countdown starts — nothing.
 
 **A book** (`#/archive/<id>`):
 - opened from its order's card (`store.from`) — «back» and Esc go back to the card and the rail stays on «Замовлення»
-  (`navFor()`, since 2026-09-30); from the list — back to the list;
+  (`navFor()`); from the list — back to the list;
 - header — name, the status of **this** print order, receipt number, "printed …", stage, tracking
   number; on the right, icons for **"Keep"** (a pin), **the files folder**, **the send journal**, and a
   chip "Printify · 24 pages";
@@ -128,12 +124,11 @@ reprint mode is dropped.
   replacement: it becomes the only live print order, gets matched like a normal one, and the receipt
   moves from "New" to "In progress".
 - A reprint is a new record in the archive (`reprintOf`) and in the send journal (`kind: reprint`).
-- **A reprint with new files** (since 2026-10-18: a cover fixed after the buyer's complaint): sent from the order's card
+- **A reprint with new files** (a cover fixed after a complaint): sent from the order's card
   through the Order Creator with its «Передрук» tick ([order-creator](order-creator.md)). The new files go (not the
   archived ones); the record has `reprint: true` and `reprintOf` — the first print's book while it is still archived
   (`printed_before()`). It counts as a reprint everywhere (`is_reprint()`): its 14 days start when its own print order is
-  shipped, it is marked a replacement, the «передрук» chip. Before, such a send was a «second sale»: its record took the
-  receipt's «Sent» at once and its files would have gone 14 days after sending.
+  shipped, it is marked a replacement, the «передрук» chip.
 - **Only from a book that really went to print** (`reprintable()`): the server won't make a reprint from
   a send that never became an order (409) — that order is simply sent again from its card.
 
@@ -148,8 +143,7 @@ is `earlierSends` in `GET /api/orders/<receipt>` (a key of `archive.card_facts()
 
 The same card also knows the opposite — that a send for this order **is already at the printer** (a
 book, draft, or order, not cancelled or deleted): `atPrinter` (also a key of `archive.card_facts()`). Then a page replacement
-first asks "A draft already exists…", even after the program has been restarted (previously only the
-page itself remembered this).
+first asks "A draft already exists…", even after the program has been restarted.
 
 ## What the server returns
 
@@ -178,7 +172,7 @@ page itself remembered this).
 - [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — reprint mode: `withOrder()`, `createLabel()`, `folderCard()`, `create()`
 - [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `ROUTES`; [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`; [app/web/js/icons.js](../../app/web/js/icons.js) — `orderArchive`, `pin`
 - [app/web/css/orders.css](../../app/web/css/orders.css) — `.arc-thumb`, `.arc-id`, `.arc-clock`, `.cr-reprint`
-- [app/tools/sample_data.py](../../app/tools/sample_data.py) — `_seed_archive()`, `_sample_book()` (4 made-up books for the preview, and Olivia's draft that never became an order)
+- [app/tools/sample_data.py](../../app/tools/sample_data.py) — `_seed_archive()`, `_sample_book()` (made-up books for the preview, and a draft that never became an order)
 - Tests: [app/tests/test_archive.py](../../app/tests/test_archive.py) (`Storing`, `Removing`, `OnlyWhatWentToPrint`, `ReprintMark`, `PrintifyReprint`, `GelatoReprint`), [app/tests/test_flows.py](../../app/tests/test_flows.py) (the archive after a send)
 
 ## Related

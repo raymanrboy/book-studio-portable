@@ -261,7 +261,8 @@ export function planText(plan) {
     return `${binding} · ${countryName(plan.country)} → зазвичай ${providerName(plan.provider)}. Друкарню визначать файли: `
       + `${pagesText(plan.choice.printify)} стор. — Printify, ${pagesText(plan.choice.gelato)} — Gelato`;
   }
-  return `${binding} · ${countryName(plan.country)} → ${providerName(plan.provider)} · ${pagesText(plan.pages)} стор.`;
+  // The format's own name — «Hardcover 11×11» — so the big book is told from the 8×8 before the Order Creator.
+  return `${plan.formatLabel || binding} · ${countryName(plan.country)} → ${providerName(plan.provider)} · ${pagesText(plan.pages)} стор.`;
 }
 
 /** Etsy shipping address → the Order Creator's Gelato address fields. */

@@ -1,7 +1,7 @@
 ---
 title: Listing slides — the six Etsy pictures after the Mockups, and their editor
 type: feature
-updated: 2026-10-14
+updated: 2026-10-28
 code:
   - app/studio/slides/
   - app/studio/slides/__init__.py
@@ -22,33 +22,33 @@ code:
 
 > The six square **2000×2000** Etsy pictures of a book (his Canva layout, with torn paper, a die-cut sticker,
 > sparkles and faint leaf shadows), made by Book Studio from the book's mockups — **no Canva**. They are **the
-> Mockups' next steps**, not a page of their own: while Photoshop works, every mockup is cut out **without its
-> background** (`no-background\`, «Без фону» until 30.09.2026); after the run, «Зробити слайди» makes the six by themselves; «Відкрити в редакторі» opens a
+> Mockups' next steps**, not a page of their own: every mockup of a run is cut out **without its background**
+> (`no-background\`); after the run, «Зробити слайди» makes the six by themselves; «Відкрити в редакторі» opens a
 > Canva-like editor for the owner's touches. **A book's slides belong to its Workshop book** (its scenes in
-> `mockups\slides\`, the six pictures in **`etsy\`** beside its [photo mockups](photo-mockups.md) since 30.09.2026), their look is a **scheme** (Nature, Night, the owner's own — "not only the colours but the settings of
-> the whole mockup"). Built on 2026-09-29; the owner may also have them changed **through an agent**
-> — the skill `/listing-slides` (`.claude/skills/listing-slides/SKILL.md`).
+> `mockups\slides\`, the six pictures in **`etsy\`** beside its [photo mockups](photo-mockups.md)), their look is a
+> **scheme** (Nature, Night, the owner's own — "not only the colours but the settings of the whole mockup"). The owner may
+> also have them changed **through an agent** — the skill `/listing-slides` (`.claude/skills/listing-slides/SKILL.md`).
 
 ## How the owner uses it
 
 0. **From the Workshop book** (its step «Мокапи»: «Зробити мокапи» / «Редагувати мокапи») the Mockups open for that
    book; step 2 of the Mockups is **«Книга»** — the Workshop's books, the chosen one's folder `mockups\` takes
-   everything, **nothing asked** (the owner, 29.09.2026); «Інша папка…» is still there for a folder of his own.
-1. **Мокапи** as always ([mockups](mockups.md)). Each picture Photoshop saves is handed to the slides' cutter at once
-   (`mockups.watch()` → `_cut_without_background()`); the book with its real shadow, on a transparent background,
-   lands in the same folder's **`no-background\`** (English inside the book, the owner 30.09.2026; «Без фону» before) under the mockup's own name — **full size** (≈3700 px), ready for any use.
+   everything, **nothing asked**; «Інша папка…» is there for a folder of his own.
+1. **Мокапи** as always ([mockups](mockups.md)). Each mockup a run saves is handed to the slides' cutter at once
+   (`mockups.watch()` → `_cut_without_background()`; a drawn one — `cut_drawn()`, kept only without the background, see
+   [mockups](mockups.md#drawn-without-photoshop-since-13102026)); the book with its real shadow, on a transparent
+   background, lands in the same folder's **`no-background\`** under the mockup's own name — **full size**, ready for any use.
    **Open 1, Open 2 and Cover 1** are cut to the book (one book on the studio background, a book mask in the template);
    **Dedication** keeps **the desk and the book** and loses **the floor** under the book, its shadows kept (the owner:
    "the table stays, the background goes, without losing the shadows" — in the template the desk is
    «BACKGROUND_desk color», the colour he picks for the table, the floor the smart object «BACKGROUND» with its own
    mask); it keeps its full frame, so it lies on slide 3 where the whole mockup lay, the slide showing through.
-   Cover & Open 1 and All & Open 1 are whole scenes — they stay as they are. The ones left open for the owner go the
-   same way right after «Зберегти відкриті». ~3–7 s a mockup, in the background.
+   Cover & Open 1 and All & Open 1 are whole scenes — they stay as they are. It runs in the background.
 2. **Step 4 «Слайди для лістингу»** appears under the Photoshop step once a run has saved pictures: a line «Без фону ·
-   5/6» (a spinner while cutting, the folder button when some are ready), the two numbers **Сторінок** (30) and
-   **Віршів** (14; 24 / 11 until 2026-10-14 — the owner: «тепер 30 / 14»), six numbered outlines, and **«Зробити слайди»**. The button always answers: while Cover 1 and
+   5/6» (a spinner while cutting, the folder button when some are ready), the two numbers **Сторінок** and
+   **Віршів**, six numbered outlines, and **«Зробити слайди»**. The button always answers: while Cover 1 and
    Dedication still wait in Photoshop it says slides 2 and 3 need them and blinks «Зберегти відкриті».
-2a. **A part of the six** (09.10.2026, the owner: "if I made only Dedication, I redo only that slide"): each of the six outlines is a
+2a. **A part of the six** (the owner: "if I made only Dedication, I redo only that slide"): each of the six outlines is a
    **tick**; the ones on the run's ticked templates are ticked by themselves (Open 1 → slides 1 and 4, Open 2 → 5 and 6, Cover 1 → 2,
    Dedication → 3; Cover & Open 1 and All & Open 1 are on no slide), all six after a whole run; the owner can tick any. The button says
    «Зробити слайди: 1 з 6». The page sends `slides` to `/api/slides/make`; `work.make(only=…)` cuts and puts in **only the mockups
@@ -56,7 +56,7 @@ code:
    bakes only them (the other files in `etsy/` are not touched), reports only their missing slots and **does not tick** the Workshop's
    «Мокапи» step. Slides 2 and 3 wait for «Зберегти відкриті» only when ticked and their template is still open. The step shows after a run
    of Dedication alone once it is saved (it saves nothing by itself).
-2b. **Made another day** (11.10.2026, the owner: "if I decide to make them step by step"): step 4 starts from the Workshop
+2b. **Made another day** (the owner: "if I decide to make them step by step"): step 4 starts from the Workshop
    book's folder as it is, not only from a run on this page — the mockups there are what the slides are made from (by spread
    when no run gave the picks' order), and slides already made show as their card: **«Зроблено 1 з 6 слайдів»** with
    **«Доробити слайди 1, 2, 4, 5, 6»** — only the ones not baked yet are made (`seed()`, `work.not_baked()`; `todo` in the
@@ -71,9 +71,7 @@ code:
    mockups are made again; its page 30 is the Workshop book's own `pictures\30.png` when the demo book isn't loaded;
    the Workshop's «Мокапи» step **ticks itself**. A slot without a mockup (e.g. one Open 2 only) is named in a yellow line; the slide shows
    a dashed placeholder there. Files: a Workshop book's **`etsy\Listing 1.png … Listing 6.png`**, each with its number in the
-   listing's order («05 Listing 1.png» — [photo mockups](photo-mockups.md#where-things-are)) (since 30.09.2026 —
-   the owner: "an etsy folder in every book for the slides and the photo mockups"; `Listing N.png` beside the mockups
-   before), for a folder of his own **`Listing 1.png … Listing 6.png`** beside the mockups; never over another file
+   listing's order («05 Listing 1.png» — [photo mockups](photo-mockups.md#where-things-are)) (the owner: "an etsy folder in every book for the slides and the photo mockups"), for a folder of his own **`Listing 1.png … Listing 6.png`** beside the mockups; never over another file
    (` (2)`); the result's folder button opens that folder; the window's title, the taskbar flash and Windows' sound when the window is behind.
 4. **From the Workshop at any time** (its step «Мокапи», [workshop](workshop.md)): «Редагувати мокапи», «Редагувати
    слайди», «Відкрити папку мокапів», «Зняти позначку».
@@ -89,8 +87,7 @@ a Workshop book whose hero has two looks or more** — `agent/variants/<B2_blond
   frames `hero:1 … hero:7` on the slide, filled in the order of the looks' numbers (B1, B2, B3, B10); the name is the
   folder's start («B2_blond» → «B2»). `hero:1` — the big one on the left (a whole-body card, its name over it), `hero:2…7`
   — the grid of six «зірочки» (the scalloped frame, as page 30 on slide 3), the name under each.
-- **The pictures keep their white background — no cutting** (the owner: "it can stay with its white background"; a
-  cut-out from the white page was tried first: the shadow under the feet and the gap between the legs came out badly).
+- **The pictures keep their white background — no cutting** (the owner: "it can stay with its white background").
 - **A frame with no look** (the hero has fewer than seven) shows a dashed «Герой 6 — немає» in the editor only — the
   baked picture has nothing there; the owner moves, removes or keeps the frames himself.
 - **Looks made after the slides**: the slides take them when opened (`work.sync_heroes()` in the editor's state, the
@@ -99,13 +96,13 @@ a Workshop book whose hero has two looks or more** — `agent/variants/<B2_blond
   the eye color», «Choose your little one:») the owner rewrites in the editor.
 - **A frame's knobs** in the editor (the kind «Картинка»): **Рамка** — Зірочка / Прямокутна, Біла кромка, Хвильок,
   **Наблизити** (`zoom`, 1–3) and **Що видно: верх → низ** (`fy`, 0–1) — which part of the picture the frame shows;
-  **Підпис** (only for a look's frame) — **its own text** (the owner, 2026-10-02: "so I can edit the caption under the
+  **Підпис** (only for a look's frame) — **its own text** (the owner: "so I can edit the caption under the
   star"; `labelText`, lines; empty — the look's name, `{name}` — the name inside his text), under / over / none, the
   letters' size, the gap, the colour.
 - **Schemes**: every scheme has slide 7; one made before it gets it **in its own colours** — slide 4's colours in the first
   design swapped for the ones this scheme's slide 4 has (`store._recoloured()`, Night's comes out blue); a scheme shown
   on its own takes the looks of the newest book that has them.
-- **In the listing**: `etsy/15 Listing 7.png` — last in the numbering; the owner puts it into the listing where he wants.
+- **In the listing**: `Listing 7` — the last in the etsy/ numbering ([table](photo-mockups.md)); the owner puts it into the listing where he wants.
 
 ## The editor (`#/slides/<book | set | template>/<1–7>`)
 
@@ -114,19 +111,19 @@ module called only when needed") with its own styles (`css/slides.css`, linked b
 «Мокапи» lit; ← goes back where it came from (the Workshop book or the Mockups). Book Studio's look: its tokens and both themes, the Listings'
 cyan, `ib()` icons with tooltips.
 
-- **The bar**: back · «Слайди» with the book's name · the segmented **1–6** · undo / redo · «Повернути слайд» (since 2026-09-30 — **back to how the slide was when the editor was opened**; a session lives only
+- **The bar**: back · «Слайди» with the book's name · the segmented **1–6** · undo / redo · «Повернути слайд» (**back to how the slide was when the editor was opened**; a session lives only
   while the owner stays in the editor, flipping between the six keeps it; nothing older; no question, Ctrl+Z undoes it; «nothing
-  changed» says so — before, it went to the scheme / the first design, months back) · back leads to where he came in from
+  changed» says so) · back leads to where he came in from
   (the Mockups, a Workshop book, the tools) — not through the browser's history of every slide flipped · **«Схема: Night ▾»** — the schemes (the default marked
   «для нових книг») and the other Workshop books' slides as presets ("e.g. another bedtime book"): a click puts one on
   all six (asks first; the book's mockups and numbers stay). **Opened on its own, from «Інструменти», the same button picks which
-  scheme the editor edits** (since 2026-09-30, the owner: "Night or Nature must be inside the editor"): a scheme is edited in place
+  scheme the editor edits** (the owner: "Night or Nature must be inside the editor"): a scheme is edited in place
   by its key — `where` = `scheme:night` (route `#/slides/scheme:night/1`; `template` is still the default scheme); choosing one opens it,
   back still leads to where he came in from; «Нові книги — зі схеми …» makes the open one the default. **Before the six are made**
   (the Mockups' step 4) the same choice is a button above the numbers — «Схема: Nature ▾» — and the six start from it (`scheme` in
   `POST /api/slides/make`); «Зберегти ці слайди як схему…» (a name — the same name
   replaces that scheme; «Нові книги починаються з цієї схеми»); «Нові книги — зі схеми «…»» · the saved state («Збережено», «Не збереглось», «Малюю 3 з 6») ·
-  **«Книга ▾» / «Інша книга»** (11.10.2026, the owner: "in the listing slides I can't even choose the book") — the Workshop's
+  **«Книга ▾» / «Інша книга»** (the owner: "in the listing slides I can't even choose the book") — the Workshop's
   books (`GET /api/slides/books`): «слайди є» opens that book's slides here; «мокапів: 8, слайдів ще немає» goes to the Mockups
   for that book (as the Workshop's «Мокапи» step does), whose step 4 makes them from its folder; «мокапів ще немає» — the same,
   to make them first ·
@@ -135,7 +132,7 @@ cyan, `ib()` icons with tooltips.
   lock stays shown); **dragged** to another depth; **«Тло» — the background as the bottom row** (its colour chip; a
   click opens its colours); **«+»** adds text, a sticker, a ribbon, an arrow, a sparkle, a heart, a torn strip, a
   stain, dashes, a mockup, a picture.
-- **Every element is locked by default** (the owner, 29.09.2026): a click selects it (a dashed box, no handles) and its
+- **Every element is locked by default** (the owner): a click selects it (a dashed box, no handles) and its
   properties open; the mouse and the arrow keys don't move it — «Закріплено — зніміть замок…»; the lock in its row or
   in the properties' header frees it (`locked: false`). New elements and copies come free. The leaf shadow and the
   paper grain never catch a click.
@@ -157,18 +154,17 @@ cyan, `ib()` icons with tooltips.
 
 | What | Where |
 |---|---|
-| The first design (the agent's drawing of his Canva slides; slide 7 — the hero's looks, 2026-10-02) | `app/studio/slides/design/slide1…7.json` (in git) |
+| The first design (the agent's drawing of his Canva slides; slide 7 — the hero's looks) | `app/studio/slides/design/slide1…7.json` (in git) |
 | **The schemes** — `scheme.json` (name, default, colours by role) + the six scenes: **Nature** (the default — the template as it was), **Night** (his blue slides), his own | `app/data/slides/schemes/<key>/` |
 | **A Workshop book's slides** — `set.json` (numbers, slots, the scheme put on, baked files), `scenes/`, `books/<slot>.png` + `_shadow.png`, `pictures/` | `pipeline/books/<n>.<slug>/mockups/slides/` (beside its mockups and `no-background/`; the six baked — `etsy/Listing 1…6.png`) |
-| Slides made before 29.09.2026 evening, or for a folder that is no Workshop book | `app/data/slides/sets/<time>-<id>/` (the last 12 kept) |
-| Every cut-out once (the book and its shadow, 2600 px, where the book sits) | `app/data/slides/cuts/<key>/` — **gone when the program starts and closes** |
+| Slides made for a folder that is no Workshop book | `app/data/slides/sets/<time>-<id>/` (the last ones kept) |
+| Every cut-out once (the book and its shadow, where the book sits) | `app/data/slides/cuts/<key>/` — **gone when the program starts and closes** |
 
-**Cleaning** (the owner, 29.09.2026: "all the cache must be erased once the book is done, the quite temporary things
+**Cleaning** (the owner: "all the cache must be erased once the book is done, the quite temporary things
 when I close the program, everything in the program's folder"): the cut-outs' cache and the bake's browser files go
 at launch and close (`store.clean_temporary()`); when a book is passed to the library its slides' cache (`books/`,
 `pictures/` — the editor's smaller copies) goes (`store.book_done()`); **the six scenes stay** — "presets that will be
-used in other books too" — and the finished pictures stay in the book's folder. The old `app/data/slides/design/` (the
-template) became the scheme Nature and is no longer read.
+used in other books too" — and the finished pictures stay in the book's folder.
 
 A book on a slide names its **slot**, not a file: `open1:1…4` (the Open 1 mockups in the owner's picks order — slides
 1 and 4), `open2:1…2` (slides 5, 6), `cover` (slide 2, twice); a flat picture — `dedication` (the whole Dedication
@@ -177,15 +173,12 @@ otherwise; for a Workshop book — its own page 30); `hero:1…7` — the hero's
 `aspect`, its file `pictures/hero-N.png`). A new set copies the default scheme's six scenes; `set.json` maps
 the slots to its pictures. The default scheme is shown in the editor with the newest book's pictures.
 
-The first set, **«Приклад»**, is the owner's sample book as the external editor showed it (its baked pictures in
-`examples\Слайди — приклад\` match the external tool's pixel for pixel; slide 2 differs in a few pixels).
-
-**The examples** (the owner, 29.09.2026: "only the examples are needed"): his desktop folder `moсkup studio` moved into
-the Book Studio folder as **`examples\`** (git-ignored, in the backup): `Canva resoult\` — his six Canva slides (what the
-agent compares with), `Photoshop prep\` — his sample mockups (a real cut-out is checked on copies of them),
-`Слайди — приклад\` — the sample set's baked six. The external tool went to the Recycle Bin. Beside it, **`Трафарети
-мастхев (копія)\`** — a spare copy of the mockup templates (read-only files; git-ignored; left out of the backup — the
-templates themselves are in it); the program never reads it, the Mockups use `D:\Roman\Desktop\Трафарети мастхев`.
+**The examples** (the owner: "only the examples are needed"): **`examples\`** in the Book Studio folder (git-ignored, in the
+backup): `Canva resoult\` — his six Canva slides (what the agent compares with), `Photoshop prep\` — his sample mockups (a
+real cut-out is checked on copies of them), `Слайди — приклад\` — the sample set's baked six (the first set, «Приклад»).
+Beside it, **`Трафарети мастхев (копія)\`** — a spare copy of the mockup templates (read-only files; git-ignored; left out
+of the backup — the templates themselves are in it); the program never reads it, the Mockups use
+`D:\Roman\Desktop\Трафарети мастхев`.
 
 ## How it works inside
 
@@ -193,13 +186,12 @@ templates themselves are in it); the program never reads it, the Mockups use `D:
   book and everything but the floor; `DESK_READER`; `cut(crop=False)` keeps its frame); its Multiply / Screen shadow layers become
   black / white with alpha (a grey `v` in Multiply = black with alpha 1 − v), kept near the book (a soft falloff), the
   whole-canvas haze (3.5 %) cut — `read_psd()` (psd_tools, imported inside the call), `cut()`, `combined()`, `ensure()`
-  (the cache, the full-size «Без фону» never over a file that is there — except `replace=True`: the mockup was drawn
-  again over itself in the Mockups' crop window, 13.10.2026, and `Cutter.add(again=True)` cuts it once more), `Cutter`.
-  **A drawn Open 1 / Open 2 / Dedication is kept only in «Без фону»** (13.10.2026): `cut_drawn()` cuts the drawing itself
-  and notes in the file where it lay (`CUT_TEXT`, a PNG text chunk); `ensure()` of such a file tells its book and shadow
-  apart again (`_split()` — the template's book outline is the book); `alone()` lists them, and `work.mockups_in()`, the
-  cut-outs' count and the Workshop's counts take them as mockups (one background thread, a queue,
-  every picture's state per folder; the template's arrays go when the queue is empty). `READER` — the preview server
+  (the cache, the full-size «Без фону» never over a file that is there — except `replace=True`: the mockup drawn again
+  over itself in the Mockups' crop window; `Cutter.add(again=True)` cuts it once more), `Cutter` (one background thread, a
+  queue, every picture's state per folder; the template's arrays go when the queue is empty).
+  A drawn mockup kept only in «Без фону» ([mockups](mockups.md#drawn-without-photoshop-since-13102026)): `cut_drawn()`
+  notes in the file where it lay (`CUT_TEXT`), `ensure()` tells its book and shadow apart again (`_split()`), `alone()`
+  lists such files, and `work.mockups_in()` and the Workshop's counts take them as mockups. `READER` — the preview server
   and the tests put a pretend template there.
 - **The drawing** (`web/js/slides/engine.js`): a scene = `{id, title, bg, items[]}` on a 1000×1000 stage; each element
   is a positioned div (centre, angle, mirror) with SVG inside — torn bands (feTurbulence + feDisplacementMap), the
@@ -220,42 +212,12 @@ templates themselves are in it); the program never reads it, the Mockups use `D:
 - **The command line** `app/tools/slides.py`: `list`, `path`, `render <slide> --to x.png`, `bake --set`, `cutout` —
   for the agent (the skill) and the tests; it starts its own small server, so it works with the window closed.
 
-## What was checked (2026-09-29)
-
-- Tests `test_slides.py` (19, made-up pictures): the cut (the book opaque, a grey 0.5 Multiply → black 48 % after the
-  haze, no whole-canvas haze, cropped, where the book sits), a wrong size refused, «Без фону» never over a file, the
-  background cutter (and what can't be cut), the Mockups hand every saved picture once; the template and a set, a stale
-  save refused with the scene as it is now, a wrong scene refused, reset and «Зробити шаблоном», the signature, the
-  first design has slots and `{pages}` / `{poems}`; the slots follow the picks, «Зробити слайди» end to end with a
-  pretend browser (six files, the missing slot named, the numbers, the browser's arguments, its profile removed, a
-  re-bake into the same files), names never over the owner's files, nothing to show / a browser drawing nothing said;
-  the command line.
-- The preview (`dev_server.py --sample`, a pretend Photoshop and pretend templates): a whole run → «Без фону · 6/6» →
-  «Зробити слайди» asks for «Зберегти відкриті» → after it six slides in 7 s → the editor (select, drag, save, «+» text,
-  arc, undo / redo, delete, «Зберегти картинки» into the same six files), a change written into the scene file shows up
-  in the open editor, the header's menu → the template; both themes.
-- On the owner's PC with his real files: the six of «Приклад» baked through Book Studio equal the external tool's
-  pictures; a copy of his real `2. Open 1.png` cut with the real template in ~6 s (the book and its shadow on a
-  transparent background). **Not checked live:** a real Photoshop run handing its pictures to the cutter, the real
-  window (its taskbar flash for the slides).
-
-**2026-09-29 evening** (the owner's eleven wishes): tests `test_slides.py` 26 (+ Dedication: the desk and the book stay,
-the floor goes, the book's shadow on it kept; schemes: Nature first, an old template becomes it, the six saved / put on
-/ reset to their scheme / the default; a Workshop book's slides in its folder, named «№25 …», touches kept when the
-mockups are made again, «Зробити заново» from the scheme; a done book's cache gone and its six a preset for another
-book; the «Мокапи» step ticks itself and counts; the quite temporary goes; «Зробити слайди» for a Workshop book with its
-own page 30). The preview: the Workshop book's «Мокапи» → the Mockups for it (no folder asked) → «Без фону · 8/8» (with
-Dedication) → six slides → everything in `workshop-books\40…\mockups\`, the step ticked → the editor: «Тло» row,
-«З інших слайдів», a locked sticker selected but not dragged (the notice), freed and dragged, «Зберегти як схему»,
-«Nature» put on again; slide 3 with the floor see-through. A real Dedication (his own `4. Dedication.png`) cut with the
-real template: the desk and the book kept, the floor gone, the book's soft shadow on it kept (~7 s).
-
 ## Where in the code
 
 - [app/studio/slides/cutout.py](../../app/studio/slides/cutout.py) — `read_psd_desk()`, `DESK_READER`, `kind_of()`, `spread_of()`, `KINDS`, `NO_BG`, `CUTS`, `HAZE`, `MAX_WIDTH`, `read_psd()`, `_near_book()`, `READER`, `template()`, `cut()`, `smaller()`, `combined()`, `ensure()`, `cut_drawn()`, `_split()`, `alone()`, `CUT_TEXT`, `Cutter`, `cutter`
 - [app/studio/slides/store.py](../../app/studio/slides/store.py) — `SLIDES`, `LOOKS_SLIDE`, `HERO_SLOTS`, `shown()`, `_recoloured()`, `_new_slides()`, `FACTORY`, `SCHEMES`, `SETS`, `TEMPLATE`, `BOOK_SLOTS`, `PICTURE_SLOTS`, `SLOT_LABEL`, `NUMBERS`, `KINDS`, `ensure_schemes()`, `list_schemes()`, `default_scheme()`, `save_scheme()`, `set_default()`, `presets()`, `apply_preset()`, `is_book()`, `mockups_dir()`, `load()`, `check()`, `save()`, `reset()`, `sig()`, `new_set()`, `put_book()`, `put_picture()`, `list_sets()`, `workshop_sets()`, `forget_old_sets()`, `clean_temporary()`, `book_done()`
 - [app/studio/slides/work.py](../../app/studio/slides/work.py) — `looks()`, `put_heroes()`, `sync_heroes()`, `not_baked()`, `_book_page30()`, `_tick()`, `make()`, `bake_set()`, `mockups_in()`, `slots_of()`, `pictures()`, `title()`
-- [app/studio/slides/bake.py](../../app/studio/slides/bake.py) — `bake()`, `render()`, `outputs()`, `run_browser()`, `NAME`, `AT_ONCE` (4: seven slides in two rounds, 04.10.2026)
+- [app/studio/slides/bake.py](../../app/studio/slides/bake.py) — `bake()`, `render()`, `outputs()`, `run_browser()`, `NAME`, `AT_ONCE`
 - [app/studio/slides/routes.py](../../app/studio/slides/routes.py) — `assets()`, `_slot_label()`, `_make()`, `_bake()`, `_cutouts()`, `_save()`, `_presets()`, `_apply()`, `_save_scheme()`, `_default_scheme()`, `_books()`
 - [app/studio/workshop/books.py](../../app/studio/workshop/books.py) — `mockups_state()`, `MOCKUPS`, `_slides_done()` (in `to_library()`)
 - [app/studio/main.py](../../app/studio/main.py) — `slides.store.clean_temporary()` at launch and close
@@ -266,7 +228,7 @@ real template: the desk and the book kept, the floor gone, the book's soft shado
 - [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — `slidesStep()`: the cut-outs line, the card, «Зробити слайди», «Доробити», `seed()` (the book's folder as it is), the viewer
 - [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `mount()`, `SPEC`, `NEW`, `KIND` (inside: `isLocked`, `palettes()`, `swatches()`, `loadOthers()`, `openSchemes()`, `applyScheme()`, `saveScheme()`, `openBooks()`, `openBook()`)
 - [app/web/css/slides.css](../../app/web/css/slides.css) — the editor's look
-- [app/web/js/app.js](../../app/web/js/app.js) — the route `#/slides/…` (`'lazy'`); a book's slides keep the rail on «Книги», a scheme on «Інструменти» (since 2026-09-30); [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `navFor()`
+- [app/web/js/app.js](../../app/web/js/app.js) — the route `#/slides/…` (`'lazy'`); a book's slides keep the rail on «Книги», a scheme on «Інструменти»; [app/web/js/pages/slides-editor.js](../../app/web/js/pages/slides-editor.js) — `navFor()`
 - [app/tools/slides.py](../../app/tools/slides.py) — `main()`
 - Tests: [app/tests/test_slides.py](../../app/tests/test_slides.py) (`TheCut`, `Scenes`, `WorkshopBooks`, `MakingThem`, `CommandLine`)
 

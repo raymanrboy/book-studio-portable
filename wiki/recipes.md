@@ -1,7 +1,7 @@
 ---
 title: Recipes — how to change common things
 type: recipe
-updated: 2026-10-06
+updated: 2026-10-28
 code: []
 ---
 # Recipes
@@ -35,7 +35,7 @@ code: []
   [rules/book-structure.md](rules/book-structure.md).
 
 ## The "Profit" page's first day
-- Shown since 2026-09-29 (`MODES.orders.nav`, `#/profit` in [app/web/js/app.js](../app/web/js/app.js)).
+- A place on the rail (`PLACES`, `#/profit` in [app/web/js/app.js](../app/web/js/app.js)).
 - The day bookkeeping starts — `ACCOUNTING_FROM` in [app/studio/profit.py](../app/studio/profit.py); the test
   `BookkeepingStart` in `test_profit.py`.
 - Wiki: [features/profit.md](features/profit.md).

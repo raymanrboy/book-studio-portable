@@ -1,7 +1,7 @@
 ---
 title: File naming — print and the library
 type: rule
-updated: 2026-09-23
+updated: 2026-10-28
 code:
   - app/studio/orders.py
   - app/studio/library.py
@@ -17,7 +17,7 @@ code:
 ## Canva export → the print folder (`arrange_pages()`)
 
 Steps 1–4 are `drops.export_files()` — one reading shared with the
-[mockups utility](../features/mockups.md) (since 2026-09-23; it takes JPG/WEBP too and any page count).
+[mockups utility](../features/mockups.md) (it takes JPG/WEBP too and any page count).
 
 1. PNGs in the folder are collected (hidden ones excluded).
 2. **The cover** — a file with `cover`, `cober`, or `обкладин` in its name (the same rule as in the
@@ -27,8 +27,8 @@ Steps 1–4 are `drops.export_files()` — one reading shared with the
 3. The rest, by the **last number in the name** (`page_number()`: "12", "Madelynn - 12",
    "12_upscayl_4x_ultrasharp" → 12). No number → an error naming the file.
 4. Sorted by number; matching numbers → "Page N appears twice".
-5. The count has to exactly match what's allowed: Printify — 24, Gelato — 28 or 30 (`page_options()`),
-   otherwise — "24 pages needed, found 23 (pages 1–23)" / "28 or 30 pages needed, found 29". The
+5. The count has to exactly match what's allowed: Gelato — 28 or 30 (`page_options()`, the rule —
+   [gelato](../integrations/gelato.md); Printify's 24 is the old, read-only rule), otherwise — "28 or 30 pages needed, found 29". The
    response includes `pageCount` — how many pages there were.
 6. An already correctly named folder with no extra files is used as-is.
 7. Otherwise — a **new folder** `data/tmp/dropped/<uuid>/<name>`: `Cover.png`, `1.png…N.png`. The user's
@@ -36,14 +36,12 @@ Steps 1–4 are `drops.export_files()` — one reading shared with the
    extra space) or a copy.
 8. A note for the card: "pages 2–25 → 1–24; cover — design.png".
 
-Next comes the Order Creator's check (`validate()`): for Printify, exact sizes, so un-upscaled pages
-show up as an error right away. For Gelato, the check works out the book's length from the highest file
-number itself (`_gelato_page_count()`: `29.png` or `30.png` present → 30, otherwise 28).
+Next comes the Order Creator's check (`validate()`; the old Printify mode wants exact sizes). For Gelato it works out
+the book's length from the highest file number itself (`_gelato_page_count()`: `29.png` or `30.png` present → 30, otherwise 28).
 
 ## Importing into the library (`scan_folder()`)
 
-One set of rules for the "Import from folder" button, a dropped folder, a ZIP, and several files (since
-2026-09-23; before that, dropping had its own copy of the rules in the page).
+One set of rules for the "Import from folder" button, a dropped folder, a ZIP, and several files.
 
 | Name (no extension) | Where |
 |---|---|

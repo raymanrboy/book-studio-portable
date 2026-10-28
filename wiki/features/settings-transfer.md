@@ -1,7 +1,7 @@
 ---
 title: Moving the settings and keys
 type: feature
-updated: 2026-10-04
+updated: 2026-10-28
 code:
   - app/studio/transfer.py
   - app/tests/test_transfer.py
@@ -9,7 +9,7 @@ code:
 # Moving the settings and keys
 
 > One small file with the settings and the keys, to carry to another computer or between the ordinary and the portable Book
-> Studio. Settings → «Перенесення налаштувань»: «Експорт у файл» and «Імпорт із файлу». Built 2026-10-03
+> Studio. Settings → «Перенесення налаштувань»: «Експорт у файл» and «Імпорт із файлу».
 > ([decision](../decisions.md)).
 
 ## What goes in
@@ -24,7 +24,7 @@ code:
 
 ## The file
 
-A 7-Zip under the **backup password** (the same `7za.exe`, AES-256, names hidden; `backup._seven_zip`), named
+A 7-Zip under the **backup password** ([backup](backup.md); the same `7za.exe`, AES-256, names hidden; `backup._seven_zip`), named
 `Налаштування Book Studio ГГГГ-ММ-ДД.7z`; written as `.part`, renamed when done. The owner picks where in the usual save dialog
 (`desktop.save_file`). Export needs the backup password set (the button is off until then).
 
@@ -43,6 +43,6 @@ nothing. Never in the preview or the tests' sandbox (the routes refuse); the tes
 - `desktop.pick_7z()` — the open dialog for the file; the settings page — `transferCard()` in `web/js/pages/settings.js`.
 - Tests: [test_transfer.py](../../app/tests/test_transfer.py).
 
-## What never travels (2026-10-04)
+## What never travels
 
 The owner's safety switches — `security.*` (Etsy only from Kyiv) and `printify.readOnlyFrom` / `manualApprovalConfirmedAt` — are left out on export **and ignored on import** (`transfer._computer_bound()`): a file made on a colleague's copy, where they are off, must not switch them off on the owner's PC. Only the known key names are written back to the vault. The opened keys file is deleted from `tmp/import-*` as soon as it is read, and `transfer.sweep()` clears leftovers at the start. A password with `"` is refused.

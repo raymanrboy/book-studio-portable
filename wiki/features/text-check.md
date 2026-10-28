@@ -1,7 +1,7 @@
 ---
 title: Text check (AI validator on a local model)
 type: feature
-updated: 2026-10-19
+updated: 2026-10-28
 code:
   - app/studio/textcheck/
   - app/studio/wording.py
@@ -17,11 +17,11 @@ code:
 > the book passport's texts with the child's name, the dedication, the "from whom" from Etsy. The result is in the
 > «Вичитка» step — a badge, a list of problems, marks on the pages. **It never blocks printing — it only asks.**
 
-## What the owner sees (the order card, step 3 «Вичитка»; «Звірка» until 2026-09-30)
+## What the owner sees (the order card, step 3 «Вичитка»)
 
 - **Starts on its own** after a successful file check. The badge beside the heading: a spinner with a percentage →
   "Text matches" (green) / "N errors" (red) / "N questions" (yellow); its tooltip — what it was checked against, the
-  pages with text, the passport spreads this book lacks (24/28 pages), the seconds. ↻ — "Check the text again".
+  pages with text, the passport spreads this book lacks (24/28 pages), the time it took. ↻ — "Check the text again".
 - **Findings appear while it runs**: each checked page adds its rows and outlines at once; at the end the full list
   replaces them (with the remarks about the whole book).
 - **The list**: "Page 7 · "Ollivia" instead of "Olivia"", the model's explanation under it in grey, in Ukrainian. A
@@ -32,7 +32,7 @@ code:
   from the passport the model also confirmed. **Yellow** — worth a look: seen by only one side, edits on the first and
   last page, "from whom" or the buyer's own dedication not found, a spread with no text, **a greeting or the signature
   printed twice** on the first or last page.
-- **"Це не та книга!"** — a big red banner (the owner: "a guard against a slip") when half the story spreads or more
+- **"Це не та книга!"** — a big red banner (the owner: a guard against a slip) when half the story spreads or more
   don't look like the ordered book's passport: the pages come from another book's template. It names the book the pages
   look like (both covers), outlines those pages, the badge says "Не та книга", and "Print" asks "Все одно до друку?".
   "Це та книга" removes it (journaled). While it shows, "Update passport" is never offered.
@@ -54,9 +54,8 @@ which text, `ollama.py` — the model, `journal.py` — the journal and the owne
 
 0. **Warm-up** (`warm()`): as soon as the card takes files, `POST /api/textcheck/warm` loads the model onto the GPU
    while the PNGs are still copied. Silent; repeated within `WARM_AGAIN` (30 s) — nothing.
-1. **Readiness** (`_ready()`): Ollama answers (else `start_ollama()`), the model is installed and loaded (~4 s from
-   memory, ~70 s from disk).
-2. **A quick page scan by the program** (`page_kinds()` → `images.text_score()`, on the 360 px previews, ~5 ms a page):
+1. **Readiness** (`_ready()`): Ollama answers (else `start_ollama()`), the model is installed and loaded.
+2. **A quick page scan by the program** (`page_kinds()` → `images.text_score()`, on the small previews):
    printed text is thin strokes in a few narrow lines, an illustration is spread evenly. A page is `text`
    (≥ `LOOKS_TEXT`), `picture` (< `LOOKS_PICTURE`) or `unsure` — the tag alone decides nothing; `unsure` goes to the
    model. Switch: `prescan` in Settings.
@@ -89,7 +88,7 @@ which text, `ollama.py` — the model, `journal.py` — the journal and the owne
    (`_Run.ready()`). A broken answer isn't kept; a call that timed out (`TimedOut`, 300 s) isn't retried. A newer check
    of the same book stops the previous one; the card stops its own (`cancel()`) when closed, given other files or
    another book. Every call runs inside `_Run` (4 at a time, the percentage, the stop signal).
-9. **The GPU is freed right after** (`_release_model()`): the model takes ~9.2 of 12 GB, and Book Studio's window and
+9. **The GPU is freed right after** (`_release_model()`): the model takes most of the card's memory, and Book Studio's window and
    Upscayl share the card. `KEEP_ALIVE` (2 min) is only a fallback.
 10. **The journal** — `data/logs/checks/<date>_<receipt>-<book number>.json` (what was read, what should have been, the
    problems, each page's own model answer `model`, `layout`, the owner's `notMistakes` — `mark()`); the last 400; local
@@ -105,59 +104,44 @@ which text, `ollama.py` — the model, `journal.py` — the journal and the owne
 
 ## Why the rules are what they are
 
-- **The calibration of 25.09.2026** (the owner: calibrate "what to show me and what not" — the program's rules, not
-  Gemma), on 30 journaled checks: 103 rows shown → 12, red 69 → 3; all 4 real catches kept (a line twice, a signature
-  twice, a book from another's template). The noise was mostly a possessive "'s" on the name and capitals of the
-  template's words. **The calibration of 06.10.2026** (the owner: "a bit more data has gathered"), on 71 journaled checks: of the
-  22 rows he marked «not a mistake», today's rules show 1 (a page the model could not read — now `_salvage()`), with every real catch
-  kept (a greeting and a signature twice, a book from another's template, «With love» twice). The kinds: the buyer's headings as typed
-  («Dedication -» … «Closing» alone on a line, «dedicati:» … «close:», a «Note: please center…» before «DEDICATION:» — `split_dedication()`);
-  a «from whom» that signs off further in («… boy! Love, Mama & Dada») drops the template's «With love,» too (`signs_off()`); a whole
-  signed message from the buyer lets the template's last short wish above it go, only when that fits the page better (`_without_wish()`);
-  the child's name shorter or fuller than Etsy's field («'Ava'» for «Ava Rose», «Chloe Jane Robinson») — `_name_part()`; where a line
-  breaks, even when the remark names the name («Amen.» on a line of its own — `_LINES`); «Текст повністю збігається» (`_NO_PROBLEM`);
-  a model's «a line is missing» when its own copy carries every word the page must (`intact`). **The calibration of 19.10.2026**
-  (the owner: "a bit more data has gathered… dig well, pull the pages from the archive"), on 103 journaled checks, every remaining
-  finding looked at on the archived print files: of the 60 rows he marked «not a mistake», today's rules showed 14, now 13 → of those, 11 are the
-  two orders where the buyer asked for changes in Etsy messages (Eloise — a rewritten dedication; James — the reprint with «James'»),
-  1 an unreadable page (honest), 1 a model misread («Eliand's» on a page that says «Eliana's» — left red: a misspelt name is the main
-  catch), 1 a passport that drifted from Canva (Sleepy Trucks cover — fixed in the passport the same day: «Sweet Dreams {Name}»). Red 27 → 11, with every
-  real catch kept (a line or signature twice, another book's pages, a wrong spread). The kinds: a name typed in small letters is
-  printed with a capital (`printed_name()`: «kobe» → «Kobe»; printed small it is now red); the owner's own short line of love above a
-  bare «from whom» («Love you always,\nNanny» for «With love,» — `_own_greeting()`); a «from whom» that is a wish («Happy Diwali») drops the
-  template's «With love,» (`_WISH`, only as its first words); «Godparents-John» laid out as «Godparents –\nJohn» (`_spelled()`, and the parts of a hyphenated
-  word in the buyer's fields are not another order's child — `_vocabulary()`); «James'» = «James's» when the page has the apostrophe (`_spelled()`); «записане в один
-  рядок» is a line break (`_LINES`); «замінено» is a claim (`_CLAIM`). **The next calibration**: `python app/tools/textcheck_replay.py` shows what today's rules would show
-  for every journaled check beside what was shown, with his "Not an error" marks; `--all` — every check.
-- **The quick scan** cut a 30-page book's check from ~40 s to ~24 s with identical findings; a text page scores 2.4–2.6,
-  a picture 0.9–1.5.
-- **`has_text()` and `JUDGE_TOKENS`** exist because the model invented text and looped on picture-only pages (the first
-  run took 11 minutes). **"Update passport"** exists because the passports were written apart from the Canva templates
-  and drift from them in words.
-- Details and dates — [decisions](../decisions.md), [log](../log.md).
+The owner's wish: calibrate "what to show me and what not" in the **program's rules, not in Gemma**. Every row he marks «Це не помилка»
+is kept in the journal, and the rules are tuned on them; every real catch (a line or signature twice, another book's pages, a wrong
+spread, a misspelt name) must stay. Present rules:
+
+- **The buyer's words as typed**: headings like «Dedication -» … «Closing» alone on a line, «dedicati:» … «close:», a «Note: please
+  center…» before «DEDICATION:» (`split_dedication()`); the child's name shorter or fuller than Etsy's field (`_name_part()`); a name typed
+  in small letters is printed with a capital (`printed_name()`; printed small it is red).
+- **The template's «With love,» goes** when the «from whom» signs off further in (`signs_off()`), is a wish («Happy Diwali», `_WISH`, only
+  as its first words) or starts with the owner's own short line of love (`_own_greeting()`); a whole signed message from the buyer lets the
+  template's last short wish above it go, only when that fits the page better (`_without_wish()`).
+- **Spelling variants that are no difference**: «James'» = «James's» when the page has the apostrophe; «Godparents-John» laid out as
+  «Godparents –
+John» (`_spelled()`; parts of a hyphenated word in the buyer's fields are not another order's child — `_vocabulary()`).
+- **Remarks not shown**: where a line breaks, even when the remark names the name (`_LINES`); «Текст повністю збігається» (`_NO_PROBLEM`);
+  a claim of a replacement (`_CLAIM`); "a line is missing" when the model's own copy carries every word the page must (`intact`).
+- **An unreadable page** (the model looped): the copy that came through whole is kept (`_salvage()`).
+- **The next calibration**: `python app/tools/textcheck_replay.py` shows what today's rules would show for every journaled check beside
+  what was shown, with his "Not an error" marks; `--all` — every check.
+- **The quick scan** exists to spare the model the picture-only pages, with identical findings. **`has_text()` and `JUDGE_TOKENS`** exist
+  because the model invents text and loops on picture-only pages. **"Update passport"** exists because the passports were written apart
+  from the Canva templates and drift from them in words.
+- Details — [decisions](../decisions.md).
 
 ## Why this model and this design
 
-Tested on the owner's real Canva pages (a full-page verse, the brand's own font, illustrated backgrounds, a curved cover
-caption) with planted mistakes: a misspelt name, a forgotten `{Name}`, another child's name, a missing diacritic, a
-missing word, words stuck together, text cut off at an edge.
-
-- **Gemma 4 12B QAT** (`gemma4:12b-it-qat`, ~7.7 GB on the 12 GB card) found every planted mistake with no false
-  positives, at ~1.5–4 s a page; Qwen 3.5 9B was slower and missed some (it "corrects" what it reads when told the right
-  name) — dropped. Gemini (cloud) found everything too but pages with children's names would leave the computer, so
-  the check is local only.
-- **A hint plus the program's own comparison** is the chosen design: the model is told what should be there and
-  transcribes word for word; `diff()` decides. Blind transcription alone missed words stuck together at 1024 px.
-- Pictures go to the model at 768–1024 px; four pages at a time (`OLLAMA_NUM_PARALLEL=4`, the owner's user variable) —
-  a whole book in ~25 s.
-- Known quirk: after Ollama 0.35.1 gemma4 occasionally loops on a correct page with a JSON schema (ollama#15502) and the
-  answer is cut at `JUDGE_TOKENS`. Since 06.10.2026 the copy that came through whole before the loop is kept (`_salvage()`: no verdict,
-  the program's comparison decides — amber at most) and not cached, so ↻ still asks again; only a copy cut inside it is "модель не змогла
-  прочитати сторінку" (see [known limits](../dev/limits.md)).
+- **Gemma 4 12B QAT** (`gemma4:12b-it-qat`) is the model: it finds planted mistakes (a misspelt name, a forgotten `{Name}`, another child's name,
+  a missing diacritic or word, words stuck together, text cut off) with no false positives; Qwen 3.5 9B "corrects" what it reads when told the
+  right name — dropped. Gemini (cloud) would work too but pages with children's names would leave the computer, so the check is local only.
+- **A hint plus the program's own comparison**: the model is told what should be there and transcribes word for word; `diff()` decides. Blind
+  transcription alone missed words stuck together.
+- Pictures go to the model at `IMAGE_SIDE`; four pages at a time (`PARALLEL`, matching `OLLAMA_NUM_PARALLEL=4`).
+- Known quirk: gemma4 occasionally loops on a correct page with a JSON schema (ollama#15502) and the answer is cut at `JUDGE_TOKENS`. The copy
+  that came through whole before the loop is kept (`_salvage()`: no verdict, the program's comparison decides — amber at most) and not cached,
+  so ↻ still asks again; only a copy cut inside it is "модель не змогла прочитати сторінку" (see [known limits](../dev/limits.md)).
 
 ## Settings
 
-The text check's settings, under its module in [Settings → «Модулі»](settings.md): a switch, the quick scan (`prescan`), a model (those installed that
+The text check's settings, under its module in [Settings → «Модулі»](modules.md#the-text-checks-own-settings-live-here): a switch, the quick scan (`prescan`), a model (those installed that
 see pictures), Ollama's status, "Start", "Check connection". `settings.json` → `textcheck` (`enabled`, `prescan`,
 `model`, `url`); the address is **127.0.0.1 only** (`_base()`) — pages with children's names never leave the computer.
 A disabled Ollama makes Windows wait 2 s per attempt, so the probe is capped at 1 s (`PROBE_TIMEOUT`).
@@ -183,16 +167,22 @@ A disabled Ollama makes Windows wait 2 s per attempt, so the probe is capped at 
 
 ## Related
 
-- [Orders](orders.md) · [The path to print](../flows/order-to-print.md) · [Library](library.md) · [Settings](settings.md)
+- [Orders](orders.md) · [Optional modules](modules.md) · [The path to print](../flows/order-to-print.md) · [Library](library.md) · [Settings](settings.md)
 - [Known limits](../dev/limits.md) · [Decisions](../decisions.md) · [Security](../security.md)
 
-## Ollama's start (2026-10-03)
+## Starting Ollama
 
-Ollama is started with `CREATE_NO_WINDOW` (no black windows from its helper processes). While it starts, `status()` says `starting`, and the order card tells the owner («Запускається Ollama…» → «Ollama запущена»).
+Installing Ollama and the model, its own port and its isolation from an Ollama the PC has — [optional modules](modules.md); this page only says
+when the check starts it.
 
-## Quiet start-up and no black windows (2026-10-04)
-
-- No read-in at the program's start any more (05.10.2026): the old start-up read-in (`prime`) started Ollama and read the model at every launch — gigabytes off the disk and the graphics card for a window often open for a minute or two. The model is asked for by `warm()` when the card takes files (every path that starts a check goes through it), as the Warm-up step above says.
-- **Since 19.10.2026** (the owner): Ollama itself — without the model — is started 8 s after the program (`run.start_quietly()`), and the model is also asked for as soon as the card of a new, unsent order opens (`warmModel()` at the card's start): its slow first read off the disk is over while the files are made in Canva. A warm-up with no check lets the card go after 2 min (`KEEP_ALIVE`).
-- **Hidden, always:** every start the program makes by itself (`start_quietly()`, `_ready()`) is `ollama.exe serve` with `CREATE_NO_WINDOW` (`_ollama_command(hidden=True)`) — never the tray app `ollama app.exe`, whose icon and helpers' windows the owner saw on 19.10. Settings → «Запустити» still opens the tray app on a PC install. On made-up or test data (`core.SANDBOX` — the preview, tests) `start_ollama()` never starts Ollama (one already running is still used), and neither `warm()` nor `start_quietly()` does anything. The warm-up at the card's opening says nothing even while Ollama starts (`warmModel(true)`).
-- Ollama is started with `CREATE_NO_WINDOW`. Measured: with the old `DETACHED_PROCESS` its helpers (`llama-server.exe`, `ollama.exe gpu-discover`) each opened a black console at every model load; with the new flag none appeared during a load and an unload. An Ollama started by an earlier version keeps flashing until it is ended (task manager → `ollama.exe`).
+- Every start the program makes by itself (`start_quietly()`, `_ready()`) is `ollama.exe serve` with `CREATE_NO_WINDOW`
+  (`_ollama_command(hidden=True)`) — never the tray app `ollama app.exe` (its icon and its helpers' windows were unwanted). While it starts,
+  `status()` says `starting` and the order card says so («Запускається Ollama…» → «Ollama запущена»); the warm-up at the card's opening says
+  nothing even then (`warmModel(true)`).
+- Ollama itself — without the model — is started shortly after the program (`run.start_quietly()`), and the model is asked for when the card
+  of a new, unsent order opens (`warmModel()`): its slow first read off the disk is over while the files are made in Canva. A warm-up with no
+  check lets the card go after `KEEP_ALIVE`. Nothing is read at the program's start.
+- Settings → «Запустити» (under the module): in the portable copy it starts the same `runtime/Ollama/ollama.exe serve` (the zip has no tray
+  app); on a PC install it opens the tray app.
+- On made-up or test data (`core.SANDBOX` — the preview, tests) `start_ollama()` never starts Ollama (one already running is still used), and
+  neither `warm()` nor `start_quietly()` does anything.

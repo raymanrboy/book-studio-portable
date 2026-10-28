@@ -1,7 +1,7 @@
 ---
 title: Data safety — how the owner's data is kept from being lost
 type: architecture
-updated: 2026-10-06
+updated: 2026-10-28
 code:
   - app/studio/core.py
   - app/studio/aside.py
@@ -13,8 +13,8 @@ code:
 ---
 # Data safety
 
-> Born from one accident (2026-10-04): a made-up data set overwrote the real send journal and the shops' snapshot, and only a lucky `.bak`
-> brought them back. Now several independent layers make a bad write undoable — whoever makes it (the program, a script, an agent).
+> Several independent layers make a bad write undoable — whoever makes it (the program, a script, an agent). (Made-up data once
+> overwrote the real send journal; hence the layers.)
 
 ## The layers
 
@@ -27,15 +27,17 @@ code:
 3. **Guards on what costs most** (`records._guard()` via `records.save()`): the send journal (`print-orders.json`) is only ever added to — a
    write that would drop a receipt is refused (`DataGuard`), because losing a send lets the order be sent twice; the shops' snapshot may not shrink
    below half of what it holds.
-4. **Tests and the preview cannot reach the real data**: `studio.core` refuses to load under `unittest` without `BOOK_STUDIO_DATA` (the tests set it);
-   `tools/sample_data.seed()` refuses unless `studio.core` points at the made-up folder.
-5. **Deleted only to the Recycle Bin**: what the owner made — a Workshop book, a library book, a photo template, a slide set — goes through
-   `desktop.to_recycle_bin()` (warns instead of deleting for good when Windows cannot recycle). What is deleted for good is derived or temporary
-   (caches, previews, runs, the opened keys of an import), the archive after its 14 days (the owner's decision) and a module's own folder.
-   **The shelf before the Recycle Bin** (`aside.py`, 06.10.2026): a Workshop book and a photo template first wait `KEEP_SECONDS` (2 min) in
+4. **Tests and the preview cannot reach the real data**: `studio.core` refuses to load under `unittest` without `BOOK_STUDIO_DATA` (the tests set it) and the
+   test suite always makes its own temporary folder; `tools/sample_data.seed()` refuses unless `studio.core` points at the made-up folder; the preview
+   server claims only its own marked folder and never takes keys ([preview](../dev/preview.md), [testing](../dev/testing.md)).
+5. **Nothing the owner made is deleted for good**: a library book goes to `data/library/trash` (restorable with «Скасувати»); a Workshop book, a photo
+   template and a slide set go through `desktop.to_recycle_bin()` (warns instead of deleting for good when Windows cannot recycle). What is deleted for
+   good is derived or temporary (caches, previews, runs, the opened keys of an import), the archive after its 14 days (the owner's decision) and a
+   module's own folder.
+   **The shelf before the Recycle Bin** (`aside.py`): a Workshop book and a photo template first wait `KEEP_SECONDS` in
    `data/aside/<token>/` with a note of where they were, so the toast's «Скасувати» (`POST /api/aside/restore`) really puts them back — never over
    something standing there now; then `flush()` sends them on to the Recycle Bin, and whatever the shelf still held when the program closed goes
-   there at the next start. That is why these removals no longer ask first.
+   there at the next start. That is why these removals don't ask first.
 6. **Putting a version back**: `python app/tools/data_history.py list` / `restore <path> [--version V | --daily DATE]`. A restore first keeps the
    file it replaces as a version of its own.
 

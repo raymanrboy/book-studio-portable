@@ -1,13 +1,12 @@
 ---
 title: Known limits and what was not seen live
 type: dev
-updated: 2026-10-06
+updated: 2026-10-28
 code: []
 ---
 # Known limits
 
-> What the program deliberately doesn't do, what its checks can't prove, and what has only been tried against fakes.
-> Nothing here is a to-do: each line is how the finished program behaves.
+> What the program deliberately doesn't do, what its checks can't prove, what is worth watching, and what has only been tried against fakes.
 
 ## What the program deliberately doesn't do
 
@@ -17,11 +16,9 @@ code: []
 - **No «receipt → books → print batches» model.** Each book of an order goes through the path separately and they go
   to the printer together as one draft to one address ([orders](../features/orders.md)); a receipt mixing two printers
   is handled by hand.
-- **Sends before 2026-09-22 aren't in `profit/print-orders.json`**, so for older receipts accounting sees one print
-  order. Accounting counts only sales from 1 October 2026 anyway ([profit](../features/profit.md)).
 - **After a successful send each local step can fail on its own** (the journal entry, accounting, the archive); it is a
   warning, the send itself stands ([send journal](../features/send-journal.md)).
-- **A book created in Printify without an order doesn't move the receipt.** Printify only reads since 1 October 2026
+- **A book created in Printify without an order doesn't move the receipt.** Printify is read-only
   ([Printify](../integrations/printify.md)); its code stays in case the owner wants it back.
 - **Pages with the buyer's own dedication aren't parsed** — the cases are rare and are settled with the buyer; "With
   love, …" in the «from whom» field isn't removed automatically ([the path to print](../flows/order-to-print.md)).
@@ -40,10 +37,9 @@ code: []
 
 ## Worth watching
 
-- **The text check: the model can loop on a correct page.** Since Ollama 0.35.1, `gemma4` sometimes copies a page's text
+- **The text check: the model can loop on a correct page.** With Ollama 0.35.1, `gemma4` sometimes copies a page's text
   word for word (it matches the passport), then invents «a mistake in the name» and repeats an apology until
-  `JUDGE_TOKENS` cuts the answer. A known gemma4 problem with a JSON schema (ollama#15502), seen on one page of one book
-  (03.10.2026). **Handled since 06.10.2026**: the transcript that came through whole is taken from the cut-off answer and
+  `JUDGE_TOKENS` cuts the answer. A known gemma4 problem with a JSON schema (ollama#15502), seen on one page of one book. Handled: the transcript that came through whole is taken from the cut-off answer and
   `diff()` decides (`_salvage()`); «модель не змогла прочитати сторінку» only when the copy itself is cut
   ([text check](../features/text-check.md#why-this-model-and-this-design)).
 - **Drafts could be closed sooner.** Gelato fetches the PDF about a minute after a draft is created, and the program

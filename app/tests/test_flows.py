@@ -605,7 +605,8 @@ class GelatoDraftFlow(unittest.TestCase):
         with mock.patch.object(gelato, "call", fake_call):
             counts = creator.gelato_page_counts()
         gelato._products.clear()
-        self.assertEqual(counts, {"hardcover_8x8": [28, 30, 32], "softcover_8x8": [28, 30, 32], "softcover_5x5": None})
+        self.assertEqual(counts, {"hardcover_8x8": [28, 30, 32], "hardcover_11x11": [28, 30, 32], "softcover_8x8": [28, 30, 32],
+                                  "softcover_5x5": None})
 
     def test_the_creator_page_shows_the_senders_own_words_about_length(self):
         """The Order Creator had its own copy of this message, without «Скачайте з Canva …» (22.09.2026 audit)."""

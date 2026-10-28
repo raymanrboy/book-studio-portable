@@ -360,6 +360,13 @@ DEFAULT_SETTINGS: dict = {
                 "productUid": "photobooks-hardcover_pf_200x200-mm-8x8-inch_pt_170-gsm-65lb-coated-silk"
                 "_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_130-gsm-65-lb-cover-coated-silk_ver",
             },
+            # The big one (28×28 cm), added 2026-10-28: the product of the owner's Gelato template «Hardcover 11x11»
+            # (82728d6c-…), the 8×8 hardcover's paper and lamination; the same Canva files fit it.
+            "hardcover_11x11": {
+                "label": "Hardcover 11×11",
+                "productUid": "photobooks-hardcover_pf_280x280-mm-11x11-inch_pt_170-gsm-65lb-coated-silk"
+                "_cl_4-4_ccl_4-4_bt_glued-left_ct_matt-lamination_prt_1-0_cpt_130-gsm-65-lb-cover-coated-silk_ver",
+            },
             "softcover_8x8": {
                 "label": "Softcover 8×8",
                 "productUid": "photobooks-softcover_pf_200x200-mm-8x8-inch_pt_170-gsm-65lb-coated-silk"

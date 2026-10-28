@@ -1,7 +1,7 @@
 ---
 title: Dragging folders and ZIP archives
 type: flow
-updated: 2026-10-25
+updated: 2026-10-28
 code:
   - app/web/js/order-bits.js
   - app/web/js/app.js
@@ -31,14 +31,13 @@ code:
    and `whole: true`) — **the dropped folder itself** (`dropped_top()`): import reads its
    `generated/`, `pages/`, and `book-text.json` too. This also clears sessions unused for 24 hours
    (`KEEP_UNUSED`; each check of a folder by the Order Creator or a card counts as a use — `drops.touch()`,
-   so a card kept open all day never loses its folder; audit 2026-09-26, it was 2 hours from the drop).
+   so a card kept open all day never loses its folder).
 4. Next: in the order card — laying out pages; in the Order Creator — checking; in a book's passport —
    "Import from folder" (the same way for a folder, a ZIP, and several files); in the
    [mockups utility](../features/mockups.md) — reading the demo book (`mockups.read_book()`).
 
-All of this lives in its own module, [drops.py](../../app/studio/drops.py) (since 2026-09-23; before that in
-creator.py, with the routes `/api/creator/drop/*`): the mockups utility takes it without the rest of Book
-Studio. It runs with its own data folder, so its `tmp/dropped` is `app/data/mockups/tmp/dropped` — Book
+All of this lives in its own module, [drops.py](../../app/studio/drops.py): the mockups utility takes it without
+the rest of Book Studio. It runs with its own data folder, so its `tmp/dropped` is `app/data/mockups/tmp/dropped` — Book
 Studio's launch never wipes a book dropped into the mockups window, and the other way round. There it
 keeps **one book at a time** (the one before goes when another comes in, and all go when the window closes —
 `mockups._only_this_book()`), and a ZIP picked with the folder button is unpacked straight from where it
@@ -46,23 +45,21 @@ lies, without going through the window (`drops.archive_folder()` names the folde
 
 ## Limits and protection
 
-- A file up to 400 MB, a ZIP up to 6 GB (unpacked).
+- A file and a ZIP (unpacked) have size caps (`MAX_DROP_FILE`, `MAX_DROP_ZIP`).
 - Paths are sanitized (`_drop_rel()`): no `..`, no drive letters, no `__MACOSX`, no `._*`, up to 6 levels
   deep.
 - All of `data/tmp/dropped` is wiped on every launch (`clear_drops()`).
 - The field files are dragged over lights up (`drop-hot`); the zone is an element with `data-folder-drop`
   ([drop.js](../../app/web/js/drop.js) `wireFolderDrop()`).
-- **A drop anywhere else** (since 2026-09-30, the last wave — [drop-anywhere.js](../../app/web/js/drop-anywhere.js)): outside a
-  page's own field the window used to do nothing — or let the browser open the file in place of the program. Now the file is
-  accepted over the whole window (a veil shows it), and on the drop: the page in view may take it as its own (`bs:dropped` —
+- **A drop anywhere else** ([drop-anywhere.js](../../app/web/js/drop-anywhere.js)): the file is
+  accepted over the whole window (a veil shows it) instead of the browser opening it, and on the drop: the page in view may take it as its own (`bs:dropped` —
   the Order Creator takes it as the current book's folder, the Mockups as the demo book); otherwise **one question, «Куди?»**
   with the two places a ZIP or a book folder goes (the Mockups, the Order Creator) — the program never chooses, and nothing is
   copied until a place is chosen; the choice hands the files over (`give('creator'|'mockups', {drop})`) and opens that page, which
-  does its own intake (`dropFolder()` / `takeDrop()`). Tested with synthetic drops on the preview server; a real Explorer drag
-  hands the same `DataTransfer` — the owner tries it once.
-- **Only files from outside the window** (since 2026-09-26): the browser hands a picture dragged from the page
-  itself over as a file — its preview — so a Workshop spread dragged a little and let go replaced itself with a
-  square of its own (the owner). `app.js` notes a drag that starts in the window (`dragstart`) and, before any page
+  does its own intake (`dropFolder()` / `takeDrop()`).
+- **Only files from outside the window**: the browser hands a picture dragged from the page
+  itself over as a file — its preview — so a Workshop spread dragged a little and let go would replace itself with a
+  square of its own. `app.js` notes a drag that starts in the window (`dragstart`) and, before any page
   sees it, shuts every drop zone to it while it carries files (`dragenter`/`dragover`/`drop` stopped in the capture
   phase: no highlight, no drop). The mockups' own drags (spreads, slots) carry no files — their pictures are
   `draggable="false"` — and work as before.

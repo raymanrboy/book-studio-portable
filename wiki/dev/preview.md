@@ -1,7 +1,7 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-10-27
+updated: 2026-10-28
 code:
   - app/tools/dev_server.py
   - app/tools/sample_data.py
@@ -21,8 +21,7 @@ code:
   `tools/ui_smoke.py` runs its own copy that way, in `.tmpsui` — [tests](testing.md))
 - `--sample` puts made-up orders, one library book (listing `4100000900`, no illustrations), one
   [Workshop](../features/workshop.md) book and the mockups' made-up templates (below) into
-  `.tmp\bsdev` in the repository — on drive D (until 2026-09-23 `%TEMP%\bsdev` on drive C, which the owner
-  keeps clean; the program started there also keeps its temp files inside that folder). The orders cover every queue tab: new (US Hardcover), in progress (Printify
+  `.tmp\bsdev` in the repository — on drive D (the program started there also keeps its temp files inside that folder). The orders cover every queue tab: new (US Hardcover), in progress (Printify
   `in-production` and `has-issues`, a Gelato draft), the "printer shipped" tab (Printify `fulfilled`
   with USPS, Gelato `in_transit` with a tracking number), shipped on Etsy (with a tracking number).
   Order `4100000108` (Robin Sample) is **for two books** (Sofia and Jack, US Softcover → Gelato): for
@@ -39,14 +38,13 @@ code:
   texts — so the **text check** on Olivia's card finds exactly 2 errors. It talks to the real Ollama on
   this PC (locally, on made-up pages); without Ollama — a yellow banner. To have the archive redrawn
   after changes to `dev_server.py`, delete `.tmp\bsdev`.
-- **The server only writes made-up data to its own folder** (`claim()`, since 2026-09-22). It accepts
+- **The server only writes made-up data to its own folder** (`claim()`; the rule is in [data safety](../architecture/data-safety.md)). It accepts
   its default `.tmp\bsdev`, an empty folder, and any folder already marked `.book-studio-sample`. It refuses: the
   real `app/data`, any folder with `vault.json` (keys live there), and a non-empty folder that isn't its
   own — because `BOOK_STUDIO_DATA` could point at a copy, a backup, or a moved data folder, and
-  `--sample` overwrites the order snapshot. Before 2026-09-22 it only checked one exact path (found by
-  the audit). There are no keys in the temp folder, so the startup sync never starts and no service is
+  `--sample` overwrites the order snapshot. There are no keys in the temp folder, so the startup sync never starts and no service is
   ever called.
-- **No keys will ever be here either** (since 2026-09-23): the server sets `BOOK_STUDIO_SAMPLE=1`, and
+- **No keys will ever be here either**: the server sets `BOOK_STUDIO_SAMPLE=1`, and
   the program doesn't show keys from the old programs on the desktop and won't save any ("This is a
   preview server on made-up data — keys aren't stored here"). If the folder somehow has a `vault.json`
   anyway, the server refuses to start and asks to delete the folder by hand.
@@ -56,8 +54,8 @@ code:
 
 ## The Workshop and the Mockups
 
-- The same `--sample` server has them (the separate `--mockups` server on port 47891 went with the utility).
-- **The Workshop** (since 2026-09-26 — the book console moved in): the preview is its **sandbox** (`core.SANDBOX`):
+- The same `--sample` server has them.
+- **The Workshop**: the preview is its **sandbox** (`core.SANDBOX`):
   three made-up books in `.tmp\bsdev\workshop-books` (`seed_workshop()` → [tools/sample_books.py](../../app/tools/sample_books.py)
   `make_books()`, only when there are none): **40** — Tier H, the hero, story, text, no prompts yet, a hero variant
   G2_brunette, four looks with a made-up `hero.png` (G3_blond, G4_east_asian, G5_redhead, G6_afro — the listing
@@ -77,10 +75,10 @@ code:
   «Зберегти відкриті» (`finish.jsx`) it "saves and closes" the templates it was given), and **no Windows dialog,
   flash or sound for the mockups** — the book field's button answers with `Goose demo.zip`, "where to save" with
   `sample-mockups\out`, `attention()` does nothing (only the mockups' own `desktop` is swapped: the rest of the
-  program keeps its dialogs). Since 13.10.2026 **every made-up template counts as baked**: the run is drawn by
+  program keeps its dialogs). **Every made-up template counts as baked**: the run is drawn by
   `pretend_render()` (the template's scene, its background tinted by a scene's colour, the pages or the front laid on it; in All & Open 1 the back and the front, so the back's crop shows)
   — the crop window works on it; the pretend Photoshop is there for a template that is not.
-- **The listing slides** (since 2026-09-29): the slides' cut-out gets a pretend template (`pretend_template()` — the
+- **The listing slides**: the slides' cut-out gets a pretend template (`pretend_template()` — the
   book is where the pretend Photoshop lays the pages, a soft shadow down-right), so a run fills «Без фону», and
   «Зробити слайди» bakes the six with the real headless Edge into `sample-mockups\out`. The editor's live pick-up of an
   agent's change waits while the page is hidden — the hidden pane says `document.visibilityState === 'hidden'`: set it
@@ -120,7 +118,7 @@ so. Changes to `app/web/*` are picked up by reloading the window (Ctrl+R).
 
 ## Where in the code
 
-- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()` (`BOOK_STUDIO_SAMPLE`), `claim()`, `MARK`, `PORT` (split by job on 2026-09-27: the made-up data is in the two files below)
+- [app/tools/dev_server.py](../../app/tools/dev_server.py) — `main()` (`BOOK_STUDIO_SAMPLE`), `claim()`, `MARK`, `PORT`
 - [app/tools/sample_data.py](../../app/tools/sample_data.py) — `seed()`, `_receipt()`, `_book_bought()`, `_printify()`, `_gelato()`, `_seed_archive()`, `_sample_book()`, `_printed()`, `SAMPLE_TEXTS`, `SLIPS`
 - [app/tools/sample_mockups.py](../../app/tools/sample_mockups.py) — `seed_mockups()`, `pretend_photoshop()`
 - [app/tools/sample_books.py](../../app/tools/sample_books.py) — `make_books()`, `hero_png()`, `make_photo_templates()`, `book_shot()`, `seed_workshop()`
@@ -130,12 +128,12 @@ so. Changes to `app/web/*` are picked up by reloading the window (Ctrl+R).
 
 - [Tests](testing.md) · [Security](../security.md) · [Setup](setup.md)
 
-## In the portable copy (2026-10-04)
+## In the portable copy
 
-`.claude/launch.json` here starts the portable copy's own Python (`../runtime/python/python.exe`). Open the session **in this folder**: a session opened in the ordinary Book Studio folder starts *that* program's preview — its pages differ and nothing here is proven by them (found the hard way). `/api/ping` answers a `data` id: the preview of this copy is the one whose id matches `core.data_id()`.
+`.claude/launch.json` here starts the portable copy's own Python (`../runtime/python/python.exe`). Open the session **in this folder**: a session opened in the ordinary Book Studio folder starts *that* program's preview — its pages differ and nothing here is proven by them. `/api/ping` answers a `data` id: the preview of this copy is the one whose id matches `core.data_id()`.
 
-## Never wrap the sample server (2026-10-04)
+## Never wrap the sample server
 
 `studio.core` fixes the data folder the first time anything imports it. A script that imports `studio` before `BOOK_STUDIO_DATA` is set (a wrapper
 around `dev_server.py`, a patch for a look) makes the seed write into the REAL data. Start `tools/dev_server.py` directly; to look at a pretend state set
-`BOOK_STUDIO_DATA` (a made-up folder) and `BOOK_STUDIO_SAMPLE=1` first, import `studio` after, then patch. `sample_data.seed()` now refuses when core points elsewhere.
+`BOOK_STUDIO_DATA` (a made-up folder) and `BOOK_STUDIO_SAMPLE=1` first, import `studio` after, then patch. `sample_data.seed()` refuses when core points elsewhere.

@@ -1,7 +1,7 @@
 ---
 title: Security — what's forbidden for the program and for agents
 type: rule
-updated: 2026-10-27
+updated: 2026-10-28
 code:
   - app/studio/printify.py
   - app/studio/gelato.py
@@ -31,48 +31,37 @@ code:
    *(The program itself is unchanged: `security.etsyKyivOnly` — on unless switched off, a copy for someone else has it off —
    still makes the server refuse to open an etsy.com link other than the sign-in page; this rule is about agents.)*
 2. **Etsy — read-only.** No changes in the shop at all.
-3. **Printify is read-only since 1 October 2026** — nothing is written there at all (the owner moved every new book to
-   Gelato). Before that date it allowed only image uploads, an unpublished product, and "On hold" orders (only after
-   confirming manual approval); the code keeps those rails. **Never**: sending to production, cancelling, Express,
-   publishing, or changing/deleting products. **The Master product is never changed.**
-4. **Gelato** — drafts only (`orderType: draft`), and only in the main account; the old account (kept after the
-   move to the owner's own one) is only read.
+3. **Printify is read-only** — nothing is written there at all ([printer rule](rules/printer-rule.md)); the code keeps its old
+   rails (images, an unpublished product, "On hold" orders after manual approval). **Never**: sending to production,
+   cancelling, Express, publishing, or changing/deleting products. **The Master product is never changed.**
+4. **Gelato** — drafts only (`orderType: draft`), and only in the main account; the old account is only read.
 5. **No live writes** to the owner's accounts (Etsy, Printify, Gelato) without his direct permission in
    chat. For checks — tests with fake services ([dev/testing.md](dev/testing.md)).
 6. **Keys and tokens** — never read, print, or copy into code, documents, URLs, or logs.
    `app/data/vault.json` is an encrypted store. `.secrets.txt` in the repo root is a plain-text list of
-   the owner's credentials (copied from Etsy OS on 2026-09-17 at his request; git ignores it): never
+   the owner's credentials (git ignores it): never
    read, print, commit, change, or delete it unless the owner directly asks for exactly that. Never ask
    the owner to paste keys into chat.
-7. **Never permanently delete the owner's data.** A deleted book goes to `app/data/library/trash`; a deleted
-   Workshop book's folder — to the Windows Recycle Bin (after 2 min on the program's «Скасувати» shelf, `aside.py`). The
-   one deliberate exception is the [order archive](features/archive.md): the program deletes its files
-   itself 14 days after "Sent" (the owner's decision, 2026-09-18, except "Keep").
+7. **Never permanently delete the owner's data** (the library trash, the Recycle Bin and the «Скасувати» shelf:
+   [data safety](architecture/data-safety.md)). The one deliberate exception is the [order archive](features/archive.md): the
+   program deletes its files itself 14 days after "Sent" (the owner's decision, except "Keep").
 8. **Git**: commit and push only when the owner asks. `app/data/`, `app/bin/`, and real customer data
    never go into the repository (tests use only made-up names and addresses).
 9. **Interface preview** during development only on a temporary data folder
    ([dev/preview.md](dev/preview.md)), so the server has no keys and never calls any services.
-10. **The mockup templates `D:\Roman\Desktop\Трафарети мастхев` — read-only** (the owner's rule,
-    2026-09-23: "only reading, no editing, and God forbid deleting"). Never edit, save over, move,
-    rename or delete anything there; scripts open **copies** only
-    ([features/mockups.md](features/mockups.md#the-templates), how the utility keeps to it — below).
+10. **The mockup templates `D:\Roman\Desktop\Трафарети мастхев` — read-only** (the owner: "only reading,
+    no editing, and God forbid deleting"). Never edit, save over, move, rename or delete anything there; scripts open
+    **copies** only ([features/mockups.md](features/mockups.md#the-templates)).
 11. **Photoshop's own settings are the owner's**: an agent doesn't add `WarnRunningScripts 0` or change
     anything else there. In a test, an agent may answer Photoshop's "run this script?" only when the
-    question names its own test script (2026-09-23).
+    question names its own test script.
 
-## Development tools can't reach the real data (since 2026-09-22)
+## Development tools can't reach the real data
 
-The 2026-09-22 audit found that both safeguards relied on the environment, not on code:
-- **Tests** took an already-set `BOOK_STUDIO_DATA` as-is — and they wipe entire folders. Now the test
-  suite **always** creates its own temporary folder ([dev/testing.md](dev/testing.md)).
-- **The preview server** refused only one exact path, so a copy, a backup, or a moved data folder would
-  get through. Now `claim()` only allows its own folder (marked `.book-studio-sample`), an empty one, or
-  its default `.tmp\bsdev` in the repository (until 2026-09-23 `%TEMP%\bsdev` on drive C), and never a
-  folder with `vault.json` ([dev/preview.md](dev/preview.md)).
-- **The preview server no longer takes keys** (since 2026-09-23): its Settings used to offer to import
-  the owner's real keys from the old programs on the desktop — and then the "safe" server could reach
-  Etsy, Printify and Gelato. Now `dev_server.py` sets `BOOK_STUDIO_SAMPLE=1` (`core.SAMPLE`): old keys
-  aren't shown, and `Vault.set()` refuses to save any key.
+Tests and the preview server cannot touch the owner's data or keys: the test suite always makes its own temporary folder, the preview
+server (`dev_server.py`, `claim()`) takes only its own marked folder and never one with `vault.json`, and it sets `BOOK_STUDIO_SAMPLE=1`
+(`core.SAMPLE`) so `Vault.set()` refuses any key and no service is reached. The mechanics: [data safety](architecture/data-safety.md),
+[testing](dev/testing.md), [preview](dev/preview.md).
 
 ## How this is enforced in code
 
@@ -85,12 +74,12 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   second path is transferring a session with an "access link" from Profit Calculator.
 - The page after Etsy's consent (`/etsy/callback`, reached without the token) shows the link's text escaped
   (`html.escape`): the program's own page holds the session token, so a crafted link must never run a script
-  there (the 2026-09-26 audit).
+  there.
 - Tests: `OpenUrlGuard`, `test_the_callback_page_shows_a_crafted_link_as_text` in
   [test_flows.py](../app/tests/test_flows.py).
 
 ### Printify
-- From 1 October 2026 (`retired()`, `READ_ONLY_FROM`) `_check()` blocks every request that isn't a `GET`, before
+- Since the retirement (`retired()`, `READ_ONLY_FROM`) `_check()` blocks every request that isn't a `GET`, before
   anything else; the Order Creator's Printify routes refuse up front (`GelatoOnly` in `test_orders.py`).
 - Every request goes through `_check()`: a fixed list of allowed reads and only two writes
   (`uploads/images.json`, `shops/{id}/products.json`); the words `publish`, `send_to_production`,
@@ -100,7 +89,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - Creating a product or an order — no automatic retry (`retries=1`): a repeated POST after a dropped
   connection could create a duplicate. An unclear result → the message "check Printify". More broadly:
   `httpc.request()` never retries a POST that may have gone through (timeout, dropped connection,
-  500/502/504) — including image uploads (since 2026-09-23).
+  500/502/504) — including image uploads.
 - Master: a snapshot in `data/creator/master-snapshots/` before creating, a fingerprint check
   `_master_fingerprint()` after.
 - Every request and every block — in `data/logs/printify.log`.
@@ -112,25 +101,22 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   `orderType == "draft"`; the words `cancel`, `publish`, `production`, `confirm`, `:convert`, `patch` are
   blocked.
 - `create_draft_order()` forces `orderType: draft`.
-- **Two accounts during the move** (since 2026-09-29): `call(…, account="old")` — the old account's key — passes
+- **Two accounts**: `call(…, account="old")` — the old account's key — passes
   `_allowed()` only for the order search and `GET`; a new key being checked (`check_key()`, `key=`) only reads too.
   The switch moves the keys inside the vault (`gelato_old_api_key`); an order carries `account_id()` — a hash, never
   the key. The preview server refuses the switch before any request (`core.SAMPLE`).
 - An unclear result from creating a draft (timeout, dropped connection, 500/502/504) is not "rejected":
-  the owner sees "don't resend, check Drafts", and the PDF link stays up for 15 min (since 2026-09-23;
-  previously, resending after such an error could create two drafts for one receipt).
-- Tracking numbers for shipped orders (since 2026-09-17) — separate `GET /v4/orders/{id}` calls, i.e.
+  the owner sees "don't resend, check Drafts", and the PDF link stays up for 15 min (a resend could create two drafts for one receipt).
+- Tracking numbers for shipped orders — separate `GET /v4/orders/{id}` calls, i.e.
   read-only (`attach_shipments()`); Printify gives them in the regular order list.
 - Log — `data/logs/gelato.log`.
 
 ### Send journal
-- `data/logs/sends/` stores the bodies of requests to Printify/Gelato with buyer addresses, but never
-  **keys** (they're only in headers; tests verify this). Local only, never goes into git.
+- `data/logs/sends/` holds buyer addresses but never **keys** ([send journal](features/send-journal.md)). Local only, never goes into git.
 - Checking the temporary link asks the public DNS (`1.1.1.1`) only for our own `*.trycloudflare.com`
   address — no buyer data.
 - `cloudflared.exe` (the temporary link) shuts down together with Book Studio even on a crash: it's in a
-  Windows job object (`tunnel._ends_with_us()`, since 2026-09-23; verified: a process whose "parent" is
-  killed disappears too). It used to keep hanging around after a crash.
+  Windows job object (`tunnel._ends_with_us()`).
 
 ### Order archive
 - `data/archive/` — files of books with children's names, and `entry.json` with the shipping address;
@@ -145,78 +131,60 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
   cloud — pages never leave the computer. Test: `OllamaAndRoutes` ([test_textcheck.py](../app/tests/test_textcheck.py)).
 - The program can start Ollama itself (`start_ollama()`) — only its own `ollama app.exe` next to
   `ollama.exe` from PATH (in the portable copy only `runtime/Ollama/ollama.exe serve`); nothing else is launched. The starts it makes
-  by itself (at the program's start, before a check) are `ollama.exe serve`, hidden; made-up data (tests, the preview) never starts it (19.10.2026).
+  by itself (at the program's start, before a check) are `ollama.exe serve`, hidden; made-up data (tests, the preview) never starts it.
 - The book passport only changes on the owner's click of "Update passport" (`_passport()`): only the
   texts of the cover and spreads, the child's name → `{Name}`; the dedication and afterword can't be
   changed this way.
 - Journal `data/logs/checks/` (one file per book: `<date>_<receipt>-<book number>.json`) — with
   children's names and dedication texts; local only, never goes into git. The owner's "Not an error" is
   written there only by name through `mark()`: a journal file name of the exact form and a finding id
-  that is in it — nothing else can be written or reached (since 2026-09-25).
+  that is in it — nothing else can be written or reached.
 
 ### Keys
 - The `Vault` store encrypts with Windows DPAPI (only works for this Windows user).
 - Keys never reach the interface: `status()` only returns "present/absent" and the last 4 characters.
-- **The backup** (since 2026-09-27, the owner's decision): every key goes, decrypted, into the backup archive on
+- **The backup** (the owner's decision): every key goes, decrypted, into the backup archive on
   his Google Drive (`readable()` → `Ключі (відкрито).json`, from memory, never on disk), and so does
   `.secrets.txt` with the whole folder — the archive is AES-256 with hidden names under his password, which
   lives in the vault. Agents still never read the keys or open that file ([backup](features/backup.md)).
 
-### The Mockups (a utility since 2026-09-23, inside Book Studio since 2026-09-24)
-- The templates folder is **only read**: `copy_templates()` copies the six templates into the run's own
-  folder (`app/data/mockups/work/…`) and refuses a copy that would land inside the templates folder;
-  Photoshop opens only the copies. The script never names the templates folder (a test checks it, in the
-  escaped spelling of its Cyrillic name too) and only saves **copies** (`saveAs(…, true)`), closes
-  without saving.
-- The output folder may **not** be the templates folder — refused in the dialog (`_pick_out()`) and in the
-  run (`make()`). An existing picture is never overwritten (`_free_name()`).
-- The spare copy `Трафарети мастхев (копія)` in the Book Studio folder (2026-09-29; in the portable copy it was removed on 2026-10-03 — `runtime/Templates` holds the templates there) is **read-only too** (its files marked
-  so) and never used by the program; it is not in git and not in the backup (the templates themselves are).
-- The listing slides' cut-out **only reads** the templates (their book mask and shadow layers, psd_tools); what it
-  writes goes beside the mockups (`no-background\`, never over a file that is there) and into `app/data/slides`; the
-  slides are `Listing N.png` in a Workshop book's `etsy\` (or beside the mockups in a folder of the owner's), never over
-  another file — only the program's own are baked again
-  ([slides](features/slides.md)).
-- **Drawn without Photoshop** (13.10.2026): the templates are only read for their stamp (`mockup_render.stamp()`, the
-  first and last 4 MB); the baked files live in `app/data/mockups/baked`; a drawn picture is saved under a free name like
-  Photoshop's, and **only the crop window draws over a file — the very picture its run saved** (and that picture's
-  «Без фону»). Open 1, Open 2 and Dedication are written only into `no-background\` (a name free in both folders). The bake tool (`app/tools/mockup_bake/`) copies the templates into its own work folder and Photoshop opens
-  only those copies.
-- A Workshop book's mockups already there (11.10.2026) are **only read** and shown (`existing()`, `_existing_file()`):
-  a name must be a file right inside that book's `mockups\` and of a known template — anything else is refused; reading
-  makes no folder.
-- Its files live in `app/data/mockups`. The unpacked demo book has a folder of its own there
-  (`mockups/book/`, `BOOKS`), so the mockups never delete the files dropped into an order's card and Book
-  Studio's cleaning of dropped files never deletes the demo book. The demo book, old runs and Photoshop's temp
-  folder are the only things it deletes (`_only_this_book()`, `clear_books()`, `clean_runs()`); once, after
-  the move, the separate utility's own temp files, previews and window profile went too (never `places.json`,
-  the runs or the logs; that one-time cleaning was removed on 2026-09-27). A copy of a template the owner saved himself (Ctrl+S) is kept a week.
-- A ZIP picked with the folder button is **only read** where it lies (`_open_zip()`), unpacked into the
-  mockups' own folder.
-- Photoshop gets one script per run; a stop leaves a mark the script checks first, so a late "Yes" does
-  nothing. Photoshop's "show dialogs" setting is put back after the run.
-- **«Зберегти відкриті»** (a second script, only when the owner presses it): finds the run's own copies
-  among Photoshop's open documents (by path, else by file name), saves a PNG **copy** into the run's output
-  folder and closes them without saving the copy; it opens nothing and touches no other document.
+### The Mockups
+Mechanics: [mockups](features/mockups.md), [slides](features/slides.md), [photo mockups](features/photo-mockups.md). The rules:
+- The templates folder is **only read**: `copy_templates()` copies the templates into the run's own folder (`app/data/mockups/work/…`) and
+  refuses a copy landing inside the templates folder; Photoshop opens only the copies and only saves **copies**. A test checks that the
+  script never names the templates folder (in the escaped spelling of its Cyrillic name too).
+- The output folder may **not** be the templates folder (`_pick_out()`, `make()`). An existing picture is never overwritten (`_free_name()`);
+  only the crop window draws over a file, and only the very picture its run saved.
+- The spare copy `Трафарети мастхев (копія)` (if present) is read-only too and never used by the program; in the portable copy `runtime/Templates` holds the templates.
+- The listing slides' cut-out only reads the templates; what it writes goes beside the mockups (`no-background\`) and into `app/data/slides`; slides
+  are `Listing N.png`, never over another file — only the program's own are baked again.
+- Drawn without Photoshop: the templates are read only for their stamp (`mockup_render.stamp()`); the bake tool (`app/tools/mockup_bake/`) works on its
+  own copies.
+- A Workshop book's mockups already there are **only read** (`existing()`, `_existing_file()`): a name must be a file right inside that book's `mockups\`
+  and of a known template.
+- The unpacked demo book has a folder of its own (`mockups/book/`, `BOOKS`), so the mockups never delete files dropped into an order's card. Only the demo
+  book, old runs and Photoshop's temp folder are deleted (`_only_this_book()`, `clear_books()`, `clean_runs()`); a copy of a template the owner saved himself is kept a week.
+- A ZIP picked with the folder button is **only read** where it lies (`_open_zip()`).
+- Photoshop gets one script per run; a stop leaves a mark the script checks first, so a late "Yes" does nothing; «Зберегти відкриті» touches only the run's own copies.
 - Tests: `RunPlan`, `Run`, `Cleaning`, `SaveTheOpenOnes`, `PhotoshopScript` ([test_mockups.py](../app/tests/test_mockups.py)).
 
-### The Workshop (the book console, since 2026-09-26)
+### The Workshop
 - **Nothing of the owner's is deleted for good**: a picture a new one replaces, or a removal takes, goes to the
-  book's `.replaced/`; a deleted book's whole folder goes to the **Windows Recycle Bin** (`to_recycle_bin()`) — first 2 min on the shelf `data/aside`, for «Скасувати».
+  book's `.replaced/`; a deleted book's whole folder goes to the Recycle Bin ([data safety](architecture/data-safety.md)).
 - **Downloads**: only the first new PNG/JPEG/WEBP that appears *after* «Генерувати» and has finished downloading is
   taken (moved into the book — the owner's wish); files that were there before, and anything else, are never touched.
   A photo mockup without a book (the «Фотомокапи» page) takes nothing from Downloads at all.
 - **The photo mockups' templates** (`app/data/photo-mockups`) are copies; the owner's own folder on the desktop was
   only read, once. A template taken out goes to the Recycle Bin (via the same shelf); a book's photo replaced or removed — to `.replaced/`.
 - **Only inside the book**: a variant a request names is an existing folder in `agent/variants/`, checked before
-  anything is written (`_variant()`, the 2026-09-26 audit: «../..» wrote outside the book).
+  anything is written (`_variant()`; «../..» must not write outside the book).
 - **A book's `agent/` is the agents'**: the Workshop only reads it, except the hero it catches (`canonical.png`, a
   variant's `hero.png`). The agents write only into `agent/` and never into `book.json`.
 - The clipboard is filled only on the owner's press («Генерувати», «Далі»/F8, Ctrl+V in Chrome during a
   several-part paste, the copy buttons, «Відкрити агента»); F8 is taken from Windows only while a several-part paste
   goes on and given back after the last part. What comes next after a caught picture (the cover's margins) is put in
   only within the wait the owner started.
-- **Ctrl+V is only looked at, never taken** (since 2026-09-27): during a several-part paste the keys' state (Ctrl, V)
+- **Ctrl+V is only looked at, never taken**: during a several-part paste the keys' state (Ctrl, V)
   is read every 20 ms and the window in front is checked to be Chrome (only its program's file name is read); no
   key is caught, blocked or written down, nothing else is looked at, and the watching stops after the last part
   (`clipboard.PasteWatch`, `Hotkey`).
@@ -228,8 +196,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 
 ### Local server
 - Listens only on `127.0.0.1`; every `/api` request carries the session token `SESSION_TOKEN` (header
-  `X-Studio-Token`), media uses the `?t=` parameter — the pictures' key `MEDIA_TOKEN`, kept across launches in `data/media-key.txt` so the
-  window's cache keeps the pictures (04.10.2026); it opens `/media/` routes only, never `/api`, and is never shown outside the program's page.
+  `X-Studio-Token`), media uses the `?t=` parameter (`MEDIA_TOKEN`: it opens `/media/` routes only, never `/api`; [server](architecture/server.md)).
 - `_host_ok()` checks the Host header (protection against DNS rebinding).
 - A number in a query that isn't one (`?w=abc`) is its default (`Request.int_param()`), never a server error
   with a traceback in the log.
@@ -254,7 +221,7 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - [app/tools/dev_server.py](../app/tools/dev_server.py) — `claim()`, `MARK`, `main()` (`BOOK_STUDIO_SAMPLE`)
 - [app/studio/mockups.py](../app/studio/mockups.py) — `copy_templates()`, `_free_name()`, `_pick_out()`, `make()`, `clean_runs()`, `finish()`, `_open_zip()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`
 - [app/studio/core.py](../app/studio/core.py) — `inside()`: the one check behind "only in our own folder" (the
-  templates, the dropped files, the interface's own files, the archive; since 2026-09-27)
+  templates, the dropped files, the interface's own files, the archive)
 - [app/studio/workshop/books.py](../app/studio/workshop/books.py) — `to_library()` (the Etsy listing only read, through the API; nothing is sent anywhere), `delete_book()`, `open_agent()`
 - [app/studio/workshop/generate.py](../app/studio/workshop/generate.py) — `Session` (only the awaited picture leaves Downloads)
 - [app/studio/desktop.py](../app/studio/desktop.py) — `to_recycle_bin()`
@@ -265,6 +232,6 @@ The 2026-09-22 audit found that both safeguards relied on the environment, not o
 - [Printify](integrations/printify.md) · [Gelato](integrations/gelato.md) · [Etsy](integrations/etsy.md)
 - [Decisions](decisions.md) · [Working with the owner](owner/working-with-owner.md)
 
-## Audit of 2026-10-04
+## Open points
 
-A five-part audit (server core, portability, interface, security, tests/docs) found no way to write to Etsy/Printify/Gelato against the rules. Fixed: the settings transfer could carry the safety switches (now it cannot); the Recycle Bin call now warns instead of deleting for good when a folder cannot be recycled (`FOF_WANTNUKEWARNING`); the Etsy-open guard also catches `www.etsy.com.` and `etsy.me`; the pages cannot be framed by other sites; a module ZIP cannot overwrite other parts of `runtime/`. Open (owner's choice): `.secrets.txt` is readable by other Windows accounts (set its rights or keep the folder on an encrypted disk); the backup password is only checked for 8 characters.
+- `.secrets.txt` is readable by other Windows accounts (set its rights or keep the folder on an encrypted disk); the backup password is only checked for 8 characters (the owner's choice).

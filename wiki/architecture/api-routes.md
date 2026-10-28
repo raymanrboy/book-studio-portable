@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-27
+updated: 2026-10-28
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -66,7 +66,7 @@ code:
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
-| GET | `/api/orders` | token | `_list` | orders.js (the queue), creator-picker.js `pickEtsyOrder` (the same list; its own `/api/creator/etsy-orders` went on 2026-09-27) |
+| GET | `/api/orders` | token | `_list` | orders.js (the queue), creator-picker.js `pickEtsyOrder` (the same list) |
 | GET | `/api/orders/(\d{5,20})` | token | `_one` | orders.js (the card; `earlierSends` — sends of this order that never became a print-shop order) |
 | GET | `/api/orders/(\d{5,20})/history` | token | `_history` | order-history.js `mountHistory` (the card's history of a placed Gelato order, read from Gelato when the card opens; `?fresh=1` asks again) |
 | GET | `/api/orders/(\d{5,20})/canva-zip` | token | `_canva_zip` | order-card.js `awaitZip` (after «Відкрити шаблон у Canva», every 2.5 s: this order's ZIP from Downloads, unpacked like a dropped one; `{path, name}`, `{}` or `{error}`) |
@@ -180,7 +180,7 @@ The books in development (the Workshop) — the book pipeline's folders ([featur
 
 ## Dropped files — [drops.py](../../app/studio/drops.py)
 
-Every page that takes dropped files, the Mockups too (until 2026-09-23 — `/api/creator/drop/*` in creator.py).
+Every page that takes dropped files, the Mockups too.
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
@@ -190,8 +190,7 @@ Every page that takes dropped files, the Mockups too (until 2026-09-23 — `/api
 
 ## Listing mockups — [mockups.py](../../app/studio/mockups.py)
 
-Book Studio's own since 2026-09-24 (until then only the separate utility's server, port 47831, served
-them) — see [features/mockups.md](../features/mockups.md).
+See [features/mockups.md](../features/mockups.md).
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
@@ -204,10 +203,10 @@ them) — see [features/mockups.md](../features/mockups.md).
 | POST | `/api/mockups/make` | token | `_make` | mockups.js `make` (background job `mockups`; `{book, picks, folder, only?}` — `only`: the ticked templates; the job shares every template's progress; with `workshop` — the demo book's cover kept as the book's `mockups/canva-cover.*`) |
 | POST | `/api/mockups/finish` | token | `_finish` | mockups.js «Зберегти відкриті й закрити» (`{run}` → background job `mockups`: the second script saves and closes the templates left open) |
 | POST | `/api/mockups/cancel` | token | `_stop` | mockups.js (the × while it runs) |
-| POST | `/api/mockups/close` | token | `_close` | mockups.js «×» in the header — «Завершити» (`{run}`: the demo book goes, a run waiting for «Зберегти відкриті» is no longer offered; refused while a run goes on) |
+| POST | `/api/mockups/close` | token | `_close` | mockups.js «×» in the header — «Завершити» (`{run}`: the demo book goes, a run waiting for «Зберегти відкриті» is dropped; refused while a run goes on) |
 | POST | `/api/mockups/open-folder` | token | `_open_folder` | mockups.js (the result's folder button) |
 | POST | `/api/mockups/open-picture` | token | `_open_picture` | mockups.js, the viewer's "original" button (`{job, i}` — only a picture that job saved) |
-| GET | `/api/mockups/existing` | token | `_existing` | mockups.js `loadExisting()` (`?workshop=` — the Workshop book's mockups already in its folder and its slides with the ones not made yet, 11.10.2026) |
+| GET | `/api/mockups/existing` | token | `_existing` | mockups.js `loadExisting()` (`?workshop=` — the Workshop book's mockups already in its folder and its slides with the ones not made yet) |
 | GET | `/media/mockups/existing` | media | `_existing_media` | mockups-run.js `existingCard()`, the viewer (`?workshop=&name=&w=` — only a mockup of a known template in that book's `mockups/`) |
 | POST | `/api/mockups/open-existing` | token | `_open_existing` | mockups.js, the viewer's "original" button for those (`{workshop, name}`) |
 | POST | `/api/mockups/attention` | token | `_attention` | mockups.js `tellDone` (a run ended while Book Studio's window was behind: the taskbar button flashes, Windows' sound) |
@@ -220,7 +219,7 @@ them) — see [features/mockups.md](../features/mockups.md).
 
 ## Listing slides — [slides/routes.py](../../app/studio/slides/routes.py)
 
-Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a Workshop book's folder name, an older set's id or `template` (the default scheme), `s` — `slide1…7` (7 — the hero's looks, only for a book that has two or more, 2026-10-02). `/api/slides/make` and `/api/slides/cutouts` take `workshop` (a book) instead of `folder`; `/api/slides/make` also takes `slides` (only these slides, 09.10.2026); `/api/mockups/make` takes `workshop` too.
+See [features/slides.md](../features/slides.md). `w` — a Workshop book's folder name, an older set's id or `template` (the default scheme), `s` — `slide1…7` (7 — the hero's looks, only for a book that has two or more). `/api/slides/make` and `/api/slides/cutouts` take `workshop` (a book) instead of `folder`; `/api/slides/make` also takes `slides` (only these slides); `/api/mockups/make` takes `workshop` too.
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|
@@ -232,8 +231,8 @@ Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a 
 | GET | `/media/slides/file/([^/]+)/(books\|pictures)/([\w.-]+\.png)` | media | `_file` | engine.js (a set's — a Workshop book's or an older one's — cut-out book, its shadow, a flat picture) |
 | GET | `/api/slides/sig` | token | `_sig` | slides-editor.js `watch` every 1.5 s (a scene changed by an agent shows up) |
 | POST | `/api/slides/scene` | token | `_save` | slides-editor.js `flush` (`{w, s, scene, base}` — a stale `base` → 409 with the scene as it is now) |
-| POST | `/api/slides/reset` | token | `_reset` | no longer the editor's button since 2026-09-30 (it resets in the session — see [slides](../features/slides.md)); kept for agents |
-| GET | `/api/slides/books` | token | `_books` | slides-editor.js «Книга ▾» (the Workshop's books: slides there or not, how many mockups — 11.10.2026) |
+| POST | `/api/slides/reset` | token | `_reset` | not the editor's button (it resets in the session — see [slides](../features/slides.md)); kept for agents |
+| GET | `/api/slides/books` | token | `_books` | slides-editor.js «Книга ▾» (the Workshop's books: slides there or not, how many mockups) |
 | GET | `/api/slides/presets` | token | `_presets` | slides-editor.js «Схема ▾» (the schemes and the other Workshop books' slides, the one put on, the default) |
 | POST | `/api/slides/apply` | token | `_apply` | slides-editor.js — a scheme (or `book:<id>`) put on all six (`{w, key}`) |
 | POST | `/api/slides/save-scheme` | token | `_save_scheme` | slides-editor.js «Зберегти ці слайди як схему…» (`{w, name, default}`) |
@@ -290,7 +289,7 @@ Since 2026-09-29 — see [features/slides.md](../features/slides.md). `w` — a 
 | POST | `/api/printify/master/save` | token | `_save_master` | settings.js `pickMaster` |
 | POST | `/api/gelato/test` | token | `_test` | settings.js (`{account: "old"}` — the old account's key) |
 
-## His own Gelato account — [gelato_accounts.py](../../app/studio/gelato_accounts.py)
+## The owner's own Gelato account — [gelato_accounts.py](../../app/studio/gelato_accounts.py)
 
 | Method | Pattern | Access | Function | Who calls it |
 |---|---|---|---|---|

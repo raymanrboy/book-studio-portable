@@ -1,7 +1,7 @@
 ---
 title: Etsy SEO studio — a book's title, tags and description
 type: feature
-updated: 2026-10-27
+updated: 2026-10-28
 code:
   - seo/seo.py
   - seo/README.md
@@ -13,7 +13,7 @@ code:
 ---
 # Etsy SEO studio
 
-> The owner asked (2026-10-09) for "an ultimate tool" for his listings' SEO, used through Claude Code. It is not part
+> The owner's "ultimate tool" for his listings' SEO, used through Claude Code. It is not part
 > of the program's interface: the agent runs it on the owner's words («зроби SEO для 35», `/etsy-seo 35`).
 
 ## What it does
@@ -21,39 +21,38 @@ code:
 For a Workshop book, the agent writes into `pipeline/books/<n>.<slug>/agent/listing-seo.md`:
 
 - **a long title** (110–140 characters, "phrase blocks": every block is a phrase buyers really type; the first blocks split
-  by ` | `, one or two, the rest by `, ` — the owner, 2026-10-18) — the owner's
+  by ` | `, one or two, the rest by `, `) — the owner's
   rule, no short titles;
 - **13 tags**, chosen by numbers and by buyer intent (product, theme, recipient, occasion, giver, keepsake);
 - **the description** — the owner's template, only the parts about the book change; always "30-page". In «MADE TO ORDER
-  WITH CARE» it says, without a heading, that the photos and videos are digital mockups made with digital tools (the owner,
-  27.10.2026).
+  WITH CARE» it says, without a heading, that the photos and videos are digital mockups made with digital tools.
 
-Then (the owner, 2026-10-11) `seo.py to-drive <n>` **copies** the book's listing photos and video (`pipeline/books/<n>.<slug>/etsy/`)
+Then `seo.py to-drive <n>` **copies** the book's listing photos and video (`pipeline/books/<n>.<slug>/etsy/`)
 into his Google Drive, `G:\My Drive\MoonMeadowStories\<n>.<slug>\` — the folder is made if missing. Copy, not move: the
 Workshop counts the slides in `etsy/`. Nothing on the Drive is overwritten or deleted.
 
 Where the numbers come from:
 
 1. **The keyword database** `seo/data/seo.sqlite` (local, not in git): the eRank «Shop tags» exports the owner gives
-   (4 competitor shops on 2026-10-09), the old `seo-intelligence` competitor listings (copied once), and every eRank
+   (competitor shops), the old `seo-intelligence` competitor listings (copied once), and every eRank
    lookup the agent makes.
-2. **eRank in the browser pane** — the owner is signed in there (Pro, 200 searches a day; he allows the whole limit).
+2. **eRank in the browser pane** — the owner is signed in there (Pro; he allows the whole daily search limit).
    The agent reads three pages with fixed snippets ([`seo/knowledge/erank-browser.md`](../../seo/knowledge/erank-browser.md)):
    the Bulk Keyword Tool (20 phrases for 1 search), the Keyword Tool's ideas (with 15 months of trend) and the
    Top Listings (competitors' titles, sales and 13 tags).
-3. **The shop's own Etsy Stats → Search terms** (the owner's screens, 2026-10-10; `seo.py import-own`, `own`) — the
+3. **The shop's own Etsy Stats → Search terms** (the owner's screens; `seo.py import-own`, `own`) — the
    strongest evidence: a phrase buyers already reach us by is marked ★ and ranked higher. They showed that
    "<occasion> book" phrases bring 10–100× more visits per search than "<occasion> gift" ones, and that phrases longer
    than 20 characters (only the title can hold them) bring visits — so tags with the item noun count ×1.25.
 4. **What is known about Etsy search** — [`seo/knowledge/rules.md`](../../seo/knowledge/rules.md), every rule with
    its evidence level (Etsy / eRank / practitioners / the owner) and source.
 
-**Etsy is opened only as a visitor, never signed in** (since 2026-10-11, [security](../security.md)); the numbers come from eRank.
+Etsy itself is opened only as a visitor, never signed in — the rule is in [security](../security.md); the numbers come from eRank.
 
 ## Checking the whole shop
 
 `seo.py audit <listings.csv> --sales <order items.csv>...` (Etsy's own exports): every listing's score next to its sales.
-On 2026-10-10 the score did **not** predict sales — the sellers are the old listings, the best one has a short title and
+The score does **not** predict sales — the sellers are the old listings, the best one has a short title and
 tags eRank can't measure — so a listing that sells (≥ 3, `KEEP_SOLD`) is marked to keep and is never rewritten.
 
 ## How a tag is judged
@@ -84,9 +83,8 @@ tags eRank can't measure — so a listing that sells (≥ 3, `KEEP_SOLD`) is mar
 
 ## Known limits
 
-- eRank's numbers are Etsy-US 12-month averages. The shop's own search terms come only as screens (Etsy has no export there,
-  89 pages — the owner sends the top ones); there is no Etsy Stats period in them, so the ratios compare terms with each other.
-- The eRank pages may change (they were redesigned in December 2025): the snippets then need fixing in
+- eRank's numbers are Etsy-US 12-month averages. The shop's own search terms come only as screens (Etsy has no export there — the owner sends the top ones); there is no Etsy Stats period in them, so the ratios compare terms with each other.
+- The eRank pages may change (they have been redesigned before): the snippets then need fixing in
   `erank-browser.md`.
 - The browser pane blocks a page from sending data to this PC (`ERR_BLOCKED_BY_CLIENT`), so eRank results pass
   through the agent as compact text.

@@ -46,6 +46,31 @@ class PrinterRule(unittest.TestCase):
                 self.assertEqual(orders.plan_for(item(label), "US")["format"], "softcover_5x5")
         self.assertEqual(orders.plan_for(item("8&quot; × 8&quot; Softcover"), "US")["format"], "softcover_8x8")
 
+    def test_the_big_hardcover_by_the_buyers_choice(self):
+        """Owner, 28.10.2026: a third size, the 11×11 hardcover — Gelato only, never Printify's choice."""
+        for label in ("11.11 Hardcover", '11" × 11" Hardcover', "11&quot; × 11&quot; Hardcover", "Hardcover 11x11",
+                      "Hardcover 28 x 28 cm"):
+            with self.subTest(label=label):
+                plan = orders.plan_for(item(label), "US")
+                self.assertEqual((plan["provider"], plan["format"], plan["formatLabel"]),
+                                 ("gelato", "hardcover_11x11", "Hardcover 11×11"))
+                self.assertNotIn("choice", plan)
+        for label in ('8" × 8" Hardcover', "Hardcover 8x8"):
+            with self.subTest(label=label):
+                self.assertEqual(orders.plan_for(item(label), "GB")["format"], "hardcover_8x8")
+        # A title that lists every size never makes an 8×8 the big one; nor does a softcover become a hardcover.
+        listed = item('8" × 8" Hardcover', title="Personalized book 5x5, 8x8, 11x11")
+        self.assertEqual(orders.plan_for(listed, "US")["format"], "hardcover_8x8")
+        self.assertEqual(orders.plan_for(item('8" × 8" Softcover', title="Book 11x11"), "US")["format"], "softcover_8x8")
+        # Nor do the buyer's own words: a date in the dedication or the personalization.
+        for name, words in (("Dedication", "Born on 11.11!"), ("Personalization", "Leo, 11x11 forever")):
+            with self.subTest(field=name):
+                own = item('8" × 8" Hardcover')
+                own["variations"].append({"name": name, "value": words})
+                self.assertEqual(orders.plan_for(own, "US")["format"], "hardcover_8x8")
+        from studio import reconcile
+        self.assertEqual(reconcile.cover_label([item("11.11 Hardcover"), item()]), "Hardcover + Hardcover 11×11 книга")
+
     def test_unknown_cover_leaves_the_choice_to_the_owner(self):
         self.assertIsNone(orders.plan_for(item(cover="Blue", title="Book"), "US")["provider"])
 

@@ -1,7 +1,7 @@
 ---
 title: Settings
 type: feature
-updated: 2026-10-05
+updated: 2026-10-28
 code:
   - app/studio/settings_api.py
   - app/studio/gelato_accounts.py
@@ -10,14 +10,14 @@ code:
 ---
 # Settings
 
-> A minimal page: service keys, the Etsy connection, the Printify template, the text check, the backup,
-> the data folder. Every block is collapsed to one line with its status; a block that needs something opens on
-> its own.
-> The theme isn't here — it's in the menu at the bottom of the rail, under Settings' own icon (since 2026-09-30 Settings
-> sit at the bottom of the rail, apart from the places). A key's ✓ lights up in the ink only once something is pasted;
-> an empty save says so and lights the field up.
+> A minimal page: service keys, the Etsy connection, the Printify template, the optional modules, the backup, the settings transfer,
+> the data folder. Every block is collapsed to one line with its status; a block that needs something opens on its own.
+> The theme isn't here — it's in the menu at the bottom of the rail, under Settings' own icon (Settings sit at the bottom of the rail,
+> apart from the places). A key's ✓ lights up in the ink only once something is pasted; an empty save says so and lights the field up.
 
 ## Blocks (`#/settings[/<block>]`)
+
+In order on the page:
 
 - **Keys found from earlier programs** (only if there's something to move) — "Move over": keys from
   Order Creator Printify (`.local/*.dpapi`) and Etsy Profit Calculator (`.env.local`/`.env`), the
@@ -26,48 +26,37 @@ code:
   Profit Calculator (`…/?sync=…`), or "Sign in to Etsy (Kyiv PC only)" — see
   [integrations/etsy.md](../integrations/etsy.md). Connected → the shop name and "Disconnect".
   "Details": the saved keys, the return address (Callback URL), copying the session key for another PC.
-- **Printify** (optional since 2026-10-05 — no token means «Не обов’язково», no warning mark, the card stays closed): the token; the template (Master) and "24 pages"; the template-picker button — only when
-  there isn't one yet; a connection check. From 1 October 2026 (`readOnly`): «лише читання старих замовлень»,
-  «Нові книги друкує Gelato», no template picker ([printify](../integrations/printify.md)).
-- **Gelato**: the key; three formats and "28 or 30 pages"; a connection check. A saved key has **«Перейти на новий
-  акаунт Gelato»** (the swap icon) in place of «Замінити ключ» — a dialog for the new account's key; the current one
-  becomes «Старий акаунт · лише читання» with its hint, «Ще N замовлень в роботі» / «Його замовлення завершено», its
-  own connection check and a bin to remove it (since 2026-09-29, [gelato](../integrations/gelato.md#his-own-account--two-keys-during-the-move)).
-  While the old one is kept, the new key has the usual «Замінити ключ» (to fix a mistyped one).
-- **Text check** (since 2026-09-19; since 2026-10-03 inside «Модулі», under the module — [optional modules](modules.md)): a "Check page text in the order card" switch, a "First take a quick
-  look at which pages even have text" switch (since 2026-09-20 — the program decides on its own which
-  pages to show the model; can be turned off if something seems to be getting skipped), the model (a
-  picker icon — when Ollama has more than one that can see pictures), "on the GPU", "Check connection";
-  Ollama not running → "Start" (the program can also start it itself before a check). The block is drawn
-  right away, from the settings ("checking status…") — with both switches shown as saved (`prescan`
-  comes in `GET /api/settings`; before 2026-09-23 the "quick scan" switch was drawn off at first),
-  Ollama's status is fetched by a separate request — Settings doesn't wait for it (on Windows, a
-  disabled Ollama only answers "no" after 2 s).
-  In detail — [text-check.md](text-check.md).
-- **Резервна копія** (since 2026-09-27): the archive's password (set / change — the owner writes it down),
-  the Google Drive folder with an "Open" button, «Зробити копію зараз» with its progress, the last copy (when,
-  size, files skipped) or the last error. Opens on its own while there is no password or the last try failed; a
-  copy started on launch is followed when the page opens. In detail — [backup.md](backup.md).
+- **Printify** (optional — no token means «Не обов’язково», no warning mark, the card stays closed): the token; the template (Master) and
+  "24 pages"; the template-picker button — only when there isn't one yet; a connection check. Printify is read-only (`readOnly`):
+  «лише читання старих замовлень», «Нові книги друкує Gelato», no template picker ([printify](../integrations/printify.md)).
+- **Gelato**: the key; three formats and "28 or 30 pages"; a connection check. A saved key has **«Перейти на новий акаунт Gelato»** in
+  place of «Замінити ключ» — the switch to the owner's own account, described on
+  [gelato](../integrations/gelato.md#his-own-account--two-keys-during-the-move) (the old account stays as «Старий акаунт · лише читання»
+  with its own check and a bin; while it is kept, the new key has the usual «Замінити ключ»).
+- **Модулі**: the optional heavy parts (text check, upscaling) — install from the internet or from a file, remove; under the installed text
+  check its own switches, model and Ollama's status. Everything about it — [optional modules](modules.md); what the text check does —
+  [text-check.md](text-check.md). The block is drawn right away from the settings; Ollama's status is fetched by a separate request, so
+  Settings doesn't wait for it.
+- **Резервна копія**: the archive's password (set / change — the owner writes it down), the Google Drive folder with an "Open" button,
+  «Зробити копію зараз» with its progress, the last copy or the last error. Opens on its own while there is no password or the last try
+  failed; a copy started on launch is followed when the page opens. Everything about it — [backup.md](backup.md).
+- **Перенесення налаштувань**: «Експорт у файл» / «Імпорт із файлу» — the settings, keys and slide schemes in one file under the backup
+  password. Everything about it — [settings-transfer.md](settings-transfer.md).
 - **Program data**: the path to `app/data` and an "Open" button.
 
 Technical values (Master positions, artwork sizes, the product UID, the EUR→USD rate, how long a link
-lives) are deliberately not shown or editable from the interface — the owner's decision. The
-`/api/settings/gelato` and `/api/settings/printify` routes, which the interface never called, were
-removed on 2026-09-23.
+lives) are deliberately not shown or editable from the interface — the owner's decision.
 
-- **The browser profile for chosen sites** (since 2026-10-01): the settings' `browser` section: `exe` (Cent Browser's
+- **The browser profile for chosen sites**: the settings' `browser` section: `exe` (Cent Browser's
   `Chrome.exe`), `profile` (`Profile 6` = «Work»), `hosts` (`gelato.com`, `canva.com`). With it, `_open_url()` opens
   those sites in that profile (`_open_in_profile()`), and every other link opens in the default browser. It isn't in
   the interface; it is written straight into `settings.json` ([decisions](../decisions.md)).
-
 - The theme and "reduce motion" are both saved in the program's settings, and both come from there on
   launch (the browser only remembers the theme for the first frame); a failed save shows a message.
 - Looking for keys in the old programs (`legacy_sources()`) only decrypts their files when those files
   have changed, not every time Settings is opened (`_legacy_names()`).
 - **The preview server** (`app/tools/dev_server.py`, `core.SAMPLE`) doesn't show keys from the old
-  programs, and doesn't save any key: "This is a preview server on made-up data — keys aren't stored
-  here" (since 2026-09-23; before that its Settings used to offer to import the owner's real keys from
-  the desktop).
+  programs, and doesn't save any key: "This is a preview server on made-up data — keys aren't stored here".
 
 ## Keys
 
@@ -83,7 +72,7 @@ ever read.
 
 ## Where in the code
 
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`, `dataCard()`, `modulesCard()`, `textcheckSettings()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`, `dataCard()`, `modulesCard()`, `transferCard()`, `textcheckSettings()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
 - [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `backupCard()`, `watchBackup()`, `redrawBackup()`
 - [app/web/js/pages/settings-dialogs.js](../../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`, `pickMaster()`
 - [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_open_in_profile()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`

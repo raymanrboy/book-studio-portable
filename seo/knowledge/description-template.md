@@ -63,7 +63,9 @@ Your child's name will be added to the cover and woven naturally throughout the 
 
 • 8" × 8" softcover — a larger lightweight edition for everyday story time
 
-• 8" × 8" hardcover — a durable keepsake edition with your choice of glossy or matte finish
+• 8" × 8" hardcover — a durable keepsake edition with a soft matte finish
+
+• 11" × 11" hardcover — our largest keepsake edition, with big, immersive illustrations and a soft matte finish
 
 📘 MADE TO ORDER WITH CARE
 

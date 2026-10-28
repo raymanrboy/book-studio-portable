@@ -1,7 +1,7 @@
 ---
 title: Send journal for Printify and Gelato
 type: feature
-updated: 2026-09-20
+updated: 2026-10-28
 code:
   - app/studio/sendlog.py
 ---
@@ -9,8 +9,10 @@ code:
 
 > Every attempt to send something to a printer — a book/order in Printify, a draft in Gelato — is
 > recorded as its own file: what went out, which files and PDF, what the service answered, where it
-> broke. The owner asked for this on 2026-09-17, to "make the mechanism ideal". There are no keys in the
-> journal.
+> broke. There are no keys in the journal.
+>
+> **Printify is read-only since 1 October 2026** — nothing new is sent to it; the Printify parts below (`book`, `book+order`, the On-hold
+> order, the Printify steps) describe old records and the dormant code ([printify](../integrations/printify.md)). New books go to Gelato.
 
 ## Where
 
@@ -29,17 +31,15 @@ open it — the dotted-list icon in the Order Creator:
 | `folder`, `format`, `books` | the folder of files and the Gelato format (of the first book); `books` — every book of the send (title, folder, format) |
 | `steps` | the steps, in order (below) |
 | `request`, `response` | the full request body for the creation, and the service's full response (with the address) |
-| `orderRequest`, `orderResponse`, `orderError` | Printify: the On-hold order |
+| `orderRequest`, `orderResponse`, `orderError` | Printify (old records): the On-hold order |
 | `result` | what the owner saw on the result card |
 
 Steps: **Gelato** — `files` (every PNG: size in px, bytes, errors) → `catalog` (the product, page count,
 sizes from the catalog) → `pdf` (pages in the PDF, bytes, the cover's size in px, how many mm it will be
 trimmed) → `link` (every PDF's address, `reachable`) → `readback` (what Gelato recorded in the draft: the
-item, pages, the file, and whether it's already been fetched — `fileFetched`). **Printify** — `files`
-(with SHA-256) → `master` → `uploads` (reused / new, image IDs by position) → `product` (the creation
-request and response) → `verify` (positions) → `masterSafe` (the Master hasn't changed).
+item, pages, the file, and whether it's already been fetched — `fileFetched`). **Printify** (old records) — `files`, `master`, `uploads`, `product`, `verify`, `masterSafe` — see [printify](../integrations/printify.md).
 
-**An order with several books** (since 2026-09-20) — one record for the whole send: the per-book steps
+**An order with several books** — one record for the whole send: the per-book steps
 repeat, each carrying a `book` field with the book's title (`files`, `uploads`, `product`, `verify`,
 `catalog`, `pdf`, `archive`); `orderRequest` is a single one — the order is shared.
 

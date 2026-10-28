@@ -5,7 +5,7 @@
   python app/tools/wiki_check.py --map      every code file and the wiki pages that describe it
 
 What is checked:
-  - every page (except log.md and raw/) has front matter: title, type, updated (YYYY-MM-DD), code (existing files);
+  - every page (except log.md, its log-*.md archives and raw/) has front matter: title, type, updated (YYYY-MM-DD), code (existing files);
   - every relative link leads to an existing file;
   - on a line with a link to a code file, `name()` and `CONSTANT` code spans after that link exist in that file;
   - every page is linked from index.md;
@@ -192,7 +192,7 @@ def check() -> list[str]:
     for page in all_pages:
         name = page.relative_to(WIKI).as_posix()
         text = page.read_text(encoding="utf-8")
-        if name != "log.md":
+        if name != "log.md" and not name.startswith("log-"):
             fm = front_matter(text)
             if fm is None:
                 problems.append(f"{name}: missing or broken front matter.")
@@ -234,7 +234,7 @@ def check() -> list[str]:
                     index_links.add(target)
                 if target.is_file() and target.suffix.lower() in CODE_SUFFIXES and APP in target.parents:
                     marks.append((m.end(), target))
-            for s in (_SPAN.finditer(line) if name != "log.md" else ()):     # (the log is history: its names may be gone) a function named in prose must exist somewhere in the code (2026-10-04 audit:
+            for s in (_SPAN.finditer(line) if name != "log.md" and not name.startswith("log-") else ()):     # (the log is history: its names may be gone) a function named in prose must exist somewhere in the code (2026-10-04 audit:
                 token = s.group(1).strip()                # `_upgrade()` and four more were long gone and nothing noticed)
                 func = _FUNC.match(token)
                 if func and not _anywhere(token[:-2].rpartition(".")[2]):

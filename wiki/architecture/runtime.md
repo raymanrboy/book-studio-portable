@@ -1,7 +1,7 @@
 ---
 title: Launch and shutdown
 type: architecture
-updated: 2026-10-25
+updated: 2026-10-28
 code:
   - app/Book Studio.pyw
   - app/Запуск з консоллю.bat
@@ -21,21 +21,15 @@ code:
    `app/data/logs/startup-error.txt` and shown in a window.
 2. **`main()`**: creates the data folders, turns on logging (`data/logs/app.log`).
 3. If the program is already running on this data — it just opens another window and exits. The named lock is asked first
-   (`_another_copy_starting()`, instant); `/api/ping` only when the lock is held — asking a port nobody listens on cost 1.5 s of
-   every start (Windows retries a refused connection; measured 04.10.2026).
+   (`_another_copy_starting()`, instant); `/api/ping` only when the lock is held — asking a port nobody listens on costs 1.5 s of
+   every start (Windows retries a refused connection).
    A copy that only waits **lets the lock go** (`_release_lock()`) and waits up to 30 s for the other one's ping; when nobody
-   answers and the lock is free by then (the other copy was closing, not starting), it starts itself. Before 24.10.2026 a start
-   made while the old copy was still closing kept the lock while waiting, so every following start waited for it in turn and
-   the program would not open at all.
+   answers and the lock is free by then (the other copy was closing, not starting), it starts itself.
    Otherwise it takes its own temp folder on drive D (`core.own_temp()`, [below](#temporary-files-and-drive-c)).
-4. Imports every module with routes (`archive`, `creator`, `drops`, `etsy`, `gelato`, `images`, `library`,
-   `mockups`, `orders`, `printify`, `profit`, `sendlog`, `settings_api`, `textcheck`, `tunnel`, `workshop`) —
-   the import itself registers the routes. (`workshop` is a package, its routes in `workshop/routes.py`; its generation
-   mode starts its Downloads watcher and the F8 thread the first time it's asked for.)
+4. Imports every module with routes (the list is in `main()`) — the import itself registers the routes. (`workshop` is a package,
+   its routes in `workshop/routes.py`; its generation mode starts its Downloads watcher and the F8 thread the first time it's asked for.)
 5. Cleanup: old Gelato temp folders (`cleanup_stale()`), dropped files from the previous session
-   (`drops.clear_drops()`), the mockups' unpacked demo book (`mockups.clear_books()`); what still waited on the «Скасувати» shelf when the program closed goes on to the Recycle Bin (`aside.flush(0)`, 06.10.2026). (The one-time cleanings —
-   the old Order Creator form, what the separate «Мокапи» left in `data/mockups` — did their work on the owner's PC
-   and were removed on 2026-09-27.)
+   (`drops.clear_drops()`), the mockups' unpacked demo book (`mockups.clear_books()`); what still waited on the «Скасувати» shelf when the program closed goes on to the Recycle Bin (`aside.flush(0)`).
 6. **Server** on port 47821 (`DEFAULT_PORT`). Port taken → a random free port and a warning in Etsy
    Settings (the OAuth return address contains the port).
 7. **One automatic order sync** — `startup_sync()` (after that, only by button, see the
@@ -45,9 +39,9 @@ code:
    (`images.prune_cache_quietly()`: unneeded after 21 days, and over 800 MB the least recently used go) and the mockup runs Photoshop no longer needs
    (`mockups.clean_runs()`). Two minutes later — a [backup](../features/backup.md) to Google Drive when the last
    one is 3 days old (`backup.schedule()`). 8 s after the start — Ollama, hidden and without the model
-   (`textcheck.run.start_quietly()`, 19.10.2026; never on made-up data).
+   (`textcheck.run.start_quietly()`; never on made-up data).
 8. **Window**: Edge or Chrome with `--app=<address>`, its own profile `data/window-profile`, sized
-   1480×940. Edge is told not to update its components or work in the background (`desktop.QUIET_EDGE`), and what it stored for itself (`component_crx_cache`, `ProvenanceData`, its shopping, wallet and entity models — ~400 MB in each profile) goes while no window holds the profile (`desktop.trim_profile()`, 05.10.2026); the same for `work-browser`. The text check's model is no longer read at the start (see [text-check](../features/text-check.md)). Neither Edge nor Chrome present — opens the regular browser.
+   1480×940. Edge is told not to update its components or work in the background (`desktop.QUIET_EDGE`), and what it stored for itself (`component_crx_cache`, `ProvenanceData`, its shopping, wallet and entity models — ~400 MB in each profile) goes while no window holds the profile (`desktop.trim_profile()`); the same for `work-browser`. Neither Edge nor Chrome present — opens the regular browser.
 
 ## How the program knows the window is closed
 
@@ -69,14 +63,9 @@ code:
 - The Windows "Choose a folder" / "Choose a page" dialogs run as a separate Python process with Tk (one
   shared script for both, `_dialog()`), because Tk wants its own main thread.
 
-## «Мокапи» — a page of Book Studio
-
-The [mockups](../features/mockups.md) are a page of Book Studio, not a program of their own; their data lives in
-`app/data/mockups` (places, runs).
-
 ## Temporary files and drive C
 
-The owner keeps drive C clean (2026-09-23: "any temporary file must go when the work is done"). Windows'
+The owner keeps drive C clean ("any temporary file must go when the work is done"). Windows'
 own temp folder is on C, and the programs Book Studio starts write there — the Edge window left its logs
 and empty folders in `%TEMP%`. So after the single-instance check each program sets `TEMP`/`TMP` (and
 Python's `tempfile`) to **`<data folder>\tmp\system`** on D (`core.own_temp()`): everything it starts
@@ -96,10 +85,14 @@ goes — [features/mockups.md](../features/mockups.md#temporary-files).
 
 [make_shortcut.py](../../app/tools/make_shortcut.py) creates `Book Studio.lnk` on the real desktop (it asks
 Windows for the path): `pythonw.exe "…\app\Book Studio.pyw"`, working folder `app`, the icon
-`app/web/img/icon.ico` (`SHORTCUTS`; «Мокапи.lnk» until 2026-09-24). After moving the program, the shortcut
+`app/web/img/icon.ico` (`SHORTCUTS`). After moving the program, the shortcut
 has to be recreated. Windows' shortcut maker (WScript) keeps only the ANSI code page — Cyrillic in a path or
-tooltip turns into "?????" (checked 2026-09-23): so the scripts have Latin names, the tooltips are Latin, and a
+tooltip turns into "?????": so the scripts have Latin names, the tooltips are Latin, and a
 Cyrillic shortcut name is saved under a Latin one and then renamed.
+
+## Keeping the window alive
+
+The Edge `--app` window is started with the occlusion/backgrounding throttles off (`CalculateNativeWinOcclusion`, `--disable-background-timer-throttling`, …): a window covered by another program must keep sending its heartbeat. `main.run_until_closed()`: a page's «bye» counts only when Edge has no window; a window that Edge took over from our process (ours then ends at once) is known by the profile Edge holds, not by its page's pings. The log says why the program decided the window closed (`Window closed: …`), when our Edge process ended, and every gap of more than a minute between pings (`Window: no ping for …`); an error nobody caught in the page goes there too (`Page error: …`, `/api/app/log`). The server logs every request longer than 1 s («Slow request») — that is where a slow start shows by name. `/api/app` counts books with `library.counts()` (no following of the Workshop's files).
 
 ## Where in the code
 
@@ -122,7 +115,3 @@ Cyrillic shortcut name is saved under a Latin one and then renamed.
 ## Related
 
 - [Server](server.md) · [Interface](frontend.md) · [Setup](../dev/setup.md)
-
-## When the window counts as closed (2026-10-04)
-
-The Edge `--app` window is started with the occlusion/backgrounding throttles off (`CalculateNativeWinOcclusion`, `--disable-background-timer-throttling`, …): a window covered by another program must keep sending its heartbeat. `main.run_until_closed()`: a page's «bye» counts only when Edge has no window; a window that Edge took over from our process (ours then ends at once) is known by the profile Edge holds, not by its page's pings — on 04.10.2026 such a window's page went quiet for 90 s and the program shut down under it («Зв'язок із програмою втрачено»). The log says why the program decided the window closed (`Window closed: …`), when our Edge process ended, and every gap of more than a minute between pings (`Window: no ping for …`); an error nobody caught in the page goes there too (`Page error: …`, `/api/app/log`). The server logs every request longer than 1 s («Slow request») — that is where a slow start shows by name. `/api/app` counts books with `library.counts()` (no following of the Workshop's files).

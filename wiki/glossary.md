@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-10-27
+updated: 2026-10-28
 code: []
 ---
 # Glossary
@@ -30,10 +30,10 @@ Code paths below are relative to the repository root.
 | Номер замовлення Etsy, номер чека | The `#…` in the queue and the card's header; a click copies the digits without "#" | [order-bits.js](../app/web/js/order-bits.js) `receiptCopy()`, `copyChip()` |
 | Оновити замовлення, синхронізація | Loading orders from Etsy + Printify + Gelato | [sync.py](../app/studio/sync.py) `_sync()`, `startup_sync()`; [order-bits.js](../app/web/js/order-bits.js) `syncOrders()` |
 | Друкарня, постачальник | Printify or Gelato | [orders.py](../app/studio/orders.py) `plan_for()` |
-| Правило друкарні | From 1 October 2026 every book → Gelato; before: hardcover in the US → Printify, everything else → Gelato | [rules/printer-rule.md](rules/printer-rule.md) |
-| Альтернативна друкарня, власний акаунт Gelato | The owner's own Gelato account from 1 October 2026 (not a third printer — the owner, 2026-09-29) | [gelato_accounts.py](../app/studio/gelato_accounts.py); [integrations/gelato.md](integrations/gelato.md) |
+| Правило друкарні | Every book → Gelato; Printify is read-only | [rules/printer-rule.md](rules/printer-rule.md) |
+| Альтернативна друкарня, власний акаунт Gelato | The owner's own Gelato account (not a third printer — the owner) | [gelato_accounts.py](../app/studio/gelato_accounts.py); [integrations/gelato.md](integrations/gelato.md) |
 | Перейти на новий акаунт Gelato, старий акаунт (лише читання) | Settings → Gelato: the new key does everything, the old one is only read until his orders there are done | [gelato_accounts.py](../app/studio/gelato_accounts.py) `_switch()`, `status()`; [settings.js](../app/web/js/pages/settings.js) `switchGelato()` |
-| Бугалтерія, облік, «Прибуток» | The Profit page, counting only sales from 1 October 2026 | [profit.py](../app/studio/profit.py) `ACCOUNTING_FROM`; [features/profit.md](features/profit.md) |
+| Бугалтерія, облік, «Прибуток» | The Profit page (a place on the rail), counting only sales from 1 October 2026 | [profit.py](../app/studio/profit.py) `ACCOUNTING_FROM`; [features/profit.md](features/profit.md) |
 | Персоналізація, поля Etsy | The buyer's variations (name: value) | [sync.py](../app/studio/sync.py) `normalize_receipt()`; [order-card.js](../app/web/js/pages/order-card.js) `renderLeft()` |
 | Ім'я дитини | The value of the field with "name/child…" in its name | [wording.py](../app/studio/wording.py) `guess_child_name()` |
 | «Від кого» | The field name in the Etsy listing; shown as-is | [order-card.js](../app/web/js/pages/order-card.js) `renderLeft()` |
@@ -51,8 +51,8 @@ Code paths below are relative to the repository root.
 | Логи відправки, журнал відправок | JSON for every send to Printify/Gelato (`data/logs/sends/`) | [sendlog.py](../app/studio/sendlog.py); [features/send-journal.md](features/send-journal.md) |
 | Page 0 (у чернетці Gelato) | An empty endpaper — that's how it should be | [integrations/gelato.md](integrations/gelato.md) |
 | 28-сторінкова / 30-сторінкова книга (Gelato) | How many pages were downloaded from Canva (28 — without one spread); there's no separate switch for it | [creator/printfolder.py](../app/studio/creator/printfolder.py) `gelato_page_options()`; [creator/gelato_send.py](../app/studio/creator/gelato_send.py) `gelato_pages_problem()`; [integrations/gelato.md](integrations/gelato.md) |
-| Чернетка замовлення Printify, «On hold» | A book + an order waiting on "Submit order" | [creator/printify_send.py](../app/studio/creator/printify_send.py) `create_printify_draft()`; [printify.py](../app/studio/printify.py) `create_order_on_hold()` |
-| Книга без замовлення (Printify) | Only an unpublished product, the address left empty | [creator/printify_send.py](../app/studio/creator/printify_send.py) `create_printify_draft()` |
+| Чернетка замовлення Printify, «On hold» | Retired (Printify is read-only): a book + an order waiting on "Submit order" | [creator/printify_send.py](../app/studio/creator/printify_send.py) `create_printify_draft()`; [printify.py](../app/studio/printify.py) `create_order_on_hold()` |
+| Книга без замовлення (Printify) | Retired: only an unpublished product, the address left empty | [creator/printify_send.py](../app/studio/creator/printify_send.py) `create_printify_draft()` |
 | Master, шаблон Printify | The reference product whose configuration gets copied | [creator/printify_send.py](../app/studio/creator/printify_send.py) `build_printify_payload()`; [settings-dialogs.js](../app/web/js/pages/settings-dialogs.js) `pickMaster()` |
 | Ручне затвердження (Manual) | A Printify shop setting; the program asks about it once | [printify.py](../app/studio/printify.py) `manual_approval_confirmed()`; [creator.js](../app/web/js/pages/creator.js) `confirmManualApproval()` |
 | Матовий фініш | The Master variant with "Matte" in its name | [creator/printify_send.py](../app/studio/creator/printify_send.py) `matte_variant()` |
@@ -83,7 +83,7 @@ Code paths below are relative to the repository root.
 | Передрук, редрук | Reprinting the same book from the order archive: Printify — a new order for the same book, Gelato — a new draft | [creator/printify_send.py](../app/studio/creator/printify_send.py) `create_printify_reprint()`; [features/archive.md](features/archive.md) |
 | Не видаляти (у архіві) | The pin on a book in the archive: the files stay until the mark is removed | [archive.py](../app/studio/archive.py) `_keep()` |
 | Оформлене замовлення (в друкарні) | Confirmed and paid, not a draft, not "on hold", not cancelled; only this moves the order into "in progress" and puts the book in the archive | [printorders.py](../app/studio/printorders.py) `is_placed()`; [rules/order-stages.md](rules/order-stages.md) |
-| Завершити роботу над замовленням | The ✓ (was an × until 2026-09-30 — the same glyph meant «remove») in the order card and in the Order Creator after a successful send: the program forgets the saved work on this order and opens the queue | [keep.js](../app/web/js/keep.js) `finish()`; [features/orders.md](features/orders.md) |
+| Завершити роботу над замовленням | The ✓ (not an ×: that glyph means «remove») in the order card and in the Order Creator after a successful send: the program forgets the saved work on this order and opens the queue | [keep.js](../app/web/js/keep.js) `finish()`; [features/orders.md](features/orders.md) |
 | Вигаданий номер (телефон) | The phone number filled into Gelato when the Etsy order doesn't have one: `+1 555 555 0100` | [creator/gelato_send.py](../app/studio/creator/gelato_send.py) `GELATO_PLACEHOLDER_PHONE` |
 | ШІ-валідатор, перевірка тексту, «кнопка перевірити» | A local model reads the pages in the order card, the program checks them against the book passport | [textcheck/run.py](../app/studio/textcheck/run.py) `check_order()`; [order-card.js](../app/web/js/pages/order-card.js) `startCheck()`; [features/text-check.md](features/text-check.md) |
 | Калібрування (валідатора), «що показувати в помилках» | Tuning the program's rules that decide which findings of the text check the owner sees (not Gemma); done on the check journal | [textcheck/rules.py](../app/studio/textcheck/rules.py) `page_issues()`; [app/tools/textcheck_replay.py](../app/tools/textcheck_replay.py) `replay()`; [features/text-check.md](features/text-check.md) |
@@ -101,17 +101,13 @@ Code paths below are relative to the repository root.
 
 | Owner's word (Ukrainian) | What it is | Where |
 |---|---|---|
-| Два режими; режим роботи з замовленнями / режим створення лістингів | Until 2026-09-30 Orders and Listings, each its rail; now one labelled rail — the inks stay, following the area (orders orange, books cyan) | [features/modes.md](features/modes.md); [app.js](../app/web/js/app.js) `PLACES` |
-| Перемикач по кліку на головну іконку Бук Студіо | Gone on 2026-09-30: the brand icon is a mark in the area's ink; the places are labelled in the rail | [app.js](../app/web/js/app.js) `buildSidebar()`, `entryOf()` |
 | Книги (розділ) | «Книги»: the Workshop's books and the library's as the tabs «Майстерня · Бібліотека · Архів» | [pages/books.js](../app/web/js/pages/books.js) `mount()` |
 | Розширення для Canva, «Книга → Canva», «Розкласти», трафарет / шаблон Canva | The Chrome extension that lays a Workshop book into its Canva template (pictures, the sphere, the text); «трафарет» — the owner's word for that template | [features/canva-extension.md](features/canva-extension.md); [canva-extension/](../canva-extension/) |
 | Yellow gradient sphere, «бімба», світіння під текстом | The Canva element put under every page's text, the owner aligns it | [features/canva-extension.md](features/canva-extension.md) |
 | Інструменти; «кожен інструмент юзати окремо» | «Інструменти»: the tools that also work on their own (the Order Creator, the print archive, the Mockups, the photo mockups, the listing slides); inside an order or a book they open from its step | [pages/tools.js](../app/web/js/pages/tools.js) `mount()`; [places.js](../app/web/js/places.js) `TOOLS` |
 | Шлях (замовлення, книги); що далі | The path strip: an order's Canva · Файли · Вичитка · Друк · Відправка, a Workshop book's 11 steps | [path.js](../app/web/js/path.js) `pathHtml()` |
 | Архів друку (архів замовлень) | The print archive — among «Інструменти»; a printed order's card links to its entry | [features/archive.md](features/archive.md) |
-| Кольори режимів: студія — оранжева, «як у Etsy і Claude»; майстерня — як була студія (блакитна) | The `--accent*` tokens: orange by default (Orders), cyan under `[data-mode="listings"]`; magenta for a few hours before the owner swapped them | [app.css](../app/web/css/app.css); [features/modes.md](features/modes.md) |
-| Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library — since 2026-09-26 the book console moved in: the agents write a book, the Workshop shows its path and catches its pictures | [features/workshop.md](features/workshop.md); [workshop/books.py](../app/studio/workshop/books.py) |
-| Пульт, пульт книги | The book console — a prototype window apart from Book Studio (2026-09-26), moved into the Workshop the same day; now the Workshop's book page | [features/workshop.md](features/workshop.md) |
+| Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library: the agents write a book, the Workshop shows its path and catches its pictures | [features/workshop.md](features/workshop.md); [workshop/books.py](../app/studio/workshop/books.py) |
 | Пайплайн, агенти 0–6, Antigravity | The book pipeline: the agents that write a book's formula, hero, story, text and prompts, in Antigravity opened on `pipeline/`; their files go into a book's `agent/` | [pipeline/AGENTS.md](../pipeline/AGENTS.md); [workshop/books.py](../app/studio/workshop/books.py) `open_agent()` |
 | Смуга шляху; «Далі: …» | The book's path strip: Формула → … → Бібліотека, ticked by the files that exist | [workshop/books.py](../app/studio/workshop/books.py) `STEPS`, `steps()` |
 | GO, перевірка книги | The book check before generating: the old pipeline validator's rules — GO or N errors on the strip | [workshop/check.py](../app/studio/workshop/check.py) `run()`; [workshop/rows.py](../app/studio/workshop/rows.py) `book_check()` |
@@ -119,7 +115,6 @@ Code paths below are relative to the repository root.
 | Промпт (для розвороту) | The picture's description for an image generator — the agent's JSON, shown whole above the frame | [workshop/rows.py](../app/studio/workshop/rows.py) `book_rows()` |
 | Плейсхолдер, рамка під картинку (розворот 2:1) | An empty frame in a Workshop row: the caught download or a picture dropped (or picked) lands there, one at a time | [workshop-rows.js](../app/web/js/pages/workshop-rows.js) `rowTemplates()`; [features/workshop.md](features/workshop.md) |
 | Схема (обкладинки) | The layout guide picture pasted with the cover's 2:1 prompt: where the painted title and the empty room for the name go — the tool «Обкладинка» | [cover](features/cover.md); [workshop/cover.py](../app/studio/workshop/cover.py) `GUIDES` |
-| Два квадрати | The cover from two squares made into Gelato's cover without the generator — tried 2026-10-24…27, taken out by the owner (back to 2:1 + outpaint) | [cover](features/cover.md#a-cover-made-of-two-squares-2026-10-2527); [decisions](decisions.md) |
 | Поля обкладинки, аутпейнт, шаблон друкарні | The cover's second stage: the picture on the printer's template, white margins, the outpaint prompt → Cover.png 5370×2850 | [workshop/rows.py](../app/studio/workshop/rows.py) `TEMPLATE`, `outpaint_prompt()`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `fit_template()` |
 | Варіанти героя (G2, G3 …) | A Tier H book's hero looks: a variant's hero and its swap prompts per spread | [workshop/rows.py](../app/studio/workshop/rows.py) `variants()` |
 | Варіанти зовнішності, слайд з варіаціями, «рамка-зірочка» | Listing slide 7: the hero's looks, each in its own frame (a scalloped «зірочка» or a plain card) with its name («B2») — only for a book with looks | [features/slides.md](features/slides.md#slide-7--the-heros-looks-since-2026-10-02); [slides/work.py](../app/studio/slides/work.py) `put_heroes()` |
@@ -127,7 +122,7 @@ Code paths below are relative to the repository root.
 | Фотошоп модуль | The Mockups tool | [features/mockups.md](features/mockups.md) |
 | Фліпер, фліпати (розворот) | Mirroring a spread left to right: his `mirror-alternate.py` rule (4–5, 8–9 … 28–29) on the drop, ⇄ by hand | [workshop/rows.py](../app/studio/workshop/rows.py) `MIRRORED`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `flip()`; [features/workshop.md](features/workshop.md#a-picture-into-its-row) |
 | Нарізати на квадрати, два квадрати як у паспорті | A 2:1 spread cut into its left and right square pages (his `slice-spreads.py`) | [workshop/pictures.py](../app/studio/workshop/pictures.py) `place()`, `two_squares()` |
-| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` (2026-09-26) | [pipeline/](../pipeline/AGENTS.md) |
+| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` | [pipeline/](../pipeline/AGENTS.md) |
 
 ## Listing mockups (the «Мокапи» tool)
 
@@ -136,35 +131,34 @@ Code paths below are relative to the repository root.
 | Фотомокапи, фото-мокап, фото з книгою | Lifestyle photos with a blank white book (grandmother, child, shelf, open book, the main flat lay) in which the generator puts our book; a Workshop book's step «Фото» and the «Фотомокапи» page | [features/photo-mockups.md](features/photo-mockups.md); [photos.py](../app/studio/photos.py) |
 | Заготовки (обкладинок), пустишка | A photo mockup's template — the photo with the blank white book; «пустишка» — the template without a book's cover (the page «Фотомокапи») | [features/photo-mockups.md](features/photo-mockups.md) `photos.templates()` |
 | Ковер (з Canva), обкладинка з архіву Canva | The book's flat cover as Canva exports it (back · spine · front) — the photo mockups' reference for the grandmother, kept as `mockups/canva-cover.png` | [features/photo-mockups.md](features/photo-mockups.md); `mockups._keep_canva_cover()` |
-| Для відео | The photo mockups' only video category: the closed book on a surface, animated in Gemini Omni / Google Flow (the camera glides in, a hand takes the book away) — the videos with people («Книга в руках у людини») were taken out 2026-10-07 | [features/photo-mockups.md](features/photo-mockups.md) `photos.OMNI_PROMPTS` |
+| Для відео | The photo mockups' only video category: the closed book on a surface, animated in Gemini Omni / Google Flow (the camera glides in, a hand takes the book away) | [features/photo-mockups.md](features/photo-mockups.md) `photos.OMNI_PROMPTS` |
 | Omni, Gemini Omni | Google's video generator the owner animates the photo mockups in (Google Flow does the same job) | [features/photo-mockups.md](features/photo-mockups.md) |
 | Папка etsy | A Workshop book's folder of what goes into its Etsy listing: the slides and the photo mockups | [features/workshop.md](features/workshop.md) |
 | Мокапи, мокапи для лістингу | Etsy listing pictures: the demo book dropped into Photoshop templates; also the utility's shortcut name | [features/mockups.md](features/mockups.md) `mockups.py` |
 | Трафарети (мастхев), шаблони мокапів | The PSD templates in `D:\Roman\Desktop\Трафарети мастхев` — **read-only** | [features/mockups.md](features/mockups.md#the-templates); [security.md](security.md) |
 | Смарт-об'єкт | A layer that's a "container": the picture inside is bent by the template | [features/mockups.md](features/mockups.md#the-templates) |
 | Папка Main | Hidden linked copies of the layers to fill, at the bottom of templates 1–4 | [features/mockups.md](features/mockups.md#the-templates) |
-| Ковер, обкладинка (у мокапі) | The front cover (`COVER_` / `Cover` / `Front Cover`) — the program puts the right half of the cover in; the owner fitted it by hand in Photoshop until 13.10.2026, now moves it in the crop window when needed | [features/mockups.md](features/mockups.md#the-templates) |
-| Міні-редактор для кадрування, поправити обкладинку, посунути | The Mockups' crop window: the front cover moved and brought closer in its frame, the mockup drawn again beside it (13.10.2026) | [features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026); [pages/mockups-edit.js](../app/web/js/pages/mockups-edit.js) |
-| Без фотошопу, «запечений» шаблон | The Mockups drawn by Book Studio itself from a template baked once in Photoshop (its calibration renders) | [features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026); [mockup_render.py](../app/studio/mockup_render.py) |
-| Колір корінців, краї (розкритої книги), піпетка | In the two softcover scenes: the thin edge lines of the open book (`Back Color` / `Front Color`), coloured from the cover's own edges "as with an eyedropper" | [mockup_colours.py](../app/studio/mockup_colours.py) `edges()` |
-| Синій фон, мокапи з довгими назвами, пастельний відтінок | The background of Cover & Open 1 and All & Open 1 (`Change Color`, blue at the vendor's) — the owner picks it; the program suggests pastel shades of the cover's hues | [mockup_colours.py](../app/studio/mockup_colours.py) `pastels()`; [features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026) |
+| Ковер, обкладинка (у мокапі) | The front cover (`COVER_` / `Cover` / `Front Cover`) — the program puts the right half of the cover in; the owner moves it in the crop window when needed | [features/mockups.md](features/mockups.md#the-templates) |
+| Міні-редактор для кадрування, поправити обкладинку, посунути | The Mockups' crop window: the front cover moved and brought closer in its frame, the mockup drawn again beside it | [features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026); [pages/mockups-edit.js](../app/web/js/pages/mockups-edit.js) |
+| Без фотошопу, «запечений» шаблон | The Mockups drawn by Book Studio itself from a template baked once in Photoshop | [features/mockups.md](features/mockups.md#drawn-without-photoshop-since-13102026); [mockup_render.py](../app/studio/mockup_render.py) |
+| Колір корінців, краї (розкритої книги), піпетка | The open book's thin edge lines, coloured from the cover's own edges | [mockup_colours.py](../app/studio/mockup_colours.py) `edges()`; [features/mockups.md](features/mockups.md) |
+| Синій фон, мокапи з довгими назвами, пастельний відтінок | The background of two templates, which the owner picks; the program suggests pastels of the cover | [mockup_colours.py](../app/studio/mockup_colours.py) `pastels()`; [features/mockups.md](features/mockups.md) |
 | Корінець | The spine: the middle strip of the wide cover (`Rige` / `Spine`, files `RIDGE*.psb`) | [mockups.py](../app/studio/mockups.py) `cover_pictures()` |
 | Задня частина (обкладинки) | The back cover — the left half of the wide cover (`Back Cover`) | [mockups.py](../app/studio/mockups.py) `cover_pictures()` |
 | Презентабельні розвороти | The spreads the owner picks for the mockups, different for every book | [pages/mockups.js](../app/web/js/pages/mockups.js) `put()`; [features/mockups.md](features/mockups.md) |
-| Опен 1, Опен 2 (копії) | Templates `2. Open 1` (used 4 times) and `3. Open 2` (twice), each time with another spread | [features/mockups.md](features/mockups.md#the-templates) |
+| Опен 1, Опен 2 (копії) | Templates `2. Open 1` and `3. Open 2`, each used with several spreads | [features/mockups.md](features/mockups.md#the-templates) |
 | Демо-книга, архів з Канви (для мокапів) | The Canva ZIP of a book with a sample name on the cover and `{Name}` in the pages | [mockups.py](../app/studio/mockups.py) `read_book()` |
 | Кант (у мокапі) | The thin rim of the cover around the pages of an open book — filled from the cover by the script | [mockups.py](../app/studio/mockups.py) `plan()` |
-| Драг енд дроп зона з пошуком (як у Бук Студіо) | The path field with the folder-and-magnifier button (`folderPick`) that lights up when files are dragged over the window — the look «Мокапи» took from the Order Creator (their «Куди зберегти»; the demo book comes into «Структура» since 2026-09-29) | [pages/mockups.js](../app/web/js/pages/mockups.js) `paintOut()`, `paintStructure()`; [features/mockups.md](features/mockups.md) |
-| Слайди для лістингу, слайди, шаблони для лістингів | The six square 2000² Etsy pictures made after the Mockups (his Canva layout, torn paper, stickers) — step 4 of the Mockups and their editor | [features/slides.md](features/slides.md); [slides/work.py](../app/studio/slides/work.py) `make()` |
-| Запекти, запікай | Draw the slides into the final PNGs (headless Edge) — «Зберегти картинки» in the editor, `slides.py bake` | [slides/bake.py](../app/studio/slides/bake.py) `bake()` |
-| Шаблон слайдів, схема (кольорова схема), Nature, Night | A **scheme** — the whole look of the six slides ("not only the colours but the settings of the whole mockup"), named; Nature — the default for new books, Night — his blue one; «Схема ▾» in the editor puts one on a book, «Зберегти як схему» makes one | [slides/store.py](../app/studio/slides/store.py) `list_schemes()`, `apply_preset()`, `save_scheme()`, `template()` |
-| Пресет (слайдів іншої книги) | Another Workshop book's six slides offered as a scheme for a new one («e.g. another bedtime book») | [slides/store.py](../app/studio/slides/store.py) `presets()` |
-| Тло (шаром) | The slide's background colour as the bottom row of the editor's layers | [pages/slides-editor.js](../app/web/js/pages/slides-editor.js) |
-| Без фону (картинки без фону) | A mockup's book with its real shadow on a transparent background, saved beside the mockups in `no-background\` («Без фону» until 30.09.2026) while Photoshop works | [slides/cutout.py](../app/studio/slides/cutout.py) `ensure()`, `Cutter` |
-| Редактор (слайдів) | The Canva-like editor of the listing slides: layers, move, turn, resize, mirror, arc text | [pages/slides-editor.js](../app/web/js/pages/slides-editor.js) |
-| Зберегти відкриті (й закрити) | The button after a run: the templates left open, with the front cover fitted, saved as PNG next to the rest and closed | [mockups.py](../app/studio/mockups.py) `finish()`; [mockups.jsx](../app/studio/mockups.jsx) `finishOpen()` |
-| Тимчасові файли, «чистити за собою» | What a run leaves (template copies, prepared pictures, the unpacked book) and when it goes | [features/mockups.md](features/mockups.md#temporary-files) |
-
+| Драг енд дроп зона з пошуком (як у Бук Студіо) | The path field with the folder-and-magnifier button (`folderPick`) that lights up when files are dragged over the window — the look «Мокапи» took from the Order Creator (their «Куди зберегти») | [pages/mockups.js](../app/web/js/pages/mockups.js) `paintOut()`, `paintStructure()`; [features/mockups.md](features/mockups.md) |
+| Слайди для лістингу, слайди, шаблони для лістингів | The six square Etsy pictures made after the Mockups, with a Canva-like editor | [features/slides.md](features/slides.md) |
+| Запекти, запікай | Draw the slides into the final PNGs | [features/slides.md](features/slides.md); [slides/bake.py](../app/studio/slides/bake.py) `bake()` |
+| Шаблон слайдів, схема (кольорова схема), Nature, Night | A named **scheme** — the whole look of the six slides, not only colours; «Схема ▾» in the editor | [features/slides.md](features/slides.md); [slides/store.py](../app/studio/slides/store.py) `list_schemes()`, `apply_preset()`, `save_scheme()` |
+| Пресет (слайдів іншої книги) | Another Workshop book's slides offered as a scheme | [slides/store.py](../app/studio/slides/store.py) `presets()` |
+| Тло (шаром) | The slide's background colour as the bottom row of the editor's layers | [features/slides.md](features/slides.md) |
+| Без фону (картинки без фону) | A mockup's book with its real shadow on a transparent background, saved beside the mockups in `no-background\` | [slides/cutout.py](../app/studio/slides/cutout.py) `ensure()`, `Cutter` |
+| Редактор (слайдів) | The Canva-like editor of the listing slides | [pages/slides-editor.js](../app/web/js/pages/slides-editor.js); [features/slides.md](features/slides.md) |
+| Зберегти відкриті (й закрити) | The button after a run: the templates left open saved as PNG next to the rest and closed | [features/mockups.md](features/mockups.md); [mockups.py](../app/studio/mockups.py) `finish()`; [mockups.jsx](../app/studio/mockups.jsx) `finishOpen()` |
+| Тимчасові файли, «чистити за собою» | What a run leaves and when it goes | [features/mockups.md](features/mockups.md#temporary-files) |
 | SEO, теги, назва лістингу, опис лістингу | A book's Etsy title (long, phrase blocks), 13 tags and description — made by the agent | [.claude/skills/etsy-seo/SKILL.md](../.claude/skills/etsy-seo/SKILL.md); [seo/seo.py](../seo/seo.py); [features/seo.md](features/seo.md) |
 | eRank, ліміт пошуків | The keyword tool the owner is signed in to in the browser pane (Pro, 200 searches a day) | [seo/knowledge/erank-browser.md](../seo/knowledge/erank-browser.md) |
 | База SEO, SEO Intelligence | The keyword database `seo/data/seo.sqlite` (the old `Etsy-Book-Pipeline/seo-intelligence` is an archive) | [seo/seo.py](../seo/seo.py) |
@@ -173,7 +167,7 @@ Code paths below are relative to the repository root.
 
 | Owner's word (Ukrainian) | What it is | Where in the code |
 |---|---|---|
-| Бокова панель, піктограми зліва | The rail: labelled places (Замовлення, Книги, Прибуток, Інструменти), search, Settings | [app.js](../app/web/js/app.js) `PLACES`, `buildSidebar()` |
+| Бокова панель, піктограми зліва | The rail: icons only (Замовлення, Книги, Прибуток, Інструменти), Settings, theme | [app.js](../app/web/js/app.js) `PLACES`, `buildSidebar()` |
 | Тримати диск C в чистоті | No temp files of the programs on drive C: their own temp folder on D, emptied on launch and close | [core.py](../app/studio/core.py) `own_temp()`; [runtime](architecture/runtime.md#temporary-files-and-drive-c) |
 | Панель інструментів (пошук, сортування, «+») | `.lib-toolbar` | [library.js](../app/web/js/pages/library.js) `mount()`; [library.css](../app/web/css/library.css) |
 | Підказка при наведенні | The shared tooltip | [lib.js](../app/web/js/lib.js) `showTip()`, `ib()` |
@@ -181,13 +175,10 @@ Code paths below are relative to the repository root.
 | Ключі, сховище | The encrypted service keys | [vault.py](../app/studio/vault.py) `Vault`; [settings.js](../app/web/js/pages/settings.js) `secretField()` |
 | Лінк доступу (з Profit Calculator) | A `?sync=` link carrying an Etsy session | [etsy.py](../app/studio/etsy.py) `decode_session_key()` |
 | Київський ПК / вроцлавський ПК | Where Etsy may be opened | [security.md](security.md) |
-| Прибуток | The hidden accounting page | [profit.js](../app/web/js/pages/profit.js) `mount()` |
+| Прибуток | The Profit page — a place on the rail | [profit.js](../app/web/js/pages/profit.js) `mount()` |
 | Зіставлення | Finding the print order for an Etsy receipt | [reconcile.py](../app/studio/reconcile.py) `match()` |
 | Скасування, повернення, заміна | Order states in the accounting | [outcomes.py](../app/studio/outcomes.py) `STATES` |
 
-## Related
-
-- [Code map](code-map.md) · [Overview](overview.md)
 
 ## Settings and modules
 
@@ -197,3 +188,8 @@ Code paths below are relative to the repository root.
 | Розумна вичитка тексту | The text check's module (its own switches and model sit under it in «Модулі») | [features/text-check.md](features/text-check.md) |
 | Перенесення налаштувань | Export/import of the settings and keys in one file under the backup password (not the safety switches) | [transfer.py](../app/studio/transfer.py); [features/settings-transfer.md](features/settings-transfer.md) |
 | Позначити в Etsy | The queue tab of orders the printer has shipped: their tracking numbers are copied, and the owner marks them shipped on Etsy by hand (Etsy is read-only for the program) | [flows/order-to-print.md](flows/order-to-print.md); [stages.py](../app/studio/stages.py) `order_stage()` |
+
+
+## Related
+
+- [Code map](code-map.md) · [Overview](overview.md)

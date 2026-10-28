@@ -20,7 +20,6 @@ PRINTIFY_PAGES = 24
 _SMALL = re.compile(r'5[.,]5|(?<![\d.,])5\s*(?:"|″|”|&quot;|in\b\.?|inch(?:es)?)?\s*[x×х*]\s*5(?![\d.,])'
                     r"|14\s*(?:cm|см)?\s*[x×х*]\s*14", re.I)
 
-
 # ---------------------------------------------------------------- where a book is printed
 
 def binding_of(item: dict) -> str | None:
@@ -56,10 +55,15 @@ def plan_for(item: dict, country_iso: str | None, rules: dict | None = None) -> 
                     "format": None}
         return {"provider": None, "binding": None, "country": country, "pages": None, "format": None}
     text = " ".join(f"{v.get('name')} {v.get('value')}" for v in item.get("variations") or []) + " " + (item.get("title") or "")
-    fmt = "hardcover_8x8" if binding == "hardcover" else ("softcover_5x5" if _SMALL.search(text) else "softcover_8x8")
+    if binding == "hardcover":
+        # The big one by the buyer's chosen format only — never the title or a dedication: an 8×8 must never go out
+        # as an 11×11 (the Order Creator still lets the owner pick it).
+        fmt = "hardcover_11x11" if reconcile.is_large(item) else "hardcover_8x8"
+    else:
+        fmt = "softcover_5x5" if _SMALL.search(text) else "softcover_8x8"
     plan = {"provider": "gelato", "binding": binding, "country": country, "format": fmt,
             "formatLabel": (rules["formats"].get(fmt) or {}).get("label"), "pages": rules["pages"]["gelato"]}
-    if binding == "hardcover" and not rules.get("gelatoOnly"):
+    if fmt == "hardcover_8x8" and not rules.get("gelatoOnly"):  # Printify had only the 8×8
         choice = dict(rules["pages"])
         plan.update(choice=choice, pages=sorted({n for pages in choice.values() for n in pages}),
                     provider="printify" if country == "US" else "gelato")

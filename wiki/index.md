@@ -109,10 +109,12 @@ code: []
 ## Decisions and recipes
 
 - [Decisions](decisions.md) — what was decided and why (with dates).
+- [Decisions — September 2026](decisions-2026-09.md) — older decisions, kept for the reasons.
+- [Decisions — 1–10 October 2026](decisions-2026-10-early.md) — older decisions, kept for the reasons.
 - [Recipes](recipes.md) — where to change code for common tasks.
 - [Known limits](dev/limits.md) — what the program deliberately doesn't do, what was only tried against fakes.
 
 ## Housekeeping
 
-- [Wiki change log](log.md)
+- [Wiki change log](log.md) — the latest entries; older ones: [September](log-2026-09.md), [October 1–17](log-2026-10.md)
 - [Owner's sources](raw/README.md)

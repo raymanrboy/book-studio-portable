@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-10-27
+updated: 2026-10-28
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -48,50 +48,48 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
 ```
 
 - **A book's id is its folder's name** (`25.some-book`, the page `#/workshop/25.some-book`); **its number is its Etsy
-  listing's number** (the owner, 29.09.2026). The agents make the folder themselves — the Workshop finds it.
+  listing's number** (the owner). The agents make the folder themselves — the Workshop finds it.
 - **The agents write only into `agent/`** and never touch `book.json` — they can't break a book's state
   ([decisions](../decisions.md)).
-- **No IDE is started (the owner, 2026-10-16: he gave up on Antigravity).** «+» and the agent icon only put the words for the
+- **No IDE is started** (the owner uses whatever agent or harness he likes). «+» and the agent icon only put the words for the
   book agent into the clipboard (`agent_words()`, `open_agent()`); the owner pastes them into the agent or harness of his
   choice. The words carry the full paths (the rules file and the book's folder), so any agent knows where to write.
 
 ## The gallery («Книги» → «Майстерня», `#/books/work`; `#/workshop` leads there)
 
-- A card per book (`card()`) — **the library's tile** (`book-tile.js`, since the late evening of 2026-09-30; before, a wide
-  bordered card of its own): the cover as a square (its front), else the cover's picture, else the first spread, else the
-  hero; `№25 Title`, the cover's title from `book-text.md`, **one bar of eleven segments** (the steps), a chevron with the
-  next step (and «n/16» for the pictures), the prompts check's GO or «N помилок»; a pulsing mark with pictures on a book a
+- A card per book (`card()`) — **the library's tile** (`book-tile.js`): the cover as a square (its front), else the cover's picture, else the first spread, else the
+  hero; `№25 Title`, the cover's title from `book-text.md`, **one bar of segments** (the steps), a chevron with the
+  next step (and «n/N» for the pictures), the prompts check's GO or «N помилок»; a pulsing mark with pictures on a book a
   picture is awaited for.
-- Search (Ctrl+F or `/`), sort (`SORTS`, remembered in `bs-workshop-view`; default since 2026-10-17 — the most ready first, `readiness()`), «У роботі · У бібліотеці», the books
+- Search (Ctrl+F or `/`), sort (`SORTS`, remembered in `bs-workshop-view`; default — the most ready first, `readiness()`), «У роботі · У бібліотеці», the books
   folder, **«+» (N)** — the clipboard holds «Нова книга…» with the paths (no program opens); the book appears by itself.
 
 ## A book (`#/workshop/<folder>`)
 
 - **Header**: back (Esc), `№25 Title`, the cover's title, the Tier chip (H — a child hero on every spread; S — none);
   on the right a group of icons (the agent — «Продовжуємо книгу …» in the clipboard; the pages; the
-  originals; the book's folder — it was a labelled button the owner called "important", an icon since the late evening of
-  2026-09-30; «Ще» → delete: at once, with «Скасувати» — the folder waits 2 min on the program's shelf, then the Recycle Bin, `aside.py`, 06.10.2026) and one more icon, «Передати в бібліотеку» (a shelf; a tick
+  originals; the book's folder — an icon; «Ще» → delete: at once, with «Скасувати» — the folder waits 2 min on the program's shelf, then the Recycle Bin, `aside.py`) and one more icon, «Передати в бібліотеку» (a shelf; a tick
   «У бібліотеці» after) — which becomes **the one loud, labelled button** only once every picture and the cover are there.
   A row's prompt shows three lines with a «Весь промпт» link (the JSON is for copying — the copy icon — not for reading).
-  The Workshop's own glyph (the tab, the palette) is a hammer and a ruler crossed — the owner's wish, 2026-09-30. «Back» and Esc lead to
+  The Workshop's own glyph (the tab, the palette) is a hammer and a ruler crossed — the owner's wish. «Back» and Esc lead to
   «Книги» → «Майстерня».
 - **The generation bar** (sticky, `genBar()` drawn by `paintGenBar()`): what is awaited, what's in the clipboard, the
   parts of a several-part paste, «Далі» (F8), «покласти ще раз», «Стоп», the queue's progress. It slides in once when a
   wait begins; the next part only glides its line in (the owner: the bar coming in again "blinks the whole program").
   On another page it names the book that waits, with «Перейти». «Стоп» while a picture is still being cut stays a stop.
-- **The path strip** (`STEPS`): Формула → Герой → Історія → Текст → Промпти · GO → Картинки `n/16` → Обкладинка →
-  Canva → Мокапи → Фото `n/8` → Бібліотека — **a picture per step** (since the late evening of 2026-09-30, the order path's
+- **The path strip** (`STEPS`): Формула → Герой → Історія → Текст → Промпти · GO → Картинки `n/N` → Обкладинка →
+  Canva → Мокапи → Фото `n/N` → Бібліотека — **a picture per step** (the order path's
   way — `pathStep()`; the word, the count and the check in the tooltip; the hero's own thumbnail still shows in its square), ✓ done,
   half-filled started, dashed skipped (a Tier S book's hero), red with ⚠ where the check found mistakes; the next one breathes. **Ticked by the files** (`steps()`): the agents' files, the rows whose
   pages are all in `pictures/`, `Cover.png`. **Canva** — by hand; **Мокапи** — by itself when made for this book (or by
   hand); **Фото** — every photo mockup category (the Omni video too), or by hand; **Бібліотека** — when passed on (unticks if that library book
   went to the trash).
 - **The step's panel** (a click or ← →; × folds): the step's file (text, a picture, tabs, the agent who writes a
-  missing one, «Відкрити файл у Windows»); Герой — generate, «Героя в буфер», «Обрати файл», and `canonical.png` drawn small like a variant's hero (a 180 px 3:4 thumbnail with the buttons and `canonical-prompt.md` beside it; a click opens it big — the owner, 27.10.2026); Промпти — the **book
-  check** (GO / errors / warnings, `check.py`); Картинки — the 16 rows small; Canva — «Зроблено»; **Мокапи** — what the
+  missing one, «Відкрити файл у Windows»); Герой — generate, «Героя в буфер», «Обрати файл», and `canonical.png` drawn small like a variant's hero (a 3:4 thumbnail with the buttons and `canonical-prompt.md` beside it; a click opens it big); Промпти — the **book
+  check** (GO / errors / warnings, `check.py`); Картинки — the rows small; Canva — «Зроблено»; **Мокапи** — what the
   book holds, «Зробити / Редагувати мокапи», «Редагувати слайди», the folders (`mockupsBody()`, `mockups_state()`);
   **Фото** — the [photo mockups](photo-mockups.md) (`photosBody()`); Бібліотека — what's missing, «Передати».
-- **The rows** (one column of 820 px — the owner: "not the full width"): page 1, spreads 2–3 … 28–29, page 30, **the
+- **The rows** (one narrow column — the owner: "not the full width"): page 1, spreads 2–3 … 28–29, page 30, **the
   cover last**. Each: its name, «Генерувати» / «Ще раз» / «чекаю картинку»; **the prompt** (the JSON as the generator
   gets it, long ones folded, copy); **the 2:1 frame** (empty — a drop zone); **the text** in the book's font. A short or
   broken prompt file is named above the rows.
@@ -113,26 +111,16 @@ then the [upscaling](#upscaling):
 - **A spread**: mirrored when it's one of **4–5, 8–9 … 28–29** (`MIRRORED`; an empty frame says «віддзеркалиться»), cut
   to 2:1 around the centre (the amber «обрізано …»), cut into **two square pages**. ⇄ mirrors by hand; twice gives back
   the same pages. **Pages 1 and 30**: cut to a square when more than 4 % off (`OFF`).
-- **The cover, in two stages** (`cover_state()`): ① the picture from Agent 6's prompt → `originals/cover-art.*`, laid on
-  **the printer's template** (`TEMPLATE`: 8×8 hardcover, 17.90″×9.50″ with the wrap, finished 16.40″×8.00″;
-  `template_layout()`) with white all round → `cover-expanded.png`; ② **Поля**: that picture and the **outpaint prompt**
-  (`outpaint_prompt()`), the template's lines as a toggle; the result → `pictures/Cover.png`, exactly 5370×2850 px,
-  300 dpi (`fit_template()`). «Без полів» takes the picture as it is.
-- **The cover lives in its own tool now** (2026-10-25, [cover](cover.md)): the card under the rows moved there; the
-  strip's step «Обкладинка» shows what the book has and leads to the tool — the two stages above; since 2026-10-27 the
-  picture's «Генерувати» pastes the reference and a layout guide before the prompt («Два квадрати» of 2026-10-24…27
-  taken out).
-- **«Референс у буфер»** (the owner, 24.10.2026): the picture the cover prompt names as its `reference_image` (Agent 6's
-  `agent/ref_cover_….jpg`) — only when the prompt names a picture lying right in `agent/` (`rows.reference_file()` →
-  `cover.refs`; «Image 1» or a path out of the folder give nothing); route `copy-reference`. The cover tool now pastes it
-  itself, first, with «Генерувати» (its reference chip).
-  Which way a book's cover is made — [cover](cover.md#two-ways--the-switch-in-the-pages-head).
+- **The cover** (`cover_state()`) has its own tool and its own strip step «Обкладинка» — the two stages (the picture, then
+  its margins on the printer's template), the reference, the layout guides: [cover](cover.md). A reference counts only when
+  the prompt names a picture lying right in `agent/` (`rows.reference_file()` → `cover.refs`; «Image 1» or a path out of the
+  folder give nothing); route `copy-reference`.
 - **The hero**: `agent/canonical.png` (a variant's `hero.png`).
 - A dropped picture is copied; **a caught download is moved** into `originals/`, named by its row. A picture byte for
   byte the row's original replaces nothing — its pages are only cut again (`_same_as_original()`).
 - **`originals/` is a store, not a way in**: files put there by hand with the right names show «Підхопити з папки (N)»
   above the rows (`left_behind()`, `adopt()`) — each goes the usual way.
-- **«Прибрати» acts at once and offers «Скасувати»** (2026-10-04, the owner's rule of 2026-09-30: a question only for what cannot be taken back): `pictures.remove()` hands back `undo` — where each file waits in `.replaced/`, where it belongs and the row's marks as they were; `pictures.restore()` (`POST …/restore`) puts them back, never over a picture put there meanwhile (409), only from `.replaced/`, only inside the book. The book photo's «Прибрати» (`photos.remove`) still asks: its removal also re-places the scenes in `etsy/`.
+- **«Прибрати» acts at once and offers «Скасувати»** (the owner's rule: a question only for what cannot be taken back): `pictures.remove()` hands back `undo` — where each file waits in `.replaced/`, where it belongs and the row's marks as they were; `pictures.restore()` (`POST …/restore`) puts them back, never over a picture put there meanwhile (409), only from `.replaced/`, only inside the book. The book photo's «Прибрати» (`photos.remove`) still asks: its removal also re-places the scenes in `etsy/`.
 - **Whatever is replaced or removed goes to `.replaced/`** (`_retire()`). When another program holds the old file, the
   Workshop waits ~5 s and names that program (`desktop.file_holders()`); nothing is changed.
 - «Зберегти як…» on any picture (the folder remembered in `workshop.saveDir`), «Копіювати картинку», «Зберегти
@@ -145,7 +133,7 @@ The owner: "just 2×, whatever size the picture comes in", with a switch for the
 
 - **What**: the spreads, pages 1 and 30, the cover, every hero variant's spreads and cover — whenever a picture lands.
   Not the hero pictures. A row is named by its slot: `spread3`, `G2_brunette/spread3`.
-- **How**: his **Upscayl**'s command-line engine (`upscayl-bin.exe`), model **upscayl-standard-4x**, output **×2**; found
+- **How**: his **Upscayl**'s command-line engine (`upscayl-bin.exe`; installed by [modules](modules.md)), model **upscayl-standard-4x**, output **×2**; found
   in `workshop.upscayl`, else in Upscayl's own log, else its usual installs. **The row's original** is upscaled (a copy
   in `tmp/`), then mirrored and cut as the row is; `Cover.png` stays 5370×2850.
 - **In the background, one at a time** (`Upscaler` — the graphics card is shared with the text check): the small pages
@@ -156,7 +144,7 @@ The owner: "just 2×, whatever size the picture comes in", with a switch for the
 - **On the page**: the switch **«Апскейл ×2»** (on by default; off — `"upscale": false` in `book.json`), «Апскейлити
   решту (N)», a chip over each picture («✦ ×2 | 2880 px», «✓ 2880 px», «1440 px», «апскейл 45%», «не апскейлено»), ✦
   among a picture's tools. «Передати в бібліотеку» names the pages not upscaled yet. A failure leaves the small pages.
-- Sizes are read from the pictures' headers only (`_size()`) — a book of 370 pictures opens at once.
+- Sizes are read from the pictures' headers only (`_size()`) — a big book opens at once.
 
 ## The generation mode
 

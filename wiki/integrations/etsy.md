@@ -1,7 +1,7 @@
 ---
 title: Etsy — read-only
 type: integration
-updated: 2026-09-27
+updated: 2026-10-28
 code:
   - app/studio/etsy.py
 ---
@@ -34,8 +34,8 @@ code:
 ## Data
 
 - `fetch_all_receipts()` — every paid receipt (including cancelled/refunded ones), newest first, 100 at
-  a time, a 0.12 s pause; with `min_last_modified` — only changed ones (an incremental sync). No more
-  than `MAX_RECEIPTS` = 20,000; beyond that, the list is marked incomplete (`httpc.Listing`) and the sync
+  a time, a short pause; with `min_last_modified` — only changed ones (an incremental sync). No more
+  than `MAX_RECEIPTS`; beyond that, the list is marked incomplete (`httpc.Listing`) and the sync
   warns.
 - `normalize_receipt()` ([profit.py](../../app/studio/profit.py)) transforms a receipt: fees, items with
   variations (personalization), address, refunds. Etsy's text arrives HTML-escaped (`&quot;`, `&amp;`) —

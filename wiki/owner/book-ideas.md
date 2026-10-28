@@ -1,7 +1,7 @@
 ---
 title: Book ideas
 type: owner
-updated: 2026-10-16
+updated: 2026-10-28
 code: []
 ---
 # Book ideas
@@ -30,8 +30,8 @@ The owner sends a link (or a screenshot) and says in words what he likes. The ag
 
 ## Patterns
 
-- **One shared visual style, one author** (2026-10-11): the first four ideas (bears and grandma, foxes and daddy, big sister, welcome to the
-  world) are all from one Etsy shop, **TheChildhoodKeeper** (found out 2026-10-11 from the listing pages), and are liked first of all for the same drawing style — soft, warm, illustrated; to be analysed and named once, then reused. The owner's guess: it is made with
+- **One shared visual style, one author**: the first four ideas (bears and grandma, foxes and daddy, big sister, welcome to the
+  world) are all from one Etsy shop, **TheChildhoodKeeper** (found out from the listing pages), and are liked first of all for the same drawing style — soft, warm, illustrated; to be analysed and named once, then reused. The owner's guess: it is made with
   Nano Banana, and it looks like pencil plus something else, not plain paints.
 - **A personalized rhyme with the name in it, a character on every page, a matte hardcover** — the listings' shared format.
 
@@ -49,10 +49,9 @@ The owner sends a link (or a screenshot) and says in words what he likes. The ag
   Halloween "little ghost afraid of the dark", and the products that are not storybooks: **guest books** (baby shower, first birthday) and
   **personalised greeting cards** (birthday by age and theme, Holy Communion).
 - **Its art is the closest to the owner's liked style** (soft, cozy, AI-made-looking illustration), unlike LunaBooksUS.
-- **Pictures:** the pages inside — [raw/2026-10-11-thechildhoodkeeper-book-pages/](../raw/2026-10-11-thechildhoodkeeper-book-pages/SOURCE.md) (13
-  listings, 38 pictures); the cozy scenes with a book in a crib or hands holding it, as ideas for the owner's own pictures —
-  [raw/2026-10-11-thechildhoodkeeper-lifestyle-photos/](../raw/2026-10-11-thechildhoodkeeper-lifestyle-photos/SOURCE.md) (13). They look generated (the
-  book is put into a made-up nursery).
+- **Pictures:** the pages inside — [raw/2026-10-11-thechildhoodkeeper-book-pages/](../raw/2026-10-11-thechildhoodkeeper-book-pages/SOURCE.md) (the
+  listings' pages); the cozy scenes with a book in a crib or hands holding it, as ideas for the owner's own pictures —
+  [raw/2026-10-11-thechildhoodkeeper-lifestyle-photos/](../raw/2026-10-11-thechildhoodkeeper-lifestyle-photos/SOURCE.md). They look generated.
 - **How its listing is built** (10 pictures, the same for every book) and the three sizes — in [listing-ideas.md](listing-ideas.md).
 - **Status:** idea — to be discussed.
 
@@ -84,33 +83,10 @@ The owner sends a link (or a screenshot) and says in words what he likes. The ag
 - **A warning:** one listing is a **Winnie the Pooh** baby shower book — a Disney character, not ours to copy.
 - **How the shop sells:** the same book is split into many near-identical listings by occasion and buyer (baptism ×~12 titles, Christmas ×~10,
   one per family role) — each its own search. The owner has just started doing this for his old listings (see the SEO entries in the log).
-- **Not checked:** per-listing sales and reviews (not shown on the shop page; I didn't scrape the reviews).
-- **What is inside the books — pictures** (only the pages with the content, 2026-10-11; the folder, the listing and a line on each are in
-  [raw/…/SOURCE.md](../raw/2026-10-11-lunabooksus-book-pages/SOURCE.md)). Under `raw/2026-10-11-lunabooksus-book-pages/`:
-  [family, "Do You Know How Much I Love You"](../raw/2026-10-11-lunabooksus-book-pages/family-uncle-how-much-i-love-you/01.jpg) ·
-  [family, rainbow template (Dad/Grandma)](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) ·
-  [first Christmas as Mom](../raw/2026-10-11-lunabooksus-book-pages/first-christmas-as-mom/01.jpg) ·
-  [big brother](../raw/2026-10-11-lunabooksus-book-pages/big-brother/01.jpg) ·
-  [ring bearer](../raw/2026-10-11-lunabooksus-book-pages/ring-bearer/01.jpg) ·
-  [this month's child](../raw/2026-10-11-lunabooksus-book-pages/this-months-child/01.jpg) ·
-  [star sign](../raw/2026-10-11-lunabooksus-book-pages/star-sign/01.jpg) ·
-  [search & find, toddler](../raw/2026-10-11-lunabooksus-book-pages/search-and-find-toddler/01.jpg) ·
-  [search & find, wizard](../raw/2026-10-11-lunabooksus-book-pages/search-and-find-wizard/01.jpg) ·
-  [ABC](../raw/2026-10-11-lunabooksus-book-pages/abc-train/01.jpg) ·
-  [2nd birthday](../raw/2026-10-11-lunabooksus-book-pages/second-birthday/01.jpg) ·
-  [big feelings](../raw/2026-10-11-lunabooksus-book-pages/big-feelings/01.jpg) ·
-  [cat](../raw/2026-10-11-lunabooksus-book-pages/cat-book/01.jpg) ·
-  [goodnight little bear](../raw/2026-10-11-lunabooksus-book-pages/goodnight-little-bear/01.jpg) ·
-  [goodnight, newborn](../raw/2026-10-11-lunabooksus-book-pages/goodnight-newborn/01.jpg) ·
-  [nursery rhymes](../raw/2026-10-11-lunabooksus-book-pages/nursery-rhymes/01.jpg) ·
-  [night before Christmas, family](../raw/2026-10-11-lunabooksus-book-pages/night-before-christmas-family/01.jpg) ·
-  [graduation](../raw/2026-10-11-lunabooksus-book-pages/graduation/01.jpg) ·
-  [baby memory book](../raw/2026-10-11-lunabooksus-book-pages/baby-memory-book/01.jpg) ·
-  [rainbow baby / answered prayer](../raw/2026-10-11-lunabooksus-book-pages/rainbow-baby-answered-prayer/01.jpg) ·
-  [child of God](../raw/2026-10-11-lunabooksus-book-pages/child-of-god/01.jpg) ·
-  [God gave us you](../raw/2026-10-11-lunabooksus-book-pages/god-gave-us-you/01.jpg) ·
-  [the "pick a look" charts](../raw/2026-10-11-lunabooksus-book-pages/_character-choice-charts/01-dad-02.jpg).
-- **What the pictures show** (my reading of them; the owner hasn't commented yet):
+- **Not checked:** per-listing sales and reviews (not shown on the shop page).
+- **What is inside the books — pictures:** the pages with the content (one folder per book, a line on each) —
+  [raw/2026-10-11-lunabooksus-book-pages/SOURCE.md](../raw/2026-10-11-lunabooksus-book-pages/SOURCE.md); the "pick a look" charts are in `_character-choice-charts/`.
+- **What the pictures show:**
   - **The art is not the soft style the owner likes** ([the first four ideas](#grandma--grandchild-bears--visual-style--2026-10-11)): bright
     cartoon or storybook painting, a different look per book (rainbow crayon, space and ocean, watercolour), not one shared style. The one
     soft one is "Child of God" / "God Gave Us" (baptism line). Nothing here to copy for style — the ideas are the topics and the mechanics.
@@ -126,10 +102,8 @@ The owner sends a link (or a screenshot) and says in words what he likes. The ag
     colouring pages (the wizard book).
   - **"Designed by real artists, not AI"** is a slide in many of their listings — a selling point against exactly the AI books the owner makes
     with Nano Banana. Worth knowing before copying the shop's wording.
-- **Lifestyle photos — ideas for our own listing pictures** (the owner asked, 2026-10-11): 11 photos of a child or a parent holding, reading
-  or looking at the book, in [raw/2026-10-11-lunabooksus-lifestyle-photos/](../raw/2026-10-11-lunabooksus-lifestyle-photos/SOURCE.md):
-  a boy holding the book against a white wall, overhead shots of a child's hands on a rug, a toddler with a plush toy, a toddler with a dog, a
-  book open on the rug with toys, a mother and child reading by a bookshelf. The shop **reuses a few shoots across all its listings** with the
+- **Lifestyle photos — ideas for our own listing pictures** (the owner asked): photos of a child or a parent holding, reading
+  or looking at the book, in [raw/2026-10-11-lunabooksus-lifestyle-photos/](../raw/2026-10-11-lunabooksus-lifestyle-photos/SOURCE.md). The shop **reuses a few shoots across all its listings** with the
   right cover put on the book — which is what our [photo mockups](../features/photo-mockups.md) already do with a blank-book photo.
 - **Status:** idea — to be discussed; nothing chosen yet.
 

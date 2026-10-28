@@ -1,7 +1,7 @@
 ---
 title: Photo mockups — lifestyle photos with our book (the Workshop's «Фото» step and the «Фотомокапи» page)
 type: feature
-updated: 2026-10-27
+updated: 2026-10-28
 code:
   - app/studio/photos.py
   - app/studio/scrub.py
@@ -13,7 +13,7 @@ code:
 > photos with a **blank white book** (templates); the generator (Gemini or ChatGPT — book 25's photos came from ChatGPT; any
 > browser download is caught) swaps that book for ours. Book Studio lays
 > the template, the book's cover and a JSON prompt into the clipboard one by one, and catches the finished photo into
-> the book's `etsy/` folder. Built 2026-09-30 from the owner's request — see [decisions](../decisions.md).
+> the book's `etsy/` folder. See [decisions](../decisions.md).
 
 ## Two places
 
@@ -27,31 +27,28 @@ code:
   view, «Зберегти як…», remove (to `.replaced/`); a photo dropped onto a card is taken as it is; the template used last is
   marked ✓ (`book.json` → `photos`; only in a category that has its result). **Categories may be skipped** (the owner): the step is done with every category's photo
   (and the video), or ticked by hand («Позначити зробленим»).
-- **The «Фотомокапи» page** (`#/photos`, among [«Інструменти»](modes.md) since 2026-09-30, a camera): no book — a click on a
+- **The «Фотомокапи» page** (`#/photos`, among [«Інструменти»](modes.md), a camera): no book — a click on a
   template puts **the template, then (Ctrl+V) the prompt** into the clipboard and the wait ends; the owner adds the cover
   himself (the owner: "just the blank and the prompt, I'll add the pictures myself"). Nothing is caught. A section per
   category: the prompt alone into the clipboard, the category's folder, **a photo dragged onto a section becomes a new
-  template** (named `shelf-06.png` — the category's next number), × — a template into the Recycle Bin, at once with «Скасувати» (it waits 2 min on the program's shelf first, 06.10.2026).
+  template** (named `shelf-06.png` — the category's next number), × — a template into the Recycle Bin, at once with «Скасувати» (it waits 2 min on the program's shelf first).
 
 ## Categories — and what goes into the clipboard second
 
 | Key | Shown as | The book's reference (2nd Ctrl+V) |
 |---|---|---|
-| `main` | Головне фото | `mockups/1. Cover 1*.png` — the Photoshop mockup of the front |
-| `product` | Демонстрація продукту | Cover 1 — hands hold the closed square hardcover, white callouts written on the photo (Hardcover, Premium materials, Your name on the cover, 30 pages); two templates from the owner, 09.10.2026. **Took the place of «Відкрита книга»** (`open-book`): that category is gone from the interface, its templates are left untouched in `app/data/photo-mockups/open-book/` |
+| `main` | Головне фото | `mockups/1. Cover 1*.png` — the drawn mockup of the front |
+| `product` | Демонстрація продукту | Cover 1 — hands hold the closed square hardcover, white callouts written on the photo (Hardcover, Premium materials, Your name on the cover, 30 pages). The old category `open-book` («Відкрита книга») is not shown; its templates lie untouched in `app/data/photo-mockups/open-book/` |
 | `grandma` | Бабуся читає | `mockups/canva-cover.*` — **the flat cover from the Canva ZIP** (back · spine · front): the grandmother holds the book open towards herself, the camera sees its outside (the owner: take the Canva cover, not a piece of «All & Open 1») |
 | `child` | У руках дитини | Cover 1 |
 | `shelf` | На полиці | Cover 1 |
 | `video` | Для відео | Cover 1 — **a video, not a photo** (see below): 9:16 phone photos of the closed blank book on a sofa, a counter, a table |
-| `size` | Розмір | Cover 1 — on both books: two hands hold the small softcover and the large hardcover side by side (the owner's `Трафарети мастхев\Size.jpg`, copied; "a very important mockup"; five more of his — a woman holds both books at home, `size-02-nursery` … `size-06-terrace`) |
+| `size` | Розмір | Cover 1 — on both books: two hands hold the small softcover and the large hardcover side by side (the owner's `Трафарети мастхев\Size.jpg`, copied; "a very important mockup"; more of his — a woman holds both books at home, `size-02-nursery` … `size-06-terrace`) |
 
-**«Для відео» — a video in Gemini Omni or Google Flow** (`"omni": True`, the only video card; since 2026-10-07 — before it
-the photo category `video` and a second video category «Книга в руках у людини», a woman holding the book, were here; the
-second one is gone with its five templates, the owner: "refuse the videos where people hold the book"). The owner animates
+**«Для відео» — a video in Gemini Omni or Google Flow** (`"omni": True`, the only video card; the owner: "refuse the videos where people hold the book"). The owner animates
 the template (the closed blank book on a surface) with the book's Cover 1 — **one step**: the generator swaps the book and
 animates in one go. The clipboard goes as for any category — template → Cover 1 → the prompt — and then **a video is
-awaited** in Downloads (MP4, MOV, WEBM; pictures there are ignored): **its first 0.5 s are cut off** (`TRIM_SECONDS`: 2 s from
-30.09.2026, **0.5 s since 07.10.2026**, the owner) by **ffmpeg** — encoded again (H.264 + AAC, CRF 16) so the cut is exact, MP4
+awaited** in Downloads (MP4, MOV, WEBM; pictures there are ignored): **its first 0.5 s are cut off** (`TRIM_SECONDS`, the owner) by **ffmpeg** — encoded again (H.264 + AAC, CRF 16) so the cut is exact, MP4
 that plays at once — into `etsy/video-video.mp4`; **the download as it came** goes into the book's
 `originals/video-video.<ext>`; the ones before → `.replaced/` (`place_video()`, `trim()`). A video dropped onto the card
 goes the same way; one shorter than 0.5 s is refused and nothing changes. ffmpeg is the one Windows finds (installed on the
@@ -66,7 +63,7 @@ lower right corner** — thumb on the cover at the corner, fingers under, clampi
 book towards the camera, the cover still to it, and **tilts it back about 10°** so light glides over the cover, then levels
 it; **6.5–8 s** it carries the book **out of the frame to the right**; only the hand and forearm are ever seen; **"small
 book" on every mention** — without it the book grew as it came closer.
-**What made the generators open and leaf through the book, and the rules kept since (the owner, 07.10.2026):**
+**Why the prompt is worded so — the generators opened and leafed through the book (the owner):**
 (1) **the words name it**: "never opened", "pages never visible", "never flipped" put the very idea into the prompt —
 video models follow negations poorly, so **the prompt never says open, page, flip or turn** (a test holds it); the book is
 described by what it is (closed, rigid, pressed shut); (2) **the grip**: a right hand from the right meets the book's
@@ -82,7 +79,7 @@ does not show them — another name).
 
 **The Canva cover** is kept by the Mockups: a run for a Workshop book copies the demo book's cover (as Canva exported
 it) into the book's `mockups/canva-cover.*` (`mockups._keep_canva_cover()`); for a book whose mockups were made before,
-it can be dropped onto its frame in the step. **Only the finished cover, without the wrap** (the owner, 27.10.2026:
+it can be dropped onto its frame in the step. **Only the finished cover, without the wrap** (the owner:
 with the wrap the generator draws a wrong book): a hardcover's cover file is cut to what is inside the contour — back,
 spine, front — when it comes in (`trim_box()`, `_save_trimmed()`). It is told by its proportions: Gelato's 458×246 mm,
 cut 20 mm all round to 418×206 mm (4937×2434 px), or the Printify template's 17.90×9.50″, cut to 16.40×8.00″. A 2:1
@@ -110,7 +107,7 @@ pipeline/books/<book>/etsy/                                  what goes into the 
 pipeline/books/<book>/originals/video-video.mp4              the video as it was downloaded
 ```
 
-**`etsy/` in the listing's order** (the owner, 30.09.2026): every file of the program's there has its number in front
+**`etsy/` in the listing's order** (the owner): every file of the program's there has its number in front
 (`tidy_etsy()` — after a photo or video lands or goes, after the Mockups copy their scenes, after the slides are baked):
 
 | № | File | № | File |
@@ -124,30 +121,27 @@ pipeline/books/<book>/originals/video-video.mp4              the video as it was
 | 07 | `Cover & Open 1 (…)` (a legacy `photo-open-book` of an older book takes its place) | 15 | `photo-shelf` |
 | 08 | `Listing 3` | 16 | `Listing 7` — the hero's looks (only a book with them; last in the numbering) |
 
-(Since 09.10.2026 the product demonstration is № 5 — the owner's request; everything from the old 5 on moved one down, and the files of the
-books made until then (25–37) were renamed the same way, the list of renames is `app/data/etsy-renumber-2026-10-09.json`.)
-
 - A number belongs to its file (`ETSY_ORDER`, `ETSY_SCENES`): a missing one leaves a gap — nothing moves up.
-- **A legacy open-book photo (before 09.10.2026) takes Cover & Open 1's place**: that copy leaves `etsy/` (to `.replaced/`; the mockup itself stays
+- **A legacy open-book photo takes Cover & Open 1's place**: that copy leaves `etsy/` (to `.replaced/`; the mockup itself stays
   in `mockups/`) and isn't copied again; the photo removed — it comes back.
 - Anything else there (an old `video-hands.mp4`, the owner's own files) keeps its name, so it sorts after the numbered ones; the
   owner's own numbered files are never renamed.
-- **No metadata in what goes into `etsy/`** (the owner, 27.10.2026: Etsy now reads it). C2PA (the generators' content
-  credentials — found in 104 of the 240 PNGs there that day), XMP, EXIF, ICC, DPI, text chunks, comments and whatever
+- **No metadata in what goes into `etsy/`** (the owner: Etsy reads it). C2PA (the generators' content
+  credentials), XMP, EXIF, ICC, DPI, text chunks, comments and whatever
   trails after the picture go; the pixels stay — PNG, JPEG and WEBP are cut chunk by chunk, not encoded again (`scrub.py`).
   Encoded again only when dropping the metadata would change the look: an EXIF rotation, a colour profile other than
   sRGB, a CMYK / RGB-encoded JPEG. **Videos too**: MP4/MOV copied by ffmpeg without tags, dates, the encoder's name and
   C2PA's box (not re-encoded); the video category's trim makes its video so at once (`trim()` → `scrub.VIDEO_CLEAN`).
   Done in `tidy_etsy()` (after every write of the program's) and, for a file the owner drops in by hand, in the
   background when the book's page looks (`detail()` → `scrub.soon()`, a file at least 3 s old).
-  **Only what comes in from 27.10.2026 07:30** (`NEW_FROM`, by the file's creation or modification time — a re-baked
+  **Only what comes in after `NEW_FROM`** (by the file's creation or modification time — a re-baked
   slide is new): the files the books had before are left as they were (the owner). The copies in `mockups/`,
   `originals/`, `.replaced/` keep theirs — only `etsy/` goes to Etsy.
 - Everything finds its file by the name without the number (`bare()`): the step's cards, the slides' re-bake
   (`slides.store._baked_file()`), the scenes' copy.
 
-The owner's originals on the desktop (`Заготовки обкладинок`) were copied once with English names (2026-09-30) and are
-not used by the program. Every name inside Book Studio is English; the page speaks Ukrainian.
+The owner's originals on the desktop (`Заготовки обкладинок`) are not used by the program. Every name inside Book Studio is
+English; the page speaks Ukrainian.
 
 ## In the preview and the tests
 

@@ -96,17 +96,37 @@ def item_format(item: dict) -> str | None:
     return None
 
 
+# The big hardcover (28×28 cm, since 2026-10-28): 11" × 11", 11x11, «11.11 Hardcover» (the owner's working name), 28 × 28 cm.
+LARGE = re.compile(r'(?<![\d.,])11\s*(?:"|″|”|“|\'\'|&quot;|in\b\.?|inch(?:es)?)?\s*[x×х*.]\s*11(?![\d.,])'
+                   r"|(?<![\d.,])28\s*(?:cm|см)?\s*[x×х*]\s*28(?![\d.,])", re.I)
+_FORMAT_FIELD = re.compile(r"cover|size|format|binding|обкладинк|розмір", re.I)  # as order-bits.js isFormatField
+
+
+def chosen_format_text(item: dict) -> str:
+    """The values of the item's format variations only («Cover Type & Size: 8" × 8" Hardcover») — never the buyer's
+    own words: a dedication «born on 11.11» must not make an 8×8 the big one."""
+    return " ".join(str(v.get("value") or "") for v in item.get("variations") or []
+                    if _FORMAT_FIELD.search(str(v.get("name") or ""))
+                    or any(k in str(v.get("value") or "").lower() for k in HARD + SOFT))
+
+
+def is_large(item: dict) -> bool:
+    """The 11×11 hardcover — by the buyer's chosen format only, never by the title (it may list every size)."""
+    return item_format(item) == "hardcover" and bool(LARGE.search(chosen_format_text(item)))
+
+
 def cover_label(items: list) -> str:
     """«2x Hardcover + Softcover книга» — from what the buyer chose. Only the Etsy items say it (until 2026-09-26 the
-    letters of a Gelato order's name were read as well: «Oscar» made a softcover)."""
+    letters of a Gelato order's name were read as well: «Oscar» made a softcover). The big one is «Hardcover 11×11»."""
     if not items:
         return "Книга"
-    counts = {"hardcover": 0, "softcover": 0}
+    counts = {"hardcover": 0, "large": 0, "softcover": 0}
     for item in items:
         fmt = item_format(item)
         if fmt:
-            counts[fmt] += int(item.get("quantity") or 1)
+            counts["large" if is_large(item) else fmt] += int(item.get("quantity") or 1)
     parts = [f"{f'{n}x ' if n > 1 else ''}{label}" for label, n in (("Hardcover", counts["hardcover"]),
+                                                                     ("Hardcover 11×11", counts["large"]),
                                                                      ("Softcover", counts["softcover"])) if n]
     return f"{' + '.join(parts)} книга" if parts else items[0].get("title") or "Книга"
 
