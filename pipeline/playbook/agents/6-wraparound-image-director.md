@@ -36,7 +36,7 @@ Use positive language only:
 - "calm low-detail area in the upper right for later typography"
 - "one continuous environment edge to edge"
 
-## The full-scene formula with the painted title — the DEFAULT (the owner, 2026-10-27)
+## The full-scene formula with the painted title and the characters' zone — the DEFAULT (the owner, 2026-10-27; the zone 2026-11-01)
 
 Why: competitors' covers have the title **painted into the picture** in a beautiful font, and only the child's name is
 added later; and the name is the selling element, so it needs a **big** place. Tested on book 44
@@ -44,41 +44,73 @@ added later; and the name is the selling element, so it needs a **big** place. T
 
 How the picture is used: its **right area** is the front of the book (the title and the name there, centred at about
 three quarters of the width), the **left area** the reverse, the **middle** the spine; the Workshop's cover tool lays
-it on the printer's template and the margins are outpainted. The tool pastes the reference first, then a **layout
-guide** picture (a green-grey field = the scene everywhere; in the right area a brown-grey shape = the title, a pale
-blue one = the name's room), then the prompt — and it **adds the guide's words itself** (`layout_guide`). Do not write a
-`layout_guide` field and do not describe the guide.
+it on the printer's template and the margins are outpainted. The tool pastes a **layout guide** picture **first**
+(Image 1 — a position map: a green-grey field = the scene; in the right area, stacked on one centre line at ¾ of the
+width, a pale blue shape = the name's room, a brown-grey one = the title and a **yellow** one = the main characters),
+then the reference (Image 2), then the prompt — and it **adds the guide's words itself** (`layout_guide`: strict rules —
+the characters only inside the yellow area, none left of it, one centre line, no trace of the map) and names the
+reference «Image 2». Do not write a `layout_guide` field and do not describe the guide's shapes beyond naming its areas
+as below.
+
+**The characters' zone (the owner, 2026-11-01, tested on books 41 and 50 — "нонсенс, наскільки це кращий підхід"):**
+the target wording is `D:\Roman\Desktop\Cover Squares Test\prompts\41-night-before-christmas-characters-zone.md`.
+What the tests showed: soft words ("a gentle hint, not a box") let the characters drift toward the spine; telling the
+generator to "paint over the guide" or asking for a "glow behind the title" printed the guide's blue, pink and yellow
+patches onto the background. So: strict positions, one smooth background, light only from real sources.
 
 - **The scene fills the whole picture**, edge to edge — no cream ground, no vignette, no frame, no light patch or cloud
-  behind the text.
+  behind the text. In `task` say: "Composition is the top priority: place everything exactly where the position map in
+  Image 1 shows — the main characters only inside its yellow area. Image 1 gives positions only; none of its colors
+  appear in the picture."
+- **One smooth background behind the right area** — a plain even wall, an open sky, snow: "the same even wall color /
+  smooth sky wash as around it". **Never** "a soft glow behind the title / the open room / the characters", never a
+  spotlight; light comes **only from real sources** (lamps, fire, window, moon, the sky's own glow), said in `washes`
+  and `light`.
 - **The title** = the first line under `## Cover` in `book-text.md`, **without `{Name}`** — the name is never painted
   (the owner sets it in Canva). Spell the painted words letter by letter in a `spelling` field and say "nothing else
-  written anywhere". Placement: in the right area, centred at about three quarters of the image width, spanning about
-  two fifths of the width. Lettering in the medium (the paint's texture; a soft light glow around the letters so they
-  read over the scene), the palette's strong warm tones; a small ornament under it is welcome.
-- **The name's room — big and EMPTY**, in the right area on the same centre line: **above** the title when the title
+  written anywhere". Placement: "where the brown-grey area of Image 1 is, centered at three quarters of the image
+  width". Lettering in the medium (the paint's texture), the palette's strong warm tones, "a thin soft light halo
+  hugging only the outline of each letter… no colored cloud or haze behind the words"; a small ornament under it is
+  welcome. On a light sky pick a deep colour (cranberry, rosy coral), not cream.
+- **The name's room — big and EMPTY**, "where the pale blue area of Image 1 is": **above** the title when the title
   starts with `{Name}` (`{Name}'s Moonlit Garden` → paint «Moonlit Garden»), else **below** it (`A Christmas Story for
-  {Name}` → paint «A Christmas Story for»). About as big as the title's main line (about one sixth of the height tall,
-  three tenths of the width across). Describe it in an `open_space` field: "a calm, plain, low-detail part of the scene
-  itself (a soft glow of a wall, a sky, snow, mist) with nothing painted in it; NOT a panel, cloud, ribbon or white
-  box", and that "a name will be set there later as large as the title's main line". The tool's guide has the same
-  order (it picks it by the title).
-- **The hero/group** in the right area, below the title (or the title and the room), large, centred at about three
-  quarters of the width, readable at thumbnail size, the strongest color and emotion there.
-- **The left area** — a quieter, rich continuation of the same place, **no characters** (the story's things: props,
-  food, toys, the place), no letters.
-- **The middle of the width** (the spine) — only ordinary continuous scenery: no key object, face or letter there.
+  {Name}` → paint «A Christmas Story for»); the tool's guide has the same order (it picks it by the title). Describe it
+  in an `open_space` field: "simply the [wall / sky] continuing, the same even [wall color / sky wash] as around it, with
+  nothing painted in it: no letters, no objects, no stars, no sparkles, no haze, no lighter or bluer band; NOT a panel,
+  cloud, ribbon, glow or box", and that "a name will be set there later as large as the title's main line".
+- **The characters — inside the yellow area only**, one **compact** group: the pose says "inside the yellow area only",
+  where each one sits **in fractions of the width** (e.g. one face at about two thirds, the other at about five sixths,
+  the key prop — a plate, a balloon — exactly at three quarters, under the middle of the title's main word), that
+  everything they hold is inside the area too, "sized to fit inside the yellow area — smaller rather than spilling out
+  of it", and "the background behind them is the same as everywhere — no spotlight or glow behind them". **Few
+  characters**: the hero and their closest ones (three to seven small animals at most) — a crowd won't fit the area and
+  breeds artifacts.
+- **Three bands across the width** in `scene`: `left_area` "from the left edge to about two fifths of the image width,
+  with no characters" — the story's things (props, the home, a tree), any tall tree at about one quarter of the width
+  with its branches ending before two fifths; `middle` "from about two fifths to about three fifths: only the plain
+  [wall / sky] and the floor/ground — no tree, no key object, no characters, no faces"; the right band — the name's
+  room, the title and the characters on one centre line at three quarters. `composition` says the three bands.
 - **Every edge** — the outermost strip calm, simple scenery (the margins are outpainted from it); the title, the room
   and every face at least one tenth of the height away from the top, bottom and right edges.
 - `reference_image` + `reference_rule`: the best frame (a real file in `agent/`: copy it from `originals/` as
-  `ref_cover_<frame>.jpg`), for the characters and the look only — not its composition.
-- **The full Medium preset** (the Style Fidelity Gate below); override only `washes` (the scene's own tones, a soft glow
-  behind the title and the room) and `overlay_behavior` (the name's room calm and plain).
+  `ref_cover_<frame>.jpg`; the tool renames it to «Image 2» when it pastes). The rule: "Use the reference picture ONLY
+  for how the characters look and for the painting style … Do NOT copy its composition or where the characters stand —
+  positions come only from the position map".
+- **The full Medium preset** (the Style Fidelity Gate below); override `washes` and `light` (one smooth background,
+  light only from real sources), `overlay_behavior` (the name's room is just the plain wall / sky, free of objects,
+  letters, sparkles, haze and tint), `detail` ("medium detail, charming but never busy" + this image's things), and
+  thin the preset's floating sparkles / dust / firefly dots to "a few".
 - **Negatives:** "any other text", "a name", "extra letters", "misspelled title", "subtitle", "letters in the left
-  area", "anything painted in the open room", "a white box, panel, cloud, plaque, ribbon or banner behind the title", "a
-  key object or face in the center of the width", "a vertical line through the image", "a frame or border", "a
-  vignette", "a cream background", "characters in the left area", plus the safe text guards and the medium's
-  negatives. Never "seam" or "divider" — they are trigger words.
+  area", "anything painted in the empty [wall / sky] above/under the title", "a white box, panel, cloud, plaque, ribbon
+  or banner behind the title"; **the map's traces:** "visible traces of the position map", "a pale blue band or haze on
+  the [wall / sky]", "a pink, red or brown cloud or haze behind the title", "a yellow glow or spotlight behind the
+  characters", "lighter or tinted rounded rectangles on the [wall / sky]", "colored patches on the [wall / sky]", "uneven
+  blotchy [wall color / sky]"; **the positions:** "characters outside the yellow area", "characters shifted to the left
+  of the title", "characters in the middle of the image width", "characters in the left area", "copying the
+  composition of the reference picture", "characters pressed against the right edge", "a tree crossing the middle of
+  the image width", "a tree, key object or face in the center of the width"; plus "a vertical line through the image",
+  "a frame or border", "a vignette", "a cream background", the safe text guards and the medium's negatives. Never
+  "seam" or "divider" — they are trigger words.
 - The book check still needs its wraparound words: `2:1`, continuous/uninterrupted, right, left, **`upper right`** (say
   where the name's room is: "in the upper right"), typography/overlay ("for later typography").
 - **The owner's own title layout wins** when he gives one — e.g. book 46: «Grandma» large, a **small** «&» under it, then
@@ -184,10 +216,10 @@ the first one). Then run the book check again:
 python check_book.py "books/[number].[slug]"
 ```
 Tell the user: «Промпт обкладинки готовий — відкрийте крок «Обкладинка» (інструмент «Обкладинка»): «Генерувати» сам
-покладе в буфер референс, схему й промпт».
+покладе в буфер схему, референс і промпт».
 
 Flat JSON schema:
-`task, aspect_ratio, canvas, reference_image?, reference_rule?, title{}, open_space{}, character{}, scene{}, style{}, emotional_goal, negative[], output`.
+`task, aspect_ratio, canvas, reference_image?, reference_rule?, title{}, open_space{}, character{}, scene{} (name, location, left_area, middle, composition), style{}, emotional_goal, negative[], output`.
 
 Rules:
 - Use `reference_image` + `reference_rule` for the owner's best frame (or the canonical character); omit both when there is none.
@@ -202,37 +234,38 @@ Rules:
 ```json
 {
   "id": "final-wide-image",
-  "task": "Create a premium flat 2D 2:1 panoramic illustration in [MEDIUM STYLE], one rich scene filling the whole image, with hand-painted title lettering in the right area.",
+  "task": "Create a premium flat 2D 2:1 panoramic illustration in [MEDIUM STYLE]: one rich [scene] filling the whole image. Composition is the top priority: place everything exactly where the position map in Image 1 shows — the main characters only inside its yellow area. Image 1 gives positions only; none of its colors appear in the picture.",
   "aspect_ratio": "2:1",
   "canvas": "one uninterrupted 2:1 panoramic illustration, full bleed, one continuous scene from edge to edge, with no frame, no border and no vignette",
   "reference_image": "ref_cover_[frame].jpg",
-  "reference_rule": "Use the attached image only for the characters and the look: keep exactly the same characters and the same paint style and texture. Do NOT copy its composition.",
+  "reference_rule": "Use the reference picture ONLY for how the characters look and for the painting style: keep exactly the same [characters, their clothes] and the same paint style and texture. Do NOT copy its composition or where the characters stand — positions come only from the position map.",
   "title": {
     "text": "[the title without the name]",
     "spelling": "exactly these letters: [L-e-t-t-e-r-s] — nothing else written anywhere",
-    "placement": "in the right area, centered at about three quarters of the image width, [above / below the open room], spanning about two fifths of the image width",
-    "lettering": "[hand-painted title lettering in the medium, a soft light glow around the letters so they read over the scene]",
-    "ornament": "[a sprig, a star …]"
+    "placement": "where the brown-grey area of Image 1 is, centered at three quarters of the image width: [the small first line, the large main line]",
+    "lettering": "[hand-painted title lettering in the medium, a deep strong colour], a thin soft light halo hugging only the outline of each letter so it reads clearly over the [wall / sky]; the [wall / sky] around the lettering keeps its own even color — no colored cloud or haze behind the words",
+    "ornament": "[a thin gold line with a star, a sprig …]"
   },
   "open_space": {
-    "placement": "in the upper right, [ABOVE / BELOW] the title, centered on the same line at about three quarters of the image width, about one sixth of the height tall and three tenths of the width across — big, because a name will be set there later as large as the title's main line, for later typography",
-    "rule": "a calm, plain, low-detail part of the scene itself — [a soft glow of the wall / sky / snow / mist] — with nothing painted in it; NOT a panel, cloud, ribbon or white box"
+    "placement": "where the pale blue area of Image 1 is, in the upper right, [ABOVE / BELOW] the title, centered at three quarters of the image width — big, because a name will be set there later as large as the title's main line, for later typography",
+    "rule": "simply the [wall / sky] continuing, the same even [wall color / sky wash] as around it, with nothing painted in it: no letters, no objects, no stars, no sparkles, no haze, no lighter or bluer band; NOT a panel, cloud, ribbon, glow or box"
   },
   "character": {
     "subject": "[the fixed description]",
-    "pose": "in the right area, below the title, centered at about three quarters of the image width, large: [what they do]",
+    "pose": "inside the yellow area only: [one] with the face at about two thirds of the image width, [the other] at about five sixths, close together; [the key prop] exactly at three quarters of the image width, under the middle of the title's main word; [what they do]. Everything is sized to fit inside the yellow area — smaller rather than spilling out of it. The [wall / sky] behind them is the same as everywhere — no spotlight or glow behind them.",
     "expression": "[warm emotional read]"
   },
   "scene": {
     "name": "[…]",
-    "location": "[the story's place, one continuous scene across the whole image]",
-    "left_area": "[the quieter continuation of the same place, no characters: the story's things]",
-    "composition": "One continuous scene edge to edge. The right area holds the title, the open room and the hero; the left area is calmer. Around the center of the width only ordinary continuous scenery — no key object, face or letter there. The outermost strip along every edge is calm, simple scenery."
+    "location": "[the story's place, one continuous scene across the whole image, one even wall / one smooth sky across the whole width]",
+    "left_area": "from the left edge to about two fifths of the image width, with no characters: [the story's things; a tall tree at about one quarter of the width, its branches ending before two fifths]",
+    "middle": "from about two fifths to about three fifths of the image width: only the plain [wall / sky] and the [floor / ground] — calm, low-detail, no tree, no key object, no characters, no faces",
+    "composition": "One continuous scene edge to edge, in three bands across the width: the left band holds [the things]; the middle band is calm plain [wall / sky]; the right band holds, all on one vertical center line at three quarters of the width, [the name's place, the title, the characters — in the guide's order], with the strongest color, contrast and emotion in the characters themselves. Keep the title, the name's place and every face at least one tenth of the image height away from the top, bottom and right edges; the outermost strip along every edge is calm, simple scenery."
   },
-  "style": {"...": "the full Medium preset, with washes and overlay_behavior as the formula says"},
-  "emotional_goal": "[premium, giftable; a big readable title and a big calm place for a name]",
-  "negative": ["any other text", "a name", "extra letters", "misspelled title", "subtitle", "letters in the left area", "anything painted in the open room", "a white box, panel, cloud, plaque, ribbon or banner behind the title", "a key object or face in the center of the width", "a vertical line through the image", "a frame or border", "a vignette", "a cream background", "characters in the left area", "numbers", "logo", "watermark", "..."],
-  "output": "one flat 2:1 continuous panoramic illustration filling the whole image, the hand-painted title and open room in the right area for later typography"
+  "style": {"...": "the full Medium preset; washes and light = one smooth background, light only from real sources; overlay_behavior = the name's place is just the plain wall / sky; detail = medium, never busy; a few sparkles only"},
+  "emotional_goal": "[premium, giftable; a big readable title, a big calm place for a name, the characters exactly under the title, all on one center line]",
+  "negative": ["any other text", "a name", "extra letters", "misspelled title", "subtitle", "letters in the left area", "anything painted in the empty [wall / sky] [above / under] the title", "a white box, panel, cloud, plaque, ribbon or banner behind the title", "visible traces of the position map", "a pale blue band or haze on the [wall / sky]", "a pink, red or brown cloud or haze behind the title", "a yellow glow or spotlight behind the characters", "lighter or tinted rounded rectangles on the [wall / sky]", "colored patches on the [wall / sky]", "uneven blotchy [wall color / sky]", "characters outside the yellow area", "characters shifted to the left of the title", "characters in the middle of the image width", "characters in the left area", "copying the composition of the reference picture", "characters pressed against the right edge", "a tree crossing the middle of the image width", "a tree, key object or face in the center of the width", "a vertical line through the image", "a frame or border", "a vignette", "a cream background", "numbers", "logo", "watermark", "..."],
+  "output": "one flat 2:1 continuous panoramic illustration filling the whole image, placed exactly as the map in Image 1 but with none of its colors: [the name's place, the hand-painted title, the characters] all on one vertical line at three quarters of the image width, for later typography"
 }
 ```
 

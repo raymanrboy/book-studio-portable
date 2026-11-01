@@ -8,7 +8,7 @@ A caught picture is **moved** out of Downloads into the book's `originals/`, nam
 only pictures (PNG, JPEG, WEBP), never a half-downloaded one.
 
 A row that needs several things pasted (a spread of a book with a hero: the hero, then the prompt — the owner attaches
-the reference to every prompt, 2026-09-27; the cover's picture: the reference, the layout guide, the prompt with the guide's words (cover.py); the cover's margins: the picture with its white margins, then the outpaint
+the reference to every prompt, 2026-09-27; the cover's picture: the layout guide, the reference, the prompt with the guide's words (cover.py); the cover's margins: the picture with its white margins, then the outpaint
 prompt; a hero variant's spread) gives them one by one: the first goes into the clipboard at once, and **Ctrl+V in
 Chrome** puts in the next by itself — «Далі» in the window or F8 anywhere do the same. The cover's picture, once in,
 goes on to its margins by itself. A hero variant's cover (one frame, the finished wide cover at once) has no prompt:
@@ -63,7 +63,7 @@ def _items(book_id: str, key: str, variant: str | None) -> tuple[str, list[dict]
         return "Обкладинка · поля", [
             {"kind": "image", "label": "обкладинка з полями", "path": str(path / books.ORIGINALS / c["expanded"])},
             {"kind": "text", "label": "промпт аутпейнту", "text": c["outpaint"]}]
-    if key == "cover" and not variant:  # the reference, the layout guide, the prompt with its words (cover.py)
+    if key == "cover" and not variant:  # the layout guide, the reference, the prompt with its words (cover.py)
         from . import cover
         return cover.items(book_id, detail)
     if variant:

@@ -12,7 +12,7 @@ code:
 
 > A minimal page: service keys, the Etsy connection, the Printify template, the optional modules, the backup, the settings transfer,
 > the data folder. Every block is collapsed to one line with its status; a block that needs something opens on its own.
-> The theme isn't here — it's in the menu at the bottom of the rail, under Settings' own icon (Settings sit at the bottom of the rail,
+> The dark theme was removed (2026-11-01); the rail's bottom menu now holds only «Мінімум анімацій» — it is in the menu at the bottom of the rail, under Settings' own icon (Settings sit at the bottom of the rail,
 > apart from the places). A key's ✓ lights up in the ink only once something is pasted; an empty save says so and lights the field up.
 
 ## Blocks (`#/settings[/<block>]`)
@@ -51,8 +51,8 @@ lives) are deliberately not shown or editable from the interface — the owner's
   `Chrome.exe`), `profile` (`Profile 6` = «Work»), `hosts` (`gelato.com`, `canva.com`). With it, `_open_url()` opens
   those sites in that profile (`_open_in_profile()`), and every other link opens in the default browser. It isn't in
   the interface; it is written straight into `settings.json` ([decisions](../decisions.md)).
-- The theme and "reduce motion" are both saved in the program's settings, and both come from there on
-  launch (the browser only remembers the theme for the first frame); a failed save shows a message.
+- "Reduce motion" is saved in the program's settings, and both come from there on
+  launch (the browser only remembers it for the first frame); a failed save shows a message.
 - Looking for keys in the old programs (`legacy_sources()`) only decrypts their files when those files
   have changed, not every time Settings is opened (`_legacy_names()`).
 - **The preview server** (`app/tools/dev_server.py`, `core.SAMPLE`) doesn't show keys from the old

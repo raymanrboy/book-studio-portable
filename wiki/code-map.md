@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-10-28
+updated: 2026-11-01
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -75,7 +75,7 @@ code:
 | [workshop/books.py](../app/studio/workshop/books.py) | [The Workshop](features/workshop.md): a book = a folder of the pipeline — the list, the path strip, marks, versions, the agent's words, delete, passing to the library | `all_books()`, `summary()`, `detail()`, `steps()`, `set_mark()`, `signature()`, `agent_words()`, `open_agent()`, `delete_book()`, `to_library()` |
 | [workshop/rows.py](../app/studio/workshop/rows.py) | The agents' files read into the book's rows; the cover's template and outpaint prompt; hero variants; the book check (GO) | `book_rows()`, `text_sections()`, `cover_state()`, `template_layout()`, `outpaint_prompt()`, `variants()`, `book_check()` |
 | [workshop/pictures.py](../app/studio/workshop/pictures.py) | A picture into its row: cut, flipped, two pages; the cover on the template; ⇄; nothing deleted | `place()`, `two_squares()`, `build_expanded()`, `fit_template()`, `flip()`, `remove()`, `spread_panorama()` |
-| [workshop/cover.py](../app/studio/workshop/cover.py) | [Cover](features/cover.md): the book's choices (the layout guide, the reference), what the 2:1 picture's «Генерувати» pastes — the reference, the guide, the prompt with its words | `settings()`, `set_settings()`, `items()`, `prompt_with_guide()`, `GUIDES` |
+| [workshop/cover.py](../app/studio/workshop/cover.py) | [Cover](features/cover.md): the book's choices (the layout guide, the reference), what the 2:1 picture's «Генерувати» pastes — the guide, the reference, the prompt with its words | `settings()`, `set_settings()`, `items()`, `prompt_with_guide()`, `GUIDES` |
 | [workshop/generate.py](../app/studio/workshop/generate.py) | The generation mode: the clipboard, the Downloads watcher, F8 | `Session`, `session()`, `downloads_folder()` |
 | [workshop/upscale.py](../app/studio/workshop/upscale.py) | Upscaling a row's picture ×2 by the owner's Upscayl, in the background, then cut again | `upscale_row()`, `Upscaler`, `engine()`, `status()`, `after_place()`, `set_on()`, `start()` |
 | [workshop/check.py](../app/studio/workshop/check.py) | The book check: the old pipeline validator's rules (the agents run it too) | `run()`, `main()` |
@@ -122,7 +122,7 @@ code:
 | File | Purpose | Main |
 |---|---|---|
 | [index.html](../app/web/index.html) | The shell: the session token, the theme before the first frame, the "connection lost" placeholder | — |
-| [js/app.js](../app/web/js/app.js) | The labelled [rail of places and tools](features/modes.md), page routing, the ink of the area, theme, heartbeat | `PLACES`, `ROUTES`, `ALIASES`, `navigate()`, `placeNavPill()`, `applyTheme()` |
+| [js/app.js](../app/web/js/app.js) | The labelled [rail of places and tools](features/modes.md), page routing, the ink of the area, heartbeat | `PLACES`, `ROUTES`, `ALIASES`, `navigate()`, `placeNavPill()` |
 | [js/places.js](../app/web/js/places.js) | The tools that also work on their own — the «Інструменти» page's list | `TOOLS` |
 | [js/path.js](../app/web/js/path.js) | An object's path strip (an order's Canva → … → Відправка; a Workshop book's eleven steps) | `pathHtml()`, `pathStep()` |
 | [js/book-tile.js](../app/web/js/book-tile.js) | One book on a shelf — the library's and the Workshop's tile, one progress bar | `bookTile()`, `segBar()`, `tickBadge()` |

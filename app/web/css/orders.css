@@ -1,7 +1,7 @@
 /* Orders: the Order Creator, the queue and the order card, the order archive. Loaded after library.css. */
 
 /* ================================================================== CREATOR — a job ticket */
-.creator-grid { display: grid; grid-template-columns: minmax(360px, 430px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.creator-grid { display: grid; grid-template-columns: minmax(360px, 430px) minmax(0, 1fr); gap: var(--sp-6); align-items: start; }
 .creator .card-title { font-size: var(--fs-m); }
 .mode-switch { display: flex; } /* no text-line gap under the switch, so the icon beside it lines up */
 .mode-switch .seg button { height: 32px; }
@@ -13,10 +13,6 @@
   --accent: #86bc3a; --accent-hover: #79ad30; --on-accent: #132409;
   --accent-soft: rgba(134, 188, 58, .15); --accent-line: rgba(104, 158, 36, .45); --accent-ink: #3f6f12;
 }
-[data-theme="dark"] .creator:not(.mode-gelato), [data-theme="dark"] .tint-printify {
-  --accent: #9ccf5e; --accent-hover: #ade07a; --on-accent: #10200a;
-  --accent-soft: rgba(156, 207, 94, .14); --accent-line: rgba(156, 207, 94, .4); --accent-ink: #b7e38e;
-}
 .mode-switch .seg button[data-value="printify"].active { color: var(--printify); }
 .mode-switch .seg button[data-value="gelato"].active { color: var(--gelato); }
 .svc-printify { color: var(--printify); }
@@ -27,18 +23,18 @@
 .path-input::placeholder { font-family: var(--font); font-size: var(--fs); }
 .create-btn { background: var(--accent); color: var(--on-accent); border: 0; }
 .create-btn:hover { background: var(--accent-hover); }
-.v-badge { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-s); font-weight: 600; height: 24px; padding: 0 8px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-3); }
+.v-badge { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-s); font-weight: 600; height: 24px; padding: 0 var(--sp-2); border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-3); }
 .v-badge .icon { width: 14px; height: 14px; }
 .v-badge.ok { color: var(--green); background: var(--green-soft); border-color: var(--green-line); }
 .v-badge.bad { color: var(--red); background: var(--red-soft); border-color: var(--red-line); }
 .v-badge.run { color: var(--accent-ink); background: var(--accent-soft); border-color: var(--accent-line); }
 .v-badge.warn { color: var(--amber); background: var(--amber-soft); border-color: var(--amber-line); }
-.result-card { border-radius: var(--r-card); padding: 14px 16px; background: var(--green-soft); border: 1px solid var(--green-line); animation: modal-in 380ms var(--spring) both; }
-.result-card h4 { font-size: var(--fs-m); color: var(--green); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: var(--fs); }
+.result-card { border-radius: var(--r-card); padding: 14px var(--sp-4); background: var(--green-soft); border: 1px solid var(--green-line); animation: modal-in 380ms var(--spring) both; }
+.result-card h4 { font-size: var(--fs-m); color: var(--green); display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 10px; }
+.kv { display: grid; grid-template-columns: 110px 1fr; gap: var(--sp-1) var(--sp-3); font-size: var(--fs); }
 .kv dt { color: var(--text-3); }
 .kv dd { margin: 0; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
-.addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
 .addr-grid .span2 { grid-column: span 2; }
 .fmt-pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .fmt-pill { height: 34px; padding: 0 14px; border-radius: var(--r-ctl); border: 1px solid var(--border-strong); background: var(--surface); font-family: var(--font-display); font-weight: 600; font-size: var(--fs); color: var(--text-2); transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast); }
@@ -55,7 +51,7 @@
 .spread-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 22px 18px; }
 .spread-card { position: relative; cursor: zoom-in; }
 .spread-card.enter { animation: card-in 420ms var(--ease) both; }
-.spread-card-head { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; font-size: var(--fs-s); color: var(--text-3); }
+.spread-card-head { display: flex; align-items: baseline; gap: var(--sp-2); margin-top: var(--sp-2); font-size: var(--fs-s); color: var(--text-3); }
 .spread-no { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text); font-size: var(--fs); }
 .spread-view { display: grid; grid-template-columns: 1fr 1fr; aspect-ratio: 2 / 1; position: relative; background: var(--paper); box-shadow: var(--art-shadow); border-radius: var(--r-art); transition: transform 300ms var(--ease); }
 .spread-card:hover .spread-view { transform: translateY(-2px); }
@@ -69,12 +65,12 @@
 .spread-view .half .ph-num { font-family: var(--font-display); font-size: var(--fs-l); font-weight: 600; color: var(--text-3); }
 .spread-view .half.bad { outline: 2px solid var(--red); outline-offset: -2px; }
 .spread-view .gutter-s { position: absolute; inset: 0 auto 0 50%; width: 12px; transform: translateX(-50%); background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, .14), rgba(0, 0, 0, 0)); pointer-events: none; }
-.spread-files { display: flex; gap: 8px; font-size: var(--fs-s); color: var(--text-3); font-family: var(--font-mono); }
+.spread-files { display: flex; gap: var(--sp-2); font-size: var(--fs-s); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .file-ok { color: var(--text-3); }
 .file-bad { color: var(--red); }
 
 /* ================================================================== ORDERS (the pipeline: queue and order card) */
-.ord-list { display: flex; flex-direction: column; gap: 8px; }
+.ord-list { display: flex; flex-direction: column; gap: var(--sp-2); }
 .ord-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 14px 10px 10px; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); color: inherit; position: relative; transition: border-color var(--t-fast), transform var(--t-fast) var(--ease); }
 /* the hover shadow is a layer that fades in (opacity), not a box-shadow that repaints the row */
 .ord-row::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity var(--t) ease; }
@@ -85,8 +81,8 @@
 .ord-thumb, .ord-book-art { display: grid; place-items: center; overflow: hidden; border-radius: var(--r-art); background: var(--surface-2) center / cover no-repeat; color: var(--text-4); box-shadow: var(--art-shadow); }
 .ord-thumb { width: 52px; height: 52px; }
 .ord-thumb img, .ord-book-art img { width: 100%; height: 100%; object-fit: cover; }
-.ord-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.ord-chips { flex-wrap: wrap; row-gap: 4px; }  /* a narrow window moves the tracking chip to its own line */
+.ord-main { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.ord-chips { flex-wrap: wrap; row-gap: var(--sp-1); }  /* a narrow window moves the tracking chip to its own line */
 .ord-chips > .chip { flex: none; }
 .ord-meta { font-size: var(--fs-s); }
 .ord-child { font-weight: 600; color: var(--text-2); }
@@ -113,52 +109,52 @@
 .ord-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ord-title .page-title { min-width: 0; }
 .ord-title .chip { flex: none; }
-.ord-sub .chip { margin: -2.5px 0 0 8px; vertical-align: middle; }  /* the negative top margin puts chip text on the grey text's line */
+.ord-sub .chip { margin: -2.5px 0 0 var(--sp-2); vertical-align: middle; }  /* the negative top margin puts chip text on the grey text's line */
 /* Room under the header: the tracking chip used to sit 20 px above the path strip and nearly touch it (the owner, 2026-10-04). */
-.page-head:has(.ord-sub) { margin-bottom: 32px; }
-.ord-sub { margin-top: 4px; }
+.page-head:has(.ord-sub) { margin-bottom: var(--sp-8); }
+.ord-sub { margin-top: var(--sp-1); }
 .ord-go { display: grid; color: var(--text-4); transition: color var(--t-fast), transform var(--t-fast) var(--ease); }
 .ord-row:hover .ord-go { color: var(--text-2); transform: translateX(2px); }
 
 /* Work on the left (files, proof, print); the order's own data on the right stays in view while the proof scrolls. */
-.ord-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 24px; align-items: start; }
+.ord-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: var(--sp-6); align-items: start; }
 /* The data column sticks beside the long work area — but is never a scroller of its own (the wheel over it used to scroll it, then
    stop at its end and trap the page: 2026-09-30). A column taller than the window sticks by its bottom: lib.js stickyFit(). */
 .ord-side { position: sticky; top: 16px; align-self: start; border-radius: var(--r-card); }
-.ord-book { display: flex; gap: 16px; align-items: flex-start; }
+.ord-book { display: flex; gap: var(--sp-4); align-items: flex-start; }
 .ord-book-art { width: 96px; aspect-ratio: 1; flex: none; }
 .ord-book-title { font-family: var(--font-book); font-size: var(--fs-m); font-weight: 600; line-height: var(--lh); color: var(--text); }
-.ord-book .btn { align-self: flex-start; margin-top: 4px; }
+.ord-book .btn { align-self: flex-start; margin-top: var(--sp-1); }
 
 /* ------------------------------------------------------------------ order archive (pages/archive.js) */
 .arc-thumb img { object-position: 100% 50%; } /* the front of the cover spread (back | spine | front) */
-.kv dd.arc-id { display: flex; align-items: center; gap: 4px; }
+.kv dd.arc-id { display: flex; align-items: center; gap: var(--sp-1); }
 .arc-clock { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs); line-height: var(--lh); }
 .arc-clock .icon { flex: none; margin-top: 1px; }
 .cr-reprint { font-size: var(--fs); }
 /* An order of several books: one block per book inside the folder step (the shown one is outlined). */
 .cr-book { display: flex; flex-direction: column; gap: 10px; }
-.cr-book + .cr-book { padding-top: 12px; border-top: 1px solid var(--border); }
-.cr-book-head { gap: 8px; }
-.cr-book-name { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid transparent; border-radius: var(--r-ctl); background: none; font: inherit; font-size: var(--fs); font-weight: 600; color: var(--text-2); cursor: pointer; }
+.cr-book + .cr-book { padding-top: var(--sp-3); border-top: 1px solid var(--border); }
+.cr-book-head { gap: var(--sp-2); }
+.cr-book-name { display: inline-flex; align-items: center; gap: 6px; padding: 2px var(--sp-2); border: 1px solid transparent; border-radius: var(--r-ctl); background: none; font: inherit; font-size: var(--fs); font-weight: 600; color: var(--text-2); cursor: pointer; }
 .cr-book-name:hover { background: var(--surface-2); }
 .cr-book.is-shown .cr-book-name { border-color: var(--accent-line); color: var(--accent-ink); }
 .ord-fields { display: grid; grid-template-columns: minmax(92px, 36%) minmax(0, 1fr); margin: 0; font-size: var(--fs); }
 .ord-fields dt, .ord-fields dd { border-top: 1px solid var(--border); }
 .ord-fields dt:first-of-type, .ord-fields dt:first-of-type + dd { border-top: 0; }
-.ord-fields dt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 9px 12px 9px 0; color: var(--text-3); overflow-wrap: anywhere; }
+.ord-fields dt { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); padding: 9px var(--sp-3) 9px 0; color: var(--text-3); overflow-wrap: anywhere; }
 .ord-fields dd { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 5px 0; }
 .ord-fields dd > span { flex: 1; min-height: 26px; padding-top: 3px; color: var(--text); font-weight: 600; white-space: pre-line; overflow-wrap: anywhere; user-select: text; }
 .ord-fields dd .ib { opacity: .5; transition: opacity var(--t-fast); }
 .ord-fields dd:hover .ib, .ord-fields dd .ib:focus-visible { opacity: 1; }
 .ord-fields dd.is-name > span { padding-top: 1px; font-family: var(--font-display); font-size: var(--fs-m); line-height: var(--lh); }
-.ord-fields dd.custom > span { margin: -1px 0; padding: 4px 8px; border-radius: var(--r-ctl); background: var(--amber-soft); }
-.ord-message { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--r-ctl); background: var(--surface-2); border: 1px solid var(--border); font-size: var(--fs); white-space: pre-line; user-select: text; }
+.ord-fields dd.custom > span { margin: -1px 0; padding: var(--sp-1) var(--sp-2); border-radius: var(--r-ctl); background: var(--amber-soft); }
+.ord-message { display: flex; flex-direction: column; gap: 6px; padding: 10px var(--sp-3); border-radius: var(--r-ctl); background: var(--surface-2); border: 1px solid var(--border); font-size: var(--fs); white-space: pre-line; user-select: text; }
 .ord-address { font-size: var(--fs); line-height: var(--lh-read); color: var(--text-2); user-select: text; }
 
 /* Proof: the cover and the first spread large — its blank endpaper carries the order's own words, so
    the eye goes from what was asked (left) to what was made (right) — then every spread in a strip. */
-.proof { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; } /* one under another: the spread gets the full width */
+.proof { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); } /* one under another: the spread gets the full width */
 .proof-spread { container-type: inline-size; cursor: zoom-in; }
 .proof-spread:hover .crops { opacity: 1; transform: none; }
 /* A long dedication or «from» scrolls inside the note instead of being cut off. */
@@ -169,7 +165,7 @@
 .proof-note dt { color: #6a6c66; font-size: clamp(11px, 1.25cqw, 12px); font-weight: 600; }
 .proof-note dd { margin: 0 0 1.8cqw; font-size: clamp(12px, 2.4cqw, 22px); font-weight: 600; line-height: var(--lh); color: #1f201d; white-space: pre-line; overflow-wrap: anywhere; }
 /* No scroll snapping here: it fought the eased wheel scrolling (jerks) and pulled the strip back from its end. */
-.strip { display: flex; gap: 14px; overflow-x: auto; padding: 4px 16px 10px 2px; overscroll-behavior-x: contain; }
+.strip { display: flex; gap: 14px; overflow-x: auto; padding: var(--sp-1) var(--sp-4) 10px 2px; overscroll-behavior-x: contain; }
 .strip-item { flex: none; width: 220px; display: flex; flex-direction: column; gap: 6px; cursor: zoom-in; }
 .strip-item > .spread-view, .strip-item > .structure-cover { transition: transform 300ms var(--ease); }
 .strip-item:hover > .spread-view, .strip-item:hover > .structure-cover { transform: translateY(-2px); }
@@ -177,16 +173,16 @@
 /* Text check: findings under the proof's title (red — certain, amber — worth a look), a click opens the
    spread; the pages with findings are outlined in the proof and the strip. */
 #oc-check:empty, .tc-head:empty { display: none; }
-.tc-head { gap: 4px; }
+.tc-head { gap: var(--sp-1); }
 .tc-list { display: grid; gap: 6px; }
-.tc-issue { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 5px 5px 5px 12px; border-radius: var(--r-grp); border: 1px solid var(--red-line); background: var(--red-soft); font-size: var(--fs); cursor: zoom-in; }
+.tc-issue { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); padding: 5px 5px 5px var(--sp-3); border-radius: var(--r-grp); border: 1px solid var(--red-line); background: var(--red-soft); font-size: var(--fs); cursor: zoom-in; }
 .tc-issue.enter { animation: notice-in var(--t-slow) var(--ease) both; } /* a new result only, not after «це не помилка» */
 .tc-issue.warn { border-color: var(--amber-line); background: var(--amber-soft); }
 .tc-where { min-width: 58px; font-family: var(--font-display); font-size: var(--fs); font-weight: 600; white-space: nowrap; color: var(--red); }
 .tc-issue.warn .tc-where { color: var(--amber); }
 .tc-text { padding: 2px 0; line-height: var(--lh); color: var(--text); overflow-wrap: anywhere; }
 .tc-text b { font-weight: 600; }
-.tc-passport { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; margin-top: 12px; padding: 10px 12px; border-radius: var(--r-grp); background: var(--surface-2); font-size: var(--fs); }
+.tc-passport { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-3); padding: 10px var(--sp-3); border-radius: var(--r-grp); background: var(--surface-2); font-size: var(--fs); }
 .tc-passport .tc-where { color: var(--text-2); }
 .tc-passport .tc-text { white-space: pre-line; }
 .tc-slot { padding: 0 3px; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent); }
@@ -194,7 +190,7 @@
 .tc-light { gap: 6px; font-size: var(--fs); }
 /* Another book's pages: one alarm nobody can miss (the owner's «захист від дурня», 25.09.2026). Its own deep red,
    the same in both themes: white text on the dark theme's light --red would not read. It shakes once. */
-.tc-alarm { display: grid; gap: 10px; padding: 16px 18px; border-radius: var(--r-card); background: #b3261e; color: #fff; font-size: var(--fs-m); line-height: var(--lh); cursor: zoom-in; box-shadow: 0 6px 22px rgba(179, 38, 30, .35); }
+.tc-alarm { display: grid; gap: 10px; padding: var(--sp-4) 18px; border-radius: var(--r-card); background: #b3261e; color: #fff; font-size: var(--fs-m); line-height: var(--lh); cursor: zoom-in; box-shadow: 0 6px 22px rgba(179, 38, 30, .35); }
 .tc-alarm.enter { animation: tc-alarm-in 520ms var(--ease) both; }
 .tc-alarm + .tc-list { margin-top: 10px; }
 @keyframes tc-alarm-in {
@@ -207,13 +203,13 @@
 .tc-alarm-dismiss { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .35); color: #fff; }
 .tc-alarm-dismiss:hover { background: rgba(255, 255, 255, .24); color: #fff; }
 .tc-alarm-books { display: flex; flex-wrap: wrap; gap: 10px; }
-.tc-alarm-book { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; margin: 0; padding: 8px; border-radius: var(--r-grp); background: rgba(0, 0, 0, .18); font-size: var(--fs); }
+.tc-alarm-book { display: flex; align-items: center; gap: 10px; flex: 1 1 220px; margin: 0; padding: var(--sp-2); border-radius: var(--r-grp); background: rgba(0, 0, 0, .18); font-size: var(--fs); }
 .tc-alarm-book img, .tc-alarm-book > .icon { width: 56px; height: 56px; flex: none; border-radius: var(--r-sm); object-fit: cover; }
 .tc-alarm-book figcaption span { display: block; font-size: var(--fs-s); font-weight: 600; opacity: .8; }
 .tc-light a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 /* An order of several books: which of them this send takes (the print step). */
-.oc-books { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--fs); }
-.oc-books li { display: flex; align-items: center; gap: 8px; }
+.oc-books { display: grid; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; font-size: var(--fs); }
+.oc-books li { display: flex; align-items: center; gap: var(--sp-2); }
 .oc-books li.is-ready { color: var(--text-2); }
 .oc-books li.is-ready svg { color: var(--green); }
 .spread-view .half.tc-error, .structure-cover.tc-error { outline: 2px solid var(--red); outline-offset: -2px; }
@@ -248,10 +244,10 @@
 .oc-printed { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
 .oc-printed-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: var(--r-grp); background: var(--accent-soft); color: var(--accent-ink); }
 .oc-printed .faint { font-size: var(--fs-s); }
-.oc-prints { margin-bottom: 12px; }
+.oc-prints { margin-bottom: var(--sp-3); }
 
 /* A field with its name above it (2026-09-30) — the Order Creator's address first. */
-.fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fld { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
 .fld-label { font-size: var(--fs-s); font-weight: 600; color: var(--text-3); }
 .fld-need { font-style: normal; color: var(--accent-ink); margin-left: 2px; }
 .fld:focus-within .fld-label { color: var(--accent-ink); }
@@ -267,7 +263,7 @@
 .ord-hist.ord-solo { grid-template-columns: minmax(0, 620px) minmax(300px, 400px) !important; }
 .ord-hist.ord-solo > #oc-data { grid-column: 1; grid-row: 1; }
 .ord-hist.ord-solo > .ord-history { grid-column: 2; grid-row: 1; }
-.oh-card { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.oh-card { position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--sp-3); overflow: hidden; }
 .oh-card .row { flex: none; }
 .oh-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; flex: 1; }
 .oh-item { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 0 10px; padding-bottom: 14px; font-size: var(--fs); line-height: var(--lh); }
@@ -283,7 +279,7 @@
 .oh-time { padding-top: 1px; color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .oh-note { font-size: var(--fs); color: var(--text-3); }
 .oh-fail { color: var(--red); }
-.oh-wait { display: grid; gap: 12px; }
+.oh-wait { display: grid; gap: var(--sp-3); }
 .oh-sk { height: 30px; }
 @media (max-width: 1279px) {
   .ord-hist.ord-solo { grid-template-columns: minmax(0, 1fr) minmax(280px, 360px) !important; }

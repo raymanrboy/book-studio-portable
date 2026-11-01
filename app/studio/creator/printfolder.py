@@ -123,7 +123,7 @@ def validate(mode: str, folder_raw: str, job=None) -> dict:
     missing = [e["file"] for e in expected if e["file"].lower() not in present]
     expected_lower = {e["file"].lower() for e in expected}
     extra = sorted((p.name for n, p in present.items() if n not in expected_lower and not n.startswith(".")
-                    and n not in ("thumbs.db", "desktop.ini")), key=_natural_key)
+                    and n not in ("thumbs.db", "desktop.ini", "entry.json")), key=_natural_key)  # entry.json: an archived book's own record (archive.py)
     if missing:
         pretty = ", ".join(m.replace(".png", "") if m[0].isdigit() else m for m in missing)
         errors.append(f"Відсутні файли ({len(missing)} шт.): {pretty}")

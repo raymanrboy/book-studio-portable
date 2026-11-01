@@ -159,6 +159,10 @@ async function mountBook(view, id) {
     // From 1 October Printify only reads: its 24 pages do not fit Gelato (28 or 30), so a reprint starts from the
     // order's card with a book downloaded anew.
     if (pr && store.info?.integrations?.printify?.readOnly) {
+      // A reprint already made (at Gelato, from the order's card): point at the order instead of saying how to make one.
+      if (e.receiptId && (o?.printed || []).some((p) => p.reprint)) {
+        return html`<section class="card card-pad"><a class="btn btn-block" href="#/orders/${e.receiptId}">${ic('orderArchive')}Передрук уже зроблено — до замовлення</a></section>`;
+      }
       return html`<section class="card card-pad"><div class="row faint">${ic('info', 'icon-s')}<span>Printify більше не друкує. Для передруку завантажте книгу з Canva на 28 або 30 сторінок і відправте в Gelato з картки замовлення.</span></div></section>`;
     }
     return html`<section class="card card-pad stack ${pr ? 'tint-printify' : ''}">
@@ -211,7 +215,7 @@ async function mountBook(view, id) {
 
   function render() {
     renderActions();
-    setHtml($('#ar-flow'), [proofCard(), reprintCard()]);
+    setHtml($('#ar-flow'), [reprintCard(), proofCard()]);
     setHtml($('#ar-data'), [sendCard(), fieldsCard(), addressCard()]);
     fadeImages(view);
     const strip = $('#ar-strip');

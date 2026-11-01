@@ -88,7 +88,7 @@ export async function mount(view, [rawId]) {
       ...(b.tier ? [['tier', html`<span class="chip chip-accent ws-tier" data-tip="${b.tier === 'H' ? 'Tier H — герой-дитина на кожному розвороті' : 'Tier S — без постійного героя'}">Tier ${b.tier}</span>`]] : []),
       ['tools', html`<div class="page-actions">
         <div class="tools">
-          ${ib('agent', 'Текст для агента в буфер — «Продовжуємо книгу …» з повною адресою книги', 'data-act="agent"')}
+          ${ib('agent', 'Текст для агента в буфер — «Продовжуємо книгу …» з повною адресою книги', 'data-act="agent"', { cls: b.steps[0]?.next ? 'primary' : '' })}
           <span class="sep"></span>
           ${ib('images', 'Сторінки — нарізані 1–30 і Cover.png, набір для Canva', 'data-act="open" data-what="pictures"')}
           ${ib('original', 'Оригінали — картинки, як їх віддав генератор', 'data-act="open" data-what="originals"')}
@@ -150,7 +150,7 @@ export async function mount(view, [rawId]) {
     const waiting = waitingFor(id, 'hero', null);
     return html`<div class="ws-hero-actions">
       ${waiting ? waitChip('чекаю героя з «Завантажень»')
-        : b.heroPrompt ? html`<button class="btn btn-sm ${s.thumb ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-tip="Промпт героя — у буфер; завантажений герой стане canonical.png">${ic(s.thumb ? 'regenerate' : 'generate')}${s.thumb ? 'Згенерувати ще раз' : 'Генерувати героя'}</button>` : ''}
+        : b.heroPrompt ? html`<button class="btn btn-sm ${s.thumb || !s.next ? '' : 'btn-primary'}" data-act="gen" data-key="hero" data-tip="Промпт героя — у буфер; завантажений герой стане canonical.png">${ic(s.thumb ? 'regenerate' : 'generate')}${s.thumb ? 'Згенерувати ще раз' : 'Генерувати героя'}</button>` : ''}
       ${s.thumb ? html`<button class="btn btn-sm" data-act="copy-hero" data-tip="canonical.png — у буфер, щоб вставити в новий чат">${ic('copy')}Героя в буфер</button>` : ''}
       <button class="btn btn-sm" data-act="pick" data-key="hero" data-variant="" data-tip="Покласти готову картинку як canonical.png">${ic('upload')}Обрати файл</button>
     </div>`;
@@ -172,7 +172,7 @@ export async function mount(view, [rawId]) {
     const note = c.final ? html`Обкладинка є: <span class="mono">${c.final}</span>${c.finalSquares ? ' · з двох квадратів, Gelato 458×246 мм' : ''}.`
       : c.art ? 'Картинка 2:1 є — далі поля (аутпейнт).' : 'Обкладинки ще немає: картинка 2:1, потім поля.';
     return html`<div class="ws-manual"><div>${note}</div>
-      <div class="row-wrap"><button class="btn ${c.final ? '' : 'btn-primary'}" data-act="to-cover">${ic('coverWide')}${c.final ? 'Відкрити обкладинку' : 'Зробити обкладинку'}</button>
+      <div class="row-wrap"><button class="btn ${c.final || !s.next ? '' : 'btn-primary'}" data-act="to-cover">${ic('coverWide')}${c.final ? 'Відкрити обкладинку' : 'Зробити обкладинку'}</button>
       ${c.final ? html`<button class="btn" data-act="open" data-what="pictures">${ic('folderOpen')}Відкрити папку сторінок</button>` : ''}</div></div>${shot}`;
   }
 
@@ -184,7 +184,7 @@ export async function mount(view, [rawId]) {
     return html`<div class="ws-manual"><div>${made ? html`У папці книги: ${what}.` : s.state === 'done'
       ? 'Позначено: мокапи зроблено поза Book Studio.' : 'Мокапи ще не робились. Зроблені звідси, вони ляжуть у папку книги, а крок позначиться сам.'}</div>
       <div class="row-wrap">
-        <button class="btn ${made || s.state === 'done' ? '' : 'btn-primary'}" data-act="to-mockups">${ic('mockup')}${made ? 'Редагувати мокапи' : 'Зробити мокапи'}</button>
+        <button class="btn ${made || s.state === 'done' || !s.next ? '' : 'btn-primary'}" data-act="to-mockups">${ic('mockup')}${made ? 'Редагувати мокапи' : 'Зробити мокапи'}</button>
         ${s.editable ? html`<button class="btn" data-act="to-slides">${ic('images')}Редагувати слайди</button>` : ''}
         ${made ? html`<button class="btn" data-act="open" data-what="mockups">${ic('folderOpen')}Відкрити папку мокапів</button>` : ''}
         ${s.slides ? html`<button class="btn" data-act="open" data-what="etsy">${ic('folderOpen')}Відкрити папку Etsy</button>` : ''}
@@ -267,7 +267,7 @@ export async function mount(view, [rawId]) {
     if (s.manual) {
       return html`<div class="ws-manual"><div>${MANUAL[s.key]} поза Book Studio? Позначте крок, коли зроблено.</div>
         <div class="row-wrap">${s.key === 'mockups' ? html`<a class="btn" href="#/mockups">${ic('mockup')}Відкрити Мокапи</a>` : ''}
-        <button class="btn ${s.state === 'done' ? '' : 'btn-primary'}" data-act="mark" data-step="${s.key}">${s.state === 'done' ? 'Зняти позначку' : html`${ic('check')}Зроблено`}</button></div></div>`;
+        <button class="btn ${s.state === 'done' || !s.next ? '' : 'btn-primary'}" data-act="mark" data-step="${s.key}">${s.state === 'done' ? 'Зняти позначку' : html`${ic('check')}Зроблено`}</button></div></div>`;
     }
     if (s.key === 'library') {
       return b.library
@@ -276,7 +276,9 @@ export async function mount(view, [rawId]) {
         : html`<div class="ws-manual">${missingSummary()}<button class="btn" data-act="to-library">${ic('shelf')}Передати в бібліотеку</button></div>`;
     }
     if (s.key === 'pictures') {
-      return html`${s.count ? '' : html`<div class="ws-missing">Картинок ще немає — натисніть «Генерувати всю книгу» над рядками.</div>`}${miniRows()}`;
+      // The hint points at a button that exists only while some row has a prompt (paintRows' `left`); without prompts it would send to nothing.
+      const canSeries = !s.count && inner().some((r) => r.prompt && !r.pictures.length);
+      return html`${canSeries ? html`<div class="ws-missing">Картинок ще немає — натисніть «Генерувати всю книгу» над рядками.</div>` : ''}${miniRows()}`;
     }
     if (s.state === 'skip') return html`<div class="ws-missing">Книга без постійного героя (Tier S) — цей крок не потрібен.</div>`;
     const hero = s.key === 'hero' ? heroActions(s) : '';
@@ -463,7 +465,7 @@ export async function mount(view, [rawId]) {
       <span class="spacer"></span>
       ${adoptBtn(v)}
       ${heroThumb && !v ? html`<button class="btn btn-sm" data-act="copy-hero" data-tip="Героя (canonical.png) — у буфер, щоб вставити в новий чат Gemini першим">${ic('hero')}Героя в буфер</button>` : ''}
-      ${!busy && left ? html`<button class="btn btn-primary" data-act="series" data-tip="Розвороти 2–3 … 28–29, потім сторінки 1 і 30 — ті, що без картинок; після кожної картинки наступний промпт уже в буфері">${ic('generate')}${done ? 'Генерувати решту' : 'Генерувати всю книгу'}</button>` : ''}
+      ${!busy && left ? html`<button class="btn ${step('pictures')?.next ? 'btn-primary' : ''}" data-act="series" data-tip="Розвороти 2–3 … 28–29, потім сторінки 1 і 30 — ті, що без картинок; після кожної картинки наступний промпт уже в буфері">${ic('generate')}${done ? 'Генерувати решту' : 'Генерувати всю книгу'}</button>` : ''}
     </div>`]]);
     patch($('#ws-vtabs'), b.variants.length ? [['tabs', html`<div class="seg ws-vtabs"><span class="seg-pill"></span>
       <button type="button" class="${v ? '' : 'active'}" data-act="variant" data-variant="">Основна</button>

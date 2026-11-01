@@ -5,6 +5,58 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 Older entries (before 2026-10-18) live in [log-2026-09.md](log-2026-09.md) and [log-2026-10.md](log-2026-10.md).
 
+- From the owner's interface audit (deck, 3 passes): `entry.json` no longer a «extra file» warning in a print folder
+  (`printfolder.validate`); the Creator's back arrow from an archive reprint goes to the archive entry; the order card's
+  Canva button is loud only on a new order, one «Книга 1/2» switch instead of two; Workshop buttons are loud only on the
+  step the server marks `next` (hero, cover, mockups, «Зроблено», series); the «Генерувати всю книгу» hint shows only when
+  that button exists; the new book's «Текст для агента» icon is accent; Mockups: full-strength make button, accent drop field;
+  the archive puts the reprint above the proof; «агент 6» wording removed; money/dates in Profit no longer monospace.
+- `padding/margin/gap` values equal to 4/8/12/16/20/24/32 px now use `--sp-1…8` (263 places, no visual change).
+- Later the same day: field height 34 px everywhere (library toolbar, slide editor), Profit's period switch is a plain white pill (the
+  accent is for next steps), Profit's table at ≤960 px no longer clips «Зіставлення».
+- Not done: the book check's English messages (`workshop/check.py`, shared with the pipeline), switch styles, field heights,
+  chips of the queue, 940 px Profit/Slides, removing the dark theme.
+
+## [2026-11-01] decision | The cover's characters' zone: a three-zone guide, the guide pasted first, strict words
+- The owner tested in chat on books 41 and 50 ("нонсенс, наскільки це кращий підхід") and asked to build it in: the two
+  guides (`web/img/cover-guides/`) now stack the name's room, the title and a **yellow characters' zone** on one centre
+  line at ¾ of the width; `GUIDES` words are a strict position map (RULES 1–5, no trace of the map); «Генерувати» pastes
+  the guide first, then the reference, and names the reference «Image 2» (`cover.items()`, `prompt_with_guide()`).
+- Agent 6's formula: the characters inside the yellow zone in fractions of the width, three bands across the width, one
+  smooth background, light only from real sources, few characters; books 41, 50, 51 re-written so (0 FAILs).
+  [cover](features/cover.md#the-guides), [decisions](decisions.md). Tests in `CoverTool`, `CatchingDownloads`.
+
+## [2026-11-01] update | Book 49: the title «{Name} & Grandpa: Our Best Days» and the cover prompt from three frames
+- The owner's title order (book-text.md changed); Agent 6's full-scene formula, the three frames stacked into one reference. 0 FAILs.
+  [family-holiday-books](owner/family-holiday-books.md).
+
+## [2026-11-01] update | Book 49, spread 02: the truck came out in the middle — its place and size now in the prompt
+- The prompt placed only the little bear on the left; the truck now has its own place (the left third, a quarter of the width, the lane
+  from the left edge) and negatives against a centered vehicle. The lesson is in `pipeline/notes/discoveries.md`. 0 FAILs.
+
+## [2026-11-01] update | Book 50: the Valentine's cover prompt, from the owner's three frames
+- Agent 6's full-scene formula; a new Valentine's scene (the family hug with a red heart balloon), the three frames stacked into one
+  reference. `check_book.py` 0 FAILs. [family-holiday-books](owner/family-holiday-books.md).
+
+## [2026-11-01] update | Book 51: the cover prompt, from a hybrid of two frames
+- Agent 6's full-scene formula; the owner chose a hybrid of spreads 2–3 and 26–27, put into one reference picture
+  (`ref_cover_hybrid-02-03-26-27.jpg`) because the cover tool takes one. `check_book.py` 0 FAILs. [family-holiday-books](owner/family-holiday-books.md).
+
+## [2026-11-01] update | Book 51 in a stylized watercolor: CG → W → RW
+- The owner didn't like the art style; 51's prompts rebuilt on `W` with a more stylized `forms` (dot eyes, no fur strands), then — "keep the
+  stylization, a bit more color" — on `RW` with the same `forms`. 0 FAILs.
+  [family-holiday-books](owner/family-holiday-books.md).
+
+## [2026-11-01] update | Books 47, 48, 51 changed by the owner: bunnies, otters, Welcome to the World instead of Easter
+- 47 — bunnies instead of foxes (spread 10 now leapfrog); 48 — otters instead of deer (gingerbread fish, snow-otter, tummy slide, holding
+  paws). 51 — the Easter book parked in `pipeline/books/_later/` (hidden from the Workshop) and replaced by `51.welcome-to-the-world`
+  (TheChildhoodKeeper's idea, a newborn fawn, all year). Rebuilt, `check_book.py` 0 FAILs. [family-holiday-books](owner/family-holiday-books.md).
+
+## [2026-11-01] update | Five new Workshop books 47–51: Daddy, Mommy's first Christmas, Grandpa, Valentine's, Easter
+- The owner asked for five books about holidays and the child with Mom, Dad, Grandma or Grandpa, from the competitors' examples, with no
+  human characters ([decision](decisions.md)). All animal, Tier S, taken to GO: `formula.md`, `input.md`, blueprint, text, 14 + 2 prompts,
+  reports; `check_book.py` — 0 FAILs each. Nothing generated. [family-holiday-books](owner/family-holiday-books.md); backlog statuses updated.
+
 ## [2026-10-31] decision | «{Name}» in the mockups' page text is on purpose
 - The owner; [decisions](decisions.md).
 

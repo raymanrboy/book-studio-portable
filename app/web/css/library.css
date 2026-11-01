@@ -1,14 +1,14 @@
 /* The Library and a book's passport (pages/library.js, pages/book.js). Loaded after app.css. */
 
 /* ================================================================== LIBRARY — a contact sheet */
-.lib-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+.lib-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: var(--sp-6); }
 .lib-toolbar .input-group { width: min(320px, 100%); }
 /* One height for the whole row: search, filter, sorting and the new-book button all stand 38px tall. */
-.lib-toolbar .input { height: 38px; }
+.lib-toolbar .input { height: 34px; }
 .lib-toolbar .seg button { height: 30px; }
 .lib-toolbar #lib-seg { display: flex; } /* no inline line box around the filter, so it centres with the rest */
 .lib-toolbar > .ib.primary { width: 52px; height: 38px; border-radius: var(--r-grp); box-shadow: var(--shadow-s); }
-.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 30px 24px; }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 30px var(--sp-6); }
 .book-card { position: relative; display: flex; flex-direction: column; gap: 11px; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; contain: layout style; }
 .book-card.enter { animation: card-in 440ms var(--ease) both; }
 @keyframes card-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -50,18 +50,18 @@
 .book-next .ws-go, .book-next .ws-nogo { margin-left: auto; }
 
 /* ================================================================== BOOK */
-.book-hero { display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 26px; align-items: start; margin-bottom: 8px; }
+.book-hero { display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 26px; align-items: start; margin-bottom: var(--sp-2); }
 .hero-thumb { position: relative; aspect-ratio: 1 / 1; border-radius: var(--r-art); overflow: visible; background-color: var(--paper); box-shadow: var(--art-shadow); cursor: zoom-in; }
 .hero-thumb > img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-art); }
 .hero-thumb:hover .crops { opacity: 1; transform: none; }
 .hero-thumb .drop-ph { border: 1.5px dashed var(--border-strong); border-radius: var(--r-art); background: var(--surface); cursor: pointer; }
-.hero-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.hero-title-input { font-family: var(--font-book); font-size: var(--fs-book-title); font-weight: 600; line-height: var(--lh-tight); width: 100%; background: transparent; border: 1px solid transparent; border-radius: var(--r-ctl); padding: 2px 8px; margin-left: -9px; color: var(--text); resize: none; overflow: hidden; outline: 3px solid transparent; transition: border-color var(--t-fast), background var(--t-fast), outline-color var(--t-fast); field-sizing: content; text-wrap: balance; }
+.hero-main { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.hero-title-input { font-family: var(--font-book); font-size: var(--fs-book-title); font-weight: 600; line-height: var(--lh-tight); width: 100%; background: transparent; border: 1px solid transparent; border-radius: var(--r-ctl); padding: 2px var(--sp-2); margin-left: -9px; color: var(--text); resize: none; overflow: hidden; outline: 3px solid transparent; transition: border-color var(--t-fast), background var(--t-fast), outline-color var(--t-fast); field-sizing: content; text-wrap: balance; }
 .hero-title-input:hover { border-color: var(--border); }
 .hero-title-input:focus { border-color: var(--accent); background: var(--surface); outline-color: var(--accent-soft); }
-.hero-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: var(--fs); color: var(--text-3); }
+.hero-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; font-size: var(--fs); color: var(--text-3); }
 /* Readiness row: the five parts of a finished book as pictograms, lit when done. */
-.ready { display: inline-flex; gap: 4px; padding: 3px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border); }
+.ready { display: inline-flex; gap: var(--sp-1); padding: 3px; border-radius: var(--r-grp); background: var(--surface); border: 1px solid var(--border); }
 .ready i { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--r-ctl); color: var(--text-4); font-style: normal; }
 .ready i.ok { color: var(--accent-ink); background: var(--accent-soft); }
 .ready i.part::before, .ready i.part::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 2px; border-radius: var(--r-art); }
@@ -69,7 +69,7 @@
 /* A real fraction (--f: 0…1) fills in proportion, by a transform. */
 .ready i.part::before { z-index: 1; background: var(--accent); transform-origin: left; transform: scaleX(var(--f, 0)); transition: transform 500ms var(--ease); }
 
-.section-head { display: flex; align-items: center; gap: 12px; margin: 34px 0 14px; flex-wrap: wrap; }
+.section-head { display: flex; align-items: center; gap: var(--sp-3); margin: 34px 0 14px; flex-wrap: wrap; }
 .section-title { font-family: var(--font-display); font-size: var(--fs); font-weight: 600; color: var(--text-2); }
 .section-head .num { font-size: var(--fs-s); color: var(--text-3); }
 
@@ -78,7 +78,7 @@
 .cover-box:hover .crops { opacity: 1; transform: none; }
 .cover-box .drop-ph { border: 1.5px dashed var(--border-strong); border-radius: var(--r-art); background: var(--surface); }
 
-.text-block { position: relative; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); padding: 12px 14px 14px; }
+.text-block { position: relative; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); padding: var(--sp-3) 14px 14px; }
 .text-block-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .text-body { white-space: pre-wrap; font-family: var(--font-book-text); font-size: var(--fs-book); line-height: var(--lh-read); color: var(--text); cursor: text; }
 .text-body.empty-text, .slot-text-body.empty-text { color: var(--text-3); font-family: var(--font); font-size: var(--fs-book); font-style: normal; }
@@ -87,17 +87,17 @@
 .slots { display: flex; flex-direction: column; gap: 22px; }
 /* Off-screen rows are not laid out or painted until they scroll near the viewport. */
 /* content-visibility also clips painting to the row; 12px of padding (cancelled by margin) keeps the crop marks visible. */
-.slot-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; padding: 12px 0; margin: -12px 0; content-visibility: auto; contain-intrinsic-size: auto 384px; }
+.slot-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--sp-4); padding: var(--sp-3) 0; margin: -12px 0; content-visibility: auto; contain-intrinsic-size: auto 384px; }
 .slot-row.enter { animation: card-in 420ms var(--ease) both; }
 .slot-pages-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0; position: relative; }
 .slot-text { display: flex; flex-direction: column; border-radius: var(--r-card); background: var(--surface); border: 1px solid var(--border); min-height: 0; overflow: hidden; align-self: stretch; }
-.slot-text-head { display: flex; align-items: center; gap: 8px; padding: 9px 8px 8px 14px; border-bottom: 1px solid var(--border); }
+.slot-text-head { display: flex; align-items: center; gap: var(--sp-2); padding: 9px var(--sp-2) var(--sp-2) 14px; border-bottom: 1px solid var(--border); }
 .slot-label { font-family: var(--font-display); font-weight: 600; font-size: var(--fs); }
 .slot-pages { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-size: var(--fs-s); color: var(--text-3); }
-.slot-text-body { flex: 1; overflow: auto; padding: 12px 14px; white-space: pre-wrap; font-family: var(--font-book-text); font-size: var(--fs-book); line-height: var(--lh-read); cursor: text; }
+.slot-text-body { flex: 1; overflow: auto; padding: var(--sp-3) 14px; white-space: pre-wrap; font-family: var(--font-book-text); font-size: var(--fs-book); line-height: var(--lh-read); cursor: text; }
 .slot-text-body.empty-text { display: grid; place-items: center; text-align: center; }
-.slot-text textarea { flex: 1; min-height: 220px; border: 0; border-radius: 0; resize: none; padding: 12px 14px; background: var(--surface-2); font-family: var(--font-book-text); line-height: var(--lh-read); font-size: var(--fs-book); outline: none; }
-.slot-text-foot { display: flex; gap: 6px; padding: 7px 8px; border-top: 1px solid var(--border); background: var(--surface-2); }
+.slot-text textarea { flex: 1; min-height: 220px; border: 0; border-radius: 0; resize: none; padding: var(--sp-3) 14px; background: var(--surface-2); font-family: var(--font-book-text); line-height: var(--lh-read); font-size: var(--fs-book); outline: none; }
+.slot-text-foot { display: flex; gap: 6px; padding: 7px var(--sp-2); border-top: 1px solid var(--border); background: var(--surface-2); }
 .page-sq, .spread-img { position: relative; background-color: var(--paper); box-shadow: var(--art-shadow); }
 .page-sq { aspect-ratio: 1 / 1; }
 .slot-pages-pair .page-sq:first-child { border-radius: var(--r-art) 0 0 var(--r-art); }
@@ -106,7 +106,7 @@
 .page-sq > img, .spread-img > img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
 .spread-img:hover .crops, .slot-pages-pair:hover .crops { opacity: 1; transform: none; }
 .page-sq.blank { background-image: radial-gradient(var(--paper-dot) 1px, transparent 1px); background-size: 12px 12px; display: grid; place-items: center; box-shadow: var(--art-shadow); }
-.page-sq.blank span { font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); background: var(--paper); padding: 3px 8px; }
+.page-sq.blank span { font-family: var(--font-display); font-size: var(--fs-s); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); background: var(--paper); padding: 3px var(--sp-2); }
 .page-sq .drop-ph, .spread-img .drop-ph { background: var(--surface); outline: 1.5px dashed var(--border-strong); outline-offset: -1.5px; }
 .slot-pages-pair::after { content: ""; position: absolute; inset: 0 auto 0 50%; width: 22px; transform: translateX(-50%); background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, .12), rgba(0, 0, 0, 0)); pointer-events: none; z-index: 1; }
 
@@ -118,7 +118,7 @@
 }
 
 /* ------------------------------------------------------------------ «Книги» — the Workshop and the library as one (2026-09-30) */
-.bk-tabs { margin: -6px 0 16px; }
+.bk-tabs { margin: -6px 0 var(--sp-4); }
 .bk-tabs .seg button { height: 32px; padding: 0 14px; gap: 7px; display: inline-flex; align-items: center; }
 
 /* A text being edited in the passport appears, it doesn't snap in. */

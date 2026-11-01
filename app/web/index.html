@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="uk" data-theme="dark">
+<html lang="uk" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="studio-token" content="__STUDIO_TOKEN__">
   <meta name="media-token" content="__MEDIA_TOKEN__">
-  <meta name="color-scheme" content="dark light">
+  <meta name="color-scheme" content="light">
   <title>Book Studio</title>
   <link rel="icon" href="/img/icon.png" type="image/png">
   <link rel="stylesheet" href="/css/app.css">
@@ -16,11 +16,8 @@
   <link rel="stylesheet" href="/css/motion-mockups.css">
   <link rel="stylesheet" href="/css/motion-settings.css">
   <script>
-    // Apply the saved theme before first paint (no flash).
+    // Apply the saved motion setting before first paint (the dark theme was removed, 2026-11-01: the window is always light).
     try {
-      var t = localStorage.getItem('bs-theme') || 'dark';
-      if (t === 'system') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-      document.documentElement.dataset.theme = t;
       if (localStorage.getItem('bs-motion') === 'reduce') document.documentElement.dataset.motion = 'reduce';
     } catch (e) {}
   </script>

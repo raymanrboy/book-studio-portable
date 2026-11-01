@@ -1,7 +1,7 @@
 ---
 title: Listing ideas backlog
 type: owner
-updated: 2026-10-16
+updated: 2026-11-01
 code: []
 ---
 # Listing ideas backlog
@@ -46,13 +46,13 @@ the first five T books).
 |---|---|---|---|---|---|
 | **Family — the adult buys it from the child** | | | | | |
 | 1 | Grandma (birthday, Mother's Day, "First Christmas as Grandma", bears with grandma) | L, T | 4 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) · [owner's shots](../raw/2026-10-11-grandma-bear-listing/1.webp) | **in the Workshop** — 46.grandma-and-me (a day with Grandma Bear, not seasonal, style WP, 2026-10-16) |
-| 2 | Grandpa (birthday, Father's Day, "First Christmas as Grandpa") | L | 3 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) | idea |
-| 3 | Mom (Mother's Day, birthday, "First Christmas as Mom") | L | 3 | [L](../raw/2026-10-11-lunabooksus-book-pages/first-christmas-as-mom/01.jpg) | idea |
-| 4 | Dad: Father's Day, birthday, "First Christmas as Dad", **a day with Daddy** (fishing or mushrooms instead of golf — the owner) | L, T | 4 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) · [owner's shots](../raw/2026-10-11-day-with-daddy-listing/1.webp) | idea |
+| 2 | Grandpa (birthday, Father's Day, "First Christmas as Grandpa") | L | 3 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) | **in the Workshop** — 49.grandpa-and-me (a farm year with Grandpa Bear, the pair of 46, 2026-11-01) |
+| 3 | Mom (Mother's Day, birthday, "First Christmas as Mom") | L | 3 | [L](../raw/2026-10-11-lunabooksus-book-pages/first-christmas-as-mom/01.jpg) | **in the Workshop** — 48.first-christmas-with-mommy (Mommy Deer and the fawn, 2026-11-01) |
+| 4 | Dad: Father's Day, birthday, "First Christmas as Dad", **a day with Daddy** (fishing or mushrooms instead of golf — the owner) | L, T | 4 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-dad-rainbow-template/01.jpg) · [owner's shots](../raw/2026-10-11-day-with-daddy-listing/1.webp) | **in the Workshop** — 47.day-with-daddy (fishing, canoe, camping, 2026-11-01) |
 | 5 | Aunt / Auntie ("promoted to Auntie") | L | 2 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-uncle-how-much-i-love-you/01.jpg) | idea |
 | 6 | Uncle ("promoted to Uncle") | L | 2 | [L](../raw/2026-10-11-lunabooksus-book-pages/family-uncle-how-much-i-love-you/01.jpg) | idea |
 | 7 | Big sister / big brother, **twins**, sibling combos (two boys, two girls, boy & girl), "for twins" | L, T | 5 | [T](../raw/2026-10-11-thechildhoodkeeper-book-pages/twin-siblings/01.jpg) · [L](../raw/2026-10-11-lunabooksus-book-pages/big-brother/01.jpg) · [owner's shots](../raw/2026-10-11-big-sister-brother-listing/1.webp) | idea |
-| 8 | Welcome to the World, woodland animals (+ a gender-neutral one) | T | 2 | [owner's shots](../raw/2026-10-11-welcome-to-the-world-listing/1.webp) | idea |
+| 8 | Welcome to the World, woodland animals (+ a gender-neutral one) | T | 2 | [owner's shots](../raw/2026-10-11-welcome-to-the-world-listing/1.webp) | **in the Workshop** — 51.welcome-to-the-world (a newborn fawn, gender-neutral, 2026-11-01) |
 | **Milestones and seasons** | | | | | |
 | 9 | This Month's Child — four seasons (or twelve months) | L | 4 | [L](../raw/2026-10-11-lunabooksus-book-pages/this-months-child/01.jpg) | idea |
 | 10 | Our Little (zodiac sign) — one book per sign | L | 12 | [L](../raw/2026-10-11-lunabooksus-book-pages/star-sign/01.jpg) | idea (needs art per sign) |
@@ -83,9 +83,9 @@ the first five T books).
 | 32 | First-birthday guest book "Letters to the birthday baby" — pumpkin, winter, … | T | 3 | [T](../raw/2026-10-11-thechildhoodkeeper-book-pages/guestbook-first-birthday-pumpkin/01.jpg) | idea (same) |
 | 33 | Personalised greeting cards: birthday by age and theme (train, farm, dinosaur, safari, construction, fairy, ballerina), First Holy Communion; the name, age, relation and date are typed in; 3 sizes | T | 10+ | [T](../raw/2026-10-11-thechildhoodkeeper-book-pages/birthday-card-train/01.jpg) · [T](../raw/2026-10-11-thechildhoodkeeper-book-pages/communion-card/01.jpg) | idea (a different product — check the printer) |
 | **Mine — no competitor evidence, for the owner to judge** | | | | | |
-| 34 | First Easter (Christian) | M | 1 | | idea |
+| 34 | First Easter (Christian) | M | 1 | | made, parked till March — `pipeline/books/_later/easter-at-grandmas` (with Grandma and Grandpa Bunny, 2026-11-01) |
 | 35 | Bible stories: Noah's Ark, Creation (next to First Bible Stories) | M | 2 | | idea |
-| 36 | Valentine's "I love you" for a baby / "love bug" | M | 1 | | idea |
+| 36 | Valentine's "I love you" for a baby / "love bug" | M | 1 | | **in the Workshop** — 50.little-valentine (a hedgehog family, 2026-11-01) |
 | 37 | Thanksgiving — grateful | M | 1 | | idea |
 | 38 | Construction / tractor bedtime (next to trucks; T sells construction cards) | M | 1 | | idea |
 | 39 | Rocket / space bedtime | M | 1 | | idea |

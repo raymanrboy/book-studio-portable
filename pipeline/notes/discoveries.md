@@ -48,6 +48,13 @@ image prompt is built on it. See `playbook/master-prompt.md`.
 
 Generate all spreads in ONE chat with `canonical.png` attached as reference.
 
+**A big object (a vehicle) drifts to the center unless its place and size are said.** Book 49, spread 02
+(2026-11-01): "place the little bear leaning out of the truck window on the left" put the whole truck in the
+middle — the generator placed the big object, not the small character. The fix: name the object itself, its
+size and its third ("the whole truck inside the left third, about one quarter of the image width long,
+nothing of it reaching the middle"), bring the road in from the left edge, and add negatives ("a vehicle in
+the center of the image", "a road running through the middle toward the right").
+
 ---
 
 ## JSON prompting — DEFAULT for Nano Banana 2

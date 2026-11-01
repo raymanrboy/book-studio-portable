@@ -101,7 +101,7 @@ export function rowTemplates({ id, book, mem, uploading }) {
     // A spread of a book with a hero: the hero goes first, then the prompt (the owner, 27.09.2026).
     const hero = r.kind === 'spread' && !variant && book().steps.find((s) => s.key === 'hero')?.thumb;
     const what = hero ? 'У буфер герой, потім промпт — Ctrl+V у Chrome сам перемикає'
-      : r.key === 'cover' && !variant ? 'У буфер референс, схема, потім промпт — Ctrl+V у Chrome сам перемикає' : 'Промпт — у буфер';
+      : r.key === 'cover' && !variant ? 'У буфер схема, референс, потім промпт — Ctrl+V у Chrome сам перемикає' : 'Промпт — у буфер';
     // Quiet: up to sixteen empty rows each shouting «Генерувати» read as sixteen next steps; the loud one is «Генерувати всю книгу».
     return html`<button class="btn btn-sm" data-act="gen" data-key="${r.key}" data-variant="${variant}"
       data-tip="${again ? `Згенерувати ще раз — нова картинка замінить цю (стара піде в .replaced). ${what}` : `${what}; Майстерня чекає картинку з «Завантажень»`}">${ic(again ? 'regenerate' : 'generate')}${label || (again ? 'Ще раз' : 'Генерувати')}</button>`;
@@ -116,7 +116,7 @@ export function rowTemplates({ id, book, mem, uploading }) {
         ${r.prompt ? ib('copy', 'Скопіювати промпт', `data-act="copy" data-what="prompt" ${attr('data-key', r.key)} ${attr('data-variant', variant)}`, { cls: 'sm' }) : ''}</div>
       ${r.prompt ? html`<pre class="ws-body ws-mono ${long && !open ? 'clamp' : ''}">${r.prompt}</pre>
         ${long ? html`<button class="ws-more" data-act="whole-prompt" data-key="${key}">${open ? 'Згорнути' : 'Весь промпт'}</button>` : ''}`
-        : html`<div class="ws-body empty-text">${r.key === 'cover' ? 'Промпту ще немає — його напише агент 6, коли розвороти будуть готові.' : 'Промпту ще немає — його напише агент.'}</div>`}
+        : html`<div class="ws-body empty-text">${r.key === 'cover' ? 'Промпту ще немає.' : 'Промпту ще немає.'}</div>`}
     </div>`;
   }
 

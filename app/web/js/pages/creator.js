@@ -132,7 +132,9 @@ export async function mount(view) {
     const printer = pr ? 'Printify' : 'Gelato';
     $('#cr-title-h').textContent = st.receiptId ? (st.buyer || `#${st.receiptId}`) : 'Order Creator';
     setHtml($('#cr-sub'), st.receiptId ? html`<span class="mono">#${st.receiptId}</span> · друк у ${printer}` : html`Друк у ${printer} з папки файлів`);
-    setHtml($('#cr-back'), st.receiptId ? html`<a class="back-link" href="#/orders/${st.receiptId}" aria-label="До замовлення" data-tip="До замовлення">${ic('arrowLeft')}</a>` : backToTools());
+    const rp = cur().reprint;
+    setHtml($('#cr-back'), st.receiptId ? html`<a class="back-link" href="#/orders/${st.receiptId}" aria-label="До замовлення" data-tip="До замовлення">${ic('arrowLeft')}</a>`
+      : rp ? html`<a class="back-link" href="#/archive/${rp.archiveId}" aria-label="До запису архіву" data-tip="До запису архіву">${ic('arrowLeft')}</a>` : backToTools());
     const made = !!cur().result;
     setHtml($('#cr-path'), st.receiptId ? pathHtml([
       { key: 'canva', label: 'Canva', icon: 'canva', state: 'done' }, { key: 'files', label: 'Файли', icon: 'folderIn', state: 'done' },

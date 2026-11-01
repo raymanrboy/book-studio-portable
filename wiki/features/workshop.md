@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-10-28
+updated: 2026-11-01
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py

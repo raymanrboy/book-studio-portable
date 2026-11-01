@@ -61,7 +61,7 @@ export async function mount(view) {
         <div class="tools">${ib('sync', 'Оновити замовлення', 'id="pf-sync"')}${ib('more', 'Інші способи оновлення', 'id="pf-more"')}</div></div>
     </div>
     <div id="pf-progress" class="pf-progress"><div>
-      <div class="row"><b id="pf-step"></b><span class="faint" id="pf-detail"></span><span class="spacer"></span><span class="mono faint" id="pf-pct"></span></div>
+      <div class="row"><b id="pf-step"></b><span class="faint" id="pf-detail"></span><span class="spacer"></span><span class="num faint" id="pf-pct"></span></div>
       <div class="progress progress-thin live indet" id="pf-barbox"><i id="pf-bar"></i></div>
     </div></div>
     <div id="pf-notice" class="pf-notices"></div>
@@ -138,7 +138,7 @@ export async function mount(view) {
     const opts = [...PERIODS.map((p) => (p.value === 'week' ? { ...p, tip: weekHint('week') } : p)),
       hidden ? { value: hidden.value, label: hidden.label, after: 'chevDown', tip: weekHint(hidden.value) || undefined }
         : { value: 'more', label: 'Ще', after: 'chevDown', tip: 'Інші періоди' }];
-    setHtml($('#pf-period'), segHtml(opts, st.period, { accent: true, name: 'period' }));
+    setHtml($('#pf-period'), segHtml(opts, st.period, { name: 'period' }));
     requestAnimationFrame(() => syncSeg($('#pf-period .seg')));
   }
   function setPeriod(value) {

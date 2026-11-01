@@ -1,7 +1,8 @@
 // «Обкладинка» (the owner, 2026-10-25): the book's cover as a step of its own, like the Mockups and the photo mockups — a
 // tool in «Інструменти» that works on one Workshop book (`#/cover/<book>`; without one it asks which). One way since
-// 2026-10-27 («Два квадрати» taken out): the 2:1 picture — «Генерувати» pastes the reference, the layout guide picked
-// under the picture (where the title and the name's room go), then Agent 6's prompt with the guide's words put in —
+// 2026-10-27 («Два квадрати» taken out): the 2:1 picture — «Генерувати» pastes the layout guide picked under the
+// picture first (where the name's room, the title and the characters go), then the reference, then Agent 6's prompt
+// with the guide's words put in —
 // then its margins outpainted on the printer's template (the cover card the Workshop had, 2026-09-26).
 import { api, post, html, ic, ib, raw, setHtml, on, toast, menu, upload, copyText, fadeImages, patch, backToTools } from '../lib.js';
 import { store } from '../info.js';
@@ -138,8 +139,8 @@ async function bookPage(view, id) {
             <span class="ws-ph-text"><span class="drop-ico">${ic('upload')}</span><b>Перетягніть обкладинку</b><span>або клацніть, щоб обрати файл</span></span></button>
             ${busyCover('cover')}${w1 ? waitCover('Чекаю обкладинку з «Завантажень»…') : ''}</div></div>`;
       // the prompt as «Генерувати» pastes it: with the guide's words, without a reference it has no picture for
-      pane = html`${promptBlock({ ...r, prompt: c.tool.prompt || r.prompt }, '', 'Промпт обкладинки (агент 6 + схема)')}${artFrame}
-        <div class="cv-guides-row"><span class="eyebrow" data-tip="Іде в буфер після референсу: де назва й порожнє місце під ім'я">Схема</span>${guidePicker()}</div>${textBlock(r)}
+      pane = html`${promptBlock({ ...r, prompt: c.tool.prompt || r.prompt }, '', 'Промпт обкладинки')}${artFrame}
+        <div class="cv-guides-row"><span class="eyebrow" data-tip="Іде в буфер першою, перед референсом: де ім'я, назва й персонажі">Схема</span>${guidePicker()}</div>${textBlock(r)}
         ${c.art ? html`<div class="ws-cv-next"><button class="btn btn-primary" data-act="cover-stage" data-stage="2">Далі: поля${ic('chevRight')}</button></div>` : ''}`;
     } else {
       // The picture laid on the printer's template, white all round → the generator fills the margins → Cover.png at the

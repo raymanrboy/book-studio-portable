@@ -1,7 +1,7 @@
 ---
 title: Book ideas
 type: owner
-updated: 2026-10-28
+updated: 2026-11-01
 code: []
 ---
 # Book ideas
@@ -137,7 +137,8 @@ The owner sends a link (or a screenshot) and says in words what he likes. The ag
   the name is on the cover and in the rhyme ({Name}); matte hardcover.
 - **What I like:** the same shop and the same author as the three before — "all the same" (the style and the idea).
 - **For our books:** — (the owner said nothing more)
-- **Status:** idea.
+- **Status:** taken into work (2026-11-01) → Workshop book `51.welcome-to-the-world` (a newborn fawn; the owner wanted a softer, more stylized and colorful watercolor than the competitor's — style RW with stylized animals) —
+  [five family and holiday books](family-holiday-books.md).
 
 ### Big sister / big brother — style and idea — 2026-10-11
 - **Source:** Etsy listing <https://www.etsy.com/listing/4565051274> ("Personalized Big Sister or Brother Book, Custom Name Sibling
@@ -160,7 +161,8 @@ The owner sends a link (or a screenshot) and says in words what he likes. The ag
   golf: a golf day is in many shops, so it shouldn't be copied.
 - **For our books:** the same style, but a different father–child activity — the owner's guesses: fishing, mushroom picking (he isn't sure
   Americans go for mushrooms), "something like that".
-- **Status:** idea — together with the bears' listing above it points to the same wish: one reusable style, to be analysed later.
+- **Status:** taken into work (2026-11-01) → Workshop book `47.day-with-daddy` (bunnies instead of foxes; fishing, a canoe, camping; style CG) —
+  [five family and holiday books](family-holiday-books.md).
 
 ### Grandma & grandchild bears — visual style — 2026-10-11
 - **Source:** Etsy listing <https://www.etsy.com/listing/4577876955> ("Personalized Grandma Storybook for Grandchild, Custom Name Book,

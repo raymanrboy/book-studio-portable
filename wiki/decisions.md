@@ -1,10 +1,32 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-10-28
+updated: 2026-11-01
 code: []
 ---
 # Decisions
+
+## 2026-11-01 — The cover's characters' zone: three zones, the guide first, strict words
+
+- **The owner** tested a third zone in the layout guide — where the main characters go — in chat on books 41 and 50: "ідеал",
+  "нонсенс, наскільки це кращий підхід", "прямо зараз інтегруй". He also preferred the calmer result to a brighter, busier one:
+  "менше артефактів".
+- **Decision:** both cover guides stack the name's room, the title and a yellow characters' zone with small gaps on one centre
+  line at ¾ of the width; the guide goes into the clipboard **first** (Image 1), the reference second; the guide's words are a
+  strict position map (the characters only inside the yellow zone, none left of it, no trace of the map). Agent 6 writes the
+  characters' places in fractions of the width, three bands across the width (no characters on the left, a plain middle), one
+  smooth background with light only from real sources, and few characters.
+- **Why not softer:** soft words ("a gentle hint") let the characters drift toward the spine; "paint over the guide" and "a glow
+  behind the title" printed the guide's blue, pink and yellow patches onto the background.
+- [features/cover.md](features/cover.md), `pipeline/playbook/agents/6-wraparound-image-director.md`; the tests in
+  `D:\Roman\Desktop\Cover Squares Test\prompts\` (the `…-characters-zone.md` files of books 41, 50, 51).
+
+## 2026-11-01 — New books have no human characters
+
+- **The owner:** the new books "must be without human characters".
+- **Decision:** a new Workshop book is an animal book (the child is a little animal, the family are animals too), Tier S — no
+  `canonical.png`, only `{Name}` typed in. Books 47–51 are made so ([five family and holiday books](owner/family-holiday-books.md)).
+  A preset whose `forms` describes children (FG) gets that one line rewritten for animals in such a book.
 
 ## 2026-10-31 — Listing mockups: «{Name}» in the page text is on purpose
 

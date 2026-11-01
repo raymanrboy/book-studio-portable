@@ -13,9 +13,8 @@ code:
 
 ## The light theme is the main one
 
-The owner uses the **light theme every day** ("all design decisions from now on — by it"). The program still starts dark
-until he picks otherwise in the rail's theme menu, but every design choice — contrast, inks, surfaces, icons, shadows — is
-made and checked in **light first**, then confirmed in dark.
+The owner uses the **light theme every day** ("all design decisions from now on — by it"). Since 2026-11-01 the dark theme is removed: the program is **always light**, and every design choice — contrast, inks,
+surfaces, icons, shadows — is made and checked in light.
 
 ## Show, don't tell
 
@@ -116,7 +115,7 @@ handed the decisions over ("you're the expert, you're the boss") ([decisions](..
   frames, no "snapping" ([smoothWheel](../features/orders.md)). Nothing should vanish and reappear
   during an animation: the pill in the sidebar menu travels under the icon, which only smoothly changes
   color.
-- Dark theme by default; the image viewer follows the program's theme too.
+- (Removed 2026-11-01: the dark theme is gone — the program is always light.)
 - Service colors: **Printify — lime green**, **Gelato — blue**, Etsy — orange, Canva — purple.
 
 - **A guard against a slip is loud** ("not just a message — a big red one, a guard against a

@@ -35,6 +35,89 @@ TEMPLATE = {"full": (17.90, 9.50), "trim": (16.40, 8.00), "spine": 0.40, "safe_o
             "safe_spine": 0.3113, "px": (5370, 2850), "dpi": 300}
 
 
+# The book check's messages are English (the book agents read them through pipeline/check_book.py); the owner sees them
+# in Ukrainian. Unknown messages stay as they are. Order matters: the first pattern that matches wins.
+_UK = [
+    (r"book-text\.md not found - skipping text structure", "book-text.md не знайдено — структуру тексту не перевірено"),
+    (r"book-text ABC: missing Dedication / Dedication 01", "book-text (абетка): немає присвяти (Dedication 01)"),
+    (r"book-text ABC: missing Afterword / Dedication 02", "book-text (абетка): немає післямови (Dedication 02)"),
+    (r"book-text ABC: missing letters (.+)", r"book-text (абетка): немає літер \1"),
+    (r"book-text: missing 'Spread 01 - Dedication'", "book-text: немає «Spread 01 - Dedication»"),
+    (r"book-text: missing 'Spread 15' \(finale\)", "book-text: немає «Spread 15» (фінал)"),
+    (r"book-text: missing 'Afterword' \(separate square end image\)", "book-text: немає «Afterword» (окрема квадратна кінцівка)"),
+    (r"book-text: no '## Cover' title.*", "book-text: немає назви «## Cover» — на обкладинці не буде тексту"),
+    (r"story-blueprint\.md not found.*", "story-blueprint.md не знайдено — структуру задуму не перевірено"),
+    (r"blueprint ABC: missing Dedication / Dedication 01", "задум (абетка): немає присвяти (Dedication 01)"),
+    (r"blueprint ABC: missing Afterword / Dedication 02", "задум (абетка): немає післямови (Dedication 02)"),
+    (r"blueprint ABC: missing letters (.+)", r"задум (абетка): немає літер \1"),
+    (r"blueprint: missing Spread 01", "задум: немає Spread 01"),
+    (r"blueprint: no Afterword entry.*", "задум: немає запису Afterword (окрема квадратна кінцівка)"),
+    (r"no ABC letter sections parsed.*", "літерних розділів абетки не знайдено — перевірку {Name} пропущено"),
+    (r"\{Name\} in (\d+)/(\d+) ABC letter sections.*", r"{Name} є в \1 з \2 літерних розділів — найкраще, коли в кожному"),
+    (r"\{Name\} frequency ok \((\d+)/(\d+) ABC letter sections\)", r"{Name} вживається достатньо (\1 з \2 літерних розділів)"),
+    (r"no line-initial \{Name\} found", "жоден рядок не починається з {Name}"),
+    (r"line-initial \{Name\} present", "є рядок, що починається з {Name}"),
+    (r"no spreads parsed.*", "розворотів не знайдено — перевірку {Name} пропущено"),
+    (r"\{Name\} never appears in any spread", "{Name} не трапляється в жодному розвороті"),
+    (r"\{Name\} in (\d+)/(\d+) spreads.*", r"{Name} є в \1 з \2 розворотів — бажано хоча б в кожному третьому"),
+    (r"sensitive word for human review.*?: (.+)", r"слово для ручної перевірки (допустимо лише для краєвиду): \1"),
+    (r"(.+) has (\d+) text lines \(>4\)", r"\1: \2 рядків тексту (більше 4)"),
+    (r"(.+) has (\d+) text lines \(>8.*\)", r"\1: \2 рядків тексту (більше 8; норма — 6 коротких)"),
+    (r"no generator-facing prompt JSON found.*", "JSON-промптів для генератора не знайдено — перевірку промптів пропущено"),
+    (r"(.+): JSON did not parse", r"\1: JSON не читається"),
+    (r"missing abc-prompts-json\*\.md with 28 square prompts", "немає abc-prompts-json*.md з 28 квадратними промптами"),
+    (r"(.+): expected 28 ABC square prompts, found (\d+)", r"\1: очікувалось 28 квадратних промптів абетки, знайдено \2"),
+    (r"ABC format also has story panorama prompt file\(s\): (.+)", r"книга-абетка має й файли панорамних промптів історії: \1"),
+    (r"(.+): expected 14 story panorama prompts, found (\d+)", r"\1: очікувалось 14 панорамних промптів, знайдено \2"),
+    (r"missing endpage-prompts-json\*\.md with 2 square end-image prompts", "немає endpage-prompts-json*.md з 2 квадратними промптами кінцівки"),
+    (r"(.+): expected 2 square end-image prompts, found (\d+)", r"\1: очікувалось 2 квадратні промпти кінцівки, знайдено \2"),
+    (r"(.+): missing aspect_ratio '(.+)' at #(.+)", r"\1: немає aspect_ratio «\2» у промптах №\3"),
+    (r"(.+) prompt #(\d+) negative\[\] missing word guard", r"\1, промпт №\2: у negative[] немає захисту від слів"),
+    (r"(.+) prompt #(\d+) negative\[\] missing 'text'", r"\1, промпт №\2: у negative[] немає «text»"),
+    (r"(.+): text-safe side must be RIGHT on every spread; (\d+) are LEFT", r"\1: місце під текст має бути справа на кожному розвороті, зліва — \2"),
+    (r"(.+): could not determine text-safe side", r"\1: не вдалося визначити, де місце під текст"),
+    (r"(.+) crashed: (.+)", r"перевірка «\1» зламалась: \2"),
+    (r"(.+) prompt #(\d+) has reference_image:null.*", r"\1, промпт №\2: reference_image: null — без референса ключ треба прибрати"),
+    (r"(.+) prompt #(\d+) has filler reference_rule text.*", r"\1, промпт №\2: порожній текст reference_rule — без референса поля треба прибрати"),
+    (r"(.+) prompt #(\d+) reference_image points outside the book folder: (.+)", r"\1, промпт №\2: reference_image веде за межі папки книги: \3"),
+    (r"(.+) prompt #(\d+) reference_image not found: (.+)", r"\1, промпт №\2: reference_image не знайдено: \3"),
+    (r"(.+) prompt #(\d+) contains (.+)", r"\1, промпт №\2: містить \3"),
+    (r"(.+) prompt #(\d+) does not describe a 2:1 image", r"\1, промпт №\2: не описує зображення 2:1"),
+    (r"(.+) prompt #(\d+) does not describe a square image", r"\1, промпт №\2: не описує квадратне зображення"),
+    (r"(.+) prompt #(\d+) missing (.+)", r"\1, промпт №\2: бракує — \3"),
+]
+_UK = [(__import__("re").compile(p + r"$", __import__("re").S), r) for p, r in _UK]
+
+
+_PHRASE = {
+    "continuous/uninterrupted image language": "опису суцільного зображення без розривів",
+    "right-area focal composition": "композиції з акцентом праворуч",
+    "left-area quiet continuation": "спокійного продовження зліва",
+    "upper-right calm overlay area": "спокійної зони справа вгорі під текст",
+    "later typography/overlay space": "місця під текст і оверлей",
+    "later overlay/typography space": "місця під текст і оверлей",
+    "later overlay space": "місця під оверлей",
+    "central calm overlay area": "спокійної зони в центрі під текст",
+    "rounded/oval central area language": "опису округлої/овальної центральної зони",
+    "decorative corner/edge detail language": "опису декору по кутах і краях",
+    "calm placement language for later layout": "опису спокійного розташування під макет",
+    "one-large-letter requirement": "вимоги однієї великої літери",
+    "visible-word guard language": "захисту від видимих слів",
+    "visible-text/word guard language": "захисту від видимого тексту й слів",
+}
+
+
+def _uk(message: str) -> str:
+    for rx, repl in _UK:
+        if rx.match(message):
+            out = rx.sub(repl, message)
+            for en, uk in _PHRASE.items():
+                out = out.replace(en, uk)
+            return out
+    return message
+
+
+
 def template_layout(w: int, h: int) -> dict:
     """Where a w×h cover picture goes on the template, in pixels of the canvas the generator gets: its width is the
     finished width (so every visible pixel is the picture's own), unless it's too tall for the whole template."""
@@ -408,8 +491,8 @@ def book_check(path: Path) -> dict | None:
         if hit and hit[0] == key:
             return hit[1]
     findings = check.run(str(path))
-    fails = [m for level, m in findings if level == "FAIL"]
-    warns = [m for level, m in findings if level == "WARN"]
+    fails = [_uk(m) for level, m in findings if level == "FAIL"]
+    warns = [_uk(m) for level, m in findings if level == "WARN"]
     result = {"go": not fails, "fails": fails, "warns": warns,
               "passed": sum(1 for level, _ in findings if level == "PASS")}
     with _check_lock:

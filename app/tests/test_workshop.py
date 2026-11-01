@@ -299,8 +299,8 @@ def square_png(path: Path, side=1024, colour=(220, 40, 40)) -> Path:
 
 class CoverTool(Base):
     """«Обкладинка» since 2026-10-27 (the owner: back to 2:1 and the outpaint, «Два квадрати» taken out): the 2:1
-    picture's «Генерувати» pastes the reference, a layout guide (where the title and the name's room go), the prompt
-    with the guide's words (cover.py); then the margins, as before."""
+    picture's «Генерувати» pastes a layout guide first (where the name's room, the title and the characters go — since
+    2026-11-01), the reference, the prompt with the guide's words (cover.py); then the margins, as before."""
 
     def write_cover_prompt(self, **extra):
         (self.dir / H / "agent" / "cover-prompts-json.md").write_text(fenced([{**PROMPT, "id": "final-wide-image", **extra}]),
@@ -330,31 +330,36 @@ class CoverTool(Base):
         self.assertEqual([g["name"] for g in tool["guides"]], ["wide-name-title", "wide-title-name"])
         self.assertTrue(all((core.WEB_DIR / g["src"].lstrip("/")).is_file() for g in tool["guides"]))
 
-    def test_generating_pastes_the_reference_the_guide_and_the_prompt_with_the_guides_words(self):
+    def test_generating_pastes_the_guide_the_reference_and_the_prompt_with_the_guides_words(self):
         from studio.workshop import cover
         agent = self.dir / H / "agent"
         square_png(agent / "ref_cover_28.jpg")
-        self.write_cover_prompt(reference_image="ref_cover_28.jpg", reference_rule="keep the bears")
-        label, items = generate._items(H, "cover", None)                      # Agent 6's picture, the guide, the prompt
+        self.write_cover_prompt(canvas="one 2:1 scene", reference_image="ref_cover_28.jpg", reference_rule="keep the bears")
+        label, items = generate._items(H, "cover", None)                      # the guide, Agent 6's picture, the prompt
         self.assertEqual([i["kind"] for i in items], ["image", "image", "text"])
-        self.assertTrue(items[0]["path"].endswith("ref_cover_28.jpg"))
-        self.assertTrue(items[1]["path"].endswith(cover.settings(books.book_path(H))["guide"] + ".png"))
+        self.assertTrue(items[0]["path"].endswith(cover.settings(books.book_path(H))["guide"] + ".png"))
+        self.assertTrue(items[1]["path"].endswith("ref_cover_28.jpg"))
         prompt = json.loads(items[2]["text"])
-        self.assertIn("Image 2 is ONLY a layout guide", prompt["layout_guide"])
-        self.assertEqual(list(prompt)[list(prompt).index("reference_rule") + 1], "layout_guide")
+        self.assertIn("Image 1 is a STRICT position map", prompt["layout_guide"])
+        self.assertIn("yellow area", prompt["layout_guide"])
+        self.assertTrue(prompt["reference_image"].startswith("Image 2"))     # the file's name means nothing to it
+        self.assertEqual(list(prompt)[list(prompt).index("canvas") + 1], "layout_guide")
         self.assertEqual(books.detail(H)["cover"]["tool"]["prompt"], items[2]["text"])   # shown = pasted
-        cover.set_settings(H, {"ref": "none"})                                # no reference: the guide is Image 1
+        cover.set_settings(H, {"ref": "none"})                                # no reference: only the guide
         label, items = generate._items(H, "cover", None)
         self.assertEqual(books.detail(H)["cover"]["tool"]["prompt"], items[1]["text"])
         prompt = json.loads(items[1]["text"])
-        self.assertIn("Image 1 is ONLY", prompt["layout_guide"])
+        self.assertIn("Image 1 is a STRICT", prompt["layout_guide"])
         self.assertNotIn("reference_rule", prompt)                           # no picture pasted for it: not named
+        self.assertNotIn("reference_image", prompt)
         pictures.place(H, "spread2", spread_png(self.tmp / "s.png"), "s.png")
         cover.set_settings(H, {"ref": "spread2", "guide": "none"})            # a spread, no guide: no guide's words
         label, items = generate._items(H, "cover", None)
         self.assertEqual(items[0].get("spread"), "spread2")
         self.assertEqual([i["kind"] for i in items], ["image", "text"])
-        self.assertNotIn("layout_guide", json.loads(items[1]["text"]))
+        prompt = json.loads(items[1]["text"])
+        self.assertNotIn("layout_guide", prompt)
+        self.assertTrue(prompt["reference_image"].startswith("Image 1"))
 
     def test_no_prompt_nothing_to_paste(self):
         with self.assertRaises(ApiError):
@@ -409,7 +414,7 @@ class TheBookCheck(Base):
     def test_the_check_runs_the_old_rules_and_shows_on_the_strip(self):
         d = books.detail(S)
         self.assertFalse(d["check"]["go"])
-        self.assertIn("endpage-prompts-json.md: expected 2 square end-image prompts, found 1", d["check"]["fails"])
+        self.assertIn("endpage-prompts-json.md: очікувалось 2 квадратні промпти кінцівки, знайдено 1", d["check"]["fails"])
         step = next(s for s in d["steps"] if s["key"] == "prompts")
         self.assertEqual(step["check"], {"go": False, "fails": len(d["check"]["fails"]), "warns": len(d["check"]["warns"])})
 
@@ -748,7 +753,7 @@ class CatchingDownloads(Base):
         self.assertEqual(self.clip(), "<image>")
         self.s.next_item()
         self.assertIn("main focus on the right", self.clip())
-        self.assertIn("Image 1 is ONLY a layout guide", self.clip())
+        self.assertIn("Image 1 is a STRICT position map", self.clip())
         spread_png(self.downloads / "cover.png", (2000, 1000))
         self.look()
         st = self.s.status()

@@ -218,7 +218,7 @@ export async function mountCard(view, rid) {
         <div class="stack-s grow">
           ${b ? html`<a class="ord-book-title" href="#/book/${b.id}" data-tip="Паспорт книги">${b.title}</a>`
             : html`<b>Книги немає в бібліотеці</b><span class="faint mono" style="font-size: var(--fs-s)">лістинг #${it.listingId || '—'}</span>`}
-          ${b?.canvaUrl ? html`<button class="btn ${f.folder || f.busy || (o.printed || []).length ? '' : 'btn-primary'}" data-act="canva">${ic('canva')}Відкрити шаблон у Canva</button>`
+          ${b?.canvaUrl ? html`<button class="btn ${o.stage !== 'new' || f.folder || f.busy || (o.printed || []).length ? '' : 'btn-primary'}" data-act="canva">${ic('canva')}Відкрити шаблон у Canva</button>`
             : b ? html`<a class="btn" href="#/book/${b.id}">${ic('link')}Додати посилання на Canva</a>`
               : html`<a class="btn" href="#/books/shop">${ic('shelf')}До книг</a>`}
         </div>
@@ -251,7 +251,7 @@ export async function mountCard(view, rid) {
     const errors = f.error ? [f.error] : (v?.errors || []);
     return html`<section class="card card-pad stack" data-folder-drop>
       <div class="row"><span class="step-no">2</span><h3 class="card-title grow">Файли з Canva</h3>
-        ${o.items.length > 1 ? segHtml(o.items.map((x, i) => ({ value: String(i), label: `Книга ${i + 1}`, tip: x.childName || x.title })), String(pick), { name: 'book' }) : ''}${badge}</div>
+        ${badge}</div>
       <div class="input-group">
         <input class="input path-input" id="oc-folder" readonly value="${f.label}" title="${f.folder}" aria-label="Файли з Canva"
           placeholder="${provider() ? `ZIP або папка · обкладинка і ${pagesText(pageOptions())} ${plural(pageOptions().at(-1) || 0, ['сторінка', 'сторінки', 'сторінок'])}` : 'Спершу оберіть друкарню'}">

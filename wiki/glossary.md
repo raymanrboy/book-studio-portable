@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-10-28
+updated: 2026-11-01
 code: []
 ---
 # Glossary
@@ -114,7 +114,7 @@ Code paths below are relative to the repository root.
 | Генерувати, режим генерації; Далі / F8 | The row's prompt into the clipboard, the Workshop waits for the downloaded picture and puts the next prompt in | [workshop/generate.py](../app/studio/workshop/generate.py) `Session`; [features/workshop.md](features/workshop.md#the-generation-mode) |
 | Промпт (для розвороту) | The picture's description for an image generator — the agent's JSON, shown whole above the frame | [workshop/rows.py](../app/studio/workshop/rows.py) `book_rows()` |
 | Плейсхолдер, рамка під картинку (розворот 2:1) | An empty frame in a Workshop row: the caught download or a picture dropped (or picked) lands there, one at a time | [workshop-rows.js](../app/web/js/pages/workshop-rows.js) `rowTemplates()`; [features/workshop.md](features/workshop.md) |
-| Схема (обкладинки) | The layout guide picture pasted with the cover's 2:1 prompt: where the painted title and the empty room for the name go — the tool «Обкладинка» | [cover](features/cover.md); [workshop/cover.py](../app/studio/workshop/cover.py) `GUIDES` |
+| Схема (обкладинки) | The layout guide picture pasted first with the cover's 2:1 prompt: where the empty room for the name, the painted title and the characters (the yellow zone) go — the tool «Обкладинка» | [cover](features/cover.md); [workshop/cover.py](../app/studio/workshop/cover.py) `GUIDES` |
 | Поля обкладинки, аутпейнт, шаблон друкарні | The cover's second stage: the picture on the printer's template, white margins, the outpaint prompt → Cover.png 5370×2850 | [workshop/rows.py](../app/studio/workshop/rows.py) `TEMPLATE`, `outpaint_prompt()`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `fit_template()` |
 | Варіанти героя (G2, G3 …) | A Tier H book's hero looks: a variant's hero and its swap prompts per spread | [workshop/rows.py](../app/studio/workshop/rows.py) `variants()` |
 | Варіанти зовнішності, слайд з варіаціями, «рамка-зірочка» | Listing slide 7: the hero's looks, each in its own frame (a scalloped «зірочка» or a plain card) with its name («B2») — only for a book with looks | [features/slides.md](features/slides.md#slide-7--the-heros-looks-since-2026-10-02); [slides/work.py](../app/studio/slides/work.py) `put_heroes()` |
@@ -171,7 +171,7 @@ Code paths below are relative to the repository root.
 | Тримати диск C в чистоті | No temp files of the programs on drive C: their own temp folder on D, emptied on launch and close | [core.py](../app/studio/core.py) `own_temp()`; [runtime](architecture/runtime.md#temporary-files-and-drive-c) |
 | Панель інструментів (пошук, сортування, «+») | `.lib-toolbar` | [library.js](../app/web/js/pages/library.js) `mount()`; [library.css](../app/web/css/library.css) |
 | Підказка при наведенні | The shared tooltip | [lib.js](../app/web/js/lib.js) `showTip()`, `ib()` |
-| Тема (темна/світла) | The menu at the bottom of the panel | [app.js](../app/web/js/app.js) `applyTheme()`, `openThemeMenu()` |
+| Анімації (мінімум) | The menu at the bottom of the panel (the dark theme was removed 2026-11-01) | [app.js](../app/web/js/app.js) `applyMotion()`, `openThemeMenu()` |
 | Ключі, сховище | The encrypted service keys | [vault.py](../app/studio/vault.py) `Vault`; [settings.js](../app/web/js/pages/settings.js) `secretField()` |
 | Лінк доступу (з Profit Calculator) | A `?sync=` link carrying an Etsy session | [etsy.py](../app/studio/etsy.py) `decode_session_key()` |
 | Київський ПК / вроцлавський ПК | Where Etsy may be opened | [security.md](security.md) |

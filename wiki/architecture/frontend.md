@@ -286,7 +286,7 @@ Library and the passport; `orders.css` — the Order Creator, the queue and the 
 ## Where in the code
 
 - [app/web/index.html](../../app/web/index.html) — the `__STUDIO_TOKEN__` token, the theme before the first frame
-- [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `navigate()`, `ordersTarget()`, `entryOf()`, `placeOf()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `paintBusy()`, `applyTheme()`, `applyMotion()`, `openThemeMenu()`, `installToTop()`
+- [app/web/js/app.js](../../app/web/js/app.js) — `PLACES`, `HOME`, `ROUTES`, `ALIASES`, `navigate()`, `ordersTarget()`, `entryOf()`, `placeOf()`, `unmountSafely()`, `placeNavPill()`, `buildSidebar()`, `paintBusy()`, `applyMotion()`, `openThemeMenu()`, `installToTop()`
 - [app/web/js/path.js](../../app/web/js/path.js) — `pathHtml()`, `pathStep()`
 - [app/web/js/book-tile.js](../../app/web/js/book-tile.js) — `bookTile()`, `segBar()`, `tickBadge()`
 - [app/web/js/places.js](../../app/web/js/places.js) — `TOOLS`

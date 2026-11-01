@@ -31,7 +31,7 @@ export async function installModule(m, fromFile = false) {
     sub: 'Це може тривати. Вікно не закривайте — воно саме закриється, коли все буде готово.',
     dismissible: false,
     body: html`<div class="stack">
-      <div class="row"><span id="mod-step" class="grow">Підготовка…</span><span id="mod-pct" class="mono faint">0%</span></div>
+      <div class="row"><span id="mod-step" class="grow">Підготовка…</span><span id="mod-pct" class="num faint">0%</span></div>
       <div class="progress live"><i id="mod-bar"></i></div>
       <div class="faint" id="mod-detail" style="font-size: var(--fs)"></div>
     </div>`,

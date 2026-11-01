@@ -17,25 +17,11 @@ function transition(update) {
   return vt;
 }
 
-// ------------------------------------------------------------------ theme
-// The browser's storage can be blocked or broken: the theme is then the default, never an error that stops the shell.
-const storedTheme = () => { try { return localStorage.getItem('bs-theme') || 'dark'; } catch { return 'dark'; } };
-function applyTheme(theme) {
-  try { localStorage.setItem('bs-theme', theme); } catch {}
-  const resolved = theme === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : theme;
-  const swap = () => { document.documentElement.dataset.theme = resolved; updateSidebar(); };
-  // The whole window cross-fades between themes instead of flashing.
-  if (canTransition() && document.documentElement.dataset.theme !== resolved) {
-    transition(swap).finished.catch(() => {});
-  } else swap();
-}
+// ------------------------------------------------------------------ motion
 function applyMotion(reduce) {
   try { localStorage.setItem('bs-motion', reduce ? 'reduce' : 'full'); } catch {}
   if (reduce) document.documentElement.dataset.motion = 'reduce'; else delete document.documentElement.dataset.motion;
 }
-matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
-  if (storedTheme() === 'system') applyTheme('system');
-});
 
 // ------------------------------------------------------------------ the rail: places and tools
 // One labelled rail (2026-09-30, wiki/decisions.md) instead of two modes switched by the brand icon: the
@@ -53,12 +39,6 @@ const PLACES = [
 ];
 const HOME = '#/orders'; // Book Studio always starts in the orders (owner, 24.09.2026)
 const TITLE = 'Book Studio';
-const THEMES = [
-  { value: 'dark', label: 'Темна', icon: 'moon' },
-  { value: 'light', label: 'Світла', icon: 'sun' },
-  { value: 'system', label: 'Як у Windows', icon: 'monitor' },
-];
-const currentTheme = storedTheme;
 let mode = 'orders';     // the ink on screen: 'orders' (orange) or 'listings' (cyan) — the page's area
 let navOwner = null;      // a page that serves an object may claim its place (the Order Creator of an order → «Замовлення»)
 const lastIn = {};        // where the owner was under each place (until a restart)
@@ -80,7 +60,7 @@ function buildSidebar() {
     </nav>
     <div class="sidebar-foot">
       <a class="nav-item nav-small" href="#/settings" data-nav="#/settings" aria-label="Налаштування" data-tip="Налаштування" data-tip-side="right">${ic('sliders')}<span class="badge" id="nav-badge" data-fx hidden></span></a>
-      <button class="nav-item nav-small" id="theme-btn" type="button" aria-label="Вигляд" data-tip="Вигляд" data-tip-side="right"></button>
+      <button class="nav-item nav-small" id="theme-btn" type="button" aria-label="Анімації" data-tip="Анімації" data-tip-side="right"></button>
     </div>`);
   document.documentElement.dataset.mode = mode;
   paintBusy();
@@ -147,21 +127,13 @@ function updateSidebar() {
   // One quiet signal instead of a status list: a dot on Settings when a service still needs a key or login.
   const badge = document.getElementById('nav-badge');
   if (badge && store.info) badge.hidden = !!(integ.etsy?.connected && integ.gelato?.configured);
-  const theme = THEMES.find((t) => t.value === currentTheme()) || THEMES[0];
-  setHtml(document.getElementById('theme-btn'), ic(theme.icon));
+  setHtml(document.getElementById('theme-btn'), ic('motion'));
   paintBusy();                                                // the shop's name may have just arrived
 }
 
 function openThemeMenu(anchor) {
   const reduce = document.documentElement.dataset.motion === 'reduce';
-  const setTheme = async (value) => {
-    applyTheme(value);
-    try { await post('/api/settings/ui', { theme: value }); }
-    catch (err) { toast(`Тему не збережено: ${err.message}`, 'error'); }
-  };
   menu(anchor, [
-    ...THEMES.map((t) => ({ label: t.label, icon: t.icon, on: currentTheme() === t.value, onClick: () => setTheme(t.value) })),
-    '-',
     { label: 'Мінімум анімацій', icon: 'motion', on: reduce, onClick: async () => {
       applyMotion(!reduce);
       try { await post('/api/settings/ui', { reduceMotion: !reduce }); }
@@ -416,7 +388,6 @@ async function boot() {
   const ui = store.info?.ui;
   if (ui) {
     // The saved settings decide both, the same way; the browser's copy only paints the first frame before they come.
-    if (ui.theme && ui.theme !== currentTheme()) applyTheme(ui.theme);
     applyMotion(!!ui.reduceMotion);
     updateSidebar();
   }
