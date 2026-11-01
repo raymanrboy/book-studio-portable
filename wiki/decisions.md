@@ -6,6 +6,11 @@ code: []
 ---
 # Decisions
 
+## 2026-10-31 — Listing mockups: «{Name}» in the page text is on purpose
+
+- **The owner:** the inside pages of the listing mockups show the text with `{Name}` while the cover shows a name (Sophia, Oliver) —
+  "that's how it should be". Don't flag it or "fix" it.
+
 This page holds the current decisions (from 11 October, and the 4 October safety ones). Earlier ones: [September](decisions-2026-09.md) and [1–10 October](decisions-2026-10-early.md) — `grep` them before changing a behavior that is not covered here.
 
 ## 2026-10-28 — A third size: Hardcover 11×11, by the buyer's chosen variation only

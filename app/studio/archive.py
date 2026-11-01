@@ -560,7 +560,7 @@ def card_facts(receipt_id: str) -> dict:
     reprint from here (2026-09-30 — the order in one place, not also in the archive's own list)."""
     facts = _facts_or_none()
     own = [e for e in entries() if e.get("receiptId") == str(receipt_id)]
-    brief = ("id", "provider", "sentAt", "pageCount", "format", "formatLabel", "orderId")
+    brief = ("id", "title", "provider", "sentAt", "pageCount", "format", "formatLabel", "orderId")
     return {"earlierSends": [{k: e.get(k) for k in brief}
                              for e in own if facts is not None and standing(e, facts) != "counted"],
             "atPrinter": any(standing(e, facts) != "dropped" for e in own),

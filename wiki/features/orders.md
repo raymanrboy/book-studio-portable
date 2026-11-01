@@ -1,7 +1,7 @@
 ---
 title: Orders — the queue and the order card
 type: feature
-updated: 2026-10-28
+updated: 2026-10-31
 code:
   - app/web/js/path.js
   - app/studio/orders.py

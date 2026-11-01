@@ -1,7 +1,7 @@
 ---
 title: Order archive — what went to print, and reprints
 type: feature
-updated: 2026-10-28
+updated: 2026-10-31
 code:
   - app/studio/archive.py
   - app/tools/archive_dedupe.py
@@ -140,6 +140,9 @@ ago"** button in the "Files from Canva" step (only for the chosen printer). The 
 copy in `tmp/dropped` (hard links, `POST /api/archive/<id>/reuse`), and everything else goes as usual:
 laying out pages, proofing, "Print" — this is a **normal order, not a reprint**. The list of such sends
 is `earlierSends` in `GET /api/orders/<receipt>` (a key of `archive.card_facts()`).
+In an order of **several books** each book was archived on its own, under its own name («4100… - Emma»):
+the button of the shown book offers only the send with that book's name, never another book's files
+(fixed 2026-10-31 — it used to take the newest send of the order, i.e. the last book, for every book).
 
 The same card also knows the opposite — that a send for this order **is already at the printer** (a
 book, draft, or order, not cancelled or deleted): `atPrinter` (also a key of `archive.card_facts()`). Then a page replacement

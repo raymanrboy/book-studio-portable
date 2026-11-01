@@ -241,7 +241,9 @@ export async function mountCard(view, rid) {
   const thumb = (name, w) => media('/media/folder', { path: f.folder, file: name, w, ...pageVersion(f.versions, name) });
   // The newest send of this order to the chosen printer that never went to print (a cancelled order, a
   // deleted or unconfirmed draft): its archived files can be taken instead of downloading them again.
-  const earlier = () => (o.earlierSends || []).find((e) => byFiles() || e.provider === provider());
+  // An order of several books has one archived send per book, under that book's name: only the shown book's own is offered.
+  const earlier = () => (o.earlierSends || []).find((e) => (byFiles() || e.provider === provider())
+    && (o.items.length < 2 || e.title === titleOf(pick)));
 
   function filesCard() {
     const v = f.validation;

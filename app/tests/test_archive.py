@@ -352,7 +352,8 @@ class OnlyWhatWentToPrint(ArchiveCase):
         self.assertEqual(self.listed(placed=cancelled), [])
         with mock.patch.object(archive, "_facts", lambda: facts(placed=cancelled)):
             offered = archive.card_facts("4100000001")["earlierSends"]
-            self.assertEqual([(e["id"], e["provider"], e["pageCount"]) for e in offered], [(eid, "gelato", 30)])
+            self.assertEqual([(e["id"], e["title"], e["provider"], e["pageCount"]) for e in offered],
+                             [(eid, "4100000001 - Emma", "gelato", 30)])   # its name: each book of the order takes its own
             copy = Path(archive._reuse(SimpleNamespace(groups=[eid]))["path"])
         self.assertEqual(copy.parent, drops.DROPS)                         # a working copy for the order card
         self.assertEqual(sorted(p.name for p in copy.iterdir()), sorted(["Cover.png"] + [f"{i}.png" for i in range(1, 31)]))

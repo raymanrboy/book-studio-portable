@@ -5,6 +5,22 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 Older entries (before 2026-10-18) live in [log-2026-09.md](log-2026-09.md) and [log-2026-10.md](log-2026-10.md).
 
+## [2026-10-31] decision | «{Name}» in the mockups' page text is on purpose
+- The owner; [decisions](decisions.md).
+
+## [2026-10-31] update | SEO for book 41 (Night Before Christmas, the look-alike girl); its listing files on Google Drive
+- `seo.py to-drive 41` (16 files); `/etsy-seo`: title with « | », 13 tags, description with the look (G1–G6) and eye color in HOW TO PERSONALIZE.
+  Girl version (the character slide shows girls only). 1 eRank search.
+
+## [2026-10-31] update | Order of several books: «Взяти файли минулої відправки» takes each book's own files
+- The card offered the newest archived send of the order (the last book) for every book. Now `card_facts()` gives each send's `title`, and `earlier()` in the order card offers only the send named like the shown book ([archive](features/archive.md)).
+
+## [2026-10-29] update | SEO for book 46 (Grandma and Me); its listing files on Google Drive
+- `seo.py to-drive 46` (15 files); `/etsy-seo`: title with « | », 13 tags, description (30-page, matte). Own angle: a gift for Grandma all year. 1 eRank search.
+
+## [2026-10-28] ingest | Idea: true-scale photo mockups from a primitive render
+The owner's idea (not started): a primitive render with exact proportions (books 8×8″ and 5×5″, hands, torso) to measure, then AI generation laid over it, per category. Written in [photo-mockups](features/photo-mockups.md); reminder set for 2026-10-29 13:00.
+
 ## [2026-10-28] lint | The pages cleaned of history, duplicates and stale claims
 - Dated «since/until/used to» asides, audit and incident stories, hand-kept counts and test logs cut from the feature, rule, flow, integration, architecture, dev and owner pages; duplicated facts reduced to a link to the owning page; the retired Printify flow marked read-only everywhere. `dev/testing.md` halved (suites by class); `cover.md` now owns the cover pipeline.
 - Fixed against the code: backup password length (12), the rail has no search, Profit is a rail place, library books go to `library/trash`, `modes.md` lists «Обкладинка».

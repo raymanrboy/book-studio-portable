@@ -143,6 +143,14 @@ pipeline/books/<book>/originals/video-video.mp4              the video as it was
 The owner's originals on the desktop (`Заготовки обкладинок`) are not used by the program. Every name inside Book Studio is
 English; the page speaks Ukrainian.
 
+## Idea (2026-10-28, not started): true-scale mockups from a primitive render
+
+The owner wants photo mockups that show the book's **real size**. Plan: first make a primitive 3D render with exact proportions —
+the book (8×8″ and 5×5″), a person's hands and torso — measure it and check the scale; then put the AI generation **on top of that
+render** (the render fixes the geometry, the generation only dresses it). Do it for every category. Nothing is built yet; the
+owner was reminded on 2026-10-29 at 13:00. Open questions for then: what makes the render (Blender? the program's own drawing?),
+and how the generation is held to the render (image-to-image, depth/edge guide, or the existing outpaint step).
+
 ## In the preview and the tests
 
 `tools/sample_books.py`: `make_photo_templates()` — made-up scenes with a white book per category (the preview's

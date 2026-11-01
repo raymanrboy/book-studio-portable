@@ -1,7 +1,7 @@
 ---
 title: The order-to-print path, from Etsy
 type: flow
-updated: 2026-10-28
+updated: 2026-10-31
 code:
   - app/web/js/pages/orders.js
   - app/studio/orders.py
