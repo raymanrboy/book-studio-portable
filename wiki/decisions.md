@@ -1,10 +1,18 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-11-01
+updated: 2026-11-07
 code: []
 ---
 # Decisions
+
+## 2026-11-07 — A cover whose title has the name in its middle: a four-zone guide
+
+- **The owner** set the title of book 48 as «Mommy», a small «&», the name, then a small «Our First Christmas», tested it in chat
+  and said to build it in.
+- **Decision:** a third guide, `wide-title-name-title`, the default when words stand on both sides of `{Name}`; the name stays
+  the big, selling element and the title's tail goes under it as a small line. [features/cover.md](features/cover.md#the-guides),
+  `pipeline/playbook/agents/6-wraparound-image-director.md`.
 
 ## 2026-11-01 — The cover's characters' zone: three zones, the guide first, strict words
 

@@ -1,7 +1,7 @@
 ---
 title: The cover — its own tool («Обкладинка»): a 2:1 picture with a layout guide, then its margins outpainted
 type: feature
-updated: 2026-11-01
+updated: 2026-11-07
 code:
   - app/studio/workshop/cover.py
   - app/web/js/pages/cover.js
@@ -59,9 +59,11 @@ let the characters drift toward the spine; "paint over the guide" and a "glow be
 | Guide | Zones from the top | When |
 |---|---|---|
 | `wide-name-title` | name y 72–232, title 248–440, characters 456–952 | the default when the title starts with `{Name}` («{Name}'s Night Before Christmas») |
-| `wide-title-name` | title y 72–330 (up to three lines), name 346–490, characters 506–952 | the default otherwise («Welcome to the World, Little {Name}») |
+| `wide-title-name` | title y 72–330 (up to three lines), name 346–490, characters 506–952 | the default when nothing but marks follows `{Name}`, or the title has none («Welcome to the World, Little {Name}») |
+| `wide-title-name-title` | big word and a small «&» y 60–262, name 274–414, the small last line 426–486, characters 500–960 | the default when words stand on both sides of `{Name}` («Mommy & {Name}: Our First Christmas», book 48; since 2026-11-07, drawn by `make_title_name_title_characters_guide.py`) |
 
 The default follows the title (`default_guide()`); a guide the owner picks (or «без схеми») is kept for the book.
+Book 46 («Grandma & {Name}: Our Happy Days») paints only «Grandma &», so a new cover for it needs `wide-title-name` picked by hand.
 
 ## A cover made of two squares (2026-10-25…27)
 

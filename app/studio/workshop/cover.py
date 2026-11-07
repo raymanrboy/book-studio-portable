@@ -22,36 +22,52 @@ STATE_KEY = "coverTool"
 _MAP = ("Image 1 is a STRICT position map with the same 2:1 proportions as your image; it tells WHERE things go and "
         "nothing else — its colors are only codes, never paint, light or tint. The green-grey field = the scene. ")
 _NAME = "an empty part of the background where a name will be set later"
-_RULES = ("RULE 1: the main characters and what they hold appear ONLY inside the yellow area — completely inside it, never "
-          "over its left edge. RULE 2: from the left edge of the image up to the left edge of the yellow area there are NO "
-          "characters and no part of them. RULE 3: the title lettering is only inside the brown-grey area; the blue area "
-          "stays empty background. RULE 4: the blue, brown-grey and yellow areas share one vertical center line at three "
-          "quarters of the image width — the characters are centered under the title, not to its left. RULE 5: in the "
-          "finished picture there is no trace of the map — no blue, pink, brown or yellow patch, haze, glow, band or "
-          "tinted rectangle where its areas were; the background behind the name's place, the title and the characters "
-          "is the same smooth wash as around it.")
+
+
+def _rules(title_areas: str) -> str:
+    return ("RULE 1: the main characters and what they hold appear ONLY inside the yellow area — completely inside it, never "
+            "over its left edge. RULE 2: from the left edge of the image up to the left edge of the yellow area there are "
+            f"NO characters and no part of them. RULE 3: the title lettering is only inside {title_areas}; the blue area "
+            "stays empty background. RULE 4: the blue, brown-grey and yellow areas share one vertical center line at three "
+            "quarters of the image width — the characters are centered under the title, not to its left. RULE 5: in the "
+            "finished picture there is no trace of the map — no blue, pink, brown or yellow patch, haze, glow, band or "
+            "tinted rectangle where its areas were; the background behind the name's place, the title and the characters "
+            "is the same smooth wash as around it.")
+
+
 # name: (label, what goes where — the prompt's "layout_guide"). The guide is always Image 1 (it goes first, the reference
 # second — the generator holds the first picture's layout best). The owner's tests on books 41/50, 2026-11-01: three
 # zones stacked in the right area's middle (≈ 3/4 of the width — the front on the book), the yellow one the characters;
 # strict words and "no trace of the map" — soft words let the characters drift left, "paint over it" left its patches.
+# Book 48, 2026-11-07: a name in the middle of the title takes four zones — the title's words on both sides of the room.
 GUIDES = {
     "wide-name-title": ("Ім'я, назва, персонажі",
                         _MAP + f"The pale blue area at the top right = {_NAME}. The brown-grey area under it = where the "
-                        "title lettering goes. The yellow area under that = where the main characters are. " + _RULES),
+                        "title lettering goes. The yellow area under that = where the main characters are. "
+                        + _rules("the brown-grey area")),
     "wide-title-name": ("Назва, ім'я, персонажі",
                         _MAP + "The brown-grey area at the top right = where the title lettering goes. The pale blue area "
-                        f"under it = {_NAME}. The yellow area under that = where the main characters are. " + _RULES),
+                        f"under it = {_NAME}. The yellow area under that = where the main characters are. "
+                        + _rules("the brown-grey area")),
+    "wide-title-name-title": ("Назва, ім'я, кінець назви, персонажі",
+                              _MAP + "In the right area, from the top down: the first brown-grey area = the first words of "
+                              f"the title lettering; the pale blue area under it = {_NAME}; the small second brown-grey "
+                              "area under that = the small last line of the title lettering; the yellow area at the bottom "
+                              "= where the main characters are. " + _rules("the two brown-grey areas")),
 }
 
 
 # ---------------------------------------------------------------- the book's choices
 
 def default_guide(path: Path) -> str:
-    """The name's room where the title wants it: «{Name}'s …» — above the title, else under it. The title read as the
-    rows read it (`[Name]` and `` `{Name}` `` made `{Name}`)."""
+    """The name's room where the title wants it: «{Name}'s …» — above the title; «Mommy & {Name}: Our First Christmas» —
+    in its middle; else under it. The title read as the rows read it (`[Name]` and `` `{Name}` `` made `{Name}`)."""
     from .rows import book_texts
     lines = [s.strip("*_ ") for s in book_texts(path).get("cover", "").splitlines() if s.strip()]
-    return "wide-name-title" if lines and lines[0].startswith("{Name}") else "wide-title-name"
+    title = lines[0] if lines else ""
+    if title.startswith("{Name}"):
+        return "wide-name-title"
+    return "wide-title-name-title" if any(c.isalnum() for c in title.partition("{Name}")[2]) else "wide-title-name"
 
 
 def _saved(path: Path) -> dict:

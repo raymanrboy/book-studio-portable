@@ -74,7 +74,12 @@ patches onto the background. So: strict positions, one smooth background, light 
   welcome. On a light sky pick a deep colour (cranberry, rosy coral), not cream.
 - **The name's room — big and EMPTY**, "where the pale blue area of Image 1 is": **above** the title when the title
   starts with `{Name}` (`{Name}'s Moonlit Garden` → paint «Moonlit Garden»), else **below** it (`A Christmas Story for
-  {Name}` → paint «A Christmas Story for»); the tool's guide has the same order (it picks it by the title). Describe it
+  {Name}` → paint «A Christmas Story for»), **in the middle** when words stand on both sides of `{Name}` (`Mommy & {Name}:
+  Our First Christmas` → the guide `wide-title-name-title`, four zones: paint the very large «Mommy» with a **small** «&»
+  alone on its line under it in the first brown-grey area, leave the room, paint the small last line «Our First
+  Christmas», about one third of the large word's height, in the small second brown-grey area; spell the lines apart and
+  add the negatives "the title lines joined together", "a large ampersand", "the small line as large as the big word");
+  the tool's guide has the same order (it picks it by the title). Describe it
   in an `open_space` field: "simply the [wall / sky] continuing, the same even [wall color / sky wash] as around it, with
   nothing painted in it: no letters, no objects, no stars, no sparkles, no haze, no lighter or bluer band; NOT a panel,
   cloud, ribbon, glow or box", and that "a name will be set there later as large as the title's main line".
@@ -114,7 +119,8 @@ patches onto the background. So: strict positions, one smooth background, light 
 - The book check still needs its wraparound words: `2:1`, continuous/uninterrupted, right, left, **`upper right`** (say
   where the name's room is: "in the upper right"), typography/overlay ("for later typography").
 - **The owner's own title layout wins** when he gives one — e.g. book 46: «Grandma» large, a **small** «&» under it, then
-  the room for the name.
+  the room for the name; book 48: «Mommy», a small «&», the room for the name, a small «Our First Christmas» (the target
+  wording: `D:\Roman\Desktop\Cover Squares Test\prompts\48-first-christmas-with-mommy-characters-zone.md`).
 
 ## Light-ground formula — the older default (2026-10-17 → 2026-10-27; only when the owner asks)
 
@@ -242,12 +248,12 @@ Rules:
   "title": {
     "text": "[the title without the name]",
     "spelling": "exactly these letters: [L-e-t-t-e-r-s] — nothing else written anywhere",
-    "placement": "where the brown-grey area of Image 1 is, centered at three quarters of the image width: [the small first line, the large main line]",
+    "placement": "where the brown-grey area of Image 1 is, centered at three quarters of the image width: [the small first line, the large main line; with the name in the middle of the title, say which words go in the first and which in the small second brown-grey area]",
     "lettering": "[hand-painted title lettering in the medium, a deep strong colour], a thin soft light halo hugging only the outline of each letter so it reads clearly over the [wall / sky]; the [wall / sky] around the lettering keeps its own even color — no colored cloud or haze behind the words",
     "ornament": "[a thin gold line with a star, a sprig …]"
   },
   "open_space": {
-    "placement": "where the pale blue area of Image 1 is, in the upper right, [ABOVE / BELOW] the title, centered at three quarters of the image width — big, because a name will be set there later as large as the title's main line, for later typography",
+    "placement": "where the pale blue area of Image 1 is, in the upper right, [ABOVE / BELOW / BETWEEN the parts of] the title, centered at three quarters of the image width — big, because a name will be set there later as large as the title's main line, for later typography",
     "rule": "simply the [wall / sky] continuing, the same even [wall color / sky wash] as around it, with nothing painted in it: no letters, no objects, no stars, no sparkles, no haze, no lighter or bluer band; NOT a panel, cloud, ribbon, glow or box"
   },
   "character": {

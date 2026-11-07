@@ -315,6 +315,10 @@ class CoverTool(Base):
         self.assertEqual(cover.settings(books.book_path(H))["guide"], "wide-name-title")
         text.write_text("## Cover — Title\n[Name]'s Moonlit Garden\n", encoding="utf-8")   # the other way of writing it
         self.assertEqual(cover.settings(books.book_path(H))["guide"], "wide-name-title")
+        text.write_text("## Cover — Title\nMommy & {Name}: Our First Christmas\n", encoding="utf-8")  # words on both sides
+        self.assertEqual(cover.settings(books.book_path(H))["guide"], "wide-title-name-title")
+        text.write_text("## Cover — Title\nWelcome to the World, Little {Name}!\n", encoding="utf-8")  # only a mark after it
+        self.assertEqual(cover.settings(books.book_path(H))["guide"], "wide-title-name")
         books.update_state(books.book_path(H), lambda d: d.__setitem__("coverTool", "broken by hand"))
         self.assertEqual(cover.settings(books.book_path(H))["ref"], "")      # never breaks the book's page
         cover.set_settings(H, {"ref": "none"})                                # another choice keeps no guide
@@ -327,7 +331,8 @@ class CoverTool(Base):
             with self.assertRaises(ApiError):
                 cover.set_settings(H, bad)
         tool = books.detail(H)["cover"]["tool"]
-        self.assertEqual([g["name"] for g in tool["guides"]], ["wide-name-title", "wide-title-name"])
+        self.assertEqual([g["name"] for g in tool["guides"]], ["wide-name-title", "wide-title-name", "wide-title-name-title"])
+        self.assertIn("the two brown-grey areas", cover.GUIDES["wide-title-name-title"][1])
         self.assertTrue(all((core.WEB_DIR / g["src"].lstrip("/")).is_file() for g in tool["guides"]))
 
     def test_generating_pastes_the_guide_the_reference_and_the_prompt_with_the_guides_words(self):

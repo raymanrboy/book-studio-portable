@@ -5,6 +5,10 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 Older entries (before 2026-10-18) live in [log-2026-09.md](log-2026-09.md) and [log-2026-10.md](log-2026-10.md).
 
+## [2026-11-07] update | Four faith books 52–55: Grandma's Christmas prayer, Noah's Ark, a mother's prayer, a father's blessing
+- The owner asked for religious books with no customized hero, for an occasion or from a relative, checked against the shop's 13 Christian listings.
+  Tier S, no people drawn, taken to GO; `check_book.py` 0 FAILs each. Nothing generated. [faith-books](owner/faith-books.md).
+
 - From the owner's interface audit (deck, 3 passes): `entry.json` no longer a «extra file» warning in a print folder
   (`printfolder.validate`); the Creator's back arrow from an archive reprint goes to the archive entry; the order card's
   Canva button is loud only on a new order, one «Книга 1/2» switch instead of two; Workshop buttons are loud only on the
@@ -16,6 +20,24 @@ Older entries (before 2026-10-18) live in [log-2026-09.md](log-2026-09.md) and [
   accent is for next steps), Profit's table at ≤960 px no longer clips «Зіставлення».
 - Not done: the book check's English messages (`workshop/check.py`, shared with the pipeline), switch styles, field heights,
   chips of the queue, 940 px Profit/Slides, removing the dark theme.
+
+## [2026-11-07] decision | A cover whose title has the name in its middle: the guide `wide-title-name-title`
+- Book 48 («Mommy», a small «&», the name, a small «Our First Christmas»), tested in chat, built in by the owner's word: a third
+  guide with four zones, `GUIDES` and `default_guide()` in cover.py (words on both sides of `{Name}`), Agent 6's formula, book 48's
+  cover prompt and its reference from the owner's four frames. [cover](features/cover.md#the-guides), [decisions](decisions.md).
+
+## [2026-11-06] update | SEO for book 48 (First Christmas with Mommy); its listing files on Google Drive
+- `seo.py to-drive 48` (15 files); `/etsy-seo`: title with « | », 13 tags, description adapted (the baby signs the dedication). 2 eRank searches.
+- `seo/knowledge/erank-browser.md`: eRank keeps one session at a time.
+
+## [2026-11-05] update | SEO for book 50 (Little Valentine); its listing files on Google Drive
+- `seo.py to-drive 50` (15 files); `/etsy-seo`: title with « | », 13 tags, description. The shop's first Valentine's book. 4 eRank searches.
+
+## [2026-11-04] update | SEO for book 51 (Welcome to the World); its listing files on Google Drive
+- `seo.py to-drive 51` (15 files); `/etsy-seo`: title with « | », 13 tags, description. Block 1 = "Personalized Baby Book". 2 eRank searches.
+
+## [2026-11-02] update | SEO for book 49 (Grandpa and Me); its listing files on Google Drive
+- `seo.py to-drive 49` (15 files); `/etsy-seo`: title with « | », 13 tags, description. The pair of 46. 2 eRank searches.
 
 ## [2026-11-01] decision | The cover's characters' zone: a three-zone guide, the guide pasted first, strict words
 - The owner tested in chat on books 41 and 50 ("нонсенс, наскільки це кращий підхід") and asked to build it in: the two
