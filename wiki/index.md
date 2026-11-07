@@ -88,9 +88,11 @@ code: []
 
 - [Working with the owner](owner/working-with-owner.md)
 - [The interface the owner wants](owner/ui-principles.md)
+- [The interface audit (November 2026)](owner/ui-audit.md) — three passes and the unslop-ui skill: what was found, what is fixed, what is still open (spacing, type, words).
 - [Book ideas](owner/book-ideas.md) — the owner's shelf: links to books he finds and the key ideas he likes in them.
 - [Listing ideas backlog](owner/listing-ideas.md) — the stock of listing ideas for two posts a day, the owner's shop compared with two others.
 - [Five Christmas books and the two styles](owner/christmas-books.md) — the owner's Christmas focus: five books, and the looks of TheChildhoodKeeper and LunaBooksUS as pipeline style presets (`CG`, `FG`).
+- [Four faith books (52–55)](owner/faith-books.md) — Grandma's Christmas prayer, Noah's Ark, a mother's prayer, a father's blessing: no customized hero, ready to generate.
 - [Five family and holiday books (47–51)](owner/family-holiday-books.md) — Daddy, Mommy's first Christmas, Grandpa, Valentine's, Welcome to the World: animal books with no people, ready to generate.
 
 ## Development

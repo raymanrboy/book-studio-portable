@@ -1,7 +1,7 @@
 ---
 title: Listing ideas backlog
 type: owner
-updated: 2026-11-01
+updated: 2026-11-07
 code: []
 ---
 # Listing ideas backlog
@@ -84,7 +84,7 @@ the first five T books).
 | 33 | Personalised greeting cards: birthday by age and theme (train, farm, dinosaur, safari, construction, fairy, ballerina), First Holy Communion; the name, age, relation and date are typed in; 3 sizes | T | 10+ | [T](../raw/2026-10-11-thechildhoodkeeper-book-pages/birthday-card-train/01.jpg) · [T](../raw/2026-10-11-thechildhoodkeeper-book-pages/communion-card/01.jpg) | idea (a different product — check the printer) |
 | **Mine — no competitor evidence, for the owner to judge** | | | | | |
 | 34 | First Easter (Christian) | M | 1 | | made, parked till March — `pipeline/books/_later/easter-at-grandmas` (with Grandma and Grandpa Bunny, 2026-11-01) |
-| 35 | Bible stories: Noah's Ark, Creation (next to First Bible Stories) | M | 2 | | idea |
+| 35 | Bible stories: Noah's Ark, Creation (next to First Bible Stories) | M | 2 | | Noah **in the Workshop** — 53.noahs-ark-promise (2026-11-07); Creation — idea |
 | 36 | Valentine's "I love you" for a baby / "love bug" | M | 1 | | **in the Workshop** — 50.little-valentine (a hedgehog family, 2026-11-01) |
 | 37 | Thanksgiving — grateful | M | 1 | | idea |
 | 38 | Construction / tractor bedtime (next to trucks; T sells construction cards) | M | 1 | | idea |

@@ -4,7 +4,7 @@ Checked 2026-10-09. The owner is signed in to eRank (shop MoonMeadowStories, **P
 in Claude's built-in browser pane. He allows spending the whole daily limit when a listing needs it
 (2026-10-09). **Never sign in, sign out, change settings, «Sync Listings», or click «See on Etsy».** Etsy
 itself may be opened only as a visitor, never signed in (since 2026-10-11, [security](../../wiki/security.md)); the numbers
-come from eRank. If eRank shows its login page, the session has ended — ask the owner to sign in (he can tick «Remember me»).
+come from eRank. If eRank shows its login page, or «Session Limit Reached» at `/signed-out`, ask the owner to sign in here: eRank keeps **one session at a time**, so signing in on another computer (2026-11-06: "We detected a sign-in from another computer") signs this pane out.
 
 What one action costs (the counter "Searches: n/200" at the top of every eRank page):
 

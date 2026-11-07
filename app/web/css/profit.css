@@ -75,7 +75,7 @@
 .pf-notices > .notice { margin-bottom: var(--sp-3); }
 .pf-notice-act { margin-top: var(--sp-2); }
 .pf-period-label { font-size: var(--fs); font-weight: 600; color: var(--text-2); }
-.pf-period-ico { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent); }
+.pf-period-ico { display: grid; place-items: center; color: var(--text-3); }  /* no tinted tile (unslop-ui §2) */
 .pf-dates { padding-top: 10px; border-top: 1px solid var(--border); margin-top: var(--sp-1); }
 .pf-search { width: min(380px, 100%); }
 .pf-count { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs); color: var(--text-3); }
@@ -187,7 +187,7 @@ button.cal-day:hover .cal-num { transform: scale(1.08); }
 .cal-day.is-today .cal-num { box-shadow: 0 0 0 2px var(--cal-dot); color: var(--text); }
 .cal-day.is-off .cal-num { color: var(--text-3); opacity: .5; }
 .cal-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); max-width: 72px; }
-.cal-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--cal-dot); box-shadow: 0 1px 2px rgba(224, 70, 78, .35); }
+.cal-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--cal-dot); }  /* no coloured shadow (unslop-ui §6) */
 .cal-dots em { font-style: normal; font-size: var(--fs-s); font-weight: 600; color: var(--cal-dot); line-height: 8px; }
 .cal-week { display: grid; place-items: center; min-height: 86px; }
 .cal-week b { padding: 5px var(--sp-3); border-radius: 999px; background: var(--cal-mint); font-family: var(--font-display); font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
