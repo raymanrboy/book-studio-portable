@@ -1,7 +1,7 @@
 ---
 title: Known limits and what was not seen live
 type: dev
-updated: 2026-10-28
+updated: 2026-11-11
 code: []
 ---
 # Known limits
@@ -57,8 +57,7 @@ code: []
 - **A 28-page softcover live** — a test draft covered only a 20×20 hardcover (no offset); the catalog allows 28 for
   softcovers too.
 - **The mockups' second script in the real Photoshop** and the taskbar flash — checked against a pretend Photoshop.
-- **In Antigravity:** its window and the *Agent Gitignore Access* setting on the owner's PC, a real Gemini download and
-  paste, and F8 on real Windows inside Book Studio were not checked by an agent ([workshop](../features/workshop.md)).
+- **In the generation mode:** a real Gemini download and paste, and F8 on real Windows inside Book Studio were not checked by an agent ([workshop](../features/workshop.md)).
 
 ## Related
 

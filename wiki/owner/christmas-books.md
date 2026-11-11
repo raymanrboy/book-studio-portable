@@ -1,7 +1,7 @@
 ---
 title: Five Christmas books and the two styles to copy
 type: owner
-updated: 2026-10-28
+updated: 2026-11-11
 code: []
 ---
 # Five Christmas books and the two styles to copy
@@ -9,7 +9,7 @@ code: []
 > From the [ideas backlog](listing-ideas.md) the owner picked the Christmas season to focus on: five books, and for them **the visual
 > style of the two shops — TheChildhoodKeeper ("A") and LunaBooksUS ("B") — copied as exactly as possible**. The two styles are written as locked
 > `style{}` presets for the book pipeline (`CG` and `FG` in
-> [media-presets.md](../../pipeline/playbook/knowledge/media-presets.md)), so every picture of a book gets the same long description.
+> [media-presets.md](../../pipeline/knowledge/media-presets.md)), so every picture of a book gets the same long description.
 
 ## The five books
 
@@ -151,8 +151,8 @@ shortened). The generation is the owner's, in Nano Banana; the pipeline's GO/NO-
 
 ## Where in the pipeline
 
-- [media-presets.md](../../pipeline/playbook/knowledge/media-presets.md) — `CG` and `FG`, the blocks to paste into every prompt of a book.
-- [visual-world-bible.md](../../pipeline/playbook/visual-world-bible.md) — the house style (soft pastel watercolour) that `CG` and `FG` leave: a book
+- [media-presets.md](../../pipeline/knowledge/media-presets.md) — `CG` and `FG`, the blocks to paste into every prompt of a book.
+- [visual-world-bible.md](../../pipeline/knowledge/visual-world-bible.md) — the house style (soft pastel watercolour) that `CG` and `FG` leave: a book
   with one of them says so in its `input.md`, as book 28 does for its own style block.
 
 ## Related

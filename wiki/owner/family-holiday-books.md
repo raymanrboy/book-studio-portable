@@ -1,7 +1,7 @@
 ---
 title: Five family and holiday books (47–51)
 type: owner
-updated: 2026-11-01
+updated: 2026-11-11
 code: []
 ---
 # Five family and holiday books (47–51)
@@ -9,19 +9,19 @@ code: []
 > The owner asked (2026-11-01) for five new Workshop books, each about a holiday or the child with Mom, Dad, Grandma
 > or Grandpa, taken from the competitors' examples — and **with no human characters** ([decisions](../decisions.md)).
 > All five are animal books, Tier S (no `canonical.png`, only `{Name}` is typed in), made by the book pipeline
-> (`pipeline/AGENTS.md`) up to GO: formula, blueprint, text, the 14 + 2 prompts, the book check with 0 FAILs.
+> (the `book` skill) up to GO: formula, blueprint, text, the 14 + 2 prompts, the book check with 0 FAILs.
 
 ## The five books
 
 | Workshop | Book | Who | Style | Occasion — when to list | Seen at |
 |---|---|---|---|---|---|
-| **47** | {Name} & Daddy: Our Big Adventure Day — a day of fishing, a canoe and camping | the little bunny and Daddy Bunny | CG | Father's Day, Dad's birthday, Christmas for Dad — any time | T: [Day with Daddy](../raw/2026-10-11-day-with-daddy-listing/2.png) (the owner: not golf — fishing, the forest) |
+| **47** | {Name}'s Day with Daddy (until 2026-11-11: {Name} & Daddy: Our Big Adventure Day) — a day of fishing, a canoe and camping | the little bunny and Daddy Bunny | CG | Father's Day, Dad's birthday, Christmas for Dad — any time | T: [Day with Daddy](../raw/2026-10-11-day-with-daddy-listing/2.png) (the owner: not golf — fishing, the forest) |
 | **48** | Mommy & {Name}: Our First Christmas — a first Christmas season, snow to Christmas morning | the little otter and Mommy Otter | FG | Christmas, a new mom's first Christmas — **now** | L: [First Christmas as Mom](../raw/2026-10-11-lunabooksus-book-pages/first-christmas-as-mom/01.jpg) |
 | **49** | {Name} & Grandpa: Our Best Days (the owner's title order) — a year on Grandpa's farm, spring to spring | the little bear (as in 46) and Grandpa Bear | WP | Grandpa's birthday, Father's Day, Christmas — any time | L: Grandpa line; the pair of our [46](book-ideas.md) |
 | **50** | {Name}, Our Little Valentine — one Valentine's Day with Mommy and Daddy | the little hedgehog, Mommy and Daddy Hedgehog | CG | Valentine's Day — by mid-January | backlog row 36; L: "How Much I Love You" |
 | **51** | Welcome to the World, Little {Name} — a newborn fawn, and every woodland family brings a gift | the little fawn, Mama Deer, a bluebird, one animal family per scene | RW | a new baby, baby shower, a baby's Christmas — **all year** | T: [Welcome to the World](../raw/2026-10-11-welcome-to-the-world-listing/2.png) |
 
-The styles are the presets in `pipeline/playbook/knowledge/media-presets.md`. **48 changes one line of `FG`**: its `forms` describes
+The styles are the presets in `pipeline/knowledge/media-presets.md`. **48 changes one line of `FG`**: its `forms` describes
 children, so in this book it describes dressed animals (the rest of the block is verbatim) — written in its `input.md`.
 **51 is `RW` (Rich Watercolor) with stylized animals, not the competitor's `CG`**: the owner didn't like the polished glow, asked for a
 softer watercolor and a more stylized art (it was `W` for a while), then for the same stylization with a bit more color. Its `forms` line is
@@ -59,7 +59,7 @@ The word for the adult is plain text, so a Canva text swap makes another listing
 2. The casts hold together only by the written description in every prompt (Tier S); 50 has three characters and 51 a new animal family
    per scene, so a drifting frame is regenerated or the best frame attached as a reference.
 3. The text was written and checked by one agent (a script counted syllables) — worth a native-English read.
-4. No listing SEO yet (`/etsy-seo`). Cover prompts — Agent 6 after the pictures.
+4. No listing SEO yet (`/etsy-seo`). Cover prompts — the `book-cover` skill after the pictures.
 
 ## 49 — the cover
 

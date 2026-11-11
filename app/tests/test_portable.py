@@ -10,11 +10,9 @@ from studio import core, mockups, portable
 
 
 def _runtime(root: Path) -> None:
-    for rel in ("Photoshop", "Templates", "Upscayl/resources/bin", "ffmpeg/bin", "Ollama/models",
-                "Antigravity/app"):
+    for rel in ("Photoshop", "Templates", "Upscayl/resources/bin", "ffmpeg/bin", "Ollama/models"):
         (root / "runtime" / rel).mkdir(parents=True)
-    for rel in ("Upscayl/resources/bin/upscayl-bin.exe", "ffmpeg/bin/ffmpeg.exe",
-                "Antigravity/app/Antigravity.exe"):
+    for rel in ("Upscayl/resources/bin/upscayl-bin.exe", "ffmpeg/bin/ffmpeg.exe"):
         (root / "runtime" / rel).write_bytes(b"")
 
 
@@ -30,7 +28,6 @@ class Portable(unittest.TestCase):
 
     def test_programs_are_found_in_runtime(self):
         rt = self.root / "runtime"
-        self.assertEqual(portable.antigravity(), rt / "Antigravity" / "app" / "Antigravity.exe")
         self.assertEqual(portable.ffmpeg(), rt / "ffmpeg" / "bin" / "ffmpeg.exe")
         self.assertEqual(portable.upscayl_exe(), rt / "Upscayl" / "resources" / "bin" / "upscayl-bin.exe")
 
@@ -56,7 +53,7 @@ class Portable(unittest.TestCase):
     def test_without_runtime_everything_is_as_it_was(self):
         with mock.patch.dict(os.environ, {"BOOKSTUDIO_PORTABLE": ""}):
             self.assertIsNone(portable.root())
-            self.assertIsNone(portable.antigravity())
+            self.assertIsNone(portable.ffmpeg())
             self.assertEqual(portable.env(), {})
             self.assertEqual(portable.relocate(r"D:\x"), Path(r"D:\x"))
 
@@ -114,14 +111,6 @@ class Portable(unittest.TestCase):
         with mock.patch.dict(os.environ, {"BOOKSTUDIO_PORTABLE": ""}):
             self.assertEqual(portable.check(), [])
             self.assertIsNone(portable.startup_report())
-
-    def test_antigravity_starts_with_its_own_profile_and_home(self):
-        args, env = portable.antigravity_launch()
-        base = self.root / "runtime" / "Antigravity"
-        self.assertEqual(args[0], str(base / "app" / "Antigravity.exe"))
-        self.assertEqual(args[1], f"--user-data-dir={base / 'data' / 'user-data'}")
-        self.assertEqual(env["USERPROFILE"], str(base / "home"))
-        self.assertTrue((base / "home").is_dir())
 
     def test_gelato_and_canva_open_in_edge_with_a_profile_of_the_copy(self):
         from studio import settings_api

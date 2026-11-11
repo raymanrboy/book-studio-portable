@@ -1,7 +1,7 @@
 ---
 title: The interface the owner wants
 type: owner
-updated: 2026-10-28
+updated: 2026-11-11
 code:
   - app/web/css/app.css
   - app/web/css/library.css
@@ -19,8 +19,8 @@ surfaces, icons, shadows — is made and checked in light.
 ## Show, don't tell
 
 The owner: "I want the interface to **show**, not tell: a minimum of captions, a maximum of icons and visual language." And, about a row
-button that only opened the order: "such silly things are bad UX". The project skill
-`.claude/skills/book-studio-ui-logic` ([design-skills](../dev/design-skills.md)) holds the rules:
+button that only opened the order: "such silly things are bad UX". The rule
+`.claude/rules/ui.md` (it loads by itself with `app/web/`; [design-skills](../dev/design-skills.md)) holds them:
 
 - **Icons over words.** The rail is icons only (a tooltip names the place and its key; the page's own title says where
   he is — [the rail](../features/modes.md)). The queue's tabs and «Книги»' tabs are icons with counts — only the chosen one shows its word. An order's path

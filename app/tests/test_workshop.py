@@ -92,16 +92,14 @@ class TheSandbox(Base):
         for path in (core.WORKSHOP_BOOKS, generate.downloads_folder()):
             self.assertTrue(path.resolve().is_relative_to(data), path)
         self.assertNotEqual(core.WORKSHOP_BOOKS, core.PIPELINE_DIR / "books")
-        say = books.open_agent(S)                     # no Antigravity window: only the words, in the fake clipboard
+        say = books.open_agent(S)                     # no agent window: only the words, in the fake clipboard
         self.assertEqual(self.clip(), say)
-        self.assertTrue(say.startswith(f"Продовжуємо книгу {core.WORKSHOP_BOOKS / S} "), say)
-        self.assertIn(str(core.PIPELINE_DIR / "AGENTS.md"), say)
+        self.assertTrue(say.startswith(f"/book {S.split('.', 1)[0]} — книга {core.WORKSHOP_BOOKS / S};"), say)
 
-    def test_the_agent_is_told_the_full_paths_whatever_project_antigravity_has(self):
-        # Antigravity 2 ignores the folder it is started with: the words carry the rules and the books' folder
+    def test_the_agent_is_told_the_skill_and_the_books_full_path(self):
+        # a session may be open in another folder: the words carry the book skill's command and the books' folder
         say = books.open_agent(None)
-        self.assertTrue(say.startswith("Нова книга."), say)
-        self.assertIn(str(core.PIPELINE_DIR / "AGENTS.md"), say)
+        self.assertTrue(say.startswith("/book new"), say)
         self.assertTrue(say.endswith(str(core.WORKSHOP_BOOKS)), say)
         self.assertNotIn("Book Console", say)
 
@@ -429,10 +427,8 @@ class TheBookCheck(Base):
         self.assertIs(first, rows.book_check(path))  # the same result, not run again
         (path / "agent" / "book-text.md").write_text("## Spread 15 — Finale\nThe end.\n", encoding="utf-8")
         self.assertIsNot(first, rows.book_check(path))
-        # the story blueprint the check reads first lives in agent/_work/ (audit 26.09.2026: it was not looked at)
-        second = rows.book_check(path)
-        (path / "agent" / "_work").mkdir(exist_ok=True)
-        (path / "agent" / "_work" / "story-blueprint.md").write_text("# Blueprint\n", encoding="utf-8")
+        second = rows.book_check(path)                                        # the blueprint counts too
+        (path / "agent" / "story-blueprint.md").write_text("# Blueprint\n", encoding="utf-8")
         self.assertIsNot(second, rows.book_check(path))
 
     def test_the_agents_run_the_same_check_from_the_pipelines_folder(self):

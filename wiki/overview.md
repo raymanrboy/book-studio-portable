@@ -1,7 +1,7 @@
 ---
 title: Book Studio overview
 type: overview
-updated: 2026-10-28
+updated: 2026-11-11
 code:
   - app/studio/main.py
   - app/studio/core.py
@@ -38,7 +38,7 @@ listings and shops — see [security](security.md). The program itself is not ru
 | Backup | Every 3 days the whole program folder and the mockup templates, with the keys, go to Google Drive as one password-protected archive | [features/backup.md](features/backup.md) |
 | Profit | An equivalent of the Etsy Profit Calculator: Etsy Net minus print cost | [features/profit.md](features/profit.md) |
 | **The rail** | One icon rail: **Замовлення**, **Книги**, **Прибуток**, **Інструменти**; the ink is orange for orders and cyan for books | [features/modes.md](features/modes.md) |
-| Workshop («Книги») | Books in development, written by the book pipeline's agents in Antigravity (`pipeline/`): the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches the downloaded pictures; passed to the library with their Etsy listing | [features/workshop.md](features/workshop.md) |
+| Workshop («Книги») | Books in development, written by Claude with the `book` skills (`pipeline/`): the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches the downloaded pictures; passed to the library with their Etsy listing | [features/workshop.md](features/workshop.md) |
 | Mockups (a tool, and a Workshop book's step) | Etsy listing pictures: a Canva demo book → the owner's templates, drawn by the program (a crop window to fit the cover) | [features/mockups.md](features/mockups.md) |
 | Listing slides | The six Etsy slides made from the mockups, with a Canva-like editor | [features/slides.md](features/slides.md) |
 | Photo mockups | Lifestyle photos with a blank book → our book in them | [features/photo-mockups.md](features/photo-mockups.md) |
@@ -64,7 +64,7 @@ was carried over is in [profit](features/profit.md) and the [decisions](decision
 
 ```
 Book Studio/            ← git root (private GitHub: raymanrboy/book-studio-portable)
-  AGENTS.md, CLAUDE.md  ← rules for agents
+  CLAUDE.md, .claude/    ← rules, skills, hooks for Claude Code
   app/                  ← the program (see the code map)
   wiki/                 ← this wiki
 ```

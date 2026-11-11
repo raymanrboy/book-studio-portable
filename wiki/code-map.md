@@ -1,7 +1,7 @@
 ---
 title: Code map
 type: reference
-updated: 2026-11-01
+updated: 2026-11-11
 code:
   - app/studio/__init__.py
   - app/requirements.txt
@@ -94,7 +94,7 @@ code:
 | [scrub.py](../app/studio/scrub.py) | [Photo mockups](features/photo-mockups.md): every new picture and video in a book's `etsy/` without its metadata (C2PA, XMP, EXIF, ICC, video tags …), the pixels kept | `folder()`, `soon()`, `picture()` |
 | [photos.py](../app/studio/photos.py) | [Photo mockups](features/photo-mockups.md): the templates by category (`app/data/photo-mockups`), the five JSON prompts, a book's references (`mockups/`) and photos (`etsy/`) | `CATEGORIES`, `REFS`, `PROMPTS`, `templates()`, `add_template()`, `references()`, `items()`, `place()`, `state()`, `set_canva_cover()` |
 | [modules.py](../app/studio/modules.py) | Optional modules (the text check, upscaling): installed on request from checked official files into `runtime/`, or from a ZIP; removed | `MODULES`, `installed()`, `listing()`, `download()`, `unpack()`, `start_install()`, `remove()` |
-| [portable.py](../app/studio/portable.py) | The portable copy's `runtime/`: where each program is, saved paths taken into it, `PATH`/`OLLAMA_MODELS` | `root()`, `runtime()`, `relocate()`, `antigravity_launch()`, `ffmpeg()`, `env()`, `check()`, `rebase_paths()`, `prerequisites()`, `install()` |
+| [portable.py](../app/studio/portable.py) | The portable copy's `runtime/`: where each program is, saved paths taken into it, `PATH`/`OLLAMA_MODELS` | `root()`, `runtime()`, `relocate()`, `ffmpeg()`, `env()`, `check()`, `rebase_paths()`, `prerequisites()`, `install()` |
 | [mockups.py](../app/studio/mockups.py) | [Listing mockups](features/mockups.md): the demo book (in its own folder), pictures for the smart objects, a run drawn here (baked templates) or the Photoshop run plan, the crop window's routes | `TEMPLATES`, `BOOKS`, `read_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `drawn()`, `draw()`, `plan()`, `script()`, `launch()`, `watch()`, `make()` |
 | [mockups.jsx](../app/studio/mockups.jsx) | The Photoshop script (ExtendScript, CC 2019) the mockups run: fills copies of the templates, saves PNGs | `findLayer()`, `replaceContents()`, `runTemplate()` |
 | [mockup_render.py](../app/studio/mockup_render.py) | [Mockups drawn without Photoshop](features/mockups.md#drawn-without-photoshop-since-13102026): the baked templates (`app/data/mockups/baked`) — which are the very template files, drawing a book into one (linear / multiply), the softcover scenes' colour fills | `BAKED`, `stamp()`, `ready()`, `render()`, `slots()`, `fills()`, `forget()` |

@@ -1,7 +1,7 @@
 ---
 title: The cover — its own tool («Обкладинка»): a 2:1 picture with a layout guide, then its margins outpainted
 type: feature
-updated: 2026-11-07
+updated: 2026-11-11
 code:
   - app/studio/workshop/cover.py
   - app/web/js/pages/cover.js
@@ -23,22 +23,22 @@ code:
 
 The cover is made in two stages (the rest of a picture's way into its row — [workshop](workshop.md#a-picture-into-its-row)):
 
-1. **Картинка** — Agent 6's 2:1 prompt (the full-scene formula: the scene on the whole picture, the title painted in the
+1. **Картинка** — the `book-cover` skill's 2:1 prompt (the full-scene formula: the scene on the whole picture, the title painted in the
    right area, a big empty room for the name, the characters in the guide's yellow zone —
-   `pipeline/playbook/agents/6-wraparound-image-director.md`).
+   `.claude/skills/book-cover/SKILL.md`).
    **«Генерувати»** puts into the clipboard, one by one (Ctrl+V in Chrome switches): **the layout guide** (always
    Image 1 — the generator holds the first picture's layout best), **the reference** (Image 2), **the prompt** with the
    guide's words put in as `layout_guide` right after `canvas` and its `reference_image` renamed «Image 2 (the reference
    picture)» — «Image 1» without a guide (`cover.items()`, `prompt_with_guide()`). With no reference picture pasted the
    prompt loses its `reference_image` / `reference_rule`.
-   - **The reference chip** (beside «Генерувати»): the picture Agent 6 named in the prompt (`agent/ref_cover_….jpg`, by
+   - **The reference chip** (beside «Генерувати»): the picture the cover prompt names (`agent/ref_cover_….jpg`, by
      default), a spread of the book, or none.
    - **«Схема»** under the picture: the guides as thumbnails and «без схеми».
 2. **Поля** — the caught picture (`originals/cover-art.*`) goes on by itself: laid on **the printer's template** (`TEMPLATE`:
    8×8 hardcover, 17.90″×9.50″ with the wrap, finished 16.40″×8.00″; `template_layout()`) with white all round →
    `cover-expanded.png`; the generator fills the margins (outpaint: that picture and `outpaint_prompt()`, the template's
    lines as a toggle) → `pictures/Cover.png`, exactly 5370×2850 px, 300 dpi (`fit_template()`). «Без полів» takes the
-   picture as it is. «Референс у буфер» puts the picture the cover prompt names as its `reference_image` (Agent 6's
+   picture as it is. «Референс у буфер» puts the picture the cover prompt names as its `reference_image` (the skill's
    `agent/ref_cover_….jpg`) into the clipboard — only when it lies right in `agent/`; the tool pastes it itself, after the guide, with
    «Генерувати». Upscaling — [workshop](workshop.md#upscaling).
 

@@ -129,4 +129,4 @@ Recipes:
 - `app/data/` never goes into git. Commit only when the owner asks.
 - Don't open Etsy from this PC.
 - If a change is about how the program works (a new kind of element, the editor), it is a code task: read
-  `wiki/features/slides.md` and follow AGENTS.md (tests, wiki, log).
+  `wiki/features/slides.md` and follow CLAUDE.md and the code rules (tests, wiki, log).

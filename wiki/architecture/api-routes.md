@@ -1,7 +1,7 @@
 ---
 title: Server routes
 type: reference
-updated: 2026-10-31
+updated: 2026-11-11
 code:
   - app/studio/gelato_accounts.py
   - app/studio/archive.py
@@ -127,7 +127,7 @@ The books in development (the Workshop) — the book pipeline's folders ([featur
 | GET | `/api/workshop/books/([^/]+)/file` | token | `_file` | workshop-book.js (`?name=` — one of the agent's text files, for the step's panel) |
 | POST | `/api/workshop/books/([^/]+)/mark` | token | `_mark` | workshop-book.js (`{step, on}` — Canva, the mockups, the photo mockups with a category skipped) |
 | POST | `/api/workshop/open` | token | `_open` | workshop.js, workshop-book.js, lightbox.js (`{book, what: books\|folder\|pictures\|originals\|mockups\|etsy\|agent, name, variant}` — Explorer, or one file in its program; `variant` — a hero variant's picture) |
-| POST | `/api/workshop/agent` | token | `_agent` | workshop.js «+», workshop-book.js «Відкрити агента» (no program is started; «нова книга» / «Продовжуємо книгу …» into the clipboard) |
+| POST | `/api/workshop/agent` | token | `_agent` | workshop.js «+», workshop-book.js «Відкрити агента» (no program is started; «/book new» / «/book <n> — книга …» into the clipboard) |
 | POST | `/api/workshop/books/([^/]+)/to-library` | token | `_to_library` | add-book.js `openAddBook` in its passing-on form (`{listing}` checked, or `{listingRef}`; `useListingImage` → `{jobId}`; a listing another library book has → 409 with its `bookId`) |
 | POST | `/api/workshop/books/([^/]+)/place` | token | `_place` | workshop-book.js (`?key=&name=&variant=`, body — the picture: cut, flipped, two pages; the cover goes on to wait for its margins; `key=photo:<category>` — a finished photo mockup into `etsy/`, `key=canva-cover` — the photo mockups' Canva cover) |
 | POST | `/api/workshop/books/([^/]+)/adopt` | token | `_adopt` | workshop-book.js «Підхопити з папки» (`{variant}` — the pictures put into `originals/` by hand, the usual way → `{jobId}`; nothing new → an error) |

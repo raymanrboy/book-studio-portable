@@ -1,7 +1,7 @@
 ---
 title: Program data — the app/data folder
 type: architecture
-updated: 2026-10-28
+updated: 2026-11-11
 code:
   - app/studio/core.py
   - app/studio/vault.py
@@ -51,8 +51,7 @@ code:
 ## Outside `app/data`: the Workshop's books
 
 The [Workshop](../features/workshop.md)'s books are the book pipeline's folders, **`pipeline/books/<n>.<slug>/`**
-(`core.WORKSHOP_BOOKS`), next to the agents' rules — the agents in Antigravity write there, so the
-folder has to be inside the one Antigravity opens. Not in git (`.gitignore`): every book's pictures, the originals and
+(`core.WORKSHOP_BOOKS`), next to the pipeline's knowledge — the `book` skills write there. Not in git (`.gitignore`): every book's pictures, the originals and
 `.replaced/`. A book's own `book.json` is the Workshop's state (not the library's model). In the sandbox (the preview,
 the tests) the books are made-up ones in the data folder's `workshop-books/`, and so are its `downloads/`,
 `clipboard/`, `recycle-bin/` and `saved/`. `settings.json` keeps `workshop.saveDir` — where «Зберегти як…» last saved

@@ -1,7 +1,7 @@
 ---
 title: Glossary — the owner's words and their places in the code
 type: reference
-updated: 2026-11-01
+updated: 2026-11-11
 code: []
 ---
 # Glossary
@@ -108,7 +108,7 @@ Code paths below are relative to the repository root.
 | Шлях (замовлення, книги); що далі | The path strip: an order's Canva · Файли · Вичитка · Друк · Відправка, a Workshop book's 11 steps | [path.js](../app/web/js/path.js) `pathHtml()` |
 | Архів друку (архів замовлень) | The print archive — among «Інструменти»; a printed order's card links to its entry | [features/archive.md](features/archive.md) |
 | Майстерня (для створення книги), книги в розробці | The Workshop: books before they go to the library: the agents write a book, the Workshop shows its path and catches its pictures | [features/workshop.md](features/workshop.md); [workshop/books.py](../app/studio/workshop/books.py) |
-| Пайплайн, агенти 0–6, Antigravity | The book pipeline: the agents that write a book's formula, hero, story, text and prompts, in Antigravity opened on `pipeline/`; their files go into a book's `agent/` | [pipeline/AGENTS.md](../pipeline/AGENTS.md); [workshop/books.py](../app/studio/workshop/books.py) `open_agent()` |
+| Пайплайн, агенти 0–6 | The book pipeline: Claude's `book` skill writes a book's formula, hero, story, text and prompts step by step (once agents 0–6 in Antigravity), `book-cover` the cover; the files go into a book's `agent/` | `.claude/skills/book/`; [pipeline/knowledge/](../pipeline/knowledge/book-anatomy.md); [workshop/books.py](../app/studio/workshop/books.py) `open_agent()` |
 | Смуга шляху; «Далі: …» | The book's path strip: Формула → … → Бібліотека, ticked by the files that exist | [workshop/books.py](../app/studio/workshop/books.py) `STEPS`, `steps()` |
 | GO, перевірка книги | The book check before generating: the old pipeline validator's rules — GO or N errors on the strip | [workshop/check.py](../app/studio/workshop/check.py) `run()`; [workshop/rows.py](../app/studio/workshop/rows.py) `book_check()` |
 | Генерувати, режим генерації; Далі / F8 | The row's prompt into the clipboard, the Workshop waits for the downloaded picture and puts the next prompt in | [workshop/generate.py](../app/studio/workshop/generate.py) `Session`; [features/workshop.md](features/workshop.md#the-generation-mode) |
@@ -122,7 +122,7 @@ Code paths below are relative to the repository root.
 | Фотошоп модуль | The Mockups tool | [features/mockups.md](features/mockups.md) |
 | Фліпер, фліпати (розворот) | Mirroring a spread left to right: his `mirror-alternate.py` rule (4–5, 8–9 … 28–29) on the drop, ⇄ by hand | [workshop/rows.py](../app/studio/workshop/rows.py) `MIRRORED`; [workshop/pictures.py](../app/studio/workshop/pictures.py) `flip()`; [features/workshop.md](features/workshop.md#a-picture-into-its-row) |
 | Нарізати на квадрати, два квадрати як у паспорті | A 2:1 spread cut into its left and right square pages (his `slice-spreads.py`) | [workshop/pictures.py](../app/studio/workshop/pictures.py) `place()`, `two_squares()` |
-| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` | [pipeline/](../pipeline/AGENTS.md) |
+| Etsy pipeline (проєкт) | `D:\Roman\Desktop\Etsy-Book-Pipeline` — the owner's old book-making project, an archive, read only; its clean copy is Book Studio's `pipeline/` | [pipeline/check_book.py](../pipeline/check_book.py) |
 
 ## Listing mockups (the «Мокапи» tool)
 

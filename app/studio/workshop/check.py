@@ -87,7 +87,7 @@ class Ctx:
     def __init__(self, book_dir):
         self.dir = agent_dir(book_dir)
         self.book_text = self._read("book-text.md")
-        self.blueprint = self._read("_work/story-blueprint.md") or self._read("story-blueprint.md")
+        self.blueprint = self._read("story-blueprint.md")
         self.is_abc = self._is_abc_format()
         self.prompt_sets = self._load_prompt_sets()
 

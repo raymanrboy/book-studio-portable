@@ -485,14 +485,12 @@ def open_in_windows(book_id: str | None, what: str, name: str = "", variant: str
 
 
 def agent_words(book_id: str | None) -> str:
-    """What to say to the book agent: a new book or which book goes on — with the pipeline's full paths. Antigravity 2
-    ignores a folder given at its start: a new chat runs in the project last picked in it, and once that was the
-    prototype's `Book Console`, so the agent wrote the book there (2026-09-26). The words name the rules and the
-    books' folder themselves, whatever project the chat is in."""
-    rules = core.PIPELINE_DIR / "AGENTS.md"
+    """What to say to the book agent (Claude Code, since 2026-11-11): the `book` skill's command — a new book or which
+    book goes on — with the books' full path, so the right book is plain whatever folder the session shows (once an
+    agent wrote a book into another project's folder, 2026-09-26). The skill itself lives in Book Studio's .claude/."""
     if book_id:
-        return f"Продовжуємо книгу {book_path(book_id)} (правила — {rules}; інших папок книг не чіпай)"
-    return f"Нова книга. Спершу прочитай {rules}; книгу пиши тільки в {books_dir()}"
+        return f"/book {book_id.split('.', 1)[0]} — книга {book_path(book_id)}; інших папок книг не чіпай"
+    return f"/book new — книги лежать у {books_dir()}"
 
 
 def open_agent(book_id: str | None) -> str:

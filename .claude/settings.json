@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/.secrets.txt)",
+      "Read(**/app/data/vault.json)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/../runtime/python/python.exe\" -B \"$CLAUDE_PROJECT_DIR/.claude/hooks/book_guard.py\" pre", "timeout": 30 }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/../runtime/python/python.exe\" -B \"$CLAUDE_PROJECT_DIR/.claude/hooks/book_guard.py\" bash", "timeout": 30 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR/../runtime/python/python.exe\" -B \"$CLAUDE_PROJECT_DIR/.claude/hooks/book_guard.py\" post", "timeout": 90 }
+        ]
+      }
+    ]
+  }
+}

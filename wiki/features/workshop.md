@@ -1,7 +1,7 @@
 ---
 title: The Workshop — books in development, with the book pipeline's agents («Книги» → «Майстерня»)
 type: feature
-updated: 2026-11-01
+updated: 2026-11-11
 code:
   - app/studio/workshop/__init__.py
   - app/studio/workshop/books.py
@@ -31,8 +31,8 @@ code:
 ## Where a book lives
 
 ```
-Book Studio/pipeline/            the book pipeline — Antigravity's project folder (in git: the agents' rules, playbook)
-  AGENTS.md                      the book agents' rules (any agent); CLAUDE.md — the fork for coding agents
+Book Studio/pipeline/            the book pipeline (in git): knowledge/ (presets, formulas, text rules, the master prompt),
+                                 scripts/; the procedures are the book* skills in .claude/skills/
   check_book.py                  the book check the agents run before GO (the Workshop's own rules, check.py)
   books/                         NOT in git — the Workshop's books:
     25.some-book/
@@ -51,9 +51,9 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
   listing's number** (the owner). The agents make the folder themselves — the Workshop finds it.
 - **The agents write only into `agent/`** and never touch `book.json` — they can't break a book's state
   ([decisions](../decisions.md)).
-- **No IDE is started** (the owner uses whatever agent or harness he likes). «+» and the agent icon only put the words for the
-  book agent into the clipboard (`agent_words()`, `open_agent()`); the owner pastes them into the agent or harness of his
-  choice. The words carry the full paths (the rules file and the book's folder), so any agent knows where to write.
+- **No IDE is started.** «+» and the agent icon only put the command for the book agent — Claude Code's `book` skill — into
+  the clipboard (`agent_words()`, `open_agent()`): `/book new` with the books' folder, or `/book <n>` with the book's full
+  path, so a session opened in another folder still writes in the right place.
 
 ## The gallery («Книги» → «Майстерня», `#/books/work`; `#/workshop` leads there)
 
@@ -67,7 +67,7 @@ Book Studio/pipeline/            the book pipeline — Antigravity's project fol
 ## A book (`#/workshop/<folder>`)
 
 - **Header**: back (Esc), `№25 Title`, the cover's title, the Tier chip (H — a child hero on every spread; S — none);
-  on the right a group of icons (the agent — «Продовжуємо книгу …» in the clipboard; the pages; the
+  on the right a group of icons (the agent — «/book <n> — книга …» in the clipboard; the pages; the
   originals; the book's folder — an icon; «Ще» → delete: at once, with «Скасувати» — the folder waits 2 min on the program's shelf, then the Recycle Bin, `aside.py`) and one more icon, «Передати в бібліотеку» (a shelf; a tick
   «У бібліотеці» after) — which becomes **the one loud, labelled button** only once every picture and the cover are there.
   A row's prompt shows three lines with a «Весь промпт» link (the JSON is for copying — the copy icon — not for reading).
@@ -206,7 +206,7 @@ first copies its pages into the library book (`library.keep_pages()`). A listing
 - [app/web/js/lib.js](../../app/web/js/lib.js) — `patch()`
 - [app/web/js/book-tile.js](../../app/web/js/book-tile.js) — `bookTile()`, `segBar()`, `tickBadge()`
 - [app/web/css/listings.css](../../app/web/css/listings.css) — `.ws-card-wait`, `.ws-genbar`, `.ws-strip`, `.ws-step`, `.ws-panel`, `.ws-row`, `.ws-frame`, `.ws-ph`, `.ws-art`, `.ws-cover`, `.ws-tpl`
-- [pipeline/AGENTS.md](../../pipeline/AGENTS.md) — the book agents' rules; [pipeline/check_book.py](../../pipeline/check_book.py) — their start of the check
+- [pipeline/check_book.py](../../pipeline/check_book.py) — the book agent's start of the check (the `book` skills and `.claude/hooks/book_guard.py` run it)
 - [app/tools/sample_books.py](../../app/tools/sample_books.py) — `make_books()`
 - Tests: [app/tests/test_workshop.py](../../app/tests/test_workshop.py) (`TheSandbox`, `TheBookList`, `ThePathStrip`, `OnlyInsideTheBook`, `TheSignature`, `TheRows`, `TheBookCheck`, `APictureIntoItsRow`, `CatchingDownloads`, `PassingToTheLibrary`)
 

@@ -1,7 +1,7 @@
 ---
 title: Four faith books (52–55)
 type: owner
-updated: 2026-11-07
+updated: 2026-11-11
 code: []
 ---
 # Four faith books (52–55)
@@ -21,10 +21,10 @@ listing — the local data has no ready count by book.
 
 | Workshop | Book | Who | Style | Occasion | Gap it fills |
 |---|---|---|---|---|---|
-| **52** | Grandma's Christmas Prayer for {Name} — Advent, a straw in the manger for each kind deed | the little lamb, Grandma Sheep | WP | Christmas — **now** | a Christian Christmas gift from Grandma (the secular 40 stays apart) |
-| **53** | God's Promise for {Name}: The Story of Noah's Ark | a little dove, pairs of animals | RW, stylized | baptism, dedication, birthday, rainbow baby — all year | one Bible story of its own (backlog row 35) |
-| **54** | Under His Wings: A Mommy's Prayer for {Name} — Psalm 91:4 | the little chick, Mommy Hen | WP | baptism, dedication, Mother's Day, Christmas | a mother's prayer |
-| **55** | Be Brave, {Name}: A Father's Blessing — Joshua 1:9 | the little lion cub, Daddy Lion | RW, stylized | baptism, Father's Day, Christmas, birthday | a father's blessing, the pair of 54 |
+| **52** | Grandma's Prayer for {Name} (until 2026-11-11: Grandma's Christmas Prayer for {Name}) — Advent, a straw in the manger for each kind deed | the little lamb, Grandma Sheep | WP | Christmas — **now** | a Christian Christmas gift from Grandma (the secular 40 stays apart) |
+| **53** | Noah's Ark for {Name} (until 2026-11-11: God's Promise for {Name}: The Story of Noah's Ark) | a little dove, pairs of animals | RW, stylized | baptism, dedication, birthday, rainbow baby — all year | one Bible story of its own (backlog row 35) |
+| **54** | Under His Wings, {Name} (until 2026-11-11: Under His Wings: A Mommy's Prayer for {Name}) — Psalm 91:4 | the little chick, Mommy Hen | WP | baptism, dedication, Mother's Day, Christmas | a mother's prayer |
+| **55** | Be Brave, {Name} (until 2026-11-11: Be Brave, {Name}: A Father's Blessing) — Joshua 1:9 | the little lion cub, Daddy Lion | RW, stylized | baptism, Father's Day, Christmas, birthday | a father's blessing, the pair of 54 |
 
 "RW, stylized" is the look the owner chose for 51: `RW` with its `forms` line rewritten (simple rounded shapes, dot eyes, no fur strands).
 
@@ -40,7 +40,7 @@ listing — the local data has no ready count by book.
 
 1. Nothing is generated: generate **one** frame per book first.
 2. The text was written and checked by one agent — worth a native-English read, and the owner's read of the faith wording.
-3. No cover prompts or SEO yet (Agent 6 and `/etsy-seo` after the pictures).
+3. No cover prompts or SEO yet (`book-cover` and `/etsy-seo` after the pictures).
 
 ## Related
 

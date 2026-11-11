@@ -1,10 +1,32 @@
 ---
 title: Decisions
 type: decision
-updated: 2026-11-07
+updated: 2026-11-11
 code: []
 ---
 # Decisions
+
+## 2026-11-11 — Claude Code only: the instructions rebuilt for it
+
+- **The owner:** "we are moving fully to Claude" — look through every instruction file, optimize it and fit it to Claude
+  Code's own ways ("not only skills"), check yourself; the stops for him stay in the main conversation.
+- **Decision:**
+  - One short `CLAUDE.md` replaces `AGENTS.md` + `CLAUDE.md`.
+  - Area rules in `.claude/rules/` load with their folders: `app/`, `app/web/` (the owner's interface logic, until then the
+    skill `book-studio-ui-logic`), `wiki/`, `pipeline/`.
+  - The book pipeline (Antigravity's `pipeline/AGENTS.md`, `playbook/`, agents 0–6) became the skills `book` (the steps,
+    with the owner's stops, run in the main conversation; the state is read from the book's files), `book-cover`,
+    `book-variant` and the subagent `book-text-critic` (a fresh-eyes read).
+  - The rules and reference data are kept once, in `pipeline/knowledge/`; the mechanical parts became scripts
+    (`pipeline/scripts/preset.py`, `new_book.py`, the cover's `stack_frames.py`).
+  - What must never be skipped is a hook (`.claude/hooks/book_guard.py`): the Workshop's book files refused, a Tier H
+    book's story waits for `canonical.png`, the book check after each write, no printing of keys; `permissions.deny`
+    for `.secrets.txt` and `vault.json`.
+  - The Workshop's «Нова книга» / the book's agent button put `/book new` / `/book <n>` into the clipboard.
+  - 14 third-party skills that did not fit a plain-JS program went to `..\_archive\claude-skills\`.
+- **Why not one long file or background agents:** a session should carry only what the task needs, and a background agent
+  cannot ask the owner — the stops would be lost.
+- [dev/design-skills.md](dev/design-skills.md), `CLAUDE.md`, `.claude/`.
 
 ## 2026-11-07 — A cover whose title has the name in its middle: a four-zone guide
 
@@ -12,7 +34,7 @@ code: []
   and said to build it in.
 - **Decision:** a third guide, `wide-title-name-title`, the default when words stand on both sides of `{Name}`; the name stays
   the big, selling element and the title's tail goes under it as a small line. [features/cover.md](features/cover.md#the-guides),
-  `pipeline/playbook/agents/6-wraparound-image-director.md`.
+  `.claude/skills/book-cover/SKILL.md`.
 
 ## 2026-11-01 — The cover's characters' zone: three zones, the guide first, strict words
 
@@ -26,7 +48,7 @@ code: []
   smooth background with light only from real sources, and few characters.
 - **Why not softer:** soft words ("a gentle hint") let the characters drift toward the spine; "paint over the guide" and "a glow
   behind the title" printed the guide's blue, pink and yellow patches onto the background.
-- [features/cover.md](features/cover.md), `pipeline/playbook/agents/6-wraparound-image-director.md`; the tests in
+- [features/cover.md](features/cover.md), `.claude/skills/book-cover/SKILL.md`; the tests in
   `D:\Roman\Desktop\Cover Squares Test\prompts\` (the `…-characters-zone.md` files of books 41, 50, 51).
 
 ## 2026-11-01 — New books have no human characters
@@ -72,7 +94,7 @@ This page holds the current decisions (from 11 October, and the 4 October safety
   above the title), then the prompt with the guide's words; the margins are outpainted as before.
 
 How to apply: Agent 6 writes one 2:1 prompt by its full-scene formula and no `layout_guide` (the tool adds it).
-[features/cover.md](features/cover.md), `pipeline/playbook/agents/6-wraparound-image-director.md`.
+[features/cover.md](features/cover.md), `.claude/skills/book-cover/SKILL.md`.
 
 ## 2026-10-27 — The grandmother's reference is the finished cover, without the wrap
 
@@ -100,7 +122,7 @@ How to apply: a side shown in a mockup gets its own window; a picture saved with
 
 ## 2026-10-27 — Girl archetypes G4 and G6 dropped; the numbers stay
 
-The owner does not use the olive/Mediterranean (G4) and South Asian (G6) girls — removed from `pipeline/playbook/knowledge/archetypes.md`.
+The owner does not use the olive/Mediterranean (G4) and South Asian (G6) girls — removed from `pipeline/knowledge/archetypes.md`.
 He asked why the numbers skip and chose to keep them (a number means the same child in every book; book 41's variants are G1, G2, G3,
 G5, G7). The boys' B1–B7 are unchanged.
 
@@ -188,14 +210,14 @@ white); the full-scene and solid-color grounds (books 38–45) stay only on requ
 and smaller with real empty space above their heads (in round 1 the heads nearly touched the top); the left area with a minimal but
 present sprinkle of small details, not empty. Round 2 of the tests has these, and **the owner approved it** ("I like this approach") — its three pictures are saved next to the examples. **It applies from book 46 on**;
 older books keep their outer images unless he asks. A soft colored ground instead of cream is allowed on his request (book 42: a muted red). [The examples and their analysis](raw/2026-10-17-white-cover-examples/SOURCE.md) · the rule —
-`pipeline/playbook/agents/6-wraparound-image-director.md`
+`.claude/skills/book-cover/SKILL.md`
 
 ## 2026-10-16 — Antigravity is given up: Book Studio starts no IDE, only puts the agent's words into the clipboard
 
 The owner decided to abandon that IDE. «+» and «Відкрити агента» now only copy the words (`agent_words()`) and the owner pastes them into
-any agent or harness; the `antigravity()` finder and the window start are gone from the Workshop. The words with full paths stay (they
-were made for an agent that picks its own folder). *Left in place, unused by the Workshop:* `portable.antigravity()` / `antigravity_launch()` and the
-`runtime/Antigravity` check of the portable copy — to be removed if the owner wants the program fully clean. Supersedes the start-only
+any agent or harness; the Antigravity finder and the window start are gone from the Workshop. The words with full paths stay (they
+were made for an agent that picks its own folder). *Left in place then, unused by the Workshop:* the portable copy's Antigravity finder, its start and the
+`runtime/Antigravity` check — removed on 2026-11-11 with the move to Claude Code. Supersedes the start-only
 decision of 2026-09-26 below. [features/workshop.md](features/workshop.md)
 
 ## 2026-10-15…18 — The Canva extension does not do orders; it only makes books (mostly)

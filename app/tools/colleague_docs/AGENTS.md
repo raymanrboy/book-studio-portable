@@ -1,8 +1,7 @@
 # Book Studio — rules for agents
 
-> **Making a book** (a new book, its story, text, prompts)? These rules are not yours: open the folder
-> `pipeline/` and read **`pipeline/AGENTS.md`** — the book pipeline's rules. Everything below is for agents
-> working on Book Studio's code.
+> **Making a book** (a new book, its story, text, prompts)? Use the `book` skill (`.claude/skills/book/`; the cover —
+> `book-cover`). Everything below is for agents working on Book Studio's code.
 
 A local Windows program for the owner of an Etsy shop selling personalized children's books. One icon rail:
 **Orders** — the order queue and each order's path to print (the Order Creator is its print step); **Books** — the
@@ -14,7 +13,7 @@ not necessarily a programmer; the program's interface is in Ukrainian. Design an
 ## 0. This is a portable copy
 
 You are in `Book Studio Portable\Book Studio\` — the repository of a **portable** Book Studio. Next to it lies `runtime\`
-(Python, Photoshop, the mockup templates, Antigravity, Ollama, Upscayl, ffmpeg): the program finds them there
+(Python, Photoshop, the mockup templates, Ollama, Upscayl, ffmpeg): the program finds them there
 (`app/studio/portable.py`, [wiki/dev/portable.md](wiki/dev/portable.md)). Python for the commands below:
 `..\runtime\python\python.exe`. This copy has **no git remote** (never push it anywhere); commit locally only when the
 user asks. `app/data/` is the user's own data (orders, keys, books' state) and starts empty.
@@ -67,7 +66,7 @@ AGENTS.md, CLAUDE.md    rules for agents (this file and the Claude Code addendum
 README.md               short intro for people
 app/                    the program: studio/ (Python server), web/ (interface), tests/, tools/
                         data/ and bin/ — local only, not in git
-pipeline/               the book pipeline — the book agents' rules and playbook (Antigravity opens this folder);
+pipeline/               the book pipeline — its knowledge/ and scripts/ (the procedures are the book* skills);
                         its books/ (the Workshop's books, every picture) — local only, not in git
 wiki/                   knowledge base (index.md — entry point, log.md — change log)
 .claude/                interface preview and Claude Code skills

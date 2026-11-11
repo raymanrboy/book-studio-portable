@@ -1,7 +1,7 @@
 ---
 title: Setup, launch, GitHub
 type: dev
-updated: 2026-10-28
+updated: 2026-11-11
 code:
   - app/tools/make_shortcut.py
   - app/requirements.txt
@@ -69,5 +69,5 @@ pages and the graph work; Obsidian doesn't open links to code (`../app/...`) —
 ## The portable copy
 
 In `Book Studio Portable/` the program is `Book Studio/` and everything it runs on is `runtime/` (Python, Photoshop, the mockup
-templates, ffmpeg, Antigravity, the optional modules). Start it with the `Book Studio` shortcut; the Python for commands is
+templates, ffmpeg, the optional modules). Start it with the `Book Studio` shortcut; the Python for commands is
 `../runtime/python/python.exe`. Its GitHub repository is `raymanrboy/book-studio-portable` (private); no system Python is needed. Details — [portable](portable.md).

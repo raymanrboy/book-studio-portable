@@ -31,10 +31,9 @@ works, just without that check.
 
 ## «Книги» — the Workshop and the library
 
-The agents in Antigravity write a book (the `pipeline/` folder); the Workshop shows its path, puts every prompt into
-the clipboard and catches the picture downloaded from Gemini into its row, then passes the finished book to
-the library with its Etsy listing. Once in Antigravity: Settings → Agent → *Agent Gitignore Access* on (the books are
-kept out of git). More — [the wiki](../wiki/features/workshop.md).
+Claude Code writes a book with its `book` skill (the `pipeline/` folder); the Workshop shows its path, puts every prompt
+into the clipboard and catches the picture downloaded from Gemini into its row, then passes the finished book to
+the library with its Etsy listing. More — [the wiki](../wiki/features/workshop.md).
 
 ## «Мокапи» and the slides — pictures for an Etsy listing
 
@@ -132,4 +131,4 @@ The program backs itself up to Google Drive every 3 days ([backup](../wiki/featu
 
 `studio/` — the Python server (standard library + Pillow, img2pdf, cryptography), `web/` — the interface
 (HTML/CSS/JS, no build step). Tests (from the `app` folder): `python -m unittest discover -s tests`.
-How it's all built — the [project wiki](../wiki/index.md); rules for agents — [AGENTS.md](../AGENTS.md).
+How it's all built — the [project wiki](../wiki/index.md); rules for Claude Code — [CLAUDE.md](../CLAUDE.md).

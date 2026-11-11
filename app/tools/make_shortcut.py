@@ -18,7 +18,7 @@ if (ROOT.parent.parent / "runtime").is_dir():    # the portable copy: its own sh
     SHORTCUTS = [("Book Studio Portable", script, icon, note) for _, script, icon, note in SHORTCUTS]
 
 
-HELPERS = ("Start Book Studio.bat", "Start with console.bat", "Make desktop shortcut.bat", "ПРОЧИТАЙ.md", "ROADMAP.md")
+HELPERS = ("Start Book Studio.bat", "Start with console.bat", "Make desktop shortcut.bat", "ПРОЧИТАЙ.md")
 
 
 def tidy(root: Path) -> list[str]:

@@ -1,5 +1,5 @@
-// The Workshop (the Listings mode): the books in development — the book pipeline's folders, where the agents in
-// Antigravity write each book (the book console moved in, 26.09.2026). A card shows how far the book is on its path;
+// The Workshop (the Listings mode): the books in development — the book pipeline's folders, where Claude's book
+// skills write each book (the book console moved in, 26.09.2026). A card shows how far the book is on its path;
 // the gallery follows the files by itself (an agent's new book appears, a caught picture shows) without a reload.
 import {
   api, post, html, ic, ib, setHtml, on, fadeImages, plural, flip, debounce, menu, patch, segHtml, setSeg,
@@ -109,7 +109,7 @@ export async function mount(view, params, { embedded = false } = {}) {
       patch(box, [['none', html`<div class="empty" style="padding:72px 20px">
         <div class="empty-icon">${ic('workshop')}</div>
         <h3>Майстерня порожня</h3>
-        <p>«Нова книга» покладе в буфер «Нова книга» з адресою папки книг — вставте в чат будь-якого агента. Книга з'явиться тут сама, щойно агент почне її писати.</p>
+        <p>«Нова книга» покладе в буфер команду «/book new» з адресою папки книг — вставте її в Claude. Книга з'явиться тут сама, щойно Claude почне її писати.</p>
         <button class="btn btn-primary" data-act="add">${ic('agent')}Нова книга</button>
         <div class="faint mono ws-empty-path">${state.folder}</div></div>`]]);
     } else if (!list.length) {
@@ -154,7 +154,7 @@ export async function mount(view, params, { embedded = false } = {}) {
   paint();
 
   const newBook = (btn) => act(btn, () => post('/api/workshop/agent', {}),
-    () => 'У буфері — «Нова книга» з адресою папки книг; вставте в чат агента');
+    () => 'У буфері — «/book new» з адресою папки книг; вставте в Claude');
   const runSearch = debounce(paint, 90);
   const offs = [
     on(view, 'click', '[data-open]', (e, b) => { location.hash = `#/workshop/${encodeURIComponent(b.dataset.open)}`; }),

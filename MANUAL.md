@@ -1,9 +1,9 @@
 # Book Studio — user manual, written for an LLM agent
 
 > **Who this is for.** A person who owns (or helps run) an Etsy shop of personalized children's books, and the AI agent
-> (Claude Code, Antigravity, Codex, …) sitting next to them. The agent reads this file first, then answers the person's
+> (Claude Code) sitting next to them. The agent reads this file first, then answers the person's
 > questions, walks them through the program, and fixes small problems. The interface is in **Ukrainian**; interface words
-> are quoted here as «Ukrainian» with a short English gloss. For code changes read `AGENTS.md`, not this file.
+> are quoted here as «Ukrainian» with a short English gloss. For code changes follow `CLAUDE.md`, not this file.
 >
 > **How to use it.** Find the person's situation in §3 (first start), §5 (what they want to do) or §8 (something is
 > broken). Every section ends with where the details live (`wiki/…`). If this file and the program disagree, the program
@@ -34,13 +34,13 @@ Book Studio Portable/
   (the launchers and the note are kept in the repository's portable/; a missing portable folder is built from a clone:
    python app/tools/setup_portable.py --python — see wiki/dev/portable-setup.md)
   runtime/                       the programs the app needs — nothing is installed on the PC:
-    python/  Photoshop/  Templates/  ffmpeg/  Antigravity/  Installers/   (always there)
+    python/  Photoshop/  Templates/  ffmpeg/  Installers/   (always there)
     Ollama/ (+models)  Upscayl/                                           (appear when the optional modules are installed, §3)
   Book Studio/                   the program itself
     MANUAL.md                    this file
-    AGENTS.md, CLAUDE.md         rules for agents that change the code
+    CLAUDE.md, .claude/          Claude Code's rules, skills (making books too) and hooks
     app/                         studio/ (server), web/ (interface), tests/, tools/, data/ (the person's own data)
-    pipeline/                    the book agents' rules (pipeline/AGENTS.md) + books/ (the Workshop's books)
+    pipeline/                    the books' knowledge and scripts + books/ (the Workshop's books)
     wiki/                        the knowledge base — start at wiki/index.md
 ```
 
@@ -49,7 +49,7 @@ Book Studio Portable/
 - **Move to another PC or another folder:** copy the whole folder. The program keeps to its own folder and does not depend on where it
   lies (the few paths it stores inside `app/data` follow the folder automatically). On a new PC it shows one window
   «Немає в теці runtime» (what is missing, if anything) and «Перший запуск…» (what to log in to).
-- **Needs from Windows itself:** only the *Microsoft Visual C++ 2015–2022 (x64)* runtime (for Photoshop, Upscayl, Antigravity). If it is
+- **Needs from Windows itself:** only the *Microsoft Visual C++ 2015–2022 (x64)* runtime (for Photoshop and Upscayl). If it is
   missing the program asks «Встановити зараз — тихо?» and installs it quietly (administrator's permission is asked by Windows). By hand in a
   terminal: `runtime\Installers\vc_redist.x64.exe /install /quiet /norestart`, or `winget install --id Microsoft.VCRedist.2015+.x64 -e --silent`.
   Everything else (Python, ffmpeg, 7-Zip, the Photoshop and its templates…) is inside the folder; Ollama and Upscayl come as optional modules.
@@ -70,10 +70,9 @@ Do these in order. The person only needs to do each once per PC.
 | 3 | **Etsy** keys: *Keystring* and *Shared Secret*; add the **Callback URL** shown in the block's details (the chevron under the fields — `http://localhost:<port>/etsy/callback`) to the Etsy app; then sign in | Settings → «Etsy» ← Etsy Developers → Your apps (Keystring, Shared Secret, Callback URLs). Sign in with the button «Увійти в Etsy» — read-only access. The address contains the port, so keep port 47821 free (if it is busy the program uses another and Settings warns) |
 | 4 | **Printify** token (only if the person prints at Printify) | Settings → «Printify» ← Printify → My account → Connections → API. The shop and the Master (template product) are preset; «Обрати шаблон (Master)» appears only when none is set — see `wiki/integrations/printify.md` |
 | 5 | **Backup password** (≥ 8 chars; the person must write it down — it cannot be recovered) | Settings → «Резервна копія» |
-| 6 | Antigravity: sign in with the person's Google account | open Antigravity once (Workshop → «Нова книга» does it) |
-| 7 | Gelato / Canva links open in Edge in the program's own profile (`app/data/work-browser`): sign in once | click «Відкрити шаблон у Canva» in an order card / «Замовлення в Gelato» on a created draft |
-| 8 | Optional: the text check and upscaling | Settings → «Модулі» → «Встановити» (internet, then it works by itself) — see below |
-| 9 | Click refresh (↻) in «Замовлення» | the first sync fills the queue |
+| 6 | Gelato / Canva links open in Edge in the program's own profile (`app/data/work-browser`): sign in once | click «Відкрити шаблон у Canva» in an order card / «Замовлення в Gelato» on a created draft |
+| 7 | Optional: the text check and upscaling | Settings → «Модулі» → «Встановити» (internet, then it works by itself) — see below |
+| 8 | Click refresh (↻) in «Замовлення» | the first sync fills the queue |
 
 Keys are stored encrypted for the **current Windows user** (DPAPI). They do **not** open on another PC or another Windows
 user. To carry keys: Settings → «Перенесення налаштувань» → «Експорт у файл» on the old PC (needs the backup password) and
@@ -147,8 +146,8 @@ See `wiki/rules/printer-rule.md`.
 
 ### 5.2 Make a new book (the Workshop)
 
-1. Книги → Майстерня → **«Нова книга»** (tooltip «Нова книга — в Antigravity»). Antigravity opens and the clipboard holds the words to paste into the agent's chat
-   (the agent reads `pipeline/AGENTS.md` and leads the person step by step: formula, hero, story, text, prompts).
+1. Книги → Майстерня → **«Нова книга»**: the clipboard holds the command `/book new` to paste into Claude Code (opened on the
+   `Book Studio` folder); its `book` skill leads the person step by step: formula, hero, story, text, prompts.
 2. The book appears in the Workshop as a card; its page shows the path strip and the rows (page 1, spreads 2–3 … 28–29, page 30, the
    cover). Each row has a **prompt**, a **2:1 spread** and a **text**. «Canva» and «Мокапи» are ticked by hand.
 3. **Generation mode** («Генерувати решту» / «Ще раз» on a row): the program puts the prompt in the clipboard; the person pastes it into
@@ -157,7 +156,7 @@ See `wiki/rules/printer-rule.md`.
    the upscale module installed it also upscales ×2 («Апскейл ×2» switch; «Апскейлити ×2» on a row).
 4. Next steps of the same book: «Мокапи» (Photoshop), «Фото» (photo mockups), then **«Передати в бібліотеку»** (hands the finished
    book over to the library with its Etsy listing).
-Details: `wiki/features/workshop.md`, `wiki/flows/book-import.md`, `pipeline/AGENTS.md` (the book agents' rules).
+Details: `wiki/features/workshop.md`, `wiki/flows/book-import.md`, `.claude/skills/book/` (making a book).
 
 ### 5.3 Etsy pictures for a listing
 
@@ -199,10 +198,10 @@ and filters (**Усі · Без пари · Проблемні**); the button «
 - The person's data is never permanently deleted by an agent (the program itself deletes archive files 14 days after «Sent»).
 - The mockup templates in `runtime/Templates` are read-only.
 - Interface preview on **sample data only**: `python app/tools/dev_server.py --sample` (port 47890) — never on the real data.
-- Commit/push only when the person asks. This copy has no git remote.
+- Commit/push only when the person asks; this copy's own private repository is `raymanrboy/book-studio-portable`.
 
 Personal switches in `app/data/settings.json` (edit only if the person asks): `security.etsyKyivOnly` (true = Etsy pages
-refused on this PC), `printify.readOnlyFrom` (a date, or null = Printify is never read-only), `ui.theme` (`light`/`dark`).
+refused on this PC), `printify.readOnlyFrom` (a date, or null = Printify is never read-only).
 
 ## 7. Where things are (for diagnosing)
 
@@ -250,7 +249,7 @@ code via `wiki/code-map.md`.
 - **Diagnose** from logs and settings (read-only), and propose the fix as exact steps.
 - **Small safe changes** with the person's consent: the personal switches in §6, a slide scheme through the
   `/listing-slides` skill, a book's text in the Workshop.
-- **Code changes** only following `AGENTS.md` (wiki first; tests pass; wiki updated). Commands:
+- **Code changes** only following `CLAUDE.md` (wiki first; tests pass; wiki updated). Commands:
   `python app/tools/wiki_check.py`; `cd app && python -m unittest discover -s tests`; `python app/tools/dev_server.py --sample`.
   Use the bundled Python: `..\runtime\python\python.exe`.
 - **Never**: use the person's real keys or accounts for experiments, publish, send to production, or touch files outside
@@ -272,7 +271,6 @@ code via `wiki/code-map.md`.
 | Чернетка / `Draft` | A Gelato draft order — not yet confirmed or paid (the step «Чернетка» in the Order Creator; the chip `Draft` in the queue) |
 | Позначити в Etsy | The truck tab: the printer shipped it, now the person marks the order shipped on Etsy |
 | Друкуються / Відправлені / Нові | Printing / Sent / New (the queue's tabs) |
-| Вигляд | The theme switch (light/dark) at the bottom of the rail |
 | Модулі | Optional heavy parts: the text check and upscaling |
 | Резервна копія | Backup |
 | Перенесення налаштувань | Settings transfer (export/import) |

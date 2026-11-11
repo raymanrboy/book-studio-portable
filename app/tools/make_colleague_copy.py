@@ -3,10 +3,9 @@
     python app/tools/make_colleague_copy.py "D:\\Desktop\\Book Studio Colleague"  [--without-photoshop] [--without-templates] [--with-ollama] [--with-upscayl] [--dry-run]
 
 What goes: the program (only what git knows — tracked files and new ones that are not ignored), `app/bin` (7-Zip,
-cloudflared), `runtime/` (Python, ffmpeg, Ollama with its model, Upscayl, Antigravity's program), the launchers.
+cloudflared), `runtime/` (Python, ffmpeg, Ollama with its model, Upscayl), the launchers.
 What never goes: `app/data` (orders, customers, the vault with the keys), `.secrets.txt`, the Workshop's books, `examples/`,
-the git history (a fresh repository is made), the owner's raw wiki sources, Antigravity's user-data and home (his Google
-login and chats), the Edge profile. Photoshop and the mockup templates go in (the owner, 2026-10-03: the colleague bought the
+the git history (a fresh repository is made), the owner's raw wiki sources and plans, the Edge profile, a leftover `runtime/Antigravity`. Photoshop and the mockup templates go in (the owner, 2026-10-03: the colleague bought the
 mockups too, and it is not commercial use) unless left out with `--without-photoshop` / `--without-templates`.
 Ollama (the text check) and Upscayl (upscaling) are optional modules the program offers to install itself, so they are left out
 unless `--with-ollama` / `--with-upscayl`. Python goes in with only the packages the program needs, ffmpeg with only `ffmpeg.exe`.
@@ -27,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]          # …/Book Studio (the repos
 PORTABLE = ROOT.parent
 sys.path.insert(0, str(ROOT / "app"))
 
-KEEP_OUT_PREFIXES = ("wiki/raw/", "app/tools/colleague_docs/", "ROADMAP.md", "portable/ПРОЧИТАЙ.md")   # the owner's own words and plan; the colleague's docs are put in below
+KEEP_OUT_PREFIXES = ("wiki/raw/", "app/tools/colleague_docs/", "wiki/owner/future-plans.md", "portable/ПРОЧИТАЙ.md")   # the owner's own words and plans; the colleague's docs are put in below
 # Personal names in the docs (his GitHub account, his Windows profile) — said neutrally in the copy.
 # The names are written in pieces: this file is copied into the colleague's copy too, and must not carry them itself.
 _ACCOUNT, _PROFILE, _MAIL = "ray" + "manrboy", "Ro" + "man", "anna" + "miller764"
@@ -36,6 +35,7 @@ SCRUB = ((f"{_ACCOUNT}@gmail.com", "<email>"), (f"{_MAIL}@gmail.com", "<email>")
          ("C:\\Users\\" + _PROFILE + "\\", "C:\\Users\\<user>\\"), (f"/c/Users/{_PROFILE}/", "/c/Users/<user>/"),
          ("D:\\" + _PROFILE + "\\", "D:\\<user>\\"), (f"D:/{_PROFILE}/", "D:/<user>/"))
 RAW_LINK = re.compile(r"\[([^\]]*)\]\((?:\.\./)*raw/[^)]*\)")
+PLANS_LINK = re.compile(r"\[([^\]]*)\]\((?:\.\./)*(?:owner/)?future-plans\.md[^)]*\)")
 SETTINGS = {"security": {"etsyKyivOnly": False}, "printify": {"readOnlyFrom": None}, "ui": {"theme": "light"}}
 README = """# Book Studio Portable
 
@@ -49,14 +49,13 @@ README = """# Book Studio Portable
 
 **Перший запуск.** Програма сама покаже вікно: чого бракує і що зробити. Далі:
 1. Налаштування → підключи свої ключі: Etsy, Printify, Gelato (вони шифруються під твій Windows-користувач).
-2. Antigravity (агенти для нових книг) — увійди у свій обліковий запис Google.
-3. Gelato і Canva відкриваються в Edge у власному профілі програми — увійди в них один раз.
-4. Photoshop і трафарети мокапів уже лежать у `runtime\\Photoshop` і `runtime\\Templates` — програма знайде їх сама.
+2. Gelato і Canva відкриваються в Edge у власному профілі програми — увійди в них один раз.
+3. Photoshop і трафарети мокапів уже лежать у `runtime\\Photoshop` і `runtime\\Templates` — програма знайде їх сама.
 
-**З агентом (Claude Code, Antigravity, Codex…):** дай йому прочитати `Book Studio\\MANUAL.md` — інструкція, написана для ШІ: як
+**З Claude Code:** відкривай у ньому теку `Book Studio`; про програму дай йому прочитати `Book Studio\\MANUAL.md` — інструкція, написана для ШІ: як
 користуватись програмою, що де лежить, що робити, коли щось зламалось.
 
-**Що де лежить:** `Book Studio\\` — програма та її вікі; `runtime\\` — Python, ffmpeg, Ollama, Upscayl, Antigravity.
+**Що де лежить:** `Book Studio\\` — програма та її вікі; `runtime\\` — Python, ffmpeg, Ollama, Upscayl.
 Твої дані (замовлення, книги, ключі) з'являться в `Book Studio\\app\\data` і нікуди не відправляються.
 """
 
@@ -106,27 +105,13 @@ def neutral_docs(repo: Path) -> None:
     sec.write_text(text, encoding="utf-8")
 
 
-def without_roadmap(repo: Path) -> None:
-    """The owner's plan is not in the copy: the pages and the README that point at it lose those lines."""
-    nl = chr(10)
-    edits = {
-        "wiki/dev/portable-setup.md": (
-            (f"  - ROADMAP.md{nl}", ""),
-            ("the launchers (`portable/`), the plan (`ROADMAP.md`) and the notes", "the launchers (`portable/`) and the notes"),
-            (f"- `ROADMAP.md` (repository root) is the plan by stages and the list of what is not yet checked. Take one stage per session.{nl}", ""),
-            (f"`ПРОЧИТАЙ.md`;{nl}  `ROADMAP.md` stays out of it.{nl}", f"`ПРОЧИТАЙ.md`.{nl}"),
-            (f"- [ROADMAP.md](../../ROADMAP.md) — the plan{nl}", "")),
-        "wiki/dev/portable.md": ((" the plan by stages is `ROADMAP.md` in this repository's root.", ""),),
-        "README.md": (("; the plan — [ROADMAP.md](ROADMAP.md)", ""),),
-    }
-    for name, pairs in edits.items():
-        page = repo / name
-        if not page.is_file():
-            continue
+def without_owner_plans(repo: Path) -> None:
+    """The owner's plans page is not in the copy: its line in the index goes; any other link to it becomes plain text
+    (`scrub()`, `PLANS_LINK`)."""
+    page = repo / "wiki" / "index.md"
+    if page.is_file():
         text = page.read_text(encoding="utf-8")
-        for old, new in pairs:
-            text = text.replace(old, new)
-        page.write_text(text, encoding="utf-8")
+        page.write_text(re.sub(r"^- \[[^\]]*\]\(owner/future-plans\.md\).*\n", "", text, flags=re.M), encoding="utf-8")
 
 
 def scrub(repo: Path) -> int:
@@ -137,6 +122,7 @@ def scrub(repo: Path) -> int:
             continue
         text = p.read_text(encoding="utf-8")
         new = RAW_LINK.sub(r"\1", text)             # links to the owner's raw sources, which are not in the copy
+        new = PLANS_LINK.sub(r"\1", new)            # and to his plans page
         for old, neutral in SCRUB:
             new = new.replace(old, neutral)
         if new != text:
@@ -300,9 +286,7 @@ def main(argv: list[str]) -> int:
                 or name == "Ollama" and not args.with_ollama or name == "Upscayl" and not args.with_upscayl):
             skipped.append(name)
             continue
-        if name == "Antigravity":
-            n = copy_tree(part / "app", target / "runtime" / "Antigravity" / "app", dry)
-            print(f"runtime/Antigravity: програма ({n} файлів), без входу й чатів")
+        if name == "Antigravity":                  # no longer used (books are made with Claude Code, 2026-11-11)
             continue
         if name == "python":
             n, dists = copy_python(part, target / "runtime" / name, dry)
@@ -336,7 +320,7 @@ def main(argv: list[str]) -> int:
         (data / "settings.json").write_text(json.dumps(SETTINGS, indent=2), encoding="utf-8")
         repo = target / "Book Studio"
         neutral_docs(repo)
-        without_roadmap(repo)
+        without_owner_plans(repo)
         print(f"Особисті імена прибрано з {scrub(repo)} документів; правила для агентів написано для колеги")
         subprocess.run(["git", "-C", str(repo), "init", "-q", "-b", "main"], check=True)
         subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)

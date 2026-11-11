@@ -2,7 +2,7 @@
 
 The owner (2026-09-24): "a place where I create books before sending them to the library with orders". Since
 2026-09-26 it is the book console moved in (the prototype «Пульт книги»): a book is a folder of the pipeline's
-`books/`, where the agents in Antigravity write its text and prompts; the Workshop shows its path, puts every prompt
+`books/`, where Claude Code's `book` skills write its text and prompts; the Workshop shows its path, puts every prompt
 into the clipboard, catches the picture the owner downloads from Gemini into its row — cut, flipped, the cover laid on
 the printer's template — and passes the finished book to the library with its Etsy listing.
 

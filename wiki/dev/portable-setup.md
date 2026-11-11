@@ -1,7 +1,7 @@
 ---
 title: Building a portable folder from the repository
 type: dev
-updated: 2026-10-04
+updated: 2026-11-11
 code:
   - app/tools/setup_portable.py
   - app/tests/test_setup_portable.py
@@ -9,12 +9,11 @@ code:
   - portable/Start with console.bat
   - portable/Make desktop shortcut.bat
   - portable/ПРОЧИТАЙ.md
-  - ROADMAP.md
 ---
 # Building a portable folder from the repository
 
 > The repository (`raymanrboy/book-studio-portable`, the `Book Studio/` folder) holds **everything of the program**: the code, the
-> wiki, the launchers (`portable/`), the plan (`ROADMAP.md`) and the notes for people and agents. It does not hold what the program
+> wiki, the launchers (`portable/`) and the notes for people and agents. It does not hold what the program
 > *runs on* (`runtime/`: too big, and some of it is licensed) or the owner's data (`app/data`, the Workshop's books, the keys).
 > With a clone and the steps below a working portable folder can be built on any Windows PC.
 
@@ -41,8 +40,7 @@ Book Studio Portable/          (any name, any place — also a USB drive)
    `runtime/python` and installs `app/requirements.txt` there (the one step that uses the internet: pip), makes the shortcut.
    Run again later: it only refreshes the launchers and says what `runtime/` still lacks.
 3. Put into `runtime/` what the script cannot: **ffmpeg** (a Windows build, `ffmpeg.exe` anywhere inside `runtime/ffmpeg`),
-   **Photoshop** and **Templates** (the owner's own portable Photoshop and the mockup templates), **Antigravity**
-   (`runtime/Antigravity/app/Antigravity.exe`), and optionally `Installers/vc_redist.x64.exe`.
+   **Photoshop** and **Templates** (the owner's own portable Photoshop and the mockup templates), and optionally `Installers/vc_redist.x64.exe`.
 4. Start it: **the first time** with `Start Book Studio.bat` — it makes `Book Studio.lnk` here (and on the desktop) and then hides the launchers and
    the note (`make_shortcut.py --tidy`), so the folder shows only the shortcut, `Book Studio/` and `runtime/`; afterwards with the shortcut.
    The window at the start lists what is still missing and what to log in to by hand.
@@ -58,20 +56,17 @@ Book Studio Portable/          (any name, any place — also a USB drive)
 | `pipeline/books/` | gigabytes of pictures | in the backup |
 | `app/bin/` (7-Zip, cloudflared) | downloaded helpers | `7za.exe` into `app/bin` (the backup and the settings file need it); cloudflared is fetched by the program for Gelato's temporary link |
 
-## The plan and the launchers live in the repository
+## The launchers live in the repository
 
-- `ROADMAP.md` (repository root) is the plan by stages and the list of what is not yet checked. Take one stage per session.
 - `portable/` is the canonical copy of the launchers and of `ПРОЧИТАЙ.md`; the files in the portable root are copies made by
   `setup_portable.py` (a launcher is refreshed, `ПРОЧИТАЙ.md` is written only when missing). Change them here, then run the script.
-- The colleague build ([the portable copy](portable.md)) takes the launchers from `portable/` and writes its own `ПРОЧИТАЙ.md`;
-  `ROADMAP.md` stays out of it.
+- The colleague build ([the portable copy](portable.md)) takes the launchers from `portable/` and writes its own `ПРОЧИТАЙ.md`.
 
 ## Where in the code
 
 - [app/tools/setup_portable.py](../../app/tools/setup_portable.py) — `layout()`, `copy_python()`, `install_packages()`, `missing()`, `main()`
 - [app/tests/test_setup_portable.py](../../app/tests/test_setup_portable.py) — the layout, a second run, what is missing, the Python copy
 - [portable/](../../portable/Start%20Book%20Studio.bat) — the launchers and the note for people
-- [ROADMAP.md](../../ROADMAP.md) — the plan
 
 ## Related
 

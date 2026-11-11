@@ -1,4 +1,4 @@
-"""The Workshop's routes: the books and their pictures, the generation mode, upscaling, Antigravity, «Зберегти як»,
+"""The Workshop's routes: the books and their pictures, the generation mode, upscaling, the agent's words, «Зберегти як»,
 the photo mockups (their templates, a book's photos)."""
 from __future__ import annotations
 

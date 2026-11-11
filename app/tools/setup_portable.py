@@ -1,7 +1,7 @@
 """Lays out a portable Book Studio folder from a clone of this repository — so the repository alone is enough to start one.
 
 The repository is the `Book Studio/` folder. Next to it a portable folder has the launchers and `runtime/` (the programs the
-program runs on: Python, ffmpeg, Photoshop, the mockup templates, Antigravity — too big and not ours to keep in git). This script:
+program runs on: Python, ffmpeg, Photoshop, the mockup templates — too big and not ours to keep in git). This script:
 
   1. puts the launchers (`portable/*.bat`, `ПРОЧИТАЙ.md`) beside the repository and makes an empty `runtime/` with its
      sub-folders and a note on what goes into each;
@@ -28,7 +28,7 @@ REPO = Path(__file__).resolve().parents[2]
 LAUNCHERS = REPO / "portable"
 REFRESHED = ("Start Book Studio.bat", "Start with console.bat", "Make desktop shortcut.bat")   # always as the repository has them
 KEPT = ("ПРОЧИТАЙ.md",)                                                                         # written only when missing
-RUNTIME_FOLDERS = ("Photoshop", "Templates", "Antigravity", "ffmpeg", "Installers")
+RUNTIME_FOLDERS = ("Photoshop", "Templates", "ffmpeg", "Installers")
 RUNTIME_NOTE = """runtime/ — the programs Book Studio runs on. They are not in the repository (too big, and some are licensed).
 
 python/        Python 3.14 (x64) with the packages of app/requirements.txt
@@ -36,7 +36,6 @@ python/        Python 3.14 (x64) with the packages of app/requirements.txt
 ffmpeg/        an ffmpeg build for Windows: some folder in here must hold ffmpeg.exe (the photo mockups' video)
 Photoshop/     a portable Photoshop of your own: App/Photoshop/Photoshop.exe (the mockups) — see wiki/features/mockups.md
 Templates/     your mockup templates (.psd) — read-only, the program only works on copies
-Antigravity/   app/Antigravity.exe — the agents that write new books; data/ and home/ are made by the program
 Installers/    vc_redist.x64.exe (optional): the program offers to install the Visual C++ runtime quietly from it
 Ollama/        } optional modules: the program installs them itself (Settings → Модулі),
 Upscayl/       } do not put anything here by hand
@@ -130,8 +129,6 @@ def missing(target: Path) -> list[str]:
     templates = runtime / "Templates"
     if not (templates.is_dir() and any(templates.iterdir())):
         out.append("runtime/Templates — ваші трафарети макапів (.psd)")
-    if not (runtime / "Antigravity" / "app" / "Antigravity.exe").is_file():
-        out.append("runtime/Antigravity — програма агентів (app/Antigravity.exe)")
     return out
 
 

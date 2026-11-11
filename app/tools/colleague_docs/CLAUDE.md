@@ -8,7 +8,9 @@
   - `/wiki-lint` — wiki health check.
   - `/listing-slides` — change, look at and bake the six Etsy listing slides through their files (when the user
     asks in words instead of the editor).
-  - `book-studio-ui-logic` — the interface rules as a checklist; **apply it before writing any UI**.
+  - `/book`, `/book-cover`, `/book-variant` — making the books (the pipeline).
+- **Rules** (`.claude/rules/`) load by themselves with the files they cover: the interface rules for `app/web/`, the code
+  rules for `app/`, the wiki format for `wiki/`.
 - **Interface preview**: `preview_start("book-studio-dev")` (`.claude/launch.json`, port 47890,
   made-up data; every page — the Workshop and the Mockups with a pretend Photoshop too; set the **light** theme first).
   The hidden browser pane doesn't run `requestAnimationFrame` — check the DOM and swap rAF for `setTimeout`; after

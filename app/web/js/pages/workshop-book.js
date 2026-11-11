@@ -1,6 +1,6 @@
 // A book in the Workshop — the book console moved in (26.09.2026). On top, the book's path: Формула → Герой → Історія →
 // Текст → Промпти · GO → Картинки n/16 → Обкладинка → Canva → Мокапи → Фото n/7 → Бібліотека, each step ticked by the files that
-// exist (the agents write them in Antigravity), a click shows the step's file or work in the panel under it. Below, the
+// exist (Claude's book skills write them), a click shows the step's file or work in the panel under it. Below, the
 // book's rows — page 1, spreads 2–3 … 28–29, page 30 — each its prompt, its 2:1 frame and its text, and the cover last,
 // in two stages. «Генерувати» puts a row's prompt into the clipboard; the picture the owner downloads from Gemini lands
 // in its row, cut and flipped, and the next prompt is already in the clipboard. The page redraws in place whenever a
@@ -88,7 +88,7 @@ export async function mount(view, [rawId]) {
       ...(b.tier ? [['tier', html`<span class="chip chip-accent ws-tier" data-tip="${b.tier === 'H' ? 'Tier H — герой-дитина на кожному розвороті' : 'Tier S — без постійного героя'}">Tier ${b.tier}</span>`]] : []),
       ['tools', html`<div class="page-actions">
         <div class="tools">
-          ${ib('agent', 'Текст для агента в буфер — «Продовжуємо книгу …» з повною адресою книги', 'data-act="agent"', { cls: b.steps[0]?.next ? 'primary' : '' })}
+          ${ib('agent', 'Команда для Claude в буфер — «/book …» з повною адресою книги', 'data-act="agent"', { cls: b.steps[0]?.next ? 'primary' : '' })}
           <span class="sep"></span>
           ${ib('images', 'Сторінки — нарізані 1–30 і Cover.png, набір для Canva', 'data-act="open" data-what="pictures"')}
           ${ib('original', 'Оригінали — картинки, як їх віддав генератор', 'data-act="open" data-what="originals"')}

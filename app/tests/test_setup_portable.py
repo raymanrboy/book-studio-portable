@@ -53,7 +53,7 @@ class Layout(unittest.TestCase):
     def test_what_is_missing_is_named_until_it_is_there(self):
         sp.layout(self.target)
         lacking = sp.missing(self.target)
-        self.assertEqual(len(lacking), 5)
+        self.assertEqual(len(lacking), 4)
         runtime = self.target / "runtime"
         (runtime / "python").mkdir()
         (runtime / "python" / "python.exe").write_bytes(b"")
@@ -62,8 +62,6 @@ class Layout(unittest.TestCase):
         (runtime / "Photoshop" / "App" / "Photoshop").mkdir(parents=True)
         (runtime / "Photoshop" / "App" / "Photoshop" / "Photoshop.exe").write_bytes(b"")
         (runtime / "Templates" / "a.psd").write_bytes(b"")
-        (runtime / "Antigravity" / "app").mkdir()
-        (runtime / "Antigravity" / "app" / "Antigravity.exe").write_bytes(b"")
         self.assertEqual(sp.missing(self.target), [])
 
     def test_a_python_copy_leaves_out_the_tests_and_the_packages_and_keeps_the_rest(self):

@@ -5,6 +5,27 @@ Newest entries at the top. Heading format: `## [YYYY-MM-DD] kind | what happened
 
 Older entries (before 2026-10-18) live in [log-2026-09.md](log-2026-09.md) and [log-2026-10.md](log-2026-10.md).
 
+## [2026-11-11] update | Antigravity out of the program, ROADMAP retired, the presets described for the owner
+- Antigravity: `portable.antigravity()` / `antigravity_launch()`, its `runtime/` check and first-run note, `setup_portable`'s folder,
+  the colleague copy's copying — gone; `runtime\Antigravity` (1.8 GB, with the owner's Google login) moved to `..\_archive\runtime-Antigravity`
+  for him to delete. Pages: [portable](dev/portable.md), [portable-setup](dev/portable-setup.md), MANUAL, ПРОЧИТАЙ.
+- `ROADMAP.md` (every stage done) retired: its open items and the owner's plans (Linux, library sync) → [Plans for later](owner/future-plans.md),
+  kept out of a colleague's copy (`without_owner_plans()`).
+- The book check no longer looks into the old `agent/_work/` (no book had it): `check.py`, `rows._agent_key()`.
+- `pipeline/knowledge/media-presets.md`: every preset opens with a plain Ukrainian description (what it looks like, what it suits);
+  `pipeline/scripts/preset.py --list` shows them with the books made in each.
+
+## [2026-11-11] decision | Claude Code only: CLAUDE.md, .claude/rules, the book skills, hooks
+- `AGENTS.md` + `CLAUDE.md` → one short `CLAUDE.md`; `.claude/rules/` (code, ui — was the skill `book-studio-ui-logic`, wiki, books).
+- `pipeline/AGENTS.md`, `playbook/` (agents 0–6, onboarding, build-book, workflow, the anatomy) → the skills `book`, `book-cover`,
+  `book-variant` and the subagent `book-text-critic`; `pipeline/knowledge/` holds the rules and data once (the anatomy merged into
+  `master-prompt.md`, `notes/discoveries.md` → `lessons.md`, `generator-profiles.md` gone); `pipeline/scripts/` (`preset.py`,
+  `new_book.py`); `Listing prompts/` → `listing-prompts/`.
+- `.claude/settings.json`: `permissions.deny` for the keys, hooks `.claude/hooks/book_guard.py` (checked live: the Tier H gate, the
+  DRAFT exception, the book check's FAILs after a write, the keys); a copy in the parent folder's `.claude/settings.json`.
+- `books.agent_words()` → `/book new` / `/book <n>`; 14 third-party skills archived. [Decision](decisions.md),
+  [Claude Code setup](dev/design-skills.md).
+
 ## [2026-11-07] update | Four faith books 52–55: Grandma's Christmas prayer, Noah's Ark, a mother's prayer, a father's blessing
 - The owner asked for religious books with no customized hero, for an occasion or from a relative, checked against the shop's 13 Christian listings.
   Tier S, no people drawn, taken to GO; `check_book.py` 0 FAILs each. Nothing generated. [faith-books](owner/faith-books.md).

@@ -1,7 +1,7 @@
 ---
 title: Interface — structure and shared helpers
 type: architecture
-updated: 2026-10-28
+updated: 2026-11-11
 code:
   - app/web/index.html
   - app/web/js/app.js
@@ -164,7 +164,7 @@ filled = done, half = started, empty = not yet, pale/dashed = not needed, red = 
   owner fits this by hand"; `crop` — the
   Mockups' crop window (the front cover moved in its frame), `eyedropper` — a colour taken from a picture with a click; `listing` — an Etsy listing's tag, `workshop` — the Workshop (a hammer and a ruler crossed),
   `mirror` — ⇄, a Workshop spread mirrored left to right (not `swap`, which trades a spread's two pages in the
-  passport); `agent` — the book agents in Antigravity (a chat bubble, the agent typing), `hero` — a
+  passport); `agent` — the book agent, Claude (a chat bubble, the agent typing), `hero` — a
   book's hero, `minus` — a step not needed, `guides` — the printer's template lines (a cover with its spine inside
   crop marks). `prompt` — a prompt for the generator (a prompt sign
   `>_` in a window; the prompt files' tabs), `generate` — «Генерувати» (▷: the prompt into the clipboard, a download

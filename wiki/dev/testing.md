@@ -1,7 +1,7 @@
 ---
 title: Tests
 type: dev
-updated: 2026-11-07
+updated: 2026-11-11
 code:
   - app/tests/
   - app/tools/ui_smoke.py

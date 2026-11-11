@@ -1,7 +1,7 @@
 ---
 title: How to run this wiki
 type: dev
-updated: 2026-10-05
+updated: 2026-11-11
 code:
   - app/tools/wiki_check.py
   - app/tests/test_wiki.py
@@ -19,7 +19,8 @@ code:
 1. **Sources** — the code (`app/`) as the truth about *how* the program works right now, and the
    owner's material in `wiki/raw/` (read-only, never changed).
 2. **The wiki** — the pages in `wiki/`. Only an agent writes to it.
-3. **The scheme** — `AGENTS.md` (+ `CLAUDE.md`) at the root: the working rules, and this page.
+3. **The scheme** — `CLAUDE.md` at the root and `.claude/rules/` (the wiki's own rule loads with `wiki/`): the working
+   rules, and this page.
 
 ## Layout
 

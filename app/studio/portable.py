@@ -1,7 +1,7 @@
 """The portable copy: where the programs Book Studio needs live when they travel with it.
 
-The folder next to the repository (`<portable>/runtime/`) holds Photoshop, the mockup templates, Antigravity, Ollama,
-Upscayl, ffmpeg and Python. When that folder is there (or `BOOKSTUDIO_PORTABLE` names the portable
+The folder next to the repository (`<portable>/runtime/`) holds Photoshop, the mockup templates, Ollama, Upscayl,
+ffmpeg and Python. When that folder is there (or `BOOKSTUDIO_PORTABLE` names the portable
 root), `runtime()` finds each program in it; when it is not (the ordinary install), everything answers None and the
 program looks where it always did.
 """
@@ -51,10 +51,6 @@ def relocate(saved: str | Path | None) -> Path | None:
     return path
 
 
-def antigravity() -> Path | None:
-    return runtime("Antigravity", "app", "Antigravity.exe")
-
-
 def ollama_folder() -> Path | None:
     return runtime("Ollama")
 
@@ -74,20 +70,6 @@ def ffmpeg() -> Path | None:
         return None
     found = next(base.rglob("ffmpeg.exe"), None)
     return found
-
-
-def antigravity_launch() -> tuple[list[str], dict[str, str]] | None:
-    """How to start Antigravity so that everything of its own stays in the portable folder: its user-data folder by
-    `--user-data-dir`, and a home folder of its own (`USERPROFILE`) holding `.gemini` — the agents' chats and settings."""
-    exe = antigravity()
-    base = runtime("Antigravity")
-    if not (exe and base):
-        return None
-    home = base / "home"
-    home.mkdir(exist_ok=True)
-    data = base / "data" / "user-data"
-    data.mkdir(parents=True, exist_ok=True)
-    return [str(exe), f"--user-data-dir={data}"], {"USERPROFILE": str(home), "HOME": str(home)}
 
 
 def env() -> dict[str, str]:
@@ -119,11 +101,8 @@ def check() -> list[dict]:
     if not root():
         return []
     problems = []
-    for name, found, what in (
-            ("Antigravity", antigravity(), "Antigravity (агенти книг)"),
-            ("ffmpeg", ffmpeg(), "ffmpeg (відео для фото-макапів)")):
-        if not found:
-            problems.append(_problem(what, f"Покладіть його в теку runtime/{name}.", name))
+    if not ffmpeg():
+        problems.append(_problem("ffmpeg (відео для фото-макапів)", "Покладіть його в теку runtime/ffmpeg.", "ffmpeg"))
     # Ollama (the text check) and Upscayl (upscaling) are optional modules (modules.py): not asked for here.
     from . import mockups
     places = mockups.places()
@@ -159,8 +138,7 @@ def first_run_notes() -> list[str]:
     if me in seen:
         return []
     core.write_json(state_path, {**state, "computer": me, "computers": [*seen, me][-20:]})
-    return ["Antigravity: увійдіть у свій обліковий запис Google (вхід не переноситься між комп'ютерами).",
-            "Edge: Gelato і Canva відкриються у власному профілі програми — увійдіть у них один раз.",
+    return ["Edge: Gelato і Canva відкриються у власному профілі програми — увійдіть у них один раз.",
             *(["Etsy відкривайте лише на київському ПК."] if core.etsy_kyiv_only() else [])]
 
 
@@ -245,7 +223,7 @@ VCREDIST_URL = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
 
 
 def vcredist_present() -> bool:
-    """The Microsoft Visual C++ 2015–2022 runtime (x64) that Photoshop, Upscayl and Antigravity lean on."""
+    """The Microsoft Visual C++ 2015–2022 runtime (x64) that Photoshop and Upscayl lean on."""
     if os.name != "nt":
         return True
     try:
@@ -268,7 +246,7 @@ def prerequisites() -> list[dict]:
     """What the program needs from Windows that cannot live in a folder, each with how to put it in quietly: an installer in
     `runtime/Installers/` (works without the internet) or `winget`. Only what a clean Windows may lack."""
     installer = runtime("Installers", "vc_redist.x64.exe")
-    return [{"id": "vcredist", "label": "Microsoft Visual C++ 2015–2022 (x64)", "needed_by": "Photoshop, Upscayl, Antigravity",
+    return [{"id": "vcredist", "label": "Microsoft Visual C++ 2015–2022 (x64)", "needed_by": "Photoshop, Upscayl",
              "present": vcredist_present(), "installer": str(installer) if installer else None,
              "winget": "Microsoft.VCRedist.2015+.x64", "url": VCREDIST_URL}]
 

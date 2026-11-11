@@ -141,7 +141,7 @@ const P = {
   regenerate: '<path d="M20 12a8 8 0 1 1-8-8c2.2 0 4.3.9 5.9 2.4L20 8.5"/><path d="M20 3.5v5h-5"/>',
   // a spread mirrored left to right (the owner's flipper) — not `swap`, which trades a spread's two pages
   mirror: '<path d="M12 3.5v2M12 8.5v2M12 13.5v2M12 18.5v2"/><path d="M8.5 7L3.5 17h5z"/><path d="M15.5 7l5 10h-5z"/>',
-  // the Workshop's pipeline: the book agents (Antigravity — a chat, the agent typing), the book's hero, a step not
+  // the Workshop's pipeline: the book agent (Claude — a chat, the agent typing), the book's hero, a step not
   // needed (a Tier S book has no hero), the printer's template lines over the cover (the cover and its spine inside the
   // printer's crop marks)
   agent: '<path d="M6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.8V16A2.5 2.5 0 0 1 4 13.5v-7A2.5 2.5 0 0 1 6.5 4z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01" stroke-width="2.6"/>',

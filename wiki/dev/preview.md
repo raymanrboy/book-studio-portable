@@ -1,7 +1,7 @@
 ---
 title: Interface preview during development
 type: dev
-updated: 2026-10-28
+updated: 2026-11-11
 code:
   - app/tools/dev_server.py
   - app/tools/sample_data.py
@@ -64,8 +64,7 @@ code:
   step's missing states); **42** — just started. The [photo mockups](../features/photo-mockups.md)' made-up templates —
   a coloured scene with a white book, per category — in `.tmp\bsdev\photo-mockups` (`make_photo_templates()`, only
   when empty). **A picture put into `.tmp\bsdev\downloads`** is caught by a waiting row, as a download would be; what
-  would go into the clipboard lands in `.tmp\bsdev\clipboard\`; F8 isn't taken; no window opens (Antigravity,
-  Explorer, «Зберегти як» → `saved\`); a deleted book goes to `recycle-bin\`. To have the books back as they were,
+  would go into the clipboard lands in `.tmp\bsdev\clipboard\`; F8 isn't taken; no window opens (Explorer, «Зберегти як» → `saved\`); a deleted book goes to `recycle-bin\`. To have the books back as they were,
   delete `.tmp\bsdev\workshop-books`.
 - **The Mockups** (`seed_mockups()`, in `.tmp\bsdev\sample-mockups`): made-up templates (small pictures of a
   table with an open book, saved under the owner's `.psd` names — Pillow reads them by content, so the template
