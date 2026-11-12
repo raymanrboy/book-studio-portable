@@ -226,7 +226,7 @@ Made general on 2026-10-13 from the style block of `24.spooky-stories` (the Hall
 **Найкраще для:** колискові й різдвяні книги, родинні історії з тваринками.
 `task` tag: `... in a soft, polished, glowing painted children's illustration style with golden light and cozy dressed animal characters`
 Added 2026-10-11 from the cozy bedtime books of the competitor TheChildhoodKeeper (reference pictures and the reading of them:
-`wiki/owner/christmas-books.md`). Differs from `GW`: smoother and more polished, fine pencil strokes only inside fur and fabric, characters with
+`wiki/owner/workshop-books.md`). Differs from `GW`: smoother and more polished, fine pencil strokes only inside fur and fabric, characters with
 large glossy eyes and pink blush, animals dressed in knit and floral clothes, calm text areas that are a colour wash with drifting sparkles.
 ```json
 "style": {
@@ -255,7 +255,7 @@ large glossy eyes and pink blush, animals dressed in knit and floral clothes, ca
 **Найкраще для:** Різдво, свята, веселі родинні книги.
 `task` tag: `... in a bold, saturated festive gouache children's illustration style with crayon and dry-brush texture`
 Added 2026-10-11 from the Christmas books of the competitor LunaBooksUS (reference pictures and the reading of them:
-`wiki/owner/christmas-books.md`). Differs from `G`: far more saturated and festive, stylised big-headed characters with large black oval eyes and
+`wiki/owner/workshop-books.md`). Differs from `G`: far more saturated and festive, stylised big-headed characters with large black oval eyes and
 wide open smiles, chalky crayon texture, gold stars on warm gradient grounds, bold patterned props.
 ```json
 "style": {
@@ -284,7 +284,7 @@ wide open smiles, chalky crayon texture, gold stars on warm gradient grounds, bo
 **Найкраще для:** бабуся й дідусь, сад, тихі теплі історії.
 `task` tag: `... in a warm hand-drawn watercolor and colored pencil children's illustration style with soft sepia pencil lines and cozy cottage-garden charm`
 Added 2026-10-16 from the grandma-and-little-bear listing of the competitor TheChildhoodKeeper (the pictures:
-`wiki/raw/2026-10-11-grandma-bear-listing/`; the owner liked this look the most, "pencil plus something"). Differs from `CG`: it HAS lines — soft
+`pipeline/knowledge/refs/grandma-bear-listing/`; the owner liked this look the most, "pencil plus something"). Differs from `CG`: it HAS lines — soft
 warm-brown pencil contours around every figure and prop, and pencil strokes for fur — over transparent watercolor washes; muted cottage-garden
 colors (sage, dusty rose, cream, honey brown, peach sky, lavender wisteria) instead of a golden glow; and the text side is a plain warm watercolor
 paper wash with a few petals.

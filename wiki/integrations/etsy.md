@@ -1,64 +1,43 @@
 ---
-title: Etsy — read-only
+title: Etsy
 type: integration
-updated: 2026-10-28
+updated: 2026-11-12
 code:
   - app/studio/etsy.py
 ---
 # Etsy
 
-> Etsy Open API v3, **read-only** (`shops_r transactions_r`): the shop's receipts and listings.
-> Signing in to Etsy is done only on the Kyiv computer ([security](../security.md)).
+> Etsy Open API v3, read-only (`SCOPES` = `shops_r transactions_r`): the shop's receipts, listings and payment ledger. Signing in to Etsy happens only on the Kyiv computer; the program itself runs on the other one.
 
 ## Keys and sign-in
 
-- **App keys**: Keystring and Shared Secret (Etsy Developers → Your apps). Header
-  `x-api-key: <keystring>:<secret>`. Just the keys are already enough to check listings (no sign-in
-  needed).
-- **Sign-in (OAuth 2.0 + PKCE)**, two paths in Settings, after confirming "I'm on the Kyiv PC":
-  1. the program is running on the Kyiv PC — the sign-in page opens there, and Etsy redirects to
-     `http://localhost:47821/etsy/callback` (the owner doesn't do this — there's no program on the Kyiv
-     PC);
-  2. **the main path:** the program is here — the link is copied and opened on the Kyiv PC; the browser
-     there will navigate to `localhost…` (the page won't load — that's expected), and the full address
-     gets pasted back.
-  The return address has to be added under Etsy Developers → Callback URLs. The link is valid for an
-  hour.
-- **The access link** (`…?sync=<iv:tag:cipher>`) from Etsy Profit Calculator: a session, encrypted with
-  AES-GCM using a key derived from the Shared Secret (a fallback secret, as in Profit Calculator). The
-  simplest way to connect. Works the other way too: "Copy session key" for another PC.
-- **Tokens** are kept in the vault (`etsy_tokens`), and refresh themselves 5 minutes before they expire.
-  Etsy issues **one-time-use** refresh tokens: if another program (Profit Calculator) refreshed the same
-  session, this one stops working → "reconnect the session".
+- **App keys** (Keystring and Shared Secret, Etsy Developers → Your apps) go in the `x-api-key` header (`api_key_header()`). The keys alone are enough to read a listing; receipts need the sign-in.
+- **Sign-in** is OAuth 2.0 with PKCE (`start_oauth()`, `complete_oauth()`), started from Settings after the owner confirms "I'm on the Kyiv PC" (`oauthFlow()`). The program is not on the Kyiv PC, so the usual path is: the link is copied and opened there, the browser ends on a `localhost…/etsy/callback` page that does not load (expected), and the full address is pasted back. The return address must be listed under Etsy Developers → Callback URLs; the link is valid for an hour. When the program itself runs on the Kyiv PC, the callback route catches the redirect (`_oauth_callback()`).
+- **Access link**: a `?sync=…` link or key from the Etsy Profit Calculator is accepted as a ready session (`import_session()`, `decode_session_key()`); "Copy session key" exports one for another PC.
+- **Tokens** are kept in the vault (`etsy_tokens`) and refresh themselves 5 minutes before expiry (`refresh_tokens()`); a 401 forces one refresh and a retry. Etsy refresh tokens are single use: if another program refreshes the same session, this one must reconnect.
+- **Kyiv-only rule**: while `security.etsyKyivOnly` is on (default; off in a copy for someone else), the server's URL opener refuses every etsy.com / etsy.me address except the sign-in page, so a foreign sign-in cannot block the shop ([Security](../security.md)).
 
 ## Data
 
-- `fetch_all_receipts()` — every paid receipt (including cancelled/refunded ones), newest first, 100 at
-  a time, a short pause; with `min_last_modified` — only changed ones (an incremental sync). No more
-  than `MAX_RECEIPTS`; beyond that, the list is marked incomplete (`httpc.Listing`) and the sync
-  warns.
-- `normalize_receipt()` ([profit.py](../../app/studio/profit.py)) transforms a receipt: fees, items with
-  variations (personalization), address, refunds. Etsy's text arrives HTML-escaped (`&quot;`, `&amp;`) —
-  `plain()` un-escapes it.
-- **Not in the API**: the seller's own tabs (e.g. "In Production"). So an order's stage is worked out
-  from whether it has a print order ([rules/order-stages.md](../rules/order-stages.md)).
-- `fetch_listing()` — title, status, shop, main photo (one request, `includes=Images`).
+- `fetch_all_receipts()` returns every paid receipt (cancelled and refunded included), newest first, 100 per request with a short pause; with `min_last_modified` only changed ones (incremental sync, see [Sync](../rules/sync-policy.md)). Past `MAX_RECEIPTS` the list is marked incomplete (`httpc.Listing`) and the sync warns.
+- `normalize_receipt()` and `plain()` ([sync.py](../../app/studio/sync.py)) turn a receipt into the program's row: fees, items with variations, address, refunds; Etsy's HTML-escaped text is un-escaped. `ship_by` is the earliest item `expected_ship_date`; an open receipt stored without it forces one whole Etsy read.
+- `fetch_listing()` gives title, status, shop and main photo (used when adding a book).
+- The payment ledger is read in the same sync ([Reconciliation](../rules/reconciliation.md)).
+- The API has no seller tabs ("In Production"), so the stage is computed from print orders ([Order stages](../rules/order-stages.md)).
+- Nothing is written to Etsy: no marking shipped, no listings. The owner marks orders shipped by hand.
 
 ## Errors
 
-`_human()` turns Etsy's responses into understandable messages, with `code: etsy_auth` when the
-connection needs to be re-made. A 401 on a request → one forced token refresh and a retry. The token
-refresh is a POST that only reads, so it can be retried after a dropped connection
-(`idempotent=True`).
+`_human()` maps responses to readable messages; `code: etsy_auth` means the connection must be redone. The token refresh is a POST that only reads, so it is retried after a dropped connection (`idempotent=True`). If the wanted port is busy, `port_warning()` tells the owner the registered callback may not match.
+
+## Why
+- Agents browse Etsy signed out only; no sign-in, no changes, never around a CAPTCHA — nothing may put the shop at risk.
 
 ## Where in the code
-
-- [app/studio/etsy.py](../../app/studio/etsy.py) — `SCOPES`, `keys()`, `api_key_header()`, `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `get()`, `ensure_shop()`, `decode_session_key()`, `encode_session_key()`, `import_session()`, `fetch_listing()`, `fetch_all_receipts()`, `MAX_RECEIPTS`, `parse_listing_ref()`, `_oauth_callback()`, `port_warning()`, `_human()`
+- [app/studio/etsy.py](../../app/studio/etsy.py) — `SCOPES`, `start_oauth()`, `complete_oauth()`, `refresh_tokens()`, `fetch_all_receipts()`, `MAX_RECEIPTS`
 - [app/studio/sync.py](../../app/studio/sync.py) — `normalize_receipt()`, `plain()`
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `etsyCard()`
+- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `_open_url()`
 - [app/web/js/pages/settings-dialogs.js](../../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`
-- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`EtsyOAuth`, `OpenUrlGuard`)
 
 ## Related
-
 - [Security](../security.md) · [Sync](../rules/sync-policy.md) · [Settings](../features/settings.md)

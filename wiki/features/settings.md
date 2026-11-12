@@ -1,87 +1,56 @@
 ---
 title: Settings
 type: feature
-updated: 2026-10-28
+updated: 2026-11-12
 code:
-  - app/studio/settings_api.py
-  - app/studio/gelato_accounts.py
   - app/web/js/pages/settings.js
   - app/web/js/pages/settings-dialogs.js
+  - app/studio/settings_api.py
+  - app/studio/transfer.py
 ---
 # Settings
 
-> A minimal page: service keys, the Etsy connection, the Printify template, the optional modules, the backup, the settings transfer,
-> the data folder. Every block is collapsed to one line with its status; a block that needs something opens on its own.
-> The dark theme was removed (2026-11-01); the rail's bottom menu now holds only «Мінімум анімацій» — it is in the menu at the bottom of the rail, under Settings' own icon (Settings sit at the bottom of the rail,
-> apart from the places). A key's ✓ lights up in the ink only once something is pasted; an empty save says so and lights the field up.
+> `#/settings[/<block>]`, the icon at the bottom of the rail (it carries a dot when a service lacks a key or a sign-in). A minimal page: service keys, the Etsy connection, the optional modules, the backup, the settings transfer, the data folder. Every block is collapsed to one line with its status; a block that needs something opens itself.
 
-## Blocks (`#/settings[/<block>]`)
+## Blocks, in order
+- **Keys from earlier programs** (only when found and not already set): a one-time import of keys from the programs Book Studio replaced; «Перенести» (`legacy_sources()`). The preview server offers none.
+- **Etsy:** key fields; not connected → an access link from the Profit Calculator (`…/?sync=…`) or, when `security.etsyKyivOnly` is set, «Увійти в Etsy (лише з київського ПК)», else «Увійти в Etsy». Connected → shop name, «Disconnect», copy the session key for another PC. Details: [Etsy](../integrations/etsy.md).
+- **Printify** (optional: «Не обов'язково · не підключено», no warning mark, closed): token and a connection check. Printify is read-only (`printify.retired()`): «… · лише читання старих замовлень», «Нові книги друкує Gelato», no template picker; the Master picker (`pickMaster()` in `settings-dialogs.js`) is offered only on a copy that is not read-only ([Printify](../integrations/printify.md)).
+- **Gelato:** key, formats, «28 or 30 pages», connection check, and the switch to a second account (button «Перейти на новий акаунт Gelato», then «Старий акаунт · лише читання»). How it works: [Gelato](../integrations/gelato.md).
+- **«Модулі»:** install or remove the text check and upscaling, plus the text check's own switches: [Optional modules](modules.md).
+- **«Резервна копія»:** password, Drive folder with Open, «Зробити копію зараз», last copy or error; opens itself when there is no password or the last try failed: [Backup](backup.md).
+- **«Перенесення налаштувань»:** export and import, below.
+- **Program data:** the path to `app/data` and an Open button.
 
-In order on the page:
-
-- **Keys found from earlier programs** (only if there's something to move) — "Move over": keys from
-  Order Creator Printify (`.local/*.dpapi`) and Etsy Profit Calculator (`.env.local`/`.env`), the
-  Printify upload cache. Looked for on the desktop, next to the Book Studio folder.
-- **Etsy**: a key missing → Keystring / Shared Secret fields. Not connected → an "access link" from
-  Profit Calculator (`…/?sync=…`), or "Sign in to Etsy (Kyiv PC only)" — see
-  [integrations/etsy.md](../integrations/etsy.md). Connected → the shop name and "Disconnect".
-  "Details": the saved keys, the return address (Callback URL), copying the session key for another PC.
-- **Printify** (optional — no token means «Не обов’язково», no warning mark, the card stays closed): the token; the template (Master) and
-  "24 pages"; the template-picker button — only when there isn't one yet; a connection check. Printify is read-only (`readOnly`):
-  «лише читання старих замовлень», «Нові книги друкує Gelato», no template picker ([printify](../integrations/printify.md)).
-- **Gelato**: the key; three formats and "28 or 30 pages"; a connection check. A saved key has **«Перейти на новий акаунт Gelato»** in
-  place of «Замінити ключ» — the switch to the owner's own account, described on
-  [gelato](../integrations/gelato.md#his-own-account--two-keys-during-the-move) (the old account stays as «Старий акаунт · лише читання»
-  with its own check and a bin; while it is kept, the new key has the usual «Замінити ключ»).
-- **Модулі**: the optional heavy parts (text check, upscaling) — install from the internet or from a file, remove; under the installed text
-  check its own switches, model and Ollama's status. Everything about it — [optional modules](modules.md); what the text check does —
-  [text-check.md](text-check.md). The block is drawn right away from the settings; Ollama's status is fetched by a separate request, so
-  Settings doesn't wait for it.
-- **Резервна копія**: the archive's password (set / change — the owner writes it down), the Google Drive folder with an "Open" button,
-  «Зробити копію зараз» with its progress, the last copy or the last error. Opens on its own while there is no password or the last try
-  failed; a copy started on launch is followed when the page opens. Everything about it — [backup.md](backup.md).
-- **Перенесення налаштувань**: «Експорт у файл» / «Імпорт із файлу» — the settings, keys and slide schemes in one file under the backup
-  password. Everything about it — [settings-transfer.md](settings-transfer.md).
-- **Program data**: the path to `app/data` and an "Open" button.
-
-Technical values (Master positions, artwork sizes, the product UID, the EUR→USD rate, how long a link
-lives) are deliberately not shown or editable from the interface — the owner's decision.
-
-- **The browser profile for chosen sites**: the settings' `browser` section: `exe` (Cent Browser's
-  `Chrome.exe`), `profile` (`Profile 6` = «Work»), `hosts` (`gelato.com`, `canva.com`). With it, `_open_url()` opens
-  those sites in that profile (`_open_in_profile()`), and every other link opens in the default browser. It isn't in
-  the interface; it is written straight into `settings.json` ([decisions](../decisions.md)).
-- "Reduce motion" is saved in the program's settings, and both come from there on
-  launch (the browser only remembers it for the first frame); a failed save shows a message.
-- Looking for keys in the old programs (`legacy_sources()`) only decrypts their files when those files
-  have changed, not every time Settings is opened (`_legacy_names()`).
-- **The preview server** (`app/tools/dev_server.py`, `core.SAMPLE`) doesn't show keys from the old
-  programs, and doesn't save any key: "This is a preview server on made-up data — keys aren't stored here".
+Technical values (Master positions, artwork sizes, product UID, the EUR→USD rate, link lifetime) are not shown or editable in the interface, only in `settings.json`.
 
 ## Keys
+A password field → `POST /api/secrets` → the vault (DPAPI, one Windows user). Only «saved» and the last 4 characters come back. Typed names are `EDITABLE_SECRETS` (`etsy_keystring`, `etsy_shared_secret`, `printify_token`, `gelato_api_key`); `gelato_old_api_key` is written only by the account switch. The preview server (`core.SAMPLE`) stores no keys and says so.
 
-A password field → `POST /api/secrets` → `Vault` (DPAPI). Only "saved" and the last 4 characters come
-back. Names: `etsy_keystring`, `etsy_shared_secret`, `printify_token`, `gelato_api_key`; `gelato_old_api_key` is
-written only by the switch (`POST /api/gelato/switch`), never typed in.
+## Other settings
+- Rail bottom menu: the «Анімації» button holds one item, «Мінімум анімацій», saved as `ui.reduceMotion` through `POST /api/settings/ui`; the browser remembers it only for the first frame, a failed save shows a message.
+- `browser` section (not in the UI): `hosts` (`gelato.com`, `canva.com`) and optionally `exe` and `profile`. With an `exe`, `_open_url()` opens those hosts in that browser profile (`_open_in_profile()`) and every other link in the default browser. The portable copy uses its own Edge profile.
+- Looking for earlier programs' keys decrypts their files only when those changed (`_legacy_names()`).
 
-## Picking the Master (Printify)
+## Settings transfer
+One small 7-Zip file with the settings and keys, to carry to another computer or copy of Book Studio. Settings → «Перенесення налаштувань»: «Експорт у файл» and «Імпорт із файлу» (`transferCard()`, `transfer.py`).
+- **In:** `Налаштування.json` (`settings.json` without what belongs to one computer), `Ключі (відкрито).json` (every vault key decrypted, except the backup password; it is built in memory and never lies readable on disk), and the slides' `design`, `saved-colours`, `schemes` under `app/data/slides`. **Not in:** books, orders, pictures, per-book slide `sets`, mockup paths. The whole folder is what the [backup](backup.md) is for.
+- **The file:** named `Налаштування Book Studio {stamp}.7z` (`NAME`), under the **backup password** (the same `7za.exe`, AES-256, names hidden), written as `.part` and renamed. The save dialog picks the place. Export needs the backup password set; the button is off until then.
+- **Import:** `desktop.pick_7z()` chooses the file; it opens with the vault's backup password or one typed in the field (shown when none is set, or after a wrong one; a password containing `"` is refused). Settings are merged, keys go into the vault (Windows encrypts them for this user), the three slides folders are replaced, and a typed password becomes the backup password when none existed. **Before** anything changes, the current `settings.json`, `vault.json` (still encrypted) and slides folders are copied to `app/data/import-backup/<time>[-n]/` (`_save_current()`). A wrong password or foreign file changes nothing. The opened keys file is deleted from `tmp/import-*` as soon as it is read, and `sweep()` clears leftovers at launch. The routes refuse in the preview and in tests.
+- **Never travels:** `_computer_bound()` removes the `backup`, `workshop` and `security` sections, `browser.exe`, `printify.readOnlyFrom` and `manualApprovalConfirmedAt`, on export **and on import**. Only known key names go back to the vault. New safety switches belong in `_computer_bound()`.
 
-`pickMaster()`: shop → a list of products, or an ID/link → an analysis (`analyze_master()`: the cover
-and page_1…page_N positions, variants, sizes) → "Make it the Master" (confirmation). The Master is only
-ever read.
+## Why
+- Printify is optional with no warning mark: every order goes through Gelato.
+- Technical values are hidden so they cannot be broken from the UI.
+- Transfer never carries the safety switches (Etsy only from Kyiv, the Printify read-only date, the manual-approval stamp), so a colleague's file cannot switch the owner's rules off, nor the reverse.
+- The preview and sandbox never show or store real keys.
 
 ## Where in the code
-
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `card()`, `details()`, `secretField()`, `legacyCard()`, `etsyCard()`, `printifyCard()`, `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`, `dataCard()`, `modulesCard()`, `transferCard()`, `textcheckSettings()`, `loadTextcheck()`, `saveTextcheck()`, `SECRET_LABELS`
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `backupCard()`, `watchBackup()`, `redrawBackup()`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `mount()`, `etsyCard()`, `gelatoCard()`, `transferCard()`, `modulesCard()`
 - [app/web/js/pages/settings-dialogs.js](../../app/web/js/pages/settings-dialogs.js) — `oauthFlow()`, `pickMaster()`
-- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `integrations()`, `_settings()`, `_secret()`, `_open_url()`, `_open_in_profile()`, `_legacy_values()`, `_legacy_names()`, `legacy_sources()`, `_legacy_import()`, `EDITABLE_SECRETS`, `DESKTOP`
-- [app/studio/gelato_accounts.py](../../app/studio/gelato_accounts.py) — `status()`, `_switch()`, `_forget()`
-- [app/studio/printify.py](../../app/studio/printify.py) — `analyze_master()`, `_save_master()`
-- [app/studio/etsy.py](../../app/studio/etsy.py) — `status()`, `import_session()`
-- [app/studio/textcheck/ollama.py](../../app/studio/textcheck/ollama.py) — `status()`, `start_ollama()`
-- [app/studio/textcheck/routes.py](../../app/studio/textcheck/routes.py) — `_save_settings()`, `_start()`
+- [app/studio/settings_api.py](../../app/studio/settings_api.py) — `EDITABLE_SECRETS`, `legacy_sources()`, `_open_url()`, `_open_in_profile()`
+- [app/studio/transfer.py](../../app/studio/transfer.py) — `export_to()`, `import_from()`, `_computer_bound()`, `_save_current()`, `sweep()`
+- [app/tests/test_transfer.py](../../app/tests/test_transfer.py) — the tests call `export_to` and `import_from` directly
 
 ## Related
-
-- [Security](../security.md) · [Etsy](../integrations/etsy.md) · [Printify](../integrations/printify.md) · [Gelato](../integrations/gelato.md)
+- [Security](../security.md) · [Etsy](../integrations/etsy.md) · [Gelato](../integrations/gelato.md) · [Printify](../integrations/printify.md) · [Backup](backup.md) · [Optional modules](modules.md) · [Rail](rail.md)

@@ -4,7 +4,7 @@ Kept for the owner's questions («як ми робили раніше?») and so
 
 ## Light-ground formula — the older default (2026-10-17 → 2026-10-27; only when the owner asks)
 
-The owner's rule: every outer image looks like his examples (`wiki/raw/2026-10-17-white-cover-examples/`, with the analysis in
+The owner's rule: every outer image looks like his examples (`.claude/skills/book-cover/examples/white-covers/`, with the analysis in
 its `SOURCE.md`): **the picture sits on a milky cream ground, with plenty of empty space above the characters for the title.** Not a
 full dark or colored scene, not a solid colored ground, not stark white.
 

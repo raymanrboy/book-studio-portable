@@ -1,69 +1,47 @@
 ---
 title: Optional modules
 type: feature
-updated: 2026-10-28
+updated: 2026-11-12
 code:
   - app/studio/modules.py
   - app/web/js/modules-ui.js
-  - app/tests/test_modules.py
+  - app/web/js/pages/settings.js
 ---
 # Optional modules
 
-> The heavy parts that are **not in the program** until the user asks: the **text check** (Ollama + a model) and **upscaling**
-> (Upscayl's engine + one model). The interface offers them where they would be used and the program installs them itself. The owner:
-> like upgrades in games — absent by default, the interface offers to install.
+> Heavy parts that are **not in the program** until the user asks: the **text check** (Ollama + a model; folder `Ollama`, several GB, needs a GPU) and **upscaling** (Upscayl's engine + one model; folder `Upscayl`, tens of MB, Vulkan GPU). The interface offers them where they would be used and the program installs them itself.
 
 ## Where they are offered
+- **Settings → «Модулі»** (`#/settings/textcheck` also leads here): each module with its size, a ✓ when installed, «Встановити», a folder icon («з файлу», for a PC without internet) and a bin icon (remove).
+- **Workshop:** the «Апскейл ×2» switch is off with a quiet «Встановити апскейл» beside it; after the install the book's data is fetched again ([Workshop](workshop.md)).
+- **Order card, step «Вичитка»:** a missing module shows «Вичитка не встановлена» with a download icon; after the install the check starts by itself (`start.module` in the `textcheck` answer; `warm` stays quiet).
+- All three ask first (`offerModule()`: what it is, size, «Потрібна відеокарта»), then show a progress window (`installModule()`).
 
-- **Settings → «Модулі»** (`#/settings/textcheck` leads here): each module with its size, a ✓ when installed, «Встановити» / the folder icon
-  («з файлу», no internet) / a bin icon (remove).
-- **Workshop**: the «Апскейл ×2» switch is off with a quiet button «Встановити апскейл» beside it (`install-module` in `workshop-book.js`);
-  after the install the book's data is fetched again and the switch works.
-- **Order card, step «Вичитка»**: when the module is missing the badge says «Вичитка не встановлена» with a download icon; after the
-  install the check starts by itself (`start.module` from `POST /api/orders/<id>/textcheck`; `warm` stays quiet).
-- All three ask first (`offerModule()`: what it is, the size, «Потрібна відеокарта»), then show a progress window (`installModule()`).
-
-## The text check's own settings live here
-
-The text check is a module's setting, so it has no card of its own. Under the installed «Розумна вичитка тексту» row: the switch «Перевіряти
-текст сторінок у картці замовлення», the quick-scan switch (`prescan`), the model («Обрати модель», «Перевірити зв'язок») and, when Ollama is
-not running, «Запустити» (starts the copy's own `runtime/Ollama/ollama.exe serve`). The row's mark shows whether the check works. Without the
-module there are no settings, only «Встановити». What the switches do — [text check](text-check.md). Code: `textcheckSettings()` and
-`redrawModules()` in `settings.js`; the old address is mapped in `mount()`.
+## The text check's own settings
+They live under the installed «Розумна вичитка тексту» row (`textcheckSettings()`, `redrawModules()` in `settings.js`); without the module there are none. The settings are `textcheck {enabled, prescan, model, url}`:
+- «Перевіряти текст сторінок у картці замовлення» (`enabled`), the quick-scan switch (`prescan`), the model («Обрати модель»; default `gemma4:12b-it-qat`), «Перевірити зв'язок», and, when Ollama is not running, «Запустити» (starts the copy's own `runtime/Ollama/ollama.exe serve`). The row's mark shows whether the check works.
+- What the switches do: [Text check](text-check.md).
 
 ## What the install does (`modules.py`)
+- **Where it goes:** `runtime/<folder>/` of the portable copy only (`runtime_dir()`); no installer, no administrator rights. *Installed* = its files are there (for the text check also the model's manifest).
+- **From the internet:** official release files pinned to a version (`OLLAMA_ZIPS`, `UPSCAYL_ENGINE`, `UPSCAYL_MODEL`), downloaded as `.part` into `data/tmp/modules/` with progress, checked against SHA-256, unpacked (a path out of the folder is refused). Text check: the Ollama Windows zip, the AMD add-on only when the PC has an AMD card (`_amd_card()`), then the model through Ollama's own API with progress into `runtime/Ollama/models`. Upscale: `upscayl-bin.exe` plus `upscayl-standard-4x.bin/.param`.
+- **From a file:** a ZIP picked in the Windows dialog (`POST /api/modules/<id>/install-from-file`), laid out as `Ollama/…` or `Upscayl/…`. It may hold only its own folder, so it cannot replace `python/` or `Photoshop/`. The plain install route takes no path.
+- **Whole or nothing:** Ollama's unpacking is marked by `runtime/Ollama/.installing` and a cut-short one is redone; the Upscayl engine appears whole or not at all (`.part` → `upscayl-bin.exe`); `upscale.engine()` needs both model files.
+- **Isolated from the PC:** the copy's Ollama listens on its own port (`portable.OLLAMA_PORT`, 11435) and its models are always `runtime/Ollama/models`; a PC's own Ollama (port 11434, its models folder) is never used or written to. Upscale looks only at `runtime/Upscayl`.
+- **Remove:** closes what runs from the folder (`_stop_processes()`), then deletes the module's folder, the Ollama model included, after a confirmation. Books and settings are never touched; a running Ollama holding files makes the message say to close it.
+- Both projects are AGPL-3.0, downloaded and run unmodified as separate programs; Book Studio redistributes nothing.
+- Routes: `GET /api/modules`, `POST /api/modules/<id>/install`, `…/install-from-file`, `…/remove`. The start-up check does not ask for them ([Portable copy](../dev/portable.md)); the colleague copy leaves both out unless made with `--with-ollama` / `--with-upscayl`.
 
-- **Where it goes:** `runtime/<folder>/` of the portable copy only (`runtime_dir()`); no installer, no administrator's rights.
-  *Installed* = its files are there (for the text check also the model's manifest).
-- **From the internet:** the official release files pinned to a version, downloaded as `.part` into `data/tmp/modules/` with progress, checked
-  against SHA-256, unpacked (a path out of the folder is refused). **Text check:** Ollama `ollama-windows-amd64.zip` (NVIDIA libraries inside,
-  hash from the project's `sha256sum.txt`) + the AMD add-on `…-rocm.zip` only when the PC has an AMD card; then the model
-  `gemma4:12b-it-qat` through Ollama's own API (`/api/pull`, with progress) into `runtime/Ollama/models`. **Upscale:** `upscayl-bin.exe` from
-  `upscayl/upscayl-ncnn` (Upscayl publishes no hash, so the one computed on a checked download is pinned) + `upscayl-standard-4x.bin/.param`
-  from the `upscayl/upscayl` repository. Versions and hashes — `OLLAMA_ZIPS`, `UPSCAYL_ENGINE`, `UPSCAYL_MODEL`.
-- **From a file:** a ZIP the user points to (`POST /api/modules/<id>/install-from-file`, the Windows dialog) laid out as `Ollama/…` or `Upscayl/…`
-  — for a PC without the internet. It must hold only its own folder (`Ollama/` or `Upscayl/`): it cannot replace `python/` or `Photoshop/`.
-  A package comes only from the Windows dialog; the plain `install` route takes no path.
-- **Whole or not at all:** Ollama's unpacking is marked by `runtime/Ollama/.installing`; a cut-short one is redone from the start (also when
-  the AMD add-on failed). The Upscayl engine appears whole or not at all (`.part` → `upscayl-bin.exe`); `upscale.engine()` needs both `.param`
-  and `.bin` of the model.
-- **Isolated from the PC (portable copy).** The copy's Ollama listens on its **own port** (`portable.OLLAMA_PORT`; `OLLAMA_HOST`) and its
-  `OLLAMA_MODELS` is always `runtime/Ollama/models` (set before the folder even exists), so an Ollama the PC has — its default port, its models
-  folder, its `OLLAMA_MODELS` — is never used or written to; it is started as `runtime/Ollama/ollama.exe serve` (the zip has no tray app).
-  Upscale looks only at `runtime/Upscayl` (`upscale._candidates()`).
-- **Remove:** first closes what runs from the folder (`_stop_processes()`), then deletes the module's folder (the Ollama model included) after a
-  confirmation; books and settings are never touched. A running Ollama holds its files: the message says to close it.
-- Licences: both projects are AGPL-3.0 (downloaded, run unmodified as separate programs; nothing is redistributed by Book Studio).
-
-## Routes
-
-`GET /api/modules` · `POST /api/modules/<id>/install` · `…/install-from-file` · `…/remove` — see [api-routes](../architecture/api-routes.md).
-The start-up check does not ask for Ollama or Upscayl ([the portable copy](../dev/portable.md)); the colleague copy leaves both out.
+## Why
+- Heavy parts absent by default, offered when needed, like game upgrades.
+- Everything stays inside the portable `runtime/`: no admin rights, no touching a PC's own programs.
+- Install from file exists for PCs without internet and is restricted to the two module folders.
 
 ## Where in the code
+- [app/studio/modules.py](../../app/studio/modules.py) — `MODULES`, `installed()`, `download()`, `unpack()`, `start_install()`, `remove()`
+- [app/web/js/modules-ui.js](../../app/web/js/modules-ui.js) — `offerModule()`, `installModule()`
+- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `modulesCard()`, `textcheckSettings()`
+- [app/tests/test_modules.py](../../app/tests/test_modules.py) — installs from `file://` sources, wrong hash, escaping package, removal
 
-- [modules.py](../../app/studio/modules.py): `MODULES`, `installed()`, `listing()`, `download()`, `unpack()`, `_install_textcheck()`, `_install_upscale()`,
-  `start_install()`, `remove()`, the sources `OLLAMA_ZIPS` / `UPSCAYL_ENGINE` / `UPSCAYL_MODEL`.
-- [modules-ui.js](../../app/web/js/modules-ui.js): `offerModule()`, `installModule()`.
-- [settings.js](../../app/web/js/pages/settings.js): the Settings block `modulesCard()`.
-- Tests: [test_modules.py](../../app/tests/test_modules.py) (installs from `file://` sources, a wrong hash, a package that climbs out, removal).
+## Related
+- [Settings](settings.md) · [Text check](text-check.md) · [Workshop](workshop.md) · [Portable copy](../dev/portable.md)

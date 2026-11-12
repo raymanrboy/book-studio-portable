@@ -51,14 +51,14 @@ paints a *number* (the average margin) — the ink means "you can act here".
 - A **place** (rail): where things live — Замовлення, Книги, Прибуток. An **object** (an order, a book) has one home and its
   path on top; its next step is the loudest thing. A **tool** works alone *and* inside its object (opened from the object's
   step it carries the object, goes back to it, keeps its place lit — `navFor()`).
-- Search is the **last** of the list (an action, not a place).
+- Search is an action, not a place: a box on the library and Workshop pages (Ctrl+F or `/`).
 - Never two routes to the same page; the old address leads to the new one (`ALIASES`).
 
 ## 7. A button never ignores a press
 No silent grey buttons: stay pressable, say what is missing, light the field (`markMissing()`).
 
 ## 8. One theme — light
-The dark theme was removed on 2026-11-01: design, screenshot and judge in light only. Contrast, inks, surfaces, shadows,
+The program has only the light theme: design, screenshot and judge in light only. Contrast, inks, surfaces, shadows,
 icon weight — all checked there.
 
 ## 9. Before you finish a UI change — the check

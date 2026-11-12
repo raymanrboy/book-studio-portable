@@ -32,7 +32,7 @@ Book Studio Portable/
   Make desktop shortcut.bat      puts «Book Studio Portable» on the desktop
   ПРОЧИТАЙ.md                    a short note for the person
   (the launchers and the note are kept in the repository's portable/; a missing portable folder is built from a clone:
-   python app/tools/setup_portable.py --python — see wiki/dev/portable-setup.md)
+   python app/tools/setup_portable.py --python — see wiki/dev/portable.md)
   runtime/                       the programs the app needs — nothing is installed on the PC:
     python/  Photoshop/  Templates/  ffmpeg/  Installers/   (always there)
     Ollama/ (+models)  Upscayl/                                           (appear when the optional modules are installed, §3)
@@ -142,7 +142,7 @@ Details and every edge case: `wiki/flows/order-to-print.md`, `wiki/features/orde
 **Which printer.** Gelato prints every book since 1 Oct 2026 in the original owner's setup (`printify.readOnlyFrom`). Where
 that setting is empty (Printify is live), the older rule applies: a hardcover with 24 pages → Printify; 28 or 30 pages →
 Gelato; softcovers (incl. 5.5×5.5) → Gelato only. Gelato formats: Hardcover 8×8, Softcover 8×8, Softcover 5.5×5.5.
-See `wiki/rules/printer-rule.md`.
+See `wiki/integrations/gelato.md`.
 
 ### 5.2 Make a new book (the Workshop)
 
@@ -156,7 +156,7 @@ See `wiki/rules/printer-rule.md`.
    the upscale module installed it also upscales ×2 («Апскейл ×2» switch; «Апскейлити ×2» on a row).
 4. Next steps of the same book: «Мокапи» (Photoshop), «Фото» (photo mockups), then **«Передати в бібліотеку»** (hands the finished
    book over to the library with its Etsy listing).
-Details: `wiki/features/workshop.md`, `wiki/flows/book-import.md`, `.claude/skills/book/` (making a book).
+Details: `wiki/features/workshop.md`, `wiki/flows/intake.md`, `.claude/skills/book/` (making a book).
 
 ### 5.3 Etsy pictures for a listing
 
@@ -217,7 +217,7 @@ refused on this PC), `printify.readOnlyFrom` (a date, or null = Printify is neve
 | The Workshop's books | `pipeline/books/<n>.<slug>/` (outside `app/data`) |
 | Settings / keys | `app/data/settings.json` / `vault.json` (never open) |
 
-Full map: `wiki/architecture/data.md`, `wiki/code-map.md`.
+Full map: `wiki/architecture/data.md`; files and functions: `python app/tools/wiki_check.py --map`.
 
 ## 8. Troubleshooting
 
@@ -237,11 +237,11 @@ Full map: `wiki/architecture/data.md`, `wiki/code-map.md`.
 | A second window opens when starting | The same copy is already running; use the open window |
 | Etsy sign-in fails with a redirect/port message | The Callback URL in the Etsy app must match the one in Settings → Etsy exactly, port included; keep port 47821 free |
 | Gelato/Canva links open in the usual browser, not the program's profile | The program's Edge profile is used only when Edge is installed (`data/work-browser`); otherwise the default browser opens them |
-| Orders look stale | Orders refresh only at start and with ↻ (by design) |
+| Orders look stale | Orders refresh at start, every hour and with ↻ (by design) |
 | Slow first start of the Workshop | Thumbnails are built once and cached (`app/data/cache/`) |
 
 If something is wrong and not in this table: read `app/data/logs/app.log` (tail), then the wiki page of that screen, then the
-code via `wiki/code-map.md`.
+code via `python app/tools/wiki_check.py --map`.
 
 ## 9. What an agent may do
 

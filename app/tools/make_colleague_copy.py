@@ -81,28 +81,38 @@ def neutral_docs(repo: Path) -> None:
     if not sec.is_file():
         return
     text = sec.read_text(encoding="utf-8")
+    seen: set[str] = set()
 
-    def between(start: str, end: str, new: str) -> None:
-        nonlocal text
-        a = text.index(start)
-        text = text[:a] + new + text[text.index(end, a):]
+    def colleague(m: re.Match) -> str:
+        """A block's first appearance becomes the colleague's wording; a repeat (the "enforced in code" list) goes."""
+        name = m.group(1)
+        if name not in COLLEAGUE_SECURITY:
+            raise SystemExit(f"wiki/security.md: an owner-only block «{name}» has no colleague wording in COLLEAGUE_SECURITY")
+        first = name not in seen
+        seen.add(name)
+        return COLLEAGUE_SECURITY[name] if first else ""
 
-    between("1. *(A setting since", "2. **Etsy — read-only.**",
-            "1. **Etsy** is signed in to from the computer where the program runs. The first owner's own rule «only from one\n"
-            "   computer» is the setting `security.etsyKyivOnly`; it is switched off in this copy.\n")
-    between("3. **Printify is read-only since", "4. **Gelato**",
-            "3. **Printify** allows only image uploads, an unpublished product, and \"On hold\" orders (only after confirming manual\n"
-            "   approval); the code keeps those rails. **Never**: sending to production, cancelling, Express, publishing, or\n"
-            "   changing/deleting products. **The Master product is never changed.** (The first owner made it read-only from\n"
-            "   2026-10-01: `printify.readOnlyFrom`; it is off in this copy.)\n")
-    text = text.replace(", and only in the main account; the old account (kept after the\n   move to the owner's own one) is only read.", ".")
-    between("`app/data/vault.json` is an encrypted store.", "7. **Never permanently delete",
-            "`app/data/vault.json` is an encrypted store. A plain-text credentials file in the repo root, if one ever appears, is\n"
-            "   ignored by git: never read, print, commit, change, or delete it unless the owner directly asks for exactly that.\n"
-            "   Never ask the owner to paste keys into chat.\n")
-    text = text.replace("**The mockup templates `D:\\Roman\\Desktop\\Трафарети мастхев` — read-only** (the owner's rule,\n    2026-09-23:",
-                        "**The mockup templates (`runtime\\Templates`) — read-only** (the first owner's rule,\n    2026-09-23:")
+    text = OWNER_ONLY.sub(colleague, text)
+    if "owner-only" in text:      # a broken or unclosed marker: the owner's own text would go into the copy
+        raise SystemExit("wiki/security.md: an owner-only marker is left unmatched — fix the markers before copying")
     sec.write_text(text, encoding="utf-8")
+
+
+# wiki/security.md marks the first owner's own rules as <!-- owner-only:NAME --> … <!-- /owner-only:NAME -->;
+# the copy gets these lines instead (an empty one: the block just goes).
+OWNER_ONLY = re.compile(r"^<!-- owner-only:([\w-]+) -->\n.*?^<!-- /owner-only:\1 -->\n", re.M | re.S)
+COLLEAGUE_SECURITY = {
+    "etsy": "   Etsy is signed in to from the computer where the program runs. The first owner's own rule «only from one\n"
+            "   computer» is the setting `security.etsyKyivOnly`; it is switched off in this copy.\n",
+    "printify": "   Printify allows only image uploads, an unpublished product, and \"On hold\" orders (only after confirming\n"
+                "   manual approval); the code keeps those rails. **Never**: sending to production, cancelling, Express,\n"
+                "   publishing, or changing/deleting products. **The Master product is never changed.** (The first owner made\n"
+                "   it read-only from 2026-10-01: `printify.readOnlyFrom`; it is off in this copy.)\n",
+    "gelato-old": "",
+    "secrets": "   A plain-text credentials file in the repo root, if one ever appears, is ignored by git: never read, print,\n"
+               "   commit, change, or delete it unless the owner directly asks for exactly that. Never ask the owner to paste\n"
+               "   keys into chat.\n",
+}
 
 
 def without_owner_plans(repo: Path) -> None:

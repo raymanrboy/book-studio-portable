@@ -22,7 +22,7 @@ user asks. `app/data/` is the user's own data (orders, keys, books' state) and s
 
 1. Read [`wiki/index.md`](wiki/index.md).
 2. Open the pages relevant to the task. If the user named something in his own words, look it up in
-   [`wiki/glossary.md`](wiki/glossary.md). Files and functions — [`wiki/code-map.md`](wiki/code-map.md).
+   [`wiki/glossary.md`](wiki/glossary.md). Files and functions — `python app/tools/wiki_check.py --map`.
 3. Only then go into the code — by the "Where in the code" sections (file + function name).
 4. Before changing behavior, check [`wiki/decisions.md`](wiki/decisions.md): it may be a deliberate choice.
    (The wiki was written for the program's first owner: where it says "the owner", read "the person who owns this
@@ -68,7 +68,7 @@ app/                    the program: studio/ (Python server), web/ (interface), 
                         data/ and bin/ — local only, not in git
 pipeline/               the book pipeline — its knowledge/ and scripts/ (the procedures are the book* skills);
                         its books/ (the Workshop's books, every picture) — local only, not in git
-wiki/                   knowledge base (index.md — entry point, log.md — change log)
+wiki/                   knowledge base (index.md — entry point)
 .claude/                interface preview and Claude Code skills
 ```
 
@@ -87,10 +87,9 @@ python app/tools/make_shortcut.py                       # the desktop shortcut
 1. Tests pass.
 2. `python app/tools/wiki_check.py --changed` → the listed wiki pages are updated (content, "Where in
    the code", `updated:`).
-3. A new decision → `wiki/decisions.md`; a new word from the user → `wiki/glossary.md`; a new route →
-   `wiki/architecture/api-routes.md`; a new file → `wiki/code-map.md` and the `code:` of the relevant page.
-4. An entry in `wiki/log.md` (`## [YYYY-MM-DD] kind | what happened`, newest on top).
-5. `python app/tools/wiki_check.py` — no errors.
+3. The pages say how things are **now** — rewrite what changed, never add history (git keeps it). A new decision → a
+   "Why" line on its page, or `wiki/decisions.md` if it crosses areas; a new word from the user → `wiki/glossary.md`;
+   a new file → the `code:` of the relevant page. Routes and the code map are printed by `wiki_check.py --routes` / `--map`.
+4. `python app/tools/wiki_check.py` — no errors.
 
-Page format and wiki operations (adding a source, questions, review) —
-[`wiki/dev/wiki-rules.md`](wiki/dev/wiki-rules.md).
+Page format and wiki operations — `.claude/rules/wiki.md`.

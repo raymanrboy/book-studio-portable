@@ -29,7 +29,7 @@ In full, with the reasons: [wiki/security.md](wiki/security.md). The short form:
   permission in chat — checks use tests and fakes.
 - **Keys**: never read, print, copy, change or delete them; `.secrets.txt` and `app/data/vault.json` are blocked by the settings and a
   hook. Never ask him to paste a key.
-- Never permanently delete his data. The mockup templates `D:\Roman\Desktop\Трафарети мастхев` are read-only.
+- Never permanently delete his data. The mockup templates `..\runtime\Templates` are read-only.
 - Commit and push only when he asks — then everything together. `app/data/`, `app/bin/` and real customer data never
   go into git.
 - Preview the interface only on made-up data (`preview_start("book-studio-dev")`), never on the real program.
@@ -63,7 +63,7 @@ python pipeline/check_book.py "pipeline/books/<book>"   # a book's mechanical ch
 
 - Interface preview: `preview_start("book-studio-dev")` — made-up data, port 47890: [wiki/dev/preview.md](wiki/dev/preview.md).
 - GitHub CLI is not on PATH: `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe`; the push command is in
-  [wiki/dev/setup.md](wiki/dev/setup.md).
+  [wiki/dev/portable.md](wiki/dev/portable.md).
 
 ## How this setup works
 
@@ -71,4 +71,10 @@ Open **this folder** (`Book Studio`) as the session's project: the permissions a
 only to the folder a session starts in (the parent `Book Studio Portable` has a copy of them as a safety net).
 `.claude/rules/` hold the rules for `app/`, `app/web/`, `wiki/` and `pipeline/` — each loads when its files are touched;
 `.claude/skills/` the procedures; `.claude/agents/` the subagents; `.claude/hooks/book_guard.py` the book and key guards.
-Personal notes go to Claude's memory; everything about the project lives in the wiki.
+The hooks: a write into `pipeline/books/<book>/` only under `agent/` (never `book.json`, `pictures/`, `originals/`); a
+Tier H book's story, text and prompts wait for `agent/canonical.png` (or a file starting `DRAFT - NOT READY`); after an
+`agent/*.md` write the book check runs and its FAILs come back. Third-party skills are local only; the owner's interface
+rules and this file win over them. An interface correction from him goes into `.claude/rules/ui.md` and
+`wiki/owner/ui-principles.md` the same day.
+Personal notes go to Claude's memory; everything about the project lives in the wiki — it says only what is now, history
+is git.

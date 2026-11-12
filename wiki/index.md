@@ -1,124 +1,69 @@
 ---
-title: Book Studio wiki — index
+title: Wiki index
 type: index
-updated: 2026-11-11
+updated: 2026-11-12
 code: []
 ---
-# Book Studio wiki
+# Book Studio — wiki index
 
-> The project's knowledge base. **Agents:** start here → open the pages you need → only then the code
-> (by the "Where in the code" sections). The wiki is updated after every code change —
-> [rules](dev/wiki-rules.md).
-> Owner: the pages can be read here or in Obsidian (the `wiki` folder).
+Book Studio is a local Windows program for an Etsy shop of personalized children's books printed by Gelato: orders, the book library and Workshop, profit, and tools (Order Creator, mockups, slides, cover). A Python standard-library server on `127.0.0.1` and a plain-JS interface in an Edge app window; data in `app/data` (not in git). On the owner's setup the program runs on one PC and Etsy is signed in to on another.
+Read this page, then one or two pages below; history is git. Code map and route table on demand: `python app/tools/wiki_check.py --map` / `--routes`.
 
 ## Start here
+- [Security](security.md) — before touching keys, accounts, deletions or printers
+- [Glossary](glossary.md) — when the owner uses a Ukrainian word
+- [Decisions](decisions.md) — before undoing a cross-cutting choice
 
-- [Overview](overview.md) — what this program is, the business, what it's made of.
-- [Glossary](glossary.md) — the owner's words → places in the code. **The first place to look when the
-  owner names something.**
-- [Code map](code-map.md) — every file and its main functions.
-- [Security](security.md) — what's forbidden for the program and for agents. **Mandatory.**
-- [Working with the owner](owner/working-with-owner.md) — language, "analyze" / "do it" modes, reports.
-
-## Parts of the program
-
-- [Orders](features/orders.md) — the queue and the order card (the start screen).
-- [Book library](features/library.md) — the gallery, a new book, a book's passport, the `book.json` model.
-- [Text check](features/text-check.md) — a local Gemma model reads the pages, the program checks them
-  against the book passport.
-- [Order Creator](features/order-creator.md) — a Gelato draft (Printify's book + On-hold order until 30 September).
-- [Settings](features/settings.md) — keys, Etsy, Gelato (two accounts during the move), the Printify Master, data.
-- [Send journal](features/send-journal.md) — exactly what went to Printify and Gelato on every attempt.
-- [Order archive](features/archive.md) — files of books that went to print (14 days after "Sent"), and
-  reprints.
-- [Profit](features/profit.md) — counts only sales from 1 October 2026.
-- [Backup](features/backup.md) — every 3 days the whole program and the mockup templates go to Google Drive as
-  one 7-Zip archive under the owner's password.
-- [The rail](features/modes.md) — places (Orders, Books, Profit), tools and search; the ink follows the area
-  (orange / cyan).
-- [Workshop](features/workshop.md) — «Книги»: books in development, written by the book pipeline's
-  agents (`pipeline/`); the path strip, a prompt · a 2:1 spread · a text per row, the generation mode that catches
-  the pictures from Downloads, the cover on the printer's template; passed to the library with their Etsy listing.
-- [Cover](features/cover.md) — the cover's own tool: two squares → Gelato's cover made by Book Studio, no outpaint; or 2:1
-- [Photo mockups](features/photo-mockups.md) — lifestyle photos with a blank book → our book in
-  them (a Workshop book's step «Фото» and the «Фотомокапи» page): template, cover, JSON prompt into the clipboard.
-- [Mockups](features/mockups.md) — a Canva demo book → Etsy listing pictures from the Photoshop templates (the owner
-  fits the front cover by hand); the templates' structure.
-- [Listing slides](features/slides.md) — the Mockups' last step: the pictures without background, the six Etsy
-  slides made by themselves, a Canva-like editor loaded only when opened; the skill `/listing-slides`.
-- [Etsy SEO studio](features/seo.md) — a book's long title, 13 tags and description from its files, the keyword database and
-  eRank read in the browser pane; the skill `/etsy-seo` (`seo/`).
-- [Canva extension](features/canva-extension.md) — a Chrome extension (`canva-extension/`): a Workshop book's folder → its Canva
-  template — the pictures into the frames, the sphere and the text (Schoolbell 100) on the text pages; a second run skips what is done.
-
-## Domain rules
-
-- [Printer rule](rules/printer-rule.md) — from 1 October 2026 every book → Gelato (28 or 30); Printify only
-  read for its earlier orders.
-- [Book structure](rules/book-structure.md) — 30 pages, spreads, library slots, the print folder.
-- [File naming](rules/file-naming.md) — laying out a Canva export, importing into the library.
-- [Order stages](rules/order-stages.md) — new / in progress / sent.
-- [When orders are refreshed](rules/sync-policy.md) — only on launch and by button.
-- [Matching and profit](rules/reconciliation.md) — finding the print order, Etsy fees, states.
-
-## Paths (step by step)
-
-- [From Etsy to print](flows/order-to-print.md) — the owner's main workflow.
-- [Filling the library](flows/book-import.md) — a new book, the agent's guide, import.
-- [Dragging folders and ZIPs](flows/dropped-files.md) — how files get into the program.
-
-## Program structure
-
-- [Launch and shutdown](architecture/runtime.md)
-- [Server](architecture/server.md) — routes, background jobs, errors, settings.
-- [Server routes](architecture/api-routes.md) — every one, with who calls them.
-- [Interface](architecture/frontend.md) — the shell, a page's contract, helpers, the visual system.
-- [Data](architecture/data.md) — what's in `app/data`.
+## Orders and printing
+- [Orders](features/orders.md) — the queue, order card, tabs
+- [Order to print](flows/order-to-print.md) — the whole path from Etsy order to print
+- [Order stages](rules/order-stages.md) — why an order is New, In progress, Sent
+- [Refresh policy](rules/sync-policy.md) — when orders are loaded
+- [Matching and profit](rules/reconciliation.md) — receipt to print order, costs, fees
+- [Order Creator](features/order-creator.md) — files to Gelato draft, send journal
+- [Print archive](features/archive.md) — printed books' files, reprints
+- [Intake](flows/intake.md) — dropped files, ZIPs, filling the library
+- [Book files](rules/book-files.md) — cover, 28/30 pages, file names
+- [Profit](features/profit.md) — the Profit page and its numbers
 
 ## Services
+- [Gelato](integrations/gelato.md) — formats, drafts, PDF, tracking
+- [Etsy](integrations/etsy.md) — sign-in, receipts, ledger, read-only
+- [Printify](integrations/printify.md) — read-only gate; a copy that still sends
 
-- [Etsy](integrations/etsy.md) — read-only; sign-in only from the Kyiv PC.
-- [Printify](integrations/printify.md) — read-only from 1 October 2026; before: allowed actions, On-hold orders,
-  the Master.
-- [Gelato](integrations/gelato.md) — drafts, PDF, the Cloudflare temporary link; the move to the owner's own
-  account (two keys, the old one read-only).
-- [Canva](integrations/canva.md) — book templates and the owner's manual work.
+## Books and listings
+- [Workshop](features/workshop.md) — making a new book, steps, generation
+- [Library](features/library.md) — book passport, slots, book.json
+- [Cover tool](features/cover.md) — outpainted cover, guides
+- [Mockups](features/mockups.md) — the Mockups tool, crop window, output
+- [Mockups engine](features/mockups-engine.md) — templates, layers, baking
+- [Photo mockups](features/photo-mockups.md) — lifestyle photos and videos
+- [Listing slides](features/slides.md) — the six slides and their editor
+- [Text check](features/text-check.md) — local model proofreading pages
+- [Etsy SEO](features/seo.md) — titles, tags, descriptions, eRank
+- [Canva extension](features/canva-extension.md) — Chrome extension inside Canva
+- [Workshop books](owner/workshop-books.md) — the owner's book series
 
-## Owner
+## Program, settings and data
+- [Rail](features/rail.md) — places, tools, navigation, path strip
+- [Settings](features/settings.md) — keys, Etsy link, settings transfer
+- [Modules](features/modules.md) — optional text check and upscaling
+- [Backup](features/backup.md) — Google Drive backup and restore
+- [Launch and shutdown](architecture/runtime.md) — startup, ports, temp, logs
+- [Server](architecture/server.md) — routes, auth modes, jobs, errors
+- [Data](architecture/data.md) — data files, book.json, write_json
+- [Data safety](architecture/data-safety.md) — history, snapshots, shelf, restore
+- [Frontend](architecture/frontend.md) — shell, page contract, helpers
 
-- [Working with the owner](owner/working-with-owner.md)
-- [The interface the owner wants](owner/ui-principles.md)
-- [The interface audit (November 2026)](owner/ui-audit.md) — three passes and the unslop-ui skill: what was found, what is fixed, what is still open (spacing, type, words).
-- [Book ideas](owner/book-ideas.md) — the owner's shelf: links to books he finds and the key ideas he likes in them.
-- [Listing ideas backlog](owner/listing-ideas.md) — the stock of listing ideas for two posts a day, the owner's shop compared with two others.
-- [Plans for later](owner/future-plans.md) — Linux support, syncing the library, what is still unchecked
-- [Five Christmas books and the two styles](owner/christmas-books.md) — the owner's Christmas focus: five books, and the looks of TheChildhoodKeeper and LunaBooksUS as pipeline style presets (`CG`, `FG`).
-- [Four faith books (52–55)](owner/faith-books.md) — Grandma's Christmas prayer, Noah's Ark, a mother's prayer, a father's blessing: no customized hero, ready to generate.
-- [Five family and holiday books (47–51)](owner/family-holiday-books.md) — Daddy, Mommy's first Christmas, Grandpa, Valentine's, Welcome to the World: animal books with no people, ready to generate.
+## The owner
+- [Working with the owner](owner/working-with-owner.md) — how he works, what to ask
+- [UI principles](owner/ui-principles.md) — interface rules and open items
+- [Ideas](owner/ideas.md) — book and listing ideas, open ones
+- [Future plans](owner/future-plans.md) — what is planned next
 
 ## Development
-
-- [Setup, launch, GitHub](dev/setup.md)
-- [Tests](dev/testing.md)
-- [Interface preview](dev/preview.md) — a server on temporary data.
-- [Data safety](architecture/data-safety.md) — history of every write, the daily snapshot, guards, the Recycle Bin, putting a version back.
-- [Building a portable folder from the repository](dev/portable-setup.md) — the clone, `setup_portable.py`, what goes into `runtime/`.
-- [Optional modules](features/modules.md) — the text check and upscaling, installed from the interface when asked.
-- [Moving the settings and keys](features/settings-transfer.md) — one file for another PC or the other Book Studio.
-- [MANUAL.md](../MANUAL.md) — the user manual written for an LLM: how to use the program, step by step, and what to do when it breaks.
-- [The portable copy](dev/portable.md) — `runtime/` and how the program finds its programs there.
-- [How to run this wiki](dev/wiki-rules.md) — page format, checks, operations.
-- [Claude Code setup](dev/design-skills.md) — what is in `CLAUDE.md`, `.claude/rules`, the skills, the subagent and the hooks; the third-party skills kept.
-
-## Decisions and recipes
-
-- [Decisions](decisions.md) — what was decided and why (with dates).
-- [Decisions — September 2026](decisions-2026-09.md) — older decisions, kept for the reasons.
-- [Decisions — 1–10 October 2026](decisions-2026-10-early.md) — older decisions, kept for the reasons.
-- [Recipes](recipes.md) — where to change code for common tasks.
-- [Known limits](dev/limits.md) — what the program deliberately doesn't do, what was only tried against fakes.
-
-## Housekeeping
-
-- [Wiki change log](log.md) — the latest entries; older ones: [September](log-2026-09.md), [October 1–17](log-2026-10.md)
-- [Owner's sources](raw/README.md)
+- [Portable copy](dev/portable.md) — setup, runtime folder, copy for a colleague
+- [Testing](dev/testing.md) — running tests, fixtures, pitfalls
+- [Preview](dev/preview.md) — viewing the interface on made-up data
+- [Limits](dev/limits.md) — known limits
+- [Recipes](dev/recipes.md) — steps for common changes

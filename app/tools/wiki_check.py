@@ -2,18 +2,18 @@
 
   python app/tools/wiki_check.py            full check; exit code 1 when something is out of date
   python app/tools/wiki_check.py --changed  wiki pages that describe the files changed in git (what to update)
-  python app/tools/wiki_check.py --map      every code file and the wiki pages that describe it
+  python app/tools/wiki_check.py --map      the code map: every code file, its docstring's first line, the pages that describe it
+  python app/tools/wiki_check.py --routes   the route table: method, pattern, handler, file
 
 What is checked:
-  - every page (except log.md, its log-*.md archives and raw/) has front matter: title, type, updated (YYYY-MM-DD), code (existing files);
+  - every page has front matter: title, type, updated (YYYY-MM-DD), code (existing files);
   - every relative link leads to an existing file;
   - on a line with a link to a code file, `name()` and `CONSTANT` code spans after that link exist in that file;
   - every page is linked from index.md;
   - every code file of the program is listed in the `code:` front matter of at least one page;
-  - the route table in architecture/api-routes.md matches the @route declarations one to one;
-  - log.md headings look like "## [YYYY-MM-DD] kind | title".
-Counts (how many tests, how many routes) are not written in the wiki at all — the code and the runner say them, and a
-number kept by hand was only ever rewritten (the owner, 30.09.2026).
+  - a page is at most MAX_PAGE_KB;
+  - no page tells history ("since 12.10", "until 2026-…", "during the move"): the wiki says only what is, history is git.
+The code map and the route table are printed on demand, never kept as pages; counts are not written in the wiki at all.
 Standard library only.
 """
 from __future__ import annotations
@@ -32,14 +32,17 @@ CODE_SUFFIXES = {".py", ".pyw", ".js", ".jsx", ".css", ".html", ".bat"}
 SKIP_DIRS = {"data", "bin", "__pycache__", ".git", "node_modules"}
 TYPES = {"index", "overview", "reference", "architecture", "feature", "integration", "rule", "flow", "owner",
          "decision", "recipe", "dev"}
-ROUTES_PAGE = "architecture/api-routes.md"
+MAX_PAGE_KB = 12          # a page an agent reads whole; a bigger topic is split into two pages
+CODE_ROOTS = ("app", "seo", "canva-extension")
+# History told in prose. A date with "since/until/before/after", or the move between accounts.
+_HISTORY = re.compile(r"\b(?:since|until|till|before|after)\s+(?:\d{1,2}\.\d{2}(?:\.\d{2,4})?|20\d\d-\d\d-\d\d)\b"
+                      r"|\bduring the move\b|\(the owner,? \d{1,2}[./]\d{1,2}|\(the owner,? 20\d\d-", re.I)
 
 _LINK = re.compile(r"\]\((<[^>]+>|[^)\s]+)\)")
 _SPAN = re.compile(r"`([^`\n]+)`")
 _FUNC = re.compile(r"^(?:[A-Za-z_$][\w$]*\.)*([A-Za-z_$][\w$]*)\(\)$")
 _CONST = re.compile(r"^[A-Z][A-Z0-9_]{2,}$")
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_LOG_HEAD = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\] [a-z-]+ \| \S.*$")
 _ROUTE = re.compile(r'@route\(\s*"(\w+)"\s*,\s*r?"([^"]+)"')
 
 
@@ -54,7 +57,7 @@ def code_files() -> list[Path]:
     """Every code file of the program, found once per run. The walk never enters SKIP_DIRS: `data` holds gigabytes of the owner's files,
     and listing them only to drop them took ~3 s of every call."""
     if not _CODE_FILES:
-        for root in (APP, REPO / "seo"):        # seo/ — the Etsy SEO studio beside the program (2026-10-09)
+        for root in (REPO / r for r in CODE_ROOTS):   # the program, the Etsy SEO studio, the Canva extension
             for top, dirs, files in os.walk(root):
                 dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
                 _CODE_FILES.extend(Path(top, f) for f in files if Path(f).suffix.lower() in CODE_SUFFIXES)
@@ -63,8 +66,7 @@ def code_files() -> list[Path]:
 
 
 def pages() -> list[Path]:
-    return sorted(p for p in WIKI.rglob("*.md")
-                  if not {"raw", ".obsidian"} & set(p.relative_to(WIKI).parts))
+    return sorted(p for p in WIKI.rglob("*.md") if ".obsidian" not in p.relative_to(WIKI).parts)
 
 
 def front_matter(text: str) -> dict | None:
@@ -105,6 +107,7 @@ def link_target(page: Path, raw: str) -> Path | None:
 # it, and such stale lines passed the check until 27.09.2026.
 _DEFINES = (
     r"\b(?:def|function\*?|class|const|let|var)\s+{n}\b",   # def f / function f / class C / const X = …
+    r"\b(?:const|let|var)\s+[^;\n]*,\s*{n}\s*=",            # const A = 1, B = 2
     r"^[ \t]*(?:self\.|cls\.)?{n}\s*(?::[^=\n]+)?=(?!=)",  # X = … / X: T = … / self.x = …
     r"^[ \t]*(?:async\s+)?{n}\s*\([^)\n]*\)\s*\{{",         # a method: f(a) {
     r"(?:^|[{{,])[ \t]*{n}\s*:",                            # an object's key: { f: … }
@@ -131,17 +134,36 @@ def routes_in_code() -> set[tuple[str, str]]:
     return found
 
 
-def routes_in_wiki(text: str) -> set[tuple[str, str]]:
-    found = set()
-    for line in text.splitlines():
-        if not line.startswith("|"):
-            continue
-        cells = [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
-        if len(cells) >= 2 and re.fullmatch(r"GET|POST|PUT|PATCH|DELETE", cells[0]):
-            span = re.fullmatch(r"`([^`]+)`", cells[1])
-            if span:
-                found.add((cells[0], span.group(1)))
-    return found
+_DEF = re.compile(r"^\s*(?:async\s+)?def\s+(\w+)", re.M)
+
+
+def route_table() -> list[tuple[str, str, str, str]]:
+    """(method, pattern, handler, file) of every route, for `--routes`; stacked decorators share the def below them."""
+    rows = []
+    for path in sorted((APP / "studio").rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        for m in _ROUTE.finditer(text):
+            handler = _DEF.search(text, m.end())
+            rows.append((m.group(1), m.group(2), handler.group(1) if handler else "?", rel(path)))
+    return sorted(rows, key=lambda r: (r[1], r[0]))
+
+
+def first_doc_line(path: Path) -> str:
+    """The first line of a file's own description: a Python docstring, or the opening /* … */ or // comment of JS/CSS."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace").lstrip("﻿")
+    except OSError:
+        return ""
+    m = re.match(r'\s*(?:#![^\n]*\n|#[^\n]*coding[^\n]*\n)*\s*(?:[rubRUB]{0,2})("""|\'\'\')\s*(.*?)(?:\n|\1)', text, re.S) \
+        or re.match(r"\s*/\*+\s*(.*?)(?:\n|\*/)", text, re.S) or re.match(r"\s*//\s*(.*)", text) \
+        or re.match(r"\s*<!--\s*(.*?)(?:\n|-->)", text, re.S) or re.match(r"\s*(?:@?echo off\s*\n)?\s*(?:rem|::)\s*(.*)", text, re.I)
+    if not m:
+        return ""
+    line = m.group(m.lastindex).strip()
+    if re.fullmatch(r"[=*\-#~ ]*", line):           # a banner line (/* ===== ): the text is on the next line
+        nxt = re.search(r"\n\s*\**\s*([^\n=*\-#~][^\n]*)", text[m.end():])
+        line = nxt.group(1).strip() if nxt else ""
+    return re.sub(r"^\*\s*", "", line)[:140]
 
 
 def coverage() -> dict[str, list[str]]:
@@ -192,27 +214,25 @@ def check() -> list[str]:
     for page in all_pages:
         name = page.relative_to(WIKI).as_posix()
         text = page.read_text(encoding="utf-8")
-        if name != "log.md" and not name.startswith("log-"):
-            fm = front_matter(text)
-            if fm is None:
-                problems.append(f"{name}: missing or broken front matter.")
-            else:
-                for key in ("title", "type", "updated"):
-                    if not fm.get(key):
-                        problems.append(f"{name}: front matter is missing \"{key}\".")
-                if fm.get("type") and fm["type"] not in TYPES:
-                    problems.append(f"{name}: unknown type \"{fm['type']}\".")
-                if fm.get("updated") and not _DATE.match(str(fm["updated"])):
-                    problems.append(f"{name}: updated must be in YYYY-MM-DD format.")
-                if "code" not in fm:
-                    problems.append(f"{name}: front matter is missing \"code\" (for a page with no code — code: []).")
-                for entry in fm.get("code") or []:
-                    if not (REPO / entry).exists():
-                        problems.append(f"{name}: code lists a path that doesn't exist: {entry}.")
+        fm = front_matter(text)
+        if fm is None:
+            problems.append(f"{name}: missing or broken front matter (UTF-8 without BOM, LF line ends).")
         else:
-            for line in text.splitlines():
-                if line.startswith("## ") and not _LOG_HEAD.match(line):
-                    problems.append(f"log.md: heading doesn't match \"## [YYYY-MM-DD] kind | title\": {line}")
+            for key in ("title", "type", "updated"):
+                if not fm.get(key):
+                    problems.append(f"{name}: front matter is missing \"{key}\".")
+            if fm.get("type") and fm["type"] not in TYPES:
+                problems.append(f"{name}: unknown type \"{fm['type']}\".")
+            if fm.get("updated") and not _DATE.match(str(fm["updated"])):
+                problems.append(f"{name}: updated must be in YYYY-MM-DD format.")
+            if "code" not in fm:
+                problems.append(f"{name}: front matter is missing \"code\" (for a page with no code — code: []).")
+            for entry in fm.get("code") or []:
+                if not (REPO / entry).exists():
+                    problems.append(f"{name}: code lists a path that doesn't exist: {entry}.")
+        size_kb = len(text.encode("utf-8")) / 1024
+        if size_kb > MAX_PAGE_KB:
+            problems.append(f"{name}: {size_kb:.1f} KB — over {MAX_PAGE_KB} KB; split the topic or cut what another page says.")
 
         fenced = False
         for no, line in enumerate(text.splitlines(), 1):
@@ -221,6 +241,9 @@ def check() -> list[str]:
                 continue
             if fenced:
                 continue  # examples inside code blocks are not real links
+            told = _HISTORY.search(_SPAN.sub("", line))
+            if told:
+                problems.append(f"{name}:{no}: history in the text (\"{told.group(0)}\") — say only what is now; the past is git")
             marks = []
             plain = _SPAN.sub(lambda s: " " * len(s.group(0)), line)  # links inside `code` are examples too
             for m in _LINK.finditer(plain):
@@ -232,10 +255,11 @@ def check() -> list[str]:
                     continue
                 if name == "index.md":
                     index_links.add(target)
-                if target.is_file() and target.suffix.lower() in CODE_SUFFIXES and APP in target.parents:
+                if target.is_file() and target.suffix.lower() in CODE_SUFFIXES \
+                        and any((REPO / r).resolve() in target.parents for r in CODE_ROOTS):
                     marks.append((m.end(), target))
-            for s in (_SPAN.finditer(line) if name != "log.md" and not name.startswith("log-") else ()):     # (the log is history: its names may be gone) a function named in prose must exist somewhere in the code (2026-10-04 audit:
-                token = s.group(1).strip()                # `_upgrade()` and four more were long gone and nothing noticed)
+            for s in _SPAN.finditer(line):                # a function named in prose must exist somewhere in the code
+                token = s.group(1).strip()
                 func = _FUNC.match(token)
                 if func and not _anywhere(token[:-2].rpartition(".")[2]):
                     problems.append(f"{name}:{no}: `{token}` is not in the code at all")
@@ -264,17 +288,6 @@ def check() -> list[str]:
     for name, described in coverage().items():
         if not described:
             problems.append(f"{name}: no wiki page describes this file (add it to the code: of the right page).")
-
-
-    routes_page = WIKI / ROUTES_PAGE
-    if routes_page.exists():
-        in_code, in_wiki = routes_in_code(), routes_in_wiki(routes_page.read_text(encoding="utf-8"))
-        for method, pattern in sorted(in_code - in_wiki):
-            problems.append(f"{ROUTES_PAGE}: missing route {method} {pattern}")
-        for method, pattern in sorted(in_wiki - in_code):
-            problems.append(f"{ROUTES_PAGE}: route {method} {pattern} no longer exists in the code")
-    else:
-        problems.append(f"Missing page {ROUTES_PAGE}.")
     return problems
 
 
@@ -295,7 +308,12 @@ def main(argv: list[str]) -> int:
         pass
     if "--map" in argv:
         for name, described in coverage().items():
-            print(f"{name}  →  {', '.join(described) or '— (не описано)'}")
+            doc = first_doc_line(REPO / name)
+            print(f"{name}  —  {doc or '…'}\n    →  {', '.join(described) or '— (не описано)'}")
+        return 0
+    if "--routes" in argv:
+        for method, pattern, handler, path in route_table():
+            print(f"{method:6} {pattern:55} {handler}()  {path}")
         return 0
     if "--changed" in argv:
         cov = coverage()
@@ -315,7 +333,7 @@ def main(argv: list[str]) -> int:
             print(f"wiki/{page}\n    because of: {', '.join(files)}")
         for name in loose:
             print(f"{name}: not described by any page — add it to the code: of the right page")
-        print("Don't forget: updated in the header of the pages you changed, and an entry in wiki/log.md.")
+        print("Don't forget: updated in the header of the pages you changed. No log: the wiki says what is now.")
         return 0
     problems = check()
     if problems:

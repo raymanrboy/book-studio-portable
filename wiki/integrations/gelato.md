@@ -1,7 +1,7 @@
 ---
-title: Gelato and the temporary link
+title: Gelato
 type: integration
-updated: 2026-10-28
+updated: 2026-11-12
 code:
   - app/studio/gelato.py
   - app/studio/gelato_accounts.py
@@ -9,193 +9,91 @@ code:
 ---
 # Gelato
 
-> Prints **every book** (28 or 30 pages) — Printify only reads ([printer rule](../rules/printer-rule.md)). The
-> program only creates **drafts** of orders. API: `order.gelatoapis.com/v4`, `product.gelatoapis.com/v3`, the key
-> in the `X-API-KEY` header.
+> Every new book goes to Gelato (28 or 30 pages). The program creates only **drafts**; the owner confirms and pays in Gelato. API `order.gelatoapis.com/v4` and `product.gelatoapis.com/v3`, key in the vault, header `X-API-KEY`. Printify is read-only ([Printify](printify.md)).
+
+## Which format a book gets
+`orders.plan_for()` reads the buyer's choice and gives each book a Gelato format; the card and queue show it (`planText()`).
+
+| Etsy item says | Format | Page counts |
+|---|---|---|
+| Hardcover | `hardcover_8x8` | 28 / 30 |
+| Hardcover whose chosen format says 11x11, 11" × 11", 28 × 28 cm | `hardcover_11x11` | 28 / 30 |
+| Softcover with 5.5, 5x5, 14 × 14 in the item | `softcover_5x5` | 28 / 30 |
+| Other softcover | `softcover_8x8` | 28 / 30 |
+| Cover type unreadable | Gelato, `format: None`, picked in the Order Creator | 28 / 30 |
+
+- Cover type: `binding_of()` → `reconcile.item_format()` reads variations, then SKU, then title; mixed or unknown gives `None`.
+- The 11×11 test (`reconcile.is_large()`) looks only at format-like variation fields (`chosen_format_text()`), never the title or the buyer's own words.
+- Etsy's "5x5" softcover is Gelato's 5.5×5.5 product (`softcover_5x5`); otherwise the name mismatch offered an 8×8.
+- `settings.gelato.defaultFormat` is `hardcover_8x8`. The Order Creator lets the owner change a format.
 
 ## Formats (`settings.gelato.formats`)
+| Key | Gelato product (metric) | Page with bleed | Cover, with wrap |
+|---|---|---|---|
+| `hardcover_8x8` | `photobooks-hardcover_pf_200x200-mm-8x8-inch_…` | 206×206 mm | 458×246 mm |
+| `hardcover_11x11` | `photobooks-hardcover_pf_280x280-mm-11x11-inch_…` | 286×286 mm | 618×326 mm |
+| `softcover_8x8` | `photobooks-softcover_pf_200x200-mm-8x8-inch_…` | 206×206 mm | about 408.8×206 mm |
+| `softcover_5x5` (label «Softcover 5.5×5.5») | `photobooks-softcover_pf_140x140-mm-5_5x5_5-inch_…` | 146×146 mm | about 288.8×146 mm |
 
-| Key | Name | Gelato product | Page, with bleed | Cover (28 / 30 pages) |
-|---|---|---|---|---|
-| `hardcover_8x8` | Hardcover 8×8 | `photobooks-hardcover_pf_200x200-mm-8x8-inch_…` (20×20 cm) | 206×206 mm | 458×246 mm (with the wrap) |
-| `hardcover_11x11` | Hardcover 11×11 | `photobooks-hardcover_pf_280x280-mm-11x11-inch_…` (28×28 cm) | 286×286 mm | 618×326 mm (with the wrap) |
-| `softcover_8x8` | Softcover 8×8 | `photobooks-softcover_pf_200x200-mm-8x8-inch_…` (20×20 cm) | 206×206 mm | 408.72 / 408.88 × 206 mm |
-| `softcover_5x5` | Softcover 5.5×5.5 | `photobooks-softcover_pf_140x140-mm-5_5x5_5-inch_…` (14×14 cm) | 146×146 mm | 288.72 / 288.88 × 146 mm |
-
-- **The owner's Gelato templates** (`ecommerce.gelatoapis.com/v1/templates/{id}`, read-only) hold
-  exactly these four products: «Hardcover 8x8» `d04d274b-…`, «Hardcover 11x11» `82728d6c-…`, «Softcover 8x8»
-  `4af969b6-…`, «Softcover 5x5» `b2abcc99-…`. The program never reads the templates (it sends the `productUid`); a
-  template changed in Gelato is copied here by hand. The 11×11's cover (618×326 mm) has the Canva cover's own
-  proportions (4672×2464), so it is not trimmed at all; the same Canva files serve all four.
-- All of them — matte lamination, 170 gsm paper; when each format applies — the
-  [printer rule](../rules/printer-rule.md).
-- **The metric products** are the same ones the owner picks in Gelato by hand; the "inch" products
-  (`pf_8x8-inch-200x200-mm`: 203.2 mm) are **different products**, with different sizes — don't use them.
-- The program never stores sizes; it fetches them from the catalog every time
-  (`photobook_geometry()`).
+- All matte lamination, 170 gsm paper. The same Canva files serve all four; the 11×11 cover has the Canva cover's own proportions (4672×2464).
+- Sizes are never stored: `photobook_geometry()` reads them from the catalog each time.
 
 ## How many pages
-
-- A book is as long as the Canva export: **30 pages** or **28** (the owner dropped one spread). There's
-  no switch — the number comes from the files (`settings.gelato.pageCounts` = `[28, 30]`).
-- `pageCount` in an order counts **only the inner pages** (28 / 30), the same as in the owner's manual
-  orders. The cover catalog counts them together with the cover's own sides (`pagesCount` 32 / 34).
-- What Gelato actually prints is decided by **its catalog**: a product's `validPageCounts` (read-only,
-  cached for `CATALOG_HOURS`, or until the Gelato key changes, `_fresh_catalog()`). It says **28–200** for the
-  formats; Gelato's public docs say "from 30" — that's stale; the program trusts the catalog regardless.
-- The program asks the catalog in three places: the order card (right after laying out files), the
-  Order Creator (format buttons: a "28–200 pages" tooltip, a yellow mark and a sentence if the format
-  doesn't fit; the "Create" button is blocked), and right before creating the draft (nothing gets
-  created if it fails). No key or no internet → the first two checks stay silent, the last one still
-  fires.
+- A book is as long as the Canva export: `settings.gelato.pageCounts` = `[28, 30]`; the files decide ([Book files](../rules/book-files.md)). `pageCount` in an order counts inner pages only.
+- What Gelato prints is decided by its catalog: `page_counts()` reads `validPageCounts` (28–200), cached for `CATALOG_HOURS`. It is checked on the order card, in the Order Creator (format tooltip, yellow mark, blocked "Create") and right before the draft is made (`gelato_pages_problem()`). No key or internet silences the first two; the last still fires.
 
 ## The book file
-
-**One PDF**, type `default`: **cover** (back + spine + front) · **blank endpaper** · **pages 1…N** ·
-**blank endpaper** (31 PDF pages for 28, 33 for 30). The blank pages are **required**.
-
-- How it looks in a Gelato draft: Cover, **Page 0** — blank (this is the endpaper, and that's correct),
-  Page 1…Page N — the book; the back endpaper doesn't show in the list. Page 0 stays after the order is
-  confirmed. Gelato's own print PDFs have exactly this structure; books made in Gelato's own editor show
-  only Page 1…N, which is why an order fixed there has no Page 0.
-- **Don't remove the blank pages** — without them the book shifts by a page (page "1" becomes Page 0), for
-  both 28- and 30-page books.
-- **The blank pages are white pictures at 300 dpi** (`BLANK_DPI`, the size of the page) — tiny ones made Gelato
-  rate the whole book's quality (the order item's `dpi` field) as very low.
-- The PDF's page sizes come from the catalog: the page with bleed (206 mm for 20×20), the cover across
-  the whole sheet. Pictures aren't recompressed, and are fitted with an even trim of the edges.
-- **A Canva cover** (4672×2464, the same as for Printify) fits: Gelato takes it as-is, trimming ~3–5 mm
-  off the edges. A warning only appears if the trim is more than 10 mm (`COVER_TRIM_WARN_MM`, meaning
-  it's clearly not the cover); how much got trimmed shows in the [send journal](../features/send-journal.md).
-- A `default` cover + `inside` pages **doesn't work**: Gelato puts the cover on every page.
-  **Page 0 is the price of an automatic send; the book prints correctly.**
+One PDF of type `default`: cover (back, spine, front) · blank endpaper · pages 1…N · blank endpaper (`build_photobook_pdf()`).
+- A Gelato draft shows Cover, Page 0 (the blank endpaper), Page 1…N. Page 0 is the price of an automatic send; the book prints correctly.
+- The blank pages are required: without them the book shifts by one page.
+- Blanks are white pictures at `BLANK_DPI` = 300; tiny ones made Gelato rate the whole book as low quality.
+- A Canva cover fits as is (Gelato trims 3–5 mm); the PDF warns only above `COVER_TRIM_WARN_MM` (10 mm). Pictures are not recompressed.
+- A `default` cover with `inside` pages does not work: Gelato puts the cover on every page.
 
 ## Temporary link
-
-Gelato only fetches a file **by URL**, and does so itself, **shortly after the draft is created**, without
-waiting for anyone to open it. So the `readback` step in
-the journal, taken right after creation, may still show `fileFetched: false`.
-`FileTunnel`:
-1. starts a local server that serves exactly `book.pdf` (no file listing);
-2. runs `app/bin/cloudflared.exe tunnel --url …` (a Cloudflare quick tunnel, no account needed) and
-   waits for a `https://*.trycloudflare.com` address, then checks that the file is really served
-   (`reachable`). The home router often doesn't know the new address yet, so from the third try the
-   address is also asked of Cloudflare's public DNS (`1.1.1.1`, `_head_ok_public_dns()`) — otherwise the
-   warning would be false. **When Cloudflare refuses a quick tunnel**, cloudflared prints an error that names
-   `https://api.trycloudflare.com`, which must not be taken for the address: `_URL_RE` skips `api.`,
-   cloudflared's last lines go to `app.log`, and the send stops with "Cloudflare gave no address — no draft
-   was created, wait a minute or two and send again";
-3. `TunnelRegistry.keep()` keeps the link up for 15 min (`tunnelKeepAliveSeconds`), then closes it and
-   wipes `data/tmp/gelato/<session>`. A "Files fetched" button closes it earlier.
-The program won't exit while the link is active. No `cloudflared.exe` → the Order Creator warns.
+Gelato fetches the PDF by URL shortly after the draft exists, so the `readback` journal step may still say `fileFetched: false`. `FileTunnel` (`tunnel.py`):
+1. serves exactly the book files from a local server, no listing;
+2. starts `app/bin/cloudflared.exe` (a Cloudflare quick tunnel, no account) and waits for an `https://*.trycloudflare.com` address (`_URL_RE` skips `api.`); from the third check it also asks Cloudflare's public DNS (`_head_ok_public_dns()`), since the home router lags;
+3. `TunnelRegistry.keep()` holds the link `tunnelKeepAliveSeconds` (900) and then wipes `data/tmp/gelato/<session>`.
+- `cloudflared.exe` is put into `app/bin` by hand; without it the Order Creator warns.
+- If Cloudflare refuses a tunnel there is no address and no draft is created ("wait a minute or two and send again").
+- The program does not exit while a link is active.
 
 ## The draft
-
-`orderType: draft` (forced), `orderReferenceId` = **the book's title** `receipt number - name` (the way the owner names his own manual
-orders too; Gelato doesn't require uniqueness) — the
-sync finds the receipt by the number in it, and once confirmed and paid the order moves to "In
-progress". **Phone:** Etsy doesn't provide one, and without it Gelato won't let a draft be confirmed —
-an empty one gets the made-up `+1 555 555 0100` (`GELATO_PLACEHOLDER_PHONE`; the owner's usual practice).
-Email isn't needed (his manual orders don't have one either). Drafts don't count as a cost in the
-accounting. Every attempt (successful or not) is its own record in the
-[send journal](../features/send-journal.md).
-**Several books of one receipt** — one draft with several `items`: each with its own
-`productUid`, its own `pageCount`, and its own PDF (`book-1.pdf`, `book-2.pdf`… on one temporary link),
-`orderReferenceId` — `receipt number - Emma, Liam`.
+- `orderType: draft` is forced (`create_draft_order()`); `orderReferenceId` = `receipt - name` (the sync finds the receipt by that number); several books of one receipt are one draft with several `items`, each with its own PDF, `productUid` and `pageCount`.
+- Etsy gives no phone and Gelato will not confirm without one, so an empty phone becomes `GELATO_PLACEHOLDER_PHONE`. No email is needed.
+- Drafts are not a cost in Profit. Every attempt is a record in the send journal ([Order Creator](../features/order-creator.md)).
+- A send whose result is unknown is not a failure and is never retried: the owner checks Gelato → Drafts first.
 
 ## Sync
+- `all_orders()` runs `orders:search` (orders and drafts, 100 per call, cap 5000; a capped list is incomplete, so the sync warns and the archive does not trust it). The search is a POST that only reads, so it is retried after a drop.
+- Costs are converted with `eurUsdRate` etc. ([Reconciliation](../rules/reconciliation.md)).
+- Tracking is not in the search: for statuses in `GELATO_SHIPPED`, `attach_shipments()` reads the full order (read-only GET) one at a time, at most `TRACKING_READS` (60) per sync; an order is re-read only while it has no number and its status changed.
+- The order card's history is read when the card opens (`cached_history()`, kept `HISTORY_FRESH` seconds; finished states `HISTORY_DONE` until the program closes). Gelato webhooks are not used (no public address).
+- The account list can hold other people's orders; only those matched to an Etsy receipt count.
 
-`all_orders()` — searching orders (`orders:search`, explicitly with `orderTypes: order, draft`; Gelato
-returns drafts even without this) 100 at a time, up to 5000; `slim_order()`. A list that stopped at 5000
-is marked incomplete (`httpc.Listing.complete`): the sync warns, and the archive doesn't treat such a
-list as fresh. The search is a POST that only reads, so it can be retried after a drop
-(`idempotent=True`). The cost in EUR is converted using the `eurUsdRate` ([reconciliation](../rules/reconciliation.md)).
-
-**Tracking numbers** (for the truck tab — see [stages](../rules/order-stages.md)): the
-search doesn't return them. For orders with a status from `SHIPPED` (`shipped`, `in_transit`,
-`delivered`, `returned`), `attach_shipments()` reads the full order (`GET /v4/orders/{id}`, read-only)
-and takes `shipment.shipmentMethodName` + `shipment.packages[].trackingCode/trackingUrl`, or, if there
-are no packages, `items[].fulfillments[]` (`shipments_of()`). In the snapshot this is the `shipments`
-field (`carrier`, `number`, `url`) and `shipmentsFor` — the status it was read at. Each order is read
-once; read again only while it has no tracking number and its status has changed; up to 60 per refresh
-(`TRACKING_READS`), 4 in parallel.
-**History** (for the order card — [orders](../features/orders.md)): the same full order
-(`GET /v4/orders/{id}`, read-only) read **when the card is opened**, one order, never in bulk: `cached_history()` →
-`history()` — the items' `eventLog`, the order's own dates, `shipment.minDeliveryDate` / `maxDeliveryDate`, the tracking.
-`slot_of()` picks the key (the old account's orders are read with the old key). The `eventLog` entries' field names are
-guessed (drafts return `[]`), and their shape is logged (names only) to `gelato.log`. Gelato's webhooks need a public
-address, which a local program doesn't have.
-Documentation: [Get order](https://dashboard.gelato.com/docs/orders/v4/get/),
-[statuses](https://dashboard.gelato.com/docs/orders/order_details/).
-
-## His own account — two keys during the move
-
-The owner moved to his own Gelato account (the old one holds other people's orders too), with a smooth switch: both
-keys work for a while.
-
-- **Settings → Gelato → «Перейти на новий акаунт Gelato»** (the swap icon in place of «Замінити ключ»): the owner
-  pastes the new key; the program reads **one** order with it (`check_key()` — a mistyped key is told before anything
-  changes), then keeps the current key as `gelato_old_api_key` («Старий акаунт · лише читання») and the new one as
-  `gelato_api_key`, inside the vault — no key goes through the chat or the screen. A sync starts at once. Refused on
-  the preview server, during a sync, with the same key, and while an old key is still kept (one move at a time).
-- **Each order knows its account**: `slim_order(g, account)` puts `account` — `account_id()`, the first 12 hex of the
-  key's SHA-256 (which account, never the key) — on every order. Orders kept from before carry none: they are the
-  account read before the first switch (`settings.gelato.firstAccount`, `untagged_account()`).
-- **Every sync reads each account the program has a key for** (`accounts()`, `sync._gelato_part()`); a shipped
-  order's tracking is read with its own account's key (`attach_shipments(…, account)`).
-- **The safety net, always on**: an order is dropped only when its **own** account's list, loaded whole, lacks it (a
-  deleted draft). An account not read whole — it failed, its list was cut at 5000, its key was removed — keeps its
-  orders as last seen (status, tracking, cost). So the queue, the [archive](../features/archive.md) and Profit never
-  lose an order to the switch. `loaded.gelato` (what the archive trusts) is written only when every account was
-  loaded whole.
-- **The old key only reads**: `_allowed(…, account="old")` lets through the order search and `GET` only —
-  `POST /v4/orders` needs the main key. Drafts and reprints go to the new account only (reprints of an old-account
-  book too).
-- **When the old key can go**: Settings shows «Ще N замовлень в роботі» while any of the owner's Etsy orders follows
-  an old-account order that is a draft, in print, or shipped by Gelato but not marked on Etsy
-  (`gelato_accounts.open_orders()`, stages `new`/`work`/`sent`); then «Його замовлення завершено». The owner removes
-  it with the bin (a warning if some are still open); its orders stay as they were.
-- The legacy import (keys from the old Order Creator) doesn't offer the Gelato key while one is saved — it is the
-  old account's key.
+## Second account (read-only)
+A second key can be saved (vault `gelato_old_api_key`) next to the main one; Settings shows it as «Старий акаунт · лише читання».
+- `gelato_accounts.py`: `_switch()` (Settings → «Перейти на новий акаунт Gelato»; checks the new key with `check_key()` first), `_forget()`, `status()`, `open_orders()` (how many Etsy orders still follow an old-account order).
+- Every order carries its account (`account_id()`); each sync reads every account that has a key (`_gelato_part()`). An order is dropped only when its own account's list, loaded whole, lacks it, so the queue, archive and Profit never lose one. `loaded.gelato` is written only when all accounts loaded whole.
+- The second key only reads: `_allowed()` lets it do order search and `GET`; drafts go through the main key.
 
 ## Errors
+`_human()` (shared `httpc.human()`): 401/403 key, 404, 429, other 4xx "Gelato rejected the data", 5xx or a drop marked `ambiguous` (unknown result).
 
-Gelato's responses are read by a function shared with Printify, `httpc.human()` (`_human()`): 401/403 —
-the key, 404, 429, 4xx — "Gelato rejected the data", 5xx and a drop — with `ambiguous`. For creating a
-draft, this tells apart a refusal from an **unknown result**
-([order-creator.md](../features/order-creator.md), step 7).
-
-## Paying Gelato (outside the program)
-
-The program only creates drafts; the owner pays the orders in Gelato himself. **The main way: the direct Payoneer integration**
-(Gelato → Billing → Payment → Methods → Payoneer — the money comes off the Payoneer USD balance, no fee). **A Payoneer card** is
-linked as the spare: it works, but Payoneer may take up to 1.8% a purchase and the card has a yearly fee. The integration has
-Payoneer-side limits on the number and sum of payments a day and a month; if a payment or a wallet top-up is refused with «exceeded
-the allowed limit», pay the waiting orders with the card (on the order: Edit) and ask Payoneer to raise the limits — more before Christmas.
-
-**US sales tax.** Gelato adds the state's sales tax to a US order, though the buyer already paid it on Etsy. A resale certificate
-removes it (Gelato → Billing → Tax center → Resale certificate → Avalara's form, state by state; no registered business is needed
-for the Streamlined Sales Tax states, a personal Ukrainian taxpayer number will do, as long as the name, address and email match the
-Gelato account). States that want a registration of their own are not filed. Once a state's certificate is approved its tax line is
-gone from the order's totals — the Profit page sees it by itself (it takes Gelato's own totals). Which states were filed: [log](../log-2026-10.md).
+## Why
+- Metric products only: the "inch" products (`pf_8x8-inch-200x200-mm`, 203.2 mm) are different products with different sizes.
+- Gelato's public docs say "from 30 pages"; that is stale, the catalog is trusted.
+- `hardcover_11x11` only on the buyer's chosen format: a wrong size costs more, and «11.11» dedications must not trigger it.
 
 ## Where in the code
-
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `KEYS`, `OLD_NAME`, `api_key()`, `account_id()`, `accounts()`, `untagged_account()`, `check_key()`, `ORDER_API`, `PRODUCT_API`, `_FORBIDDEN`, `_allowed()`, `_human()`, `call()`, `search_orders()`, `all_orders()`, `slim_order()`, `product()`, `page_counts()`, `_fresh_catalog()`, `CATALOG_HOURS`, `photobook_geometry()`, `create_draft_order()`, `get_order()`, `TRACKING_READS`, `shipments_of()`, `attach_shipments()`, `slot_of()`, `history()`, `cached_history()`, `HISTORY_FRESH`, `HISTORY_DONE`
-- [app/studio/gelato_accounts.py](../../app/studio/gelato_accounts.py) — `_switch()`, `_forget()`, `status()`, `open_orders()`, `old_id()`, `OPEN_STAGES`, `_resync()`
-- [app/studio/sync.py](../../app/studio/sync.py) — `_gelato_part()`
-- [app/web/js/pages/settings.js](../../app/web/js/pages/settings.js) — `gelatoCard()`, `oldAccountField()`, `switchGelato()`, `forgetOldGelato()`
-- [app/studio/printorders.py](../../app/studio/printorders.py) — `GELATO_SHIPPED`
-- [app/studio/tunnel.py](../../app/studio/tunnel.py) — `CLOUDFLARED`, `_URL_RE`, `FileTunnel`, `_head_ok()`, `_head_ok_public_dns()`, `TunnelRegistry`, `cleanup_stale()`, `_ends_with_us()`
-- [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `gelato_page_options()`, `_gelato_page_count()`
-- [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_journal_readback()`, `GELATO_PLACEHOLDER_PHONE`
-- [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `_unknown_outcome()`
-- [app/studio/creator/photobook.py](../../app/studio/creator/photobook.py) — `build_photobook_pdf()`, `COVER_TRIM_WARN_MM`, `BLANK_DPI`, `_one_idat()`
-- [app/studio/core.py](../../app/studio/core.py) — `DEFAULT_SETTINGS`
-- [app/studio/orders.py](../../app/studio/orders.py) — `page_options()`, `_files()`
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `renderTunnels()`, `startCountdown()`, `loadPageCounts()`, `formatProblem()`, `formatCard()`
-- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`GelatoDraftFlow`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`SafetyRails`, `GelatoValidation`), [app/tests/test_orders.py](../../app/tests/test_orders.py) (`GelatoLength`), [app/tests/test_states.py](../../app/tests/test_states.py) (`GelatoTracking`), [app/tests/test_gelato_accounts.py](../../app/tests/test_gelato_accounts.py), [app/tests/test_gelato_history.py](../../app/tests/test_gelato_history.py)
+- [app/studio/gelato.py](../../app/studio/gelato.py) — `_allowed()`, `all_orders()`, `page_counts()`, `photobook_geometry()`, `attach_shipments()`
+- [app/studio/gelato_accounts.py](../../app/studio/gelato_accounts.py) — `_switch()`, `_forget()`, `status()`, `open_orders()`
+- [app/studio/tunnel.py](../../app/studio/tunnel.py) — `FileTunnel`, `TunnelRegistry`, `_URL_RE`, `_head_ok_public_dns()`
+- [app/studio/orders.py](../../app/studio/orders.py) — `plan_for()`, `printing()`, `binding_of()`, `page_options()`
+- [app/studio/reconcile.py](../../app/studio/reconcile.py) — `item_format()`, `is_large()`, `chosen_format_text()`
+- [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `create_gelato_draft()`, `gelato_pages_problem()`, `GELATO_PLACEHOLDER_PHONE`
+- [app/studio/creator/photobook.py](../../app/studio/creator/photobook.py) — `build_photobook_pdf()`, `BLANK_DPI`, `COVER_TRIM_WARN_MM`
 
 ## Related
-
-- [Order Creator](../features/order-creator.md) · [Send journal](../features/send-journal.md) · [Security](../security.md) · [Printer rule](../rules/printer-rule.md)
+- [Order Creator](../features/order-creator.md) · [Order to print](../flows/order-to-print.md) · [Book files](../rules/book-files.md) · [Printify](printify.md) · [Security](../security.md)

@@ -41,7 +41,7 @@ Ollama/        } optional modules: the program installs them itself (Settings â†
 Upscayl/       } do not put anything here by hand
 
 What is still missing is shown by the window at the program's start, and by:  python app/tools/setup_portable.py
-Everything about it: wiki/dev/portable-setup.md
+Everything about it: wiki/dev/portable.md
 """
 PYTHON_SKIP = {"__pycache__", "idlelib", "turtledemo", "Doc"}     # not needed in a copy
 PYTHON_SKIP_IN_LIB = {"test", "site-packages"}                  # Python's own tests; the packages are installed afresh

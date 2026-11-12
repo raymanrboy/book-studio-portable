@@ -10,22 +10,18 @@ description: Bring the Book Studio wiki up to date after code changes. Use at th
    with no page describing them.
 2. For each page in the list:
    - re-read it and the changed code;
-   - fix the content, the "Where in the code" section (file + function/constant names after the link),
-     and the `code:` front matter;
+   - **rewrite** what changed so the page says how things are now — never add "since …" or "was … now";
+   - fix the "Where in the code" section (file + function/constant names after the link) and `code:`;
    - set `updated:` to today's date.
 3. In addition, if it applies:
-   - a new file → a line in `wiki/code-map.md` and a path in the `code:` of the closest matching page;
-   - a new/changed/removed `@route` → `wiki/architecture/api-routes.md` (method, pattern as in the code,
-     escape `|`);
-   - an owner decision or a meaningful technical choice → an entry at the top of `wiki/decisions.md`
-     (date, decision, why);
-   - a new term from the owner → `wiki/glossary.md`;
-   - a new known limit → `wiki/dev/limits.md`;
-   - a new page → a link in `wiki/index.md`.
-4. An entry at the top of `wiki/log.md`: `## [YYYY-MM-DD] update | what changed` and 1–5 bullet points.
-5. `python app/tools/wiki_check.py` — should say "Wiki is in order." Then run the tests
+   - a new file → its path in the `code:` of the closest matching page;
+   - a new or changed choice of the owner's → a "Why" line on its page, or one line in `wiki/decisions.md`
+     if it crosses areas (replace a line it supersedes);
+   - a new term from the owner → `wiki/glossary.md`; a new known limit → `wiki/dev/limits.md`;
+   - a new page → one line in `wiki/index.md`. A page over 12 KB → split it.
+   Routes and the code map are printed by `wiki_check.py --routes` / `--map`; nothing to write for them.
+4. `python app/tools/wiki_check.py` — should say "Wiki is in order." Then run the tests
    (`cd app && python -m unittest discover -s tests`).
-6. In the report to the owner — one line listing which wiki pages were updated.
+5. In the report to the owner — one line listing which wiki pages were updated.
 
-Format and rules — `wiki/dev/wiki-rules.md`. Don't retell the code; write *what* and *why*, and where to
-look.
+Rules — `.claude/rules/wiki.md`. Don't retell the code; write *what* and *why*, and where to look.

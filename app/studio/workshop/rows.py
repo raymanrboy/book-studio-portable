@@ -118,13 +118,21 @@ def _uk(message: str) -> str:
 
 
 
+# The white margins round the cover's picture, wider than the template's own (the owner, 2026-11-11: the margins are too
+# narrow, the cover barely fills Printify's template; ×1.015 was not felt): the canvas is the template's proportions
+# ×1.06 of its size, so the margin is ≈1.7× at the sides and ≈1.4× at the top and bottom; on the template the picture
+# ends ≈0.46″ inside the trim line at the sides and ≈0.13″ at the top and bottom, and that strip is outpainted scene.
+MARGIN_ROOM = 1.06
+
+
 def template_layout(w: int, h: int) -> dict:
     """Where a w×h cover picture goes on the template, in pixels of the canvas the generator gets: its width is the
-    finished width (so every visible pixel is the picture's own), unless it's too tall for the whole template."""
+    finished width, unless it's too tall for the whole template — and the canvas is MARGIN_ROOM larger than the
+    template all round, so the white margins are a little wider."""
     fw, fh = TEMPLATE["full"]
     tw, _ = TEMPLATE["trim"]
     s = max(w / tw, h / fh)                                    # pixels per inch
-    cw, ch = round(fw * s), round(fh * s)
+    cw, ch = round(fw * s * MARGIN_ROOM), round(fh * s * MARGIN_ROOM)
     return {"canvas": [cw, ch], "art": [(cw - w) // 2, (ch - h) // 2, w, h], "ppi": round(s, 2)}
 
 

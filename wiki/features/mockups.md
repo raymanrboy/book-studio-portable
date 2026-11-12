@@ -1,314 +1,85 @@
 ---
-title: Mockups — listing pictures from a demo book (a tool, and a Workshop book's step)
+title: Mockups
 type: feature
-updated: 2026-10-28
+updated: 2026-11-12
 code:
   - app/studio/mockups.py
   - app/studio/mockup_render.py
   - app/studio/mockup_colours.py
-  - app/tools/mockup_bake/bake.py
-  - app/tools/mockup_bake/engine.py
-  - app/tools/mockup_bake/mult.py
-  - app/tools/mockup_bake/bake.jsx
-  - app/tools/mockup_bake/install.py
-  - app/studio/mockups.jsx
   - app/web/js/pages/mockups.js
   - app/web/js/pages/mockups-run.js
-  - app/web/js/pages/mockups-slides.js
   - app/web/js/pages/mockups-edit.js
+  - app/web/js/pages/mockups-slides.js
 ---
 # Mockups (Мокапи)
 
-> A tool (`#/mockups`) — among [«Інструменти»](modes.md) on its own, and a Workshop book's «Мокапи» step: opened from
-> the book it shows «Для книги №41 …», goes back to the book and keeps the rail on «Книги» (`arrived()`, `navFor()`)
-> until it is opened from «Інструменти» or for another book. Bring in the demo book's Canva ZIP, click the "presentable"
-> spreads — **Book Studio draws the six mockup templates itself** (no Photoshop; each template was "baked" once, a run takes
-> seconds). The front cover is put in by itself; where it shows, a crop button on the picture opens **the crop window**,
-> and the two softcover scenes take their colours from the cover — see [Drawn without Photoshop](#drawn-without-photoshop-since-13102026).
-> Every picture is also cut out without its background, and step 4 makes the [listing slides](slides.md). A template that
-> is not baked (or has changed since) goes the [Photoshop way](#the-photoshop-way--only-for-a-template-that-is-not-baked).
+> A tool at `#/mockups` (in «Інструменти») and a Workshop book's «Мокапи» step. The owner drops the demo book's Canva ZIP, clicks the spreads that look good, and **Book Studio draws the six mockup templates itself** — no Photoshop, a run takes seconds. Every picture is also cut out without its background, and step 4 makes the [listing slides](slides.md). Templates, layers, baking and size rules: [mockups-engine.md](mockups-engine.md).
 
-## How the owner uses it
+Opened from a Workshop book the page says «Для книги №…», goes back to the book and keeps the rail on «Книги» (`arrived()`, `navFor()`); opened from «Інструменти» it starts clean every time. The page keeps its state when the owner steps away (book, picks, a running job) but only for a way back that is not the tools list.
 
-The page looks like the Order Creator: **numbered steps on the left**, the **demo book's structure on the right**. A done
-step's number turns into a ✓. **The page is kept when he steps away**: the book, the picks, a run and its result wait — but
-**only for a way back that is not the tools list**: a click on the tile in «Інструменти» opens it clean every time, except
-while Photoshop works for it or templates wait there for his save; a run going on elsewhere puts a cyan dot on «Інструменти»,
-and a notice says when it ends.
+## Layout
 
-**The demo book** comes in on the right: a dashed veil «Перетягніть сюди ZIP із Canva» — drop the ZIP (anywhere on the
-window), the unpacked folder or the pictures, or click for the Windows dialog (Downloads first, then where the last ZIP
-was — `lastZip`). The veil says what goes on; the header reads «Структура · <name> · 24 стор.». The pages are read by
-the print folder's rules ([file naming](../rules/file-naming.md)): the cover is `cover…` or the one wide picture; page 1
-is the dedication; the spreads `2–3`, `4–5`, …; page 30 is not offered.
+Numbered steps on the left, the demo book's structure on the right; a finished step's number turns into a check mark. A run in progress puts a cyan dot on «Інструменти» and a notice says when it ends ([rail](rail.md)).
 
-1. **Розвороти в шаблонах.** A row per template with its own preview (read from the PSD, only read) and its slots:
-   **Open 1 ×4, Open 2 ×2, Cover & Open 1 ×1, All & Open 1 ×1**; Dedication (page 1) and Cover 1 go in by themselves.
-   **Click a spread** → it goes into the highlighted slot, the next one lights up (the header says where the next click
-   goes); drag a spread onto a slot, or a slot onto another (they swap); × / Delete empties; the eraser empties all; the
-   magnifier opens a spread large. **A book dropped in again gets its picks back** (`localStorage`).
-2. **Книга** — shown **only when the page is a book's step** (the Workshop's «Мокапи» step sent one — `mk-for-book` — or the
-   owner pressed the small book icon of «Куди зберегти»); opened from «Інструменти» it asks for a folder when it runs, and
-   never fills a Workshop book's folder by itself. The Workshop's books, newest first: its `mockups\` takes the pictures
-   and their cut-outs — **no dialog** (the owner: "don't ask where"). For such a book the run also keeps **the Canva cover**
-   as `mockups\canva-cover.*` (`_keep_canva_cover()`) and copies Cover & Open 1 and All & Open 1 into its **`etsy\`** once
-   saved (`_to_etsy()`) — see [photo mockups](photo-mockups.md); its «Мокапи» step ticks itself (`_ticked()`). «Інша
-   папка…» gives the folder field and dialog instead.
-   - **The book's folder as it is** (the owner: "the mockups are made, but the program says there are none"). With a Workshop
-     book chosen, the page reads its `mockups\` (`loadExisting()` → `GET /api/mockups/existing`, `existing()`): step 3 shows
-     the card **«У папці книги · N картинок»** (`existingCard()`; a click — large, the original opens), under a run's result
-     too, and step 4 «Слайди для лістингу» is there whenever the folder has mockups for the slides — **no demo book and no
-     run needed**. It is read when the page opens for a book, when another book is chosen (the select or the small book
-     icon), after every run and after «Завершити». The book's slides already made show as they are (see [slides](slides.md)).
-   - **A tick per template** (the owner: "just tick the category"): every template row starts with a tick, all ticked.
-     **«Зробити мокапи» makes only the ticked ones**; the spreads are asked for only in ticked templates, an unticked row is
-     dimmed. The page sends `only` (template keys) to `/api/mockups/make`; `plan()` and `make()` take `only` (`selected()`),
-     a run of some templates **does not tick the Workshop book's «Мокапи» step** (`_ticked(whole=False)`), and the book's
-     cover is opened beside (the Photoshop way) only when a ticked template is left open. A file already there is never
-     overwritten (` (2)`), so a redone slide lands beside the old one.
-3. **Картинки** — one line says what will happen, then **«Зробити мокапи»**. The button always answers: no book → the veil
-   blinks; empty slots → they blink amber and a toast names them. **While it runs**: a row per template («Малюю …» /
-   waiting / ✓), a bar, × stops. **Done**: «Готово · N картинок» with the pictures themselves (a click — large) and one
-   chip (Book Studio draws N pictures). When the window is behind, its taskbar button flashes, Windows chimes and the title
-   says so (the shell writes the title — `bs:busy`). A template that is not baked goes the
-   [Photoshop way](#the-photoshop-way--only-for-a-template-that-is-not-baked): the card then also shows the Photoshop warning
-   and the Photoshop run's own states.
-4. **Слайди для лістингу** — «Без фону · 5/6», **«Схема: Nature ▾»** (pick the scheme the six start from — Nature, Night, his
-   own), the book's numbers, **«Зробити слайди»**, the six with ✎, «Відкрити в редакторі» — see [slides](slides.md).
-5. **«✓» — «Завершити»**: the page starts clean for the next book, the unpacked demo book is deleted (`close()`). With
-   templates still waiting in Photoshop it asks first; they stay open, and the run is marked `dismissed`.
+### The demo book
 
-The sliders button: where the templates and Photoshop are (a missing folder — a yellow line above the steps).
+A dashed veil «Перетягніть сюди ZIP із Canva»: drop the ZIP (anywhere on the window), the unpacked folder or loose pictures, or click for the Windows dialog (it starts in Downloads, then where the last ZIP was — `lastZip` in `places.json`). The pages are read by the print folder's rules ([book files](../rules/book-files.md)): the cover is `cover…` or the one wide picture, page 1 is the dedication, spreads are `2–3`, `4–5`…, page 30 is not offered. A dropped ZIP is moved out of the orders' dropped files at once (`_take_dropped()`), so a new demo book never clears an order's files and the orders' cleaning never takes the demo book ([intake](../flows/intake.md)).
 
-## Drawn without Photoshop (since 13.10.2026)
+### Steps
 
-The six templates are drawn by Book Studio, equal to Photoshop by eye (checked against Photoshop's own mockups of real
-books).
+1. **Розвороти в шаблонах.** One row per template with its own preview and slots: Open 1 ×4, Open 2 ×2, Cover & Open 1 ×1, All & Open 1 ×1. Dedication (page 1) and Cover 1 fill themselves.
+   - Click a spread: it goes into the highlighted slot and the next lights up. Drag a spread onto a slot (or a slot onto another: they swap); × / Delete empties a slot, the eraser empties all, the magnifier opens a spread large.
+   - A book dropped in again gets its picks back (`localStorage`).
+   - **Every template row has a tick**, all ticked by default. «Зробити мокапи» makes only the ticked ones, spreads are asked for only there (`selected()`, the `only` list sent to `/api/mockups/make`). A partial run does not tick the Workshop book's step (`_ticked(whole=False)`).
+2. **Книга** — only when the page is a book's step. The Workshop's books, newest first; the chosen book's `mockups\` takes the pictures and their cut-outs with **no dialog**. «Інша папка…» gives a folder field and the Windows dialog instead. Opened from «Інструменти» without a book, the run asks for a folder and never fills a Workshop book's folder by itself.
+   - A Workshop book's folder is read as it is (`GET /api/mockups/existing`, `existing()`): step 3 shows «У папці книги · N картинок» and step 4 is available with **no demo book and no run needed**. It is re-read on opening, on choosing another book, after every run and after «Завершити».
+   - For a Workshop book a run also keeps the Canva cover as `mockups\canva-cover.*` (`_keep_canva_cover()`) and copies Cover & Open 1 and All & Open 1 into the book's `etsy\` (`_to_etsy()`) — [photo mockups](photo-mockups.md) own that folder's numbering.
+3. **Картинки** — one line says what will happen, then «Зробити мокапи». The button always answers: no book → the veil blinks; empty slots → they blink and a toast names them. While it runs: a row per template, a bar, × stops. Done: «Готово · N картинок» with the pictures (a click opens large). With the window behind, the taskbar button flashes, Windows chimes and the title says so (`bs:busy`).
+4. **Слайди для лістингу** — [slides](slides.md).
+5. **«Завершити»** — the page starts clean for the next book and the unpacked demo book is deleted (`close()`).
 
-**Baking** (once per template, `app/tools/mockup_bake/`, Photoshop needed — one "Yes"): every smart object is filled with
-calibration pictures — black, white, flat levels, a coordinate ramp (red = x, green = y), each on its own, 16-bit at 300 dpi
-(the dpi decides the placed size) — and Photoshop's renders tell, for every pixel of the template, which point of which
-picture lands there and how the template's light changes it. Photoshop's mockups of two real books are the check.
-- **Hardcovers** (Open 1, Open 2, Cover 1, Dedication — "linear"): `out = black + Σ gain × picture(uv)`; a board's corner folds
-  come from the picture's four edge strips (only where neighbours jump between two strips); per smart object bilinear or
-  bicubic, whichever is closer to Photoshop. Dedication's desk and floor are flat-colour smart objects, kept at the
-  template's colours.
-- **Softcover scenes** (Cover & Open 1, All & Open 1 — "multiply"): their smart objects lie over each other in Multiply and the
-  layers above bend the tones (Soft Light, Colour/Linear Burn): `P = Π(1 − a + a × picture(uv))`, `out = F(P)`, `F` a tone curve
-  per pixel from 9 flat levels; each smart object measured with the others white (neutral for Multiply). Their pictures are
-  shrunk first by the smart object's own squeeze, as Photoshop does; the positions are smoothed and moved by a small per-slot shift fitted to the check mockups (a steady sub-pixel offset).
-- **The softcover scenes' colour fills** sit over everything: `Change Color` (Linear Burn, its mask — the background),
-  `Back Color` / `Front Color` (Multiply, masks — the thin edge lines of the open book's right / left half). Baked at the
-  vendor's colours, they are taken off with the PSD's own masks and put back in the chosen ones.
-- The six baked files live in `app/data/mockups/baked/`, with `baked.json` — the stamp of the template file each was baked
-  from (`mockup_render.stamp()`: the size and the first and last 4 MB). **A changed template is not drawn**: its runs go the
-  Photoshop way until it is baked again (`bake.py prepare` → Photoshop → `bake.py build` → `install.py`; close Photoshop
-  before `build` — it holds a lot of memory).
-- Photoshop renames a smart object named like its old file on Replace Contents (`COVER_` in Cover 1) — the bake script puts
-  the name back.
+The sliders button in the header (`openPlaces()`) shows where the templates (and Photoshop for the fallback) are; a missing folder is a yellow line above the steps.
 
-**A run** (`make()` → `draw()` when every ticked template is baked — `drawn()`): the pictures are cut as for Photoshop
-(`cover_pictures()`, `page_picture()`), each mockup drawn (`mockup_render.render()`; one baked template in memory at a time, let go 2 minutes after
-its last use), saved as PNG at 300 dpi (compression 3, the names as in the table below) and handed to the cutter at once —
-its cut-out is the same as from Photoshop's picture. The page shows no ✋ and no «Ваша черга»; the Photoshop warning shows
-only while some template is not baked.
+## Where the output goes
 
-**Kept only without the background** (the owner: "if it isn't needed, don't save it"): a drawn **Open 1, Open 2 and Dedication** is cut straight from the
-drawing (`slide_cutout.cut_drawn()`) and kept **only in `no-background\`** (`CUT_ONLY`); the book's `mockups\` keeps
-**Cover 1** (both versions — the photo mockups take it with its background as their reference, `photos.REFS`) and the two
-scenes. A «Без фону» file kept alone carries a note of where it lay in the template (a PNG text chunk), so the slides tell
-its book and shadow apart again any day (`cutout._split()`; the cut cache goes with every launch). The slides, the book's card «У папці книги», the
-Workshop's counts take such files as the book's mockups (`cutout.alone()`); names stay free in both folders
-(`_free_name()`).
+| Case | Pictures | Cut-outs |
+|---|---|---|
+| Workshop book | `pipeline/books/<n>.<slug>/mockups/` | its `mockups/no-background/` |
+| Other folder | the chosen folder | its `no-background/` |
 
-**The crop window** (`mockups-edit.js`; the owner: "a mini editor just for cropping — the program puts the right half
-of the 2:1 picture in; if it looks right I touch nothing, if so-so I move it"). On a drawn result **Cover 1, Cover & Open 1 and
-All & Open 1** carry the crop button «Поправити обкладинку»:
-- left — the whole cover with the front's frame, the spine's middle dashed. **The frame goes anywhere on the whole cover**
-  (the owner: "the whole picture's spare — moving left and right is what happens most"): drag inside it to
-  move, a press beside it brings it there; **its four corners resize it like Ctrl+T in Photoshop** — the opposite corner
-  stays, the board's proportions always kept (no stretching; the slider went, the wheel still works). It never leaves the
-  picture: at the cover's edge it grows on and slides back inside; it can't be taller than the cover (`min_zoom()`) or
-  closer than ×3. ↶ — as the program put it. The crop is per template (the hardcover's board is not the softcover's square);
-  the server cuts the picture to the window before resizing, so nothing beyond it bleeds in (`cover_pictures()`; a run
-  without a crop keeps the right half exactly as before);
-- **All & Open 1 crops the back too** (the back is a scene of its own): a second frame
-  over the left half, the same look and corners, each frame tagged «Задня» / «Лицьова» and moved by itself (a press beside
-  the frames moves the one of that half; the one last touched sits on top). Outside both the cover goes dark (one shade
-  with a hole per frame). ↶ puts both back; «Зберегти» keeps both (the back's inside the crop as `back`, sent only when moved from its place — left there, the back stays the left half). The other
-  templates show no back, so they have one frame; a picture without a back crop draws the left half exactly as before;
-- the window fits 1024×640 and up without scrolling;
-- right — the mockup as it will be, drawn by the server a moment after each change (nothing saved);
-- in the scenes also **«Фон»** — pastel shades of the cover's own leading hues (OKLCH, light and soft; the first is what a run
-  uses), a warm off-white, any colour. **One background for the book's two scenes** — saving redraws the other one too. The
-  swatch is the fill itself, as `Change Color` in Photoshop: the scene burns it into its grey, so it looks deeper there. And
-  **«Краї розкритої книги»** — each half's colour from the cover's outer edges (top, bottom, the outer side), "as with an
-  eyedropper" (the owner); a click on the chip and then on the cover takes another;
-- «Зберегти» draws the picture over the file this run saved, makes its «Без фону» again (`cutter.add(again=True)` →
-  `ensure(replace=True)`) and refreshes the Workshop book's `etsy/` copy. It needs the demo book still open on the page.
-- **Dedication needs no colours**: its desk colour is the template's own, its floor is cut away.
+- **Kept only without the background:** Open 1, Open 2 and Dedication (`CUT_ONLY`) are cut straight from the drawing (`slide_cutout.cut_drawn()`) and saved only in `no-background\`. `mockups\` keeps Cover 1 (the photo mockups use it with its background as the reference) and the two scene mockups (`SCENES`). A background-free file carries a note of where it lay in the template, so the slides tell book and shadow apart again (`cutout._split()`); the slides, the card «У папці книги» and the Workshop counts count such files as mockups (`cutout.alone()`).
+- Names are `<template> (<pages>).png`, never over an existing file (` (2)`, `_free_name()`).
+- Temporary files and the demo book's folder: [mockups-engine.md](mockups-engine.md#temporary-files) and [runtime](../architecture/runtime.md).
+- A job's trace is in `app/data/logs/app.log`, lines `Mockups: …`.
 
-## What goes where
+## The crop window
 
-| Template | Spreads | The script puts in | Result |
-|---|---|---|---|
-| `2. Open 1` | 4 | the spread's pages, the back, the spine, the front cover's rim | 4 PNG |
-| `3. Open 2` | 2 | the same | 2 PNG |
-| `1. Cover 1` | — | nothing (its only layer is the front cover) | left open → «Зберегти відкриті» |
-| `Cover & Open 1` | 1 | the spread's pages | left open → «Зберегти відкриті» |
-| `All & Open 1` | 1 | the spread's pages, the back, the spine | left open → «Зберегти відкриті» |
-| `4. Dedication` | — | page 1, the back, the spine, the rim | left open — the owner picks its colours (`"keep": "colours"`) |
+`mockups-edit.js` (`openEditor()`). On a drawn result **Cover 1, Cover & Open 1 and All & Open 1** (`EDITABLE`) carry the crop button «Поправити обкладинку». The program puts the right half of the 2:1 cover in; the owner only nudges it.
 
-(The "left open" results are the Photoshop way; a drawn run saves every picture.) The templates left open come last (`RUN_ORDER`), Cover 1 first — it is in front when the script ends. `kept_open()`: a
-template with `hand` (the front cover) or `keep` (Dedication's colours).
+- **Left: the whole cover** with the front's frame and the spine's middle dashed. The frame goes anywhere on the cover: drag inside to move, press beside to bring it there. Its four corners resize it like Ctrl+T — the opposite corner stays, the board's proportions never change. It cannot leave the picture, be taller than the cover (`min_zoom()`) or closer than ×3 (`MAX_ZOOM`). ↶ restores the program's choice.
+- **The crop is per template** (a hardcover board and a softcover square differ). The server cuts the picture to the window before resizing, so nothing beyond it bleeds in (`cover_pictures()`, `_crop_values()`). A run without a crop keeps the right half.
+- **All & Open 1 also crops the back** (a scene of its own): a second frame over the left half, tagged «Задня» / «Лицьова», each moved by itself. ↶ puts both back; «Зберегти» keeps both (the back is sent only when moved).
+- **Right: the mockup as it will be**, drawn by the server a moment after each change, nothing saved. The window fits 1024×640 and up without scrolling.
+- **In the two scene templates, also «Фон» and «Краї розкритої книги».** «Фон»: pastel shades of the cover's own leading hues (`mockup_colours.pastels()`; the first is what a run uses), a warm off-white, or any colour. The two scenes share one background — saving redraws the other too. «Краї»: each half's colour from the cover's outer edges (`edges()`); a click on the chip, then on the cover, takes another.
+- «Зберегти» draws the picture over the file the run saved, makes its «Без фону» again and refreshes the book's `etsy/` copy. It needs the demo book still open on the page.
+- Dedication needs no colours: its desk colour is the template's own, its floor is cut away.
 
-- **Pictures are cut by Pillow at the smart object's exact size, 300 dpi** (`cover_pictures()`, `page_picture()`): the
-  back — the left half of the wide cover, the front (for the rims) — the right half, each filling its board, centred;
-  the spine — the strip from the middle; pages filled into the square. Hardcover templates: pages 1900², boards
-  2100×2200, spine 80×2200; the softcover: pages and boards 1935², spine 164×1935 (`HARD`, `SOFT`).
-- **Names**: `<template> (<pages>).png` — `2. Open 1 (6-7).png`, `1. Cover 1.png`; never over a file (` (2)` —
-  `_free_name()`). **PNG**, compression 3 (`PNG_COMPRESSION`), each at its template's own size.
+## Why
 
-## The templates
-
-Folder `D:\Roman\Desktop\Трафарети мастхев` ("must-have templates") — **read-only**, never edited, saved over, moved
-or deleted ([security](../security.md)); the program only ever opens copies. All six are 300 ppi, 8-bit RGB, every smart
-object inside is 300 ppi. Two vendors:
-
-- **A — hardcover** (files 1–4). Groups `PRESENTATIONS / VIEW_xx / BOOK / OBJECT / SMART OBJECTS`, plus `ITEMS` and
-  `FILTERS` (all filter looks off). At the bottom of the layer list a group **`Main`** holds **hidden linked copies** of
-  the smart objects that matter (the same content id as the visible ones): replacing a copy's contents changes the book
-  in the picture.
-- **B — softcover** (`Cover & Open 1`, `All & Open 1`). Groups `Editable Layers / Design Smart Objects / Reflection /
-  Shadow`, colour layers `Change Color`, `Back Color`, `Front Color`. No `Main`: the linked copies are at the top.
-
-| Template | Canvas | In the picture | Layers to fill → inner size |
-|---|---|---|---|
-| `1. Cover 1` | 2670×2670 | a closed hardcover from above | `Main/COVER_` → 2100×2200 |
-| `2. Open 1` (×4) | 4000×2670 | an open book, flat | `Main/Left`, `Main/Right` → 1900²; `Main/Cover`, `Main/Back Cover` → 2100×2200; `Main/Rige` → 80×2200 |
-| `3. Open 2` (×2) | 4000×2670 | an open book at an angle | the same names and sizes |
-| `4. Dedication` | 4000×2670 | open on the dedication (the cover's inside left, page 1 right) | `Main/Page 1` → 1900²; `Cover`, `Back Cover`, `Rige` as above |
-| `Cover & Open 1` | 4000×3000 | a closed softcover + an open one | `Front Cover`, `Left Page`, `Right Page` → 1935² |
-| `All & Open 1` | 4000×3000 | five books: front, back, a cover laid open, an open spread | `Front Cover`, `Back Cover`, `Left `, `Right ` → 1935²; `Spine` → 164×1935 |
-
-What matters for the script:
-- **Linked copies.** One content id can sit in several layers (in `All & Open 1`, `Front Cover`, `Back Cover` and `Spine`
-  are there twice): replacing any one updates all. In `Cover & Open 1` the top copies are visible and change nothing.
-- **Names aren't uniform:** the front cover is `COVER_` / `Cover` / `Front Cover`; pages `Left` / `Left Page` / `Left `
-  (**a trailing space** in `All & Open 1`, `Right ` too); the spine is `Rige` (A) or `Spine` (B). Hence the per-template
-  table and names compared trimmed.
-- **In the open-book templates the cover shows only as a thin rim** around the pages (left — the front board, right —
-  the back): white if left empty, a real book when filled from the cover.
-- **Never touched:** `BACKGROUND`, `BACKGROUND_desk color`, `PAPER_edge color`, `SHADOW_editable`, `LIGHT_editable`, the
-  pages under the open spread (`PAGE 2_`, `PAGE 5_`, `COVER_endpaper_`), `Rectangle 1`, and `SELECTIVE VARNISH`.
-- The templates are clean (1–4 white, B with the vendor's demo design); the owner never saves a book into them. The other
-  files in the folder (`Cover.png`, `Shelf.png`, `Size.jpg`) are his flat examples, not part of the tool.
-- `psd-tools` reads a template's layer tree and preview quickly; rendering a finished mockup the Photoshop way needs
-  Photoshop (custom warps).
-
-## The Photoshop way — only for a template that is not baked
-
-When a ticked template is not baked (or has changed since), the run is handed to Photoshop: one script fills the owner's
-templates and saves the PNGs; some templates are **left open** for the owner's hands. (Photoshop is also needed to bake a
-template once.)
-
-**On the page**
-- The card's summary is two counting chips: a picture icon with the number Photoshop saves itself, a hand with the number
-  of templates it leaves open for the owner; the sentences are their tooltips. The make button carries `aria-disabled` and
-  `aria-describedby` while something is missing.
-- While Photoshop asks "run this script?", the card draws that dialog with its **Yes** pulsing. Rows say waiting / in work /
-  ✓, «2/4» or «✋ лишиться відкритим».
-- **«Ваша черга — у Photoshop»**: the templates left open are named — the 3 where the front cover shows (the owner fits it by
-  hand) and **Dedication**, whose background and table colours he picks. After his touches **«Зберегти відкриті й
-  закрити»** runs a second short script (one more "Yes"): PNGs named like the rest, the documents closed, their copies
-  removed. Saving by hand still works. A reloaded window offers the button again (`pending()`).
-- **The book's cover opens beside them** — the Canva cover as `Cover.png`; «Зберегти відкриті» closes it only when
-  unchanged (`doc.saved`).
-
-**Photoshop facts (checked on copies)**
-- **Launching.** Photoshop is the owner's portable CC 2019: the launcher `Photoshoр.exe` (**the "р" is Cyrillic**, found by
-  `Photosho*.exe`) keeps its settings inside its own folder, off drive C — start it through the launcher, not
-  `Photoshop.exe`. A `.jsx` handed to a running Photoshop runs there. There is no COM; a script file is the way.
-- **Every externally launched script asks "run this script?"** (Yes / No). `WarnRunningScripts 0` in `PSUserConfig.txt`
-  would silence it, but that is the owner's setting, never an agent's; hence **one script per run → one "Yes"**.
-- **The core operation:** make the layer active, `placedLayerReplaceContents` with an exact-size 300-dpi PNG — the picture
-  takes the template's bend, shadows and light as by hand. Replacing the hidden copy in `Main` works.
-  Selecting a hidden layer makes it visible, so `visible` is restored at once. Swapping the spread and saving again in
-  the same open document works (one opening per template). `layer.bounds` is NaN unless the units are set — not relied on.
-- **"Save a copy" and "Replace Contents" act on the active document**, whatever document the script calls them on — the
-  script makes its document active before every replacement and save.
-- A "Yes" given after the tool stopped waiting runs a script that sees the stop mark and ends at once.
-
-**How a run goes**
-1. `plan()` decides everything first: the pictures, the template copies, which layer gets which picture, the names. A
-   wrong choice is refused at once.
-2. `prepare()` makes the pictures; `copy_templates()` copies the six templates into
-   `app/data/mockups/work/<time>-<id>/templates/` — **Photoshop never opens a template from `Трафарети мастхев`**
-   ([security](../security.md)).
-3. `script()` writes one `mockups.jsx`: the job as a JavaScript literal (ASCII only; Cyrillic as `\u` escapes) in front
-   of the fixed [mockups.jsx](../../app/studio/mockups.jsx); `job.json` beside it.
-4. `launch()` hands it to Photoshop — `Photoshop.exe` when it runs, else the portable launcher; temp in
-   `data/mockups/tmp/photoshop`. **One script per run → one "Yes"**.
-5. The script (ExtendScript, Photoshop CC 2019 — **no `/` inside a regex's `[...]`**, it ends the regex there): per
-   template — open the copy, "Replace Contents" of each smart object by its layer path (names trimmed; a one-name path
-   looked for at the top of the list), restore the visibility, per spread swap the pages and save a PNG copy; always
-   act on the **active** document; the automatic templates close without saving, the four stay open.
-6. `watch()` follows the script's `status.json` and hands the page `progress_view()`; each saved picture goes to the
-   slides' cutter (`_cut_without_background()`). No status for 10 min (`START_WAIT`) → "Photoshop never ran the script";
-   Photoshop gone → "Photoshop closed"; stop → the file `cancel`.
-7. **«Зберегти відкриті»** — `finish()`: `finish_plan()` reads `job.json`, the same script runs with `JOB.finish`, finds
-   each copy among the open documents, saves, closes; one the owner closed is reported.
-
-## Temporary files
-
-The owner: "keep drive C clean — any temporary file must go when the work is done". All on drive **D**, in
-`app/data/mockups/`:
-
-| What | Goes |
-|---|---|
-| `work/<run>/pictures/` — the prepared pages (Photoshop way) | right after the script |
-| `work/<run>/templates/` — the closed templates' copies | right after the run |
-| `work/<run>/templates/` — the ones left open | after «Зберегти відкриті»; else when Photoshop is closed (checked on launch, before a run, on close), at most a day later (`KEEP_RUNS`) |
-| a copy he saved himself with Ctrl+S | kept a week (`KEEP_SAVED`) |
-| `book/` — the unpacked demo book (`BOOKS`) | when another book comes, on close, on launch |
-| `tmp/photoshop/` | once Photoshop is closed |
-| `cache/thumbs/` (the previews) | unused for 21 days (`images.prune_cache()`) |
-
-**The demo book has a folder of its own**: a dropped ZIP arrives among the files dropped for orders and is moved out
-at once (`_take_dropped()`) — so a new demo book never clears an order's dropped files, and the orders' cleaning never
-takes the demo book. Nothing goes to drive C (`core.own_temp()`, [runtime](../architecture/runtime.md#temporary-files-and-drive-c)).
-
-## Where things are
-
-- `places.json` (`PLACES`): the templates `D:\Roman\Desktop\Трафарети мастхев`, Photoshop
-  `D:\Programs\Portable\Photoshop_Portable` (`TEMPLATES_DIR`, `PHOTOSHOP_DIR`), `lastOut`, `lastZip`. Output may not be
-  the templates folder.
-- Book Studio's closing waits for a run still copying or watching (`jobs.any_running()`); on launch and close the demo
-  book goes and the runs are cleaned (`clear_books()`, `clean_runs()`).
-- **When something goes wrong**: `app/data/logs/app.log`, lines `Mockups: …` (the dialogs, the book read, the run started
-  / finished / stopped — `_logged()`); a run's own files in `work/<time>-<id>/` while kept.
-- **Not checked live**: the second script in the real Photoshop (only against a pretend one), the taskbar flash.
+- The templates folder is read-only; the program only opens copies ([security](../security.md)).
+- "If it isn't needed, don't save it": Open 1, Open 2 and Dedication exist only without background.
+- A tick per template so one changed template is redone without the rest.
+- No question about where to save for a Workshop book.
+- The crop window is a mini editor on purpose: the owner touches nothing when the program's half is right.
 
 ## Where in the code
 
-- [app/studio/mockups.py](../../app/studio/mockups.py) — `existing()`, `_template_of()`, `_existing_file()`, `_keep_canva_cover()`, `_to_etsy()`, `close()`, `DISMISSED`, `_logged()`, `TEMPLATES`, `RUN_ORDER`, `HARD`, `SOFT`, `TEMPLATES_DIR`, `PHOTOSHOP_DIR`, `PHOTOSHOP_TEMP`, `PLACES`, `WORK`, `BOOKS`, `KEEP_RUNS`, `KEEP_SAVED`, `START_WAIT`, `read_book()`, `book_view()`, `_only_this_book()`, `clear_books()`, `_take_dropped()`, `cover_pictures()`, `page_picture()`, `selected()`, `plan()`, `prepare()`, `copy_templates()`, `script()`, `finish_plan()`, `find_photoshop()`, `running()`, `launch()`, `progress_view()`, `watch()`, `_cut_without_background()`, `_workshop_books()`, `_ticked()`, `make()`, `finish()`, `_run_script()`, `pending()`, `clean_runs()`, `_saved_by_owner()`, `state()`, `_free_name()`, `_problem_text()`, `_pick_zip()`, `_open_zip()`, `_open_book()`, `_attention()`, `_template_media()`, `_out_media()`
-- [app/studio/mockups.jsx](../../app/studio/mockups.jsx) — `openCover()`, `closeCover()`, `findLayer()`, `replaceContents()`, `fill()`, `savePng()`, `runTemplate()`, `findOpen()`, `finishOpen()`, `report()`, `cancelled()`
-- [app/studio/main.py](../../app/studio/main.py) — `main()`: the routes, `mockups.clear_books()` and `mockups.clean_runs()` on launch and close
-- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `arrived()`, `paintBack()`, `takeWorkshopBook()`, `existingNow()`, `loadExisting()`, `FOR_BOOK`, `paintHead()`, `finishPage()`, `mount()`, `paintBookState()`, `paintTemplates()`, `ticked()`, `paintPicks()`, `paintOut()`, `paintAction()`, `paintStructure()`, `paintTiles()`, `put()`, `pickZip()`, `takeDrop()`, `make()`, `follow()`, `tellDone()`, `rememberPicks()`, `recallPicks()`, `openPlaces()`
-- [app/web/js/pages/mockups-slides.js](../../app/web/js/pages/mockups-slides.js) — step 4, the listing slides: `slidesStep()` ([slides](slides.md))
-- [app/studio/mockups.py](../../app/studio/mockups.py) — drawn: `EDITABLE`, `CUT_ONLY`, `SCENES`, `FRONT_X`, `BACK_X`, `min_zoom()`, `drawn()`, `draw_plan()`, `draw()`, `_pictures_for()`, `_fills()`, `_draw_one()`, `_save_drawn()`, `_window()`, `_crop_values()`, `MAX_ZOOM`, `_edit()`, `_edit_state()`, `_edit_preview()`, `_edit_save()`
-- [app/studio/mockup_render.py](../../app/studio/mockup_render.py) — `BAKED`, `stamp()`, `ready()`, `render()`, `slots()`, `fills()`, `forget()`, `_render_linear()`, `_render_multiply()`, `_recolour()`
-- [app/studio/mockup_colours.py](../../app/studio/mockup_colours.py) — `edges()`, `pastels()`, `hex_of()`, `rgb_of()`
-- [app/tools/mockup_bake/bake.py](../../app/tools/mockup_bake/bake.py) — `prepare()`, `build_linear()`, `build_multiply()`; [engine.py](../../app/tools/mockup_bake/engine.py) — `passes()`, `bake()`, `tune()`; [mult.py](../../app/tools/mockup_bake/mult.py) — `bake()`, `register()`; [bake.jsx](../../app/tools/mockup_bake/bake.jsx) — the Photoshop script; [install.py](../../app/tools/mockup_bake/install.py) — `read_fills()`, `main()`
-- [app/web/js/pages/mockups-edit.js](../../app/web/js/pages/mockups-edit.js) — `openEditor()`: the crop window
-- [app/web/js/pages/mockups-run.js](../../app/web/js/pages/mockups-run.js) — step 3 drawn: `runView()`, `rowsHtml()`, `resultCard()`, `existingCard()`, `turnCard()`, `finishedCard()`
-- [app/web/js/app.js](../../app/web/js/app.js) — the route `#/mockups`, `paintBusy()` (the rail's dot)
-- [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_zip()`, `downloads_folder()`, `attention()`
-- [app/studio/drops.py](../../app/studio/drops.py) — `export_files()` (the same naming rules as the print folder), `archive_folder()`
-- Tests: [app/tests/test_mockup_draw.py](../../app/tests/test_mockup_draw.py) (`Baked`, `Colours`, `TheFrontsCrop`, `DrawnRun`), [app/tests/test_mockups.py](../../app/tests/test_mockups.py) (`ReadingTheDemoBook`, `Pictures`, `RunPlan`, `Run`, `SaidInTheLog`, `Cleaning`, `SaveTheOpenOnes`, `Progress`, `PhotoshopScript` — the script itself run by Node.js against a pretend Photoshop)
+- [app/studio/mockups.py](../../app/studio/mockups.py) — `draw()`, `drawn()`, `make()`, `existing()`, `_keep_canva_cover()`, `_edit_save()`
+- [app/studio/mockup_render.py](../../app/studio/mockup_render.py) — `render()`, `ready()`
+- [app/studio/mockup_colours.py](../../app/studio/mockup_colours.py) — `pastels()`, `edges()`
+- [app/web/js/pages/mockups.js](../../app/web/js/pages/mockups.js) — `arrived()`, `openPlaces()`; [mockups-run.js](../../app/web/js/pages/mockups-run.js) — `runView()`, `existingCard()`; [mockups-edit.js](../../app/web/js/pages/mockups-edit.js) — `openEditor()`
+- [app/studio/slides/cutout.py](../../app/studio/slides/cutout.py) — `cut_drawn()`, `alone()`
 
 ## Related
 
-- [Listing slides](slides.md) · [Photo mockups](photo-mockups.md) · [The rail](modes.md) · [Security](../security.md) ·
-  [Dragging files](../flows/dropped-files.md) · [Decisions](../decisions.md) · [Preview](../dev/preview.md) ·
-  [Launch and shutdown](../architecture/runtime.md)
+- [Mockups engine](mockups-engine.md) · [Slides](slides.md) · [Photo mockups](photo-mockups.md) · [Workshop](workshop.md) · [Rail](rail.md) · [Security](../security.md) · [Runtime](../architecture/runtime.md)

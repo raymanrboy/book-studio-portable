@@ -1,215 +1,75 @@
 ---
-title: Order Creator — a book in Printify, a draft in Gelato
+title: Order Creator
 type: feature
-updated: 2026-10-28
+updated: 2026-11-12
 code:
-  - app/studio/creator/
   - app/web/js/pages/creator.js
   - app/web/js/pages/creator-picker.js
   - app/web/js/pages/gelato-result.js
-  - app/web/js/folder-viewer.js
+  - app/studio/creator/
+  - app/studio/sendlog.py
 ---
 # Order Creator
 
-> The last link in the chain: from a folder of PNGs (`Cover.png` + pages) it creates a draft order with a PDF
-> in **Gelato**. An order with several books goes as **one draft to one address**. The old Printify code stays, but Printify is read-only
-> ([printify](../integrations/printify.md)). Nothing is published and nothing goes into production. Opens empty — except for work on a new order,
-> which is kept while the order is in "New" (see below).
+> A tool (`#/creator`, «Інструменти» → «Для замовлень») that turns a folder of PNGs (`Cover.png` + pages) into a **Gelato draft** with a PDF. An order of several books goes as one draft to one address. Nothing goes into production: the owner confirms and pays in Gelato. Opened by hand it starts empty; from an order card it is that order's print step.
 
-## Screen (`#/creator`)
+Every new book goes to Gelato. Printify is read-only from 2026-10-01 on the owner's copy (`printify.readOnlyFrom`); its earlier orders are still read for stage, tracking, cost and archive days. A copy with the date unset (the colleague's) can still send to Printify — see [Printify](../integrations/printify.md). The Printify create and reprint routes exist and answer 403 while `printify.retired()`; the page shows only Gelato (`gelatoOnly` in `creator.js`).
 
-- **Two ways in:** on its own, from [«Інструменти»](modes.md) — the header says «Order Creator ·
-  Друк у Gelato з папки файлів»; from an order's card — the page is **that order's print step**: the buyer's name, the
-  receipt, «back» to the card, the order's path as icons (Canva ✓ files ✓ text check ✓ **printer** · truck; its steps lead back to
-  the card), and the rail stays on «Замовлення» (`navFor()`).
-- Header: the title above and the **"Send journal"** icon ([send-journal.md](send-journal.md)). There is **no
-  printer switch** — only Gelato (blue, `.creator.mode-gelato`; the Printify mode with its lime-green accent and the
-  switch show only before `printify.retired()`) (`gelatoOnly` from `status.printify.retired`; a hand-over in Printify mode opens Gelato; the Printify routes
-  refuse — [printify](../integrations/printify.md)). Drafts go to the main Gelato account only — after the move to
-  his own account, the new one ([gelato](../integrations/gelato.md)). Below it, a line
-  appears only when something is missing (a key, the template, `cloudflared.exe`), with a link to
-  Settings. For Gelato — active temporary links, if any.
-- Left column — the steps:
-  - **Printify**: 1 Folder of files → 2 Title → 3 Recipient address → 4 Draft.
-  - **Gelato**: 1 Format (Hardcover 8×8, Hardcover 11×11, Softcover 8×8, Softcover 5.5×5.5) → 2 Folder → 3 Title →
-    4 Address → 5 Draft.
-  - **Several books** (came from the card, or added with the "Another book" button): in the "Folders of
-    files", "Book titles" and "Book formats" steps — a block per book; one address for all. Clicking a
-    book's title ("Book 2") shows its structure on the right; an × removes the book from the list.
-    Format buttons show a tooltip with how many pages Gelato prints ("28–200 pages", from the catalog —
-    `loadPageCounts()`, only when there's a key); if a folder has 28 pages and the format doesn't accept
-    that — the button turns yellow, one sentence appears under it, and "Create" is blocked
-    (`formatProblem()`).
-- Right column — the **structure**: the cover and every spread with thumbnails; green/red file names
-  based on the check result; a click opens the viewer. In the viewer — **page-replacement buttons** (one
-  per page of a spread): pick a file on the computer, and the page takes the old one's
-  place; "Undo" sits next to it. The folder is re-checked after a replacement. The same exists in the
-  [order card](orders.md), except there the text check also restarts. "Undo" is read from disk (the
-  `replaced` flag from the file check), so it doesn't disappear after leaving the page or restarting the
-  program; **while a draft is being created, replacing and undoing are refused**, because the server is
-  reading exactly those files at that moment. For Gelato, before a folder is chosen —
-  "28 or 30 pages"; after the check — the exact number from the folder (`pageCount` in the check's
-  response).
-- **Folder**: pick it, paste a path, or **drag a folder or ZIP** onto the block (the field lights up; it
-  shows the folder's own name, and the path is a copy inside the program). The check starts on its own;
-  a new check of the same folder (new files, a replaced page) stops the previous one, and a page that
-  was closed stops polling it.
-- **Title**: `receipt number - child's name` (the receipt button fills in the title and address from an
-  Etsy order; in an order with several books, each gets its own child's name).
-- **The receipt number is its own field on a book** (`receiptId`): given by the order
-  card, or by picking an Etsy order, and the server uses exactly this — not the title — to keep the
-  archive, the record of "which print orders belong to which receipt", and Printify's `external_id`. The
-  title stays what the owner and the printer see. A title that starts with a **different** number than
-  the order's is refused before any upload (`receipt_for()`); a book entered by hand with no order takes
-  its number from the start of the title, as before.
-- **Address**: every field has its name above it (a placeholder alone could not tell «Місто» from «Штат» on a filled form); the required ones are marked with the ink's *. «Створити» with a field missing
-  says which and lights them up (`markMissing()`). An eraser icon clears it. State is required for US, CA, AU. For Gelato, an empty phone →
-  the made-up `+1 555 555 0100` (Gelato won't let an order through with no phone).
-- **The button**: "Create draft".
-- **Result**: a card with the ID, checks, warnings; Printify — "Order in Printify" or "Open in Printify";
-  Gelato — the PDF's build, a yellow notice with the temporary link's countdown («Gelato забирає їх сам, зазвичай за
-  хвилину», plus a close-the-link icon), and the orange «Замовлення в Gelato» button, which opens the orders list
-  `dashboard.gelato.com/orders/list`. The Gelato card is one markup shared
-  with the order card (`gelato-result.js`); while the link lives, the order card shows it whole too
-  ([orders](orders.md#card-ordersreceipt-number)). Both have a "Send journal"
-  icon (`sendLogButton()`); on an error card, it opens the journal folder
-  ([send-journal.md](send-journal.md)).
+## Screen
+- **Two ways in:** from «Інструменти» (header «Order Creator · Друк у Gelato з папки файлів»), or from an order card: then the header shows the buyer, receipt, «back» to the card and the order's path icons, and the rail stays on «Замовлення» (`navFor()`).
+- **Header icons:** the send journal (below), and «Завершити роботу над замовленням» after a successful send (`keep.finish()`: page and card forget the order, the queue opens). A line under the header appears only when something is missing (key, template, `cloudflared.exe`), linking to Settings, plus active temporary links.
+- **Steps (left):** 1 Format (Hardcover 8×8, Hardcover 11×11, Softcover 8×8, Softcover 5.5×5.5; [Gelato](../integrations/gelato.md)) → 2 Folder → 3 Title → 4 Address → 5 Draft.
+  - **Several books** (from the card, or the "Another book" button): a block per book in Folder, Title and Format; one address. A click on a book's name shows its structure; × removes it.
+  - A format button's tooltip gives the pages Gelato prints for it (from the catalog, `loadPageCounts()`, only with a key). A folder whose length the format does not accept turns the button yellow, adds one sentence and blocks «Створити» (`formatProblem()`).
+- **Structure (right):** cover and every spread with thumbnails, file names green or red by the check; a click opens the viewer with a replace button per page and «Undo» (as in the [order card](orders.md), without the text-check restart). «Undo» is read from disk (the check's `replaced` flag). While a draft is being created, replace and undo are refused. 
+- **Folder:** pick, paste a path, or drag a folder or ZIP onto the block ([Intake](../flows/intake.md)); the field shows the folder's name and the copy lives inside the program. The check starts by itself; a new check of the same folder stops the previous one.
+- **Title:** `<receipt> - <child's name>`; the receipt button fills title and address from an Etsy order; several books each get their own name.
+- **Receipt number** is its own field on a book (`receiptId`), given by the card or the order picker. The server uses it, not the title, for the archive and for "which print orders belong to which receipt". A title that starts with a different number is refused before any upload (`receipt_for()`); a book typed by hand takes its number from the start of the title.
+- **Address:** every field has its label above it, required ones are marked, «Створити» with a gap names it and lights it up (`markMissing()`), an eraser clears. State is required for US, CA, AU. An empty phone becomes a placeholder (`GELATO_PLACEHOLDER_PHONE`) because Gelato will not confirm an order without one.
+- **Result card** (`gelato-result.js`, one markup shared with the order card): order ID, checks, warnings, the PDF build, a yellow notice with the temporary link's countdown and a close-the-link icon, and the orange «Замовлення в Gelato» button (the Gelato orders list). The journal icon opens that send's record; on an error card, the journal folder.
 
-## Picking an Etsy order
+**Picking an Etsy order** (`pickEtsyOrder()`, `creator-picker.js`): search, stages New / In progress / Sent, personalization collapsed; it lists the queue's own orders with the same counts. Opening it only waits for a running sync; its refresh button starts one. Picking fills title and address (`fillFromOrder()`, `addressFromEtsy()`).
 
-The `pickEtsyOrder()` dialog (`creator-picker.js`; the page fills itself in — `fillFromOrder()`): search, stages "New / In progress / Sent", personalization is collapsed (an
-arrow expands the "field: value" list). It lists the queue's own orders (`/api/orders`, with the same tab counts and
-empty states — `countStages()`, `emptyOrders()`). Opening the dialog doesn't start a sync, only waits for one
-already running; the refresh button starts one. Picking an order fills in the title and address
-(`addressFromEtsy()`).
+**Hand-over and kept work.** `take('creator')` takes the card's data once (receipt, folder, title, format, address) and the check starts. A form filled from the card or an Etsy order remembers its order (`st.receiptId`) while that order is New: switching tabs returns to the same form or result (the countdown keeps running). On success the card shows "Draft … created" (`markSent()`). A new hand-over replaces the saved one; a reprint from the archive is not saved. How: [Interface](../architecture/frontend.md).
 
-## Handoff from the order card
+## «Передрук» (sent again)
+An order already at the printer and sent again, from its card («Покласти інші файли й надіслати ще раз») or picked in «Заповнити із замовлення Etsy», arrives with `reprintOffered` (every book placed at the printer, `stages._all_placed()`) and `alreadyPrinted` (the book has left the printer, or a reprint is being made). The Draft step then shows a **«Передрук» tick**, set by itself once the book has left the printer; while the first print is paid but still being made it is offered unticked, because a new send may be a correction with the first cancelled. The owner unticks it when it is not a reprint. Ticked, the draft goes with `reprint: true`, button «Створити чернетку-передрук»: the page's own new files, recorded as a replacement of the receipt, not a second sale ([Archive](archive.md)). If the server cannot record it as a replacement (first print cancelled, a state set by hand) the result says so.
+**Reprinting from the archive** passes `reprint: {archiveId, …}`: a line "Reprint from the archive: …" in the folder block, button «Create reprint draft»; another folder drops reprint mode. Details: [Archive](archive.md).
 
-`take('creator')` grabs the card's data once (receipt number, mode, folder, title, format, address) —
-and the check starts right away. Visiting the page directly, with no such handoff, leaves it empty.
+## What a Gelato send does (`create_gelato_draft()`)
+`books` is a list of `{folder, title, format}`; what every send does the same way is in `sending.py`.
+1. Address check, then per book (`_gelato_book()`) a light file check: `Cover.png` + `1…28` or `1…30`, no size demands. The book's folder decides its length (`_gelato_page_count()`): the shortest allowed length that fits the highest page, so `1…27` needs 28 and `1…29` needs 30; two books of one order may differ.
+2. Does Gelato print that length in this format (`gelato_pages_problem()`) and the book's dimensions (`photobook_geometry()`). If not, an error and nothing is created. The page gets the same text ready-made (`problems` in `GET /api/creator/gelato/page-counts`), so card, creator and send say the same.
+3. A PDF per book (`build_photobook_pdf()`: cover, blank endpaper, pages, blank endpaper; images are not recompressed, a Canva PNG is glued into one IDAT chunk, `_one_idat()`; the cover warns only above 10 mm trim; blanks are white at `BLANK_DPI`, why: [Gelato](../integrations/gelato.md)). pikepdf is pinned in `requirements.txt` so another computer cannot write a different PDF.
+4. One Cloudflare temporary link for all PDFs (`tunnelKeepAliveSeconds`, default 900), reachability checked.
+5. `create_draft_order()`: `orderReferenceId` = the shared title (`<receipt> - Emma, Liam` for several books, so a paid, synced order moves to In progress), one item per book with its own `pageCount` and file. Once Gelato answers, the link goes to the registry (the draft still has to fetch its PDFs); then the draft is read back for the journal (`_journal_readback()`, a failed read-back is only a note).
+6. **Result unknown** (no answer in 120 s, dropped connection, 500/502/504): the draft may exist. The link stays up for the same time, the journal gets `outcome: unknown`, and the message says not to resend before checking Gelato → Orders → Drafts. A POST is never retried. A real refusal (4xx) says "Gelato rejected…" and closes the link.
 
-**Work on an order is saved** (the owner's request): an Order Creator filled from the
-card, or by picking a new Etsy order, remembers its order (`st.receiptId`). Switching to another tab, the
-owner comes back to the same form, or to the result page (with the Gelato link's countdown still
-running), as long as the order is in "New"; after that — an empty page. On success, the order card shows
-"Draft … created" (`markSent()`, `sentText()`). **After a successful send, a "✓ Finish work on this
-order" appears in the header** (next to the journal): the page and the card forget the order
-(`keep.finish()`), and the queue opens. A new handoff from the card or the archive
-replaces the saved one. A reprint from the archive isn't saved (the order is no longer new). How this is
-built — [architecture/frontend.md](../architecture/frontend.md).
+After a successful send the files go into the [archive](archive.md) (`_to_archive()`); a failed archive write never undoes the send, a warning appears on the card. The archive lists the book once its print order is confirmed and paid.
 
-## Reprinting from the order archive
+## Send journal
+Every send attempt, failed ones too, is one JSON file: what went out, which files and PDF, what Gelato answered, where it broke. Keys never enter it; buyer addresses do, so it lives only in `app/data` (not in git).
+- **Where:** `app/data/logs/sends/YYYY-MM-DD_HHMMSS_<provider>_<title>.json`, the last `KEEP` (400) kept (`sendlog.py`). The icon «Журнал відправок» is always in the creator's header (Explorer highlights the newest record, `latest()`), and result cards have «Журнал відправки» for exactly that send (`POST /api/sends/open` `{file}`).
+- **Record:** `provider`, `kind`, `title`, `at`, `seconds`; `ok`, `error`, `errorType`; `folder`, `format`, `books`; `steps`; `request` and `response` (full, with the address); `result` (what the owner saw). A Printify-enabled copy also writes `printify` records.
+- **Steps:** `files` (every PNG: pixels, bytes, errors) → `catalog` (product, pages, sizes) → `pdf` (pages, bytes, cover size, mm trimmed) → `link` (each PDF's address, `reachable`) → `readback` (what Gelato recorded: item, pages, file, `fileFetched`), plus the program's own `archive`, `printOrderRemembered`, `reprintMarked`.
+- Several books: one record, per-book steps carry `book`. A send stopped at the file check also leaves a record (no `request`). `write()` never breaks a send; on failure it logs "Send journal not written".
+- **Why:** a book that looks wrong at the printer must be traceable; the icon is always in the header, not only on result cards.
 
-The "Reprint" button in the [order archive](archive.md) also passes `reprint: {archiveId, productId}`:
-- in the folder block — a line "Reprint from the archive: …", the button — "Create reprint order"
-  (Printify, address required — `withOrder()`) or "Create reprint draft" (Gelato);
-- Printify goes to `POST /api/creator/printify/reprint`: **a new "On hold" order for the same book**, no
-  files are sent, so the file check doesn't block the button; Gelato — the usual creation, with
-  `reprintOf` (the server fetches the files from the archive itself);
-- a different folder (picked, dragged, or a typed path) drops reprint mode;
-- the result card: "Reprint: order created in Printify!" (for the same book — "nothing was uploaded") /
-  "Reprint: draft created in Gelato!".
-
-## «Передрук»: an order already printed, sent again with new files
-
-An order that went to print and is sent again — from its card («Покласти інші файли й надіслати ще раз»), or picked in
-«Заповнити із замовлення Etsy» — comes with `reprintOffered` (every book of it placed at the printer: work / sent / shipped,
-not `partial`, and for several books a known count — `stages._all_placed()`) and `alreadyPrinted` (also the book has left the
-printer: sent / shipped, or a reprint being made). The «Чернетка» step then shows a **«Передрук» tick, set by itself** once the
-book has left the printer (the owner's choice: the program ticks it, he takes it off when it is not a reprint); while the first
-print is paid but still being made it is offered unticked — a new send then may be a correction with the first one cancelled.
-If the server cannot record it as a replacement (the first print cancelled, a state set by hand) the result says so; the button reads «Створити чернетку-передрук». Ticked, the draft goes with `reprint: true`:
-the page's own (new) files, recorded as a **replacement** of the receipt (`record_order()` → `_mark_reprint()`), not as a
-second sale, and kept in the archive as a reprint (`reprint`, `reprintOf` — the first print's book, `archive.printed_before()`).
-Gelato only (Printify no longer prints). **Why:** a cover fixed after a complaint must count as a replacement, not as a second sale, or the order stays among the shipped ones and the replacement picker cannot offer it.
-
-## Both printers: one send frame
-
-The server's code is a package (`app/studio/creator/`: the print folder, the shared send, Printify, Gelato, the PDF,
-the routes). What every send does the same way is written once, in `sending.py`:
-`journaled_send()` — the attempt in the send journal (a failed one too) and the print folders held while the send
-reads them; `mark_books()` — each book's name in the progress and the errors when the order has several;
-`checked_files()` — every PNG of a book read in full before anything goes to the printer; `record_order()` — the new
-print order recorded here (as a reprint, or as its receipts' order), never failing a finished send. Printify's and
-Gelato's own parts (uploads and the Master; the PDF and the link) stay in their own files.
-
-## Printify: the retired server side
-
-`create_printify_draft(books, job, address)` (`_printify_setup()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `build_printify_payload()`, `matte_variant()`) still sits in the code but the routes refuse, because Printify only reads ([printify](../integrations/printify.md)). It checked everything first, uploaded every book's images, made each book from the Master and one "On hold" order for all of them.
-
-## Gelato: what happens on the server
-
-`create_gelato_draft(books, address, job)` — `books` is a list of `{folder, title, format}`:
-1. The address, then for every book (`_gelato_book()`) — a light file check (`Cover.png` +
-   `1…30.png` or `1…28.png`, no size requirements). The book's own folder decides its length
-   (`_gelato_page_count()`): the shortest allowed length that fits the highest page number — `1…27` →
-   needs `28`; `1…29` → needs `30`. Two books of one order can be different lengths.
-2. Whether Gelato prints that many pages in this format (`gelato_pages_problem()`, the catalog), and the
-   book's dimensions (`photobook_geometry()` at the same count). It doesn't print that length → an
-   error, nothing is created. The Order Creator page gets the same text ready-made (`problems` in
-   `GET /api/creator/gelato/page-counts`, `_pages_problem()`), so the card, the Order Creator, and the
-   send itself all say the same thing.
-3. A PDF for every book (`build_photobook_pdf()`, `book.pdf` or `book-1.pdf`, `book-2.pdf`…): cover,
-   blank endpaper, 28 or 30 pages, blank endpaper — the blank ones are required
-   ([integrations/gelato.md](../integrations/gelato.md)); no recompression of images (a Canva PNG gets
-   glued into one IDAT chunk — `_one_idat()`), fitted with edges trimmed; a warning only when the cover
-   is trimmed by more than 10 mm. The PDF is written straight into its file, each page read and
-   joined only when the PDF library gets to it (`_Page`); the library's engine is named (pikepdf, in
-   `requirements.txt`) so another computer can't quietly write a different PDF.
-4. One Cloudflare temporary link for all these PDFs (reachability checked, including via public DNS).
-5. `create_draft_order()`: `orderReferenceId` = the shared title `<receipt> - <name>` (for several
-   books — `<receipt> - Emma, Liam`; so that once confirmed, paid in Gelato and synced, the order moves
-   to "In progress"), **one item per book** with its own `pageCount` and its own
-   `files: [{type: "default", url}]`, metadata. As soon as Gelato answers, the link goes to the registry —
-   the draft exists and still has to fetch its PDFs, so nothing that fails after this point can take them
-   away ; then the draft is read back for the journal (`_journal_readback()` — one
-   record per item; a failed read-back is only a journal note). A reply without the draft's number is a
-   "result unknown": don't resend, check Drafts.
-6. The link lives for 15 min (`tunnelKeepAliveSeconds`); Gelato fetches the file itself, in about a
-   minute.
-7. **Result unknown** (Gelato didn't answer within 120 s, the connection dropped, 500/502/504): the draft
-   may have been created anyway. Then the PDF link **stays up** for the same 15 min (Gelato can still
-   fetch the file), the journal gets `outcome: unknown`, and the message says not to resend until the
-   owner has checked Gelato → Orders → Drafts. A real refusal (4xx) — "Gelato rejected…", the link closes.
-
-Both kinds of send (Printify and Gelato) write to the [send journal](send-journal.md): the wrappers
-`create_printify_draft()` / `create_gelato_draft()` call `_printify_draft()` / `_gelato_draft()` inside
-`sendlog.attempt()`; `_journaled()` adds the journal record's name to the result and to the archive.
-
-After a **successful** send, the files go into the [order archive](archive.md) (`_to_archive()`):
-Printify — as soon as the book is created (with or without an order), Gelato — as soon as the draft is
-created; the book appears in the archive's list once the print-shop order is confirmed and paid. A
-reprint — only from a book that really went to print (`archive.reprintable()`). A failed archive write
-never undoes the send — a warning appears on the result card instead. A reprint is marked as a
-replacement for the receipt (`_mark_reprint()` → `profit.mark_reprint()`), except when the first order
-was cancelled at the printer.
-
-The Gelato PDF: cover · blank · pages · blank; the blank pages are white at 300 dpi (`BLANK_DPI`) — why
-exactly that — [Gelato](../integrations/gelato.md).
+## Why
+- One draft per order and one address; nothing but a draft is ever created.
+- After an unknown outcome nothing is resent; duplicates cost money.
+- The receipt number is its own field so a wrong title cannot attach a send to another order.
+- «Передрук» ticks itself and the owner unticks it; a replacement must not count as a second sale, or the order stays among the shipped and the replacement picker cannot offer it.
 
 ## Where in the code
-
-- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `openStructure()`, `mount()`, `renderStatus()` (the order's head and path), `addressCard()`, `folderCard()`, `folderBlock()`, `titleCard()`, `formatCard()`, `addressCard()`, `createCard()`, `resultHtml()`, `renderRight()`, `validate()`, `create()`, `confirmManualApproval()`, `startCountdown()`, `fillFromOrder()`, `dropFolder()`, `createLabel()`, `withOrder()`, `pageTotal()`, `loadPageCounts()`, `formatProblem()`, `sendLogButton()`, `sentText()`, `newBook()`, `bk()`, `many()`, `bookName()`
+- [app/web/js/pages/creator.js](../../app/web/js/pages/creator.js) — `mount()`, `formatProblem()`, `fillFromOrder()`, `sendLogButton()`
 - [app/web/js/pages/creator-picker.js](../../app/web/js/pages/creator-picker.js) — `pickEtsyOrder()`
-- [app/web/js/pages/gelato-result.js](../../app/web/js/pages/gelato-result.js) — `gelatoResultHtml()`, `linkNotice()`, `runCountdown()`, `resultAction()`, `linkUntil()`, `linkAlive()`, `ORDERS_URL`
-- [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `replace_page()`, `restore_page()`, `_print_page()`, `_backups()`, `_while_sending()`, `_not_while_sending()`, `REPLACED`, `expected_files()`, `validate()`, `_validating`, `gelato_page_options()`, `_gelato_page_count()`
-- [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `journaled_send()`, `mark_books()`, `record_order()`, `books_of()`, `receipt_for()`, `joint_title()`, `_unknown_outcome()`, `checked_files()`, `_to_archive()`, `_mark_reprint()`, `_remember_sent()`, `_journaled()`, `validate_address()`
-- [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `gelato_page_counts()`, `gelato_pages_problem()`, `_pages_problem()`, `create_gelato_draft()`, `_gelato_draft()`, `_gelato_book()`, `_journal_readback()`
-- [app/studio/creator/printify_send.py](../../app/studio/creator/printify_send.py) — `create_printify_draft()`, `_printify_setup()`, `_variant_title()`, `_printify_draft()`, `_printify_images()`, `_printify_product()`, `_printify_order()`, `create_printify_reprint()`, `_printify_reprint()`, `build_printify_payload()`, `matte_variant()`, `printify_order_payload()`
-- [app/studio/creator/photobook.py](../../app/studio/creator/photobook.py) — `build_photobook_pdf()`, `_one_idat()`
-- [app/studio/creator/routes.py](../../app/studio/creator/routes.py) — `_status()`, `_gelato_page_counts()`, `_folder_media()`, `_folder_spread()`
-- [app/web/js/folder-viewer.js](../../app/web/js/folder-viewer.js) — `openFolderViewer()`, `pageNo()`, `pageWord()` (the viewer with a page replaced and put back — shared with the order card)
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `filesBadge()`, `checkNotices()`, `svcChip()`, `countStages()`, `emptyOrders()` (shared with the order card); [app/web/js/lib.js](../../app/web/js/lib.js) — `confirmChecked()` (the manual approval)
-- [app/studio/printify.py](../../app/studio/printify.py) — `create_order_on_hold()`, `upload_exists()`
-- [app/studio/gelato.py](../../app/studio/gelato.py) — `page_counts()`, `photobook_geometry()`, `create_draft_order()`
-- [app/web/js/order-bits.js](../../app/web/js/order-bits.js) — `pagesText()`
-- [app/studio/sendlog.py](../../app/studio/sendlog.py) — `attempt()`, `step()`
-- [app/studio/archive.py](../../app/studio/archive.py) — `store()`, `update()`, `get()`
-- [app/web/css/orders.css](../../app/web/css/orders.css) — `.fmt-pill.bad`, `.cr-reprint`, `.cr-book`, `.cr-book-name`
-- [app/web/js/handoff.js](../../app/web/js/handoff.js) — `take()`
-- [app/studio/desktop.py](../../app/studio/desktop.py) — `pick_folder()`, `pick_file()`
-- Tests: [app/tests/test_flows.py](../../app/tests/test_flows.py) (`PrintifyDraftFlow`, `GelatoDraftFlow`, `CreatorStartsEmpty`, `DroppedFolders`), [app/tests/test_library_creator.py](../../app/tests/test_library_creator.py) (`PrintifyValidation`, `GelatoValidation`), [app/tests/test_archive.py](../../app/tests/test_archive.py) (`PrintifyReprint`, `GelatoReprint`)
+- [app/web/js/pages/gelato-result.js](../../app/web/js/pages/gelato-result.js) — `gelatoResultHtml()`
+- [app/studio/creator/gelato_send.py](../../app/studio/creator/gelato_send.py) — `create_gelato_draft()`, `gelato_pages_problem()`, `GELATO_PLACEHOLDER_PHONE`
+- [app/studio/creator/sending.py](../../app/studio/creator/sending.py) — `journaled_send()`, `record_order()`, `receipt_for()`, `_to_archive()`, `_mark_reprint()`
+- [app/studio/creator/printfolder.py](../../app/studio/creator/printfolder.py) — `validate()`, `_gelato_page_count()`, `replace_page()`
+- [app/studio/creator/photobook.py](../../app/studio/creator/photobook.py) — `build_photobook_pdf()`, `BLANK_DPI`
+- [app/studio/sendlog.py](../../app/studio/sendlog.py) — `SENDS`, `KEEP`, `write()`, `attempt()`, `latest()`
 
 ## Related
-
-- [Printify](../integrations/printify.md) · [Gelato](../integrations/gelato.md) · [Security](../security.md) · [Dragging files](../flows/dropped-files.md) · [Orders](orders.md)
+- [Gelato](../integrations/gelato.md) · [Printify](../integrations/printify.md) · [Orders](orders.md) · [Archive](archive.md) · [Order to print](../flows/order-to-print.md) · [Intake](../flows/intake.md) · [Security](../security.md)

@@ -517,7 +517,7 @@ class APictureIntoItsRow(Base):
     def test_the_printers_template_in_numbers(self):
         # Gemini's cover 5824×2880 on the template 17.90″×9.50″ (finished 16.40″×8.00″): its width is the finished
         # width — 266 px of margin at the sides, 247 at the top and the bottom (worked out with the owner, 2026-09-26)
-        self.assertEqual(template_layout(5824, 2880), {"canvas": [6357, 3374], "art": [266, 247, 5824, 2880], "ppi": 355.12})
+        self.assertEqual(template_layout(5824, 2880), {"canvas": [6738, 3576], "art": [457, 348, 5824, 2880], "ppi": 355.12})
 
     def test_the_cover_in_two_stages_the_picture_then_its_margins(self):
         pictures.place(H, "cover", spread_png(self.tmp / "c.png", (2000, 1000)), "c.png")

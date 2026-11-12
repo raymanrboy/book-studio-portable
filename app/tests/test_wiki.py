@@ -1,4 +1,4 @@
-"""The project wiki keeps up with the code: links, named functions, routes and file coverage."""
+"""The project wiki keeps up with the code: links, named functions, file coverage, page size, no history in the text."""
 import importlib.util
 import unittest
 from pathlib import Path
@@ -43,3 +43,34 @@ class NamedInTheRightFile(unittest.TestCase):
         py = "from . import archive\nclass Job:\n    pass\narchive.refresh_quietly()\n"
         self.assertTrue(self.tool.defined_in("archive.refresh_quietly", py))  # another module's function it calls
         self.assertFalse(self.tool.defined_in("Job.share", py))  # the class is this file's, the method is not
+
+    def test_several_in_one_declaration(self):
+        js = "const FAST = 1500, SLOW = 4000, OFFLINE = 10000;\n"
+        for name in ["FAST", "SLOW", "OFFLINE"]:
+            self.assertTrue(self.tool.defined_in(name, js), name)
+        self.assertFalse(self.tool.defined_in("CALM", js))
+
+
+class WikiToolsAndRules(unittest.TestCase):
+    """The wiki says only what is now, and the code map / route table come from the code on demand."""
+
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location("wiki_check", TOOL)
+        cls.tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.tool)
+
+    def test_history_is_caught(self):
+        for line in ["Since 12.10 the cover is drawn.", "until 2026-09-30 two keys", "during the move to Gelato",
+                     "(the owner, 04.10.2026: weekly)"]:
+            self.assertIsNotNone(self.tool._HISTORY.search(line), line)
+
+    def test_the_present_passes(self):
+        for line in ["after 14 days the files go", "Printify is read-only from 2026-10-01", "since the last sync",
+                     "a backup when the last one is 3 days old", "after 1.5 seconds", "until 3/4 full", "before 10.5 MB"]:
+            self.assertIsNone(self.tool._HISTORY.search(line), line)
+
+    def test_route_table_has_every_route(self):
+        table = self.tool.route_table()
+        self.assertEqual({(m, p) for m, p, _, _ in table}, self.tool.routes_in_code())
+        self.assertFalse([r for r in table if r[2] == "?"], "a route without its handler")

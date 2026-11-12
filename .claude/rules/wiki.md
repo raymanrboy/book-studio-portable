@@ -5,16 +5,36 @@ paths:
 
 # Writing the wiki
 
-The full rules and operations: [wiki/dev/wiki-rules.md](../../wiki/dev/wiki-rules.md). The essentials:
+The wiki says **what the program is now**, so an agent reads `wiki/index.md` and one or two pages, then the code. History
+is git — there is no log, no archive of old decisions, no hand-kept code map or route table.
 
-- Every page starts with front matter (`title` in English, `type`, `updated`, `code:` — the files it describes), then
-  `# Title` and a 1–3 sentence gist.
-- A page says how things are **now**; history goes to `log.md`, the owner's reasons to `decisions.md` (with the date).
-  Keep only the *why* of the present design when without it someone would "fix" it.
-- One fact — one page; elsewhere a few words and a link.
-- Code: a link to the file + function names (`name()`) and constants after it; no line numbers; no counts in prose.
-- Links are plain relative Markdown; a path with spaces goes in angle brackets.
-- `wiki/raw/` holds the owner's sources as they are — never change them.
-- No keys, tokens, passwords or real customer data.
-- `log.md`: `## [YYYY-MM-DD] kind | what happened`, newest on top. Every page is listed in `index.md`.
-- `python app/tools/wiki_check.py` must pass (it also runs as a test).
+## A page
+
+- Front matter: `title` (English), `type`, `updated` (date of the last substantive change), `code:` — the files the page
+  describes (a folder ending in `/` covers every file inside). Then `# Title`, a 1–2 sentence gist, facts as bullets or
+  small tables, `## Why` (only design guards someone would otherwise "fix", one line each), `## Where in the code`,
+  `## Related`.
+- **Present tense only.** No "since 12.10", "until …", "was … now", "old / new / legacy", "during the move", no
+  "(the owner, date)" tags — `wiki_check.py` refuses dated history. When something changes, rewrite the sentence.
+- **One fact — one page**; elsewhere a few words and a link.
+- **At most 12 KB a page** (aim for 8); a bigger topic is split in two.
+- Code: a link to the file, then the names (`name()`, `CONSTANT`) after it on the same line — each must be *defined* in
+  that file (`Class.method()` in the class's file; another dotted `module.func()` only has to be called there). No line
+  numbers, no counts in prose.
+- File names Latin and hyphenated; links plain relative Markdown, a path with spaces in angle brackets.
+- Every page is linked once from `index.md` (one line: what it is for).
+- UTF-8 without BOM, LF line ends. No keys, tokens, passwords or real customer data.
+
+## Where things go
+
+- A choice that touches one feature → a "Why" line on that feature's page. A choice across areas → one line in
+  `wiki/decisions.md` (`- decision — why: reason (YYYY-MM-DD)`); a superseded line is replaced, never kept.
+- A word the owner uses → `wiki/glossary.md` (word → page). A known limit → `wiki/dev/limits.md`.
+- A file or function → `python app/tools/wiki_check.py --map`; a route → `--routes` (printed from the code).
+- A source the owner gives (text, screenshot): read it, talk the main points through with him, spread the facts over the
+  pages; the source itself is not stored in the wiki.
+
+## Checks
+
+`python app/tools/wiki_check.py` (also a test) must pass: front matter, links, names, index, every code file covered,
+page size, no history. It does not check that the prose is true — the `wiki-lint` skill does.

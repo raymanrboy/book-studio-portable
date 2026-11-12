@@ -1,139 +1,85 @@
 ---
 title: The portable copy
 type: dev
-updated: 2026-11-11
+updated: 2026-11-12
 code:
   - app/studio/portable.py
+  - app/tools/setup_portable.py
+  - app/tools/make_colleague_copy.py
+  - app/tools/make_shortcut.py
   - app/tests/test_portable.py
   - app/tests/test_etsy_rule.py
   - app/tests/test_portable_move.py
-  - app/tools/make_colleague_copy.py
+  - app/tests/test_setup_portable.py
+  - portable/Start Book Studio.bat
+  - portable/Start with console.bat
+  - portable/Make desktop shortcut.bat
+  - portable/ПРОЧИТАЙ.md
 ---
 # The portable copy
 
-> A copy of Book Studio that carries every program it needs, so the folder can go to another PC. This copy lives
-> in `Book Studio Portable/`. The original install is untouched. The repository alone is enough
-> to build such a folder: [building a portable folder](portable-setup.md).
+> Book Studio in a folder that carries every program it needs, so it can go to another PC or a USB drive. The repository holds all of the program (code, wiki, launchers, notes); it does not hold what the program runs on (`runtime/`) or the owner's data. Build, behaviour, git and the colleague's copy are on this page.
 
-## Layout
+## The folder
+```
+Book Studio Portable/        any name, any place
+  Book Studio/               the repository (git clone; the clone's name must be Book Studio)
+  runtime/                   python, Photoshop, Templates (read-only), Ollama (+models), Upscayl, ffmpeg, Installers
+  Book Studio.lnk            made at the first start; the launchers and ПРОЧИТАЙ.md are then hidden
+```
+The owner sees only `Book Studio.lnk`, `Book Studio/` and `runtime/`. A link holds an absolute path, so after moving the folder it is made again with the hidden `Make desktop shortcut.bat` (`make_shortcut.py`, which also tidies the launchers).
 
-`Book Studio Portable/` → `Book Studio/` (this repository) and `runtime/`: `python`, `Photoshop`, `Templates`
-(the mockup templates, read-only), `Ollama` (with `models`), `Upscayl`,
-`ffmpeg`.
+## Build from a clone
+1. `git clone https://github.com/raymanrboy/book-studio-portable "Book Studio"` into a new folder.
+2. A system Python 3.14 (x64) is needed **only for this build**. From `Book Studio`: `python app/tools/setup_portable.py --python --shortcut`. It lays out the launchers and an empty `runtime/` (`runtime/README.txt` says what goes where), copies that Python into `runtime/python`, installs `app/requirements.txt` there (the one step that uses the internet) and makes the shortcut. Run again, it only refreshes the launchers and lists what `runtime/` still lacks.
+3. Put into `runtime/` what the script cannot: `ffmpeg` (`ffmpeg.exe` anywhere inside `runtime/ffmpeg`), `Photoshop` and `Templates`, and optionally `Installers/vc_redist.x64.exe`.
+4. First start with `Start Book Studio.bat`; afterwards the shortcut. A window lists what is missing and what to sign in to by hand. The text check and upscaling are installed from Settings → «Модулі» ([modules](../features/modules.md)).
 
-## How the program finds them
+| Not in a clone | Why | How it comes back |
+|---|---|---|
+| `runtime/` | size, licences | steps 2–3; the program names what is missing |
+| `app/data/` | the owner's data | copy the folder, or start empty |
+| Keys (`vault.json`) | encrypted by Windows for one Windows user (DPAPI, `vault.py`) | enter them again; Settings → «Перенесення налаштувань»; the backup; `app/tools/restore_keys.py` ([settings](../features/settings.md)) |
+| `pipeline/books/` | gigabytes of pictures | the backup |
+| `app/bin/` | helpers | `7za.exe` (backup, settings file) and `cloudflared.exe` (Gelato's temporary link) are put there **by hand**; the program never downloads them |
 
-`studio/portable.py`: the portable root is the folder with `runtime/` next to the repository (or the environment
-variable `BOOKSTUDIO_PORTABLE`; set but empty = «not portable», which the tests use). In it `runtime()`,
-`upscayl_exe()`, `ffmpeg()`, `ollama_folder()` and `env()` (ffmpeg and Ollama on `PATH`, `OLLAMA_MODELS`).
-Without `runtime/` they all answer None and every place looks where it always did.
+`portable/` in the repository is the canonical copy of the launchers and `ПРОЧИТАЙ.md`: change them there, then run the script (a launcher is refreshed, `ПРОЧИТАЙ.md` only when missing). Launcher names are ASCII because `cmd` does not read Cyrillic.
 
-- **Saved paths** (`relocate()`): a path in the settings that contains a `runtime` folder of another place the copy was moved
-  from is taken into the current `runtime/`. In the portable copy the mockups' places are `runtime/Photoshop` and
-  `runtime/Templates` first (`mockups._saved_or_runtime()`); no PC-specific path is left in the code.
-- **Users:** `mockups.places()`, `textcheck/ollama._ollama_command()` and its start,
-  `workshop/upscale._candidates()`, `photos.ffmpeg()`, `settings_api._open_in_profile()`, `workshop/books.open_agent()`.
-- **Left as the owner set them:** the backup folder (`G:\My Drive\…`) and the mockups' last output folder — his own
-  folders, not programs.
+## How the program finds `runtime/`
+- The portable root is the folder with `runtime/` next to the repository, or the variable `BOOKSTUDIO_PORTABLE` (set but empty = "not portable", which the tests use). `portable.runtime()`, `upscayl_exe()`, `ffmpeg()`, `ollama_folder()` and `env()` (ffmpeg and Ollama on `PATH`, `OLLAMA_MODELS`, `OLLAMA_HOST`) answer from it; without `runtime/` they answer `None` and every place looks where it always did. `runtime/` programs come first, the system's are a fallback.
+- The portable Ollama listens on `OLLAMA_PORT` (11435), apart from an Ollama of the PC, with its models in `runtime/Ollama/models`.
+- **Saved paths:** a settings path that contains a `runtime` folder of the place the copy came from is taken into the current `runtime/` (`relocate()`). Users: `mockups.places()`, `textcheck/ollama._ollama_command()`, `workshop/upscale._candidates()`, `photos.ffmpeg()`, `settings_api._open_in_profile()`, `workshop/books.open_agent()`. The backup folder and the mockups' output folder are the owner's own and stay as set.
+- **Paths inside the data follow the folder:** `rebase_paths()` (called by `main()`) rewrites the few absolute paths in `app/data/*.json` that point into the repository (`pipeline\books`, `app\data`, `wiki`) when the repository is not where `portable-state.json` (`repo`) remembers. The old files go to `app/data/rebase-backup/<time>/`; logs, caches and the vault are not touched.
+- **Windows-only prerequisite** (`prerequisites()`): the Microsoft Visual C++ 2015–2022 x64 runtime, which Photoshop and Upscayl lean on. When it is missing, `Book Studio.pyw` asks «Встановити зараз — тихо?» and `install()` runs `runtime/Installers/vc_redist.x64.exe` quietly (signature checked, Windows asks for administrator permission), else `winget`; with neither the window prints the command and `VCREDIST_URL`. Edge (the app window) and Google Drive for desktop (the backup) are left to the PC.
 
-## Launch and the start-up check
+## Start-up check
+`startup_report()`, called by `Book Studio.pyw` before the server starts, shows one Windows message box: what is missing in `runtime/` (`check()`, each item with what to do) and, once per computer (`first_run_notes()`, remembered in `data/portable-state.json`), what to sign in to by hand — Gelato and Canva in Edge's own profile of the copy. Keys that do not open get their own paragraph (`_keys_problem()`). Nothing is started and no key is read out. Nothing shows when everything is in place on a known computer.
 
-- **Launchers in the root** (kept in the repository's `portable/` and laid out by `setup_portable.py`; ASCII names — `cmd` does not read Cyrillic): `Start Book Studio.bat` (runtime Python,
-  no window), `Start with console.bat` (errors stay on screen), `Make desktop shortcut.bat` (→ `tools/make_shortcut.py`;
-  in the portable copy the shortcut is named «Book Studio Portable», the original's is left alone).
-- **`portable.startup_report()`**, called by `Book Studio.pyw` before the server starts, shows one window: what is missing
-  (`check()` — every program in `runtime/`, each with «what to do») and, once per computer (`first_run_notes()`,
-  remembered in `data/portable-state.json`), what to log in to by hand: Gelato/Canva in Edge's own profile of the copy. Nothing is started and no key is read out.
-- **The keys do not travel.** `vault.json` is encrypted by Windows for the one Windows user (DPAPI, `vault.py`); on another
-  PC or user the keys do not open. `check()` says so (`_keys_problem()`); the way back is Settings (enter the keys again)
-  or `app/tools/restore_keys.py` from the password-protected backup.
+## The browser
+Gelato and Canva links open in Edge with a profile of its own, `work-browser` in the data folder (`settings_api._open_in_profile()`): saved logins are encrypted per Windows user and would not travel anyway. Sign in once per PC. Edge starts with `--restore-last-session`, because it drops session cookies on exit otherwise; a running Edge just adds the tab. **The Canva extension is loaded into this profile once by hand** (`edge://extensions` → developer mode → load unpacked → `Book Studio\canva-extension`); Edge 155 ignores `--load-extension`.
 
-## The browser and the book agent
+## Git
+- The repository is private: `raymanrboy/book-studio-portable`, remote `origin`. The owner's own work goes to branch `BookStudio-R`; `main` is the colleague's line, and nothing is merged into it or pushed to it without asking which changes go there. The original install has its own repository, `raymanrboy/book-studio`: never push this copy there.
+- Commit and push **only when the owner asks**, then everything in the working folder together, without splitting by session or branch; messages in English. Before committing, check that no keys or real customer data get in. `app/data/`, `app/bin/`, `__pycache__`, `.obsidian/` and local Claude Code settings never go into git.
+- The GitHub CLI is not on `PATH`: `C:\Users\Roman\AppData\Local\Programs\GitHubCLI\bin\gh.exe` (signed in as `raymanrboy`). Git is not configured globally for it, so push from Git Bash with:
+  ```
+  git -c credential.helper= -c "credential.helper=!'/c/Users/Roman/AppData/Local/Programs/GitHubCLI/bin/gh.exe' auth git-credential" push
+  ```
+  (without this a Git Credential Manager window opens).
 
-- **Gelato and Canva links open in Edge** (every Windows has it) with a profile of its own, `work-browser` in the data folder
-  (`settings_api._open_in_profile()`), instead of Cent Browser's «Work»: a browser's saved logins are encrypted for the
-  Windows user and would not travel anyway, so the 5 GB browser copy was dropped. Log in to Gelato and Canva once per PC.
-  **It starts with `--restore-last-session`** (the owner: signing in to Gelato again and again): Edge drops session cookies on exit unless it restores the last session; a running Edge just adds the new tab. The last tabs come back with it.
-  **The Canva extension goes into this profile once by hand** (`edge://extensions` → «Режим розробника» → «Завантажити
-  розпаковане» → `Book Studio\canva-extension`): Edge ignores `--load-extension`, even with its opt-out.
-- **The book agent is Claude Code** (since 2026-11-11): the `book` skills in `.claude/skills/`; the Workshop's words are the
-  skill's command (`/book 52`). Antigravity, the agent before it, left the program on 2026-11-11 (its old folder is in
-  `..\_archive\runtime-Antigravity`, the owner's to delete).
+## A copy for a colleague
+The portable folder holds the owner's data, keys and accounts, so a colleague gets a **clean copy**: `python app/tools/make_colleague_copy.py "<new folder>"` ([make_colleague_copy.py](../../app/tools/make_colleague_copy.py)).
+- **In:** the program (only what git knows), `app/bin`, `runtime/` (Python with only the packages `app/requirements.txt` needs — `copy_python()`; `ffmpeg.exe` alone; Photoshop in a stock state — `copy_photoshop()`; the templates), the launchers, a `ПРОЧИТАЙ.md` for the new user, a fresh repository with one neutral commit. `runtime/Ollama` and `runtime/Upscayl` are left out (the program offers them as modules) unless `--with-ollama` / `--with-upscayl`; `--without-photoshop` / `--without-templates` leave those out.
+- **Out:** `app/data`, `.secrets.txt`, the Workshop's books, `examples/`, the owner's plans and sources, the personal rules cut out of [security](../security.md).
+- **Scrubbed:** his GitHub account, e-mail and Windows profile name in the documents (`scrub()`); his own docs are replaced by neutral ones for the colleague (`neutral_docs()`, `without_owner_plans()`), including `AGENTS.md`.
+- **Seeded settings** switch the owner's two personal rules off: `security.etsyKyivOnly: false` and `printify.readOnlyFrom: null` (the colleague signs in to Etsy from his own PC and can still send to Printify — [Printify](../integrations/printify.md)).
+- The copy passes its own tests and wiki check with its own Python. [MANUAL.md](../../MANUAL.md) is neutral and goes in as it is; keep it in step with the program.
 
-## The copy as a project
+## Where in the code
+- [app/studio/portable.py](../../app/studio/portable.py) — `runtime()`, `relocate()`, `check()`, `startup_report()`, `rebase_paths()`
+- [app/tools/setup_portable.py](../../app/tools/setup_portable.py) — `layout()`, `copy_python()`, `install_packages()`, `missing()`
+- [app/tools/make_colleague_copy.py](../../app/tools/make_colleague_copy.py) — `copy_python()`, `copy_photoshop()`, `scrub()`, `neutral_docs()`
+- [app/tools/make_shortcut.py](../../app/tools/make_shortcut.py) — `tidy()`, `main()`
 
-- **Its own private repository**, `raymanrboy/book-studio-portable` (remote `origin`) — never the original's `book-studio`; commit and push only when the owner asks ([decisions](../decisions.md)).
-- `CLAUDE.md` tells an agent where it is; `ПРОЧИТАЙ.md` in the portable root tells the owner how to start and what to do on a
-  new PC. The interface preview (`.claude/launch.json`) still runs plain `python` — on a PC without Python use
-  `..\runtime\python\python.exe app/tools/dev_server.py --sample`.
-- The templates live in `runtime/Templates` (the original's spare copy `Трафарети мастхев (копія)/` is not in the portable copy).
-
-## A copy for someone else
-
-The portable folder holds the owner's data, keys and accounts, so it is not handed over as it is. `python app/tools/make_colleague_copy.py
-"<new folder>"` ([make_colleague_copy.py](../../app/tools/make_colleague_copy.py)) makes a **clean copy**:
-
-- **In:** the program (only what git knows — tracked and new-but-not-ignored files), `app/bin` (7-Zip, cloudflared), `runtime/`
-  (Python, ffmpeg, Ollama with its model, Upscayl), the launchers, a `ПРОЧИТАЙ.md` for the new user, a fresh git
-  repository with one neutral commit (no history, no remote).
-- **Photoshop** goes in a **stock** state: his temp files, logs and preferences left out, the portable build's own `DefaultData`
-  put over the preferences (`copy_photoshop()`) — not run-tested.
-- **Optional modules left out:** `runtime/Ollama` and `runtime/Upscayl` (the program offers to install them: [modules](../features/modules.md));
-  Python carries only the packages `app/requirements.txt` needs (`copy_python()`), ffmpeg only `ffmpeg.exe`.
-- **Out:** `app/data` (orders, customers, the vault), `.secrets.txt`, the Workshop's books, `examples/`, `wiki/raw/` (the owner's own
-  words) and his plans (`wiki/owner/future-plans.md`). Photoshop and the templates **are in** (the owner: the colleague bought the mockups too, and it is not
-  commercial use); `--without-photoshop` / `--without-templates` leave them out.
-  The owner keeps working in the portable copy and does not port the two switches to the original.
-- **Scrubbed:** his GitHub account, e-mail and Windows profile name in the documents (`scrub()`).
-- **Starts with two personal rules off and the light theme** (seeded `settings.json`): `security.etsyKyivOnly: false`,
-  `printify.readOnlyFrom: null`, `ui.theme: light`.
-- **Its own rules for agents:** `AGENTS.md`, `CLAUDE.md` (with `@AGENTS.md`) and `wiki/owner/working-with-owner.md` are written for the colleague (templates in
-  `app/tools/colleague_docs/`, put in by `neutral_docs()`), `wiki/security.md` has the owner's personal rules cut out, links to the
-  removed `wiki/raw/` are turned into plain text. The copy passes its own tests and wiki check with its own Python.
-
-Those two are the owner's own rules turned into settings (`core.etsy_kyiv_only()`, `printify.read_only_from()`): by default as before
-— Etsy opens only from the Kyiv PC, Printify is read-only (`printify.readOnlyFrom`) — and the Settings page, the sign-in dialog and the
-first-run note follow the setting. The colleague (an owner of a similar business, with his own Etsy shop, Printify and Gelato)
-signs in to Etsy straight from his PC.
-
-## Independent of the place
-
-The owner's wish: the program is put somewhere and works in its own folders, depending as little as possible on paths and on moves between
-computers and folders.
-
-- **Everything it needs is in the folder** — Python, ffmpeg, Ollama and its models, Upscayl,
-  Photoshop, the templates, 7-Zip, cloudflared; its own temp files (`data/tmp/system`) and the Edge profile (`data/work-browser`).
-  `runtime/` programs are found first; the system's are only a fallback.
-- **Paths kept inside the data follow the folder** (`portable.rebase_paths()`, called by `main()`): the few absolute paths in `app/data/*.json`
-  that point into the repository (`…\pipeline\books`, `…\app\data`, `…\wiki`) are rewritten to where the repository is now — when it differs
-  from the place remembered in `portable-state.json` (`repo`). The old files go to `app/data/rebase-backup/<time>/`; logs, caches and the vault
-  are not touched. Folders outside the program (his mockups' output folder, Downloads, Google Drive) are his own and stay as set.
-- **What only Windows can have** (`portable.prerequisites()`): the **Microsoft Visual C++ 2015–2022 runtime (x64)** that Photoshop and Upscayl
-  lean on (they do not carry it; Python and Ollama do). When it is missing, `Book Studio.pyw` asks «Встановити зараз — тихо?» and
-  `portable.install()` runs it quietly in a visible console, Windows asking for the administrator's permission: the installer in
-  `runtime/Installers/vc_redist.x64.exe` (Microsoft's, signature checked) (`/install /quiet /norestart`, works offline) or else `winget` (the owner's Windows 10 LTSC has no
-  winget). With neither, the window prints the exact command and the link (`https://aka.ms/vs/17/release/vc_redist.x64.exe`).
-  Microsoft Edge (the app window; the default browser is the fallback) and Google Drive for desktop (the backup) are left to the PC.
-
-## The first-run windows
-
-`Book Studio.pyw` shows one Windows message box before the server starts. With an empty `runtime/`: a list «Немає в
-теці runtime» (each program with its folder), one line «Скопіюйте ці теки…», then «Перший запуск на цьому комп'ютері — зробіть вручну» (Gelato/Canva
-in Edge, and the Kyiv note only when that rule is on). Keys that do not open get their own paragraph with the
-way out. Nothing shows when everything is in place and the computer was seen before.
-
-## The manual for an agent
-
-[MANUAL.md](../../MANUAL.md) at the repository root is a user manual written for an LLM (the person and their agent): what the
-program is, the folder, the first-start checklist, the screens, every workflow (order → print, a new book, mockups and slides,
-profit, backup and settings export), the rules, where things are, troubleshooting, what an agent may do, a glossary. It is neutral
-(no personal rules), so it goes into the colleague copy as it is. Keep it in step with the program: when a screen or a step changes,
-change it there.
-
-## What the owner sees in the folder
-
-Only `Book Studio.lnk`, `Book Studio/` and `runtime/`. The `.bat` files and `ПРОЧИТАЙ.md` carry the Hidden attribute. `tools/make_shortcut.py` writes the link into the portable root and onto the desktop; a link holds an absolute path, so after moving the folder it is made again with the hidden `Make desktop shortcut.bat`.
-
-## Not yet checked
-
-The owner's list: `wiki/owner/future-plans.md` (it stays out of a colleague's copy).
+## Related
+- [Runtime](../architecture/runtime.md) · [Settings](../features/settings.md) · [Backup](../features/backup.md) · [Preview](preview.md) · [Limits](limits.md)
