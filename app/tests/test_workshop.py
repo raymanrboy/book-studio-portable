@@ -525,11 +525,12 @@ class APictureIntoItsRow(Base):
         c = books.detail(H)["cover"]
         self.assertEqual((c["art"], c["expanded"], c["final"]), ("cover-art.png", "cover-expanded.png", None))
         with Image.open(self.dir / H / "originals" / "cover-expanded.png") as im:
-            self.assertEqual(im.size, (2183, 1159))                                # the template's proportions
+            self.assertEqual(im.size, (2314, 1228))                                # the template's proportions × MARGIN_ROOM
             self.assertEqual(im.getpixel((5, 5)), (255, 255, 255))                 # a white margin
-            self.assertEqual(im.getpixel((95, 85)), (220, 40, 40))                 # the picture itself, untouched
-        self.assertEqual(c["layout"]["art"], [91, 79, 2000, 1000])
-        self.assertIn('"canvas": "2183 × 1159 px', c["outpaint"])
+            self.assertEqual(im.getpixel((150, 110)), (255, 255, 255))             # still margin, just before the picture
+            self.assertEqual(im.getpixel((161, 120)), (220, 40, 40))               # the picture itself, untouched
+        self.assertEqual(c["layout"]["art"], [157, 114, 2000, 1000])
+        self.assertIn('"canvas": "2314 × 1228 px', c["outpaint"])
         pictures.place(H, "cover-wrap", spread_png(self.tmp / "w.png", (2200, 1200)), "w.png")
         c = books.detail(H)["cover"]
         self.assertEqual(c["final"], "Cover.png")

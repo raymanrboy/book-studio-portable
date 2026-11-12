@@ -47,6 +47,7 @@ In full, with the reasons: [wiki/security.md](wiki/security.md). The short form:
 | The wiki: after code changes · new material · health check | `wiki-update` · `wiki-ingest` · `wiki-lint` |
 | A word the owner uses | [wiki/glossary.md](wiki/glossary.md) |
 | Prompts for the Etsy listing photos (ChatGPT) | [listing-prompts/](listing-prompts/README.md) |
+| The rebuild of the program in Rust | the folder `..\Book Studio Rust` — its own repository, `CLAUDE.md` and plan; open that folder for it |
 
 The program's manual for people and for an assistant answering "how do I…": [MANUAL.md](MANUAL.md).
 

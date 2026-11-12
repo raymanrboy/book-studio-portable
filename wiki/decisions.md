@@ -30,6 +30,7 @@ code: []
 ## Interface
 - The program is light only — why: the owner's theme ([Frontend](architecture/frontend.md)) (2026-09-30)
 - Edge stays the window; no WebView2, Qt or Electron — why: same engine, nothing to gain ([Runtime](architecture/runtime.md)) (2026-10-05)
+- The program is rebuilt as one native Rust program with its own window, in its own repository (`raymanrboy/book-studio-rust`, the folder `Book Studio Rust` beside this one, with its plan in `docs/migration.md`); this program stays in use and unchanged until each area passes its parity checks, on the same data in the same formats — why: the owner wants one fast standalone program, and a working shop must not stop (2026-11-12)
 - A reversible action runs at once with an undo (a 2-minute shelf); a question is asked only for what cannot be taken back — why: an undo the program cannot keep is a lie ([UI principles](owner/ui-principles.md)) (2026-10-06)
 - No Workshop IDE is started; «Відкрити агента» only copies the agent's words to the clipboard — why: the book agents are Claude Code skills ([Workshop](features/workshop.md)) (2026-10-16)
 
