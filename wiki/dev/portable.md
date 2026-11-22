@@ -77,13 +77,14 @@ The portable folder holds the owner's data, keys and accounts, so it is not hand
 "<new folder>"` ([make_colleague_copy.py](../../app/tools/make_colleague_copy.py)) makes a **clean copy**:
 
 - **In:** the program (only what git knows — tracked and new-but-not-ignored files), `app/bin` (7-Zip, cloudflared), `runtime/`
-  (Python, ffmpeg, Ollama with its model, Upscayl, Antigravity's program), the launchers, a `ПРОЧИТАЙ.md` for the new user, a fresh git
+  (Python, ffmpeg, Ollama with its model, Upscayl, Antigravity's program), the templates' baked form `app/data/mockups/baked` — the
+  one part of `app/data` that goes, so the copy draws its Mockups without Photoshop (`copy_baked()`) —, the launchers, a `ПРОЧИТАЙ.md` for the new user, a fresh git
   repository with one neutral commit (no history, no remote).
 - **Photoshop** goes in a **stock** state: his temp files, logs and preferences left out, the portable build's own `DefaultData`
   put over the preferences (`copy_photoshop()`) — not run-tested.
 - **Optional modules left out:** `runtime/Ollama` and `runtime/Upscayl` (the program offers to install them: [modules](../features/modules.md));
   Python carries only the packages `app/requirements.txt` needs (`copy_python()`), ffmpeg only `ffmpeg.exe`.
-- **Out:** `app/data` (orders, customers, the vault), `.secrets.txt`, the Workshop's books, `examples/`, `wiki/raw/` (the owner's own
+- **Out:** the rest of `app/data` (orders, customers, the vault), `.secrets.txt`, the Workshop's books, `examples/`, `wiki/raw/` (the owner's own
   words), Antigravity's user-data and home (his Google login and chats). Photoshop and the templates **are in** (the owner: the colleague bought the mockups too, and it is not
   commercial use); `--without-photoshop` / `--without-templates` leave them out.
   The owner keeps working in the portable copy and does not port the two switches to the original.

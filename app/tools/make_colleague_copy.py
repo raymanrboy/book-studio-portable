@@ -7,7 +7,9 @@ cloudflared), `runtime/` (Python, ffmpeg, Ollama with its model, Upscayl, Antigr
 What never goes: `app/data` (orders, customers, the vault with the keys), `.secrets.txt`, the Workshop's books, `examples/`,
 the git history (a fresh repository is made), the owner's raw wiki sources, Antigravity's user-data and home (his Google
 login and chats), the Edge profile. Photoshop and the mockup templates go in (the owner, 2026-10-03: the colleague bought the
-mockups too, and it is not commercial use) unless left out with `--without-photoshop` / `--without-templates`.
+mockups too, and it is not commercial use) unless left out with `--without-photoshop` / `--without-templates`. With the
+templates goes their baked form (`app/data/mockups/baked`, the one part of `app/data` that goes): without it the copy's
+Mockups would go back to Photoshop (since 2026-10-13 the program draws them itself).
 Ollama (the text check) and Upscayl (upscaling) are optional modules the program offers to install itself, so they are left out
 unless `--with-ollama` / `--with-upscayl`. Python goes in with only the packages the program needs, ffmpeg with only `ffmpeg.exe`.
 Photoshop goes in a stock state (his temp files, logs and preferences left out). The copy starts with the owner's two personal rules switched off (Etsy opens from any PC; Printify is not read-only) and the
@@ -257,6 +259,25 @@ def copy_tree(src: Path, dst: Path, dry: bool) -> int:
     return n
 
 
+BAKED = ROOT / "app" / "data" / "mockups" / "baked"         # studio/mockup_render.py: <key>.npz + baked.json
+
+
+def copy_baked(dst: Path, dry: bool) -> int:
+    """The templates' baked form, so the copy draws its Mockups without Photoshop: `<key>.npz` and `baked.json` only.
+    Each is used only while its template is the very file it was baked from (`mockup_render.stamp()`: size and content,
+    not the path), so it holds in the copy as long as `runtime/Templates` went in unchanged."""
+    n = 0
+    if not BAKED.is_dir():
+        return 0
+    for p in sorted(BAKED.glob("*.npz")) + [BAKED / "baked.json"]:
+        if p.is_file():
+            n += 1
+            if not dry:
+                dst.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(p, dst / p.name)
+    return n
+
+
 def main(argv: list[str]) -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -318,6 +339,10 @@ def main(argv: list[str]) -> int:
             continue
         n = copy_tree(part, target / "runtime" / name, dry)
         print(f"runtime/{name}: {n} файлів")
+    if "Templates" not in skipped and (runtime / "Templates").is_dir():
+        n = copy_baked(target / "Book Studio" / "app" / "data" / "mockups" / "baked", dry)
+        print(f"app/data/mockups/baked: {n} файлів (мокапи малює сама програма, без фотошопу)" if n else
+              "app/data/mockups/baked: НЕМАЄ — мокапи в копії йтимуть через фотошоп")
     for name in skipped:
         print(f"runtime/{name}: НЕ копіюється ({'додатковий модуль — програма запропонує встановити сама' if name in ('Ollama', 'Upscayl') else 'за ключем --without-' + name.lower()})")
     for name in skipped:                                         # left out: an empty place for him to fill
