@@ -69,8 +69,8 @@ Gelato and Canva links open in Edge with a profile of its own, `work-browser` in
 
 ## A copy for a colleague
 The portable folder holds the owner's data, keys and accounts, so a colleague gets a **clean copy**: `python app/tools/make_colleague_copy.py "<new folder>"` ([make_colleague_copy.py](../../app/tools/make_colleague_copy.py)).
-- **In:** the program (only what git knows), `app/bin`, `runtime/` (Python with only the packages `app/requirements.txt` needs — `copy_python()`; `ffmpeg.exe` alone; Photoshop in a stock state — `copy_photoshop()`; the templates), the launchers, a `ПРОЧИТАЙ.md` for the new user, a fresh repository with one neutral commit. `runtime/Ollama` and `runtime/Upscayl` are left out (the program offers them as modules) unless `--with-ollama` / `--with-upscayl`; `--without-photoshop` / `--without-templates` leave those out.
-- **Out:** `app/data`, `.secrets.txt`, the Workshop's books, `examples/`, the owner's plans and sources, the personal rules cut out of [security](../security.md).
+- **In:** the program (only what git knows), `app/bin`, `runtime/` (Python with only the packages `app/requirements.txt` needs — `copy_python()`; `ffmpeg.exe` alone; Photoshop in a stock state — `copy_photoshop()`; the templates), the templates' baked form `app/data/mockups/baked` — the one part of `app/data` that goes, so the copy draws its Mockups without Photoshop (`copy_baked()`), the launchers, a `ПРОЧИТАЙ.md` for the new user, a fresh repository with one neutral commit. `runtime/Ollama` and `runtime/Upscayl` are left out (the program offers them as modules) unless `--with-ollama` / `--with-upscayl`; `--without-photoshop` / `--without-templates` leave those out.
+- **Out:** the rest of `app/data`, `.secrets.txt`, the Workshop's books, `examples/`, the owner's plans and sources, the personal rules cut out of [security](../security.md).
 - **Scrubbed:** his GitHub account, e-mail and Windows profile name in the documents (`scrub()`); his own docs are replaced by neutral ones for the colleague (`neutral_docs()`, `without_owner_plans()`), including `AGENTS.md`.
 - **Seeded settings** switch the owner's two personal rules off: `security.etsyKyivOnly: false` and `printify.readOnlyFrom: null` (the colleague signs in to Etsy from his own PC and can still send to Printify — [Printify](../integrations/printify.md)).
 - The copy passes its own tests and wiki check with its own Python. [MANUAL.md](../../MANUAL.md) is neutral and goes in as it is; keep it in step with the program.
@@ -78,7 +78,7 @@ The portable folder holds the owner's data, keys and accounts, so a colleague ge
 ## Where in the code
 - [app/studio/portable.py](../../app/studio/portable.py) — `runtime()`, `relocate()`, `check()`, `startup_report()`, `rebase_paths()`
 - [app/tools/setup_portable.py](../../app/tools/setup_portable.py) — `layout()`, `copy_python()`, `install_packages()`, `missing()`
-- [app/tools/make_colleague_copy.py](../../app/tools/make_colleague_copy.py) — `copy_python()`, `copy_photoshop()`, `scrub()`, `neutral_docs()`
+- [app/tools/make_colleague_copy.py](../../app/tools/make_colleague_copy.py) — `copy_python()`, `copy_photoshop()`, `copy_baked()`, `scrub()`, `neutral_docs()`
 - [app/tools/make_shortcut.py](../../app/tools/make_shortcut.py) — `tidy()`, `main()`
 
 ## Related
